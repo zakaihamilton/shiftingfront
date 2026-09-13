@@ -3,6 +3,7 @@ import { profileContractFor, resolveMissionProfile } from "@/lib/gen/profile";
 import { objectiveProgress, secondaryProgress } from "@/lib/sim/objectives";
 import { missionObjectives } from "@/lib/gen/story";
 import { missionTimeLimitTicks, objectiveCardsFor, phaseLabel } from "@/lib/ui/missionPresentation";
+import { doctrineHintsFor } from "@/lib/ui/doctrine";
 import type { Campaign, SimState } from "@/lib/types";
 
 export function playFieldStatus(state: SimState, campaign?: Campaign) {
@@ -29,5 +30,6 @@ export function playFieldStatus(state: SimState, campaign?: Campaign) {
     timeRemaining,
     convoyDeparture,
     profileLabel: profile?.label,
+    doctrineHints: doctrineHintsFor(state),
   };
 }

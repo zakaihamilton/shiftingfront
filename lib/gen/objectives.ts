@@ -67,7 +67,7 @@ export function missionTimeLimitLabel(win: Pick<WinCategory, "kind" | "ticks">):
   return ticks === undefined ? undefined : formatMissionMinutesFromTicks(ticks);
 }
 
-export function secondaryObjectivesForMission(mission: Pick<MissionDef, "win">, rng: Rng): SecondaryObjective[] {
+export function secondaryObjectivesForMission(mission: Pick<MissionDef, "win" | "profile">, rng: Rng): SecondaryObjective[] {
   const yard: SecondaryObjective = {
     id: "yard",
     kind: "preserveYard",
@@ -76,6 +76,9 @@ export function secondaryObjectivesForMission(mission: Pick<MissionDef, "win">, 
   if (SCENARIO_KINDS.includes(mission.win.kind)) {
     const timeLimitTicks = missionTimeLimitTicks(mission.win) ?? 3600;
     const timeLimit = formatMissionMinutesFromTicks(timeLimitTicks);
+    if (mission.win.kind === "rescue" || mission.win.kind === "extraction") {
+      return [yard, { id: "survivors", kind: "keepUnits", label: "Keep at least one combat unit alive", target: 1 }];
+    }
     const label = mission.win.kind === "escort"
       ? `Speed bonus: complete the operation within ${timeLimit} total`
       : `Complete the operation within ${timeLimit}`;
@@ -91,7 +94,8 @@ export function secondaryObjectivesForMission(mission: Pick<MissionDef, "win">, 
   }
 
   const objective = objectiveContractFor(mission.win.kind);
-  const secondary: SecondaryObjective = rng.chance(0.5)
+  const supportWeighted = mission.win.kind === "holdTheLine" || mission.profile?.variant === "siege";
+  const secondary: SecondaryObjective = supportWeighted || rng.chance(0.5)
     ? { id: "survivors", kind: "keepUnits", label: "Keep at least one combat unit alive", target: 1 }
     : {
       id: "tempo",
@@ -107,7 +111,7 @@ export function secondaryObjectivesForMission(mission: Pick<MissionDef, "win">, 
 /** Generates the same secondary objectives used when the mission runtime is created. */
 export function secondaryObjectivesForMissionSeed(
   seed: number,
-  mission: Pick<MissionDef, "index" | "win">,
+  mission: Pick<MissionDef, "index" | "win" | "profile">,
 ): SecondaryObjective[] {
   const rng = createRng(seed, `mission-spawn:${mission.index}`);
   if (mission.win.kind === "destroyMarked") {

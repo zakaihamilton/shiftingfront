@@ -7,6 +7,7 @@ import { createMissionFromData, tick } from "../api";
 import { CompetentCommander } from "../commander";
 import { ArchetypeCommander, isArchetypeStrategy } from "../commander/archetypes";
 import { powerBreakdown } from "../world";
+import { hqThreatened } from "../director";
 import { TILE_BLOCKED, TILE_WATER, type BalanceStrategy, type Campaign, type Command, type MissionDef, type MissionDirectorPhase, type SimState, type UnitKind } from "../../types";
 import { missionFamilyFor } from "../../gen/profile";
 import { scenarioAffordances, type ScenarioAffordances } from "../scenarios";
@@ -25,14 +26,23 @@ export function validMap(map: GeneratedMap): boolean {
     const tile = map.tiles[point.y * map.width + point.x];
     return tile !== TILE_BLOCKED && tile !== TILE_WATER;
   };
-  return start(map.playerStart) && start(map.enemyStart) &&
+  const profileValid = map.profileVariant === "crossfire"
+    ? map.affordances.laneCount >= 3 && map.affordances.routeSeparation >= 4
+    : map.profileVariant === "resourceRace" || map.profileVariant === "forwardIndustry"
+      ? map.affordances.forwardResourceValue > 0
+      : map.profileVariant === "contestedRoute"
+        ? map.affordances.routeSeparation >= 4
+        : map.affordances.routeSeparation > 0;
+  return start(map.playerStart) && start(map.enemyStart) && profileValid &&
     map.markedSpots.every((point) => start(point)) &&
     map.resourceAmount.reduce((sum, amount) => sum + amount, 0) >= 4000 &&
     map.affordances.laneCount >= 2 &&
     map.affordances.baselineRouteLength > 0 &&
     map.affordances.alternateRouteLength <= map.affordances.baselineRouteLength * 1.8 &&
     map.affordances.reachableResourceValue >= 4000 &&
-    Number.isFinite(map.affordances.nearestResourceDistance);
+    Number.isFinite(map.affordances.nearestResourceDistance) &&
+    Number.isFinite(map.affordances.forwardResourceValue) &&
+    Number.isFinite(map.affordances.routeSeparation);
 }
 
 function baselineCommands(state: SimState, map: GeneratedMap): Command[] | undefined {
@@ -68,6 +78,15 @@ function runScenario(
   let completionPhase: MissionDirectorPhase | undefined;
   const durationByPhase: Record<MissionDirectorPhase, number> = { opening: 0, pressure: 0, finale: 0 };
   let repairCommands = 0;
+  let supportActions = 0;
+  let healedHp = 0;
+  let repairedHp = 0;
+  let repairCredits = 0;
+  let hqThreatTicks = 0;
+  let rescueFirstContactTick: number | undefined;
+  let rescueAllContactedTick: number | undefined;
+  let rescueFirstReturnedTick: number | undefined;
+  let rescuePhaseAtEnd: "active" | "extraction" | "complete" | undefined;
   let openingCredits: number | undefined;
   let openingUnitsProducedByRole: Partial<Record<UnitKind, number>> | undefined;
   const commander = strategy === "competent"
@@ -82,6 +101,7 @@ function runScenario(
   // representative while avoiding a full entity scan on every tick.
   const diagnosticStride = 6;
   const openingCutoff = Math.max(1, Math.floor(missionHorizon * 0.25));
+  const collectTelemetry = strategy === "competent";
   for (let i = 0; i < tickLimit && state.result === "playing"; i++) {
     assertWithinDeadline(deadlineAt);
     const commands = commander
@@ -92,15 +112,30 @@ function runScenario(
       if (command.type === "repair") repairCommands += 1;
     }
     commandsIssued += commands?.length ?? 0;
-    const result = tick(state, commands, { collectEvents: false, updateFog: false });
+    const result = tick(state, commands, { collectEvents: collectTelemetry, updateFog: false });
+    for (const event of collectTelemetry ? result.events : []) {
+      if (event.type === "support" && event.owner === 0) {
+        supportActions += 1;
+        healedHp += event.amount;
+      }
+      if (event.type === "repair" && event.owner === 0) {
+        repairedHp += event.amount;
+        repairCredits += event.cost;
+      }
+      if (event.type === "objectiveMilestone" && event.kind === "rescue") {
+        if (event.milestone === "firstContact" && rescueFirstContactTick === undefined) rescueFirstContactTick = state.tick;
+        if (event.milestone === "allContacted" && rescueAllContactedTick === undefined) rescueAllContactedTick = state.tick;
+        if (event.milestone === "firstReturned" && rescueFirstReturnedTick === undefined) rescueFirstReturnedTick = state.tick;
+      }
+    }
+    rescuePhaseAtEnd = state.runtime?.kind === "rescue" ? state.runtime.phase : rescuePhaseAtEnd;
     commandRejections += result.commandRejections;
     const shouldSampleDiagnostics = state.tick % diagnosticStride === 0 || state.result !== "playing";
     if (shouldSampleDiagnostics) {
       const playerYard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
-      const hqThreatened = playerYard !== undefined && state.entities.some((entity) =>
-        entity.owner === 1 && entity.class === "unit" && entity.attackTarget === playerYard.id,
-      );
-      if (firstHqThreatTick === undefined && hqThreatened) firstHqThreatTick = state.tick;
+      const hqThreatenedNow = hqThreatened(state);
+      if (firstHqThreatTick === undefined && hqThreatenedNow) firstHqThreatTick = state.tick;
+      if (hqThreatenedNow) hqThreatTicks += diagnosticStride;
       if (state.aiState === "assault" && previousAiState !== "assault") assaultTransitions += 1;
       previousAiState = state.aiState;
       if (firstPressureTick === undefined && state.runtime?.director?.phase !== undefined && state.runtime.director.phase !== "opening") {
@@ -152,6 +187,15 @@ function runScenario(
     completionPhase,
     durationByPhase,
     repairCommands,
+    supportActions: collectTelemetry ? supportActions : undefined,
+    healedHp: collectTelemetry ? healedHp : undefined,
+    repairedHp: collectTelemetry ? repairedHp : undefined,
+    repairCredits: collectTelemetry ? repairCredits : undefined,
+    hqThreatTicks,
+    rescueFirstContactTick,
+    rescueAllContactedTick,
+    rescueFirstReturnedTick,
+    rescuePhaseAtEnd,
     openingCredits,
     openingUnitsProducedByRole,
   };
@@ -243,6 +287,15 @@ export function runOne(
     completionPhase: run.completionPhase,
     durationByPhase: run.durationByPhase,
     repairCommands: run.repairCommands,
+    supportActions: run.supportActions,
+    healedHp: run.healedHp,
+    repairedHp: run.repairedHp,
+    repairCredits: run.repairCredits,
+    hqThreatTicks: run.hqThreatTicks,
+    rescueFirstContactTick: run.rescueFirstContactTick,
+    rescueAllContactedTick: run.rescueAllContactedTick,
+    rescueFirstReturnedTick: run.rescueFirstReturnedTick,
+    rescuePhaseAtEnd: run.rescuePhaseAtEnd,
     openingCredits: run.openingCredits,
     openingUnitsProducedByRole: run.openingUnitsProducedByRole,
     baselineRouteLength: map.affordances.baselineRouteLength,
@@ -250,6 +303,8 @@ export function runOne(
     reachableResourceValue: map.affordances.reachableResourceValue,
     nearestResourceDistance: map.affordances.nearestResourceDistance,
     laneCount: map.affordances.laneCount,
+    forwardResourceValue: map.affordances.forwardResourceValue,
+    routeSeparation: map.affordances.routeSeparation,
     targetDepth: scenario.targetDepth,
     targetRouteLength: scenario.routeLength,
     targetReachable: scenario.targetReachable,

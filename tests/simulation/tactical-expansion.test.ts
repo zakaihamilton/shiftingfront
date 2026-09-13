@@ -385,21 +385,26 @@ describe("tactical expansion", () => {
       secondary: [],
     };
 
-    tick(state);
+    const contactResult = tick(state);
 
     expect(stranded.neutral).toBe(false);
     expect(state.runtime.contactedIds).toEqual([stranded.id]);
     expect(state.runtime.rescuedIds).toEqual([]);
     expect(state.runtime.rescued).toBe(0);
     expect(state.result).toBe("playing");
+    expect(state.runtime.phase).toBe("extraction");
+    expect(contactResult.events).toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "firstContact" }));
+    expect(tick(state).events).not.toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "firstContact" }));
 
     stranded.x = yard.x;
     stranded.y = yard.y;
-    tick(state);
+    const returnResult = tick(state);
 
     expect(state.runtime.rescuedIds).toEqual([stranded.id]);
     expect(state.runtime.rescued).toBe(1);
     expect(state.result).toBe("won");
+    expect(returnResult.events).toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "firstReturned" }));
+    expect(returnResult.events).toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "complete" }));
     expect(objectiveProgress(state).label).toBe("Contacted 1 · Returned 1 / 1");
     void rescuer;
   });

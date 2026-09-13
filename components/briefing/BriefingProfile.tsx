@@ -23,6 +23,10 @@ export function BriefingProfile({ contract }: { contract: MissionProfileContract
             <dt>Fallback</dt>
             <dd>{contract.fallback}</dd>
           </div>
+          <div>
+            <dt>What changes</dt>
+            <dd>{contract.routeHint}</dd>
+          </div>
         </dl>
       </div>
     </details>

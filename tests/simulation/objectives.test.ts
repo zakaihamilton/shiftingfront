@@ -7,6 +7,7 @@ import { createCampaign } from "../../lib/gen/campaign";
 import { generateWinCategory, missionDurationMinutesFor, missionTimeLimitClock, missionTimeLimitLabel, missionTimeLimitTicks, secondaryObjectivesForMissionSeed } from "../../lib/gen/objectives";
 import { formatMissionClock, formatMissionClockFromTicks, MAX_OPERATION_TICKS, minutesToTicks } from "../../lib/gen/pacing";
 import { missionObjectives } from "../../lib/gen/story";
+import { tickScenario } from "../../lib/sim/scenarios";
 
 describe("win categories", () => {
   it("harvestQuota wins after a deposit", () => {
@@ -155,6 +156,27 @@ describe("win categories", () => {
     expect(secondaryProgress(state)[0]).toMatchObject({ completed: false, failed: false });
     state.result = "won";
     expect(secondaryProgress(state)[0]).toMatchObject({ completed: true, failed: false });
+  });
+
+  it("counts only living combat units for the survivor secondary", () => {
+    const state = makeFixture({ win: { kind: "holdTheLine", ticks: 100 } });
+    addUnit(state, 0, "harvester", 2, 2);
+    addUnit(state, 0, "medic", 3, 2);
+    state.runtime = {
+      kind: "holdTheLine",
+      phase: "active",
+      targetIds: [],
+      rescued: 0,
+      required: 1,
+      secondary: [{ id: "survivors", kind: "keepUnits", label: "Keep at least one combat unit alive", target: 1 }],
+    };
+
+    tickScenario(state);
+    expect(state.runtime.secondary[0]?.completed).toBe(false);
+
+    addUnit(state, 0, "infantry", 4, 2);
+    tickScenario(state);
+    expect(state.runtime.secondary[0]?.completed).toBe(true);
   });
 
   it("losing the construction yard fails the mission", () => {
@@ -343,6 +365,21 @@ describe("mission briefing objectives", () => {
         expect(mission.win.ticks + staging).toBe(minutesToTicks(missionDurationMinutesFor(421, mission.index, mission.win.kind)));
       }
     }
+  });
+
+  it("weights rescue and siege operations toward preserving the support screen", () => {
+    const rescue = secondaryObjectivesForMissionSeed(421, {
+      index: 2,
+      win: { kind: "rescue", targetCount: 2, ticks: 3600 },
+    });
+    expect(rescue.map((objective) => objective.id)).toEqual(["yard", "survivors"]);
+
+    const siege = secondaryObjectivesForMissionSeed(421, {
+      index: 2,
+      profile: { family: "assault", variant: "siege" },
+      win: { kind: "decapitate" },
+    });
+    expect(siege[1]?.kind).toBe("keepUnits");
   });
 
   it("puts exact time limits in briefing objectives", () => {

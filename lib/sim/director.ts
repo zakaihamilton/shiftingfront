@@ -1,5 +1,5 @@
 import { footprintOf, labelFor } from "../catalog";
-import type { MissionDirectorPhase, MissionRuntime, SimEvent, SimState, UnitKind } from "../types";
+import { isUnitEntity, type MissionDirectorPhase, type MissionRuntime, type SimEvent, type SimState, type UnitKind } from "../types";
 import { missionDifficulty } from "./difficulty";
 import { powerBreakdown, trySpawnUnit } from "./world";
 import { objectiveContractFor, profileContractFor, resolveMissionProfile } from "../gen/profile";
@@ -9,6 +9,8 @@ const CLASSIC_DURATION_STEP = 480;
 const PRESSURE_WARNING_TICKS = 120;
 const RECOVERY_DELAY_TICKS = 180;
 const MIN_FINALE_RATIO = 0.75;
+const HQ_THREAT_RADIUS = 14;
+const HQ_THREAT_SAMPLE_STRIDE = 6;
 
 function missionHorizon(state: SimState): number {
   const convoyStaging = state.runtime?.kind === "escort" ? state.runtime.convoyStartTick ?? 0 : 0;
@@ -22,7 +24,7 @@ export function directorTimeline(state: SimState): { pressureStart: number; fina
   const duration = Math.max(360, missionHorizon(state));
   const difficulty = missionDifficulty(state.missionIndex);
   const pressureLimit = difficulty.enemyAssaultEvery + contract.pressureLimitOffset;
-  const pressureStart = state.runtime?.kind === "escort"
+  const basePressureStart = state.runtime?.kind === "escort"
     ? Math.max(
         (state.runtime.convoyStartTick ?? 0) + 240,
         Math.round(duration * Math.max(0.28, contract.pressureRatio)),
@@ -31,6 +33,10 @@ export function directorTimeline(state: SimState): { pressureStart: number; fina
         Math.max(contract.pressureFloor, Math.round(duration * contract.pressureRatio)),
         pressureLimit,
       );
+  const rescueGate = state.runtime?.kind === "rescue" && state.runtime.deadline !== undefined
+    ? Math.floor(state.runtime.deadline * 0.25)
+    : 0;
+  const pressureStart = Math.max(basePressureStart, rescueGate);
   // Profiles may move the finale later, but never pull it ahead of the
   // legacy late-mission floor.
   const finaleStart = Math.max(pressureStart + 360, Math.round(duration * Math.max(MIN_FINALE_RATIO, contract.finaleRatio)));
@@ -54,9 +60,25 @@ export function ensureMissionDirector(state: SimState): MissionRuntime | undefin
 
 function phaseAt(state: SimState, director: NonNullable<MissionRuntime["director"]>): MissionDirectorPhase {
   if (state.runtime?.kind === "escort" && state.runtime.convoyStartTick !== undefined) return "opening";
+  const rescue = state.runtime?.kind === "rescue" ? state.runtime : undefined;
+  const rescueDeadline = rescue?.deadline ?? state.win.ticks;
+  const rescueGate = rescueDeadline === undefined ? 0 : Math.floor(rescueDeadline * 0.25);
+  if (rescue && (rescue.contactedIds?.length ?? 0) === 0 && state.tick < rescueGate) return "opening";
   if (state.tick >= director.finaleStart) return "finale";
   if (state.tick >= director.pressureStart) return "pressure";
   return "opening";
+}
+
+export function hqThreatened(state: SimState): boolean {
+  const yard = state.entities.find(
+    (entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard" && entity.hp > 0,
+  );
+  if (!yard) return false;
+  return state.entities.some((entity) =>
+    entity.owner === 1 && isUnitEntity(entity) && entity.hp > 0 && (
+      entity.attackTarget === yard.id || Math.hypot(entity.x - yard.x, entity.y - yard.y) <= HQ_THREAT_RADIUS
+    ),
+  );
 }
 
 function reinforcementKinds(state: SimState, phase: MissionDirectorPhase): UnitKind[] {
@@ -144,8 +166,13 @@ function phaseAlert(state: SimState, runtime: MissionRuntime, phase: MissionDire
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
-function missionAlert(eventSink: SimEvent[] | undefined, text: string, collectEvents: boolean): SimEvent[] {
-  const event = { type: "alert", kind: "objective", text } as const;
+function missionAlert(
+  eventSink: SimEvent[] | undefined,
+  text: string,
+  collectEvents: boolean,
+  kind: "warning" | "objective" = "objective",
+): SimEvent[] {
+  const event = { type: "alert", kind, text } as const;
   if (!collectEvents) return EMPTY_EVENTS;
   if (eventSink) {
     eventSink.push(event);
@@ -159,6 +186,14 @@ export function tickMissionDirector(state: SimState, eventSink?: SimEvent[], col
   const runtime = ensureMissionDirector(state);
   if (!runtime?.director || runtime.phase === "complete") return EMPTY_EVENTS;
   const director = runtime.director;
+  if (runtime.kind === "rescue" && state.tick % HQ_THREAT_SAMPLE_STRIDE === 0) {
+    const threatened = hqThreatened(state);
+    if (threatened && !runtime.hqThreatActive) {
+      runtime.hqThreatActive = true;
+      return missionAlert(eventSink, "HQ threat detected — pull a reserve back to Command HQ.", collectEvents, "warning");
+    }
+    if (!threatened && runtime.hqThreatActive) runtime.hqThreatActive = false;
+  }
   const nextPhase = phaseAt(state, director);
   if (nextPhase === "opening" && state.tick === director.pressureStart - PRESSURE_WARNING_TICKS) {
     const profile = resolveMissionProfile(state.seed, state.missionIndex, runtime.kind);

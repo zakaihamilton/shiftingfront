@@ -8,6 +8,7 @@ export function canRepair(e: { class: string; hp: number; maxHp: number; constru
 const EMPTY_EVENTS: SimEvent[] = [];
 
 export function tickRepair(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
+  const events = eventSink ?? (collectEvents ? [] : undefined);
   for (const e of state.entities) {
     if (!e.repairing) continue;
     if (!isBuildingEntity(e) || e.hp <= 0 || e.constructing > 0) {
@@ -25,10 +26,20 @@ export function tickRepair(state: SimState, eventSink?: SimEvent[], collectEvent
     if (state.credits[e.owner] < cost) continue;
     state.credits[e.owner] -= cost;
     e.hp = Math.min(e.maxHp, e.hp + restored);
+    events?.push({
+      type: "repair",
+      owner: e.owner,
+      buildingId: e.id,
+      kind,
+      amount: restored,
+      cost,
+      x: e.x,
+      y: e.y,
+    });
     if (e.hp >= e.maxHp) {
       e.hp = e.maxHp;
       e.repairing = false;
     }
   }
-  return eventSink ?? (collectEvents ? [] : EMPTY_EVENTS);
+  return eventSink ? EMPTY_EVENTS : events ?? EMPTY_EVENTS;
 }

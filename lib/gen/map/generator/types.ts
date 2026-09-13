@@ -1,4 +1,4 @@
-import type { BiomeName, SurfaceKind, Vec2 } from "../../../types";
+import type { BiomeName, MissionProfileVariant, SurfaceKind, Vec2 } from "../../../types";
 
 export type MapAffordances = {
   routeLengths: number[];
@@ -7,6 +7,10 @@ export type MapAffordances = {
   reachableResourceValue: number;
   nearestResourceDistance: number;
   laneCount: number;
+  /** Reachable ore beyond the middle-ground seam, used by economy profiles. */
+  forwardResourceValue: number;
+  /** Maximum sampled separation between the first two approach lanes. */
+  routeSeparation: number;
 };
 
 export type GeneratedMap = {
@@ -20,6 +24,7 @@ export type GeneratedMap = {
   playerStart: Vec2;
   enemyStart: Vec2;
   markedSpots: Vec2[];
+  profileVariant: MissionProfileVariant;
   affordances: MapAffordances;
 };
 

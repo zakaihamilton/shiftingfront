@@ -93,6 +93,8 @@ export type MissionRuntime = {
   contactedIds?: number[];
   /** Rescue targets that have reached the player Command HQ zone. */
   rescuedIds?: number[];
+  /** Edge state used to avoid repeating the HQ threat warning. */
+  hqThreatActive?: boolean;
   secondary: SecondaryObjective[];
   director?: MissionDirectorState;
 };
@@ -457,6 +459,7 @@ export type SimEvent =
   | { type: "destroyed"; id: number; owner: Owner; kind: UnitKind | BuildingKind; x: number; y: number }
   | { type: "sold"; id: number; kind: UnitKind | BuildingKind; x: number; y: number }
   | { type: "repairStarted"; x: number; y: number }
+  | { type: "repair"; owner: Owner; buildingId: number; kind: BuildingKind; amount: number; cost: number; x: number; y: number }
   | {
       type: "combat";
       owner: Owner;
@@ -487,6 +490,12 @@ export type SimEvent =
   | { type: "won" }
   | { type: "lost" }
   | { type: "objectiveExpired"; kind: MissionKind }
+  | {
+      type: "objectiveMilestone";
+      kind: MissionKind;
+      milestone: "firstContact" | "allContacted" | "firstReturned" | "complete";
+      text: string;
+    }
   | { type: "commandRejected"; reason: string }
   | { type: "alert"; kind: "warning" | "objective" | "contact"; text: string }
   | { type: "suppressed"; id: number }

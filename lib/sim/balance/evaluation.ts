@@ -34,6 +34,15 @@ export type BalanceRecord = {
   completionPhase?: MissionDirectorPhase;
   durationByPhase?: Partial<Record<MissionDirectorPhase, number>>;
   repairCommands?: number;
+  supportActions?: number;
+  healedHp?: number;
+  repairedHp?: number;
+  repairCredits?: number;
+  hqThreatTicks?: number;
+  rescueFirstContactTick?: number;
+  rescueAllContactedTick?: number;
+  rescueFirstReturnedTick?: number;
+  rescuePhaseAtEnd?: "active" | "extraction" | "complete";
   openingCredits?: number;
   openingUnitsProducedByRole?: Partial<Record<UnitKind, number>>;
   baselineRouteLength?: number;
@@ -41,6 +50,8 @@ export type BalanceRecord = {
   reachableResourceValue?: number;
   nearestResourceDistance?: number;
   laneCount?: number;
+  forwardResourceValue?: number;
+  routeSeparation?: number;
   targetDepth?: number;
   targetRouteLength?: number;
   targetReachable?: boolean;
@@ -79,12 +90,23 @@ export type BalanceKindSummary = {
   averagePrimaryCompletedTick: number | null;
   averageDurationByPhase: Record<MissionDirectorPhase, number>;
   averageRepairCommands: number;
+  averageSupportActions: number | null;
+  averageHealedHp: number | null;
+  averageRepairedHp: number | null;
+  averageRepairCredits: number | null;
+  averageHqThreatTicks: number;
+  averageRescueFirstContactTick: number | null;
+  averageRescueAllContactedTick: number | null;
+  averageRescueFirstReturnedTick: number | null;
+  rescueExtractionRate: number | null;
   averageOpeningCredits: number | null;
   averageBaselineRouteLength: number | null;
   averageAlternateRouteLength: number | null;
   averageReachableResourceValue: number | null;
   averageNearestResourceDistance: number | null;
   averageLaneCount: number | null;
+  averageForwardResourceValue: number | null;
+  averageRouteSeparation: number | null;
   averageTargetDepth: number | null;
   averageTargetRouteLength: number | null;
   averageMaxTargetDepth: number | null;
@@ -253,12 +275,23 @@ function summarizeKind(records: BalanceRecord[]): BalanceKindSummary {
     averagePrimaryCompletedTick: averageOptional(records, (record) => record.primaryCompletedTick),
     averageDurationByPhase: averageDurationByPhase(records),
     averageRepairCommands: average(records, (record) => record.repairCommands ?? 0),
+    averageSupportActions: averageOptional(records, (record) => record.supportActions),
+    averageHealedHp: averageOptional(records, (record) => record.healedHp),
+    averageRepairedHp: averageOptional(records, (record) => record.repairedHp),
+    averageRepairCredits: averageOptional(records, (record) => record.repairCredits),
+    averageHqThreatTicks: average(records, (record) => record.hqThreatTicks ?? 0),
+    averageRescueFirstContactTick: averageOptional(records, (record) => record.rescueFirstContactTick),
+    averageRescueAllContactedTick: averageOptional(records, (record) => record.rescueAllContactedTick),
+    averageRescueFirstReturnedTick: averageOptional(records, (record) => record.rescueFirstReturnedTick),
+    rescueExtractionRate: averageOptional(records, (record) => record.rescuePhaseAtEnd === undefined ? undefined : record.rescuePhaseAtEnd === "extraction" || record.rescuePhaseAtEnd === "complete" ? 1 : 0),
     averageOpeningCredits: averageOptional(records, (record) => record.openingCredits),
     averageBaselineRouteLength: averageOptional(records, (record) => record.baselineRouteLength),
     averageAlternateRouteLength: averageOptional(records, (record) => record.alternateRouteLength),
     averageReachableResourceValue: averageOptional(records, (record) => record.reachableResourceValue),
     averageNearestResourceDistance: averageOptional(records, (record) => record.nearestResourceDistance),
     averageLaneCount: averageOptional(records, (record) => record.laneCount),
+    averageForwardResourceValue: averageOptional(records, (record) => record.forwardResourceValue),
+    averageRouteSeparation: averageOptional(records, (record) => record.routeSeparation),
     averageTargetDepth: averageOptional(records, (record) => record.targetDepth),
     averageTargetRouteLength: averageOptional(records, (record) => record.targetRouteLength),
     averageMaxTargetDepth: averageOptional(records, (record) => record.maxTargetDepth),

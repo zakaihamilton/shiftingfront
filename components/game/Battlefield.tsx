@@ -4,6 +4,7 @@ import { biomeArt } from "@/lib/gen/visualAssets";
 import type { MissionObjective } from "@/lib/gen/story";
 import type { BiomeName } from "@/lib/types";
 import type { ObjectiveCardModel } from "@/lib/ui/missionPresentation";
+import type { DoctrineHint } from "@/lib/ui/doctrine";
 import { BattlefieldHud } from "./BattlefieldHud";
 import { ScrollArrow } from "./ScrollArrow";
 import styles from "./Battlefield.module.css";
@@ -21,6 +22,7 @@ export function Battlefield({
   missionName,
   objective,
   profileLabel,
+  doctrineHints,
   timeRemaining,
   convoyDeparture,
   briefingObjectives,
@@ -51,6 +53,7 @@ export function Battlefield({
   missionName: string;
   objective: string;
   profileLabel?: string;
+  doctrineHints?: DoctrineHint[];
   timeRemaining?: string;
   convoyDeparture?: string;
   briefingObjectives?: MissionObjective[];
@@ -100,6 +103,7 @@ export function Battlefield({
           missionName={missionName}
           objective={objective}
           profileLabel={profileLabel}
+          doctrineHints={doctrineHints}
           timeRemaining={timeRemaining}
           convoyDeparture={convoyDeparture}
           briefingObjectives={briefingObjectives}

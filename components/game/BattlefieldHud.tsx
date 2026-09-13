@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatSeed } from "@/lib/seed/rng";
 import type { MissionObjective } from "@/lib/gen/story";
 import { deadlineUrgency, type ObjectiveCardModel } from "@/lib/ui/missionPresentation";
+import type { DoctrineHint } from "@/lib/ui/doctrine";
 import styles from "./Battlefield.module.css";
 
 export function BattlefieldHud({
@@ -11,6 +12,7 @@ export function BattlefieldHud({
   missionName,
   objective,
   profileLabel,
+  doctrineHints = [],
   timeRemaining,
   convoyDeparture,
   briefingObjectives,
@@ -26,6 +28,7 @@ export function BattlefieldHud({
   missionName: string;
   objective: string;
   profileLabel?: string;
+  doctrineHints?: DoctrineHint[];
   timeRemaining?: string;
   convoyDeparture?: string;
   briefingObjectives?: MissionObjective[];
@@ -36,6 +39,37 @@ export function BattlefieldHud({
   onObjectivePanelToggle?: () => void;
 }) {
   const [directiveExpanded, setDirectiveExpanded] = useState(true);
+  const [seenDoctrine] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      return new Set(JSON.parse(window.sessionStorage.getItem("shifting-front:doctrine") ?? "[]"));
+    } catch {
+      return new Set();
+    }
+  });
+  const visibleDoctrine = useMemo(
+    () => doctrineHints.filter((hint) => !seenDoctrine.has(hint.id)),
+    [doctrineHints, seenDoctrine],
+  );
+  const doctrineKey = doctrineHints.map((hint) => hint.id).join("|");
+  useEffect(() => {
+    if (!doctrineKey || typeof window === "undefined") return;
+    let next = new Set<string>();
+    try {
+      next = new Set(JSON.parse(window.sessionStorage.getItem("shifting-front:doctrine") ?? "[]"));
+    } catch {
+      // Session storage is optional.
+    }
+    const hintIds = doctrineKey.split("|").filter(Boolean);
+    hintIds.forEach((id) => next.add(id));
+    try {
+      window.sessionStorage.setItem("shifting-front:doctrine", JSON.stringify([...next]));
+    } catch {
+      // Session storage is optional; the hint remains presentation-only.
+    }
+    // Persist categories without hiding the current mission's first render.
+    // A later mount in this browser session will filter them from the initial state.
+  }, [doctrineKey]);
   const urgency = deadlineUrgency(timeRemainingTicks);
   const timerRatio = timeLimitTicks && timeRemainingTicks !== undefined
     ? Math.max(0, Math.min(1, timeRemainingTicks / timeLimitTicks))
@@ -99,7 +133,8 @@ export function BattlefieldHud({
               <strong>{primaryObjective}</strong>
               {primaryCard && primaryCard.target > 0 ? (
                 <span className={styles.objectiveProgress}>
-                  {Math.min(primaryCard.current, primaryCard.target)} / {primaryCard.target}
+                  <span>{primaryCard.label}</span>
+                  <span className={styles.objectiveCount}>{Math.min(primaryCard.current, primaryCard.target)} / {primaryCard.target}</span>
                   <span className={styles.objectiveBar} aria-hidden="true">
                     <span style={{ width: `${Math.round(Math.max(0, Math.min(1, primaryCard.current / primaryCard.target)) * 100)}%` }} />
                   </span>
@@ -159,6 +194,19 @@ export function BattlefieldHud({
                     ))}
                   </div>
                 </details>
+              </section>
+            ) : null}
+            {visibleDoctrine.length ? (
+              <section className={styles.doctrine} aria-label="Field doctrine" data-testid="field-doctrine">
+                <div className={styles.doctrineHeader}>Field doctrine <span>once per session</span></div>
+                <div className={styles.doctrineList}>
+                  {visibleDoctrine.map((hint) => (
+                    <div className={styles.doctrineItem} key={hint.id}>
+                      <strong>{hint.label}</strong>
+                      <span>{hint.text}</span>
+                    </div>
+                  ))}
+                </div>
               </section>
             ) : null}
         </div>

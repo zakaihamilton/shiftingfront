@@ -131,8 +131,8 @@ describe("player archetype commanders", () => {
         const commandsA = commanderA.plan(a);
         const commandsB = commanderB.plan(b);
         expect(commandsA).toEqual(commandsB);
-        tick(a, commandsA);
-        tick(b, commandsB);
+        tick(a, commandsA, { collectEvents: false, updateFog: false });
+        tick(b, commandsB, { collectEvents: false, updateFog: false });
       }
       expect(inspect(a)).toEqual(inspect(b));
     }

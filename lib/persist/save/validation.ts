@@ -193,6 +193,7 @@ function isRuntime(value: unknown): boolean {
     new Set(value.extractedIds).size !== value.extractedIds.length ||
     value.extractedIds.some((id) => !targetIds.includes(id))
   )) return false;
+  if (value.hqThreatActive !== undefined && typeof value.hqThreatActive !== "boolean") return false;
   if (value.director !== undefined) {
     if (!isRecord(value.director) || !isOneOf(value.director.phase, ["opening", "pressure", "finale"] as const)) return false;
     if (!isIntegerInRange(value.director.pressureStart, 0, Number.MAX_SAFE_INTEGER) || !isIntegerInRange(value.director.finaleStart, 0, Number.MAX_SAFE_INTEGER) || !isIntegerInRange(value.director.eventCount, 0, Number.MAX_SAFE_INTEGER)) return false;

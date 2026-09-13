@@ -1,4 +1,4 @@
-import { TICKS_PER_SECOND, UNIT_STATS, isUnitAvailable, labelFor, producerFor, unitCameoStatus } from "@/lib/catalog";
+import { TICKS_PER_SECOND, UNIT_STATS, isSupportUnit, isUnitAvailable, isUnitKind, labelFor, producerFor, unitCameoStatus } from "@/lib/catalog";
 import type { Entity, FactionVisualProfile, Palette, SimState, UnitKind } from "@/lib/types";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { CameoGrid } from "./CameoGrid";
@@ -29,6 +29,7 @@ export function ProductionCameos({
         const producer = availableProducer(unit);
         const canBuy = state.credits[0] >= UNIT_STATS[unit].cost && !!producer && power >= 0;
         const disabled = cameo.phase === "idle" && !canBuy;
+        const recommendation = supportRecommendationText(state, unit);
         return (
           <CommandCameo
             key={unit}
@@ -40,7 +41,7 @@ export function ProductionCameos({
             disabledReason={disabled ? productionBlockerText(state, unit, power, producer) : undefined}
             detail={cameo.phase === "progress"
               ? `${Math.ceil((1 - cameo.ratio) * UNIT_STATS[unit].buildTicks / TICKS_PER_SECOND)}s remaining`
-              : cameo.phase === "waiting" ? "Queued — cancel available" : undefined}
+              : cameo.phase === "waiting" ? "Queued — cancel available" : recommendation}
             cameo={cameo}
             shortcut={SHORTCUT.cameo[index]}
             onClick={() => onQueueUnit(unit)}
@@ -50,6 +51,16 @@ export function ProductionCameos({
       })}
     </CameoGrid>
   );
+}
+
+export function supportRecommendationText(state: SimState, unit: UnitKind): string | undefined {
+  if (unit !== "medic" && unit !== "repairTruck") return undefined;
+  const domain = unit === "medic" ? "human" : "vehicle";
+  const wounded = state.entities.filter((entity) =>
+    entity.owner === 0 && entity.class === "unit" && isUnitKind(entity.kind) && entity.hp > 0 && !entity.neutral && !isSupportUnit(entity.kind) &&
+    UNIT_STATS[entity.kind].domain === domain && entity.hp < entity.maxHp,
+  ).length;
+  return wounded > 0 ? `Recommended · ${wounded} damaged ${domain} unit${wounded === 1 ? "" : "s"}` : undefined;
 }
 
 export function productionBlockerText(

@@ -1,4 +1,4 @@
-import { UNIT_STATS, labelFor } from "@/lib/catalog";
+import { isUnitKind, UNIT_STATS, labelFor } from "@/lib/catalog";
 import type { Entity, FactionVisualProfile, Palette, Stance } from "@/lib/types";
 import { SUPPORT_MODE_LABEL, stanceLabel } from "@/lib/ui/copy";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
@@ -38,7 +38,7 @@ export function SelectionIdentity({
         <strong
           className={styles.name}
           data-testid="selected-kind"
-          data-tooltip={labelFor(selected.kind)}
+          data-tooltip={`${labelFor(selected.kind)}${isUnitKind(selected.kind) ? ` · ${UNIT_STATS[selected.kind].armor} armor · ${UNIT_STATS[selected.kind].weapon} weapon` : ""}`}
           data-shortcut={SHORTCUT.center}
         >
           {labelFor(selected.kind)}

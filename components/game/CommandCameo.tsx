@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
-import { labelFor, type CameoStatus } from "@/lib/catalog";
+import { isUnitKind, labelFor, UNIT_STATS, type CameoStatus } from "@/lib/catalog";
 import { cx } from "@/lib/ui/cx";
 import type { BuildingKind, FactionVisualProfile, Palette, UnitKind } from "@/lib/types";
 import { SpritePreview } from "./SpritePreview";
@@ -39,7 +39,8 @@ export function CommandCameo({
   const busy = cameo.phase !== "idle";
   const showCount = cameo.queued > 1 || cameo.phase === "waiting";
   const cancellable = busy || active;
-  const tooltip = `${labelFor(kind)} · ${cost} credits${busy ? (cameo.phase === "waiting" ? ` · ${cameo.queued} in queue` : ` · ${Math.round(cameo.ratio * 100)}% complete`) : ""}${cancellable ? " · Right-click or use Cancel" : ""}${disabledReason ? ` · ${disabledReason}` : ""}`;
+  const role = isUnitKind(kind) ? ` · ${UNIT_STATS[kind].armor} armor · ${UNIT_STATS[kind].weapon} weapon` : "";
+  const tooltip = `${labelFor(kind)}${role} · ${cost} credits${busy ? (cameo.phase === "waiting" ? ` · ${cameo.queued} in queue` : ` · ${Math.round(cameo.ratio * 100)}% complete`) : ""}${cancellable ? " · Right-click or use Cancel" : ""}${disabledReason ? ` · ${disabledReason}` : ""}`;
   const ariaStatus = disabledReason ? `, ${disabledReason}` : "";
   return (
     <span

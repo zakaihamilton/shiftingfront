@@ -81,6 +81,7 @@ export function GamePlayField({
       missionName={state.missionName}
       objective={status.objective}
       profileLabel={tutorial ? undefined : status.profileLabel}
+      doctrineHints={tutorial ? undefined : status.doctrineHints}
       timeRemaining={tutorial ? undefined : status.timeRemaining}
       convoyDeparture={status.convoyDeparture}
       briefingObjectives={tutorial ? undefined : status.briefingObjectives}

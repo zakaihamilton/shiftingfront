@@ -81,15 +81,42 @@ describe("summarizeBalance", () => {
         targetDepth: 0.7,
         targetRouteLength: 55,
         targetReachable: true,
+        supportActions: 3,
+        healedHp: 36,
+        repairedHp: 48,
+        repairCredits: 24,
+        hqThreatTicks: 12,
+        rescueFirstContactTick: 240,
+        rescueAllContactedTick: 300,
+        rescueFirstReturnedTick: 420,
+        rescuePhaseAtEnd: "extraction",
+        forwardResourceValue: 8000,
+        routeSeparation: 11,
       }),
     ]);
     expect(summary.byMissionKind.escort?.averageFirstCombatTick).toBe(120);
     expect(summary.byMissionKind.escort?.averageFirstPressureTick).toBe(360);
     expect(summary.byMissionKind.escort?.averagePrimaryCompletedTick).toBe(720);
     expect(summary.byMissionKind.escort?.averageRepairCommands).toBe(2);
+    expect(summary.byMissionKind.escort?.averageSupportActions).toBe(3);
+    expect(summary.byMissionKind.escort?.averageHealedHp).toBe(36);
+    expect(summary.byMissionKind.escort?.averageRepairedHp).toBe(48);
+    expect(summary.byMissionKind.escort?.averageHqThreatTicks).toBe(12);
+    expect(summary.byMissionKind.escort?.averageRescueFirstContactTick).toBe(240);
+    expect(summary.byMissionKind.escort?.rescueExtractionRate).toBe(1);
+    expect(summary.byMissionKind.escort?.averageForwardResourceValue).toBe(8000);
+    expect(summary.byMissionKind.escort?.averageRouteSeparation).toBe(11);
     expect(summary.byMissionKind.escort?.averageOpeningCredits).toBe(240);
     expect(summary.byMissionKind.escort?.averageAlternateRouteLength).toBe(52);
     expect(summary.byMissionKind.escort?.targetReachabilityRate).toBe(1);
+  });
+
+  it("keeps event telemetry unavailable when a strategy did not collect events", () => {
+    const summary = summarizeBalance([makeRecord({ strategy: "rush" })]);
+    expect(summary.byStrategy.rush?.averageSupportActions).toBeNull();
+    expect(summary.byStrategy.rush?.averageHealedHp).toBeNull();
+    expect(summary.byStrategy.rush?.averageRepairedHp).toBeNull();
+    expect(summary.byStrategy.rush?.averageRepairCredits).toBeNull();
   });
 });
 

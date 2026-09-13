@@ -78,6 +78,33 @@ function atlasCellGoldScore(atlas: TerrainAtlasData, tileX: number, tileY: numbe
   return count === 0 ? 0 : sum / count;
 }
 
+function atlasEdgeAverage(
+  atlas: TerrainAtlasData,
+  tileX: number,
+  tileY: number,
+  side: "east" | "west" | "north" | "south",
+): [number, number, number] {
+  const rect = atlasRectForTile(tileX, tileY, atlas.mapWidth);
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let count = 0;
+  for (let offset = 2; offset < ATLAS_CELL - 2; offset++) {
+    const lx = side === "east" ? ATLAS_CELL - 1 : side === "west" ? 0 : offset;
+    const ly = side === "south" ? ATLAS_CELL - 1 : side === "north" ? 0 : offset;
+    const i = ((rect.sy + ly) * atlas.width + rect.sx + lx) * 4;
+    r += atlas.data[i] ?? 0;
+    g += atlas.data[i + 1] ?? 0;
+    b += atlas.data[i + 2] ?? 0;
+    count += 1;
+  }
+  return [r / count, g / count, b / count];
+}
+
+function rgbDistance(a: [number, number, number], b: [number, number, number]): number {
+  return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+}
+
 describe("seeded terrain atlas", () => {
   it("shares deterministic noise and preserves the isometric diamond path", () => {
     expect(hash2(7, -3, 41)).toBe(hashNoise(7, -3, 41));
@@ -266,6 +293,26 @@ describe("seeded terrain atlas", () => {
     expect(seamChannel).toBeLessThan(8);
     expect(seam).toBeLessThan(14);
     expect(seam).toBeLessThanOrEqual(inland + 6);
+  });
+
+  it("removes large tile-aligned color jumps from compatible ground cells", () => {
+    const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed: 832 });
+    const atlas = bakeTerrainAtlasData(state);
+    const seams = [
+      { x: 3, y: 3 },
+      { x: 4, y: 3 },
+      { x: 5, y: 3 },
+      { x: 3, y: 4 },
+      { x: 4, y: 4 },
+      { x: 5, y: 4 },
+    ];
+
+    for (const { x, y } of seams) {
+      expect(rgbDistance(atlasEdgeAverage(atlas, x, y, "east"), atlasEdgeAverage(atlas, x + 1, y, "west")))
+        .toBeLessThan(14);
+      expect(rgbDistance(atlasEdgeAverage(atlas, x, y, "south"), atlasEdgeAverage(atlas, x, y + 1, "north")))
+        .toBeLessThan(14);
+    }
   });
 
   it("bakes a dark grout seam around each concrete pad", () => {

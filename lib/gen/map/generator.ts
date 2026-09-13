@@ -263,7 +263,7 @@ export function generateMap(
   }
 
   distances = walkDistances(tiles, heights, width, height, playerStart);
-  const affordances = computeMapAffordances(distances, resourceAmount, routePlans);
+  const affordances = computeMapAffordances(distances, resourceAmount, routePlans, playerStart, enemyStart, width);
 
   return {
     width,
@@ -276,6 +276,7 @@ export function generateMap(
     playerStart,
     enemyStart,
     markedSpots,
+    profileVariant: profile.variant,
     affordances,
   };
 }

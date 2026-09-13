@@ -1,3 +1,4 @@
+import { isSupportUnit, UNIT_STATS } from "../../catalog";
 import type { Rng } from "../../seed/rng";
 import type { GeneratedMap } from "../../gen/map";
 import type {
@@ -8,7 +9,7 @@ import type {
   SimState,
 } from "../../types";
 import { secondaryObjectivesForMission } from "../../gen/objectives";
-import { inObjectiveZone } from "../../types";
+import { inObjectiveZone, isUnitEntity } from "../../types";
 import { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS } from "../../gen/pacing";
 import { resolveMissionProfile } from "../../gen/profile";
 import { spawnBuildingAt, spawnUnit } from "../world";
@@ -341,9 +342,17 @@ export function configureMissionScenario(
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
-export function tickScenario(state: SimState): SimEvent[] {
+function emitScenarioEvent(events: SimEvent[] | undefined, event: SimEvent): void {
+  events?.push(event);
+}
+
+export function tickScenario(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
   const runtime = state.runtime;
   if (!runtime || runtime.phase === "complete") return EMPTY_EVENTS;
+
+  const events = collectEvents ? eventSink ?? [] : undefined;
+  const rescueContactCount = runtime.kind === "rescue" ? runtime.contactedIds?.length ?? 0 : 0;
+  const rescueReturnedCount = runtime.kind === "rescue" ? runtime.rescuedIds?.length ?? 0 : 0;
 
   scenarioDefinitionFor(runtime.kind).tick(state);
 
@@ -372,12 +381,53 @@ export function tickScenario(state: SimState): SimEvent[] {
     }
   }
 
+  if (runtime.kind === "rescue" && runtime.contactedIds !== undefined && runtime.rescuedIds !== undefined) {
+    const contacted = runtime.contactedIds.length;
+    const returned = runtime.rescuedIds.length;
+    const required = runtime.required;
+    if (rescueContactCount === 0 && contacted > 0) {
+      emitScenarioEvent(events, {
+        type: "objectiveMilestone",
+        kind: "rescue",
+        milestone: "firstContact",
+        text: "First stranded unit contacted. Bring it back to Command HQ.",
+      });
+    }
+    if (rescueContactCount < required && contacted >= required) {
+      emitScenarioEvent(events, {
+        type: "objectiveMilestone",
+        kind: "rescue",
+        milestone: "allContacted",
+        text: "All stranded units contacted. Escort them home.",
+      });
+    }
+    if (rescueReturnedCount === 0 && returned > 0) {
+      emitScenarioEvent(events, {
+        type: "objectiveMilestone",
+        kind: "rescue",
+        milestone: "firstReturned",
+        text: "First stranded unit returned. Keep the remaining route covered.",
+      });
+    }
+    if (rescueReturnedCount < required && returned >= required) {
+      emitScenarioEvent(events, {
+        type: "objectiveMilestone",
+        kind: "rescue",
+        milestone: "complete",
+        text: "All stranded units are home. Command HQ is secure.",
+      });
+    }
+  }
+
   const yard = state.entities.find((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
   const preserve = runtime.secondary.find((objective) => objective.kind === "preserveYard");
   if (preserve) preserve.completed = !!yard;
   const timed = runtime.secondary.find((objective) => objective.kind === "completeBefore");
   if (timed && timed.target !== undefined) timed.completed = state.tick < timed.target;
   const keepUnits = runtime.secondary.find((objective) => objective.kind === "keepUnits");
-  if (keepUnits) keepUnits.completed = state.entities.some((entity) => entity.owner === 0 && entity.class === "unit" && entity.hp > 0 && !entity.neutral);
-  return EMPTY_EVENTS;
+  if (keepUnits) keepUnits.completed = state.entities.some((entity) =>
+    entity.owner === 0 && isUnitEntity(entity) && entity.hp > 0 && !entity.neutral
+      && UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind),
+  );
+  return eventSink ? EMPTY_EVENTS : events ?? EMPTY_EVENTS;
 }

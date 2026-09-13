@@ -49,16 +49,40 @@ export function routeReachable(distances: Int32Array, width: number, points: Vec
   return points.every((point) => distances[idx(Math.round(point.x), Math.round(point.y), width)] >= 0);
 }
 
+function routeSeparation(first: Vec2[] | undefined, second: Vec2[] | undefined): number {
+  if (!first?.length || !second?.length) return 0;
+  let separation = 0;
+  for (let sample = 0; sample <= 8; sample += 1) {
+    const firstPoint = first[Math.min(first.length - 1, Math.round((sample / 8) * (first.length - 1)))]!;
+    const secondPoint = second[Math.min(second.length - 1, Math.round((sample / 8) * (second.length - 1)))]!;
+    separation = Math.max(separation, Math.hypot(firstPoint.x - secondPoint.x, firstPoint.y - secondPoint.y));
+  }
+  return Math.round(separation * 10) / 10;
+}
+
 export function computeMapAffordances(
   distances: Int32Array,
   resourceAmount: number[],
   routePlans: Vec2[][],
+  playerStart: Vec2,
+  enemyStart: Vec2,
+  mapWidth = Math.max(1, Math.round(Math.sqrt(resourceAmount.length))),
 ): MapAffordances {
   const resourceDistances = resourceAmount
     .map((amount, i) => (amount > 0 && distances[i]! >= 0 ? distances[i]! : -1))
     .filter((distance) => distance >= 0);
   const routeLengths = routePlans.map((route) => routeLength(route));
   const sortedRouteLengths = [...routeLengths].sort((a, b) => a - b);
+  const axisX = enemyStart.x - playerStart.x;
+  const axisY = enemyStart.y - playerStart.y;
+  const axisLength = Math.hypot(axisX, axisY) || 1;
+  const forwardResourceValue = resourceAmount.reduce((sum, amount, i) => {
+    if (amount <= 0 || distances[i]! < 0) return sum;
+    const x = i % mapWidth;
+    const y = Math.floor(i / mapWidth);
+    const projection = ((x - playerStart.x) * axisX + (y - playerStart.y) * axisY) / (axisLength * axisLength);
+    return projection >= 0.42 ? sum + amount : sum;
+  }, 0);
   return {
     routeLengths,
     baselineRouteLength: sortedRouteLengths[0] ?? 0,
@@ -69,5 +93,7 @@ export function computeMapAffordances(
     ),
     nearestResourceDistance: resourceDistances.length ? Math.min(...resourceDistances) : 0,
     laneCount: routePlans.length,
+    forwardResourceValue,
+    routeSeparation: routeSeparation(routePlans[0], routePlans[1]),
   };
 }

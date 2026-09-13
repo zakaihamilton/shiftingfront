@@ -249,10 +249,50 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
       const southR = blendS ? colors[southI]! : baseR;
       const southG = blendS ? colors[southI + 1]! : baseG;
       const southB = blendS ? colors[southI + 2]! : baseB;
+      const southeastI = southI + 3;
+      const blendSE = blendE
+        && blendS
+        && classes[(row + 1) * cols + col + 1] === same;
+      const southeastR = blendSE ? colors[southeastI]! : baseR;
+      const southeastG = blendSE ? colors[southeastI + 1]! : baseG;
+      const southeastB = blendSE ? colors[southeastI + 2]! : baseB;
+      const groundBilinear = same === GROUND_CELL_CLASS && blendSE;
+      const rEastDelta = eastR - baseR;
+      const rSouthDelta = southR - baseR;
+      const rCornerDelta = southeastR - southR - eastR + baseR;
+      const gEastDelta = eastG - baseG;
+      const gSouthDelta = southG - baseG;
+      const gCornerDelta = southeastG - southG - eastG + baseG;
+      const bEastDelta = eastB - baseB;
+      const bSouthDelta = southB - baseB;
+      const bCornerDelta = southeastB - southB - eastB + baseB;
       const cellDist = clampShore(shoreDist[row * cols + col] ?? WATER_SHORE_MAX);
       const resourceAmount = same === ORE_CELL_CLASS ? resourceAt(state, gx, gy) : 0;
       const waterMask = same === WATER_CELL_CLASS ? sceneryGrid.waterNeighbors[row * cols + col] ?? 0 : 0;
       const feature = features[row * cols + col];
+      const eastFeature = blendE ? features[row * cols + col + 1] : undefined;
+      const southFeature = blendS ? features[(row + 1) * cols + col] : undefined;
+      const southeastFeature = blendSE ? features[(row + 1) * cols + col + 1] : undefined;
+      const featureCanBlend = same === GROUND_CELL_CLASS
+        && blendSE
+        && feature !== undefined
+        && eastFeature?.kind === feature.kind
+        && southFeature?.kind === feature.kind
+        && southeastFeature?.kind === feature.kind;
+      const featureIntensity = feature?.intensity ?? 0;
+      const featureIntensityEastDelta = (eastFeature?.intensity ?? featureIntensity) - featureIntensity;
+      const featureIntensitySouthDelta = (southFeature?.intensity ?? featureIntensity) - featureIntensity;
+      const featureIntensityCornerDelta = (southeastFeature?.intensity ?? featureIntensity)
+        - (southFeature?.intensity ?? featureIntensity)
+        - (eastFeature?.intensity ?? featureIntensity)
+        + featureIntensity;
+      const featureDetail = feature?.detail ?? 0;
+      const featureDetailEastDelta = (eastFeature?.detail ?? featureDetail) - featureDetail;
+      const featureDetailSouthDelta = (southFeature?.detail ?? featureDetail) - featureDetail;
+      const featureDetailCornerDelta = (southeastFeature?.detail ?? featureDetail)
+        - (southFeature?.detail ?? featureDetail)
+        - (eastFeature?.detail ?? featureDetail)
+        + featureDetail;
       const n00 = same === WATER_CELL_CLASS ? readShoreCell(shoreDist, cols, rows, col - 1, row - 1, cellDist) : 0;
       const n10 = same === WATER_CELL_CLASS ? readShoreCell(shoreDist, cols, rows, col, row - 1, cellDist) : 0;
       const n20 = same === WATER_CELL_CLASS ? readShoreCell(shoreDist, cols, rows, col + 1, row - 1, cellDist) : 0;
@@ -286,20 +326,38 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
             g = wet.g;
             b = wet.b;
           } else {
-            r = baseR + (eastR - baseR) * fx * 0.28 + (southR - baseR) * fy * 0.28;
-            g = baseG + (eastG - baseG) * fx * 0.28 + (southG - baseG) * fy * 0.28;
-            b = baseB + (eastB - baseB) * fx * 0.28 + (southB - baseB) * fy * 0.28;
+            if (groundBilinear) {
+              r = baseR + rEastDelta * fx + rSouthDelta * fy + rCornerDelta * fx * fy;
+              g = baseG + gEastDelta * fx + gSouthDelta * fy + gCornerDelta * fx * fy;
+              b = baseB + bEastDelta * fx + bSouthDelta * fy + bCornerDelta * fx * fy;
+            } else {
+              r = baseR + (eastR - baseR) * fx * 0.28 + (southR - baseR) * fy * 0.28;
+              g = baseG + (eastG - baseG) * fx * 0.28 + (southG - baseG) * fy * 0.28;
+              b = baseB + (eastB - baseB) * fx * 0.28 + (southB - baseB) * fy * 0.28;
+            }
           }
           if (same === GROUND_CELL_CLASS) {
-            const pat = applyBiomeGroundPattern(
-              { r, g, b },
-              state.biome,
-              gx + (lx + 0.5) / ATLAS_CELL,
-              gy + (ly + 0.5) / ATLAS_CELL,
-              salt,
-              mats,
-              feature,
-            );
+            const patternX = gx + (lx + 0.5) / ATLAS_CELL;
+            const patternY = gy + (ly + 0.5) / ATLAS_CELL;
+            // Feature shading is subtle; only vary its scalars near atlas seams
+            // so it follows the continuous ground color without adding a
+            // second per-pixel feature allocation or noise pass.
+            const featureBoundary = featureCanBlend
+              && (lx < 2 || lx >= ATLAS_CELL - 2 || ly < 2 || ly >= ATLAS_CELL - 2);
+            if (featureBoundary && feature !== undefined) {
+              feature.intensity = featureIntensity
+                + featureIntensityEastDelta * fx
+                + featureIntensitySouthDelta * fy
+                + featureIntensityCornerDelta * fx * fy;
+              feature.detail = featureDetail
+                + featureDetailEastDelta * fx
+                + featureDetailSouthDelta * fy
+                + featureDetailCornerDelta * fx * fy;
+            } else if (featureCanBlend && feature !== undefined && lx === 2) {
+              feature.intensity = featureIntensity;
+              feature.detail = featureDetail;
+            }
+            const pat = applyBiomeGroundPattern({ r, g, b }, state.biome, patternX, patternY, salt, mats, feature);
             r = pat.r;
             g = pat.g;
             b = pat.b;

@@ -52,8 +52,14 @@
 
 .operationBar,
 .objectiveStack {
+  pointer-events: none;
   position: relative;
   z-index: 1;
+}
+
+.operationBar *,
+.objectiveStack * {
+  pointer-events: none;
 }
 
 .operationBar {
@@ -215,6 +221,58 @@
   color: var(--chrome-cyan);
   font-size: 0.59rem;
   font-weight: 800;
+}
+
+.objectiveCount {
+  white-space: nowrap;
+}
+
+.doctrine {
+  pointer-events: none;
+  margin-top: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--chrome-cyan) 28%, var(--chrome-inset));
+  border-left: 2px solid var(--chrome-cyan-dim);
+  background: color-mix(in srgb, var(--chrome-void) 86%, transparent);
+}
+
+.doctrineHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--chrome-cyan);
+  font-size: 0.51rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.doctrineHeader span {
+  color: var(--chrome-muted);
+  font-size: 0.45rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.doctrineList {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.doctrineItem {
+  display: grid;
+  gap: 0.12rem;
+  color: var(--chrome-muted);
+  font-size: 0.58rem;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+.doctrineItem strong {
+  color: var(--chrome-gold);
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .objectiveBar,
@@ -449,7 +507,7 @@
 }
 
 .briefingObjectives {
-  pointer-events: auto;
+  pointer-events: none;
   display: grid;
   gap: 0.14rem;
   width: fit-content;
@@ -464,6 +522,7 @@
 }
 
 .briefingLabel {
+  pointer-events: auto;
   display: block;
   cursor: pointer;
   margin-bottom: 0.08rem;

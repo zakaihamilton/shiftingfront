@@ -61,6 +61,27 @@ describe("mission director", () => {
     expect(state.runtime!.director!.eventCount).toBe(1);
   });
 
+  it("warns once when an enemy enters the HQ threat radius", () => {
+    const state = createMission({ seed: 421, missionIndex: 0 });
+    const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard")!;
+    const enemy = state.entities.find((entity) => entity.owner === 1 && entity.class === "unit" && entity.kind !== "harvester")!;
+    enemy.x = yard.x + 8;
+    enemy.y = yard.y;
+    state.tick = 6;
+
+    const first = tickMissionDirector(state);
+    expect(first).toMatchObject([{ type: "alert", kind: "warning", text: expect.stringContaining("HQ threat") }]);
+    expect(state.runtime?.hqThreatActive).toBe(true);
+    expect(tickMissionDirector(state)).toEqual([]);
+
+    enemy.x += 10;
+    state.tick = 12;
+    tickMissionDirector(state);
+    enemy.x = yard.x + 8;
+    state.tick = 18;
+    expect(tickMissionDirector(state)).toMatchObject([{ type: "alert", kind: "warning" }]);
+  });
+
   it("telegraphs pressure before the profile wave arrives", () => {
     const state = createMission({ seed: 421, missionIndex: 0 });
     const director = state.runtime!.director!;
