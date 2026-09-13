@@ -157,6 +157,28 @@ describe("welcome target cinema shots", () => {
     expect(scene.combatEpicenter).toBeDefined();
   });
 
+  it("keeps cinema destruction bursts domain-aware", () => {
+    const scene = createCinemaScene(1847, 0, "baseAssault");
+    const shots: Shot[] = [];
+    const target = scene.state.entities.find((entity) => entity.class === "unit" && entity.kind === "infantry");
+    const attacker = scene.state.entities.find((entity) => entity.class === "unit" && entity.kind === "tank");
+    expect(target).toBeDefined();
+    expect(attacker).toBeDefined();
+
+    target!.hp = 1;
+    target!.x = attacker!.x + 1;
+    target!.y = attacker!.y;
+    attacker!.attackTarget = target!.id;
+    attacker!.cooldown = 0;
+
+    for (let frame = 0; frame < 30 && !scene.fx.some((burst) => burst.kind === "destruction"); frame++) {
+      stepCinemaScene(scene, shots, frame, frame * (1000 / 60));
+    }
+
+    const destruction = scene.fx.filter((burst) => burst.kind === "destruction");
+    expect(destruction.some((burst) => burst.entityKind === "infantry" && burst.targetDomain === "human")).toBe(true);
+  });
+
   it("includes real varied structures belonging to only one defending faction in every preview scenario", () => {
     const buildingShots = CINEMA_SHOTS.filter((shot) => shot.type === "building");
     const structureKinds = new Set<string>();

@@ -3,10 +3,10 @@ import { generateMap } from "@/lib/gen/map";
 import { createMission, tick } from "@/lib/sim/api";
 import { expandFog } from "@/lib/sim/fog";
 import { isStaticWalkable } from "@/lib/sim/world";
-import { BUILDING_STATS, TICKS_PER_SECOND, UNIT_STATS } from "@/lib/catalog";
+import { TICKS_PER_SECOND, UNIT_STATS } from "@/lib/catalog";
 import type { AtlasWorld } from "@/lib/render/terrainAtlas";
 import type { BuildingKind, UnitKind } from "@/lib/types";
-import { FX_DURATION, type FxBurst } from "@/lib/render/fx";
+import { burstsFromEvents, type FxBurst } from "@/lib/render/fx";
 import {
   CINEMA_SCENARIO_KINDS,
   CINEMA_SEED,
@@ -125,6 +125,7 @@ export function createCinemaScene(
   );
 
   const fx: FxBurst[] = [];
+  let nextFxId = 1;
 
   const reassignTargets = () => assignClashTargets(state, clashX, clashY);
 
@@ -142,21 +143,16 @@ export function createCinemaScene(
       }
     }
     reassignTargets();
-    for (const ev of events) {
-      if (ev.type === "destroyed") {
-        fx.push({
-          id: ev.id,
-          kind: "explosion",
-          x: ev.x,
-          y: ev.y,
-          elev: 1,
-          bornMs: performance.now() - (18 - t) * 50,
-          durationMs: FX_DURATION.explosion,
-          owner: ev.owner,
-          entityKind: ev.kind,
-          entityClass: (ev.kind in BUILDING_STATS ? "building" : "unit") as "building" | "unit",
-        });
-      }
+    const destroyedEvents = events.filter((event) => event.type === "destroyed");
+    if (destroyedEvents.length) {
+      const spawned = burstsFromEvents(
+        destroyedEvents,
+        state,
+        performance.now() - (18 - t) * 50,
+        nextFxId,
+      );
+      nextFxId = spawned.nextId;
+      fx.push(...spawned.bursts);
     }
   }
   for (const u of [...pUnits, ...eUnits]) {

@@ -59,20 +59,27 @@ function drawDestructionFx(
   const magnitude = burst.magnitude ?? 1;
   const variant = burst.variant ?? burst.id;
   const isBuilding = burst.entityClass === "building";
+  const isOrganicUnit = burst.entityClass === "unit" && burst.targetDomain === "human";
   const groundY = screen.y + (TILE_H / 2) * z;
   const facing = (variant % 8) as Facing;
   const spec = destructionSprite(state, burst, facing);
 
   if (spec && progress < DESTRUCTION_SPRITE_END) {
-    const collapse = smoothstep(progress / DESTRUCTION_SPRITE_END);
-    const scaleX = 1 + collapse * (isBuilding ? 0.12 : 0.18);
-    const scaleY = 1 - collapse * (isBuilding ? 0.78 : 0.72);
-    const alpha = progress < 0.38
-      ? 1
-      : 1 - clamp01((progress - 0.38) / 0.2);
+    const collapse = smoothstep(progress / (isOrganicUnit ? 0.66 : DESTRUCTION_SPRITE_END));
+    const scaleX = isOrganicUnit
+      ? 1 + collapse * 0.06
+      : 1 + collapse * (isBuilding ? 0.12 : 0.18);
+    const scaleY = isOrganicUnit
+      ? 1 - collapse * 0.88
+      : 1 - collapse * (isBuilding ? 0.78 : 0.72);
+    const alpha = isOrganicUnit
+      ? 1 - clamp01((progress - 0.16) / 0.46)
+      : progress < 0.38
+        ? 1
+        : 1 - clamp01((progress - 0.38) / 0.2);
     const rotation = reducedMotion
       ? 0
-      : ((variant & 1) === 0 ? -1 : 1) * collapse * (isBuilding ? 0.07 : 0.12);
+      : ((variant & 1) === 0 ? -1 : 1) * collapse * (isOrganicUnit ? 0.18 : isBuilding ? 0.07 : 0.12);
     const dw = spec.w * z;
     const dh = spec.h * z;
     const ax = (spec.anchorX ?? spec.w / 2) * z;
@@ -89,6 +96,26 @@ function drawDestructionFx(
     ctx.globalAlpha = alpha * (isBuilding ? 0.24 : 0.32);
     drawSprite(ctx, spec, image, -ax, -ay, dw, dh);
     ctx.restore();
+  }
+
+  if (isOrganicUnit) {
+    const dustProgress = reducedMotion ? 0.45 : smoothstep(progress / 0.72);
+    const dustFade = 1 - clamp01((progress - 0.34) / 0.52);
+    const radius = (reducedMotion ? 8 : 4 + dustProgress * 14) * z * (0.75 + magnitude * 0.25);
+
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = (reducedMotion ? 0.14 : 0.24) * dustFade;
+    ctx.fillStyle = "#8e7a64";
+    ctx.beginPath();
+    ctx.ellipse(screen.x, groundY, radius, radius * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = (reducedMotion ? 0.08 : 0.18) * dustFade;
+    ctx.strokeStyle = "#aa9277";
+    ctx.lineWidth = Math.max(1, z);
+    ctx.stroke();
+    ctx.restore();
+    return;
   }
 
   const blastProgress = smoothstep(progress / DESTRUCTION_BLAST_END);

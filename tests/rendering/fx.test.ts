@@ -116,6 +116,27 @@ describe("combat fx bursts", () => {
     expect(bursts.find((item) => item.entityKind === "constructionYard")?.y).toBe(6);
   });
 
+  it("classifies organic and vehicle destruction bursts from unit domains", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    const organic = addUnit(state, 1, "infantry", 4, 5);
+    const vehicle = addUnit(state, 1, "tank", 6, 5);
+
+    const { bursts } = burstsFromDestroyed(
+      [
+        { type: "destroyed", id: organic.id, owner: organic.owner, kind: organic.kind, x: organic.x, y: organic.y },
+        { type: "destroyed", id: vehicle.id, owner: vehicle.owner, kind: vehicle.kind, x: vehicle.x, y: vehicle.y },
+      ],
+      state,
+      500,
+      10,
+    );
+
+    expect(fxTargetDomain("infantry")).toBe("human");
+    expect(fxTargetDomain("tank")).toBe("vehicle");
+    expect(bursts.map((item) => item.targetDomain)).toEqual(["human", "vehicle"]);
+    expect(bursts.map((item) => item.magnitude)).toEqual([0.62, 0.9]);
+  });
+
   it("renders collapses for units and buildings and suppresses moving debris", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     const unit = burst({
@@ -147,6 +168,34 @@ describe("combat fx bursts", () => {
     expect(animatedDebrisCalls).toBeGreaterThan(
       (reduced.stroke as unknown as { mock: { calls: unknown[] } }).mock.calls.length,
     );
+  });
+
+  it("renders organic deaths as quiet collapses instead of explosions", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    const organic = burst({
+      kind: "destruction",
+      entityKind: "infantry",
+      entityClass: "unit",
+      targetDomain: "human",
+      bornMs: 1000,
+      durationMs: FX_DURATION.destruction,
+      variant: 12,
+    });
+    const animated = mockCtx();
+
+    vi.mocked(drawSprite).mockClear();
+    drawFxLayer(animated, state, createCamera(), [organic], 1300, "burst", false);
+
+    expect(drawSprite).toHaveBeenCalledTimes(2);
+    expect((animated.scale as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[1]).toBeLessThan(1);
+    expect((animated.rotate as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0]).not.toBe(0);
+    expect((animated.ellipse as unknown as { mock: { calls: unknown[][] } }).mock.calls).toHaveLength(1);
+    expect((animated.stroke as unknown as { mock: { calls: unknown[][] } }).mock.calls).toHaveLength(1);
+
+    const reduced = mockCtx();
+    drawFxLayer(reduced, state, createCamera(), [organic], 1300, "burst", true);
+    expect((reduced.rotate as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0]).toBe(0);
+    expect((reduced.ellipse as unknown as { mock: { calls: unknown[][] } }).mock.calls).toHaveLength(1);
   });
 
   it("keeps the destroyed owner's palette metadata after compaction", () => {

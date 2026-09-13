@@ -9,8 +9,8 @@ import {
   terrainScrollPad,
 } from "@/lib/render/scrollLayer";
 import { terrainColors } from "@/lib/render/terrainMaterials";
-import { BUILDING_STATS, isSupportUnit, UNIT_STATS } from "@/lib/catalog";
-import { FX_DURATION } from "@/lib/render/fx";
+import { isSupportUnit, UNIT_STATS } from "@/lib/catalog";
+import { burstsFromEvents } from "@/lib/render/fx";
 import { renderWorld } from "@/lib/render/renderer";
 import { isTerrainAtlasReady } from "@/lib/render/terrainAtlas";
 import { tick } from "@/lib/sim/api";
@@ -115,20 +115,13 @@ function stepCinemaSimulation(scene: CinemaScene, shots: Shot[]): void {
     for (const ev of events) {
       if (ev.type === "combat") {
         shots.push({ ax: ev.x, ay: ev.y, bx: ev.targetX, by: ev.targetY, life: CINEMA_SHOT_LIFETIME_MS });
-      } else if (ev.type === "destroyed") {
-        scene.fx.push({
-          id: ev.id,
-          kind: "explosion",
-          x: ev.x,
-          y: ev.y,
-          elev: 1,
-          bornMs: now,
-          durationMs: FX_DURATION.explosion,
-          owner: ev.owner,
-          entityKind: ev.kind,
-          entityClass: (ev.kind in BUILDING_STATS ? "building" : "unit") as "building" | "unit",
-        });
       }
+    }
+    const destroyedEvents = events.filter((event) => event.type === "destroyed");
+    if (destroyedEvents.length) {
+      const nextFxId = scene.fx.reduce((max, burst) => Math.max(max, burst.id), 0) + 1;
+      const spawned = burstsFromEvents(destroyedEvents, scene.state, now, nextFxId);
+      scene.fx.push(...spawned.bursts);
     }
 
     for (const e of scene.state.entities) {
