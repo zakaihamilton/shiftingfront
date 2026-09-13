@@ -10,7 +10,7 @@ import type { SceneryWorld } from "../gen/map";
 export const hash2 = hashNoise;
 
 export const ATLAS_CELL = 8;
-export const TERRAIN_ATLAS_REV = "world-atlas-v14-organic-patches";
+export const TERRAIN_ATLAS_REV = "world-atlas-v17-organic-ground-transitions";
 export const CONCRETE_STEEL = { r: 89, g: 104, b: 117 };
 export const CONCRETE_STEEL_LIGHT = { r: 154, g: 171, b: 186 };
 export const CONCRETE_STEEL_DARK = { r: 38, g: 50, b: 61 };

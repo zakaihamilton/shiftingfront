@@ -38,6 +38,10 @@ export function formatObjectiveProgress(progress: ObjectiveProgress): string {
   return `${progress.label} · ${Math.min(progress.current, progress.target)} / ${progress.target}`;
 }
 
+function objectiveCardLabel(progress: ObjectiveProgress): string {
+  return progress.label.replace(/\s+\d+\s*\/\s*\d+\s*$/, "");
+}
+
 export function objectiveCardsFor(state: SimState): ObjectiveCardModel[] {
   const primary = objectiveProgress(state);
   const primaryComplete = state.result === "won" || (primary.target > 0 && primary.current >= primary.target);
@@ -45,7 +49,7 @@ export function objectiveCardsFor(state: SimState): ObjectiveCardModel[] {
   return [
     {
       id: "primary",
-      label: formatObjectiveProgress(primary),
+      label: objectiveCardLabel(primary),
       current: primary.current,
       target: primary.target,
       status: primaryFailed ? "failed" : primaryComplete ? "complete" : "active",

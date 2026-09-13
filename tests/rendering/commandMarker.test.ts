@@ -167,4 +167,23 @@ describe("combat tracers", () => {
     drawCombatEffects(armed, state, cam, [attacker], byId, () => 0);
     expect(armed.stroke).toHaveBeenCalled();
   });
+
+  it("skips stale or dead unit targets instead of drawing across the battlefield", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    const attacker = addUnit(state, 0, "infantry", 2, 2);
+    const target = addUnit(state, 1, "infantry", 10, 2);
+    attacker.attackTarget = target.id;
+    attacker.cooldown = UNIT_STATS.infantry.cooldown;
+    const cam = createCamera();
+    const byId = new Map(state.entities.map((entity) => [entity.id, entity]));
+
+    const stale = mockCtx();
+    drawCombatEffects(stale, state, cam, [attacker], byId, () => 0);
+    expect(stale.stroke).not.toHaveBeenCalled();
+
+    target.hp = 0;
+    const dead = mockCtx();
+    drawCombatEffects(dead, state, cam, [attacker], byId, () => 0);
+    expect(dead.stroke).not.toHaveBeenCalled();
+  });
 });

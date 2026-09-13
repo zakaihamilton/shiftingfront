@@ -95,7 +95,7 @@ export function CommandCameo({
             onContextMenu();
           }}
         >
-          ×
+          <span className={styles.cancelIcon} aria-hidden="true">×</span>
         </ConsoleButton>
       ) : null}
     </span>

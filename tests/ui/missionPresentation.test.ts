@@ -22,6 +22,16 @@ describe("mission presentation models", () => {
     expect(phaseLabel(state.runtime)).toBe("Extraction phase");
   });
 
+  it("keeps the primary card label separate from its numeric counter", () => {
+    const state = makeFixture({ win: { kind: "harvestQuota", target: 2 } });
+
+    expect(objectiveCardsFor(state)[0]).toMatchObject({
+      label: "Extracted",
+      current: 0,
+      target: 2,
+    });
+  });
+
   it("marks required preservation and deadline rows as primary presentation objectives", () => {
     const state = makeFixture({ win: { kind: "rescue", targetCount: 1, ticks: 144 } });
     state.runtime = {

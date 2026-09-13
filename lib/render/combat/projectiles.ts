@@ -3,6 +3,7 @@ import { animClock, facingVector } from "../anim";
 import { tileToScreen, type Camera } from "../../iso";
 import { entityElev } from "../renderPicking";
 import { turretAimMap, turretTargetInRange, turretTargetPoint } from "../renderStructures";
+import { distToEntity } from "../../sim/world";
 import type { Entity, Facing, SimState, UnitKind } from "../../types";
 
 export function drawCombatProjectiles(
@@ -21,6 +22,13 @@ export function drawCombatProjectiles(
     const target = entityById.get(e.attackTarget);
     if (!target || target.hp <= 0) continue;
     if (e.kind === "turret" && !turretTargetInRange(e, target)) continue;
+    if (e.class === "unit") {
+      const range = UNIT_STATS[e.kind as UnitKind].range;
+      // Combat can leave a target assigned while the unit is chasing it, or
+      // for the death/cleanup frame. Never render that stale lock as a
+      // screen-spanning projectile.
+      if (range <= 0 || target.owner === e.owner || target.neutral || distToEntity(e, target) > range) continue;
+    }
     const maxCooldown = e.class === "unit" ? UNIT_STATS[e.kind as UnitKind].cooldown : e.kind === "turret" ? 14 : 0;
     if (maxCooldown <= 0 || e.cooldown < maxCooldown - 3) continue;
     const facing = facingFor(state, e);

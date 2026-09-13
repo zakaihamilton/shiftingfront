@@ -125,7 +125,7 @@ export function createCinemaScene(
   );
 
   const fx: FxBurst[] = [];
-  let nextFxId = 1;
+  let fxSequence = 1;
 
   const reassignTargets = () => assignClashTargets(state, clashX, clashY);
 
@@ -149,9 +149,9 @@ export function createCinemaScene(
         destroyedEvents,
         state,
         performance.now() - (18 - t) * 50,
-        nextFxId,
+        fxSequence,
       );
-      nextFxId = spawned.nextId;
+      fxSequence = spawned.nextId;
       fx.push(...spawned.bursts);
     }
   }
@@ -200,6 +200,7 @@ export function createCinemaScene(
     actors,
     state,
     fx,
+    fxSequence,
     combatEpicenter,
     simulationAccumulatorMs: 0,
     lastStepMs: undefined as number | undefined,

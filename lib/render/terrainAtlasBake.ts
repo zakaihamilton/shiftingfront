@@ -177,6 +177,136 @@ function cellColor(state: AtlasWorld, gx: number, gy: number, context: TerrainMa
   return { r: sample.r, g: sample.g, b: sample.b };
 }
 
+type OrganicCornerBridges = {
+  cols: number;
+  valid: Uint8Array;
+  r: Float32Array;
+  g: Float32Array;
+  b: Float32Array;
+  radius: Float32Array;
+  warpX: Float32Array;
+  warpY: Float32Array;
+  phase: Float32Array;
+  blend: Float32Array;
+};
+
+function bakeOrganicCornerBridges(
+  colors: Float32Array,
+  classes: Uint8Array,
+  cols: number,
+  rows: number,
+  salt: number,
+): OrganicCornerBridges {
+  const cornerCols = cols + 1;
+  const cornerRows = rows + 1;
+  const count = cornerCols * cornerRows;
+  const valid = new Uint8Array(count);
+  const r = new Float32Array(count);
+  const g = new Float32Array(count);
+  const b = new Float32Array(count);
+  const radius = new Float32Array(count);
+  const warpX = new Float32Array(count);
+  const warpY = new Float32Array(count);
+  const phase = new Float32Array(count);
+  const blend = new Float32Array(count);
+
+  for (let row = 1; row < rows; row++) {
+    for (let col = 1; col < cols; col++) {
+      const topLeft = (row - 1) * cols + col - 1;
+      const topRight = topLeft + 1;
+      const bottomLeft = row * cols + col - 1;
+      const bottomRight = bottomLeft + 1;
+      if (
+        classes[topLeft] !== GROUND_CELL_CLASS
+        || classes[topRight] !== GROUND_CELL_CLASS
+        || classes[bottomLeft] !== GROUND_CELL_CLASS
+        || classes[bottomRight] !== GROUND_CELL_CLASS
+      ) continue;
+
+      const corner = row * cornerCols + col;
+      const topLeftColor = topLeft * 3;
+      const topRightColor = topRight * 3;
+      const bottomLeftColor = bottomLeft * 3;
+      const bottomRightColor = bottomRight * 3;
+      const topLeftR = colors[topLeftColor]!;
+      const topRightR = colors[topRightColor]!;
+      const bottomLeftR = colors[bottomLeftColor]!;
+      const bottomRightR = colors[bottomRightColor]!;
+      const topLeftG = colors[topLeftColor + 1]!;
+      const topRightG = colors[topRightColor + 1]!;
+      const bottomLeftG = colors[bottomLeftColor + 1]!;
+      const bottomRightG = colors[bottomRightColor + 1]!;
+      const topLeftB = colors[topLeftColor + 2]!;
+      const topRightB = colors[topRightColor + 2]!;
+      const bottomLeftB = colors[bottomLeftColor + 2]!;
+      const bottomRightB = colors[bottomRightColor + 2]!;
+      r[corner] = (topLeftR + topRightR + bottomLeftR + bottomRightR) * 0.25;
+      g[corner] = (topLeftG + topRightG + bottomLeftG + bottomRightG) * 0.25;
+      b[corner] = (topLeftB + topRightB + bottomLeftB + bottomRightB) * 0.25;
+      const colorSpread = Math.max(topLeftR, topRightR, bottomLeftR, bottomRightR)
+        - Math.min(topLeftR, topRightR, bottomLeftR, bottomRightR)
+        + Math.max(topLeftG, topRightG, bottomLeftG, bottomRightG)
+        - Math.min(topLeftG, topRightG, bottomLeftG, bottomRightG)
+        + Math.max(topLeftB, topRightB, bottomLeftB, bottomRightB)
+        - Math.min(topLeftB, topRightB, bottomLeftB, bottomRightB);
+      const worldX = col - MAP_SKIRT;
+      const worldY = row - MAP_SKIRT;
+      valid[corner] = 1;
+      radius[corner] = 0.28 + hash2(worldX, worldY, salt + 601) * 0.12;
+      warpX[corner] = (hash2(worldX, worldY, salt + 602) - 0.5) * 0.22;
+      warpY[corner] = (hash2(worldX, worldY, salt + 603) - 0.5) * 0.22;
+      phase[corner] = hash2(worldX, worldY, salt + 604) * Math.PI * 2;
+      blend[corner] = 0.6 * Math.min(1, colorSpread / 64);
+    }
+  }
+
+  return { cols: cornerCols, valid, r, g, b, radius, warpX, warpY, phase, blend };
+}
+
+function organicCornerMask(
+  dx: number,
+  dy: number,
+  radius: number,
+  warpX: number,
+  warpY: number,
+  phase: number,
+): number {
+  const warpedX = dx + Math.sin(dy * 6.2 + phase) * warpX;
+  const warpedY = dy + Math.sin(dx * 5.1 - phase * 0.75) * warpY;
+  const distance = Math.sqrt(warpedX * warpedX + warpedY * warpedY);
+  const edge = Math.max(0, Math.min(1, (radius + 0.08 - distance) / 0.08));
+  return edge * edge * (3 - edge * 2);
+}
+
+function organicEdgeMask(
+  distance: number,
+  along: number,
+  radius: number,
+  warp: number,
+  phase: number,
+): number {
+  const boundary = radius
+    + 0.08
+    + Math.sin(along * 2.35 + phase) * warp
+    + Math.sin(along * 5.15 - phase * 0.7) * warp * 0.35;
+  const edge = Math.max(0, Math.min(1, (boundary - distance) / 0.08));
+  return edge * edge * (3 - edge * 2);
+}
+
+function organicEdgeBlendStrength(
+  baseR: number,
+  baseG: number,
+  baseB: number,
+  neighborR: number,
+  neighborG: number,
+  neighborB: number,
+): number {
+  const difference = Math.abs(baseR - neighborR)
+    + Math.abs(baseG - neighborG)
+    + Math.abs(baseB - neighborB);
+  return 0.6 * Math.min(1, difference / 40);
+}
+
 export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): TerrainAtlasData {
   const { cols, rows, width, height } = atlasSize(state);
   const colors = new Float32Array(cols * rows * 3);
@@ -229,6 +359,8 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
     }
   }
 
+  const organicCorners = bakeOrganicCornerBridges(colors, classes, cols, rows, salt);
+
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
@@ -239,6 +371,10 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
       const baseG = colors[i + 1]!;
       const baseB = colors[i + 2]!;
       const same = classes[row * cols + col]!;
+      const cornerNW = row * organicCorners.cols + col;
+      const cornerNE = cornerNW + 1;
+      const cornerSW = cornerNW + organicCorners.cols;
+      const cornerSE = cornerSW + 1;
       const canBlend = same !== CONCRETE_CELL_CLASS && same !== WATER_CELL_CLASS;
       const blendE = canBlend && col + 1 < cols && classes[row * cols + col + 1] === same;
       const blendS = canBlend && row + 1 < rows && classes[(row + 1) * cols + col] === same;
@@ -269,6 +405,50 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
       const cellDist = clampShore(shoreDist[row * cols + col] ?? WATER_SHORE_MAX);
       const resourceAmount = same === ORE_CELL_CLASS ? resourceAt(state, gx, gy) : 0;
       const waterMask = same === WATER_CELL_CLASS ? sceneryGrid.waterNeighbors[row * cols + col] ?? 0 : 0;
+      const westEdgeValid = same === GROUND_CELL_CLASS
+        && col > 0
+        && classes[row * cols + col - 1] === GROUND_CELL_CLASS;
+      const eastEdgeValid = same === GROUND_CELL_CLASS
+        && col + 1 < cols
+        && classes[row * cols + col + 1] === GROUND_CELL_CLASS;
+      const northEdgeValid = same === GROUND_CELL_CLASS
+        && row > 0
+        && classes[(row - 1) * cols + col] === GROUND_CELL_CLASS;
+      const southEdgeValid = same === GROUND_CELL_CLASS
+        && row + 1 < rows
+        && classes[(row + 1) * cols + col] === GROUND_CELL_CLASS;
+      const westI = i - 3;
+      const northI = i - cols * 3;
+      const westR = westEdgeValid ? colors[westI]! : baseR;
+      const westG = westEdgeValid ? colors[westI + 1]! : baseG;
+      const westB = westEdgeValid ? colors[westI + 2]! : baseB;
+      const northR = northEdgeValid ? colors[northI]! : baseR;
+      const northG = northEdgeValid ? colors[northI + 1]! : baseG;
+      const northB = northEdgeValid ? colors[northI + 2]! : baseB;
+      const westBlend = westEdgeValid
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, westR, westG, westB)
+        : 0;
+      const eastBlend = eastEdgeValid
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, eastR, eastG, eastB)
+        : 0;
+      const northBlend = northEdgeValid
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, northR, northG, northB)
+        : 0;
+      const southBlend = southEdgeValid
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, southR, southG, southB)
+        : 0;
+      const westRadius = westEdgeValid ? 0.24 + hash2(gx, 0, salt + 651) * 0.16 : 0;
+      const eastRadius = eastEdgeValid ? 0.24 + hash2(gx + 1, 0, salt + 651) * 0.16 : 0;
+      const northRadius = northEdgeValid ? 0.24 + hash2(0, gy, salt + 701) * 0.16 : 0;
+      const southRadius = southEdgeValid ? 0.24 + hash2(0, gy + 1, salt + 701) * 0.16 : 0;
+      const westWarp = westEdgeValid ? (hash2(gx, 0, salt + 652) - 0.5) * 0.34 : 0;
+      const eastWarp = eastEdgeValid ? (hash2(gx + 1, 0, salt + 652) - 0.5) * 0.34 : 0;
+      const northWarp = northEdgeValid ? (hash2(0, gy, salt + 702) - 0.5) * 0.34 : 0;
+      const southWarp = southEdgeValid ? (hash2(0, gy + 1, salt + 702) - 0.5) * 0.34 : 0;
+      const westPhase = westEdgeValid ? hash2(gx, 0, salt + 653) * Math.PI * 2 : 0;
+      const eastPhase = eastEdgeValid ? hash2(gx + 1, 0, salt + 653) * Math.PI * 2 : 0;
+      const northPhase = northEdgeValid ? hash2(0, gy, salt + 703) * Math.PI * 2 : 0;
+      const southPhase = southEdgeValid ? hash2(0, gy + 1, salt + 703) * Math.PI * 2 : 0;
       const feature = features[row * cols + col];
       const eastFeature = blendE ? features[row * cols + col + 1] : undefined;
       const southFeature = blendS ? features[(row + 1) * cols + col] : undefined;
@@ -303,11 +483,13 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
       const n22 = same === WATER_CELL_CLASS ? readShoreCell(shoreDist, cols, rows, col + 1, row + 1, cellDist) : 0;
       for (let ly = 0; ly < ATLAS_CELL; ly++) {
         const fy = ly / ATLAS_CELL;
-        const mapY = gy + pixelFractions[ly]!;
+        const pixelFy = pixelFractions[ly]!;
+        const mapY = gy + pixelFy;
         const py = row * ATLAS_CELL + ly;
         for (let lx = 0; lx < ATLAS_CELL; lx++) {
           const fx = lx / ATLAS_CELL;
-          const mapX = gx + pixelFractions[lx]!;
+          const pixelFx = pixelFractions[lx]!;
+          const mapX = gx + pixelFx;
           let r: number;
           let g: number;
           let b: number;
@@ -334,6 +516,71 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
               r = baseR + (eastR - baseR) * fx * 0.28 + (southR - baseR) * fy * 0.28;
               g = baseG + (eastG - baseG) * fx * 0.28 + (southG - baseG) * fy * 0.28;
               b = baseB + (eastB - baseB) * fx * 0.28 + (southB - baseB) * fy * 0.28;
+            }
+
+            if (same === GROUND_CELL_CLASS) {
+              const nearWest = pixelFx < 0.5;
+              const nearNorth = pixelFy < 0.5;
+              const verticalDistance = nearWest ? pixelFx : 1 - pixelFx;
+              const horizontalDistance = nearNorth ? pixelFy : 1 - pixelFy;
+              const verticalMask = nearWest
+                ? westEdgeValid
+                  ? organicEdgeMask(verticalDistance, mapY, westRadius, westWarp, westPhase)
+                  : 0
+                : eastEdgeValid
+                  ? organicEdgeMask(verticalDistance, mapY, eastRadius, eastWarp, eastPhase)
+                  : 0;
+              const horizontalMask = nearNorth
+                ? northEdgeValid
+                  ? organicEdgeMask(horizontalDistance, mapX, northRadius, northWarp, northPhase)
+                  : 0
+                : southEdgeValid
+                  ? organicEdgeMask(horizontalDistance, mapX, southRadius, southWarp, southPhase)
+                  : 0;
+              const verticalStrength = verticalMask * (nearWest ? westBlend : eastBlend);
+              const horizontalStrength = horizontalMask * (nearNorth ? northBlend : southBlend);
+              if (verticalStrength >= horizontalStrength && verticalStrength > 0) {
+                const targetR = (baseR + (nearWest ? westR : eastR)) * 0.5;
+                const targetG = (baseG + (nearWest ? westG : eastG)) * 0.5;
+                const targetB = (baseB + (nearWest ? westB : eastB)) * 0.5;
+                r += (targetR - r) * verticalStrength;
+                g += (targetG - g) * verticalStrength;
+                b += (targetB - b) * verticalStrength;
+              } else if (horizontalStrength > 0) {
+                const targetR = (baseR + (nearNorth ? northR : southR)) * 0.5;
+                const targetG = (baseG + (nearNorth ? northG : southG)) * 0.5;
+                const targetB = (baseB + (nearNorth ? northB : southB)) * 0.5;
+                r += (targetR - r) * horizontalStrength;
+                g += (targetG - g) * horizontalStrength;
+                b += (targetB - b) * horizontalStrength;
+              }
+
+              const nearestCorner = (pixelFx < 0.5 ? 0 : 1) + (pixelFy < 0.5 ? 0 : 2);
+              const corner = nearestCorner === 0
+                ? cornerNW
+                : nearestCorner === 1
+                  ? cornerNE
+                  : nearestCorner === 2
+                    ? cornerSW
+                    : cornerSE;
+              if (organicCorners.valid[corner] !== 0) {
+                const dx = pixelFx < 0.5 ? pixelFx : 1 - pixelFx;
+                const dy = pixelFy < 0.5 ? pixelFy : 1 - pixelFy;
+                const mask = organicCornerMask(
+                  dx,
+                  dy,
+                  organicCorners.radius[corner]!,
+                  organicCorners.warpX[corner]!,
+                  organicCorners.warpY[corner]!,
+                  organicCorners.phase[corner]!,
+                );
+                if (mask > 0) {
+                  const strength = mask * organicCorners.blend[corner]!;
+                  r += (organicCorners.r[corner]! - r) * strength;
+                  g += (organicCorners.g[corner]! - g) * strength;
+                  b += (organicCorners.b[corner]! - b) * strength;
+                }
+              }
             }
           }
           if (same === GROUND_CELL_CLASS) {

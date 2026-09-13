@@ -10,7 +10,7 @@ import {
 } from "@/lib/render/scrollLayer";
 import { terrainColors } from "@/lib/render/terrainMaterials";
 import { isSupportUnit, UNIT_STATS } from "@/lib/catalog";
-import { burstsFromEvents } from "@/lib/render/fx";
+import { burstsFromEvents, cullFx } from "@/lib/render/fx";
 import { renderWorld } from "@/lib/render/renderer";
 import { isTerrainAtlasReady } from "@/lib/render/terrainAtlas";
 import { tick } from "@/lib/sim/api";
@@ -119,8 +119,8 @@ function stepCinemaSimulation(scene: CinemaScene, shots: Shot[]): void {
     }
     const destroyedEvents = events.filter((event) => event.type === "destroyed");
     if (destroyedEvents.length) {
-      const nextFxId = scene.fx.reduce((max, burst) => Math.max(max, burst.id), 0) + 1;
-      const spawned = burstsFromEvents(destroyedEvents, scene.state, now, nextFxId);
+      const spawned = burstsFromEvents(destroyedEvents, scene.state, now, scene.fxSequence);
+      scene.fxSequence = spawned.nextId;
       scene.fx.push(...spawned.bursts);
     }
 
@@ -229,11 +229,13 @@ export function renderCinemaFrame(
   const useTerrainCache = options?.useTerrainCache ?? true;
   const followCamera = Boolean(options?.camera);
   const preview = !paintAmbient;
+  const clockMs = typeof performance !== "undefined" ? performance.now() : t * 16;
+  scene.fx = cullFx(scene.fx, clockMs);
 
   if (preview && scene.state && isTerrainAtlasReady(scene.state)) {
     try {
       renderWorld(ctx, scene.state, cam, new Set(), null, {
-        clockMs: typeof performance !== "undefined" ? performance.now() : t * 16,
+        clockMs,
         subTickAlpha: Math.max(0, Math.min(1, scene.simulationAccumulatorMs / TICK_MS)),
         fx: scene.fx,
       });

@@ -10,6 +10,8 @@ import { CommandTabs } from "../../components/game/CommandTabs";
 import { DocumentTitle } from "../../components/ui/DocumentTitle";
 import { PageFallback } from "../../components/ui/PageFallback";
 import { createCampaign } from "../../lib/gen/campaign";
+import { objectiveCardsFor } from "../../lib/ui/missionPresentation";
+import { makeFixture } from "../../lib/sim/fixtures";
 
 afterEach(() => cleanup());
 
@@ -78,6 +80,24 @@ describe("product chrome", () => {
     expect(screen.getByTestId("objective")).toHaveTextContent("1 / 2");
     expect(screen.getByTestId("secondary-objectives")).toHaveTextContent("Bonus objectives 0/1");
     expect(screen.getByTestId("mission-phase")).toHaveTextContent("Extraction phase");
+  });
+
+  it("renders the primary progress counter only once in the mission directive", () => {
+    const state = makeFixture({ win: { kind: "harvestQuota", target: 2 } });
+    render(
+      <BattlefieldHud
+        seed={421}
+        levelNumber={1}
+        levelCount={6}
+        missionName="Resource Run"
+        objective="Extract credits"
+        objectiveCards={objectiveCardsFor(state)}
+      />,
+    );
+
+    const objectiveText = screen.getByTestId("objective").textContent ?? "";
+    expect(objectiveText.match(/0 \/ 2/g) ?? []).toHaveLength(1);
+    expect(objectiveText).not.toContain("Extracted 0 / 2");
   });
 
   it("keeps required secondary conditions in the primary objective rail", () => {

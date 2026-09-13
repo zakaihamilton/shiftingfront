@@ -14,17 +14,23 @@
   z-index: 4;
   top: 0.18rem;
   right: 0.18rem;
-  display: grid;
+  display: inline-flex;
   width: 1.35rem;
   min-width: 1.35rem;
   height: 1.35rem;
   min-height: 1.35rem;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   border-color: var(--chrome-alert);
   background: color-mix(in srgb, var(--chrome-void) 88%, transparent);
   color: var(--chrome-alert);
   font-size: 0.9rem;
+  line-height: 1;
+}
+
+.cancelIcon {
+  display: block;
   line-height: 1;
 }
 

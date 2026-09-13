@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { addUnit, makeFixture, setTile } from "../../lib/sim/fixtures";
+import { addUnit, makeFixture, setHeight, setTile } from "../../lib/sim/fixtures";
 import { minimapRegionForCell, terrainColors } from "../../lib/render/minimap";
 import { SURFACE_CONCRETE, SURFACE_ROAD, TILE_BLOCKED, TILE_CLEAR, TILE_RESOURCE, TILE_WATER } from "../../lib/types";
 import type { BiomeName } from "../../lib/types";
@@ -105,6 +105,18 @@ function rgbDistance(a: [number, number, number], b: [number, number, number]): 
   return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
 }
 
+function atlasLocalPixel(
+  atlas: TerrainAtlasData,
+  tileX: number,
+  tileY: number,
+  localX: number,
+  localY: number,
+): [number, number, number] {
+  const rect = atlasRectForTile(tileX, tileY, atlas.mapWidth);
+  const i = ((rect.sy + localY) * atlas.width + rect.sx + localX) * 4;
+  return [atlas.data[i] ?? 0, atlas.data[i + 1] ?? 0, atlas.data[i + 2] ?? 0];
+}
+
 describe("seeded terrain atlas", () => {
   it("shares deterministic noise and preserves the isometric diamond path", () => {
     expect(hash2(7, -3, 41)).toBe(hashNoise(7, -3, 41));
@@ -181,7 +193,7 @@ describe("seeded terrain atlas", () => {
     const b = bakeTerrainAtlasData(second);
     const c = bakeTerrainAtlasData(other);
     expect(a.key).toBe(b.key);
-    expect(a.key).toContain("world-atlas-v14-organic-patches");
+    expect(a.key).toContain("world-atlas-v17-organic-ground-transitions");
     expect(a.data).toEqual(b.data);
     expect(terrainAtlasKey(first)).toBe(a.key);
     expect(c.key).not.toBe(a.key);
@@ -313,6 +325,111 @@ describe("seeded terrain atlas", () => {
       expect(rgbDistance(atlasEdgeAverage(atlas, x, y, "south"), atlasEdgeAverage(atlas, x, y + 1, "north")))
         .toBeLessThan(14);
     }
+  });
+
+  it("bridges mixed ground at shared corners with deterministic organic patches", () => {
+    const makeMixedGround = (seed: number) => {
+      const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed });
+      setHeight(state, 4, 4, 0);
+      setHeight(state, 5, 4, 3);
+      setHeight(state, 4, 5, 3);
+      setHeight(state, 5, 5, 0);
+      return state;
+    };
+    const state = makeMixedGround(832);
+    const atlas = bakeTerrainAtlasData(state);
+    const repeat = bakeTerrainAtlasData(makeMixedGround(832));
+    const otherSeed = bakeTerrainAtlasData(makeMixedGround(3209));
+    const cornerSamples = [
+      atlasLocalPixel(atlas, 4, 4, ATLAS_CELL - 1, ATLAS_CELL - 1),
+      atlasLocalPixel(atlas, 5, 4, 0, ATLAS_CELL - 1),
+      atlasLocalPixel(atlas, 4, 5, ATLAS_CELL - 1, 0),
+      atlasLocalPixel(atlas, 5, 5, 0, 0),
+    ];
+    const cornerLuminance = cornerSamples.map(([r, g, b]) => r + g + b);
+    const cornerSpread = Math.max(...cornerLuminance) - Math.min(...cornerLuminance);
+    const cornerColorSpread = Math.max(
+      ...cornerSamples.flatMap((sample, index) => cornerSamples.slice(index + 1).map((other) => rgbDistance(sample, other))),
+    );
+    const sourceLuminance = [
+      sampleTerrainMaterial(state, 4, 4),
+      sampleTerrainMaterial(state, 5, 4),
+      sampleTerrainMaterial(state, 4, 5),
+      sampleTerrainMaterial(state, 5, 5),
+    ].map(({ r, g, b }) => r + g + b);
+    const bridgeLuminance = sourceLuminance.reduce((sum, value) => sum + value, 0) / sourceLuminance.length;
+    const surroundingLuminance = [
+      atlasPixelAtTile(atlas, 4, 4),
+      atlasPixelAtTile(atlas, 5, 4),
+      atlasPixelAtTile(atlas, 4, 5),
+      atlasPixelAtTile(atlas, 5, 5),
+    ].map(([r, g, b]) => r + g + b);
+
+    expect(repeat.data).toEqual(atlas.data);
+    expect(rgbDistance(
+      atlasLocalPixel(atlas, 5, 4, 0, 3),
+      atlasLocalPixel(otherSeed, 5, 4, 0, 3),
+    )).toBeGreaterThan(8);
+    expect(cornerColorSpread).toBeLessThan(28);
+    expect(cornerSpread).toBeLessThan(28);
+    for (let index = 0; index < cornerLuminance.length; index++) {
+      expect(Math.abs(cornerLuminance[index]! - bridgeLuminance))
+        .toBeLessThan(Math.abs(sourceLuminance[index]! - bridgeLuminance));
+    }
+    expect(Math.min(...cornerLuminance)).toBeGreaterThan(Math.min(...surroundingLuminance));
+    expect(Math.max(...cornerLuminance)).toBeLessThan(Math.max(...surroundingLuminance));
+  });
+
+  it("breaks long mixed-ground edges with a shared seeded feather", () => {
+    const makeSplitGround = (seed: number) => {
+      const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed });
+      for (let y = 2; y < 10; y++) {
+        setHeight(state, 4, y, 0);
+        setHeight(state, 5, y, 3);
+      }
+      return state;
+    };
+    const state = makeSplitGround(832);
+    const atlas = bakeTerrainAtlasData(state);
+    const repeat = bakeTerrainAtlasData(makeSplitGround(832));
+    const otherSeed = bakeTerrainAtlasData(makeSplitGround(3209));
+    const midpoint = (y: number): [number, number, number] => {
+      const low = sampleTerrainMaterial(state, 4, y);
+      const high = sampleTerrainMaterial(state, 5, y);
+      return [
+        (low.r + high.r) * 0.5,
+        (low.g + high.g) * 0.5,
+        (low.b + high.b) * 0.5,
+      ];
+    };
+    const edgeDistances = [] as number[];
+    const interiorDistances = [] as number[];
+    for (let y = 2; y < 10; y++) {
+      edgeDistances.push(rgbDistance(atlasLocalPixel(atlas, 4, y, ATLAS_CELL - 1, 4), midpoint(y)));
+      interiorDistances.push(rgbDistance(atlasLocalPixel(atlas, 4, y, 3, 4), midpoint(y)));
+    }
+
+    expect(repeat.data).toEqual(atlas.data);
+    expect(edgeDistances.reduce((sum, value) => sum + value, 0))
+      .toBeLessThan(interiorDistances.reduce((sum, value) => sum + value, 0));
+    expect(Math.max(...edgeDistances) - Math.min(...edgeDistances)).toBeGreaterThan(5);
+    expect(rgbDistance(
+      atlasLocalPixel(atlas, 4, 5, ATLAS_CELL - 1, 4),
+      atlasLocalPixel(otherSeed, 4, 5, ATLAS_CELL - 1, 4),
+    )).toBeGreaterThan(8);
+  });
+
+  it("does not bridge a ground corner through a hard material boundary", () => {
+    const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed: 832 });
+    setHeight(state, 4, 4, 0);
+    setHeight(state, 5, 4, 3);
+    setHeight(state, 4, 5, 3);
+    setTile(state, 5, 5, TILE_WATER);
+    const atlas = bakeTerrainAtlasData(state);
+    const water = atlasLocalPixel(atlas, 5, 5, 0, 0);
+    const ground = atlasLocalPixel(atlas, 4, 4, ATLAS_CELL - 1, ATLAS_CELL - 1);
+    expect(water[2]).toBeGreaterThan(water[0]);
+    expect(rgbDistance(water, ground)).toBeGreaterThan(28);
   });
 
   it("bakes a dark grout seam around each concrete pad", () => {
