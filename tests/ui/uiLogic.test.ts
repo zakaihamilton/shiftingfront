@@ -51,6 +51,10 @@ describe("mobile command policy", () => {
       { type: "attackMove", unitIds: [unit.id], x: 6, y: 6 },
     ]);
     expect(contextOrderNotice(contextOrders(state, [unit.id], undefined, 6, 6))).toBe("Attack-move order issued.");
+    const harvester = addUnit(state, 0, "harvester", 3, 2);
+    expect(contextOrderNotice(contextOrders(state, [harvester.id, unit.id], undefined, 6, 6))).toBe(
+      "Harvest and attack-move orders issued.",
+    );
     expect(mobileCommandOrders(state, "harvest", [unit.id], undefined, 6, 6)).toEqual([
       { type: "harvest", unitIds: [unit.id], x: 6, y: 6 },
     ]);

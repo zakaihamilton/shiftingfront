@@ -85,4 +85,26 @@ describe("destroyed entity lifecycle", () => {
     expect(state.credits[0]).toBe(startCredits + UNIT_STATS.infantry.cost + UNIT_STATS.antiArmor.cost);
     expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(false);
   });
+
+  it("credits a save snapshot without double-refunding the live world", () => {
+    const state = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    const barracks = addBuilding(state, 0, "barracks", 4, 4);
+    barracks.producing = { kind: "infantry", remaining: 20 };
+    barracks.queue = ["antiArmor"];
+    barracks.hp = 0;
+    const payout = UNIT_STATS.infantry.cost + UNIT_STATS.antiArmor.cost;
+    const startCredits = state.credits[0];
+
+    const restored = deserializeState(serializeState(state));
+
+    expect(state.credits[0]).toBe(startCredits);
+    expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(true);
+    expect(restored.credits[0]).toBe(startCredits + payout);
+    expect(restored.entities.some((entity) => entity.id === barracks.id)).toBe(false);
+
+    compactDestroyedEntities(state);
+
+    expect(state.credits[0]).toBe(startCredits + payout);
+    expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(false);
+  });
 });

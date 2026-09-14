@@ -28,6 +28,10 @@ export function compactedState(state: SimState): SimState {
   if (!Array.isArray(state.entities) || !state.entities.some((entity) => entity.hp <= 0)) return state;
   const copy: SimState = {
     ...state,
+    // Compact refunds queued production into credits. Clone the array so a
+    // save snapshot can credit the payout without mutating the live world
+    // (whose dead producer still holds the queue until the next cleanup).
+    credits: [state.credits[0], state.credits[1]],
     entities: state.entities.map((entity) => ({ ...entity })),
   };
   compactDestroyedEntities(copy);
