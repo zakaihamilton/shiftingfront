@@ -169,7 +169,7 @@ export function useGameSession({
   const confirmation = useMissionConfirmation({
     restartNow: persistence.restartMissionNow,
     goHomeNow: confirmGoHome,
-    getResult: () => stateRef.current.result,
+    getResult: useCallback(() => stateRef.current.result, [stateRef]),
   });
   const { goHome: requestConfirmationLeave, cancelConfirmation: cancelConfirmationState } = confirmation;
   const requestBrowserLeave = useCallback(() => {

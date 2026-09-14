@@ -492,6 +492,10 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
       const southMaterialEdgeValid = isLandMaterialClass(same)
         && isLandMaterialClass(southClass)
         && southClass !== same;
+      const hasMaterialEdge = westMaterialEdgeValid
+        || eastMaterialEdgeValid
+        || northMaterialEdgeValid
+        || southMaterialEdgeValid;
       const westMaterialR = westMaterialEdgeValid ? colors[westI]! : baseR;
       const westMaterialG = westMaterialEdgeValid ? colors[westI + 1]! : baseG;
       const westMaterialB = westMaterialEdgeValid ? colors[westI + 2]! : baseB;
@@ -625,77 +629,83 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
               b = baseB + (eastB - baseB) * fx * 0.28 + (southB - baseB) * fy * 0.28;
             }
 
-            if (isLandMaterialClass(same)) {
+            // Same-material feathering is only meaningful for ground cells.
+            // Other land materials only need the more expensive organic branch
+            // when they touch a different land material.
+            if (same === GROUND_CELL_CLASS || hasMaterialEdge) {
               const nearWest = pixelFx < 0.5;
               const nearNorth = pixelFy < 0.5;
               const verticalDistance = nearWest ? pixelFx : 1 - pixelFx;
               const horizontalDistance = nearNorth ? pixelFy : 1 - pixelFy;
-              const verticalSameMask = nearWest
-                ? westEdgeValid
-                  ? organicEdgeMask(verticalDistance, mapY, westRadius, westWarp, westPhase)
-                  : 0
-                : eastEdgeValid
-                  ? organicEdgeMask(verticalDistance, mapY, eastRadius, eastWarp, eastPhase)
-                  : 0;
-              const horizontalSameMask = nearNorth
-                ? northEdgeValid
-                  ? organicEdgeMask(horizontalDistance, mapX, northRadius, northWarp, northPhase)
-                  : 0
-                : southEdgeValid
-                  ? organicEdgeMask(horizontalDistance, mapX, southRadius, southWarp, southPhase)
-                  : 0;
-              const verticalSameStrength = verticalSameMask * (nearWest ? westBlend : eastBlend);
-              const horizontalSameStrength = horizontalSameMask * (nearNorth ? northBlend : southBlend);
-              const verticalMaterialMask = nearWest
-                ? westMaterialEdgeValid
-                  ? organicEdgeMask(verticalDistance, mapY, westMaterialRadius, westMaterialWarp, westMaterialPhase)
-                  : 0
-                : eastMaterialEdgeValid
-                  ? organicEdgeMask(verticalDistance, mapY, eastMaterialRadius, eastMaterialWarp, eastMaterialPhase)
-                  : 0;
-              const horizontalMaterialMask = nearNorth
-                ? northMaterialEdgeValid
-                  ? organicEdgeMask(horizontalDistance, mapX, northMaterialRadius, northMaterialWarp, northMaterialPhase)
-                  : 0
-                : southMaterialEdgeValid
-                  ? organicEdgeMask(horizontalDistance, mapX, southMaterialRadius, southMaterialWarp, southMaterialPhase)
-                  : 0;
-              const verticalMaterialStrength = verticalMaterialMask * (nearWest ? westMaterialBlend : eastMaterialBlend);
-              const horizontalMaterialStrength = horizontalMaterialMask * (nearNorth ? northMaterialBlend : southMaterialBlend);
-
-              let edgeStrength = 0;
-              let edgeR = baseR;
-              let edgeG = baseG;
-              let edgeB = baseB;
-              if (verticalSameStrength >= horizontalSameStrength && verticalSameStrength > 0) {
-                edgeStrength = verticalSameStrength;
-                edgeR = nearWest ? westR : eastR;
-                edgeG = nearWest ? westG : eastG;
-                edgeB = nearWest ? westB : eastB;
-              } else if (horizontalSameStrength > 0) {
-                edgeStrength = horizontalSameStrength;
-                edgeR = nearNorth ? northR : southR;
-                edgeG = nearNorth ? northG : southG;
-                edgeB = nearNorth ? northB : southB;
+              if (same === GROUND_CELL_CLASS) {
+                const verticalSameMask = nearWest
+                  ? westEdgeValid
+                    ? organicEdgeMask(verticalDistance, mapY, westRadius, westWarp, westPhase)
+                    : 0
+                  : eastEdgeValid
+                    ? organicEdgeMask(verticalDistance, mapY, eastRadius, eastWarp, eastPhase)
+                    : 0;
+                const horizontalSameMask = nearNorth
+                  ? northEdgeValid
+                    ? organicEdgeMask(horizontalDistance, mapX, northRadius, northWarp, northPhase)
+                    : 0
+                  : southEdgeValid
+                    ? organicEdgeMask(horizontalDistance, mapX, southRadius, southWarp, southPhase)
+                    : 0;
+                const verticalSameStrength = verticalSameMask * (nearWest ? westBlend : eastBlend);
+                const horizontalSameStrength = horizontalSameMask * (nearNorth ? northBlend : southBlend);
+                let edgeStrength = 0;
+                let edgeR = baseR;
+                let edgeG = baseG;
+                let edgeB = baseB;
+                if (verticalSameStrength >= horizontalSameStrength && verticalSameStrength > 0) {
+                  edgeStrength = verticalSameStrength;
+                  edgeR = nearWest ? westR : eastR;
+                  edgeG = nearWest ? westG : eastG;
+                  edgeB = nearWest ? westB : eastB;
+                } else if (horizontalSameStrength > 0) {
+                  edgeStrength = horizontalSameStrength;
+                  edgeR = nearNorth ? northR : southR;
+                  edgeG = nearNorth ? northG : southG;
+                  edgeB = nearNorth ? northB : southB;
+                }
+                if (edgeStrength > 0) {
+                  const targetR = (baseR + edgeR) * 0.5;
+                  const targetG = (baseG + edgeG) * 0.5;
+                  const targetB = (baseB + edgeB) * 0.5;
+                  r += (targetR - r) * edgeStrength;
+                  g += (targetG - g) * edgeStrength;
+                  b += (targetB - b) * edgeStrength;
+                }
               }
-              if (edgeStrength > 0) {
-                const targetR = (baseR + edgeR) * 0.5;
-                const targetG = (baseG + edgeG) * 0.5;
-                const targetB = (baseB + edgeB) * 0.5;
-                r += (targetR - r) * edgeStrength;
-                g += (targetG - g) * edgeStrength;
-                b += (targetB - b) * edgeStrength;
-              }
-              if (verticalMaterialStrength >= horizontalMaterialStrength && verticalMaterialStrength > 0) {
-                materialEdgeStrength = verticalMaterialStrength;
-                materialEdgeR = nearWest ? westMaterialR : eastMaterialR;
-                materialEdgeG = nearWest ? westMaterialG : eastMaterialG;
-                materialEdgeB = nearWest ? westMaterialB : eastMaterialB;
-              } else if (horizontalMaterialStrength > 0) {
-                materialEdgeStrength = horizontalMaterialStrength;
-                materialEdgeR = nearNorth ? northMaterialR : southMaterialR;
-                materialEdgeG = nearNorth ? northMaterialG : southMaterialG;
-                materialEdgeB = nearNorth ? northMaterialB : southMaterialB;
+              if (hasMaterialEdge) {
+                const verticalMaterialMask = nearWest
+                  ? westMaterialEdgeValid
+                    ? organicEdgeMask(verticalDistance, mapY, westMaterialRadius, westMaterialWarp, westMaterialPhase)
+                    : 0
+                  : eastMaterialEdgeValid
+                    ? organicEdgeMask(verticalDistance, mapY, eastMaterialRadius, eastMaterialWarp, eastMaterialPhase)
+                    : 0;
+                const horizontalMaterialMask = nearNorth
+                  ? northMaterialEdgeValid
+                    ? organicEdgeMask(horizontalDistance, mapX, northMaterialRadius, northMaterialWarp, northMaterialPhase)
+                    : 0
+                  : southMaterialEdgeValid
+                    ? organicEdgeMask(horizontalDistance, mapX, southMaterialRadius, southMaterialWarp, southMaterialPhase)
+                    : 0;
+                const verticalMaterialStrength = verticalMaterialMask * (nearWest ? westMaterialBlend : eastMaterialBlend);
+                const horizontalMaterialStrength = horizontalMaterialMask * (nearNorth ? northMaterialBlend : southMaterialBlend);
+                if (verticalMaterialStrength >= horizontalMaterialStrength && verticalMaterialStrength > 0) {
+                  materialEdgeStrength = verticalMaterialStrength;
+                  materialEdgeR = nearWest ? westMaterialR : eastMaterialR;
+                  materialEdgeG = nearWest ? westMaterialG : eastMaterialG;
+                  materialEdgeB = nearWest ? westMaterialB : eastMaterialB;
+                } else if (horizontalMaterialStrength > 0) {
+                  materialEdgeStrength = horizontalMaterialStrength;
+                  materialEdgeR = nearNorth ? northMaterialR : southMaterialR;
+                  materialEdgeG = nearNorth ? northMaterialG : southMaterialG;
+                  materialEdgeB = nearNorth ? northMaterialB : southMaterialB;
+                }
               }
 
               const nearestCorner = (pixelFx < 0.5 ? 0 : 1) + (pixelFy < 0.5 ? 0 : 2);

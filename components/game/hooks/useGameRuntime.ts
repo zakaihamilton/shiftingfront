@@ -84,6 +84,7 @@ export function useGameRuntime({
   }, [showCommandNotice, uxRef]);
   const commandPort = useMemo(() => createRuntimeCommandPort(cmdQ), [cmdQ]);
   const suppressImplicitSavesRef = useRef<() => void>(() => undefined);
+  const onSelectionTab = useCallback(() => setActiveTab("selected"), [setActiveTab]);
   useEffect(() => {
     if (!tutorial && consumeBriefingSkippedIntent(seed, mission)) uxRef.current.briefingSkipped = true;
   }, [mission, seed, tutorial, uxRef]);
@@ -92,7 +93,7 @@ export function useGameRuntime({
     stateRef,
     setState,
     uxRef,
-    onSelectionTab: tutorial ? () => setActiveTab("selected") : undefined,
+    onSelectionTab,
   });
   const {
     selected,
