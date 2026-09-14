@@ -14,6 +14,7 @@ describe("simulation pipeline", () => {
       "economy",
       "movement",
       "combat",
+      "tutorial",
       "repair",
       "support",
       "director",

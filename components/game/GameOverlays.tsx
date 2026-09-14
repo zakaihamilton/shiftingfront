@@ -9,12 +9,14 @@ import { GamePauseSurface } from "./GamePauseSurface";
 import { GameSidebarSurface } from "./GameSidebarSurface";
 import { MobileCommandLauncher } from "./MobileCommandLauncher";
 import { MissionConfirmation } from "./MissionConfirmation";
-import { TacticalRoster } from "./TacticalRoster";
 import type { GameActions } from "./hooks/useGameActions";
 import type { GameCamera } from "./hooks/useGameCamera";
 import type { GameSession } from "./hooks/useGameSession";
-import styles from "./GameAnnouncements.module.css";
 import { minimapPingFor } from "@/lib/ui/missionPresentation";
+
+function tutorialNeedsCommandSurface(stage: SimState["tutorialStage"]): boolean {
+  return stage === "build" || stage === "produce" || stage === "repair";
+}
 
 export type GameOverlayProps = {
   campaign: Campaign;
@@ -31,7 +33,6 @@ export type GameOverlayProps = {
   paused: boolean;
   pauseView: PauseView;
   pauseNotice: string;
-  tacticalAnnouncement?: string;
   audioSettings: GameSettings;
   camera: GameCamera;
   setPauseView: (view: PauseView) => void;
@@ -42,9 +43,7 @@ export type GameOverlayProps = {
   onControlsOpened?: () => void;
   combatAlert?: string | null;
   combatAlertKind?: import("./hooks/useCombatAlert").CombatAlertKind;
-  onSelect?: (ids: number[]) => void;
   onSelectionMode?: (active: boolean) => void;
-  onAnnounce?: (message: string) => void;
   actions: GameActions;
   session: GameSession;
 };
@@ -64,7 +63,6 @@ export function GameOverlays({
   paused,
   pauseView,
   pauseNotice,
-  tacticalAnnouncement = "",
   audioSettings,
   camera,
   setPauseView,
@@ -75,8 +73,6 @@ export function GameOverlays({
   onControlsOpened,
   combatAlert,
   combatAlertKind,
-  onSelect = () => undefined,
-  onAnnounce = () => undefined,
   onSelectionMode = () => undefined,
   actions,
   session,
@@ -101,15 +97,13 @@ export function GameOverlays({
 
   return (
     <>
-      <div className={styles.liveRegion} aria-live="polite" aria-atomic="true" data-testid="tactical-announcement">
-        {tacticalAnnouncement}
-      </div>
       {!paused && state.result === "playing" && !session.confirmation ? (
         <MobileCommandLauncher
           open={mobilePanelOpen}
           onToggle={onToggleMobilePanel}
           onDrag={onMobileSheetDrag}
           buttonRef={mobileLauncherRef}
+          tutorialFocus={tutorial && !mobilePanelOpen && tutorialNeedsCommandSurface(state.tutorialStage) ? "command-launcher" : undefined}
           statusText={`${selectionMode ? "Select units" : selectedIds.length ? `${selectedIds.length} selected` : "No selection"} · ${actions.mobileCommandState ? actions.mobileCommandState === "attackMove" ? "Attack-move ready" : `${actions.mobileCommandState.charAt(0).toUpperCase()}${actions.mobileCommandState.slice(1)} ready` : "Command sheet"}`}
         />
       ) : null}
@@ -143,23 +137,12 @@ export function GameOverlays({
         />
       ) : null}
 
-      {!tutorial && audioSettings.tacticalRosterEnabled ? (
-        <TacticalRoster
-          state={state}
-          selectedIds={selectedIds}
-          actions={actions}
-          camera={camera}
-          announcement={tacticalAnnouncement}
-          onSelect={onSelect}
-          onAnnounce={onAnnounce}
-        />
-      ) : null}
-
       {paused ? (
         <GamePauseSurface
           view={pauseView}
           notice={pauseNotice}
           settings={audioSettings}
+          tutorial={tutorial}
           setView={setPauseView}
           setNotice={setPauseNotice}
           onControlsOpened={onControlsOpened}

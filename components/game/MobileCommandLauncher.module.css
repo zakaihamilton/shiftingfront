@@ -71,6 +71,12 @@
     color: var(--chrome-focus);
   }
 
+  .launcher[data-tutorial-focus] .button {
+    border-color: var(--chrome-gold);
+    box-shadow: inset 1px 1px var(--chrome-bevel), inset -2px -2px var(--chrome-inset), 0 0 0 1px var(--chrome-gold), 0 0 18px color-mix(in srgb, var(--chrome-gold) 42%, transparent);
+    animation: tutorialLauncherPulse 1.35s ease-in-out infinite;
+  }
+
   .icon {
     display: block;
     width: 1.45rem;
@@ -79,5 +85,10 @@
     stroke: currentColor;
     stroke-linecap: round;
     stroke-width: 2.2;
+  }
+
+  @keyframes tutorialLauncherPulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.3); }
   }
 }

@@ -35,7 +35,6 @@ export function createRuntimeController(refs: RuntimeRefs, ports: RuntimePorts):
     saveSession: ports.saveSession,
     persistCampaign: ports.persistCampaign,
     onAlert: ports.onAlert,
-    onTacticalAnnouncement: ports.onTacticalAnnouncement,
     persistenceRef: refs.persistenceRef,
     suppressImplicitSavesRef: refs.suppressImplicitSavesRef,
   });
@@ -45,7 +44,6 @@ export function createRuntimeController(refs: RuntimeRefs, ports: RuntimePorts):
     fxRef: refs.fxRef,
     fxSequence: refs.fxSequence,
     onAlert: ports.onAlert,
-    onTacticalAnnouncement: ports.onTacticalAnnouncement,
     onCommandNotice: ports.onCommandNotice,
   });
   const frame = createFrameCoordinator({

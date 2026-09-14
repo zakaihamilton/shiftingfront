@@ -1,6 +1,6 @@
 import { isSupportEntity } from "../../catalog";
 import { TILE_RESOURCE, type Command, type Entity, type SimEvent, type SimState, type TutorialStage } from "../../types";
-import { enterTutorialStage } from "../tutorialStage";
+import { enterTutorialStage, tutorialCommandCompletesStage, tutorialTargets, type TutorialWorldTarget } from "../tutorialStage";
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
 import { byId, inBounds, tileAt } from "../world";
@@ -12,18 +12,7 @@ import { startProduce, cancelProduce } from "./production";
 
 export function issue(state: SimState, command: Command): SimEvent[] {
   if (state.result !== "playing") return [];
-  if (state.tutorialStage && state.tutorialStage !== "complete") {
-    const stages = ["select", "move", "harvest", "build", "produce", "attack", "repair", "complete"] as const;
-    const required = command.type === "move" || command.type === "stop" || command.type === "formation" || command.type === "stance" ? "move"
-      : command.type === "harvest" ? "harvest"
-        : command.type === "build" || command.type === "cancelBuild" ? "build"
-            : command.type === "produce" || command.type === "cancelProduce" ? "produce"
-              : command.type === "attack" || command.type === "attackMove" ? "attack"
-                : command.type === "repair" ? "repair" : undefined;
-    if (required && stages.indexOf(state.tutorialStage) < stages.indexOf(required)) {
-      return [{ type: "commandRejected", reason: `training step: ${required}` }];
-    }
-  }
+  const tutorialExpectedTargets = state.tutorialStage ? tutorialTargets(state) : undefined;
   let events: SimEvent[];
   switch (command.type) {
     case "move":
@@ -74,31 +63,43 @@ export function issue(state: SimState, command: Command): SimEvent[] {
     default:
       events = [];
   }
-  if (!events.some((event) => event.type === "commandRejected")) advanceTutorialAfterCommand(state, command.type);
+  if (!events.some((event) => event.type === "commandRejected")) {
+    advanceTutorialAfterCommand(state, command, tutorialExpectedTargets);
+  }
   return events;
 }
 
-function advanceTutorialAfterCommand(state: SimState, type: Command["type"]): void {
+function advanceTutorialAfterCommand(state: SimState, command: Command, expectedTargets?: TutorialWorldTarget[]): void {
   if (!state.tutorialStage || state.tutorialStage === "complete") return;
   const next: Partial<Record<TutorialStage, TutorialStage>> = {
-    move: "harvest",
-    harvest: "build",
+    move: "build",
     build: "produce",
     produce: "attack",
     attack: "repair",
     repair: "complete",
   };
-  const expected: Record<string, Command["type"][]> = {
-    move: ["move", "attackMove"],
-    harvest: ["harvest"],
-    build: ["build"],
-    produce: ["produce"],
-    attack: ["attack", "attackMove"],
-    repair: ["repair"],
-  };
   const stage = state.tutorialStage;
+  // Attack is an action trigger, but the lesson is not complete until the
+  // passive drill unit has actually been destroyed by the combat system.
+  if (stage === "attack") return;
+  // Construction is complete only after the production system finishes the
+  // Power Plant. Keep the coach on this lesson while it is being built.
+  if (stage === "build") {
+    if (tutorialCommandCompletesStage(state, command, expectedTargets) && command.type === "build") {
+      const building = state.entities.find((entity) =>
+        entity.owner === 0 &&
+        entity.class === "building" &&
+        entity.kind === "power" &&
+        entity.constructing > 0 &&
+        Math.round(entity.x) === Math.round(command.x) &&
+        Math.round(entity.y) === Math.round(command.y),
+      );
+      if (building) state.tutorialBuildId = building.id;
+    }
+    return;
+  }
   const nextStage = next[stage];
-  if (expected[stage]?.includes(type) && nextStage) enterTutorialStage(state, nextStage);
+  if (nextStage && tutorialCommandCompletesStage(state, command, expectedTargets)) enterTutorialStage(state, nextStage);
 }
 
 function stopUnits(state: SimState, ids: number[]): SimEvent[] {

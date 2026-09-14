@@ -3,12 +3,18 @@ import type { SimState } from "../../../types";
 import { TILE_H, TILE_W, tileToScreen, type Camera } from "../../../iso";
 import { canRepair } from "../../../sim/repair";
 import { canSell } from "../../../sim/sell";
-import { tutorialMoveTile } from "../../../sim/tutorialStage";
+import { tutorialTargets, type TutorialWorldTarget } from "../../../sim/tutorialStage";
 import { heightAt } from "../../../sim/world";
 import { selectionPulse } from "../../anim";
 import { entityAtPointer, entityElev, visibleBuildingAt } from "../../renderPicking";
 import { strokeFootprint } from "../../renderStructures";
 import { drawDiamond, drawDiamondStroke, drawTooltip, tileTooltipLines, tooltipLines, type RenderExtras } from "../../renderOverlays";
+
+const tutorialTargetCache = new WeakMap<SimState, {
+  stage: SimState["tutorialStage"];
+  tick: number;
+  targets: TutorialWorldTarget[];
+}>();
 
 export function renderHoverPhase(
   ctx: CanvasRenderingContext2D,
@@ -19,19 +25,7 @@ export function renderHoverPhase(
   h: number,
   extras: RenderExtras,
 ): void {
-  const moveTile = tutorialMoveTile(state);
-  if (moveTile) {
-    const pulse = selectionPulse(extras.clockMs ?? 0);
-    const s = tileToScreen(moveTile.x, moveTile.y, cam, heightAt(state, moveTile.x, moveTile.y));
-    ctx.save();
-    ctx.globalAlpha = 0.4 + pulse * 0.45;
-    ctx.fillStyle = "rgba(67, 230, 154, 0.32)";
-    ctx.strokeStyle = "rgba(141, 255, 200, 0.95)";
-    ctx.lineWidth = 2.5;
-    drawDiamond(ctx, s.x, s.y, TILE_W * cam.zoom, TILE_H * cam.zoom);
-    drawDiamondStroke(ctx, s.x, s.y, TILE_W * cam.zoom, TILE_H * cam.zoom);
-    ctx.restore();
-  }
+  drawTutorialTargets(ctx, state, cam, extras.clockMs ?? 0, extras.reducedMotion ?? false);
 
   if (hoverTile && !extras.placeKind && (extras.repairMode || extras.sellMode)) {
     const hovered = visibleBuildingAt(state, hoverTile.x, hoverTile.y);
@@ -98,4 +92,68 @@ export function renderHoverPhase(
       drawTooltip(ctx, s.x, s.y - 18 * cam.zoom, tileTooltipLines(state, hoverTile.x, hoverTile.y), w, h, true);
     }
   }
+}
+
+function drawTutorialTargets(
+  ctx: CanvasRenderingContext2D,
+  state: SimState,
+  cam: Camera,
+  timeMs: number,
+  reducedMotion: boolean,
+): void {
+  const targets = cachedTutorialTargets(state);
+  if (!targets.length) return;
+  const pulse = reducedMotion ? 0.5 : selectionPulse(timeMs);
+  const alpha = 0.48 + pulse * 0.4;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "rgba(67, 230, 154, 0.22)";
+  ctx.strokeStyle = "rgba(141, 255, 200, 0.98)";
+  ctx.shadowColor = "rgba(67, 230, 154, 0.88)";
+  ctx.shadowBlur = reducedMotion ? 4 : 8 + pulse * 8;
+  ctx.lineWidth = Math.max(1.5, 2.2 * cam.zoom);
+
+  for (const target of targets) {
+    const tiles = targetTiles(state, target);
+    for (const tile of tiles) {
+      const s = tileToScreen(tile.x, tile.y, cam, heightAt(state, tile.x, tile.y));
+      drawDiamond(ctx, s.x, s.y, TILE_W * cam.zoom, TILE_H * cam.zoom);
+      drawDiamondStroke(ctx, s.x, s.y, TILE_W * cam.zoom, TILE_H * cam.zoom);
+      const groundY = s.y + (TILE_H / 2) * cam.zoom;
+      const radius = (9 + pulse * 5) * cam.zoom;
+      ctx.beginPath();
+      ctx.ellipse(s.x, groundY, radius, radius * 0.42, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function cachedTutorialTargets(state: SimState): TutorialWorldTarget[] {
+  if (state.tutorialStage === undefined) return [];
+  const cached = tutorialTargetCache.get(state);
+  if (cached?.stage === state.tutorialStage && cached.tick === state.tick) return cached.targets;
+  const targets = tutorialTargets(state);
+  tutorialTargetCache.set(state, { stage: state.tutorialStage, tick: state.tick, targets });
+  return targets;
+}
+
+function targetTiles(state: SimState, target: TutorialWorldTarget): { x: number; y: number }[] {
+  if (target.kind === "tile") {
+    const footprint = target.footprint ?? { w: 1, h: 1 };
+    const tiles: { x: number; y: number }[] = [];
+    for (let y = 0; y < footprint.h; y++) {
+      for (let x = 0; x < footprint.w; x++) tiles.push({ x: target.x + x, y: target.y + y });
+    }
+    return tiles;
+  }
+  const entity = state.entities.find((candidate) => candidate.id === target.entityId && candidate.hp > 0);
+  if (!entity) return [];
+  if (entity.class === "unit") return [{ x: Math.round(entity.x), y: Math.round(entity.y) }];
+  const footprint = footprintOf(entity.kind as import("../../../types").BuildingKind);
+  const tiles: { x: number; y: number }[] = [];
+  for (let y = 0; y < footprint.h; y++) {
+    for (let x = 0; x < footprint.w; x++) tiles.push({ x: Math.round(entity.x) + x, y: Math.round(entity.y) + y });
+  }
+  return tiles;
 }

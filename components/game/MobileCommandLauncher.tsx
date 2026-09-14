@@ -8,12 +8,14 @@ export function MobileCommandLauncher({
   buttonRef,
   statusText = "No selection · Commands",
   onDrag,
+  tutorialFocus,
 }: {
   open: boolean;
   onToggle: () => void;
   buttonRef: Ref<HTMLButtonElement>;
   statusText?: string;
   onDrag?: (direction: "open" | "close") => void;
+  tutorialFocus?: string;
 }) {
   const dragStartRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
@@ -62,6 +64,7 @@ export function MobileCommandLauncher({
       ) : null}
       <div
         className={styles.launcher}
+        data-tutorial-focus={tutorialFocus}
         data-open={open ? "true" : "false"}
         data-snap={open ? "expanded" : "collapsed"}
         data-testid="mobile-command-launcher"

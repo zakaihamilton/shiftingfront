@@ -15,6 +15,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
   const rng = rngFromState(state.rngState);
   const grid = buildGrid(state);
   for (const e of livingView(state)) {
+    if (state.tutorialStage !== undefined && e.owner === 1) continue;
     if (e.class === "unit") e.suppression = Math.max(0, (e.suppression ?? 0) - 1);
     const st = statsFor(e);
     if (st.damage <= 0 || e.neutral) continue;

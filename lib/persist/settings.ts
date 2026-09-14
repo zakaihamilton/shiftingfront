@@ -10,7 +10,6 @@ export type GameSettings = {
   masterVolume: number;
   musicVolume: number;
   sfxVolume: number;
-  tacticalRosterEnabled: boolean;
   reducedMotion: boolean;
   highContrast: boolean;
 };
@@ -22,7 +21,6 @@ export function defaultSettings(): GameSettings {
     masterVolume: 1,
     musicVolume: 0.5,
     sfxVolume: 0.9,
-    tacticalRosterEnabled: false,
     reducedMotion: false,
     highContrast: false,
   };
@@ -44,7 +42,6 @@ function normalize(value: unknown): GameSettings {
     masterVolume: clampVolume(raw.masterVolume, base.masterVolume),
     musicVolume: clampVolume(raw.musicVolume, base.musicVolume),
     sfxVolume: clampVolume(raw.sfxVolume, base.sfxVolume),
-    tacticalRosterEnabled: raw.tacticalRosterEnabled === true,
     reducedMotion: raw.reducedMotion === true,
     highContrast: raw.highContrast === true,
   };
@@ -72,7 +69,6 @@ export function writeSettings(storage: StorageAdapter, settings: GameSettings): 
       masterVolume: clampVolume(settings.masterVolume, defaultSettings().masterVolume),
       musicVolume: clampVolume(settings.musicVolume, defaultSettings().musicVolume),
       sfxVolume: clampVolume(settings.sfxVolume, defaultSettings().sfxVolume),
-      tacticalRosterEnabled: settings.tacticalRosterEnabled === true,
       reducedMotion: settings.reducedMotion === true,
       highContrast: settings.highContrast === true,
     },

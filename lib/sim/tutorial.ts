@@ -4,7 +4,20 @@ import type { ReadonlyMissionDef, SimState } from "../types";
 import { createMissionFromData } from "./api";
 
 export const TUTORIAL_SEED = 0;
-export { tutorialPrompt, tutorialMoveTile, enterTutorialStage } from "./tutorialStage";
+export {
+  advanceTutorialAfterTick,
+  enterTutorialStage,
+  tutorialBuildTile,
+  tutorialCommandCompletesStage,
+  tutorialFocusPoint,
+  tutorialMoveTile,
+  tutorialPrompt,
+  tutorialSelectionCompletesStage,
+  tutorialStageIndex,
+  tutorialTargets,
+  TUTORIAL_STAGES,
+  type TutorialWorldTarget,
+} from "./tutorialStage";
 
 export function createTutorialMission(): SimState {
   const campaign = createCampaign(TUTORIAL_SEED);
@@ -25,5 +38,16 @@ export function createTutorialMission(): SimState {
   });
   state.tutorialStage = "select";
   if (state.runtime) delete state.runtime.director;
+  for (const entity of state.entities) {
+    if (entity.owner !== 1 || entity.hp <= 0) continue;
+    entity.stance = "hold";
+    entity.idle = true;
+    entity.attackTarget = undefined;
+    entity.orderMode = undefined;
+    entity.orderDestination = undefined;
+    entity.path = [];
+    entity.flowGoal = undefined;
+    entity.routePending = false;
+  }
   return state;
 }

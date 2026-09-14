@@ -20,20 +20,31 @@
   gap: 0.75rem;
 }
 
-.kicker, .prompt, .target { margin: 0; }
+.kicker, .prompt, .target, .status { margin: 0; }
 .kicker { color: var(--chrome-cyan); font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase; }
+.title { margin: 0.18rem 0 0; color: var(--chrome-text); font-size: 1.05rem; letter-spacing: 0.04em; }
 .progressLabel { color: var(--chrome-muted); font-size: 0.6rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .progress { display: flex; gap: 0.2rem; margin-top: 0.55rem; }
 .progress span { height: 0.22rem; flex: 1; background: var(--chrome-steel); }
 .progressActive { background: var(--chrome-cyan) !important; }
 .progressPending { opacity: 0.6; }
-.target { margin-top: 0.65rem; color: var(--chrome-gold); font-size: 0.67rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.objective { margin-top: 0.65rem; padding: 0.55rem 0.6rem; border-left: 2px solid var(--chrome-gold); background: color-mix(in srgb, var(--chrome-gold) 6%, transparent); }
+.target { color: var(--chrome-gold); font-size: 0.67rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .target strong { color: var(--chrome-text); }
 .prompt { margin-top: 0.35rem; color: var(--chrome-text); }
+.status { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.55rem; color: var(--chrome-muted); font-size: 0.62rem; letter-spacing: 0.09em; text-transform: uppercase; }
+.status[data-status="complete"] { color: var(--chrome-success); }
+.statusDot { width: 0.45rem; height: 0.45rem; border: 1px solid currentColor; border-radius: 50%; box-shadow: 0 0 8px currentColor; animation: coachPulse 1.5s ease-in-out infinite; }
+.status[data-status="complete"] .statusDot { animation: none; background: currentColor; }
 .hint { margin-top: 0.65rem; color: var(--chrome-muted); font-size: 0.68rem; }
 .hint summary { cursor: pointer; color: var(--chrome-cyan); text-transform: uppercase; letter-spacing: 0.1em; }
 .hint p { margin: 0.35rem 0 0; line-height: 1.4; }
 .actions { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
+
+@keyframes coachPulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
 
 @media (max-width: 799px) {
   .card {
@@ -44,7 +55,7 @@
 
   .actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   }
 
   .actions > * {

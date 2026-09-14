@@ -13,7 +13,6 @@ export function createPresentationCoordinator({
   fxRef,
   fxSequence,
   onAlert,
-  onTacticalAnnouncement,
   onCommandNotice,
 }: {
   cameraRef: { current: Camera };
@@ -21,7 +20,6 @@ export function createPresentationCoordinator({
   fxRef: { current: FxBurst[] };
   fxSequence: { current: number };
   onAlert: (text: string, kind?: "warning" | "objective" | "contact" | "system") => void;
-  onTacticalAnnouncement: (text: string) => void;
   onCommandNotice: (text: string, kind?: "success" | "info" | "warning" | "error") => void;
 }) {
   let appliedIntensity: MusicIntensity = "calm";
@@ -65,20 +63,7 @@ export function createPresentationCoordinator({
       if (alert) {
         playSfx(alertSfx(alert.kind), { force: true });
         onAlert(alert.text, alert.kind);
-        onTacticalAnnouncement(alert.text);
       }
-      // A rescue can emit firstReturned and complete in the same tick. Keep
-      // the terminal milestone visible instead of announcing only the first
-      // event in the batch.
-      let milestone: Extract<SimEvent, { type: "objectiveMilestone" }> | undefined;
-      for (let index = events.length - 1; index >= 0; index -= 1) {
-        const event = events[index];
-        if (event?.type === "objectiveMilestone") {
-          milestone = event;
-          break;
-        }
-      }
-      if (milestone?.type === "objectiveMilestone") onTacticalAnnouncement(milestone.text);
       if (events.some((event) => ["combat", "destroyed", "support", "built", "produced"].includes(event.type))) {
         const spawned = burstsFromEvents(events, state, now, fxSequence.current);
         fxSequence.current = spawned.nextId;

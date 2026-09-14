@@ -16,6 +16,7 @@ export function CommandCameo({
   disabledReason,
   detail,
   active,
+  tutorialFocus,
   cameo,
   shortcut,
   onClick,
@@ -29,6 +30,7 @@ export function CommandCameo({
   disabledReason?: string;
   detail?: string;
   active?: boolean;
+  tutorialFocus?: string;
   cameo: CameoStatus;
   shortcut?: string;
   onClick: () => void;
@@ -56,7 +58,8 @@ export function CommandCameo({
       <button
         type="button"
         disabled={disabled}
-        className={cx(styles.card, active && styles.active, busy && styles.busy)}
+        className={cx(styles.card, active && styles.active, busy && styles.busy, tutorialFocus && styles.tutorialFocus)}
+        data-tutorial-focus={tutorialFocus}
         onClick={onClick}
         aria-label={`${labelFor(kind)}, ${cost} credits${busy ? `, ${cameo.phase === "waiting" ? `${cameo.queued} in queue` : `${Math.round(cameo.ratio * 100)} percent complete`}` : ""}${cancellable ? ", cancel available" : ""}${ariaStatus}`}
         aria-keyshortcuts={displayShortcut}

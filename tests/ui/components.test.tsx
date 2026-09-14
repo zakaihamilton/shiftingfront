@@ -19,6 +19,8 @@ import { PauseOptions } from "../../components/game/PauseOptions";
 import { PauseSaveSlots } from "../../components/game/PauseSaveSlots";
 import { PauseLoadSlots } from "../../components/game/PauseLoadSlots";
 import { CommandHeader } from "../../components/game/CommandHeader";
+import { CommandTabs } from "../../components/game/CommandTabs";
+import { TutorialOverlay } from "../../components/game/TutorialOverlay";
 import type { ArchiveEntry, SlotMeta } from "../../lib/persist/save";
 import { MissionConfirmation } from "../../components/game/MissionConfirmation";
 import { BriefingActions } from "../../components/briefing/BriefingActions";
@@ -148,6 +150,75 @@ describe("MobileCommandLauncher", () => {
     expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("aria-label", "Close commands");
     fireEvent.click(screen.getByTestId("mobile-command-scrim"));
     expect(onToggle).toHaveBeenCalledTimes(2);
+  });
+
+  it("spotlights the command launcher when a tutorial step needs the sheet", () => {
+    render(<MobileCommandLauncher open={false} onToggle={vi.fn()} buttonRef={createRef<HTMLButtonElement>()} tutorialFocus="command-launcher" />);
+    expect(screen.getByTestId("mobile-command-launcher")).toHaveAttribute("data-tutorial-focus", "command-launcher");
+  });
+
+  it("does not spotlight the launcher while the command sheet is open", () => {
+    render(<MobileCommandLauncher open buttonRef={createRef<HTMLButtonElement>()} onToggle={vi.fn()} />);
+    expect(screen.getByTestId("mobile-command-launcher")).not.toHaveAttribute("data-tutorial-focus");
+  });
+});
+
+describe("tutorial coach", () => {
+  it("waits for the player instead of exposing a stage-skipping button", () => {
+    render(
+      <TutorialOverlay
+        prompt="Move to the target."
+        stage="move"
+        targets={[{ kind: "tile", x: 4, y: 5, label: "Move destination" }]}
+        onExit={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("tutorial-overlay")).toHaveAttribute("data-stage", "move");
+    expect(screen.getByText("Focus:")).toBeVisible();
+    expect(screen.getByText("Waiting for your action")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+  });
+
+  it("renames the exit action to command desk after the final stage", () => {
+    const onExit = vi.fn();
+    render(
+      <TutorialOverlay
+        prompt="Training complete."
+        stage="complete"
+        targets={[{ kind: "entity", entityId: 1, label: "Command desk" }]}
+        onExit={onExit}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Return to Command Desk" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Exit Training" })).toBeNull();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Return to Command Desk" }));
+    expect(onExit).toHaveBeenCalledOnce();
+  });
+});
+
+describe("tutorial command focus", () => {
+  it("marks the live command target with a stable focus attribute", () => {
+    render(
+      <CommandTabs
+        activeTab="construction"
+        repairMode={false}
+        sellMode={false}
+        tutorialFocus="construction-tab"
+        onConstruction={vi.fn()}
+        onProduction={vi.fn()}
+        onSelected={vi.fn()}
+        onRepair={vi.fn()}
+        onSell={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Construction" })).toHaveAttribute("data-tutorial-focus", "construction-tab");
+    expect(screen.getByRole("tab", { name: "Production" })).not.toHaveAttribute("data-tutorial-focus");
   });
 });
 
@@ -596,6 +667,12 @@ describe("PauseMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onCommitSave).toHaveBeenCalledWith("Test · M1", null);
 
+    rerender(<PauseMenu {...props} view="main" notice="" tutorial />);
+    expect(screen.queryByRole("button", { name: "Save Mission" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Load Mission" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mission Briefing" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Restart Mission" })).toBeVisible();
+
     expect(onBack).not.toHaveBeenCalled();
   });
 });
@@ -611,7 +688,6 @@ describe("PauseOptions telemetry controls", () => {
         settings={defaultSettings()}
         onToggleSound={vi.fn()}
         onToggleMusic={vi.fn()}
-        onToggleTacticalRoster={vi.fn()}
         onVolumeChange={vi.fn()}
         onBack={vi.fn()}
         telemetryRecordCount={3}

@@ -53,7 +53,6 @@ describe("useGameLoop save retry lifecycle", () => {
       campaignRecordedRef: ref(false),
       redraw: vi.fn(),
       onAlert: vi.fn(),
-      onTacticalAnnouncement: vi.fn(),
       saveSession,
     };
     const { rerender } = renderHook((value) => useGameLoop(value), { initialProps: props });

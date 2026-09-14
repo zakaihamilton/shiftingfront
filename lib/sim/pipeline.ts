@@ -12,6 +12,7 @@ import { ensureMissionDirector, tickMissionDirector } from "./director";
 import { tickScenario } from "./scenarios";
 import { compactDestroyedEntities } from "./world";
 import { tickMovement } from "./movement";
+import { advanceTutorialAfterTick } from "./tutorialStage";
 
 export type SimulationTickOptions = {
   evaluateObjectives?: boolean;
@@ -34,6 +35,7 @@ export type SimulationSystemId =
   | "economy"
   | "movement"
   | "combat"
+  | "tutorial"
   | "repair"
   | "support"
   | "director"
@@ -60,6 +62,7 @@ export const SIMULATION_SYSTEMS: readonly SimulationSystem[] = [
   { id: "economy", run: (context) => runWithEvents(context, tickEconomy) },
   { id: "movement", run: ({ state }) => tickMovement(state) },
   { id: "combat", run: (context) => runWithEvents(context, tickCombat) },
+  { id: "tutorial", run: ({ state }) => advanceTutorialAfterTick(state) },
   { id: "repair", run: (context) => runWithEvents(context, tickRepair) },
   { id: "support", run: (context) => runWithEvents(context, tickSupport) },
   { id: "director", run: (context) => runWithEvents(context, tickMissionDirector) },

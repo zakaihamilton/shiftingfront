@@ -4,7 +4,6 @@ import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { TILE_H, tileToScreen } from "../../lib/iso";
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, SLOT_VERSION, saveKey, slotKey } from "../../lib/persist/save";
 import { freshCampaignProgress } from "../../lib/persist/campaign";
-import { SETTINGS_KEY, SETTINGS_VERSION, defaultSettings } from "../../lib/persist/settings";
 import { createMission } from "../../lib/sim/api";
 import { addUnit, setHeight } from "../../lib/sim/fixtures";
 import { heightAt } from "../../lib/sim/world";
@@ -351,7 +350,7 @@ test.describe("short-height layouts", () => {
     expect(tutorialBounds).not.toBeNull();
     expect(tutorialBounds!.y).toBeGreaterThanOrEqual(0);
     expect(tutorialBounds!.y + tutorialBounds!.height).toBeLessThanOrEqual(400);
-    await expect(tutorial.getByRole("button", { name: "Continue" })).toBeVisible();
+    await expect(tutorial.getByText("Waiting for your action")).toBeVisible();
   });
 });
 
@@ -474,25 +473,18 @@ test.describe("desktop marquee selection", () => {
     setHeight(state, 12, 12, 0);
     setHeight(state, 24, 0, 0);
     const anchorUnit = addUnit(state, 0, "infantry", 12, 12);
-    const revealedUnit = addUnit(state, 0, "tank", 24, 0);
+    addUnit(state, 0, "tank", 24, 0);
     const save = JSON.stringify({
       version: SAVE_VERSION,
       contentVersion: SAVE_CONTENT_VERSION,
       savedAt: Date.now(),
       state,
     });
-    await page.addInitScript(({ saveStorageKey, saveRaw, settingsKey, settingsRaw }) => {
+    await page.addInitScript(({ saveStorageKey, saveRaw }) => {
       localStorage.setItem(saveStorageKey, saveRaw);
-      localStorage.setItem(settingsKey, settingsRaw);
     }, {
       saveStorageKey: saveKey(TEST_SEED),
       saveRaw: save,
-      settingsKey: SETTINGS_KEY,
-      settingsRaw: JSON.stringify({
-        version: SETTINGS_VERSION,
-        savedAt: Date.now(),
-        settings: { ...defaultSettings(), tacticalRosterEnabled: true },
-      }),
     });
     await page.goto(`/play?seed=${String(TEST_SEED).padStart(4, "0")}&mission=0&resume=1`);
     await waitForBattlefield(page);
@@ -515,11 +507,7 @@ test.describe("desktop marquee selection", () => {
     await page.mouse.move(end.x, end.y);
     await page.mouse.up();
 
-    const roster = page.getByTestId("tactical-roster");
-    const anchorRow = roster.locator('[role="listitem"]').filter({ hasText: `Position ${anchorUnit.x}, ${anchorUnit.y}` });
-    const revealedRow = roster.locator('[role="listitem"]').filter({ hasText: `Position ${revealedUnit.x}, ${revealedUnit.y}` });
-    await expect.poll(() => anchorRow.getAttribute("data-selected")).toBe("true");
-    await expect.poll(() => revealedRow.getAttribute("data-selected")).toBe("true");
+    await expect(page.getByTestId("selected-panel")).toContainText("2 units selected");
   });
 });
 
@@ -756,7 +744,7 @@ test.describe("mobile-first layouts", () => {
     expect(bounds!.y).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(568);
-    await expect(tutorial.getByRole("button", { name: "Continue" })).toBeVisible();
+    await expect(tutorial.getByText("Waiting for your action")).toBeVisible();
     await expect(tutorial.getByRole("button", { name: "Exit Training" })).toBeVisible();
   });
 

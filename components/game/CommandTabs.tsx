@@ -1,5 +1,6 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import type { CommandTab } from "@/lib/ui/shortcuts";
+import { cx } from "@/lib/ui/cx";
 import { CommandTabIcon } from "./CommandTabIcon";
 import styles from "./CommandTabs.module.css";
 
@@ -11,6 +12,7 @@ function CommandBarButton({
   tooltip,
   selected,
   pressed,
+  tutorialFocus,
   onClick,
 }: {
   icon: CommandTab | "repair" | "sell";
@@ -20,6 +22,7 @@ function CommandBarButton({
   tooltip: string;
   selected?: boolean;
   pressed?: boolean;
+  tutorialFocus?: string;
   onClick: () => void;
 }) {
   const on = selected ?? pressed ?? false;
@@ -33,7 +36,8 @@ function CommandBarButton({
       tooltip={tooltip}
       aria-keyshortcuts={keyshortcuts}
       muted={!on}
-      className={styles.tab}
+      className={cx(styles.tab, tutorialFocus && styles.tutorialFocus)}
+      data-tutorial-focus={tutorialFocus}
       onClick={onClick}
     >
       <span className={styles.tabContent}>
@@ -52,6 +56,7 @@ export function CommandTabs({
   onSelected,
   onRepair,
   onSell,
+  tutorialFocus,
 }: {
   activeTab: CommandTab;
   repairMode: boolean;
@@ -61,6 +66,7 @@ export function CommandTabs({
   onSelected: () => void;
   onRepair: () => void;
   onSell: () => void;
+  tutorialFocus?: "construction-tab" | "production-tab" | "repair-control";
 }) {
   return (
     <div className={styles.tabs} role="toolbar" aria-label="Command options">
@@ -70,6 +76,7 @@ export function CommandTabs({
         keyshortcuts="q"
         tooltip="Build structures"
         selected={activeTab === "construction"}
+        tutorialFocus={tutorialFocus === "construction-tab" ? tutorialFocus : undefined}
         onClick={onConstruction}
       />
       <CommandBarButton
@@ -78,6 +85,7 @@ export function CommandTabs({
         keyshortcuts="e"
         tooltip="Train units"
         selected={activeTab === "production"}
+        tutorialFocus={tutorialFocus === "production-tab" ? tutorialFocus : undefined}
         onClick={onProduction}
       />
       <CommandBarButton
@@ -96,6 +104,7 @@ export function CommandTabs({
         testId="repair-mode"
         tooltip="Repair structures. Click a damaged building to start or stop."
         pressed={repairMode}
+        tutorialFocus={tutorialFocus === "repair-control" ? tutorialFocus : undefined}
         onClick={onRepair}
       />
       <CommandBarButton

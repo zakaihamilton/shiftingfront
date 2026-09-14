@@ -21,7 +21,6 @@ export function createPersistenceCoordinator({
   saveSession,
   persistCampaign,
   onAlert,
-  onTacticalAnnouncement,
   persistenceRef,
   suppressImplicitSavesRef,
 }: {
@@ -31,7 +30,6 @@ export function createPersistenceCoordinator({
   saveSession: SaveSession;
   persistCampaign: boolean;
   onAlert: (text: string) => void;
-  onTacticalAnnouncement: (text: string) => void;
   persistenceRef: { current: RuntimePersistenceState };
   suppressImplicitSavesRef?: { current: () => void };
 }) {
@@ -61,7 +59,6 @@ export function createPersistenceCoordinator({
           ? "Progress could not be saved. Retrying; check available browser storage."
           : "Progress saved.";
       onAlert(message);
-      onTacticalAnnouncement(message);
     }
     saveRetry.lastStatus = status;
     if (status === "saved" && state.result !== "playing") terminalSaveRef.current = true;

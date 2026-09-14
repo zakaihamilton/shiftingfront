@@ -1,6 +1,6 @@
 import type { PointerEventHandler, Ref } from "react";
 import type { PanAvailability, PanDir } from "@/lib/render/camera";
-import { tutorialPrompt } from "@/lib/sim/tutorial";
+import { tutorialPrompt, tutorialTargets } from "@/lib/sim/tutorial";
 import type { Campaign, SimState } from "@/lib/types";
 import { Battlefield } from "./Battlefield";
 import { CombatAlert } from "./CombatAlert";
@@ -26,7 +26,6 @@ export type GamePlayFieldProps = {
   onPointerLeave: PointerEventHandler<HTMLCanvasElement>;
   onPointerUp: PointerEventHandler<HTMLCanvasElement>;
   onPointerCancel: PointerEventHandler<HTMLCanvasElement>;
-  onAdvanceTutorial: () => void;
   onExitTutorial: () => void;
   onBackTutorial: () => void;
   onNextBriefing: () => void;
@@ -54,7 +53,6 @@ export function GamePlayField({
   onPointerLeave,
   onPointerUp,
   onPointerCancel,
-  onAdvanceTutorial,
   onExitTutorial,
   onBackTutorial,
   onNextBriefing,
@@ -111,9 +109,9 @@ export function GamePlayField({
       {tutorial && !paused ? (
         <TutorialOverlay
           prompt={tutorialPrompt(state)}
-          complete={state.tutorialStage === "complete"}
           stage={state.tutorialStage}
-          onAdvance={state.tutorialStage === "complete" ? onExitTutorial : onAdvanceTutorial}
+          targets={tutorialTargets(state)}
+          onExit={onExitTutorial}
           onBack={onBackTutorial}
         />
       ) : null}

@@ -16,9 +16,12 @@ import { useGameRuntimeState } from "./useGameRuntimeState";
 import { clearRenderSessionCaches } from "@/lib/render/sessionCache";
 import { canonicalCommandRejectionReason, createMissionUxTelemetry } from "@/lib/persist/telemetry";
 import { consumeBriefingSkippedIntent } from "@/lib/persist/navigation";
+import { tutorialFocusPoint, tutorialTargets } from "@/lib/sim/tutorial";
 import type { PauseView } from "@/lib/ui/shortcuts";
 import { createRuntimeCommandPort } from "./runtime/facade";
 import type { CommandNoticeKind } from "./useGameChrome";
+
+const TUTORIAL_CAMERA_FOCUS_MS = 900;
 
 export function useGameRuntime({
   seed,
@@ -64,8 +67,6 @@ export function useGameRuntime({
     pauseViewRef,
     pauseNotice,
     setPauseNotice,
-    tacticalAnnouncement,
-    announceTactical,
     commandNotice,
     announceCommand: showCommandNotice,
     audioSettings,
@@ -80,15 +81,19 @@ export function useGameRuntime({
   const announceCommandFeedback = useCallback((text: string, kind: CommandNoticeKind = "info") => {
     uxRef.current.commandFeedbackCount += 1;
     showCommandNotice(text, kind);
-    announceTactical(text);
-  }, [announceTactical, showCommandNotice, uxRef]);
+  }, [showCommandNotice, uxRef]);
   const commandPort = useMemo(() => createRuntimeCommandPort(cmdQ), [cmdQ]);
   const suppressImplicitSavesRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     if (!tutorial && consumeBriefingSkippedIntent(seed, mission)) uxRef.current.briefingSkipped = true;
   }, [mission, seed, tutorial, uxRef]);
 
-  const selection = useGameSelection({ stateRef, setState, uxRef });
+  const selection = useGameSelection({
+    stateRef,
+    setState,
+    uxRef,
+    onSelectionTab: tutorial ? () => setActiveTab("selected") : undefined,
+  });
   const {
     selected,
     selectedIds,
@@ -125,10 +130,36 @@ export function useGameRuntime({
     panHold,
     edgePanHover,
     applyEdgePan,
+    focusTileAnimated,
     jumpHome,
     centerSelection,
     resetCamera,
   } = camera;
+
+  const tutorialFocusStageRef = useRef<typeof state.tutorialStage>(undefined);
+  useEffect(() => {
+    const stage = state.tutorialStage;
+    if (!tutorial || !stage || tutorialFocusStageRef.current === stage || !canvasRef.current) return;
+    if (stage === "move") {
+      // Keep the camera on the selected unit so the player can choose where
+      // to move it without being pulled to the destination automatically.
+      tutorialFocusStageRef.current = stage;
+      return;
+    }
+    const targets = tutorialTargets(state);
+    const target = targets[0];
+    const point = tutorialFocusPoint(state);
+    if (!point) return;
+    focusTileAnimated(
+      Math.round(point.x),
+      Math.round(point.y),
+      state.tutorialStage === "attack" && targets.length > 1
+        ? 0.32
+        : target?.kind === "entity" ? 0.44 : 0.56,
+      audioSettings.reducedMotion ? 0 : TUTORIAL_CAMERA_FOCUS_MS,
+    );
+    tutorialFocusStageRef.current = stage;
+  }, [audioSettings.reducedMotion, canvasRef, focusTileAnimated, state, tutorial]);
 
   const actions = useGameActions({ stateRef, commandPort, selected, selectedIds, onCommandNotice: announceCommandFeedback, onCommandRejection: recordCommandRejection, uxRef });
   const {
@@ -350,7 +381,6 @@ export function useGameRuntime({
     saveSession,
     redraw,
     onAlert,
-    onTacticalAnnouncement: announceTactical,
     onCommandNotice: announceCommandFeedback,
     persistCampaign: !tutorial,
     uxRef,
@@ -379,7 +409,6 @@ export function useGameRuntime({
     onPointerLeave: onLeave,
     onPointerUp: onUp,
     onPointerCancel: onCancel,
-    onAdvanceTutorial: session.advanceTutorial,
     onExitTutorial,
     onBackTutorial: session.backTutorial,
     onNextBriefing: session.goNextBriefing,
@@ -398,13 +427,10 @@ export function useGameRuntime({
     onTab: setActiveTab,
     pauseView,
     pauseNotice,
-    tacticalAnnouncement,
     audioSettings,
     camera,
     setPauseView,
     setPauseNotice,
-    onSelect: commitSelection,
-    onAnnounce: announceTactical,
     onToggleMobilePanel: toggleMobilePanel,
     onMobileSheetDrag,
     onObjectivePanelToggle,

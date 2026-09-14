@@ -11,7 +11,6 @@ export function PauseOptions({
   settings,
   onToggleSound,
   onToggleMusic,
-  onToggleTacticalRoster,
   onToggleReducedMotion,
   onToggleHighContrast,
   onVolumeChange,
@@ -25,7 +24,6 @@ export function PauseOptions({
   settings: GameSettings;
   onToggleSound: () => void;
   onToggleMusic: () => void;
-  onToggleTacticalRoster?: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
@@ -62,9 +60,6 @@ export function PauseOptions({
         </ConsoleButton>
         <ConsoleButton className={styles.action} tooltip="Turn sound effects on or off" shortcut={SHORTCUT.mute} onClick={onToggleSound}>
           Sound effects: {settings.sfxEnabled ? "On" : "Off"}
-        </ConsoleButton>
-        <ConsoleButton className={styles.action} tooltip="Show a keyboard-friendly unit list beside the battlefield" onClick={onToggleTacticalRoster}>
-          Tactical roster: {settings.tacticalRosterEnabled ? "On" : "Off"}
         </ConsoleButton>
         {onToggleReducedMotion ? (
           <ConsoleButton className={styles.action} tooltip="Reduce interface animation and motion" onClick={onToggleReducedMotion}>

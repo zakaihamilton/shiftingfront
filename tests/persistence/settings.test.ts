@@ -45,9 +45,9 @@ describe("audio settings", () => {
     storage.setItem(SETTINGS_KEY, JSON.stringify({
       version: 2,
       savedAt: 1,
-      settings: { musicEnabled: false, tacticalRosterEnabled: true },
+      settings: { musicEnabled: false },
     }));
-    expect(readSettings(storage)).toEqual({ ...defaultSettings(), musicEnabled: false, tacticalRosterEnabled: true });
+    expect(readSettings(storage)).toEqual({ ...defaultSettings(), musicEnabled: false });
 
     storage.setItem(SETTINGS_KEY, "{not-json");
     expect(readSettings(storage)).toEqual(defaultSettings());
@@ -78,24 +78,17 @@ describe("audio settings", () => {
     expect(typeof envelope.savedAt).toBe("number");
   });
 
-  it("persists the tactical roster setting", () => {
-    const storage = memoryStorage();
-    writeSettings(storage, { ...defaultSettings(), tacticalRosterEnabled: true });
-    expect(readSettings(storage).tacticalRosterEnabled).toBe(true);
-  });
-
   it("migrates older preferences with new accessibility settings off", () => {
     const storage = memoryStorage({
       [SETTINGS_KEY]: JSON.stringify({
         version: 2,
         savedAt: 1,
-        settings: { sfxEnabled: false, tacticalRosterEnabled: true },
+        settings: { sfxEnabled: false },
       }),
     });
 
     expect(readSettings(storage)).toMatchObject({
       sfxEnabled: false,
-      tacticalRosterEnabled: true,
       reducedMotion: false,
       highContrast: false,
     });

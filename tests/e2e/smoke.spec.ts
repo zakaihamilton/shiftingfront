@@ -3,6 +3,7 @@ import { footprintOf } from "../../lib/catalog";
 import { TILE_H, tileToScreen } from "../../lib/iso";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { createMission } from "../../lib/sim/api";
+import { createTutorialMission } from "../../lib/sim/tutorial";
 import { heightAt } from "../../lib/sim/world";
 import { spawnBuilding } from "../../lib/sim/world";
 import { CAMPAIGN_PROGRESS_VERSION, campaignKey, freshCampaignProgress } from "../../lib/persist/campaign";
@@ -53,7 +54,109 @@ async function waitForBattlefield(page: Page) {
   await expect.poll(() => canvas.evaluate((element) => {
     const canvasElement = element as HTMLCanvasElement;
     return canvasElement.width > 0 && canvasElement.height > 0;
-  })).toBe(true);
+})).toBe(true);
+}
+
+async function waitForTutorialStage(coach: Locator, stage: string, timeout = 5000): Promise<void> {
+  await expect(coach).toHaveAttribute("data-stage", stage, { timeout });
+  // Tutorial camera focus is intentionally animated so the player can follow
+  // the new objective instead of losing context to an instant jump.
+  await coach.page().waitForTimeout(1000);
+}
+
+type TutorialTargetSnapshot = {
+  kind: "entity" | "tile";
+  entityId?: number;
+  entityClass?: "unit" | "building";
+  label: string;
+  x: number;
+  y: number;
+  footprint?: { w: number; h: number };
+};
+
+async function readTutorialTargets(page: Page): Promise<TutorialTargetSnapshot[]> {
+  const raw = await page.getByTestId("tutorial-overlay").getAttribute("data-tutorial-targets");
+  if (!raw) throw new Error("Tutorial target metadata is missing");
+  return JSON.parse(raw) as TutorialTargetSnapshot[];
+}
+
+async function tutorialTargetPoint(
+  page: Page,
+  world: SimState,
+  target: TutorialTargetSnapshot,
+  focus: TutorialTargetSnapshot,
+  focusYBias = focus.kind === "entity" ? 0.44 : 0.56,
+): Promise<{ x: number; y: number }> {
+  const canvas = page.getByTestId("battlefield-canvas");
+  const dimensions = await canvas.evaluate((element) => ({
+    width: (element as HTMLCanvasElement).width,
+    height: (element as HTMLCanvasElement).height,
+  }));
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("Battlefield canvas has no layout bounds");
+
+  const focusX = Math.round(focus.x);
+  const focusY = Math.round(focus.y);
+  const focusHeight = heightAt(world, focusX, focusY);
+  const focusAnchor = tileToScreen(focusX, focusY, { x: 0, y: 0, zoom: 1 }, focusHeight);
+  const camera = {
+    x: dimensions.width / 2 - focusAnchor.x,
+    y: dimensions.height * focusYBias - focusAnchor.y,
+    zoom: 1,
+  };
+  clampCamera(camera, cameraPanBounds(camera, world.width, world.height, dimensions.width, dimensions.height));
+
+  const targetX = Math.round(target.x);
+  const targetY = Math.round(target.y);
+  const screen = tileToScreen(target.x, target.y, camera, heightAt(world, targetX, targetY));
+  const entityBodyOffset = target.kind === "entity" && target.entityClass === "unit" ? TILE_H / 2 - 12 : TILE_H / 2;
+  const scaleX = bounds.width / dimensions.width;
+  const scaleY = bounds.height / dimensions.height;
+  return {
+    x: bounds.x + screen.x * scaleX,
+    y: bounds.y + (screen.y + entityBodyOffset) * scaleY,
+  };
+}
+
+async function clickTutorialTarget(
+  page: Page,
+  world: SimState,
+  label: string,
+  button: "left" | "right" = "left",
+  modifiers: ("Alt" | "Control" | "Meta" | "Shift")[] = [],
+): Promise<void> {
+  const targets = await readTutorialTargets(page);
+  const target = targets.find((candidate) => candidate.label === label);
+  let focus = targets[0];
+  if (!target || !focus) throw new Error(`Tutorial target ${label} is missing`);
+  if (label === "Move destination") {
+    const infantry = world.entities.find((entity) => entity.owner === 0 && entity.kind === "infantry");
+    if (infantry) {
+      // Selecting Infantry intentionally leaves the camera in place. Use the
+      // selected unit as the camera anchor when calculating the destination.
+      focus = {
+        kind: "entity",
+        entityId: infantry.id,
+        entityClass: "unit",
+        label: "Friendly Infantry",
+        x: infantry.x,
+        y: infantry.y,
+      };
+    }
+  }
+  let focusYBias = focus.kind === "entity" ? 0.44 : 0.56;
+  const combat = targets.find((candidate) => candidate.label === "Combat Infantry");
+  if (focus.label === "Drill target" && combat) {
+    focus = { ...focus, x: (focus.x + combat.x) / 2, y: (focus.y + combat.y) / 2 };
+    focusYBias = 0.32;
+  }
+  const point = await tutorialTargetPoint(page, world, target, focus, focusYBias);
+  for (const modifier of modifiers) await page.keyboard.down(modifier);
+  try {
+    await page.mouse.click(point.x, point.y, { button });
+  } finally {
+    for (const modifier of [...modifiers].reverse()) await page.keyboard.up(modifier);
+  }
 }
 
 async function battlefieldEntityGeometry(page: Page, state: SimState, entity: Entity) {
@@ -148,13 +251,65 @@ test("welcome tutorial opens the seed 0000 training range", async ({ page }) => 
   await page.goto("/");
   await page.getByRole("button", { name: "TUTORIAL" }).click();
   await expect(page).toHaveURL(/\/tutorial/);
-  await expect(page.getByTestId("tutorial-overlay")).toBeVisible();
+  const coach = page.getByTestId("tutorial-overlay");
+  await expect(coach).toBeVisible();
+  await expect(coach).toHaveAttribute("data-stage", "select");
+  await expect(coach).toHaveAttribute("data-target-count", "1");
+  await expect(coach).toContainText("Focus: Friendly Infantry");
+  await expect(coach).toContainText("Waiting for your action");
+  await expect(coach.getByRole("button", { name: "Continue" })).toHaveCount(0);
   await expect(page.getByTestId("seed")).toContainText("Seed 0000");
   await expect(page.getByTestId("objective")).toContainText("Training range — no time limit");
   await expect(page.getByTestId("time-remaining")).toHaveCount(0);
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
   await expect(page.getByRole("button", { name: "Skip training" })).toHaveCount(0);
   await page.getByRole("button", { name: "Exit Training" }).click();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("guides a player through the live tutorial flow", async ({ page }) => {
+  test.setTimeout(60000);
+  const world = createTutorialMission();
+  await page.goto("/tutorial");
+  await waitForBattlefield(page);
+  const coach = page.getByTestId("tutorial-overlay");
+  await page.waitForTimeout(1000);
+
+  await clickTutorialTarget(page, world, "Friendly Infantry");
+  await waitForTutorialStage(coach, "move");
+
+  await clickTutorialTarget(page, world, "Move destination", "right");
+  await waitForTutorialStage(coach, "build");
+  await expect(page.locator('[data-tutorial-focus="construction-tab"]')).toBeVisible();
+
+  await page.getByRole("tab", { name: "Construction" }).click();
+  await page.getByRole("button", { name: /Power Plant/ }).click();
+  await clickTutorialTarget(page, world, "Power Plant site");
+  await waitForTutorialStage(coach, "produce", 15000);
+  await expect(page.locator('[data-tutorial-focus="production-tab"]')).toBeVisible();
+
+  await page.getByRole("tab", { name: "Production" }).click();
+  await page.getByRole("button", { name: /Infantry/ }).click();
+  await waitForTutorialStage(coach, "attack");
+  await expect(coach).toContainText("Drill target");
+  await expect(coach).toHaveAttribute("data-target-count", "2");
+
+  await clickTutorialTarget(page, world, "Combat Infantry");
+  await page.getByRole("tab", { name: "Selected" }).click();
+  await expect(page.getByTestId("selected-kind")).toHaveText("Infantry");
+  await clickTutorialTarget(page, world, "Drill target", "right", ["Control"]);
+  await expect(page.getByTestId("command-notice")).toContainText("order issued.", { timeout: 2000 });
+  // The drill is intentionally well away from the barracks. Allow the unit
+  // to walk the route and finish the passive target before Repair can begin.
+  await waitForTutorialStage(coach, "repair", 40000);
+  await expect(page.locator('[data-tutorial-focus="repair-control"]')).toBeVisible();
+
+  await page.getByTestId("repair-mode").click();
+  await clickTutorialTarget(page, world, "Damaged structure");
+  await waitForTutorialStage(coach, "complete");
+  await expect(page.getByRole("button", { name: "Return to Command Desk" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Return to Command Desk" }).click();
   await expect(page).toHaveURL(/\/$/);
 });
 

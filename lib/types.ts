@@ -50,7 +50,7 @@ export type LossReason = "yardDestroyed" | "deadline" | "objectiveTargetLost";
 export type MissionDirectorPhase = "opening" | "pressure" | "finale";
 export type WeaponType = "smallArms" | "antiArmor" | "cannon";
 export type ArmorType = "light" | "heavy" | "structure";
-export type TutorialStage = "select" | "move" | "harvest" | "build" | "produce" | "attack" | "repair" | "complete";
+export type TutorialStage = "select" | "move" | "build" | "produce" | "attack" | "repair" | "complete";
 export type AiBehavior = "economy" | "defense" | "assault" | "retreat" | "regroup";
 
 /** Last-known information the enemy may use after a player entity leaves sight. */
@@ -450,6 +450,10 @@ export type SimState = {
   missionKind?: MissionKind;
   runtime?: MissionRuntime;
   tutorialStage?: TutorialStage;
+  /** Optional enemy unit created as the tutorial's close-range combat drill. */
+  tutorialTargetId?: number;
+  /** Power Plant entity being built for the tutorial's construction lesson. */
+  tutorialBuildId?: number;
   aiState?: AiBehavior;
   /** Tick when the current retreat began. Cleared when the army leaves retreat. */
   aiRetreatTick?: number;

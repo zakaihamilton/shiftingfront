@@ -3,7 +3,6 @@ import { cachedLocalStorage } from "@/lib/persist/save";
 import { readSettings } from "@/lib/persist/settings";
 import type { Command, SimState } from "@/lib/types";
 import type { CommandTab, PauseView } from "@/lib/ui/shortcuts";
-import { useAnnouncement } from "@/components/ui/useAnnouncement";
 
 export type CommandNoticeKind = "success" | "info" | "warning" | "error";
 export type CommandNoticeState = { text: string; kind: CommandNoticeKind } | null;
@@ -19,7 +18,6 @@ export function useGameChrome(initialResult: SimState["result"] = "playing") {
   const [pauseView, setPauseView] = useState<PauseView>("main");
   const pauseViewRef = useRef(pauseView);
   const [pauseNotice, setPauseNotice] = useState("");
-  const [tacticalAnnouncement, announceTactical] = useAnnouncement();
   const [commandNotice, setCommandNotice] = useState<CommandNoticeState>(null);
   const commandNoticeTimer = useRef<number | null>(null);
   const [audioSettings, setAudioSettings] = useState(() => readSettings(cachedLocalStorage()));
@@ -62,8 +60,6 @@ export function useGameChrome(initialResult: SimState["result"] = "playing") {
     pauseViewRef,
     pauseNotice,
     setPauseNotice,
-    tacticalAnnouncement,
-    announceTactical,
     commandNotice,
     announceCommand,
     audioSettings,

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { BUILDING_STATS } from "../../lib/catalog";
 import { makeFixture, addUnit, addBuilding, setTile, TILE_BLOCKED, TILE_RESOURCE } from "../../lib/sim/fixtures";
-import { issue } from "../../lib/sim/api";
+import { issue, tick } from "../../lib/sim/api";
+import { tutorialBuildTile, tutorialMoveTile } from "../../lib/sim/tutorial";
 import type { SimState } from "../../lib/types";
 
 function makePlayingState(): SimState {
@@ -74,44 +76,46 @@ describe("issue command dispatch", () => {
   });
 });
 
-describe("tutorial gating", () => {
-  it("rejects commands before the required tutorial stage", () => {
+describe("tutorial coaching", () => {
+  it("keeps commands valid before their lesson stage without advancing it", () => {
     const s = makePlayingState();
     s.tutorialStage = "select";
     const events = issue(s, { type: "build", building: "power", x: 8, y: 8 });
-    expect(events).toEqual([{ type: "commandRejected", reason: "training step: build" }]);
+    expect(events).not.toContainEqual({ type: "commandRejected", reason: expect.stringContaining("training step") });
+    expect(s.tutorialStage).toBe("select");
   });
 
-  it("rejects move commands during the select stage", () => {
+  it("keeps movement valid during the select stage", () => {
     const s = makePlayingState();
     s.tutorialStage = "select";
     const unit = s.entities.find((e) => e.kind === "infantry" && e.owner === 0)!;
     const events = issue(s, { type: "move", unitIds: [unit.id], x: 10, y: 10 });
-    expect(events).toContainEqual({ type: "commandRejected", reason: "training step: move" });
+    expect(events).not.toContainEqual({ type: "commandRejected", reason: expect.stringContaining("training step") });
+    expect(s.tutorialStage).toBe("select");
   });
 
   it("advances tutorial stage after successful move", () => {
     const s = makePlayingState();
     s.tutorialStage = "move";
     const unit = s.entities.find((e) => e.kind === "infantry" && e.owner === 0)!;
-    issue(s, { type: "move", unitIds: [unit.id], x: 10, y: 10 });
-    expect(s.tutorialStage).toBe("harvest");
-  });
-
-  it("advances from harvest to build", () => {
-    const s = makePlayingState();
-    s.tutorialStage = "harvest";
-    const harvester = s.entities.find((e) => e.kind === "harvester" && e.owner === 0)!;
-    setTile(s, 8, 8, TILE_RESOURCE, 100);
-    issue(s, { type: "harvest", unitIds: [harvester.id], x: 8, y: 8 });
+    const target = tutorialMoveTile(s)!;
+    issue(s, { type: "move", unitIds: [unit.id], x: target.x, y: target.y });
     expect(s.tutorialStage).toBe("build");
   });
 
-  it("advances from build to produce", () => {
+  it("waits for the Power Plant to finish before advancing to produce", () => {
     const s = makePlayingState();
     s.tutorialStage = "build";
-    const events = issue(s, { type: "build", building: "power", x: 8, y: 8 });
+    const target = tutorialBuildTile(s)!;
+    const events = issue(s, { type: "build", building: "power", x: target.x, y: target.y });
     expect(events).not.toContainEqual({ type: "commandRejected", reason: expect.any(String) });
+    expect(s.tutorialStage).toBe("build");
+    expect(s.tutorialBuildId).toBeDefined();
+    for (let i = 0; i < BUILDING_STATS.power.buildTicks - 1; i++) {
+      tick(s, undefined, { collectEvents: false });
+      expect(s.tutorialStage).toBe("build");
+    }
+    tick(s, undefined, { collectEvents: false });
     expect(s.tutorialStage).toBe("produce");
   });
 
@@ -124,13 +128,13 @@ describe("tutorial gating", () => {
     expect(s.tutorialStage).toBe("attack");
   });
 
-  it("advances from attack to repair", () => {
+  it("keeps the attack lesson open until the target is destroyed", () => {
     const s = makePlayingState();
     s.tutorialStage = "attack";
     const enemy = s.entities.find((e) => e.owner === 1 && e.kind === "infantry")!;
     const unit = s.entities.find((e) => e.kind === "tank" && e.owner === 0)!;
     issue(s, { type: "attack", unitIds: [unit.id], targetId: enemy.id });
-    expect(s.tutorialStage).toBe("repair");
+    expect(s.tutorialStage).toBe("attack");
   });
 
   it("does not advance when command is rejected", () => {
@@ -143,10 +147,10 @@ describe("tutorial gating", () => {
 
   it("does not advance for non-matching command types", () => {
     const s = makePlayingState();
-    s.tutorialStage = "harvest";
+    s.tutorialStage = "build";
     const unit = s.entities.find((e) => e.kind === "infantry" && e.owner === 0)!;
     issue(s, { type: "move", unitIds: [unit.id], x: 10, y: 10 });
-    expect(s.tutorialStage).toBe("harvest");
+    expect(s.tutorialStage).toBe("build");
   });
 });
 

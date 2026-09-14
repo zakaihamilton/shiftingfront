@@ -19,7 +19,7 @@ import { restoreSlot } from "@/lib/persist/save/restore";
 import type { SaveSession } from "@/lib/persist/save";
 import { readCampaignProgress } from "@/lib/persist/campaign";
 import { createMission } from "@/lib/sim/api";
-import { createTutorialMission, enterTutorialStage } from "@/lib/sim/tutorial";
+import { createTutorialMission } from "@/lib/sim/tutorial";
 import { formatSeed } from "@/lib/seed/rng";
 import type { Command, SimState } from "@/lib/types";
 import type { PauseView } from "@/lib/ui/shortcuts";
@@ -232,14 +232,6 @@ export function useMissionPersistence({
     tutorial,
   ]);
 
-  const advanceTutorial = useCallback(() => {
-    const stages: NonNullable<SimState["tutorialStage"]>[] = ["select", "move", "harvest", "build", "produce", "attack", "repair", "complete"];
-    const current = stateRef.current.tutorialStage ?? "select";
-    const next = stages[Math.min(stages.length - 1, stages.indexOf(current) + 1)]!;
-    enterTutorialStage(stateRef.current, next);
-    setState({ ...stateRef.current, entities: [...stateRef.current.entities] });
-  }, [setState, stateRef]);
-
   const deleteArchiveEntry = useCallback((entry: ArchiveEntry) => {
     const storage = cachedLocalStorage();
     if (entry.kind === "slot") {
@@ -259,6 +251,5 @@ export function useMissionPersistence({
     listSaveSlots: () => listSlots(cachedLocalStorage()),
     listLoadEntries: () => listPauseLoadEntries(cachedLocalStorage(), seed),
     restartMissionNow,
-    advanceTutorial,
   };
 }

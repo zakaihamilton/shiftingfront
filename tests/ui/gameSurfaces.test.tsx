@@ -106,7 +106,6 @@ function testSession(): GameSession {
     toggleSound: noop,
     toggleMusic: noop,
     updateVolume: noop,
-    advanceTutorial: noop,
     exitTutorial: noop,
     resultPrimary: noop,
     goHome: noop,

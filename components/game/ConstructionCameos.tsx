@@ -39,8 +39,9 @@ export function ConstructionCameos({
               : BUILDING_STATS[kind].power > 0
                 ? `Produces +${BUILDING_STATS[kind].power} power`
                 : `Uses ${Math.abs(BUILDING_STATS[kind].power)} power`}
-            active={placeKind === kind}
-            cameo={cameo}
+          active={placeKind === kind}
+          tutorialFocus={state.tutorialStage === "build" && kind === "power" ? "power-cameo" : undefined}
+          cameo={cameo}
             shortcut={SHORTCUT.cameo[index]}
             onClick={() => onPlace(kind)}
             onContextMenu={() => onCancelBuilding(kind)}

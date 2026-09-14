@@ -25,10 +25,12 @@ export function useMinimapInteraction({
   stateRef,
   canvasRef,
   camRef,
+  cancelCameraFocus,
 }: {
   stateRef: RefObject<SimState | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   camRef: RefObject<Camera>;
+  cancelCameraFocus?: () => void;
 }) {
   const minimapDrag = useRef<MinimapDragState | null>(null);
   const [isMinimapDragging, setIsMinimapDragging] = useState(false);
@@ -47,6 +49,7 @@ export function useMinimapInteraction({
   }, [stateRef]);
 
   const focusFromMinimap = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    cancelCameraFocus?.();
     const s = stateRef.current;
     const canvas = canvasRef.current;
     if (!s || !canvas) return;
@@ -59,10 +62,11 @@ export function useMinimapInteraction({
     camRef.current.y = canvas.height / 2 - anchor.y - (TILE_H * camRef.current.zoom) / 2;
     const bounds = cameraPanBounds(camRef.current, s.width, s.height, canvas.width, canvas.height);
     clampCamera(camRef.current, bounds);
-  }, [canvasRef, camRef, minimapPointFromEvent, stateRef]);
+  }, [cancelCameraFocus, canvasRef, camRef, minimapPointFromEvent, stateRef]);
 
   const onMinimapPointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
+    cancelCameraFocus?.();
     const point = minimapPointFromEvent(e);
     minimapDrag.current = {
       pointerId: e.pointerId,
@@ -76,7 +80,7 @@ export function useMinimapInteraction({
     };
     setIsMinimapDragging(false);
     e.currentTarget.setPointerCapture(e.pointerId);
-  }, [camRef, minimapPointFromEvent]);
+  }, [camRef, cancelCameraFocus, minimapPointFromEvent]);
 
   const onMinimapPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const drag = minimapDrag.current;

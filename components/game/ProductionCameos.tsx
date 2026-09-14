@@ -38,12 +38,13 @@ export function ProductionCameos({
             profile={profile}
             cost={UNIT_STATS[unit].cost}
             disabled={disabled}
-            disabledReason={disabled ? productionBlockerText(state, unit, power, producer) : undefined}
-            detail={cameo.phase === "progress"
+          disabledReason={disabled ? productionBlockerText(state, unit, power, producer) : undefined}
+          detail={cameo.phase === "progress"
               ? `${Math.ceil((1 - cameo.ratio) * UNIT_STATS[unit].buildTicks / TICKS_PER_SECOND)}s remaining`
               : cameo.phase === "waiting" ? "Queued — cancel available" : recommendation}
-            cameo={cameo}
-            shortcut={SHORTCUT.cameo[index]}
+          cameo={cameo}
+          tutorialFocus={state.tutorialStage === "produce" && unit === "infantry" ? "infantry-cameo" : undefined}
+          shortcut={SHORTCUT.cameo[index]}
             onClick={() => onQueueUnit(unit)}
             onContextMenu={() => onCancelUnit(unit)}
           />

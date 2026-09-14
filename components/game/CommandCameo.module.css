@@ -75,6 +75,18 @@
   opacity: 1;
 }
 
+.tutorialFocus {
+  z-index: 3;
+  border-color: var(--chrome-gold) !important;
+  box-shadow: 0 0 0 1px var(--chrome-gold), 0 0 16px color-mix(in srgb, var(--chrome-gold) 42%, transparent);
+  animation: tutorialCameoPulse 1.35s ease-in-out infinite;
+}
+
+@keyframes tutorialCameoPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.25); }
+}
+
 .art {
   position: relative;
   display: flex;

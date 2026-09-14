@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { BUILDING_STATS } from "../../lib/catalog";
 import { evaluateObjectives, objectiveProgress } from "../../lib/sim/objectives";
-import { createTutorialMission, enterTutorialStage, tutorialMoveTile, tutorialPrompt } from "../../lib/sim/tutorial";
+import { createTutorialMission, enterTutorialStage, tutorialBuildTile, tutorialCommandCompletesStage, tutorialMoveTile, tutorialPrompt, tutorialSelectionCompletesStage, tutorialTargets } from "../../lib/sim/tutorial";
 import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
-import { isWalkable } from "../../lib/sim/world";
+import { canPlaceBuilding, isWalkable } from "../../lib/sim/world";
+import { fogAt } from "../../lib/sim/fog";
+import { issue, tick } from "../../lib/sim/api";
 
 describe("tutorial", () => {
   it("creates a seed 0000 training mission with no time limit", () => {
@@ -45,34 +48,28 @@ describe("tutorial", () => {
     expect(tutorialPrompt(state)).toBe("Move the selected unit to the highlighted ground (right click).");
   });
 
-  it("returns the harvest prompt for the harvest stage", () => {
-    const state = createTutorialMission();
-    state.tutorialStage = "harvest";
-    expect(tutorialPrompt(state)).toBe("Select the Harvester, then order it to an ore field.");
-  });
-
   it("returns the build prompt for the build stage", () => {
     const state = createTutorialMission();
     state.tutorialStage = "build";
-    expect(tutorialPrompt(state)).toBe("Open Construction (Q) and place a Power Plant.");
+    expect(tutorialPrompt(state)).toBe("Open Construction, choose Power Plant, then place it at the highlighted site.");
   });
 
   it("returns the produce prompt for the produce stage", () => {
     const state = createTutorialMission();
     state.tutorialStage = "produce";
-    expect(tutorialPrompt(state)).toBe("Open Production (E) and train Infantry.");
+    expect(tutorialPrompt(state)).toBe("Open Production and queue one Infantry.");
   });
 
   it("returns the attack prompt for the attack stage", () => {
     const state = createTutorialMission();
     state.tutorialStage = "attack";
-    expect(tutorialPrompt(state)).toBe("Send your combat units to ground to advance while fighting, or attack an enemy unit directly.");
+    expect(tutorialPrompt(state)).toBe("Select a combat unit, then attack the highlighted drill target.");
   });
 
   it("returns the repair prompt for the repair stage", () => {
     const state = createTutorialMission();
     state.tutorialStage = "repair";
-    expect(tutorialPrompt(state)).toBe("Use Repair (R) on a damaged structure.");
+    expect(tutorialPrompt(state)).toBe("Activate Repair, then click the highlighted damaged structure.");
   });
 
   it("returns the complete prompt for the complete stage", () => {
@@ -87,6 +84,25 @@ describe("tutorial", () => {
     expect(tutorialPrompt(state)).toBe("Training complete. Return to the command desk when ready.");
   });
 
+  it("resolves a live target for each interactive stage", () => {
+    const state = createTutorialMission();
+    const stages = ["select", "move", "build", "produce", "attack", "repair", "complete"] as const;
+    for (const stage of stages) {
+      enterTutorialStage(state, stage);
+      if (stage === "produce") expect(tutorialTargets(state), stage).toHaveLength(0);
+      else expect(tutorialTargets(state), stage).not.toHaveLength(0);
+    }
+    expect(tutorialBuildTile(state)).not.toBeNull();
+  });
+
+  it("advances selection only for the highlighted Infantry", () => {
+    const state = createTutorialMission();
+    const harvester = state.entities.find((entity) => entity.owner === 0 && entity.kind === "harvester")!;
+    const infantry = state.entities.find((entity) => entity.owner === 0 && entity.kind === "infantry")!;
+    expect(tutorialSelectionCompletesStage(state, [harvester.id])).toBe(false);
+    expect(tutorialSelectionCompletesStage(state, [infantry.id])).toBe(true);
+  });
+
   it("highlights a nearby walkable tile during the move stage", () => {
     const state = createTutorialMission();
     expect(tutorialMoveTile(state)).toBeNull();
@@ -97,6 +113,19 @@ describe("tutorial", () => {
     expect(infantry).toBeDefined();
     expect(tile).not.toEqual({ x: Math.round(infantry!.x), y: Math.round(infantry!.y) });
     expect(isWalkable(state, tile!.x, tile!.y)).toBe(true);
+  });
+
+  it("matches the build coach target to the real placement footprint", () => {
+    const state = createTutorialMission();
+    enterTutorialStage(state, "build");
+    const target = tutorialTargets(state).find((candidate) => candidate.kind === "tile");
+    const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard")!;
+    expect(target).toMatchObject({ footprint: BUILDING_STATS.power.footprint });
+    expect(target?.kind).toBe("tile");
+    if (target?.kind === "tile") {
+      expect(canPlaceBuilding(state, "power", target.x, target.y)).toBe(true);
+      expect(target.x + target.y).toBeLessThan(yard.x + yard.y);
+    }
   });
 
   it("damages a finished friendly building when the repair stage begins", () => {
@@ -129,5 +158,75 @@ describe("tutorial", () => {
     expect([yard, power].filter((building) => building.hp < building.maxHp)).toHaveLength(1);
     enterTutorialStage(state, "repair");
     expect([yard, power].filter((building) => building.hp < building.maxHp)).toHaveLength(1);
+  });
+
+  it("advances only when the expected action is performed", () => {
+    const state = createTutorialMission();
+    enterTutorialStage(state, "move");
+    const infantry = state.entities.find((entity) => entity.owner === 0 && entity.kind === "infantry")!;
+    const harvester = state.entities.find((entity) => entity.owner === 0 && entity.kind === "harvester")!;
+    const moveTile = tutorialMoveTile(state)!;
+
+    issue(state, { type: "move", unitIds: [harvester.id], x: moveTile.x, y: moveTile.y });
+    expect(state.tutorialStage).toBe("move");
+    expect(tutorialCommandCompletesStage(state, { type: "move", unitIds: [infantry.id], x: moveTile.x, y: moveTile.y })).toBe(true);
+
+    issue(state, { type: "move", unitIds: [infantry.id], x: moveTile.x, y: moveTile.y });
+    expect(state.tutorialStage).toBe("build");
+  });
+
+  it("spawns one passive drill target when attack training begins", () => {
+    const state = createTutorialMission();
+    const infantry = state.entities.find((entity) => entity.owner === 0 && entity.kind === "infantry")!;
+    const barracks = state.entities.find((entity) => entity.owner === 0 && entity.kind === "barracks")!;
+    const enemyEntities = state.entities.filter((entity) => entity.owner === 1 && entity.hp > 0);
+    expect(enemyEntities.every((entity) => entity.stance === "hold" && entity.attackTarget === undefined)).toBe(true);
+
+    enterTutorialStage(state, "attack");
+    const firstId = state.tutorialTargetId;
+    expect(firstId).toBeDefined();
+    const target = state.entities.find((entity) => entity.id === firstId);
+    expect(target).toMatchObject({ owner: 1, kind: "infantry", stance: "hold", idle: true });
+    expect(Math.hypot(target!.x - infantry.x, target!.y - infantry.y)).toBeGreaterThan(6.4);
+    expect(Math.hypot(target!.x - barracks.x, target!.y - barracks.y)).toBeGreaterThan(8);
+    expect(fogAt(state, Math.round((barracks.x + target!.x) / 2), Math.round((barracks.y + target!.y) / 2))).toBe(2);
+    const count = state.entities.length;
+
+    enterTutorialStage(state, "attack");
+    expect(state.entities).toHaveLength(count);
+    expect(state.tutorialTargetId).toBe(firstId);
+  });
+
+  it("keeps the enemy base from producing or attacking during training", () => {
+    const state = createTutorialMission();
+    const initialCount = state.entities.length;
+    tick(state, undefined, { collectEvents: false });
+    expect(state.entities).toHaveLength(initialCount);
+    expect(state.entities.filter((entity) => entity.owner === 1).every((entity) => entity.attackTarget === undefined)).toBe(true);
+  });
+
+  it("requires the spawned drill target for attack completion", () => {
+    const state = createTutorialMission();
+    enterTutorialStage(state, "attack");
+    const infantry = state.entities.find((entity) => entity.owner === 0 && entity.kind === "infantry")!;
+    const target = state.entities.find((entity) => entity.id === state.tutorialTargetId)!;
+    expect(tutorialCommandCompletesStage(state, { type: "attack", unitIds: [infantry.id], targetId: target.id })).toBe(true);
+    expect(tutorialCommandCompletesStage(state, { type: "attackMove", unitIds: [infantry.id], x: target.x, y: target.y })).toBe(true);
+  });
+
+  it("waits for the drill target to die before opening repair", () => {
+    const state = createTutorialMission();
+    enterTutorialStage(state, "attack");
+    const infantry = state.entities.find((entity) => entity.owner === 0 && entity.kind === "infantry")!;
+    const target = state.entities.find((entity) => entity.id === state.tutorialTargetId)!;
+
+    issue(state, { type: "attack", unitIds: [infantry.id], targetId: target.id });
+    expect(state.tutorialStage).toBe("attack");
+    tick(state, undefined, { collectEvents: false });
+    expect(state.tutorialStage).toBe("attack");
+
+    target.hp = 0;
+    tick(state, undefined, { collectEvents: false });
+    expect(state.tutorialStage).toBe("repair");
   });
 });

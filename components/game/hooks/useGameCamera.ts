@@ -36,20 +36,31 @@ export function useGameCamera({
   const [hotPan, setHotPan] = useState<PanDir | null>(null);
   const panHold = useRef<PanDir | null>(null);
   const edgePanHover = useRef<{ dir: PanDir; startedAt: number } | null>(null);
-  const minimap = useMinimapInteraction({ stateRef, canvasRef, camRef });
+  const focusAnimationRef = useRef<number | null>(null);
+
+  const cancelFocusAnimation = useCallback(() => {
+    if (focusAnimationRef.current !== null && typeof cancelAnimationFrame === "function") {
+      cancelAnimationFrame(focusAnimationRef.current);
+    }
+    focusAnimationRef.current = null;
+  }, []);
+
+  const minimap = useMinimapInteraction({ stateRef, canvasRef, camRef, cancelCameraFocus: cancelFocusAnimation });
 
   const applyEdgePan = useCallback((dir: PanDir | null) => {
     if (dir === null) {
       edgePanHover.current = null;
       panHold.current = null;
     } else if (edgePanHover.current?.dir !== dir) {
+      cancelFocusAnimation();
       edgePanHover.current = { dir, startedAt: performance.now() };
       panHold.current = null;
     }
     setHotPan((prev) => (prev === dir ? prev : dir));
-  }, []);
+  }, [cancelFocusAnimation]);
 
   const focusTile = useCallback((tx: number, ty: number, yBias = 0.5) => {
+    cancelFocusAnimation();
     const world = stateRef.current;
     const canvas = canvasRef.current;
     if (!world || !canvas) return;
@@ -59,7 +70,48 @@ export function useGameCamera({
     camRef.current.y = canvas.height * yBias - p.y;
     const bounds = cameraPanBounds(camRef.current, world.width, world.height, canvas.width, canvas.height);
     clampCamera(camRef.current, bounds);
-  }, [canvasRef, stateRef]);
+  }, [canvasRef, cancelFocusAnimation, stateRef]);
+
+  const focusTileAnimated = useCallback((tx: number, ty: number, yBias = 0.5, durationMs = 480) => {
+    const world = stateRef.current;
+    const canvas = canvasRef.current;
+    if (!world || !canvas) return;
+    if (durationMs <= 0 || typeof requestAnimationFrame !== "function") {
+      focusTile(tx, ty, yBias);
+      return;
+    }
+
+    cancelFocusAnimation();
+    const elev = heightAt(world, tx, ty);
+    const p = tileToScreen(tx, ty, { x: 0, y: 0, zoom: camRef.current.zoom }, elev);
+    const target = {
+      x: canvas.width / 2 - p.x,
+      y: canvas.height * yBias - p.y,
+      zoom: camRef.current.zoom,
+    };
+    const bounds = cameraPanBounds(target, world.width, world.height, canvas.width, canvas.height);
+    clampCamera(target, bounds);
+    const startX = camRef.current.x;
+    const startY = camRef.current.y;
+    const startedAt = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min(1, Math.max(0, (now - startedAt) / durationMs));
+      const eased = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      camRef.current.x = startX + (target.x - startX) * eased;
+      camRef.current.y = startY + (target.y - startY) * eased;
+      if (progress < 1) {
+        focusAnimationRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      focusAnimationRef.current = null;
+      const next = panAvailability(camRef.current, bounds);
+      panAvailRef.current = next;
+      setPanAvail(next);
+    };
+    focusAnimationRef.current = requestAnimationFrame(animate);
+  }, [canvasRef, cancelFocusAnimation, focusTile, panAvailRef, setPanAvail, stateRef]);
 
   const jumpHome = useCallback(() => {
     const cy = stateRef.current?.entities.find((e) => e.hp > 0 && e.owner === 0 && e.kind === "constructionYard");
@@ -73,6 +125,7 @@ export function useGameCamera({
   }, [focusTile, stateRef]);
 
   const resetCamera = useCallback((s: SimState) => {
+    cancelFocusAnimation();
     const cy = s.entities.find((e) => e.owner === 0 && e.kind === "constructionYard");
     const canvas = canvasRef.current;
     if (cy && canvas) {
@@ -86,7 +139,9 @@ export function useGameCamera({
       panAvailRef.current = avail;
       setPanAvail(avail);
     }
-  }, [canvasRef]);
+  }, [canvasRef, cancelFocusAnimation]);
+
+  useEffect(() => () => cancelFocusAnimation(), [cancelFocusAnimation]);
 
   useEffect(() => {
     const s = stateRef.current;
@@ -115,6 +170,7 @@ export function useGameCamera({
     edgePanHover,
     applyEdgePan,
     focusTile,
+    focusTileAnimated,
     jumpHome,
     centerSelection,
     resetCamera,

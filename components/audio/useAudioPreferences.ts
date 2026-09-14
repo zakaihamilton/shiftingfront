@@ -30,12 +30,6 @@ export function useAudioPreferences(
     writeSettings(cachedLocalStorage(), next);
   }, [setSettings, settings]);
 
-  const toggleTacticalRoster = useCallback(() => {
-    const next = { ...settings, tacticalRosterEnabled: !settings.tacticalRosterEnabled };
-    setSettings(next);
-    writeSettings(cachedLocalStorage(), next);
-  }, [setSettings, settings]);
-
   const toggleReducedMotion = useCallback(() => {
     const next = { ...settings, reducedMotion: !settings.reducedMotion };
     setSettings(next);
@@ -48,5 +42,5 @@ export function useAudioPreferences(
     writeSettings(cachedLocalStorage(), next);
   }, [setSettings, settings]);
 
-  return { toggleSound, toggleMusic, toggleTacticalRoster, toggleReducedMotion, toggleHighContrast, updateVolume };
+  return { toggleSound, toggleMusic, toggleReducedMotion, toggleHighContrast, updateVolume };
 }

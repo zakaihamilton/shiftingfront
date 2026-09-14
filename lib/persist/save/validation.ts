@@ -246,7 +246,9 @@ export function isStateShape(value: unknown): value is SimState {
   if (!isControlGroups(value.controlGroups)) return false;
   if (value.missionKind !== undefined && !isOneOf(value.missionKind, MISSION_KINDS)) return false;
   if (value.runtime !== undefined && !isRuntime(value.runtime)) return false;
-  if (value.tutorialStage !== undefined && !isOneOf(value.tutorialStage, ["select", "move", "harvest", "build", "produce", "attack", "repair", "complete"] as const)) return false;
+  if (value.tutorialStage !== undefined && !isOneOf(value.tutorialStage, ["select", "move", "build", "produce", "attack", "repair", "complete"] as const)) return false;
+  if (value.tutorialTargetId !== undefined && !isIntegerInRange(value.tutorialTargetId, 1, Number.MAX_SAFE_INTEGER)) return false;
+  if (value.tutorialBuildId !== undefined && !isIntegerInRange(value.tutorialBuildId, 1, Number.MAX_SAFE_INTEGER)) return false;
   if (value.aiState !== undefined && !isOneOf(value.aiState, ["economy", "defense", "assault", "retreat", "regroup"] as const)) return false;
   if (value.aiRetreatTick !== undefined && !isIntegerInRange(value.aiRetreatTick, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (value.aiRetreatLocked !== undefined && typeof value.aiRetreatLocked !== "boolean") return false;

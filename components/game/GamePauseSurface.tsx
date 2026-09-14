@@ -7,6 +7,7 @@ export function GamePauseSurface({
   view,
   notice,
   settings,
+  tutorial,
   setView,
   setNotice,
   onControlsOpened,
@@ -15,6 +16,7 @@ export function GamePauseSurface({
   view: PauseView;
   notice: string;
   settings: GameSettings;
+  tutorial: boolean;
   setView: (view: PauseView) => void;
   setNotice: (notice: string) => void;
   onControlsOpened?: () => void;
@@ -25,6 +27,7 @@ export function GamePauseSurface({
       view={view}
       notice={notice}
       settings={settings}
+      tutorial={tutorial}
       saveSlots={session.listSaveSlots()}
       loadEntries={session.listLoadEntries()}
       defaultSlotName={session.defaultSlotName()}
@@ -49,7 +52,6 @@ export function GamePauseSurface({
       onLeaveWithoutSave={session.canLeaveWithoutSave ? session.leaveWithoutSave : undefined}
       onToggleSound={session.toggleSound}
       onToggleMusic={session.toggleMusic}
-      onToggleTacticalRoster={session.toggleTacticalRoster}
       onToggleReducedMotion={session.toggleReducedMotion}
       onToggleHighContrast={session.toggleHighContrast}
       onVolumeChange={session.updateVolume}

@@ -98,7 +98,7 @@ export function guardResourceLane(state: SimState, units: Entity[], yard: Entity
 }
 
 export function tickAi(state: SimState): void {
-  if (state.result !== "playing") return;
+  if (state.result !== "playing" || state.tutorialStage !== undefined) return;
   const rng = rngFromState(state.rngState);
   // This is on the hot path for every simulation tick. Build the frequently
   // used views in one pass instead of repeatedly filtering the same entity

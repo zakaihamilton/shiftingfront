@@ -68,7 +68,6 @@ export function MenuScreen() {
         onLaunch={controller.launch}
         onToggleSound={controller.toggleSound}
         onToggleMusic={controller.toggleMusic}
-        onToggleTacticalRoster={controller.toggleTacticalRoster}
         onToggleReducedMotion={controller.toggleReducedMotion}
         onToggleHighContrast={controller.toggleHighContrast}
         onVolumeChange={controller.updateVolume}

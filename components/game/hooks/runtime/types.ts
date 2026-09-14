@@ -33,7 +33,6 @@ export type RuntimePorts = {
   applyEdgePan: (direction: PanDir | null) => void;
   redraw: (nowMs?: number, subTickAlpha?: number) => void;
   onAlert: (text: string, kind?: "warning" | "objective" | "contact" | "system") => void;
-  onTacticalAnnouncement: (text: string) => void;
   onCommandNotice: (text: string, kind?: "success" | "info" | "warning" | "error") => void;
   saveSession: SaveSession;
   persistCampaign: boolean;

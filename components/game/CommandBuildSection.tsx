@@ -47,6 +47,13 @@ export function CommandBuildSection({
       selectedClassName={activeTab === "selected" ? styles.selectedBody : undefined}
     />
   );
+  const tutorialFocus = state.tutorialStage === "build"
+    ? "construction-tab"
+    : state.tutorialStage === "produce"
+      ? "production-tab"
+      : state.tutorialStage === "repair"
+        ? "repair-control"
+        : undefined;
 
   return (
     <section className={styles.build} data-testid="build-progress">
@@ -59,6 +66,7 @@ export function CommandBuildSection({
         onSelected={() => onTab("selected")}
         onRepair={onRepair}
         onSell={onSell}
+        tutorialFocus={tutorialFocus}
       />
       {activeTab === "selected" ? (
         <div className={styles.selected} data-testid="selected-panel">

@@ -40,7 +40,6 @@ export function useGameLoop({
   campaignRecordedRef,
   redraw,
   onAlert,
-  onTacticalAnnouncement,
   onCommandNotice,
   saveSession,
   persistCampaign = true,
@@ -65,7 +64,6 @@ export function useGameLoop({
   campaignRecordedRef: MutableRefObject<boolean>;
   redraw: (nowMs?: number, subTickAlpha?: number) => void;
   onAlert: (text: string, kind?: "warning" | "objective" | "contact" | "system") => void;
-  onTacticalAnnouncement: (text: string) => void;
   onCommandNotice?: (text: string, kind?: "success" | "info" | "warning" | "error") => void;
   saveSession: SaveSession;
   persistCampaign?: boolean;
@@ -111,7 +109,6 @@ export function useGameLoop({
       applyEdgePan,
       redraw,
       onAlert,
-      onTacticalAnnouncement,
       onCommandNotice: onCommandNotice ?? (() => undefined),
       saveSession,
       persistCampaign,
@@ -130,7 +127,6 @@ export function useGameLoop({
     fxSeq,
     keys,
     onAlert,
-    onTacticalAnnouncement,
     onCommandNotice,
     panAvailRef,
     panHold,

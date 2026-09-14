@@ -4,32 +4,13 @@ import { footprintOf, TICKS_PER_SECOND } from "../../lib/catalog";
 import { TILE_H, tileToScreen } from "../../lib/iso";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, saveKey } from "../../lib/persist/save";
-import { SETTINGS_KEY, SETTINGS_VERSION, defaultSettings } from "../../lib/persist/settings";
 import { createMission } from "../../lib/sim/api";
 import { heightAt } from "../../lib/sim/world";
 import { isBuildingEntity, type Entity, type SimState } from "../../lib/types";
-import { commandRejectionMessage } from "../../lib/ui/copy";
 
 const TEST_SEED = 421;
 const TEST_MISSION = 0;
 const AUTOSAVE_INTERVAL_TICKS = 30 * TICKS_PER_SECOND;
-const COMMAND_REJECTION_REASONS = [
-  "unit unavailable",
-  "producer unavailable",
-  "wrong producer",
-  "production queue full",
-  "insufficient credits",
-  "power shortage",
-  "invalid building",
-  "building limit reached",
-  "invalid placement",
-  "construction yard unavailable",
-  "invalid attack target",
-  "invalid support target",
-  "no eligible support unit",
-] as const;
-const COMMAND_REJECTION_MESSAGES = new Set(COMMAND_REJECTION_REASONS.map(commandRejectionMessage));
-
 function saveEnvelope(state: SimState): string {
   return JSON.stringify({
     version: SAVE_VERSION,
@@ -176,34 +157,9 @@ test("completes a prepared mission through repair, production, and autosave", as
   await page.addInitScript(({ key, raw }) => {
     if (!window.localStorage.getItem(key)) window.localStorage.setItem(key, raw);
   }, { key: saveKey(TEST_SEED), raw: saveEnvelope(state) });
-  await page.addInitScript(({ key, raw }) => {
-    window.localStorage.setItem(key, raw);
-  }, {
-    key: SETTINGS_KEY,
-    raw: JSON.stringify({
-      version: SETTINGS_VERSION,
-      savedAt: Date.now(),
-      settings: { ...defaultSettings(), tacticalRosterEnabled: true },
-    }),
-  });
-
   await page.goto(`/play?seed=0421&mission=${TEST_MISSION}&resume=1`);
   await waitForBattlefield(page);
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
-  const tacticalAnnouncement = page.getByTestId("tactical-roster").locator('[aria-live="polite"]');
-  await expect(tacticalAnnouncement).toBeVisible();
-  await tacticalAnnouncement.evaluate((element) => {
-    const node = element as HTMLElement;
-    const announcements: string[] = [];
-    node.dataset.observedAnnouncements = JSON.stringify(announcements);
-    const record = () => {
-      const text = node.textContent?.trim();
-      if (!text || announcements.at(-1) === text) return;
-      announcements.push(text);
-      node.dataset.observedAnnouncements = JSON.stringify(announcements);
-    };
-    new MutationObserver(record).observe(node, { childList: true, subtree: true, characterData: true });
-  });
 
   await expect.poll(async () => (await savedState(page))?.tick ?? -1).toBeGreaterThanOrEqual(AUTOSAVE_INTERVAL_TICKS);
 
@@ -235,8 +191,6 @@ test("completes a prepared mission through repair, production, and autosave", as
   expect(terminal?.unitsProducedByRole.infantry).toBeGreaterThanOrEqual(1);
   expect(terminal?.unitsProduced[0]).toBeGreaterThanOrEqual(1);
   expect(terminal?.entities.find((entity) => entity.id === building.id)?.hp).toBeGreaterThan(initialHp);
-  const announcements = JSON.parse(await tacticalAnnouncement.getAttribute("data-observed-announcements") ?? "[]") as string[];
-  expect(announcements.filter((message) => COMMAND_REJECTION_MESSAGES.has(message))).toEqual([]);
 
   await page.reload();
   await expect(page.getByTestId("mission-result")).toBeVisible();

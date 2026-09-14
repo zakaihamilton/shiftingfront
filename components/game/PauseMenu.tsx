@@ -18,6 +18,7 @@ export function PauseMenu({
   view,
   notice,
   settings,
+  tutorial = false,
   saveSlots,
   loadEntries,
   defaultSlotName,
@@ -35,7 +36,6 @@ export function PauseMenu({
   onLeaveWithoutSave,
   onToggleSound,
   onToggleMusic,
-  onToggleTacticalRoster,
   onToggleReducedMotion,
   onToggleHighContrast,
   onVolumeChange,
@@ -47,6 +47,7 @@ export function PauseMenu({
   view: PauseView;
   notice: string;
   settings: GameSettings;
+  tutorial?: boolean;
   saveSlots: SlotMeta[];
   loadEntries: ArchiveEntry[];
   defaultSlotName: string;
@@ -64,7 +65,6 @@ export function PauseMenu({
   onLeaveWithoutSave?: () => void;
   onToggleSound: () => void;
   onToggleMusic: () => void;
-  onToggleTacticalRoster?: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
@@ -87,6 +87,7 @@ export function PauseMenu({
         {view === "main" ? (
           <PauseMainMenu
             onResume={onResume}
+            tutorial={tutorial}
             onSave={onSave}
             onLoad={onLoad}
             onBriefing={onBriefing}
@@ -117,7 +118,6 @@ export function PauseMenu({
             settings={settings}
             onToggleSound={onToggleSound}
             onToggleMusic={onToggleMusic}
-            onToggleTacticalRoster={onToggleTacticalRoster}
             onToggleReducedMotion={onToggleReducedMotion}
             onToggleHighContrast={onToggleHighContrast}
             onVolumeChange={onVolumeChange}

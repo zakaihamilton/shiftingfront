@@ -8,7 +8,6 @@ export function MenuOptions({
   settings,
   onToggleSound,
   onToggleMusic,
-  onToggleTacticalRoster,
   onToggleReducedMotion,
   onToggleHighContrast,
   onVolumeChange,
@@ -17,7 +16,6 @@ export function MenuOptions({
   settings: GameSettings;
   onToggleSound: () => void;
   onToggleMusic: () => void;
-  onToggleTacticalRoster?: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
@@ -35,7 +33,6 @@ export function MenuOptions({
         settings={settings}
         onToggleSound={onToggleSound}
         onToggleMusic={onToggleMusic}
-        onToggleTacticalRoster={onToggleTacticalRoster}
         onToggleReducedMotion={onToggleReducedMotion}
         onToggleHighContrast={onToggleHighContrast}
         onVolumeChange={onVolumeChange}
