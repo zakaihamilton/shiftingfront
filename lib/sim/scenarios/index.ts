@@ -39,17 +39,18 @@ function setupDestroyMarkedScenario({ state, map, mission, rng, reachable }: Sce
   const count = mission.win.targetCount ?? 1;
   for (let i = 0; i < count; i++) {
     const spot = spots[i] ?? enemyApproachPoint(map, 6 + i * 3, i % 2 === 0 ? -2 : 2);
-    const kind = rng.pick(["refinery", "factory", "objective"] as const);
-    const buildingKind = kind === "refinery" ? "objective" : kind;
+    // Duplicate "objective" keeps the old 2/3 objective, 1/3 factory mix
+    // (the previous pick listed "refinery", which was remapped to objective).
+    const kind = rng.pick(["objective", "factory", "objective"] as const);
     const placed = spawnBuildingAt(
       state,
       1,
-      buildingKind,
+      kind,
       spot.x,
       spot.y,
       0,
       true,
-      reachableBuildingFilter(state, buildingKind, reachable),
+      reachableBuildingFilter(state, kind, reachable),
     );
     if (placed) ids.push(placed.id);
   }

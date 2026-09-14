@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { campaignKey, completeMission, freshCampaignProgress, readCampaignProgress, writeCampaignProgress } from "../../lib/persist/campaign";
+import { campaignKey, completeMission, freshCampaignProgress, readCampaignProgress, recordWonCampaignProgress, writeCampaignProgress } from "../../lib/persist/campaign";
 import { memoryStorage } from "../../lib/persist/save";
+import { makeFixture } from "../../lib/sim/fixtures";
 
 describe("campaign progress", () => {
   it("persists per-seed progress and unlocks only the next mission", () => {
@@ -52,5 +53,20 @@ describe("campaign progress", () => {
     };
 
     expect(writeCampaignProgress(storage, freshCampaignProgress(42))).toBe(false);
+  });
+
+  it("records a won mission and ignores in-progress missions", () => {
+    const storage = memoryStorage();
+    const playing = makeFixture({ seed: 42, win: { kind: "annihilate" } });
+    expect(recordWonCampaignProgress(storage, playing)).toBe(true);
+    expect(readCampaignProgress(storage, 42).completedMissions).toEqual([]);
+
+    const won = makeFixture({ seed: 42, win: { kind: "annihilate" } });
+    won.result = "won";
+    expect(recordWonCampaignProgress(storage, won)).toBe(true);
+    expect(readCampaignProgress(storage, 42)).toMatchObject({
+      unlockedMission: 1,
+      completedMissions: [0],
+    });
   });
 });

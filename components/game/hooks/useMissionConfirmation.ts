@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import type { SimState } from "@/lib/types";
 import {
   missionConfirmationFor,
   type MissionConfirmation,
@@ -8,15 +9,17 @@ import {
 export function useMissionConfirmation({
   restartNow,
   goHomeNow,
+  getResult,
 }: {
   restartNow: () => void;
   goHomeNow: () => void;
+  getResult?: () => SimState["result"];
 }) {
   const [confirmation, setConfirmation] = useState<MissionConfirmation | null>(null);
 
   const requestConfirmation = useCallback((action: MissionConfirmationAction) => {
-    setConfirmation(missionConfirmationFor(action));
-  }, []);
+    setConfirmation(missionConfirmationFor(action, getResult?.() ?? "playing"));
+  }, [getResult]);
 
   const restartMission = useCallback(() => {
     requestConfirmation("restart");

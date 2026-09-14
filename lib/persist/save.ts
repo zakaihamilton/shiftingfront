@@ -38,6 +38,7 @@ export {
   SLOT_PREFIX,
   SLOT_VERSION,
   SLOT_NAME_MAX,
+  SLOT_IMPORT_MAX_BYTES,
   SLOT_ID_PATTERN,
   type SlotMeta,
   type ParsedSlot,

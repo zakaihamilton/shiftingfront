@@ -218,7 +218,10 @@ export function isSupportEntity(e: Entity): boolean {
 }
 
 export function isUnitAvailable(kind: UnitKind, missionIndex: number): boolean {
-  return !UNIT_DEFINITIONS[kind].scenarioOnly && (!isSupportUnit(kind) || missionIndex >= 0);
+  // Callers pass missionIndex for a possible later unlock gate. Availability is
+  // currently scenario-only; AI still delays support until mission 2 itself.
+  void missionIndex;
+  return !UNIT_DEFINITIONS[kind].scenarioOnly;
 }
 
 export function supportTargetDomain(kind: UnitKind): UnitDomain | undefined {

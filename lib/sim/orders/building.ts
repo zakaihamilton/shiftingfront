@@ -3,7 +3,9 @@ import { isBuildingEntity, type BuildingKind, type Entity, type SimEvent, type S
 import { byId, canPlaceBuilding, inBounds, invalidateEntityCaches, invalidateNavigation, isStaticWalkable, spawnBuilding, terrainAccess } from "../world";
 import { canRepair } from "../repair";
 import { canSell } from "../sell";
-import { UNIT_STATS } from "../../catalog";
+import { refundQueuedUnits } from "../productionRefund";
+
+export { refundQueuedUnits };
 
 export function startBuild(state: SimState, kind: BuildingKind, x: number, y: number): SimEvent[] {
   if (kind === "constructionYard" || kind === "objective") return [{ type: "commandRejected", reason: "invalid building" }];
@@ -71,16 +73,6 @@ export function setRallyPoint(state: SimState, buildingId: number, x: number, y:
   }
   building.rallyPoint = { x: tx, y: ty };
   return [];
-}
-
-export function refundQueuedUnits(state: SimState, e: Entity): void {
-  if (e.producing) {
-    state.credits[0] += UNIT_STATS[e.producing.kind].cost;
-    e.producing = undefined;
-  }
-  if (!e.queue?.length) return;
-  for (const unit of e.queue) state.credits[0] += UNIT_STATS[unit].cost;
-  e.queue = [];
 }
 
 export function sellBuilding(state: SimState, buildingId: number): SimEvent[] {

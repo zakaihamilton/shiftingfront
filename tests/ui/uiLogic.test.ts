@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { campaignSummary, missionMedalDisplay } from "../../components/campaign/campaignSummary";
 import { mobileCommandLabel } from "../../components/game/MobileTouchControls";
-import { contextOrders, isContactTarget, mobileCommandOrders } from "../../components/game/hooks/gameInputOrders";
+import { contextOrders, contextOrderNotice, isContactTarget, mobileCommandOrders } from "../../components/game/hooks/gameInputOrders";
 import { dailySeed, menuLaunchPath } from "../../components/menu/menuLaunch";
 import { createCampaign } from "../../lib/gen/campaign";
 import { freshCampaignProgress } from "../../lib/persist/campaign";
@@ -50,6 +50,11 @@ describe("mobile command policy", () => {
     expect(contextOrders(state, [unit.id], undefined, 6, 6)).toEqual([
       { type: "attackMove", unitIds: [unit.id], x: 6, y: 6 },
     ]);
+    expect(contextOrderNotice(contextOrders(state, [unit.id], undefined, 6, 6))).toBe("Attack-move order issued.");
+    const harvester = addUnit(state, 0, "harvester", 3, 2);
+    expect(contextOrderNotice(contextOrders(state, [harvester.id, unit.id], undefined, 6, 6))).toBe(
+      "Harvest and attack-move orders issued.",
+    );
     expect(mobileCommandOrders(state, "harvest", [unit.id], undefined, 6, 6)).toEqual([
       { type: "harvest", unitIds: [unit.id], x: 6, y: 6 },
     ]);

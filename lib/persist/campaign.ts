@@ -1,4 +1,5 @@
-import type { CampaignProgress } from "../types";
+import { missionMedals, missionScore } from "../sim/debrief";
+import type { CampaignProgress, SimState } from "../types";
 import { safeSetItem, type StorageAdapter } from "./save";
 import { formatSeed } from "../seed/rng";
 import { isRecord, readPersistedEnvelope } from "./utils";
@@ -71,6 +72,15 @@ export function writeCampaignProgress(storage: StorageAdapter, progress: Campaig
     savedAt: Date.now(),
     progress,
   }));
+}
+
+/** Persist unlocks/medals for a won mission. No-op when the mission is not won. */
+export function recordWonCampaignProgress(storage: StorageAdapter, state: SimState): boolean {
+  if (state.result !== "won") return true;
+  return writeCampaignProgress(
+    storage,
+    completeMission(readCampaignProgress(storage, state.seed), state.missionIndex, missionMedals(state), missionScore(state)),
+  );
 }
 
 export function completeMission(

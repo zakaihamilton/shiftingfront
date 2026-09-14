@@ -17,6 +17,7 @@ import { safeGetItem, safeKeys, safeRemoveItem, safeSetItem, type StorageAdapter
 export const SLOT_PREFIX = "shiftingfront:slot:";
 export const SLOT_VERSION = 1;
 export const SLOT_NAME_MAX = 40;
+export const SLOT_IMPORT_MAX_BYTES = 1_048_576;
 export const SLOT_ID_PATTERN = /^[a-z0-9]{8,32}$/i;
 
 export type SlotEnvelope = {
@@ -126,6 +127,10 @@ export function exportSlot(storage: StorageAdapter, id: string): string | null {
 
 /** Import a slot as a new local save without replacing any existing slot. */
 export function importSlot(storage: StorageAdapter, raw: string): SlotWriteResult {
+  if (raw.length > SLOT_IMPORT_MAX_BYTES) {
+    console.debug("[persist] Rejected oversized save slot import");
+    return { ok: false };
+  }
   try {
     const decoded = decodeSlot(raw);
     return writeSlot(storage, {

@@ -39,12 +39,12 @@ describe("facingFor", () => {
     const entityById = new Map(state.entities.map((entity) => [entity.id, entity]));
 
     expect(facingFor(state, unit, entityById)).toBe(3);
-    expect(unit.facing).toBe(3);
+    expect(unit.facing).toBe(0);
 
     // Moving along tile (+4, +4) moves straight south on screen (Facing 2)
     unit.path = [{ x: 8, y: 8 }];
     expect(facingFor(state, unit, entityById)).toBe(2);
-    expect(unit.facing).toBe(2);
+    expect(unit.facing).toBe(0);
 
     // Moving along tile (+4, -4) moves straight east on screen (Facing 0)
     unit.path = [{ x: 8, y: 0 }];

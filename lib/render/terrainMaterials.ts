@@ -255,6 +255,7 @@ export function tileVariant(seed: number, x: number, y: number): number {
 }
 
 const materialMemo = new Map<string, BiomeMaterials>();
+const MATERIAL_MEMO_LIMIT = 32;
 
 export function clearTerrainMaterialCache(): void {
   materialMemo.clear();
@@ -275,6 +276,10 @@ export function materialsFor(state: AtlasWorld): BiomeMaterials {
     patchA: mixRgb(base.patchA, tint, amount * 0.3),
     patchB: mixRgb(base.patchB, tint, amount * 0.2),
   };
+  if (!materialMemo.has(key) && materialMemo.size >= MATERIAL_MEMO_LIMIT) {
+    const oldest = materialMemo.keys().next().value;
+    if (oldest !== undefined) materialMemo.delete(oldest);
+  }
   materialMemo.set(key, mats);
   return mats;
 }

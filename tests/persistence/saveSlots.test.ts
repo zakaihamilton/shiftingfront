@@ -15,6 +15,7 @@ import {
   removeSave,
   removeSlot,
   SLOT_NAME_MAX,
+  SLOT_IMPORT_MAX_BYTES,
   SLOT_PREFIX,
   slotKey,
   SLOT_VERSION,
@@ -234,6 +235,7 @@ describe("named save slots", () => {
 
     expect(importSlot(storage, "not-json")).toEqual({ ok: false });
     expect(importSlot(storage, JSON.stringify({ version: SLOT_VERSION + 1 }))).toEqual({ ok: false });
+    expect(importSlot(storage, "x".repeat(SLOT_IMPORT_MAX_BYTES + 1))).toEqual({ ok: false });
     expect(storage.keys().map((key) => [key, storage.getItem(key)])).toEqual(before);
   });
 

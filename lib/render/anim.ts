@@ -1,5 +1,6 @@
 import { BUILDING_STATS, UNIT_STATS } from "../catalog";
 import { TICK_MS } from "../game/loop";
+import { isoFacingAngle, screenAngleToFacing } from "../iso";
 import type { BuildingKind, Entity, Facing, UnitKind } from "../types";
 
 export type AnimFrame = 0 | 1 | 2 | 3;
@@ -53,12 +54,12 @@ export function animFrame(timeMs: number, periodMs: number, count: 4, offset = 0
 }
 
 export function toFacing(dx: number, dy: number): Facing {
-  const angle = Math.atan2(dy, dx);
-  return ((Math.round((angle / (Math.PI * 2)) * 8) + 8) % 8) as Facing;
+  if (Math.abs(dx) < 0.0001 && Math.abs(dy) < 0.0001) return 0;
+  return screenAngleToFacing(Math.atan2(dy, dx));
 }
 
 export function facingVector(facing: Facing): { x: number; y: number } {
-  const angle = (facing / 8) * Math.PI * 2;
+  const angle = isoFacingAngle(facing);
   return { x: Math.cos(angle), y: Math.sin(angle) * 0.52 };
 }
 

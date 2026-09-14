@@ -39,6 +39,13 @@ export function clearTurretAimCache(): void {
   turretAimMap.clear();
 }
 
+export function pruneTurretAimCache(liveIds: Iterable<number>): void {
+  const live = liveIds instanceof Set ? liveIds : new Set(liveIds);
+  for (const id of turretAimMap.keys()) {
+    if (!live.has(id)) turretAimMap.delete(id);
+  }
+}
+
 let cachedTurretModel: UnitModel | null = null;
 export function getTurretModel(): UnitModel {
   if (!cachedTurretModel) {

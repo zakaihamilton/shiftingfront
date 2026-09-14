@@ -3,6 +3,7 @@ import { ActionRail } from "@/components/campaign/CampaignDossier";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { formatMissionShareCard } from "@/lib/ui/shareCard";
+import { MISSION_MAX } from "@/lib/seed/rng";
 import type { SimState } from "@/lib/types";
 import styles from "./MissionResult.module.css";
 
@@ -34,12 +35,12 @@ export function MissionResultActions({
 
   return (
     <ActionRail className={styles.actions}>
-      {state.result === "won" && state.missionIndex < 5 ? (
+      {state.result === "won" && state.missionIndex < MISSION_MAX ? (
         <ConsoleButton tooltip="Advance to the next briefing" shortcut={SHORTCUT.resultPrimary} onClick={onNextBriefing}>
           Next briefing
         </ConsoleButton>
       ) : null}
-      {state.result === "won" && state.missionIndex >= 5 ? (
+      {state.result === "won" && state.missionIndex >= MISSION_MAX ? (
         <ConsoleButton tooltip="Return to the main menu" shortcut={SHORTCUT.resultPrimary} onClick={onCampaignVictory}>
           Campaign victory
         </ConsoleButton>

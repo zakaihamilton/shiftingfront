@@ -66,6 +66,33 @@ export function productionRallyOrder(
   return target ? [] : [{ type: "rally", buildingId: building.id, x, y }];
 }
 
+const ORDER_NOTICE_LABELS: { type: Command["type"]; label: string }[] = [
+  { type: "rally", label: "rally point" },
+  { type: "attack", label: "attack" },
+  { type: "support", label: "support" },
+  { type: "harvest", label: "harvest" },
+  { type: "attackMove", label: "attack-move" },
+  { type: "move", label: "move" },
+];
+
+function capitalizeNotice(label: string): string {
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+export function contextOrderNotice(commands: Command[]): string {
+  const labels = ORDER_NOTICE_LABELS
+    .filter((entry) => commands.some((command) => command.type === entry.type))
+    .map((entry) => entry.label);
+  if (!labels.length) return "Order issued.";
+  if (labels.length === 1 && labels[0] === "rally point") return "Rally point set.";
+  if (labels.length === 1) return `${capitalizeNotice(labels[0]!)} order issued.`;
+  const last = labels[labels.length - 1]!;
+  const joined = labels.length === 2
+    ? `${capitalizeNotice(labels[0]!)} and ${last}`
+    : `${capitalizeNotice(labels.slice(0, -1).join(", "))}, and ${last}`;
+  return `${joined} orders issued.`;
+}
+
 export function contextOrders(s: SimState, ids: number[], target: SimState["entities"][number] | undefined, x: number, y: number, attackMove = false): Command[] {
   const rallyOrders = productionRallyOrder(s, ids, target, x, y);
   if (rallyOrders !== undefined) return rallyOrders;

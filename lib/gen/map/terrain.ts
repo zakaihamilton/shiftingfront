@@ -242,6 +242,11 @@ export function reachable(tiles: number[], heights: number[], w: number, h: numb
       if (seen[i]) continue;
       if (tiles[i] === TILE_WATER || tiles[i] === TILE_BLOCKED) continue;
       if (Math.abs((heights[i] ?? 1) - (heights[idx(c.x, c.y, w)] ?? 1)) > 1) continue;
+      if (n.x !== c.x && n.y !== c.y) {
+        const sideA = idx(n.x, c.y, w);
+        const sideB = idx(c.x, n.y, w);
+        if (tiles[sideA] === TILE_WATER || tiles[sideA] === TILE_BLOCKED || tiles[sideB] === TILE_WATER || tiles[sideB] === TILE_BLOCKED) continue;
+      }
       seen[i] = 1;
       q.push(n);
     }
