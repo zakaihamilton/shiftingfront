@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { memoryStorage } from "../../lib/persist/save";
 import {
+  defaultKeyBindings,
   defaultSettings,
   readSettings,
   SETTINGS_KEY,
@@ -91,7 +92,48 @@ describe("audio settings", () => {
       sfxEnabled: false,
       reducedMotion: false,
       highContrast: false,
+      colorblindMode: "none",
+      keyBindings: defaultKeyBindings(),
     });
+  });
+
+  it("round-trips colorblindMode and keyBindings through storage", () => {
+    const storage = memoryStorage();
+    const customBindings = {
+      ...defaultKeyBindings(),
+      panUp: "ArrowUp",
+      repair: "p",
+    };
+    writeSettings(storage, {
+      ...defaultSettings(),
+      colorblindMode: "deuteranopia",
+      keyBindings: customBindings,
+    });
+    expect(readSettings(storage)).toMatchObject({
+      colorblindMode: "deuteranopia",
+      keyBindings: customBindings,
+    });
+  });
+
+  it("normalizes invalid colorblindMode and partial keyBindings", () => {
+    const storage = memoryStorage({
+      [SETTINGS_KEY]: JSON.stringify({
+        version: SETTINGS_VERSION,
+        savedAt: 1,
+        settings: {
+          colorblindMode: "invalid-mode",
+          keyBindings: {
+            panUp: "w",
+          },
+        },
+      }),
+    });
+
+    const loaded = readSettings(storage);
+    expect(loaded.colorblindMode).toBe("none");
+    expect(loaded.keyBindings.panUp).toBe("w");
+    expect(loaded.keyBindings.panDown).toBe(defaultKeyBindings().panDown);
+    expect(loaded.keyBindings.repair).toBe(defaultKeyBindings().repair);
   });
 
   it("returns false when settings cannot be written", () => {

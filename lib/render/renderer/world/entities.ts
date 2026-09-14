@@ -94,6 +94,7 @@ export function renderEntityPhase(
     subTickAlpha?: number;
     fx?: import("../../renderOverlays").RenderExtras["fx"];
     reducedMotion?: boolean;
+    colorblindMode?: import("../../renderOverlays").RenderExtras["colorblindMode"];
   },
 ): WorldPhaseTimings | null {
   const profile = isPerfHudEnabled();
@@ -329,7 +330,7 @@ export function renderEntityPhase(
     if (bAnim) drawBuildingFx(ctx, e, s, z, bAnim);
     if (e.kind === "turret" && e.class === "building") {
       const targetEntity = e.attackTarget !== undefined ? entityById.get(e.attackTarget) : undefined;
-      drawTurretCannon(ctx, e, s, z, state, cam, timeMs, targetEntity);
+      drawTurretCannon(ctx, e, s, z, state, cam, timeMs, targetEntity, extras.colorblindMode);
     }
     if (uAnim?.pose === "work") drawHarvestFx(ctx, state, e, cam, timeMs);
 
@@ -363,6 +364,7 @@ export function renderEntityPhase(
         isSelected,
         barW,
         repairTargets.has(e.id),
+        extras.colorblindMode,
       );
 
       if (e.class === "unit" && (e.suppression ?? 0) > 0) {

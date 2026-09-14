@@ -36,6 +36,36 @@ describe("health meter colors", () => {
     const critical = healthMeterColors(0.05);
     expect(critical.top).toBe("#a84a42");
   });
+
+  it("adapts health meter colors for deuteranopia / protanopia", () => {
+    // High health uses high-contrast sky blue, mid uses amber, low uses rose/magenta
+    const high = healthMeterColors(0.8, "deuteranopia");
+    expect(high.top).toBe("#38bdf8");
+    expect(high.bottom).toBe("#0284c7");
+
+    const mid = healthMeterColors(0.4, "deuteranopia");
+    expect(mid.top).toBe("#fbbf24");
+    expect(mid.bottom).toBe("#d97706");
+
+    const low = healthMeterColors(0.2, "protanopia");
+    expect(low.top).toBe("#f43f5e");
+    expect(low.bottom).toBe("#be123c");
+  });
+
+  it("adapts health meter colors for tritanopia", () => {
+    // High health uses teal, mid uses coral orange, low uses purple
+    const high = healthMeterColors(0.8, "tritanopia");
+    expect(high.top).toBe("#2dd4bf");
+    expect(high.bottom).toBe("#0f766e");
+
+    const mid = healthMeterColors(0.4, "tritanopia");
+    expect(mid.top).toBe("#fb923c");
+    expect(mid.bottom).toBe("#c2410c");
+
+    const low = healthMeterColors(0.2, "tritanopia");
+    expect(low.top).toBe("#a855f7");
+    expect(low.bottom).toBe("#7e22ce");
+  });
 });
 
 describe("worldHealthMeterHeight", () => {

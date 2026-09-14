@@ -2,8 +2,9 @@ import { useState } from "react";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { AudioSettingsControls } from "@/components/audio/AudioSettingsControls";
+import { KeybindingsModal } from "./KeybindingsModal";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
-import type { GameSettings } from "@/lib/persist/settings";
+import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./PauseMenu.module.css";
 
@@ -13,6 +14,8 @@ export function PauseOptions({
   onToggleMusic,
   onToggleReducedMotion,
   onToggleHighContrast,
+  onCycleColorblind,
+  onUpdateKeyBindings,
   onVolumeChange,
   onBack,
   telemetryRecordCount,
@@ -26,6 +29,8 @@ export function PauseOptions({
   onToggleMusic: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
+  onCycleColorblind?: () => void;
+  onUpdateKeyBindings?: (bindings: KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
   onBack: () => void;
   telemetryRecordCount?: number;
@@ -34,6 +39,7 @@ export function PauseOptions({
   titleId?: string;
   backTooltip?: string;
 }) {
+  const [keybindsOpen, setKeybindsOpen] = useState(false);
   const [telemetryNotice, setTelemetryNotice] = useState("");
   const telemetryEnabled = onExportTelemetry !== undefined && onClearTelemetry !== undefined;
 
@@ -71,6 +77,16 @@ export function PauseOptions({
             High contrast: {settings.highContrast ? "On" : "Off"}
           </ConsoleButton>
         ) : null}
+        {onCycleColorblind ? (
+          <ConsoleButton className={styles.action} tooltip="Cycle colorblind palette for lasers, health bars, and minimap" onClick={onCycleColorblind}>
+            Colorblind: {settings.colorblindMode === "deuteranopia" ? "Deuteranopia (Red-Green)" : settings.colorblindMode === "protanopia" ? "Protanopia (Red-Weak)" : settings.colorblindMode === "tritanopia" ? "Tritanopia (Blue-Yellow)" : "Off"}
+          </ConsoleButton>
+        ) : null}
+        {onUpdateKeyBindings ? (
+          <ConsoleButton className={styles.action} tooltip="Customize keyboard shortcuts and camera controls" onClick={() => setKeybindsOpen(true)}>
+            Configure Keybinds…
+          </ConsoleButton>
+        ) : null}
         {telemetryEnabled ? (
           <div className={styles.group}>
             <ConsoleLabel className={styles.groupLabel}>Diagnostics</ConsoleLabel>
@@ -87,6 +103,13 @@ export function PauseOptions({
         <ConsoleButton muted className={styles.action} tooltip={backTooltip} shortcut={SHORTCUT.back} onClick={onBack}>Back</ConsoleButton>
       </div>
       <AudioSettingsControls settings={settings} onChange={onVolumeChange} />
+      {keybindsOpen && onUpdateKeyBindings ? (
+        <KeybindingsModal
+          bindings={settings.keyBindings}
+          onSave={onUpdateKeyBindings}
+          onClose={() => setKeybindsOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

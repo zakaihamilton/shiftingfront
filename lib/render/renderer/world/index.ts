@@ -52,6 +52,7 @@ export function renderWorld(
     subTickAlpha: extras.subTickAlpha,
     fx: extras.fx,
     reducedMotion: extras.reducedMotion,
+    colorblindMode: extras.colorblindMode,
   });
 
   lap("entities");

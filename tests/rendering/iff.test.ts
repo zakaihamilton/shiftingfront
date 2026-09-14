@@ -26,6 +26,24 @@ describe("iffColors", () => {
     expect(iffColors(0).laserFill).toBe("rgba(70, 226, 255, 0.28)");
     expect(iffColors(1).laserFill).toBe("rgba(255, 77, 54, 0.28)");
   });
+
+  it("adapts IFF colors for colorblindness modes", () => {
+    // Deuteranopia & Protanopia swap red enemy IFF to safety orange
+    const deutAlly = iffColors(0, false, "deuteranopia");
+    const deutEnemy = iffColors(1, false, "deuteranopia");
+    expect(deutAlly.hex).toBe("#38bdf8"); // sky/cyan
+    expect(deutEnemy.hex).toBe("#fb923c"); // orange
+    expect(deutEnemy.laser).toContain("251, 146, 60");
+
+    const protEnemy = iffColors(1, false, "protanopia");
+    expect(protEnemy.hex).toBe("#fb923c");
+
+    // Tritanopia uses teal for ally and rose for enemy
+    const tritAlly = iffColors(0, false, "tritanopia");
+    const tritEnemy = iffColors(1, false, "tritanopia");
+    expect(tritAlly.hex).toBe("#14b8a6");
+    expect(tritEnemy.hex).toBe("#f43f5e");
+  });
 });
 
 describe("faction raster tints", () => {

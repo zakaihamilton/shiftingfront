@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import { DocumentTitle } from "@/components/ui/DocumentTitle";
 import { RASTER_ART } from "@/lib/gen/visualAssets";
 import { MenuHero } from "./MenuHero";
@@ -18,6 +19,7 @@ export function MenuScreen() {
       className={styles.screen}
       data-high-contrast={controller.settings.highContrast ? "true" : "false"}
       data-reduced-motion={controller.settings.reducedMotion ? "true" : "false"}
+      data-colorblind={controller.settings.colorblindMode}
       style={{ "--scene-art": `url("${RASTER_ART.menu}")` } as CSSProperties}
     >
       <DocumentTitle title="Shifting Front" />
@@ -46,6 +48,13 @@ export function MenuScreen() {
               onLoadMission={controller.openLoadMission}
               onOptions={controller.openOptions}
             />
+            <footer className={styles.menuFooter}>
+              <Link href="/privacy" className={styles.footerLink}>Privacy</Link>
+              <span className={styles.footerDot}>·</span>
+              <Link href="/terms" className={styles.footerLink}>Terms</Link>
+              <span className={styles.footerDot}>·</span>
+              <a href="https://github.com/zakaihamilton/shiftingfront" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>MIT License</a>
+            </footer>
           </div>
         </main>
       </div>
@@ -70,6 +79,8 @@ export function MenuScreen() {
         onToggleMusic={controller.toggleMusic}
         onToggleReducedMotion={controller.toggleReducedMotion}
         onToggleHighContrast={controller.toggleHighContrast}
+        onCycleColorblind={controller.cycleColorblind}
+        onUpdateKeyBindings={controller.updateKeyBindings}
         onVolumeChange={controller.updateVolume}
         onBack={controller.goBack}
       />

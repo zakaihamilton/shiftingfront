@@ -54,6 +54,8 @@ export function GamePauseSurface({
       onToggleMusic={session.toggleMusic}
       onToggleReducedMotion={session.toggleReducedMotion}
       onToggleHighContrast={session.toggleHighContrast}
+      onCycleColorblind={session.cycleColorblind}
+      onUpdateKeyBindings={session.updateKeyBindings}
       onVolumeChange={session.updateVolume}
       telemetryRecordCount={session.telemetryEnabled ? session.telemetryRecordCount : undefined}
       onExportTelemetry={session.telemetryEnabled ? session.exportTelemetry : undefined}

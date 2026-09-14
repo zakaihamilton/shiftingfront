@@ -37,6 +37,7 @@ export function useGameKeyboard({
   mobilePanelOpen = false,
   closeMobilePanel = () => {},
   mobileToolActive = false,
+  keyBindings,
 }: GameKeyboardParams) {
   const keys = useRef<Record<string, boolean>>({});
 
@@ -55,22 +56,35 @@ export function useGameKeyboard({
         closeMobilePanel();
         return;
       }
+      const isPanKey = (k: string) => {
+        const panKeys = [
+          keyBindings?.panUp || "w",
+          keyBindings?.panDown || "s",
+          keyBindings?.panLeft || "a",
+          keyBindings?.panRight || "d",
+        ].map((s) => s.toLowerCase());
+        return panKeys.includes(k.toLowerCase()) || k.startsWith("Arrow");
+      };
       if (
         !isEditableTarget(e.target) &&
         !pausedRef.current &&
         stateRef.current.result === "playing" &&
-        (e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" || e.key.startsWith("Arrow"))
+        isPanKey(e.key)
       ) {
         e.preventDefault();
       }
-      const command = gameCommandFromKey(e, {
-        typing: isEditableTarget(e.target),
-        playing: !pausedRef.current && stateRef.current.result === "playing",
-        paused: pausedRef.current,
-        pauseView: pauseViewRef.current,
-        result: stateRef.current.result,
-        toolActive: !!(place.current || repair.current || sell.current || mobileToolActive),
-      });
+      const command = gameCommandFromKey(
+        e,
+        {
+          typing: isEditableTarget(e.target),
+          playing: !pausedRef.current && stateRef.current.result === "playing",
+          paused: pausedRef.current,
+          pauseView: pauseViewRef.current,
+          result: stateRef.current.result,
+          toolActive: !!(place.current || repair.current || sell.current || mobileToolActive),
+        },
+        keyBindings,
+      );
       if (!command) return;
       e.preventDefault();
       applyGameCommand(command, {
@@ -145,6 +159,7 @@ export function useGameKeyboard({
     viewMissionBriefing,
     mobilePanelOpen,
     mobileToolActive,
+    keyBindings,
   ]);
 
   return { keys };

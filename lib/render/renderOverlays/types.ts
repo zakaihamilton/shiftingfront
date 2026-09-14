@@ -1,5 +1,6 @@
 import type { FxBurst } from "../fx";
 import type { BuildingKind } from "../../types";
+import type { ColorblindMode } from "../../persist/settings";
 
 export type CommandMarkerKind = "move" | "attack" | "harvest" | "support" | "invalid";
 
@@ -26,4 +27,5 @@ export type RenderExtras = {
   subTickAlpha?: number;
   reducedMotion?: boolean;
   render3dUnits?: boolean;
+  colorblindMode?: ColorblindMode;
 };

@@ -63,6 +63,7 @@ export function drawTurretCannon(
   cam: Camera,
   timeMs: number,
   targetEntity?: Entity,
+  colorblindMode: import("../../persist/settings").ColorblindMode = "none",
 ): void {
   if (e.hp <= 0 || e.constructing > 0) return;
   const target = targetEntity && turretTargetInRange(e, targetEntity) ? targetEntity : undefined;
@@ -97,7 +98,7 @@ export function drawTurretCannon(
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
 
-  const iff = iffColors(e.owner);
+  const iff = iffColors(e.owner, false, colorblindMode);
   ctx.save();
 
   if (target && targetPoint) {

@@ -10,6 +10,7 @@ import {
 } from "../types";
 import { fogAt } from "../sim/fog";
 import { atlasPixelAtTile, fogTerrainGain, getTerrainAtlas, terrainColors } from "./terrainAtlas";
+import type { ColorblindMode } from "../persist/settings";
 
 const MINIMAP_RENDER_REV = "world-atlas-v4";
 export const MINIMAP_OVERLAY_TICK_SHIFT = 1;
@@ -34,8 +35,24 @@ export function minimapRegionForCell(state: SimState, x: number, y: number): Min
 
 export { terrainColors };
 
-function entityColor(e: Entity, state: SimState): string {
+export function entityColor(e: Entity, state: SimState, mode: ColorblindMode = "none"): string {
   if (e.marked) return "#ffe066";
+  if (mode === "deuteranopia" || mode === "protanopia") {
+    if (e.owner === 0) {
+      if (e.class === "building") return e.kind === "turret" || e.kind === "constructionYard" ? "#7dd3fc" : "#0284c7";
+      return "#38bdf8";
+    }
+    if (e.class === "building") return e.kind === "turret" || e.kind === "objective" ? "#fed7aa" : "#ea580c";
+    return "#fb923c";
+  }
+  if (mode === "tritanopia") {
+    if (e.owner === 0) {
+      if (e.class === "building") return e.kind === "turret" || e.kind === "constructionYard" ? "#5eead4" : "#0d9488";
+      return "#14b8a6";
+    }
+    if (e.class === "building") return e.kind === "turret" || e.kind === "objective" ? "#fecdd3" : "#e11d48";
+    return "#f43f5e";
+  }
   const pal = state.factions[e.owner]?.palette;
   if (!pal) return "#888";
   if (e.class === "building") {
@@ -121,6 +138,7 @@ function paintMinimapOverlay(
   w: number,
   h: number,
   selectedIds: ReadonlySet<number>,
+  mode: ColorblindMode = "none",
 ): void {
   const sx = w / state.width;
   const sy = h / state.height;
@@ -130,7 +148,7 @@ function paintMinimapOverlay(
     if (!minimapEntityVisible(state, e)) continue;
     const x = e.x * sx;
     const y = e.y * sy;
-    ctx.fillStyle = entityColor(e, state);
+    ctx.fillStyle = entityColor(e, state, mode);
     const size = e.class === "building" ? 6 : 3;
     ctx.fillRect(x - size / 2, y - size / 2, size, size);
     if (selectedIds.has(e.id)) {
@@ -207,6 +225,7 @@ export function minimapCacheKeys(
   w: number,
   h: number,
   selectedIds?: ReadonlySet<number>,
+  mode: ColorblindMode = "none",
 ): { terrainKey: string; overlayKey: string } {
   const viewKey = view.length
     ? `${view[0]!.x.toFixed(2)},${view[0]!.y.toFixed(2)}:${view[2] ? `${view[2].x.toFixed(2)},${view[2].y.toFixed(2)}` : ""}`
@@ -214,7 +233,7 @@ export function minimapCacheKeys(
   const palKey = `${state.factions[0]?.palette.primary ?? ""}:${state.factions[1]?.palette.primary ?? ""}`;
   const selectedKeyValue = selectedKey(selectedIds);
   const terrainKey = `${MINIMAP_RENDER_REV}:${state.seed}:${state.tick >> 4}:${state.biome}:${state.width}x${state.height}:${w}x${h}`;
-  const overlayKey = `${terrainKey}:${state.tick >> MINIMAP_OVERLAY_TICK_SHIFT}:${state.result}:${viewKey}:${state.entities.length}:${palKey}:${selectedKeyValue}`;
+  const overlayKey = `${terrainKey}:${state.tick >> MINIMAP_OVERLAY_TICK_SHIFT}:${state.result}:${viewKey}:${state.entities.length}:${palKey}:${selectedKeyValue}:${mode}`;
   return { terrainKey, overlayKey };
 }
 
@@ -223,10 +242,11 @@ export function renderMinimap(
   state: SimState,
   view: { x: number; y: number }[],
   selectedIds: ReadonlySet<number> = new Set(),
+  mode: ColorblindMode = "none",
 ): void {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
-  const { terrainKey, overlayKey } = minimapCacheKeys(state, view, w, h, selectedIds);
+  const { terrainKey, overlayKey } = minimapCacheKeys(state, view, w, h, selectedIds, mode);
   if (lastOverlayKeys.get(ctx.canvas) === overlayKey) return;
 
   let terrainReady = false;
@@ -250,6 +270,6 @@ export function renderMinimap(
     }
   }
   if (!terrainReady) paintMinimapTerrain(ctx, state, w, h);
-  paintMinimapOverlay(ctx, state, view, w, h, selectedIds);
+  paintMinimapOverlay(ctx, state, view, w, h, selectedIds, mode);
   lastOverlayKeys.set(ctx.canvas, overlayKey);
 }

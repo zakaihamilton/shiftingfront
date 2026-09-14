@@ -1,4 +1,15 @@
 import type { ControlGroupSlot } from "@/lib/types";
+import type { KeyBindings } from "@/lib/persist/settings";
+
+export function displayKey(key: string): string {
+  if (key === " " || key.toLowerCase() === "space") return "Space";
+  if (key === "ArrowUp") return "↑";
+  if (key === "ArrowDown") return "↓";
+  if (key === "ArrowLeft") return "←";
+  if (key === "ArrowRight") return "→";
+  if (key.length === 1) return key.toUpperCase();
+  return key;
+}
 
 export type KeyEventLike = {
   key: string;
@@ -158,6 +169,7 @@ export function gameCommandFromKey(
     result: "playing" | "won" | "lost";
     toolActive: boolean;
   },
+  keyBindings?: KeyBindings,
 ): GameCommand | null {
   if (ctx.typing || e.repeat) return null;
   const ctrl = !!(e.ctrlKey || e.metaKey);
@@ -211,14 +223,21 @@ export function gameCommandFromKey(
   if (isF1(e) && !ctrl) return { type: "controls" };
   if (ctrl) return null;
   if (isEscape(e)) return ctx.toolActive ? { type: "cancelTool" } : { type: "pause" };
-  if (key === "q") return { type: "tab", tab: "construction" };
-  if (key === "e") return { type: "tab", tab: "production" };
-  if (key === "t") return { type: "tab", tab: "selected" };
-  if (key === "r") return { type: "repair" };
-  if (key === "f") return { type: "sell" };
-  if (key === "x") return { type: "stop" };
-  if (key === "h" || e.key === "Home") return { type: "home" };
-  if (isSpace(e)) return { type: "center" };
+
+  const matches = (bound: string | undefined, def: string) => {
+    const target = (bound !== undefined && bound !== "" ? bound : def).toLowerCase();
+    if (target === " " || target === "space") return isSpace(e);
+    return key === target;
+  };
+
+  if (matches(keyBindings?.construction, "q")) return { type: "tab", tab: "construction" };
+  if (matches(keyBindings?.production, "e")) return { type: "tab", tab: "production" };
+  if (matches(keyBindings?.selected, "t")) return { type: "tab", tab: "selected" };
+  if (matches(keyBindings?.repair, "r")) return { type: "repair" };
+  if (matches(keyBindings?.sell, "f")) return { type: "sell" };
+  if (matches(keyBindings?.stop, "x")) return { type: "stop" };
+  if (matches(keyBindings?.home, "h") || (keyBindings?.home === undefined && e.key === "Home")) return { type: "home" };
+  if (matches(keyBindings?.center, " ")) return { type: "center" };
   return null;
 }
 

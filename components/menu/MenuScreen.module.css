@@ -451,3 +451,30 @@
     font-size: clamp(2.2rem, 14vw, 3.2rem);
   }
 }
+
+.menuFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+  font-family: var(--font-ibm-plex-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: var(--chrome-steel-dim, #6d8498);
+}
+
+.footerLink {
+  color: var(--chrome-steel-dim, #6d8498);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.footerLink:hover {
+  color: var(--chrome-cyan, #46e2ff);
+  text-decoration: underline;
+}
+
+.footerDot {
+  color: var(--chrome-steel-mid, #273746);
+}

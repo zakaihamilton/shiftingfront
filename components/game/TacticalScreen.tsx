@@ -21,6 +21,7 @@ export function TacticalScreen({ title, palette, playField, overlays }: Tactical
       className={styles.shell}
       data-high-contrast={audioSettings.highContrast ? "true" : "false"}
       data-reduced-motion={audioSettings.reducedMotion ? "true" : "false"}
+      data-colorblind={audioSettings.colorblindMode}
       style={
         {
           "--p": palette.primary,

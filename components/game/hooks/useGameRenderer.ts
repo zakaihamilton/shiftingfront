@@ -38,6 +38,7 @@ export function useGameRenderer({
   repair,
   sell,
   reducedMotionOverride = false,
+  colorblindMode,
 }: {
   stateRef: RefObject<SimState | null>;
   hostRef: RefObject<HTMLDivElement | null>;
@@ -54,6 +55,7 @@ export function useGameRenderer({
   repair: MutableRefObject<boolean>;
   sell: MutableRefObject<boolean>;
   reducedMotionOverride?: boolean;
+  colorblindMode?: import("@/lib/persist/settings").ColorblindMode;
 }) {
   const systemReducedMotion = useSyncExternalStore(subscribeReducedMotion, reducedMotionSnapshot, () => false);
   const reducedMotion = systemReducedMotion || reducedMotionOverride;
@@ -97,12 +99,13 @@ export function useGameRenderer({
       fx: fxRef.current,
       nowMs,
       subTickAlpha,
+      colorblindMode,
     });
     worldCtxRef.current = frame.worldCtx;
     miniCtxRef.current = frame.miniCtx;
     mobileMiniCtxRef.current = frame.secondaryMiniCtx;
     fxRef.current = frame.fx;
-  }, [boxRef, camRef, canvasRef, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, place, reducedMotion, repair, selected, sell, stateRef]);
+  }, [boxRef, camRef, canvasRef, colorblindMode, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, place, reducedMotion, repair, selected, sell, stateRef]);
 
   return { extrasRef, fxRef, fxSeq, redraw };
 }

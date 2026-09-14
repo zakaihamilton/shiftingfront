@@ -3,12 +3,14 @@ import {
   assetsCommandFromKey,
   briefingCommandFromKey,
   cameoIndexFromEvent,
+  displayKey,
   formatShortcut,
   gameCommandFromKey,
   isEditableTarget,
   isMacPlatform,
   menuCommandFromKey,
 } from "../../lib/ui/shortcuts";
+import { defaultKeyBindings } from "../../lib/persist/settings";
 
 const play = {
   typing: false,
@@ -126,5 +128,36 @@ describe("shortcut matching", () => {
     expect(assetsCommandFromKey({ key: "ArrowDown", repeat: true }, { typing: false })).toEqual({ type: "nextAsset" });
     expect(assetsCommandFromKey({ key: "ArrowUp" }, { typing: true })).toBeNull();
     expect(assetsCommandFromKey({ key: "ArrowDown", ctrlKey: true }, { typing: false })).toBeNull();
+  });
+
+  it("formats key names for human display", () => {
+    expect(displayKey(" ")).toBe("Space");
+    expect(displayKey("ArrowUp")).toBe("↑");
+    expect(displayKey("ArrowDown")).toBe("↓");
+    expect(displayKey("ArrowLeft")).toBe("←");
+    expect(displayKey("ArrowRight")).toBe("→");
+    expect(displayKey("r")).toBe("R");
+  });
+
+  it("respects custom keyBindings for battlefield commands", () => {
+    const custom = {
+      ...defaultKeyBindings(),
+      repair: "p",
+      sell: "y",
+      stop: "z",
+      construction: "c",
+    };
+
+    // Old defaults should no longer fire these commands
+    expect(gameCommandFromKey({ key: "r" }, play, custom)).toBeNull();
+    expect(gameCommandFromKey({ key: "f" }, play, custom)).toBeNull();
+    expect(gameCommandFromKey({ key: "x" }, play, custom)).toBeNull();
+    expect(gameCommandFromKey({ key: "q" }, play, custom)).toBeNull();
+
+    // New bindings should fire them
+    expect(gameCommandFromKey({ key: "p" }, play, custom)).toEqual({ type: "repair" });
+    expect(gameCommandFromKey({ key: "y" }, play, custom)).toEqual({ type: "sell" });
+    expect(gameCommandFromKey({ key: "z" }, play, custom)).toEqual({ type: "stop" });
+    expect(gameCommandFromKey({ key: "c" }, play, custom)).toEqual({ type: "tab", tab: "construction" });
   });
 });

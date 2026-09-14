@@ -93,13 +93,20 @@ describe("MenuScreen", () => {
     expect(screen.queryByText("SHIFTING FRONT")).toBeNull();
   });
 
-  it("does not render a welcome footer", () => {
+  it("renders legal links instead of marketing promo copy in the welcome footer", () => {
     render(<MenuScreen />);
 
     expect(screen.queryByText("SEED YOUR OWN THEATER")).toBeNull();
     expect(screen.queryByText("8 OPERATIONS / NO TWO WARS ALIKE")).toBeNull();
     expect(screen.queryByText("PLAYS IN YOUR BROWSER")).toBeNull();
-    expect(document.querySelector("footer")).toBeNull();
+    const footer = document.querySelector("footer");
+    expect(footer).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
+    expect(screen.getByRole("link", { name: "MIT License" })).toHaveAttribute(
+      "href",
+      "https://github.com/zakaihamilton/shiftingfront",
+    );
   });
 
   it("renders the ISR signal overlay over the welcome scene", () => {

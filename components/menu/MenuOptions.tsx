@@ -10,6 +10,8 @@ export function MenuOptions({
   onToggleMusic,
   onToggleReducedMotion,
   onToggleHighContrast,
+  onCycleColorblind,
+  onUpdateKeyBindings,
   onVolumeChange,
   onBack,
 }: {
@@ -18,6 +20,8 @@ export function MenuOptions({
   onToggleMusic: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
+  onCycleColorblind?: () => void;
+  onUpdateKeyBindings?: (bindings: import("@/lib/persist/settings").KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
   onBack: () => void;
 }) {
@@ -35,6 +39,8 @@ export function MenuOptions({
         onToggleMusic={onToggleMusic}
         onToggleReducedMotion={onToggleReducedMotion}
         onToggleHighContrast={onToggleHighContrast}
+        onCycleColorblind={onCycleColorblind}
+        onUpdateKeyBindings={onUpdateKeyBindings}
         onVolumeChange={onVolumeChange}
         onBack={onBack}
         backTooltip="Return to the main menu"

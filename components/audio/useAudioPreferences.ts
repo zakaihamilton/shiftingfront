@@ -3,7 +3,7 @@ import { setMusicEnabled as applyMusicEnabled } from "@/lib/audio/music";
 import { setSfxEnabled as applySfxEnabled } from "@/lib/audio/synth";
 import { setAudioLevels, type AudioVolumeKey } from "@/lib/audio/mixer";
 import { cachedLocalStorage } from "@/lib/persist/save";
-import { writeSettings, type GameSettings } from "@/lib/persist/settings";
+import { writeSettings, type ColorblindMode, type GameSettings, type KeyBindings } from "@/lib/persist/settings";
 
 export function useAudioPreferences(
   settings: GameSettings,
@@ -42,5 +42,28 @@ export function useAudioPreferences(
     writeSettings(cachedLocalStorage(), next);
   }, [setSettings, settings]);
 
-  return { toggleSound, toggleMusic, toggleReducedMotion, toggleHighContrast, updateVolume };
+  const cycleColorblind = useCallback(() => {
+    const modes: ColorblindMode[] = ["none", "deuteranopia", "protanopia", "tritanopia"];
+    const currentIndex = modes.indexOf(settings.colorblindMode ?? "none");
+    const nextMode = modes[(currentIndex + 1) % modes.length]!;
+    const next = { ...settings, colorblindMode: nextMode };
+    setSettings(next);
+    writeSettings(cachedLocalStorage(), next);
+  }, [setSettings, settings]);
+
+  const updateKeyBindings = useCallback((keyBindings: KeyBindings) => {
+    const next = { ...settings, keyBindings };
+    setSettings(next);
+    writeSettings(cachedLocalStorage(), next);
+  }, [setSettings, settings]);
+
+  return {
+    toggleSound,
+    toggleMusic,
+    toggleReducedMotion,
+    toggleHighContrast,
+    cycleColorblind,
+    updateKeyBindings,
+    updateVolume,
+  };
 }

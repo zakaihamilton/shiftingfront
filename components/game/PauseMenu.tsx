@@ -5,7 +5,7 @@ import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { useModalFocus } from "@/components/ui/useModalFocus";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { ArchiveEntry, SlotMeta } from "@/lib/persist/save";
-import type { GameSettings } from "@/lib/persist/settings";
+import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
 import type { PauseView } from "@/lib/ui/shortcuts";
 import { PauseControls } from "./PauseControls";
 import { PauseLoadSlots } from "./PauseLoadSlots";
@@ -38,6 +38,8 @@ export function PauseMenu({
   onToggleMusic,
   onToggleReducedMotion,
   onToggleHighContrast,
+  onCycleColorblind,
+  onUpdateKeyBindings,
   onVolumeChange,
   telemetryRecordCount,
   onExportTelemetry,
@@ -67,6 +69,8 @@ export function PauseMenu({
   onToggleMusic: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
+  onCycleColorblind?: () => void;
+  onUpdateKeyBindings?: (bindings: KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
   telemetryRecordCount?: number;
   onExportTelemetry?: () => boolean;
@@ -120,6 +124,8 @@ export function PauseMenu({
             onToggleMusic={onToggleMusic}
             onToggleReducedMotion={onToggleReducedMotion}
             onToggleHighContrast={onToggleHighContrast}
+            onCycleColorblind={onCycleColorblind}
+            onUpdateKeyBindings={onUpdateKeyBindings}
             onVolumeChange={onVolumeChange}
             telemetryRecordCount={telemetryRecordCount}
             onExportTelemetry={onExportTelemetry}

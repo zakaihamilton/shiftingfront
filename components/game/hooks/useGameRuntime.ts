@@ -232,6 +232,7 @@ export function useGameRuntime({
     repair,
     sell,
     reducedMotionOverride: audioSettings.reducedMotion,
+    colorblindMode: audioSettings.colorblindMode,
   });
 
   const resetTransientMobileUi = useCallback(() => {
@@ -360,6 +361,7 @@ export function useGameRuntime({
     mobilePanelOpen,
     closeMobilePanel,
     mobileToolActive: selectionMode || actions.mobileCommandState !== null,
+    keyBindings: audioSettings.keyBindings,
   });
 
   useGameLoop({

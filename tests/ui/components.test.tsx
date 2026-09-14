@@ -730,6 +730,51 @@ describe("PauseOptions telemetry controls", () => {
     expect(onClearTelemetry).not.toHaveBeenCalled();
     confirm.mockRestore();
   });
+
+  it("cycles colorblind mode and configures custom keybinds", () => {
+    const onCycleColorblind = vi.fn();
+    const onUpdateKeyBindings = vi.fn();
+
+    render(
+      <PauseOptions
+        settings={defaultSettings()}
+        onToggleSound={vi.fn()}
+        onToggleMusic={vi.fn()}
+        onCycleColorblind={onCycleColorblind}
+        onUpdateKeyBindings={onUpdateKeyBindings}
+        onVolumeChange={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    // Colorblind toggle
+    const colorblindBtn = screen.getByRole("button", { name: /Colorblind: Off/ });
+    expect(colorblindBtn).toBeVisible();
+    fireEvent.click(colorblindBtn);
+    expect(onCycleColorblind).toHaveBeenCalledOnce();
+
+    // Open keybinds modal
+    const keybindsBtn = screen.getByRole("button", { name: "Configure Keybinds…" });
+    fireEvent.click(keybindsBtn);
+
+    const dialog = screen.getByRole("dialog", { name: "Keybindings" });
+    expect(dialog).toBeVisible();
+
+    // Rebind "Repair Mode"
+    const repairRebindBtn = screen.getByTitle("Rebind Repair Mode");
+    fireEvent.click(repairRebindBtn);
+    expect(repairRebindBtn).toHaveTextContent("Press key…");
+
+    fireEvent.keyDown(window, { key: "p" });
+    expect(repairRebindBtn).toHaveTextContent("P");
+
+    // Save keybindings
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onUpdateKeyBindings).toHaveBeenCalledWith(
+      expect.objectContaining({ repair: "p" }),
+    );
+    expect(screen.queryByRole("dialog", { name: "Keybindings" })).toBeNull();
+  });
 });
 
 describe("MissionConfirmation", () => {

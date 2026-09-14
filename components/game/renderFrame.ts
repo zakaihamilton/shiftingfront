@@ -29,6 +29,7 @@ export type RenderFrameOptions = {
   fx: FxBurst[];
   nowMs?: number;
   subTickAlpha?: number;
+  colorblindMode?: import("@/lib/persist/settings").ColorblindMode;
 };
 
 export type RenderFrameResult = {
@@ -86,6 +87,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
   extras.subTickAlpha = subTickAlpha;
   const fx = cullFx(options.fx, now);
   extras.fx = fx;
+  extras.colorblindMode = options.colorblindMode;
 
   const perfStarted = isPerfHudEnabled() ? performance.now() : 0;
   const worldTimings = renderWorld(worldCtx, state, cam, selected, hover, extras);
@@ -98,7 +100,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     }
     if (miniCtx) {
       const miniStarted = worldTimings ? performance.now() : 0;
-      renderMinimap(miniCtx, state, cameraViewQuad(cam, canvas.width, canvas.height), selected);
+      renderMinimap(miniCtx, state, cameraViewQuad(cam, canvas.width, canvas.height), selected, options.colorblindMode);
       if (worldTimings) minimapMs = performance.now() - miniStarted;
     }
   }
@@ -108,7 +110,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     }
     if (secondaryMiniCtx) {
       const miniStarted = worldTimings ? performance.now() : 0;
-      renderMinimap(secondaryMiniCtx, state, cameraViewQuad(cam, canvas.width, canvas.height), selected);
+      renderMinimap(secondaryMiniCtx, state, cameraViewQuad(cam, canvas.width, canvas.height), selected, options.colorblindMode);
       if (worldTimings) minimapMs += performance.now() - miniStarted;
     }
   }
