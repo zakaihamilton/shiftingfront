@@ -14,10 +14,8 @@ import type { BriefingLine } from "@/lib/types";
 import { BriefingActions } from "./BriefingActions";
 import { BriefingMast } from "./BriefingMast";
 import { BriefingObjectives } from "./BriefingObjectives";
-import { BriefingProfile } from "./BriefingProfile";
 import { BriefingAllyPortraits, BriefingEnemyPortrait } from "./BriefingPortraits";
 import { BriefingStory } from "./BriefingStory";
-import { profileContractFor, resolveMissionProfile } from "@/lib/gen/profile";
 import styles from "./BriefingScreen.module.css";
 import { useCampaignProgress } from "../campaign/useCampaignProgress";
 import { useBriefingController } from "./useBriefingController";
@@ -44,9 +42,6 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
     () => (def ? missionObjectives(def, campaign) : []),
     [def, campaign],
   );
-  const profileContract = def
-    ? profileContractFor(resolveMissionProfile(seed, def.index, def.win.kind, def.profile))
-    : undefined;
   const backLabel = returnToGame
     ? "Back to mission"
     : origin === "newGame"
@@ -104,12 +99,6 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
                 speakerRole={liveRole}
               />
             </section>
-            {profileContract ? <BriefingProfile contract={profileContract} /> : null}
-            <section className={styles.opening} aria-label="Recommended first action" data-testid="briefing-first-action">
-              <ConsoleLabel>Recommended first action</ConsoleLabel>
-              <p className={styles.openingSequence}>{openingSequence(def.kind ?? "holdTheLine")}</p>
-              <p className={styles.openingHint}>Secure the power grid before the first production queue.</p>
-            </section>
             <BriefingObjectives objectives={objectives} />
           </div>
           <BriefingActions
@@ -128,11 +117,4 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
       </div>
     </div>
   );
-}
-
-function openingSequence(kind: string): string {
-  if (kind === "rescue" || kind === "escort") return "1. Build power  →  2. Build refinery  →  3. Train infantry  →  4. Assign an escort route";
-  if (kind === "sabotage") return "1. Build power  →  2. Build refinery  →  3. Train infantry  →  4. Scout the target sector";
-  if (kind === "extraction") return "1. Build power  →  2. Build refinery  →  3. Train infantry  →  4. Secure the extraction route";
-  return "1. Build power  →  2. Build refinery  →  3. Train infantry  →  4. Hold the line";
 }

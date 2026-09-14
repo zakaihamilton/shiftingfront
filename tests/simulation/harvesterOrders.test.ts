@@ -86,6 +86,27 @@ describe("harvester group orders and harvesting", () => {
     expect(h2.carry).toBeGreaterThan(0);
   });
 
+  it("lets a harvester leave its current ore field for a newly assigned field", () => {
+    const s = makeFixture({ width: 20, height: 20, win: { kind: "harvestQuota", target: 99999 } });
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    setTile(s, 5, 5, TILE_RESOURCE, 500);
+    setTile(s, 12, 12, TILE_RESOURCE, 500);
+    const h = addUnit(s, 0, "harvester", 5, 5);
+
+    issue(s, { type: "harvest", unitIds: [h.id], x: 5, y: 5 });
+    tick(s);
+    expect(h.carry).toBeGreaterThan(0);
+
+    const orders = groundOrders(s, [h.id], 12, 12);
+    expect(orders).toEqual([{ type: "harvest", unitIds: [h.id], x: 12, y: 12 }]);
+    for (const order of orders) issue(s, order);
+    tick(s);
+
+    expect(h.gatherX).toBe(12);
+    expect(h.gatherY).toBe(12);
+    expect(h.orderDestination).toEqual({ x: 12, y: 12 });
+  });
+
   it("does not divert a harvester to base resources while moving to a distant destination", () => {
     const s = makeFixture({ width: 30, height: 30, win: { kind: "harvestQuota", target: 99999 } });
     addBuilding(s, 0, "constructionYard", 0, 0);

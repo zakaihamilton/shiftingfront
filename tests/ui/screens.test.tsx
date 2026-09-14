@@ -214,12 +214,8 @@ describe("BriefingScreen", () => {
     expect(screen.getByText(/Mission locked/)).toBeVisible();
     rerender(<BriefingScreen seed={421} mission={0} />);
     expect(screen.getByTestId("briefing-screen")).toBeVisible();
-    const profile = screen.getByTestId("briefing-profile");
-    expect(profile).not.toHaveAttribute("open");
-    expect(screen.getByText("Tactical profile")).toBeVisible();
-    expect(profile).toHaveTextContent(/Resource Race|Forward Industry|Direct Route|Contested Route|Surgical Strike|Siege|Concentrated Waves|Crossfire/);
-    fireEvent.click(screen.getByText("Tactical profile"));
-    expect(profile).toHaveAttribute("open");
+    expect(screen.queryByTestId("briefing-profile")).toBeNull();
+    expect(screen.queryByText("Tactical profile")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Launch" }));
     expect(router.push).toHaveBeenCalledWith("/play?seed=0421&mission=0&fresh=1");
   });

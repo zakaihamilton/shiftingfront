@@ -193,7 +193,11 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
         (entity) => entity.owner === e.owner && entity.class === "building" && entity.kind === "refinery" && entity.constructing === 0,
       )
       : undefined;
-    if (resourceTileAt(state, currentTileX, currentTileY)) {
+    // Keep an explicit harvest assignment while the harvester is leaving the
+    // current field. Without this guard, clicking a new field while already
+    // harvesting immediately gets overwritten by the resource underfoot.
+    const assignedResource = gx !== undefined && gy !== undefined && resourceTileAt(state, gx, gy);
+    if (!assignedResource && resourceTileAt(state, currentTileX, currentTileY)) {
       gx = currentTileX;
       gy = currentTileY;
       e.gatherX = gx;

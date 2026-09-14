@@ -103,31 +103,6 @@
   box-shadow: inset 1px 1px var(--chrome-steel-hi), inset -1px -1px var(--chrome-void);
 }
 
-.opening {
-  padding: 0.7rem;
-  border: 1px solid var(--chrome-cyan-dim);
-  border-left: 3px solid var(--chrome-cyan);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--chrome-cyan) 10%, var(--chrome-steel-lo)), var(--chrome-steel-lo));
-}
-
-.openingSequence {
-  margin: 0.4rem 0 0;
-  color: var(--chrome-text);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1.45;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-}
-
-.openingHint {
-  margin: 0.35rem 0 0;
-  color: var(--chrome-muted);
-  font-size: 0.64rem;
-  line-height: 1.35;
-}
-
 .actions {
   display: grid;
   grid-template-columns: auto auto auto minmax(0, 1fr) auto;
