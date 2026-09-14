@@ -51,7 +51,7 @@ describe("live terrain surface renderer", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses the continuous atlas for land and bypasses it for concrete slabs", () => {
+  it("uses the continuous atlas for concrete terrain transitions", () => {
     const clearState = makeFixture({ width: 8, height: 8, seed: 832, win: { kind: "annihilate" } });
     const concreteState = makeFixture({ width: 8, height: 8, seed: 832, win: { kind: "annihilate" } });
     const concreteIndex = 2 * concreteState.width + 2;
@@ -63,6 +63,6 @@ describe("live terrain surface renderer", () => {
     const concreteDraws = paintAndCountAtlasDraws(concreteState);
 
     expect(clearDraws).toBeGreaterThan(0);
-    expect(concreteDraws).toBe(clearDraws - 1);
+    expect(concreteDraws).toBe(clearDraws);
   });
 });

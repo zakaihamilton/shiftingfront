@@ -193,7 +193,7 @@ describe("seeded terrain atlas", () => {
     const b = bakeTerrainAtlasData(second);
     const c = bakeTerrainAtlasData(other);
     expect(a.key).toBe(b.key);
-    expect(a.key).toContain("world-atlas-v17-organic-ground-transitions");
+    expect(a.key).toContain("world-atlas-v18-organic-land-material-transitions");
     expect(a.data).toEqual(b.data);
     expect(terrainAtlasKey(first)).toBe(a.key);
     expect(c.key).not.toBe(a.key);
@@ -416,6 +416,48 @@ describe("seeded terrain atlas", () => {
     expect(rgbDistance(
       atlasLocalPixel(atlas, 4, 5, ATLAS_CELL - 1, 4),
       atlasLocalPixel(otherSeed, 4, 5, ATLAS_CELL - 1, 4),
+    )).toBeGreaterThan(8);
+  });
+
+  it("breaks mixed land-material edges with deterministic organic transitions", () => {
+    const makeMixedLand = (seed: number) => {
+      const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed });
+      for (let y = 2; y < 10; y++) {
+        state.surfaces[y * state.width + 5] = SURFACE_ROAD;
+        state.surfaces[y * state.width + 6] = SURFACE_CONCRETE;
+        setTile(state, 7, y, TILE_RESOURCE, 800);
+      }
+      return state;
+    };
+    const state = makeMixedLand(832);
+    const atlas = bakeTerrainAtlasData(state);
+    const repeat = bakeTerrainAtlasData(makeMixedLand(832));
+    const otherSeed = bakeTerrainAtlasData(makeMixedLand(3209));
+    const boundaries = [
+      { x: 4, y: 5 },
+      { x: 5, y: 5 },
+      { x: 6, y: 5 },
+    ];
+
+    expect(repeat.data).toEqual(atlas.data);
+    for (const { x, y } of boundaries) {
+      const leftEdge = atlasLocalPixel(atlas, x, y, ATLAS_CELL - 1, 4);
+      const rightEdge = atlasLocalPixel(atlas, x + 1, y, 0, 4);
+      const leftInterior = atlasLocalPixel(atlas, x, y, 2, 4);
+      const rightInterior = atlasLocalPixel(atlas, x + 1, y, ATLAS_CELL - 3, 4);
+      const edgeDistance = rgbDistance(leftEdge, rightEdge);
+      const interiorDistance = rgbDistance(leftInterior, rightInterior);
+      expect(edgeDistance).toBeLessThan(interiorDistance);
+      expect(interiorDistance).toBeGreaterThan(8);
+    }
+
+    expect(rgbDistance(
+      atlasLocalPixel(atlas, 4, 5, 1, 4),
+      atlasLocalPixel(otherSeed, 4, 5, 1, 4),
+    )).toBeGreaterThan(1);
+    expect(rgbDistance(
+      atlasPixelAtTile(atlas, 5, 5),
+      atlasPixelAtTile(atlas, 6, 5),
     )).toBeGreaterThan(8);
   });
 
@@ -797,6 +839,19 @@ describe("terrain scroll cache key", () => {
     cam.zoom = 1;
     state.tick = 16;
     expect(terrainContentKey(state, cam, 640, 360)).not.toBe(a);
+  });
+
+  it("invalidates when the terrain layout changes", () => {
+    const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" }, seed: 832 });
+    const cam = createCamera();
+    const ground = terrainContentKey(state, cam, 640, 360);
+
+    setTile(state, 1, 1, TILE_WATER);
+    const water = terrainContentKey(state, cam, 640, 360);
+    expect(water).not.toBe(ground);
+
+    state.surfaces[2 * state.width + 2] = SURFACE_CONCRETE;
+    expect(terrainContentKey(state, cam, 640, 360)).not.toBe(water);
   });
 });
 

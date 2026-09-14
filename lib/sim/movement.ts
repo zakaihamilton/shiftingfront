@@ -292,7 +292,9 @@ function resetPreviousCellsForNewOrders(
 }
 
 function smoothSwapFor(state: SimState, e: Entity, blocker: Entity): boolean {
-  return e.owner === 0 && blocker.owner === 0 && !e.neutral && !blocker.neutral
+  // Coordinate exchanges are visible teleports; keep them smooth for either
+  // faction when two non-neutral units from the same side need to cross.
+  return e.owner === blocker.owner && !e.neutral && !blocker.neutral
     && !state.entities.some((entity) => entity.neutral);
 }
 

@@ -436,6 +436,45 @@ describe("pathfinding", () => {
     expect(Math.round(b.y)).toBe(2);
   });
 
+  it("does not teleport same-side enemy units back and forth while crossing", () => {
+    const s = makeFixture({ width: 24, height: 24, win: { kind: "annihilate" } });
+    const target = addBuilding(s, 0, "constructionYard", 18, 10);
+    const units = Array.from({ length: 12 }, (_, index) => {
+      const unit = addUnit(s, 1, "infantry", 4 + (index % 4), 5 + Math.floor(index / 4));
+      unit.attackTarget = target.id;
+      unit.orderMode = "attack";
+      unit.orderDestination = { x: target.x, y: target.y };
+      unit.idle = false;
+      return unit;
+    });
+
+    const history = new Map<number, { x: number; y: number }[]>();
+    for (let i = 0; i < 500; i++) {
+      tick(s, undefined, { evaluateObjectives: false });
+      for (const unit of units) {
+        const samples = history.get(unit.id) ?? [];
+        samples.push({ x: unit.x, y: unit.y });
+        history.set(unit.id, samples);
+      }
+    }
+
+    for (const unit of units) {
+      const samples = history.get(unit.id)!;
+      let reversals = 0;
+      for (let i = 2; i < samples.length; i++) {
+        const before = samples[i - 2]!;
+        const previous = samples[i - 1]!;
+        const current = samples[i]!;
+        const incomingX = previous.x - before.x;
+        const incomingY = previous.y - before.y;
+        const outgoingX = current.x - previous.x;
+        const outgoingY = current.y - previous.y;
+        if (incomingX * outgoingX + incomingY * outgoingY < -1e-8) reversals += 1;
+      }
+      expect(reversals, `unit ${unit.id} reversed ${reversals} times`).toBeLessThan(20);
+    }
+  });
+
   it("holds a unit at a sealed route end instead of backtracking", () => {
     const s = makeFixture({ width: 16, height: 12, win: { kind: "harvestQuota", target: 99999 } });
     const blockedRows = [

@@ -1,7 +1,7 @@
 import { finalizeMultiSelect, pickEntity } from "@/lib/render/pick";
 import { pickTile, visibleBuildingAt } from "@/lib/render/renderer";
 import { BUILDING_DEFINITIONS } from "@/lib/catalog";
-import { TILE_H, screenToTile, tileToScreen, type Camera } from "@/lib/iso";
+import { TILE_H, screenToGroundTile, tileToScreen, type Camera } from "@/lib/iso";
 import { groundOrders } from "@/lib/sim/orders";
 import { canSupportEntity } from "@/lib/sim/support";
 import { groundHeight, heightAt } from "@/lib/sim/world";
@@ -152,6 +152,6 @@ export function selectionIdsInBox(s: SimState, cam: Camera, box: SelectionBox, f
 
 export function pointerTile(s: SimState, p: { x: number; y: number }, cam: Camera) {
   const picked = pickTile(s, p.x, p.y, cam);
-  const t = picked ?? screenToTile(p.x, p.y, cam);
+  const t = picked ?? screenToGroundTile(p.x, p.y, cam);
   return { x: Math.round(t.x), y: Math.round(t.y) };
 }

@@ -39,6 +39,15 @@ const CONCRETE_CELL_CLASS = 2;
 const ORE_CELL_CLASS = 3;
 const GROUND_CELL_CLASS = 4;
 
+// Mixed-material transitions are intentionally narrower than the existing
+// same-ground feather. At the default tile scale this projects to roughly
+// 6–10 screen pixels, enough to break the grid without muddying the materials.
+const MATERIAL_EDGE_RADIUS_MIN = 0.14;
+const MATERIAL_EDGE_RADIUS_RANGE = 0.08;
+const MATERIAL_EDGE_WARP_RANGE = 0.18;
+const MATERIAL_CORNER_BLEND_CAP = 0.42;
+const MATERIAL_CORNER_SPREAD_SCALE = 64;
+
 export type TerrainAtlasData = {
   key: string;
   data: Uint8ClampedArray;
@@ -216,11 +225,18 @@ function bakeOrganicCornerBridges(
       const topRight = topLeft + 1;
       const bottomLeft = row * cols + col - 1;
       const bottomRight = bottomLeft + 1;
+      const cornerClasses = [
+        classes[topLeft]!,
+        classes[topRight]!,
+        classes[bottomLeft]!,
+        classes[bottomRight]!,
+      ];
+      const allLand = cornerClasses.every(isLandMaterialClass);
+      const allGround = cornerClasses.every((cellClass) => cellClass === GROUND_CELL_CLASS);
+      const mixedLand = allLand && new Set(cornerClasses).size > 1;
       if (
-        classes[topLeft] !== GROUND_CELL_CLASS
-        || classes[topRight] !== GROUND_CELL_CLASS
-        || classes[bottomLeft] !== GROUND_CELL_CLASS
-        || classes[bottomRight] !== GROUND_CELL_CLASS
+        !allGround
+        && !mixedLand
       ) continue;
 
       const corner = row * cornerCols + col;
@@ -256,11 +272,20 @@ function bakeOrganicCornerBridges(
       warpX[corner] = (hash2(worldX, worldY, salt + 602) - 0.5) * 0.22;
       warpY[corner] = (hash2(worldX, worldY, salt + 603) - 0.5) * 0.22;
       phase[corner] = hash2(worldX, worldY, salt + 604) * Math.PI * 2;
-      blend[corner] = 0.6 * Math.min(1, colorSpread / 64);
+      blend[corner] = mixedLand
+        ? MATERIAL_CORNER_BLEND_CAP * Math.min(1, colorSpread / MATERIAL_CORNER_SPREAD_SCALE)
+        : 0.6 * Math.min(1, colorSpread / 64);
     }
   }
 
   return { cols: cornerCols, valid, r, g, b, radius, warpX, warpY, phase, blend };
+}
+
+function isLandMaterialClass(cellClass: number | undefined): boolean {
+  return cellClass === ROAD_CELL_CLASS
+    || cellClass === CONCRETE_CELL_CLASS
+    || cellClass === ORE_CELL_CLASS
+    || cellClass === GROUND_CELL_CLASS;
 }
 
 function organicCornerMask(
@@ -300,11 +325,13 @@ function organicEdgeBlendStrength(
   neighborR: number,
   neighborG: number,
   neighborB: number,
+  blendCap = 0.6,
+  spreadScale = 40,
 ): number {
   const difference = Math.abs(baseR - neighborR)
     + Math.abs(baseG - neighborG)
     + Math.abs(baseB - neighborB);
-  return 0.6 * Math.min(1, difference / 40);
+  return blendCap * Math.min(1, difference / spreadScale);
 }
 
 export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): TerrainAtlasData {
@@ -449,6 +476,82 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
       const eastPhase = eastEdgeValid ? hash2(gx + 1, 0, salt + 653) * Math.PI * 2 : 0;
       const northPhase = northEdgeValid ? hash2(0, gy, salt + 703) * Math.PI * 2 : 0;
       const southPhase = southEdgeValid ? hash2(0, gy + 1, salt + 703) * Math.PI * 2 : 0;
+      const westClass = col > 0 ? classes[row * cols + col - 1] : undefined;
+      const eastClass = col + 1 < cols ? classes[row * cols + col + 1] : undefined;
+      const northClass = row > 0 ? classes[(row - 1) * cols + col] : undefined;
+      const southClass = row + 1 < rows ? classes[(row + 1) * cols + col] : undefined;
+      const westMaterialEdgeValid = isLandMaterialClass(same)
+        && isLandMaterialClass(westClass)
+        && westClass !== same;
+      const eastMaterialEdgeValid = isLandMaterialClass(same)
+        && isLandMaterialClass(eastClass)
+        && eastClass !== same;
+      const northMaterialEdgeValid = isLandMaterialClass(same)
+        && isLandMaterialClass(northClass)
+        && northClass !== same;
+      const southMaterialEdgeValid = isLandMaterialClass(same)
+        && isLandMaterialClass(southClass)
+        && southClass !== same;
+      const westMaterialR = westMaterialEdgeValid ? colors[westI]! : baseR;
+      const westMaterialG = westMaterialEdgeValid ? colors[westI + 1]! : baseG;
+      const westMaterialB = westMaterialEdgeValid ? colors[westI + 2]! : baseB;
+      const eastMaterialR = eastMaterialEdgeValid ? colors[i + 3]! : baseR;
+      const eastMaterialG = eastMaterialEdgeValid ? colors[i + 4]! : baseG;
+      const eastMaterialB = eastMaterialEdgeValid ? colors[i + 5]! : baseB;
+      const northMaterialR = northMaterialEdgeValid ? colors[northI]! : baseR;
+      const northMaterialG = northMaterialEdgeValid ? colors[northI + 1]! : baseG;
+      const northMaterialB = northMaterialEdgeValid ? colors[northI + 2]! : baseB;
+      const southMaterialR = southMaterialEdgeValid ? colors[southI]! : baseR;
+      const southMaterialG = southMaterialEdgeValid ? colors[southI + 1]! : baseG;
+      const southMaterialB = southMaterialEdgeValid ? colors[southI + 2]! : baseB;
+      const westMaterialBlend = westMaterialEdgeValid
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, westMaterialR, westMaterialG, westMaterialB)
+        : 0;
+      const eastMaterialBlend = eastMaterialEdgeValid
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, eastMaterialR, eastMaterialG, eastMaterialB)
+        : 0;
+      const northMaterialBlend = northMaterialEdgeValid
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, northMaterialR, northMaterialG, northMaterialB)
+        : 0;
+      const southMaterialBlend = southMaterialEdgeValid
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, southMaterialR, southMaterialG, southMaterialB)
+        : 0;
+      const westMaterialRadius = westMaterialEdgeValid
+        ? MATERIAL_EDGE_RADIUS_MIN + hash2(gx, 0, salt + 751) * MATERIAL_EDGE_RADIUS_RANGE
+        : 0;
+      const eastMaterialRadius = eastMaterialEdgeValid
+        ? MATERIAL_EDGE_RADIUS_MIN + hash2(gx + 1, 0, salt + 751) * MATERIAL_EDGE_RADIUS_RANGE
+        : 0;
+      const northMaterialRadius = northMaterialEdgeValid
+        ? MATERIAL_EDGE_RADIUS_MIN + hash2(0, gy, salt + 761) * MATERIAL_EDGE_RADIUS_RANGE
+        : 0;
+      const southMaterialRadius = southMaterialEdgeValid
+        ? MATERIAL_EDGE_RADIUS_MIN + hash2(0, gy + 1, salt + 761) * MATERIAL_EDGE_RADIUS_RANGE
+        : 0;
+      const westMaterialWarp = westMaterialEdgeValid
+        ? (hash2(gx, 0, salt + 752) - 0.5) * MATERIAL_EDGE_WARP_RANGE
+        : 0;
+      const eastMaterialWarp = eastMaterialEdgeValid
+        ? (hash2(gx + 1, 0, salt + 752) - 0.5) * MATERIAL_EDGE_WARP_RANGE
+        : 0;
+      const northMaterialWarp = northMaterialEdgeValid
+        ? (hash2(0, gy, salt + 762) - 0.5) * MATERIAL_EDGE_WARP_RANGE
+        : 0;
+      const southMaterialWarp = southMaterialEdgeValid
+        ? (hash2(0, gy + 1, salt + 762) - 0.5) * MATERIAL_EDGE_WARP_RANGE
+        : 0;
+      const westMaterialPhase = westMaterialEdgeValid
+        ? hash2(gx, 0, salt + 753) * Math.PI * 2
+        : 0;
+      const eastMaterialPhase = eastMaterialEdgeValid
+        ? hash2(gx + 1, 0, salt + 753) * Math.PI * 2
+        : 0;
+      const northMaterialPhase = northMaterialEdgeValid
+        ? hash2(0, gy, salt + 763) * Math.PI * 2
+        : 0;
+      const southMaterialPhase = southMaterialEdgeValid
+        ? hash2(0, gy + 1, salt + 763) * Math.PI * 2
+        : 0;
       const feature = features[row * cols + col];
       const eastFeature = blendE ? features[row * cols + col + 1] : undefined;
       const southFeature = blendS ? features[(row + 1) * cols + col] : undefined;
@@ -493,6 +596,10 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
           let r: number;
           let g: number;
           let b: number;
+          let materialEdgeStrength = 0;
+          let materialEdgeR = baseR;
+          let materialEdgeG = baseG;
+          let materialEdgeB = baseB;
           if (same === WATER_CELL_CLASS) {
             const wet = tintWater(
               mats,
@@ -518,41 +625,77 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
               b = baseB + (eastB - baseB) * fx * 0.28 + (southB - baseB) * fy * 0.28;
             }
 
-            if (same === GROUND_CELL_CLASS) {
+            if (isLandMaterialClass(same)) {
               const nearWest = pixelFx < 0.5;
               const nearNorth = pixelFy < 0.5;
               const verticalDistance = nearWest ? pixelFx : 1 - pixelFx;
               const horizontalDistance = nearNorth ? pixelFy : 1 - pixelFy;
-              const verticalMask = nearWest
+              const verticalSameMask = nearWest
                 ? westEdgeValid
                   ? organicEdgeMask(verticalDistance, mapY, westRadius, westWarp, westPhase)
                   : 0
                 : eastEdgeValid
                   ? organicEdgeMask(verticalDistance, mapY, eastRadius, eastWarp, eastPhase)
                   : 0;
-              const horizontalMask = nearNorth
+              const horizontalSameMask = nearNorth
                 ? northEdgeValid
                   ? organicEdgeMask(horizontalDistance, mapX, northRadius, northWarp, northPhase)
                   : 0
                 : southEdgeValid
                   ? organicEdgeMask(horizontalDistance, mapX, southRadius, southWarp, southPhase)
                   : 0;
-              const verticalStrength = verticalMask * (nearWest ? westBlend : eastBlend);
-              const horizontalStrength = horizontalMask * (nearNorth ? northBlend : southBlend);
-              if (verticalStrength >= horizontalStrength && verticalStrength > 0) {
-                const targetR = (baseR + (nearWest ? westR : eastR)) * 0.5;
-                const targetG = (baseG + (nearWest ? westG : eastG)) * 0.5;
-                const targetB = (baseB + (nearWest ? westB : eastB)) * 0.5;
-                r += (targetR - r) * verticalStrength;
-                g += (targetG - g) * verticalStrength;
-                b += (targetB - b) * verticalStrength;
-              } else if (horizontalStrength > 0) {
-                const targetR = (baseR + (nearNorth ? northR : southR)) * 0.5;
-                const targetG = (baseG + (nearNorth ? northG : southG)) * 0.5;
-                const targetB = (baseB + (nearNorth ? northB : southB)) * 0.5;
-                r += (targetR - r) * horizontalStrength;
-                g += (targetG - g) * horizontalStrength;
-                b += (targetB - b) * horizontalStrength;
+              const verticalSameStrength = verticalSameMask * (nearWest ? westBlend : eastBlend);
+              const horizontalSameStrength = horizontalSameMask * (nearNorth ? northBlend : southBlend);
+              const verticalMaterialMask = nearWest
+                ? westMaterialEdgeValid
+                  ? organicEdgeMask(verticalDistance, mapY, westMaterialRadius, westMaterialWarp, westMaterialPhase)
+                  : 0
+                : eastMaterialEdgeValid
+                  ? organicEdgeMask(verticalDistance, mapY, eastMaterialRadius, eastMaterialWarp, eastMaterialPhase)
+                  : 0;
+              const horizontalMaterialMask = nearNorth
+                ? northMaterialEdgeValid
+                  ? organicEdgeMask(horizontalDistance, mapX, northMaterialRadius, northMaterialWarp, northMaterialPhase)
+                  : 0
+                : southMaterialEdgeValid
+                  ? organicEdgeMask(horizontalDistance, mapX, southMaterialRadius, southMaterialWarp, southMaterialPhase)
+                  : 0;
+              const verticalMaterialStrength = verticalMaterialMask * (nearWest ? westMaterialBlend : eastMaterialBlend);
+              const horizontalMaterialStrength = horizontalMaterialMask * (nearNorth ? northMaterialBlend : southMaterialBlend);
+
+              let edgeStrength = 0;
+              let edgeR = baseR;
+              let edgeG = baseG;
+              let edgeB = baseB;
+              if (verticalSameStrength >= horizontalSameStrength && verticalSameStrength > 0) {
+                edgeStrength = verticalSameStrength;
+                edgeR = nearWest ? westR : eastR;
+                edgeG = nearWest ? westG : eastG;
+                edgeB = nearWest ? westB : eastB;
+              } else if (horizontalSameStrength > 0) {
+                edgeStrength = horizontalSameStrength;
+                edgeR = nearNorth ? northR : southR;
+                edgeG = nearNorth ? northG : southG;
+                edgeB = nearNorth ? northB : southB;
+              }
+              if (edgeStrength > 0) {
+                const targetR = (baseR + edgeR) * 0.5;
+                const targetG = (baseG + edgeG) * 0.5;
+                const targetB = (baseB + edgeB) * 0.5;
+                r += (targetR - r) * edgeStrength;
+                g += (targetG - g) * edgeStrength;
+                b += (targetB - b) * edgeStrength;
+              }
+              if (verticalMaterialStrength >= horizontalMaterialStrength && verticalMaterialStrength > 0) {
+                materialEdgeStrength = verticalMaterialStrength;
+                materialEdgeR = nearWest ? westMaterialR : eastMaterialR;
+                materialEdgeG = nearWest ? westMaterialG : eastMaterialG;
+                materialEdgeB = nearWest ? westMaterialB : eastMaterialB;
+              } else if (horizontalMaterialStrength > 0) {
+                materialEdgeStrength = horizontalMaterialStrength;
+                materialEdgeR = nearNorth ? northMaterialR : southMaterialR;
+                materialEdgeG = nearNorth ? northMaterialG : southMaterialG;
+                materialEdgeB = nearNorth ? northMaterialB : southMaterialB;
               }
 
               const nearestCorner = (pixelFx < 0.5 ? 0 : 1) + (pixelFy < 0.5 ? 0 : 2);
@@ -634,6 +777,14 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
               g += (CONCRETE_STEEL_DARK.g - g) * t;
               b += (CONCRETE_STEEL_DARK.b - b) * t;
             }
+          }
+          if (materialEdgeStrength > 0) {
+            const targetR = (baseR + materialEdgeR) * 0.5;
+            const targetG = (baseG + materialEdgeG) * 0.5;
+            const targetB = (baseB + materialEdgeB) * 0.5;
+            r += (targetR - r) * materialEdgeStrength;
+            g += (targetG - g) * materialEdgeStrength;
+            b += (targetB - b) * materialEdgeStrength;
           }
           const px = col * ATLAS_CELL + lx;
           const grainScale = same === CONCRETE_CELL_CLASS ? 5 : same === WATER_CELL_CLASS ? 3 : same === GROUND_CELL_CLASS ? 11 : 13;

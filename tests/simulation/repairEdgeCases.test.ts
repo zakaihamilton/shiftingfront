@@ -47,6 +47,27 @@ describe("repair edge cases", () => {
     expect(barracks.repairing).toBe(true);
   });
 
+  it("pauses repair while a hostile combatant is actively attacking the building", () => {
+    const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    const power = addBuilding(s, 0, "power", 4, 4);
+    const attacker = addBuilding(s, 1, "turret", 8, 8);
+    power.hp = 100;
+    power.repairing = true;
+    attacker.attackTarget = power.id;
+    const creditsBefore = s.credits[0];
+
+    tickRepair(s);
+
+    expect(power.hp).toBe(100);
+    expect(s.credits[0]).toBe(creditsBefore);
+    expect(power.repairing).toBe(true);
+
+    attacker.attackTarget = undefined;
+    tickRepair(s);
+    expect(power.hp).toBeGreaterThan(100);
+  });
+
   it("clamps restored hp to exactly maxHp on the finishing tick", () => {
     const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     addBuilding(s, 0, "constructionYard", 0, 0);

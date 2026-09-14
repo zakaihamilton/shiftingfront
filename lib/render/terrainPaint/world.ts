@@ -13,7 +13,7 @@ import { paintShroudOverlay, paintShroudMaskTile, drawAtlasDiamond } from "./til
 import { smoothFogGain, drawBlockerProp, drawOreCrystals } from "./details";
 import { drawTerrainScatter } from "./scatter";
 import { SHROUD_FILL, SHROUD_RGB, TERRAIN_COVER } from "./constants";
-import { drawElevationFaces } from "./cliffs";
+import { drawElevationFaces, fillElevationPoly } from "./cliffs";
 import { terrainLightRigFor } from "../terrainLighting";
 
 const sceneryMemo = new SceneryMemo();
@@ -41,6 +41,39 @@ function wetBankColors(
   };
 }
 
+function paintElevationGapBridges(
+  ctx: CanvasRenderingContext2D,
+  s: { x: number; y: number },
+  eastS: { x: number; y: number },
+  southS: { x: number; y: number },
+  tw: number,
+  th: number,
+  dropE: number,
+  dropS: number,
+  colors: ReturnType<typeof cliffFaces>,
+): void {
+  // Atlas cells meet at their top elevation. When the neighbor is lower,
+  // that neighbor's diamond is translated down by the height step, leaving
+  // a thin uncovered parallelogram beside the inset cliff face. Paint only
+  // that gap; the face and the atlas remain responsible for the visible art.
+  if (dropE > 0) {
+    fillElevationPoly(ctx, 0, 0, [
+      s.x + tw / 2, s.y + th / 2,
+      s.x, s.y + th,
+      eastS.x - tw / 2, eastS.y + th / 2,
+      eastS.x, eastS.y,
+    ], colors.east);
+  }
+  if (dropS > 0) {
+    fillElevationPoly(ctx, 0, 0, [
+      s.x - tw / 2, s.y + th / 2,
+      s.x, s.y + th,
+      southS.x + tw / 2, southS.y + th / 2,
+      southS.x, southS.y,
+    ], colors.south);
+  }
+}
+
 function paintCell(
   ctx: CanvasRenderingContext2D,
   state: AtlasWorld,
@@ -64,9 +97,17 @@ function paintCell(
   const cover = expandIsoDiamond(s.x, s.y, tw, th, concrete ? 1 : water ? WATER_COVER : TERRAIN_COVER);
   const eastSc = memoScenery(state, x + 1, y);
   const southSc = memoScenery(state, x, y + 1);
+  const eastS = tileToScreen(x + 1, y, cam, eastSc.elev);
+  const southS = tileToScreen(x, y + 1, cam, southSc.elev);
   const dropE = water ? 0 : Math.max(0, elev - eastSc.elev);
   const dropS = water ? 0 : Math.max(0, elev - southSc.elev);
   const gain = gainAt?.(x, y) ?? 1;
+  const faceColors = wetBankColors(
+    cliffFaces(state.biome, elev, generateCampaignVisualProfile(state.seed)),
+    biomeMaterials(state.biome),
+    eastSc.kind === TILE_WATER,
+    southSc.kind === TILE_WATER,
+  );
 
   if (!water && (elev >= 2 || dropE > 0 || dropS > 0)) {
     ctx.save();
@@ -79,6 +120,7 @@ function paintCell(
   }
   if (dropE > 0 || dropS > 0) {
     ctx.save();
+    paintElevationGapBridges(ctx, s, eastS, southS, tw, th, dropE, dropS, faceColors);
     drawElevationFaces(
       ctx,
       s.x,
@@ -89,12 +131,7 @@ function paintCell(
       dropE,
       dropS,
       tileVariant(state.seed, x, y),
-      wetBankColors(
-        cliffFaces(state.biome, elev, generateCampaignVisualProfile(state.seed)),
-        biomeMaterials(state.biome),
-        eastSc.kind === TILE_WATER,
-        southSc.kind === TILE_WATER,
-      ),
+      faceColors,
       x,
       y,
       terrainLightRigFor(state.seed),
@@ -105,15 +142,19 @@ function paintCell(
   ctx.save();
   isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
   ctx.clip();
-  if (concrete) {
-    drawConcreteSlab(ctx, s.x, s.y, tw, th, z, tileVariant(state.seed, x, y), 1);
-  } else if (atlas.canvas) {
+  const mats = biomeMaterials(state.biome);
+  const base = water ? mats.waterMid : concrete ? mats.concrete : mats.mid;
+  ctx.fillStyle = `rgb(${base.r},${base.g},${base.b})`;
+  isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
+  ctx.fill();
+  if (atlas.canvas) {
     drawAtlasDiamond(ctx, atlas, x, y, s.x, s.y, tw, th);
+  } else if (concrete) {
+    // Keep the specialized slab as a no-atlas fallback; the normal browser
+    // path uses the atlas so concrete participates in organic land edges.
+    drawConcreteSlab(ctx, s.x, s.y, tw, th, z, tileVariant(state.seed, x, y), 1);
   } else {
-    const mats = biomeMaterials(state.biome);
-    ctx.fillStyle = water
-      ? `rgb(${mats.waterMid.r},${mats.waterMid.g},${mats.waterMid.b})`
-      : `rgb(${mats.mid.r},${mats.mid.g},${mats.mid.b})`;
+    ctx.fillStyle = `rgb(${mats.mid.r},${mats.mid.g},${mats.mid.b})`;
     isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
     ctx.fill();
   }

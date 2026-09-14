@@ -8,9 +8,14 @@ export function entityElev(state: SimState, e: Entity): number {
 }
 
 function pointInDiamond(px: number, py: number, x: number, y: number, w: number, h: number): boolean {
+  return diamondDistance(px, py, x, y, w, h) <= 1.02;
+}
+
+/** Normalized distance from a point to the center of a projected tile. */
+function diamondDistance(px: number, py: number, x: number, y: number, w: number, h: number): number {
   const cx = x;
   const cy = y + h / 2;
-  return Math.abs(px - cx) / (w / 2) + Math.abs(py - cy) / (h / 2) <= 1.02;
+  return Math.abs(px - cx) / (w / 2) + Math.abs(py - cy) / (h / 2);
 }
 
 export function pickTile(
@@ -24,6 +29,7 @@ export function pickTile(
   const cx = Math.round(g.x);
   const cy = Math.round(g.y);
   let best: { x: number; y: number } | null = null;
+  let bestDistance = Infinity;
   let bestDepth = -Infinity;
   const tw = TILE_W * cam.zoom;
   const th = TILE_H * cam.zoom;
@@ -37,8 +43,13 @@ export function pickTile(
       const elev = heightAt(state, x, y);
       const s = tileToScreen(x, y, cam, elev);
       if (!pointInDiamond(sx, sy, s.x, s.y, tw, th)) continue;
+      const distance = diamondDistance(sx, sy, s.x, s.y, tw, th);
       const depth = (x + y) * 16 + elev;
-      if (depth >= bestDepth) {
+      if (
+        distance < bestDistance - 1e-9 ||
+        (Math.abs(distance - bestDistance) <= 1e-9 && depth >= bestDepth)
+      ) {
+        bestDistance = distance;
         bestDepth = depth;
         best = { x, y };
       }

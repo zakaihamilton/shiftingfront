@@ -7,7 +7,7 @@ import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../..
 import { heightAt } from "../../lib/sim/world";
 import { setHeight } from "../../lib/sim/fixtures";
 import { selectionProjectionPoint } from "../../components/game/hooks/selectionBox";
-import { selectVisibleUnitsOfKind, selectionIdsInBox } from "../../components/game/hooks/gameInputOrders";
+import { pointerTile, selectVisibleUnitsOfKind, selectionIdsInBox } from "../../components/game/hooks/gameInputOrders";
 
 describe("harvester selection", () => {
   it("selects a harvester from a click on its sprite body", () => {
@@ -114,6 +114,18 @@ describe("harvester selection", () => {
     const cam = createCamera();
     const top = tileToScreen(6, 6, cam, heightAt(s, 6, 6));
     expect(pickTile(s, top.x, top.y + TILE_H / 2, cam)).toEqual({ x: 6, y: 6 });
+  });
+
+  it("picks the tile under the cursor when an elevated neighbor overlaps its surface", () => {
+    const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    setHeight(s, 3, 0, 0);
+    setHeight(s, 4, 1, 1);
+    const cam = { x: 300, y: 200, zoom: 1 };
+    const target = tileToScreen(3, 0, cam, heightAt(s, 3, 0));
+
+    const cursor = { x: target.x, y: target.y + TILE_H / 2 };
+    expect(pickTile(s, cursor.x, cursor.y, cam)).toEqual({ x: 3, y: 0 });
+    expect(pointerTile(s, cursor, cam)).toEqual({ x: 3, y: 0 });
   });
 
   it("keeps the marquee anchor attached while horizontal edge-pan reveals another unit", () => {
