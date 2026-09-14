@@ -4,15 +4,19 @@ import { TILE_BLOCKED, TILE_CLEAR, TILE_WATER } from "../../lib/types";
 
 describe("map reachability", () => {
   it("blocks diagonal cuts through water or blocked corners", () => {
-    const width = 3;
-    const height = 3;
-    const tiles = [
-      TILE_CLEAR, TILE_WATER, TILE_CLEAR,
-      TILE_BLOCKED, TILE_CLEAR, TILE_CLEAR,
-      TILE_CLEAR, TILE_CLEAR, TILE_CLEAR,
-    ];
+    const width = 2;
+    const height = 2;
     const heights = new Array(width * height).fill(1);
-    expect(reachable(tiles, heights, width, height, { x: 0, y: 0 }, { x: 2, y: 0 })).toBe(false);
-    expect(reachable(tiles, heights, width, height, { x: 0, y: 0 }, { x: 2, y: 2 })).toBe(true);
+    const cut = [
+      TILE_CLEAR, TILE_WATER,
+      TILE_BLOCKED, TILE_CLEAR,
+    ];
+    expect(reachable(cut, heights, width, height, { x: 0, y: 0 }, { x: 1, y: 1 })).toBe(false);
+
+    const around = [
+      TILE_CLEAR, TILE_WATER,
+      TILE_CLEAR, TILE_CLEAR,
+    ];
+    expect(reachable(around, heights, width, height, { x: 0, y: 0 }, { x: 1, y: 1 })).toBe(true);
   });
 });

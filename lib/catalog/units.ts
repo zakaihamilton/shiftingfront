@@ -217,7 +217,8 @@ export function isSupportEntity(e: Entity): boolean {
   return isUnitEntity(e) && UNIT_STATS[e.kind].supportRole !== undefined;
 }
 
-export function isUnitAvailable(kind: UnitKind, _missionIndex?: number): boolean {
+export function isUnitAvailable(kind: UnitKind, missionIndex: number): boolean {
+  void missionIndex;
   return !UNIT_DEFINITIONS[kind].scenarioOnly;
 }
 

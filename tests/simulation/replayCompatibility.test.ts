@@ -13,7 +13,8 @@ const BASELINES = [
   { kind: "harvestQuota", seed: 7, missionIndex: 3, digest: "c2b006758b91d00a7547e3e2f70e8740ce1414dfa1790bf47be1aef019fba0fa" },
   { kind: "holdTheLine", seed: 0, missionIndex: 5, digest: "da67ea27a7280166a2b091d4dfc8dedf4470dc953bad003feb48c3962a37fa1c" },
   { kind: "razeAll", seed: 3, missionIndex: 2, digest: "0625634641049f5bf72e591b1c96f7dd5b9da5057d95704c263135d3dc247310" },
-  { kind: "rescue", seed: 0, missionIndex: 0, digest: "8ae62cc1f024c624b845ba829edc859532202ba98b149db39be763cea2215eec" },
+  // Rescue corridors now join the map route-repair pass used by extraction.
+  { kind: "rescue", seed: 0, missionIndex: 0, digest: "78e3873772c47b9ad2ae5d0ca6fc3662090c259112c3e1a0df5bb0d7f80f9def" },
   { kind: "sabotage", seed: 1, missionIndex: 0, digest: "3ba9674a61914bc53d4324ea7184b07172659a4ef518d25254f5ec9ea024c97e" },
   { kind: "structureQuota", seed: 2, missionIndex: 0, digest: "730c54eba5f2ce08a7a0f37fbb3c9cd259b094152bb46c704d61909971014435" },
 ] as const;
