@@ -23,6 +23,7 @@ import type { ArchiveEntry, SlotMeta } from "../../lib/persist/save";
 import { MissionConfirmation } from "../../components/game/MissionConfirmation";
 import { BriefingActions } from "../../components/briefing/BriefingActions";
 import { createCampaign } from "../../lib/gen/campaign";
+import { biomeLabel } from "../../lib/gen/names";
 import { defaultSettings } from "../../lib/persist/settings";
 import type { Palette } from "../../lib/types";
 import { generateVisualProfile } from "../../lib/gen/visualProfile";
@@ -376,6 +377,11 @@ describe("NewGameSetup", () => {
     );
 
     expect(screen.getByTestId("campaign-backdrop")).toBeVisible();
+    expect(screen.getByTestId("campaign-backdrop")).toHaveAttribute(
+      "aria-label",
+      `${biomeLabel(campaign.world.biome)} campaign backdrop`,
+    );
+    expect(campaign.missions.every((mission) => mission.biome === campaign.world.biome)).toBe(true);
     const startButton = screen.getByRole("button", { name: "Start" });
     expect(screen.getByTestId("campaign-info-pane")).toContainElement(startButton);
     expect(startButton).toHaveAttribute("data-default-action", "true");

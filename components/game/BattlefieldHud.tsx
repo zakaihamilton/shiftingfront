@@ -92,6 +92,13 @@ export function BattlefieldHud({
     setDirectiveExpanded((expanded) => !expanded);
     onObjectivePanelToggle?.();
   };
+  const timerReadout = timeRemaining ? (
+    <div className={styles.timeRemaining} data-testid="time-remaining" data-placement={directiveExpanded ? "body" : "collapsed"} data-urgency={urgency} data-tooltip="Time left to complete the primary objective. The mission fails at 00:00.">
+      <span className={styles.timerGlyph} aria-hidden="true">{timerGlyph}</span>
+      <span>{timerText}</span>
+      {timerRatio !== undefined ? <span className={styles.timerBar} aria-hidden="true"><span style={{ width: `${Math.round(timerRatio * 100)}%` }} /></span> : null}
+    </div>
+  ) : null;
   return (
     <div className={styles.status} data-testid="battlefield-status" data-urgency={urgency}>
       <div className={styles.operationBar}>
@@ -127,6 +134,7 @@ export function BattlefieldHud({
             <span className={styles.directiveToggleIcon} aria-hidden="true">{directiveExpanded ? "−" : "+"}</span>
           </button>
         </div>
+        {!directiveExpanded ? timerReadout : null}
         <div id="mission-directive-body" className={styles.directiveBody} hidden={!directiveExpanded}>
             <div className={styles.objective} data-testid="objective" data-status={primaryCard?.status ?? "active"}>
               <span className={styles.objectivePriority}><span className={styles.priorityIcon} aria-hidden="true">!</span> Primary objective</span>
@@ -141,13 +149,7 @@ export function BattlefieldHud({
                 </span>
               ) : null}
             </div>
-            {timeRemaining ? (
-              <div className={styles.timeRemaining} data-testid="time-remaining" data-urgency={urgency} data-tooltip="Time left to complete the primary objective. The mission fails at 00:00.">
-                <span className={styles.timerGlyph} aria-hidden="true">{timerGlyph}</span>
-                <span>{timerText}</span>
-                {timerRatio !== undefined ? <span className={styles.timerBar} aria-hidden="true"><span style={{ width: `${Math.round(timerRatio * 100)}%` }} /></span> : null}
-              </div>
-            ) : null}
+            {directiveExpanded ? timerReadout : null}
             {convoyDeparture ? (
               <div className={styles.stagingWindow} data-testid="convoy-departure" data-tooltip="The convoy starts moving at 00:00. This wait is included in the mission time.">
                 {convoyDeparture}

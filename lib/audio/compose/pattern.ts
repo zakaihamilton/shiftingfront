@@ -50,6 +50,34 @@ import {
   smoothMelodyLine,
 } from "./stems";
 
+const CINEMATIC_VERSE_CONTOURS: readonly (readonly (number | null)[])[] = [
+  [0, null, 2, 3, 4, 2, 1, 0],
+  [0, 2, null, 4, 3, 2, 0, null],
+  [2, 0, 2, 4, 5, 4, 2, 0],
+  [0, 1, 3, 4, 2, 0, null, 1],
+  [0, 2, 4, 3, 2, 4, 5, 0],
+];
+
+const CINEMATIC_VERSE_RHYTHMS: readonly number[][] = [
+  [0, 3, 6, 8, 10, 12, 14, 15],
+  [0, 2, 5, 8, 10, 12, 14, 15],
+  [0, 3, 6, 9, 11, 12, 14, 15],
+  [0, 2, 6, 8, 11, 13, 14, 15],
+];
+
+const CINEMATIC_HOOK_CONTOURS: readonly (readonly (number | null)[])[] = [
+  [0, 2, 4, 5, 4, 2, 0],
+  [0, 2, 3, 5, 4, 2, 0],
+  [2, 4, 5, 4, 2, 0, 2],
+  [4, 2, 0, 2, 4, 5, 4],
+];
+
+const CINEMATIC_HOOK_RHYTHMS: readonly number[][] = [
+  [0, 3, 6, 8, 11, 13, 15],
+  [0, 2, 6, 9, 11, 14, 15],
+  [0, 4, 7, 9, 12, 14, 15],
+];
+
 function makeSections(): MusicSection[] {
   return SECTION_ORDER.map((name, index) => ({
     name,
@@ -61,10 +89,14 @@ function makeSections(): MusicSection[] {
 
 function motifFrom(
   rng: Rng,
-  contours: readonly (number | null)[][],
+  contours: readonly (readonly (number | null)[])[],
   rhythms: readonly number[][],
+  avoid?: MusicMotif,
 ): MusicMotif {
-  const contour = rng.pick(contours);
+  const availableContours = avoid
+    ? contours.filter((candidate) => JSON.stringify(candidate) !== JSON.stringify(avoid.degrees))
+    : contours;
+  const contour = rng.pick(availableContours.length > 0 ? availableContours : contours);
   const response = pickDifferent(rng, contours, contour);
   const rhythm = rng.pick(rhythms);
   const accents = rng.pick([
@@ -102,9 +134,14 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const [progressionA, progressionB, progressionC, progressionD] = pickCycle(harmonyRng, progressions);
   const bassRiffs = bassRiffsFor(style.bassRiffFamily);
   const [bassRiffA, bassRiffB, bassRiffC, bassRiffD] = pickCycle(harmonyRng, bassRiffs);
-  const motif = motifFrom(melodyRng, VERSE_CONTOURS, VERSE_RHYTHMS);
-  const developmentMotif = motifFrom(melodyRng, VERSE_CONTOURS, VERSE_RHYTHMS);
-  const hook = signatureMotifFrom(melodyRng);
+  const cinematicMaterial = style.voiceEngine === "cinematic";
+  const verseContours = cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS;
+  const verseRhythms = cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS;
+  const motif = motifFrom(melodyRng, verseContours, verseRhythms);
+  const developmentMotif = motifFrom(melodyRng, verseContours, verseRhythms, motif);
+  const hook = cinematicMaterial
+    ? motifFrom(melodyRng, CINEMATIC_HOOK_CONTOURS, CINEMATIC_HOOK_RHYTHMS)
+    : signatureMotifFrom(melodyRng);
   const [arpFigureA, arpFigureB, arpFigureC, arpFigureD] = pickCycle(rhythmRng, ARP_FIGURES);
   const [openHatA, openHatB, openHatC, openHatD] = pickCycle(drumRng, OPEN_HAT_FIGURES);
   const sparse = isSparseCue(cue);
@@ -146,7 +183,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     const liftBar = halfPhrase === 4 || halfPhrase === 5;
     const dropTexture = formRng.next() < (climax || hookSection ? 0.06 : 0.18);
     const miniRoll = formRng.next();
-    const miniFill = !sparse && thinBar && halfPhrase === 3 && !intro && !holdBass && miniRoll < 0.3;
+    const miniFill = !sparse && thinBar && halfPhrase === 3 && !intro && !breakdown && !holdBass && miniRoll < 0.16;
     const dropHats = thinBar && dropTexture && !hookSection;
     const dropPulse = thinBar && dropTexture && !hookSection;
     const denseBar = cue === "victory" && section.name === "climax"
@@ -161,7 +198,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     if (hole) usePulse = false;
     if (dropPulse) usePulse = false;
     const phraseSlot = phraseBar % 4;
-    const response = phraseSlot === 1 || phraseSlot === 2;
+    const response = phraseSlot === 1 || phraseSlot === 3;
     const restBar = section.name === "breakdown" && phraseSlot === 3;
     const useHookLead =
       hookSection ||
@@ -222,15 +259,16 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
 
     if (usePulse && style.pulseRole !== "none") {
       const sectionPulseStride = arrangement.pulseStrides[sectionIndex]!;
-      const pulseStride = climax && !sparse
-        ? 1
-        : hole || (sparse && cue === "defeat")
-          ? 4
-          : hookSection && sectionPulseStride === 1
-            ? 2
-            : sectionPulseStride;
+      const requestedPulseStride = hole || (sparse && cue === "defeat")
+        ? 4
+        : hookSection && sectionPulseStride === 1
+          ? 2
+          : sectionPulseStride;
+      // Sixteenth-note arps read as a game-console texture. Let the drums
+      // provide urgency at the peak while the fastest pulse stays musical.
+      const pulseStride = requestedPulseStride === 1 ? 2 : requestedPulseStride;
       for (const i of pulseStepsFor(style.pulseRole, pulseStride)) {
-        const figureIndex = Math.floor(i / Math.max(1, pulseStride === 1 ? 1 : 2)) % arpFigure.length;
+        const figureIndex = Math.floor(i / 2) % arpFigure.length;
         const velocity = climax
           ? i % 2 === 0 ? 0.7 : 0.36
           : section.name === "hook" || section.name === "escalation"
@@ -256,8 +294,8 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
           : motif;
       const velocity = mixEnergy(climax ? 0.96 : hookSection ? 0.86 : 0.74, energy);
       const durationFor = (index: number, sounding: number) => {
-        if (useHookLead) return index === sounding - 1 ? 3 : 4;
-        return liftBar ? 3 : 2;
+        if (useHookLead) return index === sounding - 1 ? (cinematicMaterial ? 5 : 3) : cinematicMaterial ? 4 : 4;
+        return cinematicMaterial ? (liftBar ? 4 : 3) : liftBar ? 3 : 2;
       };
       previousMelodyMidi = placeMelody(
         notes.melody,
@@ -330,31 +368,31 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
       const grooveVariantNow = ((bar >= MUSIC_BARS / 2 ? style.grooveVariant + 1 : style.grooveVariant) % 3) as 0 | 1 | 2;
       const hits = grooveHits(groove, cycle % 2 as 0 | 1, grooveVariantNow);
       const drumGain = mixEnergy(fullDrums ? 1 : 0.58, energy);
-      for (const step of hits.kick) drumEvent(drums, origin + step, "kick", (step === 0 ? 0.95 : 0.72) * drumGain, step === 0);
+      for (const step of hits.kick) drumEvent(drums, origin + step, "kick", (step === 0 ? 0.95 : 0.72) * drumGain, step === 0, drumRng);
       for (const step of hits.snare) {
         const accent = step === 4 || step === 12;
-        drumEvent(drums, origin + step, "snare", (accent ? 0.9 : 0.62) * drumGain, accent);
-        if (!sparse && !hole) drumEvent(drums, origin + step, "clap", (accent ? 0.76 : 0.48) * drumGain, accent);
+        drumEvent(drums, origin + step, "snare", (accent ? 0.9 : 0.62) * drumGain, accent, drumRng);
+        if (!sparse && !hole) drumEvent(drums, origin + step, "clap", (accent ? 0.76 : 0.48) * drumGain, accent, drumRng);
       }
       const hatStride = sparse
         ? Math.max(2, dropHats ? 4 : arrangement.hatStride[sectionIndex]!)
         : climax ? 2 : dropHats ? 4 : arrangement.hatStride[sectionIndex]!;
       for (let step = 0; step < STEPS_PER_BAR; step += hatStride) {
         const offbeat = climax ? step % 2 === 1 : step % 4 === 2;
-        drumEvent(drums, origin + step, "hat", (offbeat ? 0.36 : 0.26) * drumGain);
+        drumEvent(drums, origin + step, "hat", (offbeat ? 0.36 : 0.26) * drumGain, false, drumRng);
       }
       if (!sparse && !hole && !dropHats) {
-        for (const step of openHatSteps) drumEvent(drums, origin + step, "openHat", 0.44 * drumGain);
+        for (const step of openHatSteps) drumEvent(drums, origin + step, "openHat", 0.44 * drumGain, false, drumRng);
       }
-      if (!sparse) placeStylePercussion(drums, origin, style.name, drumGain, dropHats);
+      if (!sparse) placeStylePercussion(drums, origin, style.name, drumGain, dropHats, drumRng);
     }
 
-    if ((section.name === "escalation" || climax) && phraseBar === 0) {
-      drumEvent(drums, origin, "impact", mixEnergy(climax ? 0.9 : 0.62, energy), true);
+    if ((section.name === "hook" || section.name === "escalation" || climax) && phraseBar === 0) {
+      drumEvent(drums, origin, "impact", mixEnergy(climax ? 0.9 : section.name === "hook" ? 0.46 : 0.62, energy), true, drumRng);
     }
 
     if (miniFill) {
-      placePhraseFill(drums, origin, arrangement.fillStyle[sectionIndex]!, { sparse, finalBar: false, mini: true });
+      placePhraseFill(drums, origin, arrangement.fillStyle[sectionIndex]!, { sparse, finalBar: false, mini: true, rng: drumRng });
     }
 
     if (fill) {
@@ -362,6 +400,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
         sparse: sparse || (hole && cue !== "victory"),
         finalBar: bar === MUSIC_BARS - 1,
         mini: false,
+        rng: drumRng,
       });
     }
   }

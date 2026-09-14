@@ -3,7 +3,7 @@ import type { BeepKind } from "@/lib/audio/synth";
 import type { Camera } from "@/lib/iso";
 import { canPlaceBuilding } from "@/lib/sim/world";
 import { canSell } from "@/lib/sim/sell";
-import type { BuildingKind, Command, SimState } from "@/lib/types";
+import { isPlayerSelectableEntity, type BuildingKind, type Command, type SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
 import {
   contextOrders,
@@ -74,7 +74,7 @@ export type PointerUpEffect = {
 const DRAG_THRESHOLD = 8;
 
 function selectableIds(state: SimState, hit: SimState["entities"][number] | undefined): number[] {
-  return hit && hit.owner === 0 && (!hit.neutral || isContactTarget(state, hit)) ? [hit.id] : [];
+  return hit && hit.owner === 0 && isPlayerSelectableEntity(hit) && (!hit.neutral || isContactTarget(state, hit)) ? [hit.id] : [];
 }
 
 function selectionForHit(

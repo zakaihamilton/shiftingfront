@@ -3,7 +3,7 @@ import { labelFor } from "@/lib/catalog";
 import { missionLossMessage } from "@/lib/sim/debrief";
 import { fogAt } from "@/lib/sim/fog";
 import { terrainAccess } from "@/lib/sim/world";
-import type { Entity, SimState } from "@/lib/types";
+import { isPlayerSelectableEntity, isPlayerSelectableUnit, type Entity, type SimState } from "@/lib/types";
 import { formationLabel, stanceLabel } from "@/lib/ui/copy";
 import { FORMATION_OPTIONS, STANCE_OPTIONS } from "@/lib/ui/orders";
 import { tileCoords } from "@/lib/ui/tileCoords";
@@ -76,7 +76,7 @@ export function TacticalRoster({
 
   const selectedUnits = [...selectedIdSet].filter((id) => {
     const entity = entityById.get(id);
-    return entity?.owner === 0 && entity.class === "unit" && !entity.neutral && entity.hp > 0;
+    return Boolean(entity && entity.owner === 0 && isPlayerSelectableUnit(entity) && !entity.neutral && entity.hp > 0);
   });
   const coordinateAccess = terrainAccess(state, x, y);
   const coordinateValid = Number.isInteger(x) && Number.isInteger(y) && coordinateAccess.traversable;
@@ -134,9 +134,11 @@ export function TacticalRoster({
                 <span>Position {ex}, {ey} · Role {roleLabel(entity)}</span>
               </div>
               <div className={styles.rowActions}>
-                <button type="button" onClick={() => selectEntity(entity)} aria-label={`Select ${name}`}>
-                  {isSelected ? "Selected" : "Select"}
-                </button>
+                {isPlayerSelectableEntity(entity) ? (
+                  <button type="button" onClick={() => selectEntity(entity)} aria-label={`Select ${name}`}>
+                    {isSelected ? "Selected" : "Select"}
+                  </button>
+                ) : null}
                 <button type="button" onClick={() => { camera.centerSelection(new Set([entity.id])); announce(`Centered camera on ${name}.`); }}>
                   Center
                 </button>

@@ -18,7 +18,6 @@ export function tileFree(
   const current = cellOf(state, e.x, e.y);
   const target = y * state.width + x;
   if (target === current) return true;
-  if (e.neutral) return true;
   if (occupancy[target]) return false;
   const claim = reserved.get(target);
   return claim === undefined || claim === e.id;
@@ -54,18 +53,28 @@ export function trySidestep(
   const cy = Math.round(e.y);
   const dest = e.path.length > 1 ? e.path[1]! : destinationOf(e) ?? e.path[0]!;
   const stayD = Math.hypot(cx - dest.x, cy - dest.y);
+  const allowFarther = (e.blockedTicks ?? 0) > 0;
+  const waypoint = e.path[0];
   let best: { x: number; y: number; d: number; rank: number } | undefined;
   for (const d of PATH_DIRS) {
     const nx = cx + d.x;
     const ny = cy + d.y;
+    const isWaypoint = waypoint && Math.round(waypoint.x) === nx && Math.round(waypoint.y) === ny;
     if (nx === blockedX && ny === blockedY) continue;
     if (e.owner === 0 && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
     if (!tileFree(state, occupancy, reserved, e, nx, ny)) continue;
     if (!canClimb(state, cx, cy, nx, ny)) continue;
     if (diagonalCornerBlocked(state, cx, cy, nx, ny)) continue;
+    if (
+      isWaypoint &&
+      d.x !== 0 &&
+      d.y !== 0 &&
+      (!tileFree(state, occupancy, reserved, e, cx + d.x, cy) ||
+        !tileFree(state, occupancy, reserved, e, cx, cy + d.y))
+    ) continue;
     const dist = Math.hypot(nx - dest.x, ny - dest.y);
     const rank = dist < stayD - 1e-9 ? 0 : dist <= stayD + 1e-9 ? 1 : 2;
-    if (rank >= 2) continue;
+    if (rank >= 2 && !allowFarther) continue;
     if (!best || rank < best.rank || (rank === best.rank && dist < best.d)) {
       best = { x: nx, y: ny, d: dist, rank };
     }
@@ -128,77 +137,11 @@ export function stepBlockerAside(
     if (!canClimb(state, cx, cy, nx, ny)) continue;
     if (diagonalCornerBlocked(state, cx, cy, nx, ny)) continue;
     if (dest && !allowFarther && Math.hypot(nx - dest.x, ny - dest.y) > stayD + 1e-9) continue;
+    const first = blocker.path[0];
+    if (first && Math.round(first.x) === nx && Math.round(first.y) === ny) return true;
     if (blocker.path.length) blocker.path.unshift({ x: nx, y: ny });
     else blocker.path = [{ x: nx, y: ny }];
     return true;
   }
   return false;
-}
-
-export function releaseHeadOnSwap(
-  swapped: Set<number>,
-  e: Entity,
-  blocker: Entity,
-): void {
-  // Do not exchange coordinates here. A full-tile teleport is especially
-  // visible when the units are still moving toward one another. Dropping the
-  // conflicting head waypoints below lets both units continue smoothly on
-  // the following tick while the swapped set still prevents double handling.
-  swapped.add(e.id);
-  swapped.add(blocker.id);
-  e.blockedTicks = 0;
-  blocker.blockedTicks = 0;
-}
-
-export function exchangePositions(
-  state: SimState,
-  occupancy: Uint8Array,
-  atTile: Map<number, Entity>,
-  swapped: Set<number>,
-  e: Entity,
-  blocker: Entity,
-): void {
-  const current = cellOf(state, e.x, e.y);
-  const blockerCell = cellOf(state, blocker.x, blocker.y);
-  const startX = e.x;
-  const startY = e.y;
-  e.x = blocker.x;
-  e.y = blocker.y;
-  blocker.x = startX;
-  blocker.y = startY;
-  occupancy[current] = 1;
-  occupancy[blockerCell] = 1;
-  atTile.set(current, blocker);
-  atTile.set(blockerCell, e);
-  swapped.add(e.id);
-  swapped.add(blocker.id);
-  e.blockedTicks = 0;
-  blocker.blockedTicks = 0;
-}
-
-export function tryCooperativeSwap(
-  state: SimState,
-  occupancy: Uint8Array,
-  atTile: Map<number, Entity>,
-  swapped: Set<number>,
-  e: Entity,
-  blocker: Entity,
-  smooth = false,
-): boolean {
-  if (blocker.neutral || swapped.has(blocker.id) || holdingDestination(blocker)) return false;
-  if (blocker.path.length) return false;
-  const cx = Math.round(e.x);
-  const cy = Math.round(e.y);
-  const bx = Math.round(blocker.x);
-  const by = Math.round(blocker.y);
-  if (!canClimb(state, cx, cy, bx, by) || !canClimb(state, bx, by, cx, cy)) return false;
-  if (diagonalCornerBlocked(state, cx, cy, bx, by)) return false;
-  if (smooth) {
-    releaseHeadOnSwap(swapped, e, blocker);
-    e.path.shift();
-  } else {
-    exchangePositions(state, occupancy, atTile, swapped, e, blocker);
-    e.path.shift();
-  }
-  return true;
 }

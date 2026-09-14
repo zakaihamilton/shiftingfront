@@ -55,7 +55,7 @@ import {
   waterFxNeedsClip,
 } from "../../lib/render/terrainWeather";
 import { spriteCacheKey, terrainContentKey } from "../../lib/render/renderer";
-import { minimapCacheKeys, MINIMAP_OVERLAY_TICK_SHIFT } from "../../lib/render/minimap";
+import { minimapCacheKeys, minimapEntityVisible, MINIMAP_OVERLAY_TICK_SHIFT } from "../../lib/render/minimap";
 import { hash2, propMaterialsFor } from "../../lib/render/terrainMaterials";
 import { hashNoise, valueNoise } from "../../lib/gen/map/noise";
 import { isoDiamondPath, roundedIsoDiamondPath } from "../../lib/render/isoDiamond";
@@ -897,6 +897,20 @@ describe("minimap classification", () => {
 
     const selected = minimapCacheKeys(state, view, 96, 96, new Set([1, 3]));
     expect(selected.overlayKey).not.toBe(next.overlayKey);
+  });
+
+  it("hides stranded minimap contacts until their tile is discovered", () => {
+    const state = makeFixture({ width: 12, height: 12, win: { kind: "rescue", targetCount: 1, ticks: 100 } });
+    const stranded = addUnit(state, 0, "infantry", 8, 8);
+    stranded.neutral = true;
+    stranded.scenarioRole = "stranded";
+    state.fog.fill(0);
+
+    expect(minimapEntityVisible(state, stranded)).toBe(false);
+    const index = fogIndex(state, stranded.x, stranded.y);
+    expect(index).not.toBeNull();
+    state.fog[index!] = 2;
+    expect(minimapEntityVisible(state, stranded)).toBe(true);
   });
 });
 

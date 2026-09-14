@@ -16,7 +16,7 @@ export type MusicScaleName =
   | "lydian"
   | "double harmonic"
   | "blues";
-export type MusicVoiceEngine = "dual-osc" | "acid-res" | "pwm" | "fm-bell" | "chip";
+export type MusicVoiceEngine = "dual-osc" | "acid-res" | "pwm" | "fm-bell" | "chip" | "cinematic";
 export type MusicDrumKit = "gated" | "analog-808" | "chip-noise" | "industrial";
 export type MusicPulseRole = "arp" | "stab" | "offbeat" | "none";
 export type MusicBassRiffFamily =

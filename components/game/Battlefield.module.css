@@ -390,6 +390,14 @@
   letter-spacing: 0.12em;
 }
 
+.timeRemaining[data-placement="collapsed"] {
+  margin-top: 0;
+  flex: 0 1 auto;
+  padding: 0.16rem 0.3rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+}
+
 .timeRemaining[data-urgency="watch"] {
   border-color: var(--chrome-warning);
   color: var(--chrome-warning);

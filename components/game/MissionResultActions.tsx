@@ -48,7 +48,7 @@ export function MissionResultActions({
         <ConsoleButton
           muted
           className={styles.shareAction}
-          tooltip={copied ? "Result copied to clipboard!" : "Copy Wordle-style score to clipboard"}
+          tooltip={copied ? "Result copied to clipboard!" : "Copy mission score to clipboard"}
           onClick={handleShare}
         >
           {copied ? "Copied!" : "Share result"}

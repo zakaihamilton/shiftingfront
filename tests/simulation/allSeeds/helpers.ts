@@ -3,7 +3,7 @@ import { createCampaign } from "../../../lib/gen/campaign";
 import { generateMap, mapSizeForMission } from "../../../lib/gen/map";
 import { createMission } from "../../../lib/sim/api";
 import { inRescueFlank } from "../../../lib/gen/map/generator/rescuePlacement";
-import { canClimb, footprintFlat, inBounds, isStaticWalkable, terrainAccess } from "../../../lib/sim/world";
+import { canClimb, distToEntity, footprintFlat, inBounds, isStaticWalkable, terrainAccess } from "../../../lib/sim/world";
 import { diagonalCornerBlocked, PATH_DIRS } from "../../../lib/sim/pathfinding";
 import type { Entity, MissionKind, SimState, Vec2 } from "../../../lib/types";
 
@@ -68,6 +68,53 @@ function livingEntity(state: SimState, id: number): Entity | undefined {
   return state.entities.find((entity) => entity.id === id && entity.hp > 0);
 }
 
+function assertExtractionDistribution(state: SimState, targetIds: number[], seed: number, missionIndex: number): void {
+  const targets = targetIds
+    .map((id) => livingEntity(state, id))
+    .filter((target): target is Entity => target !== undefined);
+  const playerBuildings = state.entities.filter((entity) => entity.owner === 0 && entity.class === "building" && entity.hp > 0);
+  const enemyBuildings = state.entities.filter((entity) => entity.owner === 1 && entity.class === "building" && entity.hp > 0);
+  const pairDistances = targets.flatMap((target, index) => targets
+    .slice(index + 1)
+    .map((other) => Math.hypot(target.x - other.x, target.y - other.y)));
+  const minimumSeparation = Math.min(...pairDistances);
+  const maximumSeparation = Math.max(...pairDistances);
+  if (minimumSeparation < 6) {
+    throw new Error(`Seed ${seed} mission ${missionIndex} clustered extraction targets at ${minimumSeparation.toFixed(1)} tiles`);
+  }
+  if (maximumSeparation < state.width * 0.25) {
+    throw new Error(`Seed ${seed} mission ${missionIndex} did not spread extraction targets across the map`);
+  }
+  if (targets.some((target) => playerBuildings.some((building) => distToEntity(target, building) < 8))) {
+    throw new Error(`Seed ${seed} mission ${missionIndex} placed extraction cargo too close to the player base`);
+  }
+  if (targets.some((target) => enemyBuildings.some((building) => distToEntity(target, building) < 14))) {
+    throw new Error(`Seed ${seed} mission ${missionIndex} placed extraction cargo too close to the enemy base`);
+  }
+  if (targets.length < 3) return;
+
+  let maximumTriangleArea = 0;
+  for (let i = 0; i < targets.length; i += 1) {
+    for (let j = i + 1; j < targets.length; j += 1) {
+      for (let k = j + 1; k < targets.length; k += 1) {
+        const first = targets[i]!;
+        const second = targets[j]!;
+        const third = targets[k]!;
+        maximumTriangleArea = Math.max(
+          maximumTriangleArea,
+          Math.abs(
+            (second.x - first.x) * (third.y - first.y)
+              - (second.y - first.y) * (third.x - first.x),
+          ),
+        );
+      }
+    }
+  }
+  if (maximumTriangleArea < 9) {
+    throw new Error(`Seed ${seed} mission ${missionIndex} placed extraction cargo on one line`);
+  }
+}
+
 export function assertCampaignTopology(start: number, end: number): void {
   for (let seed = start; seed < end; seed++) {
     const campaign = createCampaign(seed);
@@ -84,8 +131,8 @@ export function assertCampaignTopology(start: number, end: number): void {
     if (classicKinds.length !== 3 || new Set(classicKinds).size !== 3) {
       throw new Error(`Seed ${seed} generated invalid classic mix: ${classicKinds.join(", ")}`);
     }
-    if (new Set(missions.map((mission) => mission.biome)).size !== 6) {
-      throw new Error(`Seed ${seed} repeated a biome`);
+    if (missions.some((mission) => mission.biome !== campaign.world.biome)) {
+      throw new Error(`Seed ${seed} generated a mission outside campaign biome ${campaign.world.biome}`);
     }
     for (const [index, mission] of missions.entries()) {
       if (mission.index !== index || mission.mapSize !== mapSizeForMission(index) || mission.kind !== mission.win.kind) {
@@ -136,6 +183,9 @@ export function assertScenarioTargets(start: number, end: number): void {
         if (mission.win.kind === "rescue" && rescueMap && !inRescueFlank(rescueMap, target.x, target.y)) {
           throw new Error(`Seed ${seed} mission ${mission.index} staged rescue target ${id} outside mirrored flank`);
         }
+      }
+      if (mission.win.kind === "extraction") {
+        assertExtractionDistribution(state, targetIds, seed, mission.index);
       }
     }
   }

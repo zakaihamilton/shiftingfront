@@ -20,7 +20,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   const title = APP_NAME;
 
-  const description = `${campaign.world.name} (${biomeLabel(campaign.world.biome)}). ${campaign.world.conflict}. ${campaign.factions[0].name} vs ${campaign.factions[1].name}. 6 operations — Wordle for RTS.`;
+  const description = `${campaign.world.name} (${biomeLabel(campaign.world.biome)}). ${campaign.world.conflict}. ${campaign.factions[0].name} vs ${campaign.factions[1].name}. 6 operations — a seeded RTS campaign.`;
 
   const ogUrl = `/api/og?seed=${seedStr}`;
 

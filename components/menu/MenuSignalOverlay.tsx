@@ -21,8 +21,6 @@ import {
   type Shot,
 } from "./menuBackdropSim";
 import { isTerrainAtlasReady, preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
-import { listTacticalRasterSources } from "@/lib/gen/visualAssets";
-import { areRasterSourcesReady, preloadRasterSources } from "@/lib/render/sprites";
 import styles from "./MenuSignalOverlay.module.css";
 
 const REDUCE_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -85,8 +83,6 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
     );
     preloadTerrainAtlas(scene.ground);
     if (scene.state) preloadTerrainAtlas(scene.state);
-    const tacticalSources = listTacticalRasterSources();
-    preloadRasterSources(tacticalSources);
 
     let nextScene: CinemaScene | null = null;
     let cycleIndex = previewRef.current.cycleIndex;
@@ -130,8 +126,7 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
       }
 
       const terrainReady = scene.state ? isTerrainAtlasReady(scene.state) : isTerrainAtlasReady(scene.ground);
-      const rastersReady = areRasterSourcesReady(tacticalSources);
-      const isExpanded = next.expanded && terrainReady && rastersReady;
+      const isExpanded = next.expanded && terrainReady;
       const effectivePreview: PreviewPhase = isExpanded === next.expanded ? next : { ...next, expanded: false };
 
       if (effectivePreview.expanded) {

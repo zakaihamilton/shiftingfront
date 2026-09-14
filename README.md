@@ -12,7 +12,7 @@ The same code always creates the same campaign. Share a code to share a universe
 
 - **Every code is a theater.** Each seed creates its own world, rival factions, named characters, briefings, six-operation campaign, and changing battlefield.
 - **The objective keeps moving.** Build an economy, train combined-arms forces, destroy enemy positions, hold your HQ, or escort, rescue, sabotage, and extract under pressure.
-- **The ground is part of the fight.** Advance through valleys, plains, hills, and mountains across seeded biomes such as ash plains, crystal flats, rust canyons, and the volcanic shelf. Choose routes, protect resource lines, and make every approach count.
+- **The ground is part of the fight.** Each campaign targets one seeded biome, such as ash plains, crystal flats, rust canyons, or the volcanic shelf. Choose routes, protect resource lines, and make every approach count as the operation grows.
 - **Your army has more than one job.** Field Medics keep infantry alive, Repair Trucks keep vehicles moving, Harvesters fund the war, and Convoy Trucks become the mission when the objective changes.
 - **The enemy reacts.** Rival forces expand, fortify, raid your harvesters, pressure your lines, and retreat when battered. A plan that works once may not survive the next theater.
 

@@ -29,6 +29,7 @@ describe("iso projection", () => {
   });
 
   it("lifts elevated tiles by HEIGHT_STEP and keeps ground picking independent of that lift", () => {
+    expect(HEIGHT_STEP).toBe(14);
     const cam = createCamera();
     const ground = tileToScreen(4, 4, cam, 0);
     const raised = tileToScreen(4, 4, cam, 2);

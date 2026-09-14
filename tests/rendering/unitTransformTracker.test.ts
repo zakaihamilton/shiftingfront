@@ -215,15 +215,15 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
     const t1 = computeUnitDynamicTransform(unit, state, 0, 1100);
     const t2 = computeUnitDynamicTransform(unit, state, 0, 1250);
 
-    expect(t1.gaitBobY).toBeLessThanOrEqual(0);
-    expect(t1.gaitBobY).toBeGreaterThanOrEqual(-2.5);
+    expect(t1.gaitBobY).toBe(0);
     expect(typeof t1.swayX).toBe("number");
     expect(typeof t1.gaitTilt).toBe("number");
     expect(typeof t1.scaleX).toBe("number");
     expect(typeof t1.scaleY).toBe("number");
     expect(typeof t1.isFootPlant).toBe("boolean");
     expect([-1, 1]).toContain(t1.footPlantSide);
-    // Dynamic values vary across walk cycle
-    expect(t1.gaitBobY).not.toBe(t2.gaitBobY);
+    // Leg and foot-plant state varies across the shared walk cycle; the
+    // native raster art supplies the body motion without an extra bob.
+    expect(t1.strideRatio).not.toBe(t2.strideRatio);
   });
 });

@@ -31,9 +31,11 @@ export type MusicGraph = {
   fxBus: GainNode;
   bassDuck: GainNode;
   reverb: ConvolverNode;
+  reverbFilter: BiquadFilterNode;
   reverbSend: GainNode;
   reverbWet: GainNode;
   delay: DelayNode;
+  delayFilter: BiquadFilterNode;
   delayFeedback: GainNode;
   delayWet: GainNode;
   padGain: GainNode;

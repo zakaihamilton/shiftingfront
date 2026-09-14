@@ -260,7 +260,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
 
           <ActionRail className={styles.actions}>
             <ConsoleButton
-              tooltip={copied ? "Theater dossier copied to clipboard!" : "Copy Wordle-style campaign score to clipboard"}
+              tooltip={copied ? "Theater dossier copied to clipboard!" : "Copy campaign score to clipboard"}
               onClick={handleShare}
             >
               {copied ? "Copied!" : "Share dossier"}

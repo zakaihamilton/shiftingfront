@@ -1,4 +1,4 @@
-import { pickMissionBiomes } from "../../gen/names";
+import { generateWorld } from "../../gen/world";
 import { pickMissionKinds } from "../../gen/missionOrder";
 import type { BiomeName, MissionKind } from "../../types";
 import { createRng, type Rng } from "../../seed/rng";
@@ -68,21 +68,21 @@ const KIND_ARRANGEMENTS: Partial<Record<MissionKind, readonly MusicArrangementNa
 };
 
 export function musicMissionContext(seed: number, missionIndex: number): MusicMissionContext {
-  const biomes = pickMissionBiomes(seed);
+  const biome = generateWorld(seed).biome;
   const kinds = pickMissionKinds(seed);
   if (missionIndex === TUTORIAL_MUSIC_MISSION || missionIndex < 0) {
-    return { biome: biomes[0] };
+    return { biome };
   }
   return {
-    biome: biomes[missionIndex] ?? biomes[0],
+    biome,
     missionKind: kinds[missionIndex],
   };
 }
 
 export function campaignMusicContexts(seed: number): MusicMissionContext[] {
-  const biomes = pickMissionBiomes(seed);
+  const biome = generateWorld(seed).biome;
   const kinds = pickMissionKinds(seed);
-  return kinds.map((missionKind, index) => ({ biome: biomes[index] ?? biomes[0], missionKind }));
+  return kinds.map((missionKind) => ({ biome, missionKind }));
 }
 
 export function styleAffinityScore(name: MusicStyleName, ctx: MusicMissionContext): number {

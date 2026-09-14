@@ -8,8 +8,8 @@ export type Camera = {
 
 export const TILE_W = 64;
 export const TILE_H = 32;
-// Restore readable cliff depth so plateaus and ridges separate from plains.
-export const HEIGHT_STEP = 22;
+// Keep plateau and ridge depth readable without making units look like they are climbing cliffs.
+export const HEIGHT_STEP = 14;
 
 /** Convert tile coordinate delta to screen direction angle in radians [-pi, pi]. */
 export function isoHeadingAngle(dx: number, dy: number): number {

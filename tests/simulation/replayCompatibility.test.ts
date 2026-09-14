@@ -3,18 +3,18 @@ import { describe, expect, it } from "vitest";
 import { runReplay } from "../../lib/sim/replay";
 
 const BASELINES = [
-  { kind: "annihilate", seed: 1, missionIndex: 2, digest: "aaf331e6ecff919e75edef666dfd342fb5a3cb4830e2e46680806023b07b4a60" },
-  { kind: "decapitate", seed: 1, missionIndex: 4, digest: "ecb5e56f0bfb0dee67ff47bad3a3f8a6116d062c4f6ad635777db0069f0201a8" },
-  { kind: "destroyMarked", seed: 0, missionIndex: 3, digest: "836f14cd6273eacb0391d5933352dd430d8b4b485d7206d14d59f959d4a9eaae" },
-  { kind: "escort", seed: 0, missionIndex: 2, digest: "66223e200534bb0e3d2ff8810b17488f76b09213b13b77ef4cb29dc2bfb0445d" },
-  { kind: "extraction", seed: 0, missionIndex: 1, digest: "ff03372d584d5646b5bb8ba1bab21c02b0322250d9ade60c062ec97e359eb47a" },
-  { kind: "forceQuota", seed: 0, missionIndex: 4, digest: "8ee9b7f0f55348be0a37aa0dff143f31c97c3bc5e038e21a72842a53654cb224" },
-  { kind: "harvestQuota", seed: 7, missionIndex: 3, digest: "11ee3254605d96cfb71862caa42cc6ae7d8c6d446160e5deda266451bc3a1971" },
-  { kind: "holdTheLine", seed: 0, missionIndex: 5, digest: "9bbf331ea885ff967c231e22ca4aa3009a4177256fba87a60eb43665addb5bac" },
-  { kind: "razeAll", seed: 3, missionIndex: 2, digest: "07b7984626528519d55affc793b27b6632f6ad7f042f5e54dbc98039ae89c151" },
-  { kind: "rescue", seed: 0, missionIndex: 0, digest: "0a724cdade925c075295f12e369412c0c275919201836d37f49ad2968e362c73" },
-  { kind: "sabotage", seed: 1, missionIndex: 0, digest: "855f0f9eed4ba21e86117f53e34253189efb09deb7873d2d1580bb12da113762" },
-  { kind: "structureQuota", seed: 2, missionIndex: 0, digest: "d90a775c64185a5c298a243a09fd1bc949bbc249b668b1267e0469f5532f1697" },
+  { kind: "annihilate", seed: 1, missionIndex: 2, digest: "db47b31212717778abd7617541870b919325995f678881fe1993e395af35bdc9" },
+  { kind: "decapitate", seed: 1, missionIndex: 4, digest: "a90a26be1e6255b7d0e565ea8626fa1fa51bb5af2814d3bd830da2254619d9a4" },
+  { kind: "destroyMarked", seed: 0, missionIndex: 3, digest: "489ad4a2f6a002e306953170dfb03ad047cd7db20a2b8be3591e9f879c2fe878" },
+  { kind: "escort", seed: 0, missionIndex: 2, digest: "cf16ec49d0c5ae034f2eed5d68eeb9f6f6302afadb558f15568e5d225fd59231" },
+  { kind: "extraction", seed: 0, missionIndex: 1, digest: "d4860e87325be877e78722b99c4e7023f00ec873998ff1c32c4f55ea3f54f8c0" },
+  { kind: "forceQuota", seed: 0, missionIndex: 4, digest: "b6e7b09812c71c8080948b9c3a786f3835267f2527a954a0bf8dde2cda2b12d5" },
+  { kind: "harvestQuota", seed: 7, missionIndex: 3, digest: "c2b006758b91d00a7547e3e2f70e8740ce1414dfa1790bf47be1aef019fba0fa" },
+  { kind: "holdTheLine", seed: 0, missionIndex: 5, digest: "da67ea27a7280166a2b091d4dfc8dedf4470dc953bad003feb48c3962a37fa1c" },
+  { kind: "razeAll", seed: 3, missionIndex: 2, digest: "0625634641049f5bf72e591b1c96f7dd5b9da5057d95704c263135d3dc247310" },
+  { kind: "rescue", seed: 0, missionIndex: 0, digest: "8ae62cc1f024c624b845ba829edc859532202ba98b149db39be763cea2215eec" },
+  { kind: "sabotage", seed: 1, missionIndex: 0, digest: "3ba9674a61914bc53d4324ea7184b07172659a4ef518d25254f5ec9ea024c97e" },
+  { kind: "structureQuota", seed: 2, missionIndex: 0, digest: "730c54eba5f2ce08a7a0f37fbb3c9cd259b094152bb46c704d61909971014435" },
 ] as const;
 
 describe("replay compatibility baselines", () => {

@@ -1,5 +1,5 @@
 import type { BiomeName, MissionKind, MissionProfile } from "../types";
-import { createRng, type Rng } from "../seed/rng";
+import type { Rng } from "../seed/rng";
 import { profileContractFor } from "./profile";
 
 const FIRST_FEM = [
@@ -121,10 +121,6 @@ export function genEra(rng: Rng): string {
 
 export function genBiome(rng: Rng): BiomeName {
   return rng.pick(BIOMES);
-}
-
-export function pickMissionBiomes(seed: number): BiomeName[] {
-  return createRng(seed, "mission-biomes").shuffle(BIOMES);
 }
 
 export function genRank(rng: Rng): string {

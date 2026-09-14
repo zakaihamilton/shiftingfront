@@ -118,6 +118,9 @@ export function isEntity(value: unknown): value is Entity {
   if (value.orderMode !== undefined && !isOneOf(value.orderMode, ORDER_MODES)) return false;
   if (value.orderDestination !== undefined && !isVec2(value.orderDestination)) return false;
   if (value.rallyPoint !== undefined && (!classIsBuilding || !isVec2(value.rallyPoint))) return false;
+  if (value.refineryHarvesterPending !== undefined && (
+    typeof value.refineryHarvesterPending !== "boolean" || !classIsBuilding || value.kind !== "refinery"
+  )) return false;
   if (value.flowGoal !== undefined && !isVec2(value.flowGoal)) return false;
   if (value.stance !== undefined && !isOneOf(value.stance, STANCES)) return false;
   if (value.suppression !== undefined && !isNonNegativeNumber(value.suppression)) return false;

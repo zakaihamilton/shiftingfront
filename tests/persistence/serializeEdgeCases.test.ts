@@ -8,7 +8,7 @@ import {
   SAVE_PREFIX,
   SAVE_VERSION,
 } from "../../lib/persist/save/serialize";
-import { addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 function baseState(seed = 1000) {
   return makeFixture({ seed, win: { kind: "annihilate" } });
@@ -43,6 +43,16 @@ describe("serializeState / deserializeState", () => {
     const legacy = JSON.parse(serializeState(state)) as { aiContacts?: unknown };
     delete legacy.aiContacts;
     expect(deserializeState(JSON.stringify(legacy)).aiContacts).toEqual({});
+  });
+
+  it("round-trips a pending refinery harvester", () => {
+    const state = baseState();
+    const refinery = addBuilding(state, 0, "refinery", 4, 4);
+    refinery.refineryHarvesterPending = true;
+
+    const restored = deserializeState(serializeState(state));
+
+    expect(restored.entities.find((entity) => entity.id === refinery.id)?.refineryHarvesterPending).toBe(true);
   });
 });
 

@@ -15,7 +15,6 @@ import { beepForCommands } from "../../lib/audio/uiOrders";
 import { spatialAudioForWorld } from "../../lib/audio/spatial";
 import { createCamera } from "../../lib/iso";
 import { createCampaign } from "../../lib/gen/campaign";
-import { pickMissionBiomes } from "../../lib/gen/names";
 import { styleAffinityScore } from "../../lib/audio/compose/missionContext";
 
 describe("generated audio", () => {
@@ -56,6 +55,7 @@ describe("generated audio", () => {
     expect(corpus.some((pattern) => pattern.style.voiceEngine === "acid-res")).toBe(true);
     expect(corpus.some((pattern) => pattern.style.drumKit === "industrial")).toBe(true);
     expect(corpus.some((pattern) => pattern.drums.some((event) => event.kind === "rim" || event.kind === "shaker"))).toBe(true);
+    expect(corpus.some((pattern) => pattern.style.voiceEngine === "cinematic")).toBe(true);
     expect(new Set(corpus.map((pattern) => pattern.style.voiceEngine)).size).toBe(5);
 
     const missions = Array.from({ length: 6 }, (_, mission) => composeMusic(421, "mission", mission));
@@ -90,6 +90,83 @@ describe("generated audio", () => {
     expect(missions.every((pattern) => pattern.melodyType === pattern.style.melodyType)).toBe(true);
   });
 
+  it("keeps non-retro palettes free of chip voices and sixteenth-note pulse walls", () => {
+    const cues = ["menu", "briefing", "victory", "defeat"] as const;
+    const retroStyles = new Set(["bit-garrison", "tape-static"]);
+    const voiceTypes = (pattern: ReturnType<typeof composeMusic>) => [
+      pattern.style.bassType,
+      pattern.style.pulseType,
+      pattern.style.melodyType,
+      pattern.style.counterType,
+      pattern.style.padType,
+    ];
+    let sawRetroMissionStyle = false;
+
+    for (const cue of cues) {
+      for (let seed = 0; seed < 48; seed++) {
+        const pattern = composeMusic(seed, cue);
+        expect(pattern.style.voiceEngine).not.toBe("chip");
+        expect(pattern.style.voiceEngine).not.toBe("pwm");
+        expect(voiceTypes(pattern)).not.toContain("square");
+      }
+    }
+
+    for (let seed = 0; seed < 48; seed++) {
+      for (let mission = 0; mission < 8; mission++) {
+        const pattern = composeMusic(seed, "mission", mission);
+        const isRetro = retroStyles.has(pattern.style.name);
+        sawRetroMissionStyle ||= isRetro;
+        if (isRetro) {
+          expect(pattern.style.voiceEngine).toBe("chip");
+        } else {
+          expect(pattern.style.voiceEngine).not.toBe("chip");
+          expect(pattern.style.voiceEngine).not.toBe("pwm");
+          expect(voiceTypes(pattern)).not.toContain("square");
+        }
+
+        for (let bar = 0; bar < pattern.bars; bar++) {
+          const start = bar * STEPS_PER_BAR;
+          const pulses = pattern.notes.pulse
+            .filter((note) => note.step >= start && note.step < start + STEPS_PER_BAR)
+            .sort((a, b) => a.step - b.step);
+          expect(pulses.length).toBeLessThanOrEqual(8);
+          for (let index = 1; index < pulses.length; index++) {
+            expect(pulses[index]!.step - pulses[index - 1]!.step).toBeGreaterThanOrEqual(2);
+          }
+        }
+      }
+    }
+
+    expect(sawRetroMissionStyle).toBe(true);
+  });
+
+  it("gives cinematic phrases a call-and-response hook and seeded drum dynamics", () => {
+    const cinematic = Array.from({ length: 48 }, (_, seed) => composeMusic(seed, "mission", seed % 8))
+      .filter((pattern) => pattern.style.voiceEngine === "cinematic");
+    expect(cinematic.length).toBeGreaterThan(0);
+
+    for (const pattern of cinematic) {
+      expect(pattern.theme.motif.degrees).not.toEqual(pattern.theme.motif.response);
+      expect(pattern.theme.developmentMotif.degrees).not.toEqual(pattern.theme.motif.degrees);
+      expect(pattern.theme.hook.degrees.length).toBe(7);
+      expect(pattern.theme.hook.rhythm.length).toBe(7);
+      expect(pattern.theme.hook).not.toEqual(pattern.theme.motif);
+      expect(pattern.drums.every((event) => event.velocity > 0 && event.velocity <= 1)).toBe(true);
+      expect(new Set(pattern.drums.map((event) => event.velocity)).size).toBeGreaterThan(8);
+
+      for (let bar = 7; bar < pattern.bars; bar += 8) {
+        const start = bar * STEPS_PER_BAR;
+        const fillHits = pattern.drums.filter(
+          (event) =>
+            event.step >= start + 8 &&
+            event.step < start + STEPS_PER_BAR &&
+            (event.kind === "kick" || event.kind === "snare" || event.kind === "tom" || event.kind === "impact"),
+        );
+        expect(fillHits.length).toBeLessThanOrEqual(14);
+      }
+    }
+  });
+
   it("ties mission scores to campaign biome and objective", () => {
     for (const seed of [0, 21, 421, 1994, 7777]) {
       const campaign = createCampaign(seed);
@@ -102,23 +179,20 @@ describe("generated audio", () => {
 
     const volcanicFamilies = ["foundry-stomp", "night-raid", "acid-grid"];
     const tundraFamilies = ["ice-protocol", "low-orbit", "cinematic-tension"];
-    const volcanicOrSecondary = [...volcanicFamilies, "industrial-march", "cinematic-tension", "tape-static", "resonant-coil"];
-    const tundraOrSecondary = [...tundraFamilies, "orbital-drift", "glass-chime", "choir-vector", "relay-dub"];
     for (let seed = 0; seed < 48; seed++) {
-      const biomes = pickMissionBiomes(seed);
-      if (biomes[0] === "volcanic shelf") {
+      const biome = createCampaign(seed).world.biome;
+      if (biome === "volcanic shelf") {
         expect(volcanicFamilies).toContain(composeMusic(seed, "mission", 0).style.name);
       }
-      if (biomes[0] === "tundra grid") {
+      if (biome === "tundra grid") {
         expect(tundraFamilies).toContain(composeMusic(seed, "mission", 0).style.name);
       }
-      const volcanicIndex = biomes.indexOf("volcanic shelf");
-      if (volcanicIndex >= 0 && volcanicIndex < 6) {
-        expect(volcanicOrSecondary).toContain(composeMusic(seed, "mission", volcanicIndex).style.name);
-      }
-      const tundraIndex = biomes.indexOf("tundra grid");
-      if (tundraIndex >= 0 && tundraIndex < 6) {
-        expect(tundraOrSecondary).toContain(composeMusic(seed, "mission", tundraIndex).style.name);
+      for (let missionIndex = 0; missionIndex < 6; missionIndex++) {
+        const pattern = composeMusic(seed, "mission", missionIndex);
+        expect(styleAffinityScore(pattern.style.name, {
+          biome: pattern.biome,
+          missionKind: pattern.missionKind,
+        })).toBeGreaterThan(0);
       }
     }
 
@@ -278,7 +352,7 @@ describe("generated audio", () => {
     }
   });
 
-  it("builds a recurring 80s synth-pop hook with gated drums", () => {
+  it("builds a recurring cinematic hook with restrained gated drums", () => {
     const sectionNotesFor = (pattern: ReturnType<typeof composeMusic>, name: string, lane: "melody" | "pulse" | "counter") => {
       const section = pattern.sections.find((entry) => entry.name === name);
       if (!section) return [];
@@ -302,7 +376,7 @@ describe("generated audio", () => {
       }
       expect(sectionNotes("climax", "melody").length).toBeGreaterThanOrEqual(sectionNotes("hook", "melody").length);
       if (pattern.style.pulseRole !== "none") {
-        expect(sectionNotes("climax", "pulse").length).toBeGreaterThan(sectionNotes("hook", "pulse").length);
+        expect(sectionNotes("climax", "pulse").length).toBeGreaterThanOrEqual(sectionNotes("hook", "pulse").length);
       }
       const developmentMelody = sectionNotes("development", "melody");
       const developmentCounter = sectionNotes("development", "counter");

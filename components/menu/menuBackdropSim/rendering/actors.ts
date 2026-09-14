@@ -1,8 +1,8 @@
 import { unitSprite } from "@/lib/gen/assets";
 import { generateVisualProfile } from "@/lib/gen/visualProfile";
 import { TILE_H, tileToScreen, toIsometricFacing, type Camera } from "@/lib/iso";
-import { animFrame, unitMovementOffset } from "@/lib/render/anim";
-import { rasterize } from "@/lib/render/sprites";
+import { animFrame, unitMovementOffset, unitWalkCycle } from "@/lib/render/anim";
+import { drawSprite, isRasterReady, rasterize } from "@/lib/render/sprites";
 import { drawUnitShadow } from "@/lib/render/unitMotion";
 import type { Facing } from "@/lib/types";
 import type { Actor, CinemaScene } from "../scene";
@@ -33,7 +33,9 @@ export function paintCinemaActor(
   const s = tileToScreen(actor.x, actor.y, cam, elev);
   const pal = actor.owner === 0 ? scene.us.palette : scene.them.palette;
   const facing = preview ? actorFacing(actor) : 0;
-  const frame = preview ? animFrame(t * 17, actor.kind === "antiArmor" ? 105 : 90, 4) : 0;
+  const isWalker = actor.kind === "infantry" || actor.kind === "antiArmor" || actor.kind === "medic";
+  const walkCycle = preview && isWalker ? unitWalkCycle(actor.kind, t * 17) : undefined;
+  const frame = walkCycle?.frame ?? (preview ? animFrame(t * 17, actor.kind === "antiArmor" ? 105 : 90, 4) : 0);
   const spec = unitSprite(actor.kind, pal, {
     profile: actor.owner === 0 ? profile0 : profile1,
     facing,
@@ -41,6 +43,16 @@ export function paintCinemaActor(
     motion: preview ? "walk" : undefined,
   });
   const img = rasterize(spec);
+  const frameBlend = walkCycle?.frameBlend ?? 1;
+  const previousSpec = walkCycle && frameBlend < 1
+    ? unitSprite(actor.kind, pal, {
+        profile: actor.owner === 0 ? profile0 : profile1,
+        facing,
+        animationFrame: walkCycle.previousFrame,
+        motion: "walk",
+      })
+    : undefined;
+  const previousImg = previousSpec ? rasterize(previousSpec) : undefined;
   const ax = (spec.anchorX ?? spec.w / 2) * cam.zoom;
   const ay = (spec.anchorY ?? spec.h) * cam.zoom;
   const groundX = s.x;
@@ -48,6 +60,16 @@ export function paintCinemaActor(
   if (preview) {
     drawUnitShadow(ctx, actor.kind, groundX, groundY, cam.zoom, 1, true);
   }
-  const bob = preview ? unitMovementOffset(actor.kind, frame).bobY * cam.zoom : 0;
-  ctx.drawImage(img, s.x - ax, groundY - ay + bob, spec.w * cam.zoom, spec.h * cam.zoom);
+  const bob = walkCycle ? unitMovementOffset(actor.kind, frame, walkCycle.phase).bobY * cam.zoom : 0;
+  const dx = s.x - ax;
+  const dy = groundY - ay + bob;
+  if (previousSpec && previousImg && isRasterReady(previousSpec) && frameBlend < 1) {
+    ctx.globalAlpha = 1 - frameBlend;
+    drawSprite(ctx, previousSpec, previousImg, dx, dy, spec.w * cam.zoom, spec.h * cam.zoom);
+    ctx.globalAlpha = frameBlend;
+    drawSprite(ctx, spec, img, dx, dy, spec.w * cam.zoom, spec.h * cam.zoom);
+    ctx.globalAlpha = 1;
+  } else {
+    drawSprite(ctx, spec, img, dx, dy, spec.w * cam.zoom, spec.h * cam.zoom);
+  }
 }

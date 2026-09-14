@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { cliffFaces } from "../../lib/gen/tilePalette";
-import { drawElevationFaces, fillElevationPoly } from "../../lib/render/terrainPaint/cliffs";
+import { drawElevationFaces, fillElevationPoly, fillElevationRamp } from "../../lib/render/terrainPaint/cliffs";
 
 function createMockCtx(): CanvasRenderingContext2D {
+  const gradient = { addColorStop: vi.fn() } as unknown as CanvasGradient;
   return {
     beginPath: vi.fn(),
     moveTo: vi.fn(),
@@ -15,6 +16,7 @@ function createMockCtx(): CanvasRenderingContext2D {
     lineWidth: 1,
     lineCap: "butt",
     lineJoin: "miter",
+    createLinearGradient: vi.fn(() => gradient),
   } as unknown as CanvasRenderingContext2D;
 }
 
@@ -46,5 +48,30 @@ describe("cliff canvas painting", () => {
     expect(ctx.fill).toHaveBeenCalledTimes(10);
     expect(ctx.stroke).toHaveBeenCalled();
     expect(ctx.beginPath).toHaveBeenCalled();
+  });
+
+  it("softens one-level faces without hard cliff decoration", () => {
+    const ctx = createMockCtx();
+    drawElevationFaces(ctx, 100, 50, 64, 32, 16, 1, 1, 421, cliffFaces("ash plains", 2), 4, 7);
+
+    expect(ctx.fill).toHaveBeenCalledTimes(3);
+    expect(ctx.stroke).not.toHaveBeenCalled();
+  });
+
+  it("keeps the deeper side hard in a mixed-elevation corner", () => {
+    const ctx = createMockCtx();
+    drawElevationFaces(ctx, 100, 50, 64, 32, 16, 2, 1, 421, cliffFaces("ash plains", 3), 4, 7);
+
+    expect(ctx.stroke).toHaveBeenCalled();
+  });
+
+  it("fills a ramp with a blended elevation gradient", () => {
+    const ctx = createMockCtx();
+    fillElevationRamp(ctx, [0, 0, 8, 0, 8, 8], { x: 2, y: 3 }, { x: 6, y: 11 }, "#7f8f78", "#59675a");
+
+    const gradient = (ctx.createLinearGradient as unknown as ReturnType<typeof vi.fn>).mock.results[0]?.value as { addColorStop: ReturnType<typeof vi.fn> };
+    expect(ctx.createLinearGradient).toHaveBeenCalledWith(2, 3, 6, 11);
+    expect(gradient.addColorStop).toHaveBeenNthCalledWith(1, 0, "#7f8f78");
+    expect(gradient.addColorStop).toHaveBeenNthCalledWith(2, 1, "#59675a");
   });
 });

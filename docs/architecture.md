@@ -45,7 +45,7 @@ The gameplay runtime is the browser-side composition boundary. `useGameRuntime` 
 
 ## Seed and generated content
 
-`createCampaign(seed)` derives forked RNG streams for the world, factions, characters, story, mission objectives, biomes, and map inputs. `createMission({ seed, missionIndex })` turns the generated campaign and map into a mutable `SimState`.
+`createCampaign(seed)` derives forked RNG streams for the world and its single campaign biome, factions, characters, story, mission objectives, and map inputs. Every mission uses that campaign biome while retaining its own objective, profile, and map layout. `createMission({ seed, missionIndex })` turns the generated campaign and map into a mutable `SimState`.
 
 Generated content is not saved. A save contains the current simulation state, including units, buildings, fog, queues, RNG state, objective runtime, and navigation revision. Regenerating from the same seed remains the source of truth for static campaign data.
 

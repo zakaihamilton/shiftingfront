@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { drawSprite } from "../../lib/render/sprites";
+import { unitSpriteDrawPosition } from "../../lib/render/renderer/world/entities";
 import type { Palette, SpriteSpec } from "../../lib/types";
 
 const palette: Palette = {
@@ -24,6 +25,33 @@ function createContext() {
 }
 
 describe("sprite drawing", () => {
+  it("preserves fractional positions for moving human sprites", () => {
+    const moving = unitSpriteDrawPosition({
+      screenX: 100.37,
+      groundY: 140.61,
+      anchorX: 19,
+      anchorY: 42,
+      bob: -0.2,
+      recoilX: 0,
+      recoilY: 0,
+      smooth: true,
+    });
+    const staticPosition = unitSpriteDrawPosition({
+      screenX: 100.37,
+      groundY: 140.61,
+      anchorX: 19,
+      anchorY: 42,
+      bob: -0.2,
+      recoilX: 0,
+      recoilY: 0,
+      smooth: false,
+    });
+
+    expect(moving.dx).toBeCloseTo(81.37, 8);
+    expect(moving.dy).toBeCloseTo(98.41, 8);
+    expect(staticPosition).toEqual({ dx: 81, dy: 98 });
+  });
+
   it("crops to content bounds with smooth raster settings", () => {
     const ctx = createContext();
     const image = {} as CanvasImageSource;

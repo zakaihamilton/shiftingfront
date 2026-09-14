@@ -37,6 +37,19 @@ describe("authoritative catalogs", () => {
     }
   });
 
+  it("uses reduced durability for non-turret buildings while preserving turret HP", () => {
+    expect(BUILDING_KINDS.map((kind) => BUILDING_STATS[kind].hp)).toEqual([
+      2400,
+      390,
+      825,
+      675,
+      975,
+      480,
+      1350,
+    ]);
+    expect(BUILDING_STATS.turret.hp).toBe(480);
+  });
+
   it("is stable across repeated serialization", () => {
     const snapshot = JSON.stringify({ units: UNIT_DEFINITIONS, buildings: BUILDING_DEFINITIONS });
     expect(JSON.stringify({ units: UNIT_DEFINITIONS, buildings: BUILDING_DEFINITIONS })).toBe(snapshot);

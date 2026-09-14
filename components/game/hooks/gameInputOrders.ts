@@ -5,7 +5,7 @@ import { TILE_H, screenToGroundTile, tileToScreen, type Camera } from "@/lib/iso
 import { groundOrders } from "@/lib/sim/orders";
 import { canSupportEntity } from "@/lib/sim/support";
 import { groundHeight, heightAt } from "@/lib/sim/world";
-import { isBuildingEntity, type Command, type Entity, type SimState } from "@/lib/types";
+import { isBuildingEntity, isPlayerSelectableUnit, type Command, type Entity, type SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
 import { selectionBoxProjection, type SelectionBox } from "./selectionBox";
 
@@ -21,7 +21,7 @@ export function entityAt(s: SimState, tx: number, ty: number) {
   const unit = s.entities.find(
     (en) =>
       en.hp > 0 &&
-      en.class === "unit" &&
+      isPlayerSelectableUnit(en) &&
       (isContactTarget(s, en) || !en.neutral) &&
       Math.round(en.x) === tx &&
       Math.round(en.y) === ty,
@@ -115,12 +115,12 @@ export function selectVisibleUnitsOfKind(
   viewport: { width: number; height: number },
   prototype: Entity,
 ): number[] {
-  if (prototype.class !== "unit" || prototype.hp <= 0) return [];
+  if (!isPlayerSelectableUnit(prototype) || prototype.hp <= 0) return [];
   const ids: number[] = [];
   for (const en of s.entities) {
     if (
       en.hp <= 0 ||
-      en.class !== "unit" ||
+      !isPlayerSelectableUnit(en) ||
       en.kind !== prototype.kind ||
       en.owner !== prototype.owner ||
       Boolean(en.neutral) !== Boolean(prototype.neutral) ||
@@ -141,7 +141,7 @@ export function selectionIdsInBox(s: SimState, cam: Camera, box: SelectionBox, f
   const x1 = Math.max(projectedBox.x0, projectedBox.x1);
   const y1 = Math.max(projectedBox.y0, projectedBox.y1);
   for (const en of s.entities) {
-    if (en.hp <= 0 || en.owner !== 0 || en.class !== "unit" || (en.neutral && !isContactTarget(s, en))) continue;
+    if (en.hp <= 0 || en.owner !== 0 || !isPlayerSelectableUnit(en) || (en.neutral && !isContactTarget(s, en))) continue;
     const elev = heightAt(s, Math.round(en.x), Math.round(en.y));
     const sp = tileToScreen(en.x, en.y, { x: 0, y: 0, zoom: cam.zoom }, elev);
     const projected = { x: sp.x / cam.zoom, y: sp.y / cam.zoom };

@@ -1,8 +1,8 @@
 import { useEffect, type RefObject } from "react";
 import { buildingSprite, rubbleSprite, unitSprite, wreckSprite } from "@/lib/gen/assets";
 import type { CatalogAsset } from "@/lib/gen/assetCatalog";
-import { unitMovementOffset } from "@/lib/render/anim";
-import { drawSprite, rasterize, rotatedSpriteBounds } from "@/lib/render/sprites";
+import { animFrame, unitMovementOffset, unitWalkCycle } from "@/lib/render/anim";
+import { drawSprite, isRasterReady, rasterize, rotatedSpriteBounds } from "@/lib/render/sprites";
 import { drawUnitShadow } from "@/lib/render/unitMotion";
 import type { AnimFrame, BuildingKind, Facing, FactionVisualProfile, Palette, UnitKind } from "@/lib/types";
 import { paintBuildingAssetOverlay } from "@/lib/render/previewEffects";
@@ -32,12 +32,17 @@ export function useAssetBayPreview({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     let raf = 0;
-    let frame: AnimFrame = 0;
-    let lastFrameTime = 0;
     let animTime = 0;
     let lastNow = 0;
 
     const paint = (timeMs: number) => {
+      const isWalker = selected.category === "unit" && (selected.kind === "infantry" || selected.kind === "antiArmor" || selected.kind === "medic");
+      const walkCycle = isWalker && playing
+        ? unitWalkCycle(selected.kind as UnitKind, animTime)
+        : undefined;
+      const frame: AnimFrame = selected.category === "unit" && playing
+        ? walkCycle?.frame ?? animFrame(animTime, 140, 4)
+        : 0;
       const spec =
         selected.category === "unit"
           ? unitSprite(selected.kind as UnitKind, palette, {
@@ -57,8 +62,19 @@ export function useAssetBayPreview({
             : selected.category === "wreck"
               ? wreckSprite(selected.kind as UnitKind, palette, { profile })
               : rubbleSprite(selected.kind as BuildingKind, palette, { profile });
+      const frameBlend = walkCycle?.frameBlend ?? 1;
+      const previousSpec = walkCycle && frameBlend < 1
+        ? unitSprite(selected.kind as UnitKind, palette, {
+            facing,
+            animationFrame: walkCycle.previousFrame,
+            motion: "walk",
+            variant: 11,
+            profile,
+          })
+        : undefined;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const image = rasterize(spec);
+      const previousImage = previousSpec ? rasterize(previousSpec) : undefined;
       const bounds = rotatedSpriteBounds(spec);
       const scale = Math.min(canvas.width / bounds.width, canvas.height / bounds.height) * 0.86;
       const dw = Math.max(1, Math.round(spec.w * scale));
@@ -66,13 +82,8 @@ export function useAssetBayPreview({
       const dx = Math.round((canvas.width - bounds.width * scale) / 2 - bounds.minX * scale);
       const dy = Math.round((canvas.height - bounds.height * scale) / 2 - bounds.minY * scale);
 
-      const isWalker = selected.kind === "infantry" || selected.kind === "antiArmor" || selected.kind === "medic";
-      const isHeavy = selected.kind === "antiArmor";
-      const period = isHeavy ? 105 : isWalker ? 80 : 90;
-      const strideCycleMs = period * 4;
-      const stridePhase = playing ? ((animTime % strideCycleMs) / strideCycleMs) * Math.PI * 2 : 0;
       const movement = selected.category === "unit"
-        ? unitMovementOffset(selected.kind as UnitKind, frame, stridePhase)
+        ? unitMovementOffset(selected.kind as UnitKind, frame, walkCycle?.phase)
         : null;
 
       const bob = playing ? (movement?.bobY ?? 0) * scale : 0;
@@ -93,7 +104,15 @@ export function useAssetBayPreview({
         );
       }
 
-      drawSprite(ctx, spec, image, renderDx, renderDy, dw, dh);
+      if (previousSpec && previousImage && isRasterReady(previousSpec) && frameBlend < 1) {
+        ctx.globalAlpha = 1 - frameBlend;
+        drawSprite(ctx, previousSpec, previousImage, renderDx, renderDy, dw, dh);
+        ctx.globalAlpha = frameBlend;
+        drawSprite(ctx, spec, image, renderDx, renderDy, dw, dh);
+        ctx.globalAlpha = 1;
+      } else {
+        drawSprite(ctx, spec, image, renderDx, renderDy, dw, dh);
+      }
       if (selected.category === "building") {
         paintBuildingAssetOverlay(
           ctx,
@@ -115,10 +134,6 @@ export function useAssetBayPreview({
       const dt = now - lastNow;
       lastNow = now;
       animTime += dt;
-      if (now - lastFrameTime > 140) {
-        frame = ((frame + 1) & 3) as AnimFrame;
-        lastFrameTime = now;
-      }
       paint(animTime);
       raf = requestAnimationFrame(loop);
     };

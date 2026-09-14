@@ -47,6 +47,15 @@ function entityColor(e: Entity, state: SimState): string {
   return pal.light;
 }
 
+export function minimapEntityVisible(state: SimState, e: Entity): boolean {
+  const fog = fogAt(state, Math.round(e.x), Math.round(e.y));
+  if (e.owner === 1 && fog !== 2) return false;
+  // Stranded units are owner-0 objective actors, so they need their own fog
+  // check or their location would leak through the minimap.
+  if (e.scenarioRole === "stranded" && fog !== 2) return false;
+  return true;
+}
+
 let lastTerrainKey = "";
 let lastOverlayKeys = new WeakMap<HTMLCanvasElement, string>();
 let terrainCanvas: HTMLCanvasElement | null = null;
@@ -118,8 +127,7 @@ function paintMinimapOverlay(
   const targetIds = new Set(state.runtime?.targetIds ?? []);
   for (const e of state.entities) {
     if (e.hp <= 0) continue;
-    const fog = fogAt(state, Math.round(e.x), Math.round(e.y));
-    if (e.owner === 1 && fog !== 2) continue;
+    if (!minimapEntityVisible(state, e)) continue;
     const x = e.x * sx;
     const y = e.y * sy;
     ctx.fillStyle = entityColor(e, state);

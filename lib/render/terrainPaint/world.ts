@@ -13,7 +13,7 @@ import { paintShroudOverlay, paintShroudMaskTile, drawAtlasDiamond } from "./til
 import { smoothFogGain, drawBlockerProp, drawOreCrystals } from "./details";
 import { drawTerrainScatter } from "./scatter";
 import { SHROUD_FILL, SHROUD_RGB, TERRAIN_COVER } from "./constants";
-import { drawElevationFaces, fillElevationPoly } from "./cliffs";
+import { drawElevationFaces, fillElevationPoly, fillElevationRamp, softElevationRampStops } from "./cliffs";
 import { terrainLightRigFor } from "../terrainLighting";
 
 const sceneryMemo = new SceneryMemo();
@@ -57,20 +57,32 @@ function paintElevationGapBridges(
   // a thin uncovered parallelogram beside the inset cliff face. Paint only
   // that gap; the face and the atlas remain responsible for the visible art.
   if (dropE > 0) {
-    fillElevationPoly(ctx, 0, 0, [
+    const points = [
       s.x + tw / 2, s.y + th / 2,
       s.x, s.y + th,
       eastS.x - tw / 2, eastS.y + th / 2,
       eastS.x, eastS.y,
-    ], colors.east);
+    ];
+    if (dropE === 1) {
+      const [fromColor, toColor] = softElevationRampStops(colors.east);
+      fillElevationRamp(ctx, points, s, eastS, fromColor, toColor);
+    } else {
+      fillElevationPoly(ctx, 0, 0, points, colors.east);
+    }
   }
   if (dropS > 0) {
-    fillElevationPoly(ctx, 0, 0, [
+    const points = [
       s.x - tw / 2, s.y + th / 2,
       s.x, s.y + th,
       southS.x + tw / 2, southS.y + th / 2,
       southS.x, southS.y,
-    ], colors.south);
+    ];
+    if (dropS === 1) {
+      const [fromColor, toColor] = softElevationRampStops(colors.south);
+      fillElevationRamp(ctx, points, s, southS, fromColor, toColor);
+    } else {
+      fillElevationPoly(ctx, 0, 0, points, colors.south);
+    }
   }
 }
 

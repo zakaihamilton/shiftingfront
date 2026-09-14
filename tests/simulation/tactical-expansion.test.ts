@@ -13,7 +13,8 @@ import { distToEntity } from "../../lib/sim/world";
 import { guardScenarioObjectives } from "../../lib/sim/ai/director";
 import { deserializeState, serializeState } from "../../lib/persist/save";
 import { inRescueFlank } from "../../lib/gen/map/generator/rescuePlacement";
-import type { MissionKind } from "../../lib/types";
+import { fogIndex } from "../../lib/sim/fog";
+import { RESCUE_CONTACT_RADIUS, type MissionKind } from "../../lib/types";
 
 function missionOfKind(kind: MissionKind, missionIndex: number) {
   for (let seed = 0; seed < 200; seed++) {
@@ -34,7 +35,7 @@ describe("tactical expansion", () => {
     expect(UNIT_STATS.antiArmor.cost).toBe(160);
     expect(UNIT_STATS.tank.cost).toBe(425);
     expect(BUILDING_STATS.power.cost).toBe(300);
-    expect(BUILDING_STATS.refinery.cost).toBe(500);
+    expect(BUILDING_STATS.refinery.cost).toBe(750);
     expect(BUILDING_STATS.barracks.cost).toBe(375);
     expect(BUILDING_STATS.factory.cost).toBe(800);
     expect(BUILDING_STATS.turret.cost).toBe(275);
@@ -191,6 +192,25 @@ describe("tactical expansion", () => {
     expect(targets.every((target) => Math.hypot(target.x - map.enemyStart.x, target.y - map.enemyStart.y) > 12)).toBe(true);
   });
 
+  it("spreads stranded rescue targets across the rescue flank", () => {
+    let checked = 0;
+    for (let seed = 0; seed < 40; seed += 1) {
+      const mission = createCampaign(seed).missions.find((candidate) => candidate.win.kind === "rescue");
+      if (!mission) continue;
+      const state = createMission({ seed, missionIndex: mission.index });
+      const targets = (state.runtime?.targetIds ?? [])
+        .map((id) => state.entities.find((entity) => entity.id === id))
+        .filter((target): target is NonNullable<typeof target> => target !== undefined);
+      const pairDistances = targets.flatMap((target, index) => targets
+        .slice(index + 1)
+        .map((other) => Math.hypot(target.x - other.x, target.y - other.y)));
+
+      expect(Math.min(...pairDistances)).toBeGreaterThanOrEqual(6);
+      checked += 1;
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
   it("holds deterministic defensive patrols near rescue and extraction targets", () => {
     for (const kind of ["rescue", "extraction"] as const) {
       const mission = createCampaign(0).missions.find((candidate) => candidate.win.kind === kind);
@@ -313,11 +333,13 @@ describe("tactical expansion", () => {
   });
 
   it("frees rescue actors when a player unit reaches them", () => {
-    const state = makeFixture({ win: { kind: "rescue", targetCount: 1, ticks: 100 } });
+    const state = makeFixture({ width: 24, height: 16, win: { kind: "rescue", targetCount: 1, ticks: 100 } });
     addBuilding(state, 0, "constructionYard", 0, 0);
     const rescuer = addUnit(state, 0, "infantry", 2, 3);
-    const stranded = addUnit(state, 0, "infantry", 6, 3);
+    const stranded = addUnit(state, 0, "infantry", 12, 3);
     stranded.neutral = true;
+    stranded.scenarioRole = "stranded";
+    state.fog.fill(0);
     state.runtime = {
       kind: "rescue",
       phase: "active",
@@ -342,7 +364,7 @@ describe("tactical expansion", () => {
     const state = makeFixture({ width: 16, height: 16, win: { kind: "rescue", targetCount: 2, ticks: 100 } });
     const rescuer = addUnit(state, 0, "infantry", 2, 2);
     const first = addUnit(state, 0, "infantry", 4, 2);
-    const second = addUnit(state, 0, "infantry", 6, 2);
+    const second = addUnit(state, 0, "infantry", 10, 2);
     first.neutral = true;
     first.scenarioRole = "stranded";
     second.neutral = true;
@@ -355,6 +377,7 @@ describe("tactical expansion", () => {
       required: 2,
       secondary: [],
     };
+    state.fog.fill(0);
 
     tick(state);
 
@@ -393,18 +416,20 @@ describe("tactical expansion", () => {
     expect(state.runtime.rescued).toBe(0);
     expect(state.result).toBe("playing");
     expect(state.runtime.phase).toBe("extraction");
+    expect(stranded.orderMode).toBe("move");
+    expect(stranded.orderDestination).toBeDefined();
+    expect(stranded.idle).toBe(false);
     expect(contactResult.events).toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "firstContact" }));
     expect(tick(state).events).not.toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "firstContact" }));
 
-    stranded.x = yard.x;
-    stranded.y = yard.y;
-    const returnResult = tick(state);
+    let returnEvents: ReturnType<typeof tick>["events"] = [];
+    for (let i = 0; i < 500 && state.result === "playing"; i++) returnEvents = tick(state).events;
 
     expect(state.runtime.rescuedIds).toEqual([stranded.id]);
     expect(state.runtime.rescued).toBe(1);
     expect(state.result).toBe("won");
-    expect(returnResult.events).toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "firstReturned" }));
-    expect(returnResult.events).toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "complete" }));
+    expect(returnEvents).toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "firstReturned" }));
+    expect(returnEvents).toContainEqual(expect.objectContaining({ type: "objectiveMilestone", milestone: "complete" }));
     expect(objectiveProgress(state).label).toBe("Contacted 1 · Returned 1 / 1");
     void rescuer;
   });
@@ -444,7 +469,7 @@ describe("tactical expansion", () => {
     const yard = addBuilding(state, 0, "constructionYard", 0, 0);
     const rescuer = addUnit(state, 0, "infantry", 8, 3);
     const first = addUnit(state, 0, "infantry", 8, 3);
-    const second = addUnit(state, 0, "infantry", 14, 3);
+    const second = addUnit(state, 0, "infantry", 16, 3);
     for (const target of [first, second]) {
       target.neutral = true;
       target.scenarioRole = "stranded";
@@ -460,6 +485,7 @@ describe("tactical expansion", () => {
       rescuedIds: [],
       secondary: [],
     };
+    state.fog.fill(0);
 
     tick(state);
     expect(state.runtime.contactedIds).toEqual([first.id]);
@@ -480,6 +506,37 @@ describe("tactical expansion", () => {
     tick(state);
     expect(state.runtime.rescuedIds).toEqual([first.id, second.id]);
     expect(state.result).toBe("won");
+  });
+
+  it("starts returning a stranded unit when it is discovered outside contact range", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "rescue", targetCount: 1, ticks: 500 } });
+    const yard = addBuilding(state, 0, "constructionYard", 0, 0);
+    const rescuer = addUnit(state, 0, "infantry", 2, 3);
+    const stranded = addUnit(state, 0, "infantry", 10, 3);
+    stranded.neutral = true;
+    stranded.scenarioRole = "stranded";
+    state.fog.fill(0);
+    state.fog[fogIndex(state, stranded.x, stranded.y)!] = 2;
+    state.runtime = {
+      kind: "rescue",
+      phase: "active",
+      targetIds: [stranded.id],
+      zone: { x: yard.x, y: yard.y },
+      rescued: 0,
+      required: 1,
+      contactedIds: [],
+      rescuedIds: [],
+      secondary: [],
+    };
+
+    tick(state);
+
+    expect(Math.hypot(rescuer.x - stranded.x, rescuer.y - stranded.y)).toBeGreaterThan(RESCUE_CONTACT_RADIUS);
+    expect(stranded.neutral).toBe(false);
+    expect(state.runtime.contactedIds).toEqual([stranded.id]);
+    expect(stranded.orderMode).toBe("move");
+    expect(stranded.orderDestination).toBeDefined();
+    expect(stranded.orderDestination).toEqual(expect.not.objectContaining({ x: stranded.x, y: stranded.y }));
   });
 
   it("preserves tracked rescue contact and return state across save/load", () => {
@@ -606,6 +663,53 @@ describe("tactical expansion", () => {
     expect(state.entities.some((entity) => entity.marked && entity.neutral)).toBe(true);
   });
 
+  it("spreads extraction assets across the map and outside the enemy base", () => {
+    let checked = 0;
+    for (let seed = 0; seed < 40; seed += 1) {
+      const mission = createCampaign(seed).missions.find((candidate) => candidate.win.kind === "extraction");
+      if (!mission) continue;
+      const state = createMission({ seed, missionIndex: mission.index });
+      const targets = (state.runtime?.targetIds ?? [])
+        .map((id) => state.entities.find((entity) => entity.id === id))
+        .filter((target): target is NonNullable<typeof target> => target !== undefined);
+      const enemyBuildings = state.entities.filter((entity) =>
+        entity.owner === 1 && entity.class === "building" && entity.hp > 0,
+      );
+      const playerBuildings = state.entities.filter((entity) =>
+        entity.owner === 0 && entity.class === "building" && entity.hp > 0,
+      );
+      const pairDistances = targets.flatMap((target, index) => targets
+        .slice(index + 1)
+        .map((other) => Math.hypot(target.x - other.x, target.y - other.y)));
+      expect(Math.min(...pairDistances)).toBeGreaterThanOrEqual(6);
+      expect(Math.max(...pairDistances)).toBeGreaterThanOrEqual(state.width * 0.25);
+      expect(targets.every((target) => playerBuildings.every((building) => distToEntity(target, building) >= 8))).toBe(true);
+      expect(targets.every((target) => enemyBuildings.every((building) => distToEntity(target, building) >= 14))).toBe(true);
+      if (targets.length >= 3) {
+        let maximumTriangleArea = 0;
+        for (let i = 0; i < targets.length; i += 1) {
+          for (let j = i + 1; j < targets.length; j += 1) {
+            for (let k = j + 1; k < targets.length; k += 1) {
+              const first = targets[i]!;
+              const second = targets[j]!;
+              const third = targets[k]!;
+              maximumTriangleArea = Math.max(
+                maximumTriangleArea,
+                Math.abs(
+                  (second.x - first.x) * (third.y - first.y)
+                    - (second.y - first.y) * (third.x - first.x),
+                ),
+              );
+            }
+          }
+        }
+        expect(maximumTriangleArea).toBeGreaterThanOrEqual(9);
+      }
+      checked += 1;
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
   it("labels locked rescue and extraction targets as stranded", () => {
     for (const kind of ["rescue", "extraction"] as const) {
       const state = makeFixture({ win: { kind, targetCount: 1, ticks: 100 } });
@@ -627,14 +731,15 @@ describe("tactical expansion", () => {
   });
 
   it("fails a rescue quota when the operation deadline expires", () => {
-    const state = makeFixture({ win: { kind: "rescue", targetCount: 3, ticks: 10 } });
+    const state = makeFixture({ width: 24, height: 16, win: { kind: "rescue", targetCount: 3, ticks: 10 } });
     addBuilding(state, 0, "constructionYard", 0, 0);
     const stranded = [0, 1, 2].map((index) => {
-      const unit = addUnit(state, 0, "infantry", 6, 3 + index);
+      const unit = addUnit(state, 0, "infantry", 12, 3 + index);
       unit.neutral = true;
       unit.scenarioRole = "stranded";
       return unit;
     });
+    state.fog.fill(0);
     state.tick = 10;
     state.runtime = {
       kind: "rescue",
@@ -780,12 +885,13 @@ describe("tactical expansion", () => {
     const state = makeFixture({ win: { kind: "rescue", targetCount: 2, ticks: 5000 } });
     addBuilding(state, 0, "constructionYard", 0, 0);
     const rescued = addUnit(state, 0, "infantry", 1, 1);
-    const remaining = addUnit(state, 0, "infantry", 6, 4);
+    const remaining = addUnit(state, 0, "infantry", 10, 8);
     rescued.scenarioRole = "stranded";
     rescued.neutral = false;
     rescued.hp = 0;
     remaining.neutral = true;
     remaining.scenarioRole = "stranded";
+    state.fog.fill(0);
     state.runtime = {
       kind: "rescue",
       phase: "active",

@@ -140,7 +140,8 @@ function occupancyAwareFlowStep(field: FlowField, x: number, y: number, opts: Fl
     const free = !flowCellTaken(occupancy, reserved, field.width, nx, ny, ignoreId);
     let tier: number;
     if (free && distance < currentDistance) tier = 0;
-    else if (!free && distance < currentDistance) tier = 1;
+    else if (free) tier = 1;
+    else if (distance < currentDistance) tier = 2;
     else continue;
 
     if (tier < bestTier || (tier === bestTier && distance < bestDistance)) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { tickProduction } from "../../lib/sim/production";
 import { trySpawnUnit } from "../../lib/sim/world";
+import { expectUniqueUnitCells } from "./helpers";
 
 describe("unit spawning", () => {
   it("returns no unit instead of throwing when the deployment area is full", () => {
@@ -11,6 +12,16 @@ describe("unit spawning", () => {
     }
 
     expect(trySpawnUnit(state, 0, "tank", 1, 1)).toBeUndefined();
+  });
+
+  it("deploys a replacement unit to a different cell when the requested cell is occupied", () => {
+    const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" } });
+    const first = addUnit(state, 0, "infantry", 3, 3);
+    const second = trySpawnUnit(state, 0, "tank", first.x, first.y);
+
+    expect(second).toBeDefined();
+    expect(`${Math.round(second!.x)},${Math.round(second!.y)}`).not.toBe(`${Math.round(first.x)},${Math.round(first.y)}`);
+    expectUniqueUnitCells(state);
   });
 
   it("keeps a completed production job pending until a tile opens", () => {

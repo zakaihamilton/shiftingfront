@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { generateMap, sceneryAt, skirtSample, featureEdgeMask, isMountainScenery, MAP_SKIRT, MAP_SKIRT_ALPHA, skirtAlpha, terrainFeatureAt } from "../../lib/gen/map";
 import { createCampaign } from "../../lib/gen/campaign";
 import { createMission } from "../../lib/sim/api";
+import { validMap } from "../../lib/sim/balance";
 import { buildingAt, groundHeight, INITIAL_BUILDING_EDGE_MARGIN } from "../../lib/sim/world";
 import { makeFixture } from "../../lib/sim/fixtures";
 import { BUILDING_STATS, footprintOf } from "../../lib/catalog";
@@ -80,6 +81,15 @@ describe("terrain height", () => {
       }
     }
   }, EXHAUSTIVE_TEST_TIMEOUT);
+
+  it("keeps extraction routes out of base-route fairness metrics", () => {
+    const campaign = createCampaign(4);
+    const mission = campaign.missions[3]!;
+    const map = generateMap(4, mission);
+
+    expect(mission.win.kind).toBe("extraction");
+    expect(validMap(map)).toBe(true);
+  });
 });
 
 function nearestResource(map: ReturnType<typeof generateMap>, start: { x: number; y: number }): number {

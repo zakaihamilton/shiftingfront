@@ -1,11 +1,13 @@
-import { readdirSync, statSync, unlinkSync } from "node:fs";
+import { readdirSync, renameSync, statSync, unlinkSync } from "node:fs";
 import { join, relative } from "node:path";
 import sharp from "sharp";
 
 /**
- * One-shot PNG → alpha WebP converter. Uses the `sharp` already hoisted by Next;
- * it is not a runtime app dependency. Does not crop or resize — canvas loaders
- * slice portraits from `naturalWidth / PORTRAIT_FRAME_COUNT`.
+ * One-shot PNG/WebP → alpha WebP converter. Uses the `sharp` already hoisted by
+ * Next; it is not a runtime app dependency. Portrait sheets are capped at 1280
+ * px wide; canvas loaders derive their frame sizes from the natural dimensions.
+ * Directional sprites keep their dimensions because their crop metadata is
+ * source-size coupled.
  *
  *   yarn compress-art --dry-run
  *   yarn compress-art portraits
@@ -18,44 +20,50 @@ const TARGETS: Record<string, string> = {
   portraits: join(ART_ROOT, "portraits"),
   sprites: join(ART_ROOT, "sprites/sleek-modular"),
   terrain: join(ART_ROOT, "terrain"),
+  results: join(ART_ROOT, "results"),
+  textures: join(ART_ROOT, "textures"),
+  all: ART_ROOT,
 };
 
-/** High-quality lossy WebP with a lossless alpha plane. Near-lossless stays ~40% of PNG size on these sheets and misses the art-budget bar. */
+/** Balanced lossy WebP with a lossless alpha plane; art is displayed at much smaller sizes. */
 const WEBP = {
-  quality: 95,
+  quality: 88,
   alphaQuality: 100,
   effort: 6,
   smartSubsample: true,
 } as const;
+const PORTRAIT_MAX_WIDTH = 1280;
 
 function formatBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(n / 1024))} KB`;
 }
 
-function listPngs(dir: string): string[] {
+function listImages(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...listPngs(full));
-    else if (entry.isFile() && entry.name.toLowerCase().endsWith(".png")) out.push(full);
+    if (entry.isDirectory()) out.push(...listImages(full));
+    else if (entry.isFile() && /\.(png|webp)$/i.test(entry.name)) out.push(full);
   }
   return out.sort();
 }
 
+function isPortrait(input: string): boolean {
+  return input.startsWith(`${join(ART_ROOT, "portraits")}/`);
+}
+
 function resolveTargets(names: string[]): string[] {
+  if (names.includes("all")) return [ART_ROOT];
+
   const dirs: string[] = [];
   for (const name of names) {
-    if (name === "all") {
-      dirs.push(...Object.values(TARGETS));
-      continue;
-    }
     const mapped = TARGETS[name];
     if (mapped) {
       dirs.push(mapped);
       continue;
     }
-    throw new Error(`Unknown target "${name}". Use portraits, sprites, terrain, or all.`);
+    throw new Error(`Unknown target "${name}". Use portraits, sprites, terrain, results, textures, or all.`);
   }
   return [...new Set(dirs)];
 }
@@ -65,41 +73,54 @@ async function main(): Promise<void> {
   const dryRun = args.includes("--dry-run");
   const names = args.filter((arg) => arg !== "--dry-run");
   const dirs = resolveTargets(names.length > 0 ? names : ["portraits"]);
-  const files = dirs.flatMap(listPngs);
+  const files = dirs.flatMap(listImages);
 
   if (files.length === 0) {
-    console.log("No PNG files found.");
+    console.log("No PNG or WebP files found.");
     return;
   }
 
   let before = 0;
   let after = 0;
 
-  for (const png of files) {
-    const webp = png.replace(/\.png$/i, ".webp");
-    const inputBytes = statSync(png).size;
+  for (const input of files) {
+    const isWebp = /\.webp$/i.test(input);
+    const webp = isWebp ? input : input.replace(/\.png$/i, ".webp");
+    const inputBytes = statSync(input).size;
     before += inputBytes;
-    const srcStats = await sharp(png).stats();
-    const srcAlpha = srcStats.channels[3];
-    const srcHadTransparency = Boolean(srcAlpha && srcAlpha.min < 255);
-    const pipeline = sharp(png).ensureAlpha().webp(WEBP);
+    const srcMetadata = await sharp(input).metadata();
+    const srcHadTransparency = Boolean(srcMetadata.hasAlpha);
+    const source = sharp(input).ensureAlpha();
+    if (isPortrait(input)) source.resize({ width: PORTRAIT_MAX_WIDTH, withoutEnlargement: true });
+    const pipeline = source.webp(WEBP);
     if (dryRun) {
       const buf = await pipeline.toBuffer();
       after += buf.length;
       console.log(
-        `${relative(process.cwd(), png)}  ${formatBytes(inputBytes)} → ${formatBytes(buf.length)}  (dry-run)`,
+        `${relative(process.cwd(), input)}  ${formatBytes(inputBytes)} → ${formatBytes(buf.length)}  (dry-run)`,
       );
       continue;
     }
-    await pipeline.toFile(webp);
+    const tempWebp = `${webp}.tmp`;
+    await pipeline.toFile(tempWebp);
+    const candidateBytes = statSync(tempWebp).size;
+    if (isWebp && candidateBytes >= inputBytes) {
+      unlinkSync(tempWebp);
+      after += inputBytes;
+      console.log(
+        `${relative(process.cwd(), input)}  ${formatBytes(inputBytes)} → kept (candidate ${formatBytes(candidateBytes)})`,
+      );
+      continue;
+    }
+    renameSync(tempWebp, webp);
     const meta = await sharp(webp).metadata();
     if (srcHadTransparency && !meta.hasAlpha) {
       console.warn(`warning: ${relative(process.cwd(), webp)} dropped a useful alpha plane`);
     }
     const outputBytes = statSync(webp).size;
     after += outputBytes;
-    unlinkSync(png);
-    console.log(`${relative(process.cwd(), png)}  ${formatBytes(inputBytes)} → ${formatBytes(outputBytes)}`);
+    if (!isWebp) unlinkSync(input);
+    console.log(`${relative(process.cwd(), input)}  ${formatBytes(inputBytes)} → ${formatBytes(outputBytes)}`);
   }
 
   console.log(

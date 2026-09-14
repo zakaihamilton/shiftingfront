@@ -1,4 +1,4 @@
-import type { Entity, SimState } from "../types";
+import { isPlayerSelectableUnit, type Entity, type SimState } from "../types";
 import { groundHeight } from "../sim/world";
 import { TILE_H, tileToScreen, type Camera } from "../iso";
 import { pickTile, visibleBuildingAt } from "./renderer";
@@ -10,7 +10,7 @@ export function pickEntity(state: SimState, sx: number, sy: number, cam: Camera,
   let bestD = Infinity;
   const z = cam.zoom;
   for (const e of state.entities) {
-    if (e.hp <= 0 || e.class !== "unit" || (!allowNeutral && e.neutral) || !entityVisible(state, e)) continue;
+    if (!isPlayerSelectableUnit(e) || e.hp <= 0 || (!allowNeutral && e.neutral) || !entityVisible(state, e)) continue;
     const elev = groundHeight(state, e.x, e.y);
     const s = tileToScreen(e.x, e.y, cam, elev);
     const bodyX = s.x;

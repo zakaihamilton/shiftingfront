@@ -58,7 +58,9 @@ export function tickFog(state: SimState): void {
   const x1 = state.width + MAP_SKIRT;
   const y1 = state.height + MAP_SKIRT;
   for (const e of livingView(state)) {
-    if (e.owner !== 0) continue;
+    // Stranded rescue targets are owner-0 entities for objective bookkeeping,
+    // but they are not player-controlled vision sources until contacted.
+    if (e.owner !== 0 || (e.neutral && e.scenarioRole === "stranded")) continue;
     const sight = isUnitEntity(e)
       ? UNIT_STATS[e.kind].sight
       : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;

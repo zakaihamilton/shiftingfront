@@ -3,7 +3,7 @@ import { flowCellTaken, flowDistanceAt, flowFieldFor, flowStep, type FlowField }
 import { routePendingFor } from "./pathfinding";
 import { tryFindPathDetailed } from "./pathBudget";
 
-const FLOW_PATH_PREFIX_LENGTH = 1;
+const FLOW_PATH_PREFIX_LENGTH = 2;
 
 type RankedFollower = { entity: Entity; field: FlowField; dist: number };
 type FlowRoutingBuffers = {
@@ -48,6 +48,9 @@ export function prepareFlowFieldRoutes(
       Math.abs(Math.round(entity.x) - Math.round(goal.x)),
       Math.abs(Math.round(entity.y) - Math.round(goal.y)),
     );
+    // A group shares an approach field, but every unit still owns its
+    // personal landing cell. Once either the personal slot or the shared
+    // approach area is near, peel off to the unit's individual A* route.
     if (personalCheb <= 2 || sharedCheb <= 2) {
       if (finishFlowFieldRoute(state, entity)) continue;
       entity.routePending = true;
@@ -84,37 +87,40 @@ function assignFlowPrefix(
   entity: Entity,
   field: FlowField,
 ): void {
-  const cursorX = Math.round(entity.x);
-  const cursorY = Math.round(entity.y);
+  let cursorX = Math.round(entity.x);
+  let cursorY = Math.round(entity.y);
   const previousCell = entity.owner === 0 ? previousCells?.get(entity.id) : undefined;
-  const next = FLOW_PATH_PREFIX_LENGTH > 0
-    ? flowStep(field, cursorX, cursorY, { occupancy, reserved, ignoreId: entity.id, state, previousCell })
-    : undefined;
-
   const existing = entity.path[0];
-  const nextFree = next ? prefixCellOpen(state, occupancy, reserved, entity.id, next.x, next.y) : false;
   const existingIsCurrent = existing && Math.round(existing.x) === cursorX && Math.round(existing.y) === cursorY;
   const existingFree = existing
     ? existingIsCurrent || prefixCellOpen(state, occupancy, reserved, entity.id, existing.x, existing.y)
     : false;
 
-  if (existingFree && existing) {
-    // Keep the route prefix already in motion. Replacing it with a newly
-    // selected equal-cost neighbor at every tick can reverse a unit as its
-    // rounded position crosses a tile boundary.
-    entity.path = [existing];
-    entity.routePending = true;
-    reserveCell(state, reserved, entity.id, existing.x, existing.y);
-    return;
+  const prefix: { x: number; y: number }[] = [];
+  let priorCell = previousCell;
+  for (let i = 0; i < FLOW_PATH_PREFIX_LENGTH; i++) {
+    const candidate = i === 0 && existingFree && existing
+      ? existing
+      : flowStep(field, cursorX, cursorY, {
+        occupancy,
+        reserved,
+        ignoreId: entity.id,
+        state,
+        previousCell: priorCell,
+      });
+    if (!candidate || !prefixCellOpen(state, occupancy, reserved, entity.id, candidate.x, candidate.y)) break;
+    prefix.push(candidate);
+    reserveCell(state, reserved, entity.id, candidate.x, candidate.y);
+    priorCell = cursorY * state.width + cursorX;
+    cursorX = Math.round(candidate.x);
+    cursorY = Math.round(candidate.y);
   }
-  if (next && nextFree) {
-    entity.path = [next];
-    entity.routePending = true;
-    reserveCell(state, reserved, entity.id, next.x, next.y);
-    return;
-  }
-  if (next) {
-    entity.path = [next];
+
+  if (prefix.length > 0) {
+    // Reserve several cells ahead for each follower. Ranked units claim the
+    // forward lanes first, so trailing units choose a free lane instead of
+    // walking into the unit immediately ahead and waiting for a detour.
+    entity.path = prefix;
     entity.routePending = true;
     return;
   }

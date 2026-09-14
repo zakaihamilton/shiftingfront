@@ -1,6 +1,7 @@
 import { UNIT_STATS } from "../../catalog";
 import { groundHeight } from "../../sim/world";
 import { isoFacingAngle, isoHeadingAngle, screenAngleToFacing } from "../../iso";
+import { unitMovementOffset, unitWalkCycle } from "../anim";
 import type { Entity, Facing, SimState, UnitKind } from "../../types";
 import { lerp, lerpAngle } from "./glMath";
 
@@ -224,24 +225,29 @@ export function computeUnitDynamicTransform(
 
   hist.turretYaw = lerpAngle(hist.turretYaw, targetTurretYaw, Math.min(1, dt * 12.0));
 
-  // Stride phase for walkers (authentic walking cadence)
-  const speed = isMoving ? UNIT_STATS[e.kind as UnitKind].speed * 20 : 0;
-  hist.stridePhase += speed * dt * 6.0;
+  // Keep model gait timing aligned with the raster walk cycle used by the
+  // Canvas renderer. The shared phase also keeps foot plants deterministic
+  // when the render cadence changes.
+  const walkCycle = isWalker ? unitWalkCycle(e.kind as UnitKind, clockMs, e.id) : undefined;
+  const stridePhase = walkCycle?.phase ?? hist.stridePhase;
+  if (isMoving && isWalker) hist.stridePhase = stridePhase;
+  const walkOffset = walkCycle
+    ? unitMovementOffset(e.kind as UnitKind, walkCycle.frame, walkCycle.phase)
+    : undefined;
 
-  const legLAngle = isMoving ? Math.sin(hist.stridePhase) * 0.6 : 0;
-  const legRAngle = isMoving ? -Math.sin(hist.stridePhase) * 0.6 : 0;
+  const legLAngle = isMoving ? Math.sin(stridePhase) * 0.6 : 0;
+  const legRAngle = isMoving ? -Math.sin(stridePhase) * 0.6 : 0;
 
-  // Gait properties for walkers: subtle vertical step bobbing, stable upright silhouette
-  const isHeavy = e.kind === "antiArmor";
-  const bobAmp = isHeavy ? 1.0 : 1.4;
-  const gaitBobY = isMoving && isWalker ? -Math.abs(Math.sin(hist.stridePhase)) * bobAmp : 0;
+  // Gait properties for walkers: stable upright silhouette with native raster
+  // pose motion supplying the visible body movement.
+  const gaitBobY = isMoving && isWalker ? (walkOffset?.bobY ?? 0) : 0;
   const swayX = 0;
   const gaitTilt = 0;
   const scaleY = 1.0;
   const scaleX = 1.0;
-  const footPlantSide = (Math.sin(hist.stridePhase) >= 0 ? 1 : -1) as -1 | 1;
-  const isFootPlant = isMoving && isWalker && Math.abs(Math.cos(hist.stridePhase)) > 0.82;
-  const strideRatio = isMoving && isWalker ? Math.sin(hist.stridePhase) : 0;
+  const footPlantSide = (Math.sin(stridePhase) >= 0 ? 1 : -1) as -1 | 1;
+  const isFootPlant = isMoving && isWalker && Math.abs(Math.cos(stridePhase)) > 0.82;
+  const strideRatio = isMoving && isWalker ? Math.sin(stridePhase) : 0;
 
   // Recoil
   let recoil = 0;

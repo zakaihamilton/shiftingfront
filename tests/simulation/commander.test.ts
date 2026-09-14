@@ -4,7 +4,7 @@ import { BUILDING_STATS } from "../../lib/catalog";
 import { createMission, inspect, tick } from "../../lib/sim/api";
 import { CompetentCommander } from "../../lib/sim/commander";
 import { defensiveThreat } from "../../lib/sim/commander/combat";
-import { planBuilding } from "../../lib/sim/commander/production";
+import { planBuilding, planProduction } from "../../lib/sim/commander/production";
 import { missionDifficulty } from "../../lib/sim/difficulty";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { enemyEntities, playerBuildings, playerUnits } from "../../lib/sim/commander/queries";
@@ -83,7 +83,8 @@ describe("competent commander", () => {
     const state = makeFixture({ width: 24, height: 24, win: { kind: "forceQuota", role: "infantry", target: 1 } });
     const yard = addBuilding(state, 0, "constructionYard", 2, 2);
     addBuilding(state, 0, "power", 5, 2);
-    yard.hp = 2_800;
+    yard.hp = yard.maxHp - 200;
+    const initialHp = yard.hp;
     const commander = new CompetentCommander();
 
     const first = commander.plan(state);
@@ -91,7 +92,7 @@ describe("competent commander", () => {
     const result = tick(state, first);
     expect(result.events).not.toContainEqual(expect.objectContaining({ type: "commandRejected" }));
     expect(yard.repairing).toBe(true);
-    expect(yard.hp).toBeGreaterThan(2_800);
+    expect(yard.hp).toBeGreaterThan(initialHp);
 
     state.tick = 24;
     expect(commander.plan(state)).not.toContainEqual({ type: "repair", buildingId: yard.id });
@@ -152,6 +153,22 @@ describe("competent commander", () => {
 
     expect(state.missionKind).toBe("structureQuota");
     expect(rejections).toBe(0);
+  });
+
+  it("reserves credits for an unnamed structure quota once the army is ready", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "structureQuota", target: 2 } });
+    addBuilding(state, 0, "constructionYard", 2, 2);
+    addBuilding(state, 0, "power", 5, 2);
+    addBuilding(state, 0, "barracks", 2, 6);
+    state.buildingsCompletedByKind.power = 1;
+    state.buildingsCompletedByKind.turret = 1;
+    for (let i = 0; i < 18; i++) addUnit(state, 0, "infantry", 8 + (i % 6), 8 + Math.floor(i / 6));
+    state.credits[0] = BUILDING_STATS.refinery.cost - 1;
+
+    expect(planProduction(state)).toEqual([]);
+
+    state.credits[0] = BUILDING_STATS.refinery.cost;
+    expect(planProduction(state)).toContainEqual(expect.objectContaining({ type: "produce" }));
   });
 
   it("keeps a committed assault focused on its objective until it wins", () => {

@@ -10,6 +10,7 @@ import { groundOrders } from "../../lib/sim/orders";
 import { BUILDING_PLACEMENT_RADIUS, buildingAt, canPlaceBuilding, compactDestroyedEntities, makeUnitOccupancy, occupies, powerBreakdown, powerFor, staticNavigationFor, terrainAccess, unitAt } from "../../lib/sim/world";
 import { tickProduction } from "../../lib/sim/production";
 import { BUILDING_STATS, MAX_PRODUCTION_QUEUE, UNIT_STATS } from "../../lib/catalog";
+import { expectUniqueUnitCells } from "./helpers";
 
 describe("pathfinding", () => {
   it("returns a bounded partial result for a long search", () => {
@@ -237,7 +238,10 @@ describe("pathfinding", () => {
     tick(s);
 
     expect(infantry.path[0]).not.toEqual({ x: Math.round(blocker.x), y: Math.round(blocker.y) });
-    for (let i = 0; i < 500; i++) tick(s);
+    for (let i = 0; i < 500; i++) {
+      tick(s);
+      expectUniqueUnitCells(s);
+    }
     expect(Math.round(infantry.x)).toBe(6);
     expect(Math.round(infantry.y)).toBe(3);
   });
@@ -259,7 +263,10 @@ describe("pathfinding", () => {
     tick(s);
 
     expect(enemy.path[0]).not.toEqual({ x: Math.round(blocker.x), y: Math.round(blocker.y) });
-    for (let i = 0; i < 500; i++) tick(s);
+    for (let i = 0; i < 500; i++) {
+      tick(s);
+      expectUniqueUnitCells(s);
+    }
     expect(Math.round(enemy.x)).toBe(6);
     expect(Math.round(enemy.y)).toBe(6);
   });
@@ -388,7 +395,7 @@ describe("pathfinding", () => {
     expect(last.y).toBe(3);
   });
 
-  it("swaps when two units meet in a one-tile corridor", () => {
+  it("waits when two units meet in a one-tile corridor", () => {
     const s = makeFixture({ width: 14, height: 8, win: { kind: "harvestQuota", target: 99999 } });
     addBuilding(s, 0, "constructionYard", 0, 0);
     for (let x = 4; x <= 9; x++) {
@@ -399,22 +406,18 @@ describe("pathfinding", () => {
     const b = addUnit(s, 0, "infantry", 10, 3);
     issue(s, { type: "move", unitIds: [a.id], x: 10, y: 3 });
     issue(s, { type: "move", unitIds: [b.id], x: 3, y: 3 });
-    let previousA = { x: a.x, y: a.y };
-    let previousB = { x: b.x, y: b.y };
     for (let i = 0; i < 900; i++) {
       tick(s);
-      expect(Math.hypot(a.x - previousA.x, a.y - previousA.y)).toBeLessThanOrEqual(UNIT_STATS.infantry.speed + 1e-6);
-      expect(Math.hypot(b.x - previousB.x, b.y - previousB.y)).toBeLessThanOrEqual(UNIT_STATS.infantry.speed + 1e-6);
-      previousA = { x: a.x, y: a.y };
-      previousB = { x: b.x, y: b.y };
+      expectUniqueUnitCells(s);
     }
-    expect(Math.round(a.x)).toBe(10);
+    expect(Math.round(a.x)).toBeLessThan(Math.round(b.x));
+    expect(Math.round(a.x)).toBeGreaterThanOrEqual(3);
+    expect(Math.round(b.x)).toBeLessThanOrEqual(10);
     expect(Math.round(a.y)).toBe(3);
-    expect(Math.round(b.x)).toBe(3);
     expect(Math.round(b.y)).toBe(3);
   });
 
-  it("crosses adjacent units smoothly when their destinations are exchanged", () => {
+  it("routes adjacent units around each other without exchanging positions", () => {
     const s = makeFixture({ width: 8, height: 6, win: { kind: "harvestQuota", target: 99999 } });
     addBuilding(s, 0, "constructionYard", 0, 0);
     const a = addUnit(s, 0, "infantry", 2, 2);
@@ -425,6 +428,7 @@ describe("pathfinding", () => {
     let previousB = { x: b.x, y: b.y };
     for (let i = 0; i < 100; i++) {
       tick(s);
+      expectUniqueUnitCells(s);
       expect(Math.hypot(a.x - previousA.x, a.y - previousA.y)).toBeLessThanOrEqual(UNIT_STATS.infantry.speed + 1e-6);
       expect(Math.hypot(b.x - previousB.x, b.y - previousB.y)).toBeLessThanOrEqual(UNIT_STATS.infantry.speed + 1e-6);
       previousA = { x: a.x, y: a.y };
@@ -547,15 +551,35 @@ describe("pathfinding", () => {
     expect(Math.round(mover.y)).toBe(3);
   });
 
+  it("keeps neutral convoy movement out of occupied cells", () => {
+    const s = makeFixture({ width: 12, height: 8, win: { kind: "escort", targetCount: 1 } });
+    const blocker = addUnit(s, 0, "infantry", 5, 3);
+    blocker.orderDestination = { x: blocker.x, y: blocker.y };
+    blocker.idle = true;
+    const convoy = addUnit(s, 0, "convoyTruck", 4, 3);
+    convoy.neutral = true;
+    convoy.scenarioRole = "convoy";
+    convoy.orderMode = "move";
+    convoy.orderDestination = { x: 8, y: 3 };
+    convoy.path = [{ x: 5, y: 3 }, { x: 6, y: 3 }, { x: 7, y: 3 }, { x: 8, y: 3 }];
+    convoy.idle = false;
+
+    for (let i = 0; i < 160; i++) {
+      tick(s, undefined, { evaluateObjectives: false });
+      expectUniqueUnitCells(s);
+    }
+    expect(Math.round(convoy.x) === 5 && Math.round(convoy.y) === 3).toBe(false);
+  });
+
   it("spreads a group move across unique nearby tiles", () => {
     const s = makeFixture({ width: 12, height: 10, win: { kind: "harvestQuota", target: 99999 } });
     addBuilding(s, 0, "constructionYard", 0, 0);
     const a = addUnit(s, 0, "infantry", 2, 2);
     const b = addUnit(s, 0, "infantry", 2, 3);
     issue(s, { type: "move", unitIds: [a.id, b.id], x: 7, y: 3 });
+    expect(a.orderDestination).not.toEqual(b.orderDestination);
     expect(a.flowGoal).toEqual({ x: 7, y: 3 });
     expect(b.flowGoal).toEqual({ x: 7, y: 3 });
-    expect(a.orderDestination).not.toEqual(b.orderDestination);
   });
 
   it("moves a flow-field formation into distinct final slots", () => {
@@ -569,7 +593,10 @@ describe("pathfinding", () => {
     ];
     issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 16, y: 9, formation: "line" });
 
-    for (let i = 0; i < 500; i++) tick(s);
+    for (let i = 0; i < 500; i++) {
+      tick(s);
+      expectUniqueUnitCells(s);
+    }
 
     expect(units.every((unit) => {
       const destination = unit.orderDestination!;
@@ -588,7 +615,10 @@ describe("pathfinding", () => {
       }
     }
     issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 20, y: 8 });
-    for (let i = 0; i < 800; i++) tick(s);
+    for (let i = 0; i < 800; i++) {
+      tick(s);
+      expectUniqueUnitCells(s);
+    }
     expect(new Set(units.map((unit) => `${Math.round(unit.x)},${Math.round(unit.y)}`)).size).toBe(units.length);
     expect(units.every((unit) => {
       const destination = unit.orderDestination!;

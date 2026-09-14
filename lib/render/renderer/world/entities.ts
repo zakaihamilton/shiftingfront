@@ -56,6 +56,32 @@ import {
   spriteSessionKey,
 } from "../cache";
 
+export function unitSpriteDrawPosition({
+  screenX,
+  groundY,
+  anchorX,
+  anchorY,
+  bob,
+  recoilX,
+  recoilY,
+  smooth,
+}: {
+  screenX: number;
+  groundY: number;
+  anchorX: number;
+  anchorY: number;
+  bob: number;
+  recoilX: number;
+  recoilY: number;
+  smooth: boolean;
+}): { dx: number; dy: number } {
+  const rawX = screenX - anchorX + recoilX;
+  const rawY = groundY - anchorY + bob + recoilY;
+  return smooth
+    ? { dx: rawX, dy: rawY }
+    : { dx: Math.round(rawX), dy: Math.round(rawY) };
+}
+
 export function renderEntityPhase(
   ctx: CanvasRenderingContext2D,
   state: SimState,
@@ -153,10 +179,11 @@ export function renderEntityPhase(
     const isVehicle = e.class === "unit" && !isWalker;
 
     const facing = dyn ? dyn.baseFacing : resolveFacing(state, e, entityById, e.class === "unit" ? { x: cx, y: cy } : undefined);
+    const variant = entityVariant(state, e);
 
     let spec = e.class === "unit"
       ? unitSprite(e.kind as UnitKind, pal, {
-          variant: entityVariant(state, e),
+          variant,
           facing,
           animationFrame: uAnim?.frame,
           motion: uAnim?.pose === "move" ? "walk" : undefined,
@@ -164,7 +191,7 @@ export function renderEntityPhase(
           profile,
         })
       : buildingSprite(e.kind as BuildingKind, pal, {
-          variant: entityVariant(state, e),
+          variant,
           damageStage,
           constructionStage: constructionStage(e),
           profile,
@@ -183,6 +210,20 @@ export function renderEntityPhase(
     } else {
       lastReadySprite.set(cacheKey, { spec, img });
     }
+
+    const walkBlend = isWalker && uAnim?.pose === "move" ? Math.max(0, Math.min(1, uAnim.frameBlend ?? 1)) : 1;
+    const previousWalkSpec = walkBlend < 1 && uAnim?.previousFrame !== undefined
+      ? unitSprite(e.kind as UnitKind, pal, {
+          variant,
+          facing,
+          animationFrame: uAnim.previousFrame,
+          motion: "walk",
+          damageStage,
+          profile,
+        })
+      : undefined;
+    const previousWalkImg = previousWalkSpec ? rasterize(previousWalkSpec) : undefined;
+    const previousWalkReady = Boolean(previousWalkSpec && previousWalkImg && isRasterReady(previousWalkSpec));
 
     const dw = Math.round(spec.w * z);
     const dh = Math.round(spec.h * z);
@@ -211,11 +252,22 @@ export function renderEntityPhase(
       );
     }
 
-    // Walker grounded vertical bobbing
+    // Walk-sheet art carries the body motion; only the interpolated world
+    // position should move the sprite's contact point between render frames.
     const bob = isWalker && uAnim?.pose === "move" && dyn ? (uAnim.bobY ?? dyn.gaitBobY) * z : 0;
 
-    const dx = Math.round(s.x - ax - dir.x * recoil * 3 * z);
-    const dy = Math.round(groundY - ay + bob - dir.y * recoil * 3 * z);
+    const spritePosition = unitSpriteDrawPosition({
+      screenX: s.x,
+      groundY,
+      anchorX: ax,
+      anchorY: ay,
+      bob,
+      recoilX: -dir.x * recoil * 3 * z,
+      recoilY: -dir.y * recoil * 3 * z,
+      smooth: isWalker && uAnim?.pose === "move",
+    });
+    const dx = spritePosition.dx;
+    const dy = spritePosition.dy;
 
     if (uAnim?.pose === "move") {
       paintUnitMovementFx(
@@ -248,8 +300,15 @@ export function renderEntityPhase(
       drawUnitGlow(ctx, spec, img, dx, dy, dw, dh, timeMs, spriteAlpha, z);
     }
     if (spriteReady) {
-      ctx.globalAlpha = spriteAlpha;
-      drawSprite(ctx, spec, img, dx, dy, dw, dh);
+      if (previousWalkReady && previousWalkSpec && previousWalkImg && walkBlend < 1) {
+        ctx.globalAlpha = spriteAlpha * (1 - walkBlend);
+        drawSprite(ctx, previousWalkSpec, previousWalkImg, dx, dy, dw, dh);
+        ctx.globalAlpha = spriteAlpha * walkBlend;
+        drawSprite(ctx, spec, img, dx, dy, dw, dh);
+      } else {
+        ctx.globalAlpha = spriteAlpha;
+        drawSprite(ctx, spec, img, dx, dy, dw, dh);
+      }
       ctx.globalAlpha = 1;
     }
     if (spriteReady && e.class !== "building") {

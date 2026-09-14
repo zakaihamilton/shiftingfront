@@ -195,6 +195,13 @@ describe("isEntity", () => {
     expect(isEntity({ ...validUnit, rallyPoint: { x: 8, y: 9 } })).toBe(false);
     expect(isEntity({ ...validBuilding, rallyPoint: { x: 8 } })).toBe(false);
   });
+
+  it("accepts pending refinery harvesters only on refinery buildings", () => {
+    expect(isEntity({ ...validBuilding, kind: "refinery", refineryHarvesterPending: true })).toBe(true);
+    expect(isEntity({ ...validUnit, refineryHarvesterPending: true })).toBe(false);
+    expect(isEntity({ ...validBuilding, refineryHarvesterPending: true })).toBe(false);
+    expect(isEntity({ ...validBuilding, kind: "refinery", refineryHarvesterPending: "yes" })).toBe(false);
+  });
 });
 
 describe("isWin", () => {

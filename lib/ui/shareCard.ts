@@ -39,7 +39,7 @@ export function formatCampaignShareCard(campaign: Campaign, progress: CampaignPr
   const totalMedals = campaign.missions.reduce((sum, m) => sum + (progress.medals[String(m.index)] ?? 0), 0);
   const seedStr = formatSeed(campaign.seedNumber);
 
-  // Wordle-style 6-box emoji grid
+  // Six-operation emoji grid
   // 🟩 = 3 medals (Gold)
   // 🟨 = 2 medals (Silver)
   // 🟧 = 1 medal (Bronze)

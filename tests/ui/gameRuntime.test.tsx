@@ -35,8 +35,6 @@ vi.mock("@/lib/audio/music", () => ({
 }));
 vi.mock("@/lib/audio/mixer", () => ({ setAudioLevels: vi.fn() }));
 vi.mock("@/lib/audio/battlefield", () => ({ dispatchBattlefieldAudio: vi.fn() }));
-vi.mock("@/lib/gen/visualAssets", () => ({ listTacticalRasterSources: () => [] }));
-vi.mock("@/lib/render/sprites", () => ({ preloadRasterSources: vi.fn(), clearSpriteCache: vi.fn() }));
 vi.mock("@/lib/game/loop", () => ({ startLoop }));
 vi.mock("../../components/game/renderFrame", () => ({ renderGameFrame }));
 

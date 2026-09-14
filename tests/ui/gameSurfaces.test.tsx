@@ -268,16 +268,10 @@ describe("game overlay surfaces", () => {
     expect(screen.getByTestId("optional-objectives")).toHaveTextContent("Bonus objectives");
     expect(screen.getByTestId("optional-objectives")).toHaveTextContent("No combat unit survived");
     expect(screen.queryByText("Secondary objectives")).toBeNull();
+    expect(screen.queryByText("Tactical profile")).toBeNull();
 
-    const profile = screen.getByTestId("profile-assessment");
     const retry = screen.getByTestId("retry-guidance");
-    expect(profile).toHaveAttribute("open");
     expect(retry).toHaveAttribute("open");
-
-    fireEvent.click(screen.getByText("Tactical profile"));
-    expect(profile).not.toHaveAttribute("open");
-    fireEvent.click(screen.getByText("Tactical profile"));
-    expect(profile).toHaveAttribute("open");
 
     fireEvent.click(screen.getByText("Retry guidance"));
     expect(retry).not.toHaveAttribute("open");

@@ -136,7 +136,7 @@ export async function GET(request: Request) {
               6 OPERATIONS · SEEDED ISOMETRIC RTS
             </div>
             <div style={{ fontSize: "20px", color: "#5ce1e6", fontWeight: 800, letterSpacing: "2px" }}>
-              WORDLE FOR RTS · PLAY IN BROWSER
+              SEEDED RTS CAMPAIGN · PLAY IN BROWSER
             </div>
           </div>
         </div>

@@ -2,6 +2,20 @@ import { tileCliffGeometry } from "../../gen/cliffGeometry";
 import { cliffFaces, mixHex } from "../../gen/tilePalette";
 import type { TerrainLightRig } from "../terrainLighting";
 
+const SOFT_RAMP_LIGHT = "#f2efe4";
+const SOFT_RAMP_SHADOW = "#0d1519";
+
+function blendElevationColor(color: string, target: string, amount: number): string {
+  return color.startsWith("#") ? mixHex(color, target, amount) : color;
+}
+
+export function softElevationRampStops(color: string): [string, string] {
+  return [
+    blendElevationColor(color, SOFT_RAMP_LIGHT, 0.16),
+    blendElevationColor(color, SOFT_RAMP_SHADOW, 0.08),
+  ];
+}
+
 function shadeHex(value: string, factor: number): string {
   const r = Number.parseInt(value.slice(1, 3), 16);
   const g = Number.parseInt(value.slice(3, 5), 16);
@@ -28,26 +42,45 @@ export function drawElevationFaces(
   const shadowY = originY + Math.max(1, heightStep * 0.08);
   const southColor = light ? shadeHex(colors.south, 0.91 + light.directionY * 0.07) : colors.south;
   const eastColor = light ? shadeHex(colors.east, 0.96 + light.directionX * 0.07) : colors.east;
+  const southSoft = dropS === 1;
+  const eastSoft = dropE === 1;
   if (geo.south) {
-    fillElevationPoly(ctx, originX, shadowY, geo.south.points, mixHex(southColor, "#0d1519", 0.24));
-    fillElevationPoly(ctx, originX, originY, geo.south.points, southColor);
-    fillFaceStrata(ctx, originX, originY, geo.south.points, southColor, 0.28, 0.46, 0.11);
-    fillFaceStrata(ctx, originX, originY, geo.south.points, southColor, 0.6, 0.7, 0.06);
-    strokeRim(ctx, originX, originY, geo.south.points, southColor);
-    strokeCracks(ctx, originX, originY, geo.south.cracks, colors.southInk);
+    if (!southSoft) fillElevationPoly(ctx, originX, shadowY, geo.south.points, mixHex(southColor, SOFT_RAMP_SHADOW, 0.24));
+    fillElevationPoly(
+      ctx,
+      originX,
+      originY,
+      geo.south.points,
+      southSoft ? blendElevationColor(southColor, SOFT_RAMP_LIGHT, 0.1) : southColor,
+    );
+    if (!southSoft) {
+      fillFaceStrata(ctx, originX, originY, geo.south.points, southColor, 0.28, 0.46, 0.11);
+      fillFaceStrata(ctx, originX, originY, geo.south.points, southColor, 0.6, 0.7, 0.06);
+      strokeRim(ctx, originX, originY, geo.south.points, southColor);
+      strokeCracks(ctx, originX, originY, geo.south.cracks, colors.southInk);
+    }
   }
   if (geo.east) {
-    fillElevationPoly(ctx, originX, shadowY, geo.east.points, mixHex(eastColor, "#0d1519", 0.24));
-    fillElevationPoly(ctx, originX, originY, geo.east.points, eastColor);
-    fillFaceStrata(ctx, originX, originY, geo.east.points, eastColor, 0.28, 0.46, 0.11);
-    fillFaceStrata(ctx, originX, originY, geo.east.points, eastColor, 0.6, 0.7, 0.06);
-    strokeRim(ctx, originX, originY, geo.east.points, eastColor);
-    strokeCracks(ctx, originX, originY, geo.east.cracks, colors.eastInk);
+    if (!eastSoft) fillElevationPoly(ctx, originX, shadowY, geo.east.points, mixHex(eastColor, SOFT_RAMP_SHADOW, 0.24));
+    fillElevationPoly(
+      ctx,
+      originX,
+      originY,
+      geo.east.points,
+      eastSoft ? blendElevationColor(eastColor, SOFT_RAMP_LIGHT, 0.1) : eastColor,
+    );
+    if (!eastSoft) {
+      fillFaceStrata(ctx, originX, originY, geo.east.points, eastColor, 0.28, 0.46, 0.11);
+      fillFaceStrata(ctx, originX, originY, geo.east.points, eastColor, 0.6, 0.7, 0.06);
+      strokeRim(ctx, originX, originY, geo.east.points, eastColor);
+      strokeCracks(ctx, originX, originY, geo.east.cracks, colors.eastInk);
+    }
   }
   if (geo.wedge) {
     const fill = mixHex(southColor, eastColor, 0.42);
-    fillElevationPoly(ctx, originX, shadowY, geo.wedge, mixHex(fill, "#0d1519", 0.34));
-    fillElevationPoly(ctx, originX, originY, geo.wedge, mixHex(fill, "#f2efe4", 0.08));
+    const softWedge = dropE === 1 && dropS === 1;
+    if (!softWedge) fillElevationPoly(ctx, originX, shadowY, geo.wedge, mixHex(fill, SOFT_RAMP_SHADOW, 0.34));
+    fillElevationPoly(ctx, originX, originY, geo.wedge, softWedge ? blendElevationColor(fill, SOFT_RAMP_LIGHT, 0.08) : mixHex(fill, SOFT_RAMP_LIGHT, 0.08));
   }
 }
 
@@ -56,7 +89,7 @@ export function fillElevationPoly(
   ox: number,
   oy: number,
   points: number[],
-  fill?: string,
+  fill?: string | CanvasGradient | CanvasPattern,
   stroke = false,
 ): void {
   if (points.length < 6) return;
@@ -69,6 +102,25 @@ export function fillElevationPoly(
   if (fill !== undefined) ctx.fillStyle = fill;
   ctx.fill();
   if (stroke) ctx.stroke();
+}
+
+export function fillElevationRamp(
+  ctx: CanvasRenderingContext2D,
+  points: number[],
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  fromColor: string,
+  toColor: string,
+): void {
+  if (points.length < 6) return;
+  const gradient = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+  if (!gradient || typeof gradient.addColorStop !== "function") {
+    fillElevationPoly(ctx, 0, 0, points, fromColor);
+    return;
+  }
+  gradient.addColorStop(0, fromColor);
+  gradient.addColorStop(1, toColor);
+  fillElevationPoly(ctx, 0, 0, points, gradient);
 }
 
 function fillFaceStrata(

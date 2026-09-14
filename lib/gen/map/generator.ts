@@ -134,6 +134,7 @@ export function generateMap(
   carveRoute(tiles, heights, surfaces, width, height, upperRoute, 1, salt);
   carveRoute(tiles, heights, surfaces, width, height, lowerRoute, 1, salt + 11);
   const routePlans = [upperRoute, lowerRoute];
+  const scenarioRoutePlans: Vec2[][] = [];
   if (mission.index >= 4 || profile.variant === "crossfire") {
     const crossfireRoute = meanderingRoute(playerStart, enemyStart, width, height, salt + 27);
     carveRoute(tiles, heights, surfaces, width, height, crossfireRoute, 1, salt + 23);
@@ -149,16 +150,36 @@ export function generateMap(
     );
     carveRoute(tiles, heights, surfaces, width, height, rescueRoute, 1, salt + 29);
   }
+  if (mission.win.kind === "extraction") {
+    const extractionRegions = [
+      { x: 0.33, y: 0.33 },
+      { x: 0.67, y: 0.33 },
+      { x: 0.33, y: 0.67 },
+      { x: 0.67, y: 0.67 },
+    ];
+    for (const [index, region] of extractionRegions.entries()) {
+      const extractionRoute = meanderingRoute(
+        playerStart,
+        { x: Math.round(width * region.x), y: Math.round(height * region.y) },
+        width,
+        height,
+        salt + 47 + index * 13,
+      );
+      carveRoute(tiles, heights, surfaces, width, height, extractionRoute, 1, salt + 53 + index * 13);
+      scenarioRoutePlans.push(extractionRoute);
+    }
+  }
+  const allRoutePlans = [...routePlans, ...scenarioRoutePlans];
   let distances = walkDistances(tiles, heights, width, height, playerStart);
   let routeRepaired = false;
-  for (const [index, route] of routePlans.entries()) {
+  for (const [index, route] of allRoutePlans.entries()) {
     if (!routeReachable(distances, width, route)) {
       carveRoute(tiles, heights, surfaces, width, height, route, 2, salt + 101 + index, false);
       routeRepaired = true;
     }
   }
   if (routeRepaired) distances = walkDistances(tiles, heights, width, height, playerStart);
-  const initialRouteLengths = routePlans.map((route) => routeLength(route));
+  const initialRouteLengths = allRoutePlans.map((route) => routeLength(route));
   const initialBaseline = Math.min(...initialRouteLengths);
   const initialAlternate = Math.max(...initialRouteLengths);
   if (initialBaseline > 0 && initialAlternate > initialBaseline * 1.8) {

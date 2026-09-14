@@ -187,6 +187,8 @@ export type Entity = {
   scenarioRole?: ScenarioRole;
   /** Ground destination used by newly produced units from this building. */
   rallyPoint?: Vec2;
+  /** A refinery has completed but is waiting for a walkable tile for its free harvester. */
+  refineryHarvesterPending?: boolean;
   orderMode?: OrderMode;
   orderDestination?: Vec2;
   /** Shared terrain destination for group flow-field routing. */
@@ -218,6 +220,15 @@ export function isUnitEntity(entity: Entity): entity is UnitEntity {
 /** Narrows `entity.kind` to `BuildingKind` without an unsafe cast at the call site. */
 export function isBuildingEntity(entity: Entity): entity is BuildingEntity {
   return entity.class === "building";
+}
+
+/** Stranded rescue units are objective actors, not player-selectable units. */
+export function isPlayerSelectableUnit(entity: Entity): boolean {
+  return entity.class === "unit" && entity.scenarioRole !== "stranded";
+}
+
+export function isPlayerSelectableEntity(entity: Entity): boolean {
+  return entity.class === "building" || isPlayerSelectableUnit(entity);
 }
 
 export type Palette = {

@@ -1,5 +1,5 @@
 import { BUILDING_DEFINITIONS, UNIT_STATS, footprintOf } from "../catalog";
-import { isBuildingEntity, type BuildingKind, type SimEvent, type SimState } from "../types";
+import { isBuildingEntity, type BuildingKind, type Entity, type SimEvent, type SimState } from "../types";
 import { frontTileNear, invalidatePowerCache, openTileNear, powerFor, trySpawnUnit } from "./world";
 import { assignMoveDestination } from "./orders/movement";
 
@@ -55,6 +55,27 @@ function productionRates(state: SimState): Map<number, number> {
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
+function spawnRefineryHarvester(state: SimState, refinery: Entity, events?: SimEvent[]): boolean {
+  if (!isBuildingEntity(refinery) || refinery.kind !== "refinery" || refinery.constructing > 0) return false;
+  const spot = frontTileNear(state, refinery);
+  const spawned = trySpawnUnit(state, refinery.owner, "harvester", spot.x, spot.y);
+  if (!spawned) return false;
+
+  delete refinery.refineryHarvesterPending;
+  state.unitsProduced[refinery.owner] += 1;
+  if (refinery.owner === 0) state.unitsProducedByRole.harvester += 1;
+  events?.push({
+    type: "produced",
+    owner: refinery.owner,
+    kind: "harvester",
+    id: spawned.id,
+    x: spawned.x,
+    y: spawned.y,
+    sourceId: refinery.id,
+  });
+  return true;
+}
+
 export function tickProduction(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
   const events = eventSink ?? (collectEvents ? [] : undefined);
   const lowPower = [powerFor(state, 0) < 0, powerFor(state, 1) < 0];
@@ -62,6 +83,12 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
   for (const e of state.entities) {
     if (e.hp <= 0) continue;
     if (!e.queue) e.queue = [];
+    if (isBuildingEntity(e) && e.kind === "refinery" && e.constructing <= 0 && e.refineryHarvesterPending) {
+      // A free refinery harvester does not consume production power. Keep the
+      // request pending until the normal deployment search finds a tile.
+      spawnRefineryHarvester(state, e, events);
+      if (e.refineryHarvesterPending) continue;
+    }
     if (e.constructing > 0) {
       if (lowPower[e.owner] && e.kind !== "power") continue;
       invalidatePowerCache(state);
@@ -81,6 +108,9 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
           x: e.x,
           y: e.y,
         });
+        if (isBuildingEntity(e) && e.kind === "refinery" && !spawnRefineryHarvester(state, e, events)) {
+          e.refineryHarvesterPending = true;
+        }
       }
       continue;
     }

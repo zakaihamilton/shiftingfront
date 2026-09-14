@@ -7,6 +7,9 @@ import {
   damageFlicker,
   selectionPulse,
   toFacing,
+  unitMovementOffset,
+  unitWalkCycle,
+  unitWalkPeriod,
   unitAnim,
   unitPose,
   waterShimmer,
@@ -53,6 +56,35 @@ describe("animation helpers", () => {
     expect(seen.size).toBe(4);
   });
 
+  it("keeps human walk frames and gait phase on the same deterministic cycle", () => {
+    for (const kind of ["infantry", "antiArmor", "medic"] as const) {
+      const period = unitWalkPeriod(kind);
+      const cycle = unitWalkCycle(kind, 0, 11);
+      const next = unitWalkCycle(kind, period, 11);
+      const wrapped = unitWalkCycle(kind, period * 4, 11);
+      const transition = unitWalkCycle(kind, period * 0.11);
+
+      expect(cycle.frame).toBe(3);
+      expect(cycle.previousFrame).toBe(2);
+      expect(cycle.frameBlend).toBe(0);
+      expect(cycle.phase).toBeCloseTo((3 / 4) * Math.PI * 2, 8);
+      expect(next.frame).toBe(0);
+      expect(next.previousFrame).toBe(3);
+      expect(next.frameBlend).toBe(0);
+      expect(next.phase).toBeCloseTo(0, 8);
+      expect(wrapped.frame).toBe(3);
+      expect(wrapped.previousFrame).toBe(2);
+      expect(wrapped.frameBlend).toBe(0);
+      expect(wrapped.phase).toBeCloseTo((3 / 4) * Math.PI * 2, 8);
+      expect(transition.frame).toBe(0);
+      expect(transition.previousFrame).toBe(3);
+      expect(transition.frameBlend).toBeGreaterThan(0);
+      expect(transition.frameBlend).toBeLessThan(1);
+      expect(unitMovementOffset(kind, cycle.frame, cycle.phase).strideRatio)
+        .toBeCloseTo(Math.sin(cycle.phase), 8);
+    }
+  });
+
   it("picks move, work, attack, and idle poses from entity state", () => {
     const s = makeFixture({ win: { kind: "annihilate" } });
     const infantry = addUnit(s, 0, "infantry", 2, 2);
@@ -83,7 +115,7 @@ describe("animation helpers", () => {
     infantry.path = [{ x: 3, y: 2 }];
     const infantryMove = new Set([0, 90, 180, 270].map((clock) => unitAnim(infantry, 12, clock).bobY));
     const tankMove = new Set([0, 90, 180, 270].map((clock) => unitAnim(idle, 12, clock).bobY));
-    expect(infantryMove.size).toBeGreaterThan(1);
+    expect(infantryMove.size).toBe(1);
     expect(tankMove.size).toBe(1);
     expect(new Set([0, 90, 180, 270].map((clock) => unitAnim(idle, 12, clock).frame)).size).toBeGreaterThan(1);
   });
@@ -122,7 +154,7 @@ describe("animation helpers", () => {
     expect(damageFlicker(400, 2, 2)).toBeLessThan(1);
   });
 
-  it("calculates a natural grounded step bob, sway, and stride ratio for moving soldiers", () => {
+  it("keeps native walk art grounded while exposing synchronized stride state", () => {
     const s = makeFixture({ win: { kind: "annihilate" } });
     const soldier = addUnit(s, 0, "infantry", 3, 3);
     soldier.facing = 0;
@@ -130,8 +162,7 @@ describe("animation helpers", () => {
 
     const movingAnim = unitAnim(soldier, 10, 100);
     expect(movingAnim.pose).toBe("move");
-    expect(movingAnim.bobY).toBeLessThanOrEqual(0);
-    expect(movingAnim.bobY).toBeGreaterThanOrEqual(-2.5);
+    expect(movingAnim.bobY).toBe(0);
     expect(movingAnim.strideRatio).toBeGreaterThanOrEqual(-1);
     expect(movingAnim.strideRatio).toBeLessThanOrEqual(1);
     expect(typeof movingAnim.swayX).toBe("number");
@@ -140,8 +171,7 @@ describe("animation helpers", () => {
     const heavySoldier = addUnit(s, 0, "antiArmor", 5, 5);
     heavySoldier.path = [{ x: 6, y: 5 }];
     const heavyAnim = unitAnim(heavySoldier, 10, 100);
-    expect(heavyAnim.bobY).toBeLessThanOrEqual(0);
-    expect(heavyAnim.bobY).toBeGreaterThanOrEqual(-2.0);
+    expect(heavyAnim.bobY).toBe(0);
 
     soldier.path = [];
     const idleAnim = unitAnim(soldier, 10, 100);

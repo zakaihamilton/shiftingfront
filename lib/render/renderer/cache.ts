@@ -8,7 +8,7 @@ import type { Camera } from "../../iso";
 import { terrainGrainGeneration } from "../terrainAtlas";
 import { terrainLayoutSignature } from "../terrainAtlasBake";
 
-const TERRAIN_RENDER_REV = "world-atlas-v27-water-height-gaps";
+const TERRAIN_RENDER_REV = "world-atlas-v29-soft-one-level-ramps";
 
 const terrainScroll: ScrollLayer = emptyScrollLayer();
 let terrainCanvas: HTMLCanvasElement | null = null;

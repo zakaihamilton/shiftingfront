@@ -2,11 +2,13 @@ import { isSupportUnit, UNIT_STATS } from "../../catalog";
 import type { Rng } from "../../seed/rng";
 import type { GeneratedMap } from "../../gen/map";
 import type {
+  Entity,
   MissionDef,
   MissionKind,
   MissionRuntime,
   SimEvent,
   SimState,
+  Vec2,
 } from "../../types";
 import { secondaryObjectivesForMission } from "../../gen/objectives";
 import { inObjectiveZone, isUnitEntity } from "../../types";
@@ -15,7 +17,7 @@ import { resolveMissionProfile } from "../../gen/profile";
 import { spawnBuildingAt, spawnUnit } from "../world";
 import { enemyApproachPoint, reachableBuildingFilter, reachableScenarioCells, reachableScenarioPoint } from "./reachability";
 import { convoyStartPoint, convoyZonePoint, tickEscort } from "./escort";
-import { centerPoint, rescuePoint, tickRescueExtraction } from "./rescueExtraction";
+import { extractionPoints, rescuePoint, rescuePoints, tickRescueExtraction } from "./rescueExtraction";
 import { inRescueFlank } from "../../gen/map/generator/rescuePlacement";
 import type { ScenarioDefinition, ScenarioProgress, ScenarioSetupContext, ScenarioSetupResult } from "./contract";
 
@@ -54,11 +56,42 @@ function setupDestroyMarkedScenario({ state, map, mission, rng, reachable }: Sce
   return { targetIds: ids };
 }
 
-function setupTimedScenario({ state, map, mission, profile, reachable }: ScenarioSetupContext): ScenarioSetupResult {
+function setupTimedScenario({ state, map, mission, profile, reachable, rng }: ScenarioSetupContext): ScenarioSetupResult {
   const kind = mission.win.kind;
   const targetIds: number[] = [];
   const contestedRoute = profile.variant === "contestedRoute";
   const count = mission.win.targetCount ?? 2;
+  const rescueLocations = kind === "rescue"
+    ? rescuePoints(state, map, count, reachable)
+    : undefined;
+  const extractionLocations = kind === "extraction"
+    ? extractionPoints(state, map, count, reachable, rng)
+    : undefined;
+  const spawnScenarioPatrols = (index: number, target: Entity, center: Vec2): void => {
+    const patrolCount = kind === "rescue"
+      ? contestedRoute ? 2 : 1
+      : contestedRoute ? mission.index >= 4 ? index === 0 ? 2 : 1 : 2 : index === 0 ? 1 : 0;
+    for (let patrolIndex = 0; patrolIndex < patrolCount; patrolIndex++) {
+      const side = (index + patrolIndex) % 2 === 0 ? 1 : -1;
+      const patrolPoint = reachableScenarioPoint(
+        state,
+        { x: center.x + side * 4, y: center.y - side * 3 },
+        reachable,
+      );
+      const patrol = spawnUnit(
+        state,
+        1,
+        patrolIndex === 0
+          ? (index % 2 === 0 ? "infantry" : "antiArmor")
+          : kind === "extraction" ? "infantry" : "antiArmor",
+        patrolPoint.x,
+        patrolPoint.y,
+      );
+      patrol.stance = "defensive";
+      patrol.idle = true;
+      patrol.scenarioGuardTargetId = target.id;
+    }
+  };
 
   if (kind === "sabotage") {
     for (let i = 0; i < count; i++) {
@@ -87,15 +120,21 @@ function setupTimedScenario({ state, map, mission, profile, reachable }: Scenari
       const desired = kind === "escort"
         ? convoyStartPoint(map, i)
         : kind === "rescue"
-          ? rescuePoint(map, i, count)
-          : centerPoint(map, i, count, contestedRoute);
-      const point = reachableScenarioPoint(
-        state,
-        desired,
-        reachable,
-        undefined,
-        kind === "rescue" ? (x, y) => inRescueFlank(map, x, y) : undefined,
-      );
+          ? rescueLocations?.[i] ?? rescuePoint(map, i, count)
+          : extractionLocations?.[i] ?? map.playerStart;
+      // Rescue locations have already been validated against terrain and
+      // reachability as a group. Re-running the nearest-point scan here would
+      // allow a later target to snap onto an earlier one and needlessly repeat
+      // the full map scan.
+      const point = kind === "rescue" && rescueLocations?.[i]
+        ? rescueLocations[i]!
+        : reachableScenarioPoint(
+          state,
+          desired,
+          reachable,
+          undefined,
+          kind === "rescue" ? (x, y) => inRescueFlank(map, x, y) : undefined,
+        );
       const target = spawnUnit(state, 0, kind === "escort" ? "convoyTruck" : "infantry", point.x, point.y);
       target.neutral = kind === "escort" || kind === "rescue" || kind === "extraction";
       target.scenarioRole = kind === "escort" ? "convoy" : kind === "rescue" ? "stranded" : "cargo";
@@ -113,31 +152,16 @@ function setupTimedScenario({ state, map, mission, profile, reachable }: Scenari
       // The extra guards share the target assignment but use opposite
       // perimeter offsets, forcing the player to choose an approach and keep
       // an escort nearby instead of sending a single click-to-contact force.
-      if (kind === "rescue" || kind === "extraction") {
-        const patrolCount = kind === "rescue"
-          ? contestedRoute ? 2 : 1
-          : contestedRoute ? mission.index >= 4 ? i === 0 ? 2 : 1 : 2 : i === 0 ? 1 : 0;
-        for (let patrolIndex = 0; patrolIndex < patrolCount; patrolIndex++) {
-          const side = (i + patrolIndex) % 2 === 0 ? 1 : -1;
-          const patrolPoint = reachableScenarioPoint(
-            state,
-            { x: point.x + side * 4, y: point.y - side * 3 },
-            reachable,
-          );
-          const patrol = spawnUnit(
-            state,
-            1,
-            patrolIndex === 0
-              ? (i % 2 === 0 ? "infantry" : "antiArmor")
-              : kind === "extraction" ? "infantry" : "antiArmor",
-            patrolPoint.x,
-            patrolPoint.y,
-          );
-          patrol.stance = "defensive";
-          patrol.idle = true;
-          patrol.scenarioGuardTargetId = target.id;
-        }
-      }
+      // Extraction guards are deferred until every cargo unit is spawned so
+      // their perimeter positions cannot displace a later cargo unit.
+      if (kind === "rescue") spawnScenarioPatrols(i, target, point);
+    }
+  }
+
+  if (kind === "extraction") {
+    for (const [index, id] of targetIds.entries()) {
+      const target = state.entities.find((entity) => entity.id === id);
+      if (target) spawnScenarioPatrols(index, target, { x: target.x, y: target.y });
     }
   }
 

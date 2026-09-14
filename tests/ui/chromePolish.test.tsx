@@ -131,6 +131,9 @@ describe("product chrome", () => {
         levelCount={6}
         missionName="Recovery Zone"
         objective="Return the convoy"
+        timeRemaining="Time remaining 08:00"
+        timeRemainingTicks={8 * 60 * 12}
+        timeLimitTicks={10 * 60 * 12}
         objectiveCards={[{ id: "primary", label: "Return the convoy", current: 0, target: 1, status: "active", primary: true }]}
       />,
     );
@@ -139,15 +142,20 @@ describe("product chrome", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(toggle).toHaveAttribute("data-tooltip", "Collapse mission directive");
     expect(screen.getByTestId("objective")).toBeVisible();
+    expect(screen.getByTestId("time-remaining")).toHaveAttribute("data-placement", "body");
 
     fireEvent.click(toggle);
     const expand = screen.getByRole("button", { name: "Expand mission directive" });
     expect(expand).toHaveAttribute("aria-expanded", "false");
     expect(expand).toHaveAttribute("data-tooltip", "Expand mission directive");
     expect(document.getElementById("mission-directive-body")).toHaveAttribute("hidden");
+    expect(screen.getByTestId("time-remaining")).toHaveAttribute("data-placement", "collapsed");
+    expect(screen.getByTestId("time-remaining")).toHaveTextContent("08:00");
+    expect(screen.getByTestId("time-remaining").parentElement).toHaveAttribute("data-directive-expanded", "false");
 
     fireEvent.click(expand);
     expect(screen.getByTestId("objective")).toBeVisible();
+    expect(screen.getByTestId("time-remaining")).toHaveAttribute("data-placement", "body");
   });
 
   it("keeps command tabs accessible without rendering shortcut badges", () => {

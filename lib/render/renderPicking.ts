@@ -63,6 +63,7 @@ export function entityVisible(state: SimState, e: Entity): boolean {
   const ty = Math.round(e.y);
   const fog = fogAt(state, tx, ty);
   if (e.owner === 1 && fog !== 2) return false;
+  if (e.owner === 0 && e.neutral && e.scenarioRole === "stranded" && fog !== 2) return false;
   return true;
 }
 
@@ -112,6 +113,9 @@ export function entityAtPointer(state: SimState, sx: number, sy: number, cam: Ca
   let bestUnit: Entity | undefined;
   let bestD = 28 * cam.zoom;
   for (const e of state.entities) {
+    // Hover inspection is intentionally broader than player selection: a
+    // discovered stranded unit can show its objective tooltip without being
+    // eligible for commands.
     if (e.hp <= 0 || e.class !== "unit" || !entityVisible(state, e)) continue;
     const elev = groundHeight(state, e.x, e.y);
     const s = tileToScreen(e.x, e.y, cam, elev);

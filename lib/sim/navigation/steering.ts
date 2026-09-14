@@ -1,5 +1,5 @@
 import type { SimState, UnitEntity } from "../../types";
-import { tileFree } from "./avoidance";
+import { cellOf, tileFree } from "./avoidance";
 
 export function advanceAlongPath(
   state: SimState,
@@ -20,6 +20,14 @@ export function advanceAlongPath(
     e.path.shift();
     return;
   }
-  e.x += (dx / distance) * speed;
-  e.y += (dy / distance) * speed;
+  const nextX = e.x + (dx / distance) * speed;
+  const nextY = e.y + (dy / distance) * speed;
+  const currentCell = cellOf(state, e.x, e.y);
+  const nextCell = cellOf(state, nextX, nextY);
+  if (
+    nextCell !== currentCell &&
+    !tileFree(state, occupancy, reserved, e, nextCell % state.width, Math.floor(nextCell / state.width))
+  ) return;
+  e.x = nextX;
+  e.y = nextY;
 }

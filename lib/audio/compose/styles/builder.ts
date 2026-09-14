@@ -22,14 +22,33 @@ function integerValue(rng: Rng, range: Range): number {
 }
 
 function stylePoolFor(cue: MusicCue): readonly StyleBlueprint[] {
+  const menuStyles = [
+    "cinematic-tension",
+    "industrial-march",
+    "foundry-stomp",
+    "low-orbit",
+    "ice-protocol",
+    "choir-vector",
+    "orbital-drift",
+    "glass-chime",
+    "dune-cipher",
+    "relay-dub",
+    "chrome-fanfare",
+    "signal-chase",
+    "disco-command",
+    "neon-arpeggio",
+  ];
   if (cue === "defeat") {
-    return STYLE_BLUEPRINTS.filter((style) => ["industrial-march", "cinematic-tension", "low-orbit", "ice-protocol", "foundry-stomp", "tape-static", "choir-vector"].includes(style.name));
+    return STYLE_BLUEPRINTS.filter((style) => ["industrial-march", "cinematic-tension", "low-orbit", "ice-protocol", "foundry-stomp", "choir-vector", "relay-dub"].includes(style.name));
   }
   if (cue === "victory") {
-    return STYLE_BLUEPRINTS.filter((style) => ["neon-arpeggio", "orbital-drift", "signal-chase", "chrome-fanfare", "glass-chime", "disco-command", "bit-garrison"].includes(style.name));
+    return STYLE_BLUEPRINTS.filter((style) => ["neon-arpeggio", "orbital-drift", "signal-chase", "chrome-fanfare", "glass-chime", "disco-command", "choir-vector"].includes(style.name));
   }
   if (cue === "briefing") {
-    return STYLE_BLUEPRINTS.filter((style) => ["orbital-drift", "cinematic-tension", "neon-arpeggio", "low-orbit", "ice-protocol", "glass-chime", "choir-vector", "relay-dub", "dune-cipher"].includes(style.name));
+    return STYLE_BLUEPRINTS.filter((style) => ["orbital-drift", "cinematic-tension", "low-orbit", "ice-protocol", "glass-chime", "choir-vector", "relay-dub", "dune-cipher"].includes(style.name));
+  }
+  if (cue === "menu") {
+    return STYLE_BLUEPRINTS.filter((style) => menuStyles.includes(style.name));
   }
   return STYLE_BLUEPRINTS;
 }
@@ -92,7 +111,7 @@ export function createMusicStyle(cue: MusicCue, rng: Rng, seed = 0, missionIndex
     voiceEngine: blueprint.voiceEngine,
     drumKit: blueprint.drumKit,
     pulseRole: blueprint.pulseRole,
-    saturationAmount: Math.min(0.3, rangeValue(textureRng, blueprint.saturation) * 0.76),
+    saturationAmount: Math.min(0.2, rangeValue(textureRng, blueprint.saturation) * 0.58),
     drum: { ...blueprint.drum },
   };
   return applyMissionTints(profile, context);

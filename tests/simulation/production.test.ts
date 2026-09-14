@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { UNIT_STATS } from "../../lib/catalog";
+import { BUILDING_STATS, UNIT_STATS } from "../../lib/catalog";
 import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
 import { issue } from "../../lib/sim/orders";
 import { tickProduction } from "../../lib/sim/production";
-import { powerFor } from "../../lib/sim/world";
+import { compactDestroyedEntities, powerFor, trySpawnUnit } from "../../lib/sim/world";
+import { expectUniqueUnitCells } from "./helpers";
 
 function readyBase(width = 24, height = 16) {
   const s = makeFixture({ width, height, win: { kind: "annihilate" } });
@@ -78,6 +79,103 @@ describe("power shortage events", () => {
 
     expect(tickProduction(s)).toContainEqual({ type: "powerShortage", owner: 0 });
     expect(tickProduction(s).filter((event) => event.type === "powerShortage")).toHaveLength(0);
+  });
+});
+
+describe("refinery construction bonus", () => {
+  it("charges and refunds the updated refinery price", () => {
+    const s = makeFixture({ win: { kind: "annihilate" } });
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    const creditsBefore = s.credits[0];
+
+    expect(issue(s, { type: "build", building: "refinery", x: 4, y: 4 })).toEqual([]);
+    expect(s.credits[0]).toBe(creditsBefore - BUILDING_STATS.refinery.cost);
+
+    issue(s, { type: "cancelBuild", building: "refinery" });
+    expect(s.credits[0]).toBe(creditsBefore);
+  });
+
+  it("spawns one free harvester when a refinery finishes", () => {
+    const s = readyBase();
+    const refinery = addBuilding(s, 0, "refinery", 10, 8, 2);
+    const creditsBefore = s.credits[0];
+
+    expect(s.entities.filter((e) => e.owner === 0 && e.kind === "harvester")).toHaveLength(0);
+    expect(tickProduction(s).filter((event) => event.type === "produced")).toHaveLength(0);
+    expect(refinery.constructing).toBe(1);
+    expect(s.entities.filter((e) => e.owner === 0 && e.kind === "harvester")).toHaveLength(0);
+
+    const events = tickProduction(s);
+    expectUniqueUnitCells(s);
+
+    expect(refinery.constructing).toBe(0);
+    expect(s.credits[0]).toBe(creditsBefore);
+    expect(s.entities.filter((e) => e.owner === 0 && e.kind === "harvester")).toHaveLength(1);
+    expect(s.unitsProduced[0]).toBe(1);
+    expect(s.unitsProducedByRole.harvester).toBe(1);
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "built",
+      owner: 0,
+      kind: "refinery",
+      id: refinery.id,
+    }));
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "produced",
+      owner: 0,
+      kind: "harvester",
+      sourceId: refinery.id,
+    }));
+
+    expect(tickProduction(s).filter((event) => event.type === "produced")).toHaveLength(0);
+    expect(s.entities.filter((e) => e.owner === 0 && e.kind === "harvester")).toHaveLength(1);
+  });
+
+  it("retries the free harvester until a deployment tile opens", () => {
+    const s = makeFixture({ width: 5, height: 5, win: { kind: "annihilate" } });
+    const refinery = addBuilding(s, 0, "refinery", 1, 1, 1);
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    while (trySpawnUnit(s, 0, "infantry", refinery.x, refinery.y)) {
+      // Fill every walkable tile so the completion-time harvester cannot deploy.
+    }
+
+    const creditsBefore = s.credits[0];
+    const completionEvents = tickProduction(s);
+    expect(refinery.constructing).toBe(0);
+    expect(refinery.refineryHarvesterPending).toBe(true);
+    expect(s.entities.filter((e) => e.owner === 0 && e.kind === "harvester")).toHaveLength(0);
+    expect(s.credits[0]).toBe(creditsBefore);
+    expect(completionEvents.filter((event) => event.type === "produced")).toHaveLength(0);
+
+    const blocker = s.entities.find((e) => e.class === "unit")!;
+    blocker.hp = 0;
+    compactDestroyedEntities(s);
+    const retryEvents = tickProduction(s);
+
+    expect(refinery.refineryHarvesterPending).toBeUndefined();
+    expect(s.entities.filter((e) => e.owner === 0 && e.kind === "harvester")).toHaveLength(1);
+    expect(retryEvents).toContainEqual(expect.objectContaining({
+      type: "produced",
+      kind: "harvester",
+      sourceId: refinery.id,
+    }));
+    expect(s.credits[0]).toBe(creditsBefore);
+  });
+
+  it("also grants the bonus to an enemy refinery", () => {
+    const s = readyBase();
+    const refinery = addBuilding(s, 1, "refinery", 10, 8, 1);
+
+    const events = tickProduction(s);
+
+    expect(s.entities.filter((e) => e.owner === 1 && e.kind === "harvester")).toHaveLength(1);
+    expect(s.unitsProduced[1]).toBe(1);
+    expect(s.unitsProducedByRole.harvester).toBe(0);
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "produced",
+      owner: 1,
+      kind: "harvester",
+      sourceId: refinery.id,
+    }));
   });
 });
 

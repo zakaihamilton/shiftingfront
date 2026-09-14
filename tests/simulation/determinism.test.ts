@@ -17,18 +17,19 @@ describe("determinism", () => {
     expect(kinds.filter((kind) => NEW_MISSION_KINDS.includes(kind as typeof NEW_MISSION_KINDS[number]))).toHaveLength(3);
     expect(new Set(kinds).size).toBe(6);
     const biomes = a.missions.map((m) => m.biome);
-    expect(new Set(biomes).size).toBe(6);
+    expect(new Set(biomes)).toEqual(new Set([a.world.biome]));
   });
 
-  it("assigns a unique biome to each mission from the seed", () => {
+  it("assigns the campaign biome to every mission from the seed", () => {
     for (const seed of [0, 42, 421, 9999]) {
       const campaign = createCampaign(seed);
       const biomes = campaign.missions.map((m) => m.biome);
       expect(biomes).toHaveLength(6);
-      expect(new Set(biomes).size).toBe(6);
+      expect(biomes.every((biome) => biome === campaign.world.biome)).toBe(true);
       expect(createCampaign(seed).missions.map((m) => m.biome)).toEqual(biomes);
       const maps = campaign.missions.map((mission) => generateMap(seed, mission));
       expect(maps.map((map) => map.biome)).toEqual(biomes);
+      expect(maps.every((map) => map.biome === campaign.world.biome)).toBe(true);
     }
   });
 

@@ -3,7 +3,7 @@ import type { Campaign, MissionDef } from "../types";
 import { generateCharacters } from "./characters";
 import { generateFactions } from "./factions";
 import { mapSizeForMission } from "./map";
-import { genMissionTitle, pickMissionBiomes } from "./names";
+import { genMissionTitle } from "./names";
 import { generateWinCategory, pickMissionKinds } from "./objectives";
 import { generateBriefing } from "./story";
 import { generateWorld } from "./world";
@@ -23,7 +23,6 @@ export function createCampaign(seed: number): Campaign {
   const factions = generateFactions(seed);
   const characters = generateCharacters(seed);
   const kinds = pickMissionKinds(seed);
-  const biomes = pickMissionBiomes(seed);
   const missions: MissionDef[] = kinds.map((kind, index) => {
     const win = generateWinCategory(seed, index, kind);
     const profile = missionProfileFor(seed, index, kind);
@@ -33,7 +32,7 @@ export function createCampaign(seed: number): Campaign {
       briefing: [],
       win,
       mapSize: mapSizeForMission(index),
-      biome: biomes[index]!,
+      biome: world.biome,
       kind: win.kind,
       profile,
     };

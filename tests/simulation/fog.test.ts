@@ -4,6 +4,7 @@ import { visibleBuildingAt } from "../../lib/render/renderer";
 import { expandFog, fogAt, fogGridHeight, fogGridWidth, fogIndex, makeFog, tickFog } from "../../lib/sim/fog";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { deserializeState, serializeState } from "../../lib/persist/save";
+import { entityVisible } from "../../lib/render/renderPicking";
 
 describe("out of bounds shroud", () => {
   it("stores fog across the map skirt", () => {
@@ -71,5 +72,26 @@ describe("hover under shroud", () => {
     const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     const power = addBuilding(s, 0, "power", 3, 3);
     expect(visibleBuildingAt(s, 3, 3)?.id).toBe(power.id);
+  });
+});
+
+describe("scenario shroud", () => {
+  it("keeps a neutral stranded unit from revealing or rendering through unexplored fog", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "rescue", targetCount: 1, ticks: 100 } });
+    state.fog = makeFog(state.width, state.height, 0);
+    const stranded = addUnit(state, 0, "infantry", 12, 12);
+    stranded.neutral = true;
+    stranded.scenarioRole = "stranded";
+
+    tickFog(state);
+
+    expect(fogAt(state, stranded.x, stranded.y)).toBe(0);
+    expect(entityVisible(state, stranded)).toBe(false);
+
+    stranded.neutral = false;
+    tickFog(state);
+
+    expect(fogAt(state, stranded.x, stranded.y)).toBe(2);
+    expect(entityVisible(state, stranded)).toBe(true);
   });
 });

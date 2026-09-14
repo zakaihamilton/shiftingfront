@@ -4,7 +4,7 @@ import { beep } from "@/lib/audio/synth";
 import { groundOrders } from "@/lib/sim/orders";
 import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
-import type { BuildingKind, Command, Formation, SimState, Stance, UnitKind } from "@/lib/types";
+import { isPlayerSelectableUnit, type BuildingKind, type Command, type Formation, type SimState, type Stance, type UnitKind } from "@/lib/types";
 import { terrainAccess } from "@/lib/sim/world";
 import type { MobileCommand } from "../mobileCommandTypes";
 import { PLACEABLE, PRODUCIBLE, leastLoadedProducer } from "./gameActions";
@@ -85,7 +85,11 @@ export function useGameActions({
   }, []);
 
   const issueSelectedCommand = useCallback((command: "stop" | "stance" | "formation", value?: Stance | Formation) => {
-    const unitIds = [...(selectedIds.length > 0 ? selectedIds : selected.current)];
+    const state = stateRef.current;
+    const unitIds = [...(selectedIds.length > 0 ? selectedIds : selected.current)].filter((id) => {
+      const entity = state.entities.find((candidate) => candidate.id === id);
+      return Boolean(entity && entity.owner === 0 && isPlayerSelectableUnit(entity) && !entity.neutral && entity.hp > 0);
+    });
     if (unitIds.length === 0) return;
     if (command === "stop") enqueue({ type: "stop", unitIds });
     else if (command === "stance" && value) enqueue({ type: "stance", unitIds, stance: value as Stance });
@@ -106,7 +110,7 @@ export function useGameActions({
     const selectedUnitIds = [...(selectedIds.length > 0 ? selectedIds : selected.current)];
     const unitIds = selectedUnitIds.filter((id) => {
       const entity = state.entities.find((candidate) => candidate.id === id);
-      if (!entity || entity.owner !== 0 || entity.class !== "unit" || entity.neutral || entity.hp <= 0) return false;
+      if (!entity || entity.owner !== 0 || !isPlayerSelectableUnit(entity) || entity.neutral || entity.hp <= 0) return false;
       if (command === "harvest") return entity.kind === "harvester";
       if (command === "attackMove") return entity.kind !== "harvester";
       return true;
@@ -135,7 +139,7 @@ export function useGameActions({
     const selectedUnitIds = [...(selectedIds.length > 0 ? selectedIds : selected.current)];
     const unitIds = selectedUnitIds.filter((id) => {
       const entity = stateRef.current.entities.find((candidate) => candidate.id === id);
-      if (!entity || entity.owner !== 0 || entity.class !== "unit" || entity.neutral || entity.hp <= 0) return false;
+      if (!entity || entity.owner !== 0 || !isPlayerSelectableUnit(entity) || entity.neutral || entity.hp <= 0) return false;
       if (command === "attack") return entity.kind !== "harvester" && !isSupportUnit(entity.kind as UnitKind);
       return isSupportUnit(entity.kind as UnitKind);
     });

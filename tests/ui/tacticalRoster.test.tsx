@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TacticalRoster, rosterEntities } from "../../components/game/TacticalRoster";
@@ -91,6 +91,30 @@ describe("tactical roster", () => {
     expect(result.current.issueCoordinateCommand("attackMove", 2, 2)).toBe(false);
     expect(result.current.issueCoordinateCommand("harvest", 2, 2)).toBe(false);
     expect(commandQueue.current).toHaveLength(0);
+  });
+
+  it("shows discovered stranded units without offering selection", () => {
+    const state = makeFixture({ seed: 421, win: { kind: "rescue", targetCount: 1, ticks: 100 } });
+    const stranded = addUnit(state, 0, "infantry", 3, 3);
+    stranded.neutral = false;
+    stranded.scenarioRole = "stranded";
+
+    render(
+      <TacticalRoster
+        state={state}
+        selectedIds={[]}
+        actions={testActions()}
+        camera={testCamera()}
+        announcement=""
+        onSelect={vi.fn()}
+        onAnnounce={vi.fn()}
+      />,
+    );
+
+    const row = screen.getByText(/Role Stranded/).closest('[role="listitem"]');
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).queryByRole("button", { name: /Select Infantry/ })).not.toBeInTheDocument();
+    expect(within(row as HTMLElement).getByRole("button", { name: "Center" })).toBeInTheDocument();
   });
 
   it("prioritizes the mission result in the live region", () => {

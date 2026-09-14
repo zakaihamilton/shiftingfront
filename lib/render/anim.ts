@@ -5,9 +5,18 @@ import type { BuildingKind, Entity, Facing, UnitKind } from "../types";
 export type AnimFrame = 0 | 1 | 2 | 3;
 export type UnitPose = "idle" | "move" | "attack" | "work";
 
+export type UnitWalkCycle = {
+  frame: AnimFrame;
+  previousFrame: AnimFrame;
+  frameBlend: number;
+  phase: number;
+};
+
 export type UnitAnim = {
   pose: UnitPose;
   frame: AnimFrame;
+  previousFrame?: AnimFrame;
+  frameBlend?: number;
   bobY: number;
   stridePhase: number;
   strideRatio: number;
@@ -53,6 +62,31 @@ export function facingVector(facing: Facing): { x: number; y: number } {
   return { x: Math.cos(angle), y: Math.sin(angle) * 0.52 };
 }
 
+export function unitWalkPeriod(kind: UnitKind): number {
+  if (kind === "antiArmor") return 170;
+  if (kind === "infantry") return 150;
+  if (kind === "medic") return 160;
+  return 160;
+}
+
+/** Keep the walk-sheet pose, pose transition, and continuous gait motion on one clock. */
+export function unitWalkCycle(kind: UnitKind, timeMs: number, offset = 0): UnitWalkCycle {
+  const period = unitWalkPeriod(kind);
+  const framePosition = (((timeMs / period + offset) % 4) + 4) % 4;
+  const frameIndex = Math.floor(framePosition);
+  const frameProgress = framePosition - frameIndex;
+  // A short incoming cross-fade masks the hard silhouette change at each
+  // four-frame pose boundary without slowing or changing the walk cadence.
+  const transitionProgress = Math.min(1, frameProgress / 0.22);
+  const frameBlend = transitionProgress * transitionProgress * (3 - 2 * transitionProgress);
+  return {
+    frame: frameIndex as AnimFrame,
+    previousFrame: ((frameIndex + 3) & 3) as AnimFrame,
+    frameBlend,
+    phase: (framePosition / 4) * Math.PI * 2,
+  };
+}
+
 export type UnitMovementOffset = {
   bobY: number;
   swayX: number;
@@ -83,10 +117,10 @@ export function unitMovementOffset(
     };
   }
   const phase = stridePhase !== undefined ? stridePhase : (frame / 4) * Math.PI * 2;
-  const isHeavy = kind === "antiArmor";
-  // Natural vertical bobbing along stride cycle (grounded foot contact and rising step)
-  const bobAmp = isHeavy ? 1.0 : 1.4;
-  const bob = -Math.abs(Math.sin(phase)) * bobAmp;
+  // The raster walk art already carries the body motion. Do not layer a
+  // second vertical transform over it; that makes the torso visibly hop when
+  // the four-frame pose changes.
+  const bob = 0;
   const footPlantSide = (Math.sin(phase) >= 0 ? 1 : -1) as -1 | 1;
   const isFootPlant = Math.abs(Math.cos(phase)) > 0.82;
 
@@ -114,20 +148,17 @@ export function unitAnim(e: Entity, tick: number, clockMs?: number): UnitAnim {
   const t = animClock(tick, clockMs);
   const pose = unitPose(e);
   const kind = e.kind as UnitKind;
-  const isInfantry = kind === "infantry" || kind === "medic";
-  const isHeavy = kind === "antiArmor";
 
   if (pose === "move") {
     // Natural human running cadence (~3.3 steps/second, ~600ms per full stride cycle)
-    const period = isHeavy ? 170 : isInfantry ? 150 : 160;
-    const frame = animFrame(t, period, 4, e.id);
-    const strideCycleMs = period * 4;
-    const stridePhase = (((t + e.id * 73) % strideCycleMs) / strideCycleMs) * Math.PI * 2;
-    const offset = unitMovementOffset(kind, frame, stridePhase);
+    const cycle = unitWalkCycle(kind, t, e.id);
+    const offset = unitMovementOffset(kind, cycle.frame, cycle.phase);
 
     return {
       pose,
-      frame,
+      frame: cycle.frame,
+      previousFrame: cycle.previousFrame,
+      frameBlend: cycle.frameBlend,
       bobY: offset.bobY,
       swayX: offset.swayX,
       tilt: offset.tilt,
@@ -135,7 +166,7 @@ export function unitAnim(e: Entity, tick: number, clockMs?: number): UnitAnim {
       scaleY: offset.scaleY,
       isFootPlant: offset.isFootPlant,
       footPlantSide: offset.footPlantSide,
-      stridePhase,
+      stridePhase: cycle.phase,
       strideRatio: offset.strideRatio,
       recoil: 0,
     };

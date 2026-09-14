@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { TILE_H, createCamera, tileToScreen } from "../../lib/iso";
 import { finalizeMultiSelect, pickEntity } from "../../lib/render/pick";
+import { entityAtPointer } from "../../lib/render/renderPicking";
+import { tooltipLines } from "../../lib/render/renderer";
 import { pickTile } from "../../lib/render/renderer";
 import { issue, tick } from "../../lib/sim/api";
 import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
@@ -208,26 +210,24 @@ describe("same-type on-screen selection", () => {
     expect(selectVisibleUnitsOfKind(s, cam, { width: 800, height: 600 }, yard)).toEqual([]);
   });
 
-  it("selects only matching contact units when the prototype is a scenario contact", () => {
+  it("keeps stranded units hoverable but never selectable", () => {
     const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     const cam = createCamera();
     const stranded = addUnit(s, 0, "infantry", 5, 5);
-    stranded.neutral = true;
+    stranded.neutral = false;
+    stranded.scenarioRole = "stranded";
     const otherStranded = addUnit(s, 0, "infantry", 6, 5);
-    otherStranded.neutral = true;
+    otherStranded.neutral = false;
+    otherStranded.scenarioRole = "stranded";
     const regular = addUnit(s, 0, "infantry", 5, 6);
-    s.runtime = {
-      kind: "rescue",
-      phase: "active",
-      targetIds: [stranded.id, otherStranded.id],
-      rescued: 0,
-      required: 2,
-      secondary: [],
-    };
-    expect(selectVisibleUnitsOfKind(s, cam, { width: 800, height: 600 }, stranded)).toEqual([
-      stranded.id,
-      otherStranded.id,
-    ]);
-    expect(selectVisibleUnitsOfKind(s, cam, { width: 800, height: 600 }, stranded)).not.toContain(regular.id);
+    const strandedScreen = tileToScreen(stranded.x, stranded.y, cam, heightAt(s, stranded.x, stranded.y));
+
+    expect(selectVisibleUnitsOfKind(s, cam, { width: 800, height: 600 }, stranded)).toEqual([]);
+    expect(pickEntity(s, strandedScreen.x, strandedScreen.y - 12, cam)).toBeUndefined();
+    const hovered = entityAtPointer(s, strandedScreen.x, strandedScreen.y + TILE_H / 2 - 12, cam);
+    expect(hovered?.id).toBe(stranded.id);
+    expect(tooltipLines(s, hovered!, {})).toContain("Stranded");
+    expect(selectVisibleUnitsOfKind(s, cam, { width: 800, height: 600 }, regular)).toEqual([regular.id]);
+    expect(otherStranded.id).not.toBe(regular.id);
   });
 });

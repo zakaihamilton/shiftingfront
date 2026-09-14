@@ -22,7 +22,7 @@ export function playKick(audio: AudioGraphContext, g: MusicGraph, time: number, 
   if (!analog) {
     const click = audio.createOscillator();
     const clickGain = audio.createGain();
-    click.type = industrial ? "sawtooth" : "square";
+    click.type = industrial ? "sawtooth" : "triangle";
     click.frequency.setValueAtTime(Math.max(drum.kickStart * (chip ? 4 : 8), chip ? 900 : 1400), time);
     click.frequency.exponentialRampToValueAtTime(220, time + (chip ? 0.01 : 0.018));
     clickGain.gain.setValueAtTime(0.0001, time);
@@ -37,7 +37,7 @@ export function playKick(audio: AudioGraphContext, g: MusicGraph, time: number, 
     audio,
     g.rhythmBus,
     time,
-    (chip ? 0.14 : industrial ? 0.14 : analog ? 0.05 : 0.08) * velocity,
+    (chip ? 0.14 : industrial ? 0.14 : analog ? 0.05 : 0.06) * velocity,
     drum.snareNoise * (chip ? 2.2 : 1.45),
     chip ? 0.012 : analog ? 0.01 : 0.018,
     "highpass",
@@ -51,9 +51,9 @@ export function playSnare(audio: AudioGraphContext, g: MusicGraph, time: number,
   const analog = kit === "analog-808";
   const chip = kit === "chip-noise";
   const industrial = kit === "industrial";
-  const dry = (accent ? 0.18 : 0.1) * velocity * (chip ? 0.7 : 1);
+  const dry = (accent ? 0.16 : 0.085) * velocity * (chip ? 0.7 : 1);
   playNoise(audio, g.rhythmBus, time, dry * (analog ? 0.7 : industrial ? 1.2 : 1), drum.snareNoise, accent ? (chip ? 0.04 : 0.07) : (chip ? 0.028 : 0.05), "bandpass", drum.noisePan);
-  playNoise(audio, g.rhythmBus, time, dry * (analog ? 0.3 : 0.45), drum.snareNoise * 2.2, chip ? 0.018 : 0.035, "highpass", drum.noisePan);
+  playNoise(audio, g.rhythmBus, time, dry * (analog ? 0.26 : 0.35), drum.snareNoise * 2.2, chip ? 0.018 : 0.035, "highpass", drum.noisePan);
   if (!chip) {
     const body = audio.createOscillator();
     const bodyGain = audio.createGain();

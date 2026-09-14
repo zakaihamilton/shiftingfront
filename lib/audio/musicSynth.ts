@@ -28,29 +28,69 @@ export function playSynthTone(
   const acid = engine === "acid-res";
   const pwm = engine === "pwm";
   const fm = engine === "fm-bell";
+  const cinematic = engine === "cinematic";
+  const cleanType = cinematic && type === "square" ? (bass ? "triangle" : "sawtooth") : type;
   const attack = Math.min(
-    chip ? 0.002 : lead ? 0.02 : bass ? (acid ? 0.008 : 0.004) : pulse ? 0.003 : ATTACK_S,
+    chip ? 0.002 : cinematic ? (lead ? 0.035 : bass ? 0.012 : 0.018) : lead ? 0.02 : bass ? (acid ? 0.008 : 0.004) : pulse ? 0.003 : ATTACK_S,
     duration * 0.22,
   );
   const release = Math.min(
-    chip ? 0.04 : bass ? (acid ? 0.11 : 0.07) : pulse ? 0.045 : lead ? (fm ? 0.32 : 0.22) : 0.18,
+    chip ? 0.04 : cinematic ? (bass ? 0.16 : pulse ? 0.08 : lead ? 0.38 : 0.28) : bass ? (acid ? 0.11 : 0.07) : pulse ? 0.045 : lead ? (fm ? 0.32 : 0.22) : 0.18,
     duration * (chip ? 0.35 : pulse ? 0.55 : 0.4),
   );
   const end = time + Math.max(duration, attack + release + 0.02);
-  const peak = Math.max(0.006, velocity * (accent ? 0.24 : pulse ? 0.14 : chip ? 0.17 : 0.22));
+  const peak = Math.max(0.006, velocity * (accent ? 0.24 : pulse ? (cinematic ? 0.12 : 0.14) : chip ? 0.17 : cinematic ? 0.2 : 0.22));
 
   filter.type = "lowpass";
-  filter.Q.setValueAtTime(acid ? (bass ? 8.5 : 5.5) : bass ? 1.8 : lead || pulse ? 1.2 : 1.05, time);
-  const startCut = Math.max(220, cutoff * (acid ? (accent ? 4.6 : 3.4) : bass ? (accent ? 3.1 : 2.5) : accent ? 2.2 : pulse ? 2.4 : 1.7));
-  const endCut = Math.max(bass ? 90 : 140, cutoff * (acid ? (bass ? 0.18 : 0.42) : bass ? 0.26 : pulse ? 1.1 : 0.82));
+  filter.Q.setValueAtTime(
+    acid ? (bass ? 8.5 : 5.5) : cinematic ? (bass ? 1.05 : 0.72) : bass ? 1.8 : lead || pulse ? 1.2 : 1.05,
+    time,
+  );
+  const startCut = Math.max(220, cutoff * (
+    acid
+      ? (accent ? 4.6 : 3.4)
+      : cinematic
+        ? (accent ? 2.15 : 1.65)
+        : bass
+          ? (accent ? 3.1 : 2.5)
+          : accent
+            ? 2.2
+            : pulse
+              ? 2.4
+              : 1.7
+  ));
+  const endCut = Math.max(
+    bass ? 90 : 140,
+    cutoff * (
+      acid
+        ? (bass ? 0.18 : 0.42)
+        : cinematic
+          ? (bass ? 0.34 : pulse ? 0.72 : 0.88)
+          : bass
+            ? 0.26
+            : pulse
+              ? 1.1
+              : 0.82
+    ),
+  );
   filter.frequency.setValueAtTime(startCut, time);
-  filter.frequency.exponentialRampToValueAtTime(endCut, time + Math.min(acid ? 0.28 : 0.16, duration * (acid ? 0.8 : 0.55)));
-  pan.pan.setValueAtTime(notePan(voice), time);
+  filter.frequency.exponentialRampToValueAtTime(
+    endCut,
+    time + Math.min(acid ? 0.28 : cinematic ? 0.24 : 0.16, duration * (acid ? 0.8 : cinematic ? 0.72 : 0.55)),
+  );
+  const panCenter = notePan(voice);
+  const panWidth = bass ? 0.02 : pulse ? 0.07 : lead ? 0.08 : 0.05;
+  const panMotion = Math.sin(freq * 0.013 + duration * 4.7) * panWidth;
+  const panTarget = Math.max(-0.82, Math.min(0.82, panCenter + panMotion));
+  pan.pan.setValueAtTime(panCenter, time);
+  pan.pan.linearRampToValueAtTime(panTarget, time + Math.min(0.18, Math.max(0.03, duration * 0.25)));
 
-  oscA.type = acid ? "sawtooth" : pwm ? "square" : fm ? (type === "sine" || type === "triangle" ? type : "sine") : type;
+  oscA.type = acid ? "sawtooth" : pwm ? (cleanType === "square" ? "sawtooth" : cleanType) : fm ? (cleanType === "sine" || cleanType === "triangle" ? cleanType : "sine") : cleanType;
   const glide = acid && bass
     ? Math.min(0.08, duration * 0.45)
-    : lead ? Math.min(0.03, duration * 0.22) : pulse ? Math.min(0.012, duration * 0.18) : 0;
+    : cinematic && bass
+      ? Math.min(0.022, duration * 0.25)
+      : lead ? Math.min(0.03, duration * 0.22) : pulse ? Math.min(0.012, duration * 0.18) : 0;
   oscA.frequency.setValueAtTime(freq * (glide > 0 ? (acid ? 0.86 : 0.93) : 1), time);
   if (glide > 0) oscA.frequency.exponentialRampToValueAtTime(freq, time + glide);
 
@@ -80,16 +120,16 @@ export function playSynthTone(
   } else if (!chip) {
     const oscB = audio.createOscillator();
     const oscBGain = audio.createGain();
-    oscB.type = pwm ? "square" : type === "sawtooth" ? "square" : type === "square" ? "sawtooth" : "triangle";
+    oscB.type = pwm ? (cleanType === "sawtooth" ? "triangle" : cleanType === "square" ? "sawtooth" : cleanType) : cleanType === "sawtooth" ? "triangle" : cleanType === "square" ? "sawtooth" : "triangle";
     oscB.frequency.setValueAtTime(freq * (bass ? 1.004 : 1.01), time);
-    oscB.detune.setValueAtTime(lead ? 10 : pulse ? -8 : -5, time);
-    oscBGain.gain.setValueAtTime(pwm ? 0.2 : 0.28, time);
+    oscB.detune.setValueAtTime(cinematic ? (lead ? 6 : pulse ? -4 : -3) : lead ? 10 : pulse ? -8 : -5, time);
+    oscBGain.gain.setValueAtTime(pwm ? 0.2 : cinematic ? 0.22 : 0.28, time);
     if (pwm) {
       const pwmGain = audio.createGain();
       const pwmLfo = audio.createOscillator();
       const pwmDepth = audio.createGain();
       pwmGain.gain.setValueAtTime(0.28, time);
-      pwmDepth.gain.setValueAtTime(0.12, time);
+      pwmDepth.gain.setValueAtTime(0.07, time);
       pwmLfo.type = "sine";
       pwmLfo.frequency.setValueAtTime(bass ? 0.7 : 4.2, time);
       pwmLfo.connect(pwmDepth);
@@ -110,7 +150,7 @@ export function playSynthTone(
       vibrato.frequency.setValueAtTime(5.6, time);
       vibratoGain.gain.setValueAtTime(0.0001, time);
       vibratoGain.gain.setValueAtTime(0.0001, time + 0.12);
-      vibratoGain.gain.linearRampToValueAtTime(16, time + 0.28);
+      vibratoGain.gain.linearRampToValueAtTime(cinematic ? 4 : 16, time + (cinematic ? 0.34 : 0.28));
       vibrato.connect(vibratoGain);
       vibratoGain.connect(oscA.detune);
       vibratoGain.connect(oscB.detune);
@@ -133,7 +173,12 @@ export function playSynthTone(
     oscSub.stop(end + 0.04);
   }
 
-  filter.connect(envelope);
+  const voiceHighpass = audio.createBiquadFilter();
+  voiceHighpass.type = "highpass";
+  voiceHighpass.frequency.setValueAtTime(bass ? 32 : pulse ? 88 : lead ? 118 : 96, time);
+  voiceHighpass.Q.setValueAtTime(0.55, time);
+  filter.connect(voiceHighpass);
+  voiceHighpass.connect(envelope);
   envelope.connect(pan);
   pan.connect(dest);
   if (lead || voice === "counter") envelope.connect(g.reverbSend);

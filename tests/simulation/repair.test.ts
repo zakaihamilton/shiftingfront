@@ -86,10 +86,10 @@ describe("structure repair", () => {
     expect(canRepair(full)).toBe(false);
   });
 
-  it("restores HP at half the rate of a 30-second full repair (60-second baseline)", () => {
-    expect(repairHpPerTick("barracks")).toBe(2);
-    expect(repairHpPerTick("constructionYard")).toBe(5);
-    expect(Math.ceil(BUILDING_STATS.barracks.hp / repairHpPerTick("barracks"))).toBe(450);
+  it("derives repair duration from the revised building HP values", () => {
+    expect(repairHpPerTick("barracks")).toBe(1);
+    expect(repairHpPerTick("constructionYard")).toBe(4);
+    expect(Math.ceil(BUILDING_STATS.barracks.hp / repairHpPerTick("barracks"))).toBe(675);
   });
 
   it("charges a positive cost for a repair tick", () => {
@@ -124,4 +124,3 @@ describe("structure repair", () => {
     expect(toneRepairing).toBe("220,190,70");
   });
 });
-

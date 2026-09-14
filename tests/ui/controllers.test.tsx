@@ -37,8 +37,6 @@ vi.mock("@/lib/audio/music", () => ({
   TUTORIAL_MUSIC_MISSION: -1,
 }));
 vi.mock("@/lib/audio/mixer", () => ({ setAudioLevels: vi.fn() }));
-vi.mock("@/lib/gen/visualAssets", () => ({ listTacticalRasterSources: () => [] }));
-vi.mock("@/lib/render/sprites", () => ({ preloadRasterSources: vi.fn() }));
 
 afterEach(() => {
   cleanup();

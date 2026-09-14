@@ -147,11 +147,11 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   highpass.frequency.setValueAtTime(38, now);
   saturation.curve = createSaturationCurve(p.style.saturationAmount);
   saturation.oversample = "2x";
-  compressor.threshold.setValueAtTime(-18, now);
-  compressor.knee.setValueAtTime(12, now);
-  compressor.ratio.setValueAtTime(2.8, now);
-  compressor.attack.setValueAtTime(0.012, now);
-  compressor.release.setValueAtTime(0.22, now);
+  compressor.threshold.setValueAtTime(-16, now);
+  compressor.knee.setValueAtTime(18, now);
+  compressor.ratio.setValueAtTime(3.4, now);
+  compressor.attack.setValueAtTime(0.02, now);
+  compressor.release.setValueAtTime(0.28, now);
   master.gain.setValueAtTime(masterGain("calm", false), now);
   master.connect(highpass);
   highpass.connect(saturation);
@@ -168,24 +168,34 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   const fxBus = createBus(audio, master, 0.42);
 
   const reverb = audio.createConvolver();
+  const reverbFilter = audio.createBiquadFilter();
   const reverbSend = audio.createGain();
   const reverbWet = audio.createGain();
   reverb.buffer = createImpulseResponse(audio, p.style.reverbSeconds, p.style.reverbDecay);
+  reverbFilter.type = "lowpass";
+  reverbFilter.frequency.setValueAtTime(Math.min(5600, Math.max(1800, p.cutoff * 2.8)), now);
+  reverbFilter.Q.setValueAtTime(0.32, now);
   reverbSend.gain.setValueAtTime(p.style.reverbSend, now);
   reverbWet.gain.setValueAtTime(p.style.reverbWet, now);
   reverbSend.connect(reverb);
-  reverb.connect(reverbWet);
+  reverb.connect(reverbFilter);
+  reverbFilter.connect(reverbWet);
   reverbWet.connect(master);
   const padReverbSend = createBus(audio, reverbSend, 0.24);
 
   const delay = audio.createDelay(1.5);
+  const delayFilter = audio.createBiquadFilter();
   const delayFeedback = audio.createGain();
   const delayWet = audio.createGain();
+  delayFilter.type = "lowpass";
+  delayFilter.frequency.setValueAtTime(Math.min(5200, Math.max(1600, p.cutoff * 2.4)), now);
+  delayFilter.Q.setValueAtTime(0.42, now);
   delayFeedback.gain.setValueAtTime(p.style.delayFeedback, now);
   delayWet.gain.setValueAtTime(p.style.delayWet, now);
-  delay.connect(delayFeedback);
+  delay.connect(delayFilter);
+  delayFilter.connect(delayFeedback);
   delayFeedback.connect(delay);
-  delay.connect(delayWet);
+  delayFilter.connect(delayWet);
   delayWet.connect(master);
   leadBus.connect(delay);
   pulseBus.connect(reverbSend);
@@ -278,9 +288,11 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
     fxBus,
     bassDuck,
     reverb,
+    reverbFilter,
     reverbSend,
     reverbWet,
     delay,
+    delayFilter,
     delayFeedback,
     delayWet,
     padGain,
@@ -318,8 +330,9 @@ export function disconnectGraph(g: MusicGraph): void {
   for (const node of [
     g.padFilter, g.padGain, g.padGate, g.padLfoGain, g.padReverbFilter, g.padReverbGate, g.padReverbSend,
     ...g.padReverbVoices, g.delay, g.delayFeedback, g.delayWet,
-    g.reverb, g.reverbSend, g.reverbWet, g.bassBus, g.bassDuck, g.rhythmBus, g.harmonyBus,
+    g.reverb, g.reverbFilter, g.reverbSend, g.reverbWet, g.bassBus, g.bassDuck, g.rhythmBus, g.harmonyBus,
     g.pulseBus, g.leadBus, g.counterBus, g.fxBus, g.highpass, g.saturation,
+    g.delayFilter,
     g.compressor, g.master,
   ]) node.disconnect();
 }

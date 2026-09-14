@@ -96,6 +96,21 @@ function structureQuotaBuilding(state: SimState): BuildingKind | undefined {
     .find((kind) => structureQuotaProgress(state, kind) < target);
 }
 
+function shouldSaveForStructureQuota(state: SimState): boolean {
+  if (objectiveKind(state) !== "structureQuota") return false;
+  const kind = structureQuotaBuilding(state);
+  if (!kind) return false;
+  const target = state.win.target ?? Infinity;
+  if (structureQuotaProgress(state, kind) >= target) return false;
+  if (playerBuildingsView(state, kind).some((entity) => entity.constructing > 0)) return false;
+
+  const combatCount = playerUnitsView(
+    state,
+    (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
+  ).length;
+  return combatCount >= 18 && state.credits[0] < BUILDING_STATS[kind].cost;
+}
+
 function buildCommand(state: SimState, kind: BuildingKind, near: Entity): Command | undefined {
   const cost = BUILDING_STATS[kind].cost;
   const reserve = objectiveKind(state) === "structureQuota" ? 0 : BUILDING_RESERVE;
@@ -168,6 +183,7 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
 
 export function planProduction(state: SimState): Command[] {
   const commands: Command[] = [];
+  if (shouldSaveForStructureQuota(state)) return commands;
   const support = supportNeed(state);
   const offensive = OFFENSIVE_KINDS.has(objectiveKind(state));
   if (offensive) {
