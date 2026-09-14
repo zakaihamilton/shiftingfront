@@ -26,7 +26,7 @@ export function minutesToTicks(minutes: number): number {
 export const CONVOY_STAGING_MINUTES = 3;
 export const CONVOY_STAGING_TICKS = minutesToTicks(CONVOY_STAGING_MINUTES);
 /** Extra escort time covers the final approach through a contested route. */
-export const CONVOY_COMPLETION_BUFFER_MINUTES = 2;
+export const CONVOY_COMPLETION_BUFFER_MINUTES = 3;
 export const CONVOY_COMPLETION_BUFFER_TICKS = minutesToTicks(CONVOY_COMPLETION_BUFFER_MINUTES);
 
 /** Formats a player-facing mission clock with a stable two-digit minute field. */

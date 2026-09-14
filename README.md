@@ -83,7 +83,7 @@ Open [http://localhost:3000](http://localhost:3000), choose **New Game**, enter 
 | `yarn dev` | Start the development server. |
 | `yarn build && yarn start` | Build and serve the production app. |
 | `yarn test` | Run the full Vitest suite. |
-| `yarn verify:fast` | Run type checking, linting, and the fast test tier. |
+| `yarn verify:fast` | Recommended local pre-push check: type checking, linting, and the fast test tier. |
 | `yarn test:e2e` | Run the Playwright browser smoke tests. |
 | `yarn inspect 0421` | Inspect a generated campaign as JSON. |
 | `yarn sim --seed 0421 --mission 0 --ticks 200` | Run a mission through the headless simulation. |

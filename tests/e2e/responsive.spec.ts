@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "../../components/game/hooks/useGameCamera";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { TILE_H, tileToScreen } from "../../lib/iso";
-import { SAVE_CONTENT_VERSION, SAVE_VERSION, saveKey } from "../../lib/persist/save";
+import { SAVE_CONTENT_VERSION, SAVE_VERSION, SLOT_VERSION, saveKey, slotKey } from "../../lib/persist/save";
+import { freshCampaignProgress } from "../../lib/persist/campaign";
 import { SETTINGS_KEY, SETTINGS_VERSION, defaultSettings } from "../../lib/persist/settings";
 import { createMission } from "../../lib/sim/api";
 import { addUnit, setHeight } from "../../lib/sim/fixtures";
@@ -813,6 +814,36 @@ test.describe("mobile-first layouts", () => {
     expect(launchBounds!.x).toBeGreaterThanOrEqual(0);
     expect(launchBounds!.x + launchBounds!.width).toBeLessThanOrEqual(320);
     await expect(page.getByRole("button", { name: "Back to menu" })).toBeVisible();
+  });
+
+  test("keeps named archive portability actions inside the phone viewport", async ({ page }) => {
+    const state = createMission({ seed: TEST_SEED, missionIndex: 0 });
+    const raw = JSON.stringify({
+      version: SLOT_VERSION,
+      contentVersion: SAVE_CONTENT_VERSION,
+      savedAt: Date.now(),
+      name: "Bridgehead",
+      state,
+      campaign: freshCampaignProgress(TEST_SEED),
+    });
+    await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), {
+      key: slotKey("mobile001"),
+      value: raw,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/load");
+
+    const exportButton = page.getByRole("button", { name: "Export save slot Bridgehead" });
+    const deleteButton = page.getByRole("button", { name: "Delete save slot Bridgehead" });
+    await expect(exportButton).toBeVisible();
+    await expect(deleteButton).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    for (const button of [exportButton, deleteButton]) {
+      const bounds = await button.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+    }
   });
 
   test("places welcome previews below the menu on phones", async ({ page }) => {

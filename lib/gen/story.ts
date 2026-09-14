@@ -1,5 +1,5 @@
 import { labelFor } from "../catalog";
-import type { BriefingLine, BuildingKind, Campaign, MissionDef, MissionKind, MissionProfile, UnitKind, WinCategory } from "../types";
+import type { BriefingLine, BuildingKind, Campaign, MissionKind, MissionProfile, ReadonlyMissionDef, ReadonlyWinCategory, UnitKind } from "../types";
 import { biomeLabel, characterLabel } from "./names";
 import { missionTimeLimitLabel } from "./objectives";
 import { formatMissionMinutesFromTicks } from "./pacing";
@@ -18,7 +18,7 @@ function holdDurationLabel(ticks: number): string {
   return formatMissionMinutesFromTicks(ticks);
 }
 
-function scenarioTimeLimitLabel(win: WinCategory): string {
+function scenarioTimeLimitLabel(win: ReadonlyWinCategory): string {
   return missionTimeLimitLabel({ kind: win.kind, ticks: win.ticks ?? 3600 })!;
 }
 
@@ -72,7 +72,7 @@ function themelessPlace(place: string): string {
 
 type BriefingContext = {
   seed: number;
-  mission: Pick<MissionDef, "win" | "index">;
+  mission: Pick<ReadonlyMissionDef, "win" | "index">;
   profile: MissionProfile;
   place: string;
 };
@@ -282,7 +282,7 @@ function addOptionalBriefingBeats(
   return output;
 }
 
-function objectivePhrase(win: WinCategory): string {
+function objectivePhrase(win: ReadonlyWinCategory): string {
   switch (win.kind) {
     case "harvestQuota":
       return `extract ${win.target} credits from the field`;
@@ -317,7 +317,7 @@ function objectivePhrase(win: WinCategory): string {
   }
 }
 
-export function objectiveHeadline(win: WinCategory): string {
+export function objectiveHeadline(win: ReadonlyWinCategory): string {
   const phrase = objectivePhrase(win);
   return phrase.charAt(0).toUpperCase() + phrase.slice(1);
 }
@@ -328,7 +328,7 @@ export type MissionObjective = {
 };
 
 export function missionObjectives(
-  mission: Pick<MissionDef, "win" | "index">,
+  mission: Pick<ReadonlyMissionDef, "win" | "index">,
   campaign: Pick<Campaign, "world" | "factions">,
 ): MissionObjective[] {
   const win = mission.win;
@@ -412,7 +412,7 @@ const COMMANDER_ACKS = [
 
 export function generateBriefing(
   campaign: Pick<Campaign, "world" | "factions" | "characters"> & { seedNumber?: number },
-  mission: Pick<MissionDef, "name" | "win" | "index" | "biome" | "profile">,
+  mission: Pick<ReadonlyMissionDef, "name" | "win" | "index" | "biome" | "profile">,
 ): BriefingLine[] {
   const { advisor, commander, enemyLeader } = campaign.characters;
   const [us, them] = campaign.factions;

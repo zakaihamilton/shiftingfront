@@ -5,7 +5,7 @@ import {
   TILE_BLOCKED,
   TILE_CLEAR,
   TILE_WATER,
-  type MissionDef,
+  type ReadonlyMissionDef,
   type SurfaceKind,
   type Vec2,
 } from "../../types";
@@ -37,7 +37,7 @@ import { rescueFlankCenter } from "./generator/rescuePlacement";
 
 export function generateMap(
   seed: number,
-  mission: Pick<MissionDef, "index" | "win" | "mapSize" | "biome" | "profile">,
+  mission: Pick<ReadonlyMissionDef, "index" | "win" | "mapSize" | "biome" | "profile">,
 ): GeneratedMap {
   const rng = createRng(seed, `map:${mission.index}`);
   const profile = resolveMissionProfile(seed, mission.index, mission.win.kind, mission.profile);

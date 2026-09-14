@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createSlotId,
   defaultSlotName,
+  exportSlot,
   hasLoadableSaves,
+  importSlot,
   listArchiveEntries,
   listPauseLoadEntries,
   listSlots,
@@ -198,11 +200,79 @@ describe("named save slots", () => {
     expect(envelope.name).toBe("Envelope");
   });
 
+  it("exports a validated envelope and imports it as a fresh slot", () => {
+    const source = memoryStorage();
+    const written = writeSlot(source, {
+      name: "Portable",
+      state: makeState(421),
+      campaign: freshCampaignProgress(421),
+    });
+    expect(written.ok).toBe(true);
+    if (!written.ok) return;
+
+    const raw = exportSlot(source, written.id);
+    expect(raw).toBe(source.getItem(slotKey(written.id)));
+
+    const destination = memoryStorage();
+    const imported = importSlot(destination, raw!);
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) return;
+    expect(imported.id).not.toBe(written.id);
+    expect(readSlot(destination, imported.id)).toMatchObject({ name: "Portable", state: { seed: 421 } });
+    expect(listSlots(destination)).toHaveLength(1);
+  });
+
+  it("rejects invalid imports without changing storage", () => {
+    const storage = memoryStorage();
+    const existing = writeSlot(storage, {
+      name: "Keep",
+      state: makeState(7),
+      campaign: freshCampaignProgress(7),
+    });
+    expect(existing.ok).toBe(true);
+    const before = storage.keys().map((key) => [key, storage.getItem(key)]);
+
+    expect(importSlot(storage, "not-json")).toEqual({ ok: false });
+    expect(importSlot(storage, JSON.stringify({ version: SLOT_VERSION + 1 }))).toEqual({ ok: false });
+    expect(storage.keys().map((key) => [key, storage.getItem(key)])).toEqual(before);
+  });
+
   it("creates collision-resistant slot ids", () => {
     const storage = memoryStorage();
     const ids = new Set(Array.from({ length: 20 }, () => createSlotId(storage)));
     expect(ids.size).toBe(20);
     expect([...ids].every((id) => slotKey(id).startsWith(SLOT_PREFIX))).toBe(true);
+  });
+
+  it("does not overwrite a slot if a fresh import ID collides", () => {
+    const storage = memoryStorage();
+    const source = memoryStorage();
+    const written = writeSlot(source, {
+      name: "Portable",
+      state: makeState(421),
+      campaign: freshCampaignProgress(421),
+    });
+    expect(written.ok).toBe(true);
+    if (!written.ok) return;
+
+    const baseId = "ab".repeat(8);
+    const fallbackId = `${baseId}0`;
+    storage.setItem(slotKey(baseId), "existing-base");
+    storage.setItem(slotKey(fallbackId), "existing-fallback");
+    const randomValues = vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation((bytes) => {
+      if (bytes) new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength).fill(0xab);
+      return bytes;
+    });
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    try {
+      expect(importSlot(storage, exportSlot(source, written.id)!)).toEqual({ ok: false });
+      expect(storage.getItem(slotKey(baseId))).toBe("existing-base");
+      expect(storage.getItem(slotKey(fallbackId))).toBe("existing-fallback");
+    } finally {
+      randomValues.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   it("normalizes whitespace in slot names", () => {

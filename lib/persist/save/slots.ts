@@ -110,6 +110,35 @@ export function decodeSlot(raw: string): Omit<ParsedSlot, "id"> {
   return { name, savedAt: parsed.savedAt, state, campaign: parsed.campaign };
 }
 
+/** Return a validated slot envelope suitable for downloading as a JSON file. */
+export function exportSlot(storage: StorageAdapter, id: string): string | null {
+  if (!isSlotId(id)) return null;
+  const raw = safeGetItem(storage, slotKey(id));
+  if (!raw) return null;
+  try {
+    decodeSlot(raw);
+    return raw;
+  } catch (err) {
+    console.debug(`[persist] Failed to export save slot ${id}:`, err);
+    return null;
+  }
+}
+
+/** Import a slot as a new local save without replacing any existing slot. */
+export function importSlot(storage: StorageAdapter, raw: string): SlotWriteResult {
+  try {
+    const decoded = decodeSlot(raw);
+    return writeSlot(storage, {
+      name: decoded.name,
+      state: decoded.state,
+      campaign: decoded.campaign,
+    });
+  } catch (err) {
+    console.debug("[persist] Failed to import save slot:", err);
+    return { ok: false };
+  }
+}
+
 export function writeSlot(
   storage: StorageAdapter,
   {
@@ -130,6 +159,9 @@ export function writeSlot(
   if (!normalizedName) return { ok: false };
   if (!isCampaignProgressShape(campaign) || state.seed !== campaign.seed) return { ok: false };
   const slotId = id && isSlotId(id) ? id : createSlotId(storage);
+  // Fresh imports must never replace an existing slot if ID generation ever
+  // collides (explicit IDs retain the existing save/overwrite behavior).
+  if (!id && safeGetItem(storage, slotKey(slotId)) !== null) return { ok: false };
   try {
     const payload: SlotEnvelope = {
       version: SLOT_VERSION,

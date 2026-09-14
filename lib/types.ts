@@ -303,7 +303,20 @@ export type MissionDef = {
   profile?: MissionProfile;
 };
 
-export type Campaign = {
+/** Recursive readonly view for generated data shared by the simulation and UI. */
+export type DeepReadonly<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends readonly (infer U)[]
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T;
+
+export type ReadonlyMissionDef = DeepReadonly<MissionDef>;
+export type ReadonlyWinCategory = DeepReadonly<WinCategory>;
+
+/** Generated campaigns are immutable views; mutable state is created at the sim boundary. */
+export type Campaign = DeepReadonly<{
   seed: string;
   seedNumber: number;
   world: WorldSetting;
@@ -314,7 +327,10 @@ export type Campaign = {
     enemyLeader: Character;
   };
   missions: MissionDef[];
-};
+}>;
+
+/** A campaign exposed to callers is immutable because generated campaigns are cached. */
+export type ReadonlyCampaign = Campaign;
 
 export type ShapeSpec = {
   type: "rect" | "ellipse" | "poly" | "diamond" | "line";

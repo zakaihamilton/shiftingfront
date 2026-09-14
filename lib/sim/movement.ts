@@ -80,7 +80,7 @@ export function tickMovement(state: SimState): void {
     const result = tryFindPathDetailed(state, e, dest);
     if (!result) continue;
     const first = result.path[0];
-    if (first && e.owner === 0 && reversesPreviousStep(
+    if (first && e.owner === 0 && e.scenarioRole !== "convoy" && reversesPreviousStep(
       state.width,
       Math.round(e.x),
       Math.round(e.y),
@@ -202,7 +202,7 @@ export function tickMovement(state: SimState): void {
               const dx = Math.round(detourFirst.x);
               const dy = Math.round(detourFirst.y);
               const sameBlocked = dx === blockedX && dy === blockedY;
-              const reverses = e.owner === 0 && reversesPreviousStep(
+              const reverses = e.owner === 0 && e.scenarioRole !== "convoy" && reversesPreviousStep(
                 state.width,
                 Math.round(e.x),
                 Math.round(e.y),

@@ -8,7 +8,7 @@ import { CompetentCommander } from "../commander";
 import { ArchetypeCommander, isArchetypeStrategy } from "../commander/archetypes";
 import { powerBreakdown } from "../world";
 import { hqThreatened } from "../director";
-import { TILE_BLOCKED, TILE_WATER, type BalanceStrategy, type Campaign, type Command, type MissionDef, type MissionDirectorPhase, type SimState, type UnitKind } from "../../types";
+import { TILE_BLOCKED, TILE_WATER, type BalanceStrategy, type Campaign, type Command, type MissionDirectorPhase, type ReadonlyMissionDef, type SimState, type UnitKind } from "../../types";
 import { missionFamilyFor } from "../../gen/profile";
 import { scenarioAffordances, type ScenarioAffordances } from "../scenarios";
 import { COMMANDER_CADENCE } from "../commander/queries";
@@ -236,7 +236,7 @@ export function runOne(
   deadlineAt?: number,
 ): BalanceRecordWithScenario {
   const scenarioStartedAt = performance.now();
-  const definition: MissionDef | undefined = campaign.missions[missionIndex];
+  const definition: ReadonlyMissionDef | undefined = campaign.missions[missionIndex];
   if (!definition) throw new Error(`No mission ${missionIndex}`);
   const state = createMissionFromData({
     seed,

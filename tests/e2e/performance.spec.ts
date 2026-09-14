@@ -7,6 +7,15 @@ import type { BuildingKind, SimState, UnitKind } from "../../lib/types";
 const UNIT_KINDS: UnitKind[] = ["infantry", "antiArmor", "tank", "harvester"];
 const BUILDING_KINDS: BuildingKind[] = ["power", "barracks", "refinery", "factory", "turret"];
 
+async function waitForBattlefield(page: import("@playwright/test").Page) {
+  const canvas = page.getByTestId("battlefield-canvas");
+  await expect(canvas).toBeVisible();
+  await expect.poll(() => canvas.evaluate((element) => {
+    const canvasElement = element as HTMLCanvasElement;
+    return canvasElement.width > 0 && canvasElement.height > 0;
+  })).toBe(true);
+}
+
 function denseLateGameState(): SimState {
   const state = createMission({ seed: 421, missionIndex: 5 });
   const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
@@ -79,6 +88,22 @@ test("keeps full battlefield frames within budget with a dense late-game state",
   const sorted = [...samples].sort((a, b) => a - b);
   const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]!;
   expect(p95, `full-frame samples: ${samples.join(", ")}`).toBeLessThan(100);
+});
+
+test("keeps initial gameplay art loading scoped to the current mission", async ({ page }) => {
+  const artRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/art/")) artRequests.push(request.url());
+  });
+
+  await page.goto("/play?seed=0421&mission=0&fresh=1");
+  await waitForBattlefield(page);
+  await page.waitForTimeout(250);
+
+  expect(artRequests.some((url) => url.includes("/terrain/"))).toBe(true);
+  expect(artRequests.some((url) => url.includes("/portraits/"))).toBe(false);
+  expect(artRequests.some((url) => url.includes("/art/menu") || url.includes("/art/results/"))).toBe(false);
+  expect(artRequests.length, `initial art requests: ${artRequests.join(", ")}`).toBeLessThan(100);
 });
 
 test("keeps mobile battlefield frames within budget with a dense late-game state", async ({ page }) => {

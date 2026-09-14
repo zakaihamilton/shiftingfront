@@ -9,7 +9,7 @@ import { CampaignCompleteScreen } from "../../components/campaign/CampaignComple
 import { MenuScreen } from "../../components/menu/MenuScreen";
 import overlayStyles from "../../components/menu/MenuSignalOverlay.module.css";
 import { freshCampaignProgress, writeCampaignProgress } from "../../lib/persist/campaign";
-import { localStorageAdapter, writeSave, writeSlot } from "../../lib/persist/save";
+import { exportSlot, localStorageAdapter, writeSave, writeSlot } from "../../lib/persist/save";
 import { makeFixture } from "../../lib/sim/fixtures";
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
@@ -193,6 +193,28 @@ describe("CampaignArchiveScreen", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Resume Bridgehead" })).toBeVisible());
     fireEvent.click(screen.getByRole("button", { name: "Resume Bridgehead" }));
     expect(router.push).toHaveBeenCalledWith(`/play?seed=0421&mission=0&slot=${written.id}`);
+  });
+
+  it("imports a named slot from JSON into the campaign archive", async () => {
+    const source = localStorageAdapter();
+    const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+    const written = writeSlot(source, {
+      name: "Portable",
+      state,
+      campaign: freshCampaignProgress(421),
+    });
+    expect(written.ok).toBe(true);
+    if (!written.ok) return;
+    const raw = exportSlot(source, written.id);
+    expect(raw).toBeTruthy();
+    window.localStorage.clear();
+
+    render(<CampaignArchiveScreen />);
+    const file = new File([raw!], "portable.json", { type: "application/json" });
+    fireEvent.change(screen.getByLabelText("Import named save slot JSON"), { target: { files: [file] } });
+
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Imported save as a new named slot."));
+    expect(screen.getByRole("button", { name: "Resume Portable" })).toBeVisible();
   });
 
   it("resumes an autosave with mission index", async () => {

@@ -1,6 +1,6 @@
 import type { Rng } from "../../seed/rng";
 import type { GeneratedMap } from "../../gen/map";
-import type { MissionDef, MissionKind, MissionProfile, SimState, Vec2 } from "../../types";
+import type { MissionKind, MissionProfile, ReadonlyMissionDef, SimState, Vec2 } from "../../types";
 
 export type ScenarioProgress = {
   current: number;
@@ -11,7 +11,7 @@ export type ScenarioProgress = {
 export type ScenarioSetupContext = {
   state: SimState;
   map: GeneratedMap;
-  mission: MissionDef;
+  mission: ReadonlyMissionDef;
   rng: Rng;
   profile: MissionProfile;
   reachable: Uint8Array | undefined;

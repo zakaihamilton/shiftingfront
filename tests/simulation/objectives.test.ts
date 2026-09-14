@@ -121,12 +121,12 @@ describe("win categories", () => {
     const activeWindow = minutesToTicks(8);
     expect(missionTimeLimitTicks({ kind: "sabotage", ticks: activeWindow })).toBe(activeWindow);
     expect(missionTimeLimitTicks({ kind: "escort", ticks: activeWindow })).toBe(activeWindow + CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS);
-    expect(missionTimeLimitClock({ kind: "escort", ticks: activeWindow })).toBe("13:00");
-    expect(missionTimeLimitLabel({ kind: "escort", ticks: activeWindow })).toBe("13 min");
+    expect(missionTimeLimitClock({ kind: "escort", ticks: activeWindow })).toBe("14:00");
+    expect(missionTimeLimitLabel({ kind: "escort", ticks: activeWindow })).toBe("14 min");
 
     const secondary = secondaryObjectivesForMissionSeed(421, { index: 2, win: { kind: "escort", ticks: activeWindow } });
     expect(secondary[1]).toMatchObject({
-      label: "Speed bonus: complete the operation within 13 min total",
+      label: "Speed bonus: complete the operation within 14 min total",
       target: activeWindow + CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS,
     });
   });
@@ -393,7 +393,7 @@ describe("mission briefing objectives", () => {
     expect(missionObjectives(hold!, campaign)[0]?.text).toContain("for 15 min");
 
     const fallbackEscort = { index: 2, win: { kind: "escort" as const } };
-    expect(missionObjectives(fallbackEscort, campaign)[0]?.text).toContain("within 10 min");
+    expect(missionObjectives(fallbackEscort, campaign)[0]?.text).toContain("within 11 min");
     expect(secondaryObjectivesForMissionSeed(421, fallbackEscort)[1]?.label)
       .toBe("Speed bonus: complete the operation within 5 min total");
   });

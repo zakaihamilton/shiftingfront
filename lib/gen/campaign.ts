@@ -1,5 +1,5 @@
 import { createRng, formatSeed } from "../seed/rng";
-import type { Campaign, MissionDef } from "../types";
+import type { Campaign, MissionDef, ReadonlyCampaign } from "../types";
 import { generateCharacters } from "./characters";
 import { generateFactions } from "./factions";
 import { mapSizeForMission } from "./map";
@@ -9,14 +9,20 @@ import { generateBriefing } from "./story";
 import { generateWorld } from "./world";
 import { missionProfileFor } from "./profile";
 
-const campaignCache = new Map<number, Campaign>();
+const campaignCache = new Map<number, ReadonlyCampaign>();
+
+function deepFreeze<T>(value: T): T {
+  if (value === null || typeof value !== "object" || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+  return Object.freeze(value) as T;
+}
 
 /**
  * Campaigns are deterministic per seed, so results are memoized. Callers
  * (menu preview, briefing, runtime, completion screen) frequently request the
  * same seed during a session; regeneration is pure waste.
  */
-export function createCampaign(seed: number): Campaign {
+export function createCampaign(seed: number): ReadonlyCampaign {
   const cached = campaignCache.get(seed);
   if (cached) return cached;
   const world = generateWorld(seed);
@@ -36,8 +42,10 @@ export function createCampaign(seed: number): Campaign {
       kind: win.kind,
       profile,
     };
-    draft.briefing = generateBriefing({ world, factions, characters, seedNumber: seed }, draft);
-    return draft;
+    return {
+      ...draft,
+      briefing: generateBriefing({ world, factions, characters, seedNumber: seed }, draft),
+    };
   });
 
   const campaign: Campaign = {
@@ -49,6 +57,7 @@ export function createCampaign(seed: number): Campaign {
     missions,
   };
   if (campaignCache.size >= 32) campaignCache.delete(campaignCache.keys().next().value!);
-  campaignCache.set(seed, campaign);
-  return campaign;
+  const frozenCampaign = deepFreeze(campaign) as ReadonlyCampaign;
+  campaignCache.set(seed, frozenCampaign);
+  return frozenCampaign;
 }

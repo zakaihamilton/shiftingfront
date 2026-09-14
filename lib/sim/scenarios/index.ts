@@ -3,7 +3,7 @@ import type { Rng } from "../../seed/rng";
 import type { GeneratedMap } from "../../gen/map";
 import type {
   Entity,
-  MissionDef,
+  ReadonlyMissionDef,
   MissionKind,
   MissionRuntime,
   SimEvent,
@@ -28,7 +28,7 @@ export type { ScenarioDefinition, ScenarioProgress, ScenarioSetupContext, Scenar
 export const DEADLINE_SCENARIO_KINDS: readonly MissionKind[] = ["escort", "sabotage", "rescue", "extraction"];
 
 function setupClassicScenario({ state, mission }: ScenarioSetupContext): ScenarioSetupResult {
-  return { targetIds: state.win.targetIds ?? mission.win.targetIds ?? [] };
+  return { targetIds: state.win.targetIds ?? [...(mission.win.targetIds ?? [])] };
 }
 
 function setupDestroyMarkedScenario({ state, map, mission, rng, reachable }: ScenarioSetupContext): ScenarioSetupResult {
@@ -335,7 +335,7 @@ export function scenarioDefinitionFor(kind: MissionKind): ScenarioDefinition {
 export function configureMissionScenario(
   state: SimState,
   map: GeneratedMap,
-  mission: MissionDef,
+  mission: ReadonlyMissionDef,
   rng: Rng,
 ): void {
   const profile = resolveMissionProfile(state.seed, mission.index, mission.win.kind, mission.profile);
@@ -351,7 +351,7 @@ export function configureMissionScenario(
   const runtime: MissionRuntime = {
     kind: mission.win.kind,
     phase: "active",
-    targetIds: state.win.targetIds ?? mission.win.targetIds ?? [],
+    targetIds: state.win.targetIds ?? [...(mission.win.targetIds ?? [])],
     convoyStartTick: setup.convoyStartTick,
     zone: setup.zone,
     deadline: setup.deadline,

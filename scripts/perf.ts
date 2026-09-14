@@ -7,11 +7,14 @@ import { bakeTerrainAtlasData } from "../lib/render/terrainAtlas";
 import { flowFieldCacheSize, flowFieldFor } from "../lib/sim/flowField";
 import { staticNavigationFor } from "../lib/sim/world";
 import type { SimState } from "../lib/types";
+import { percentile, summarizeTimings, type TimingSummary } from "../lib/perf/metrics";
 
 const MAX_ATLAS_MS = 1_000;
 const MAX_ATLAS_BYTES = 4 * 1024 * 1024;
 const MAX_SIM_P95_MS = 25;
+const MAX_SIM_P99_MS = 25;
 const MAX_BLOCKED_COMBAT_P95_MS = 25;
+const MAX_BLOCKED_COMBAT_P99_MS = 25;
 const SIM_TICKS = 600;
 const SIM_WARMUP_TICKS = 60;
 const BLOCKED_COMBAT_UNITS = 24;
@@ -19,6 +22,7 @@ const BLOCKED_COMBAT_TICKS = 120;
 const FOREGROUND_GROUP_UNITS = 48;
 const FOREGROUND_PATH_SAMPLES = 6;
 const MAX_FOREGROUND_PATH_P95_MS = 25;
+const MAX_FOREGROUND_PATH_P99_MS = 25;
 
 type Sample = {
   seed: number;
@@ -78,34 +82,42 @@ type SimulationSample = {
   result: string;
   p50Ms: number;
   p95Ms: number;
+  p99Ms: number;
   maxMs: number;
+  planning: TimingSummary;
+  tick: TimingSummary;
 };
-
-function percentile(values: number[], ratio: number): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * ratio))] ?? 0;
-}
 
 const simulationSamples: SimulationSample[] = [];
 for (const seed of [0, 421, 9999]) {
   const state = createMission({ seed, missionIndex: 5 });
   const commander = new CompetentCommander();
   const timings: number[] = [];
+  const planningTimings: number[] = [];
+  const tickTimings: number[] = [];
   for (let i = 0; i < SIM_TICKS && state.result === "playing"; i++) {
     const started = performance.now();
+    const planningStarted = performance.now();
     const commands = commander.plan(state);
+    const planningFinished = performance.now();
     tick(state, commands);
-    if (i >= SIM_WARMUP_TICKS) timings.push(performance.now() - started);
+    const finished = performance.now();
+    if (i >= SIM_WARMUP_TICKS) {
+      timings.push(finished - started);
+      planningTimings.push(planningFinished - planningStarted);
+      tickTimings.push(finished - planningFinished);
+    }
   }
+  const summary = summarizeTimings(timings);
   simulationSamples.push({
     seed,
     mission: state.missionIndex,
     map: `${state.width}x${state.height}`,
     ticks: state.tick,
     result: state.result,
-    p50Ms: percentile(timings, 0.5),
-    p95Ms: percentile(timings, 0.95),
-    maxMs: Math.max(...timings, 0),
+    ...summary,
+    planning: summarizeTimings(planningTimings),
+    tick: summarizeTimings(tickTimings),
   });
 }
 
@@ -114,6 +126,7 @@ type ForegroundPathSample = {
   units: number;
   p50Ms: number;
   p95Ms: number;
+  p99Ms: number;
   maxMs: number;
   pendingAfterOrder: number;
   pendingAfterFirstTick: number;
@@ -144,6 +157,7 @@ const foregroundPathSample: ForegroundPathSample = {
   units: FOREGROUND_GROUP_UNITS,
   p50Ms: percentile(foregroundPathTimings, 0.5),
   p95Ms: percentile(foregroundPathTimings, 0.95),
+  p99Ms: percentile(foregroundPathTimings, 0.99),
   maxMs: Math.max(...foregroundPathTimings, 0),
   pendingAfterOrder,
   pendingAfterFirstTick,
@@ -158,6 +172,7 @@ type RoutingSample = {
   navigationRevision: number;
   p50Ms: number;
   p95Ms: number;
+  p99Ms: number;
   maxMs: number;
 };
 
@@ -194,6 +209,7 @@ function routingSample(seed: number, scenario: string, destinations: { x: number
     navigationRevision: state.navigationRevision,
     p50Ms: percentile(timings, 0.5),
     p95Ms: percentile(timings, 0.95),
+    p99Ms: percentile(timings, 0.99),
     maxMs: Math.max(...timings, 0),
   };
 }
@@ -237,16 +253,19 @@ for (let i = 0; i < BLOCKED_COMBAT_TICKS; i++) {
 }
 
 const atlasFailures = atlasSamples.filter((sample) => sample.ms > MAX_ATLAS_MS || sample.bytes > MAX_ATLAS_BYTES);
-const simulationFailures = simulationSamples.filter((sample) => sample.p95Ms > MAX_SIM_P95_MS);
-const foregroundPathFailures = foregroundPathSample.p95Ms > MAX_FOREGROUND_PATH_P95_MS;
-const blockedCombatP95Ms = percentile(blockedCombatTimings, 0.95);
-const routingFailures = routingSamples.filter((sample) => sample.p95Ms > MAX_FOREGROUND_PATH_P95_MS);
+const simulationFailures = simulationSamples.filter((sample) => sample.p95Ms > MAX_SIM_P95_MS || sample.p99Ms > MAX_SIM_P99_MS);
+const foregroundPathFailures = foregroundPathSample.p95Ms > MAX_FOREGROUND_PATH_P95_MS || foregroundPathSample.p99Ms > MAX_FOREGROUND_PATH_P99_MS;
+const blockedCombatSummary = summarizeTimings(blockedCombatTimings);
+const routingFailures = routingSamples.filter((sample) => sample.p95Ms > MAX_FOREGROUND_PATH_P95_MS || sample.p99Ms > MAX_FOREGROUND_PATH_P99_MS);
 console.log(JSON.stringify({
   maxAtlasMs: MAX_ATLAS_MS,
   maxAtlasBytes: MAX_ATLAS_BYTES,
   maxSimulationP95Ms: MAX_SIM_P95_MS,
+  maxSimulationP99Ms: MAX_SIM_P99_MS,
   maxBlockedCombatP95Ms: MAX_BLOCKED_COMBAT_P95_MS,
+  maxBlockedCombatP99Ms: MAX_BLOCKED_COMBAT_P99_MS,
   maxForegroundPathP95Ms: MAX_FOREGROUND_PATH_P95_MS,
+  maxForegroundPathP99Ms: MAX_FOREGROUND_PATH_P99_MS,
   simulationTicks: SIM_TICKS,
   atlasSamples,
   simulationSamples,
@@ -255,21 +274,27 @@ console.log(JSON.stringify({
   blockedCombat: {
     units: BLOCKED_COMBAT_UNITS,
     ticks: BLOCKED_COMBAT_TICKS,
-    p50Ms: percentile(blockedCombatTimings, 0.5),
-    p95Ms: blockedCombatP95Ms,
-    maxMs: Math.max(...blockedCombatTimings, 0),
+    ...blockedCombatSummary,
   },
 }, null, 2));
-if (atlasFailures.length || simulationFailures.length || blockedCombatP95Ms > MAX_BLOCKED_COMBAT_P95_MS || foregroundPathFailures || routingFailures.length) {
+if (atlasFailures.length || simulationFailures.length || blockedCombatSummary.p95Ms > MAX_BLOCKED_COMBAT_P95_MS || blockedCombatSummary.p99Ms > MAX_BLOCKED_COMBAT_P99_MS || foregroundPathFailures || routingFailures.length) {
   const failures = [
     ...atlasFailures.flatMap((sample) => [
       ...(sample.ms > MAX_ATLAS_MS ? [`metric=terrain atlas ms actual=${sample.ms.toFixed(2)} threshold=${MAX_ATLAS_MS} seed=${sample.seed} scenario=mission-${sample.mission}`] : []),
       ...(sample.bytes > MAX_ATLAS_BYTES ? [`metric=terrain atlas bytes actual=${sample.bytes} threshold=${MAX_ATLAS_BYTES} seed=${sample.seed} scenario=mission-${sample.mission}`] : []),
     ]),
-    ...simulationFailures.map((sample) => `metric=simulation p95 ms actual=${sample.p95Ms.toFixed(2)} threshold=${MAX_SIM_P95_MS} seed=${sample.seed} scenario=mission-${sample.mission}`),
-    ...(blockedCombatP95Ms > MAX_BLOCKED_COMBAT_P95_MS ? [`metric=blocked combat p95 ms actual=${blockedCombatP95Ms.toFixed(2)} threshold=${MAX_BLOCKED_COMBAT_P95_MS} seed=0 scenario=blocked-los`] : []),
-    ...(foregroundPathFailures ? [`metric=foreground order p95 ms actual=${foregroundPathSample.p95Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P95_MS} seed=${foregroundPathSample.seed} scenario=48-unit-formation-order`] : []),
-    ...routingFailures.map((sample) => `metric=flow-field routing p95 ms actual=${sample.p95Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P95_MS} seed=${sample.seed} scenario=${sample.scenario}`),
+    ...simulationFailures.flatMap((sample) => [
+      ...(sample.p95Ms > MAX_SIM_P95_MS ? [`metric=simulation p95 ms actual=${sample.p95Ms.toFixed(2)} threshold=${MAX_SIM_P95_MS} seed=${sample.seed} scenario=mission-${sample.mission}`] : []),
+      ...(sample.p99Ms > MAX_SIM_P99_MS ? [`metric=simulation p99 ms actual=${sample.p99Ms.toFixed(2)} threshold=${MAX_SIM_P99_MS} seed=${sample.seed} scenario=mission-${sample.mission}`] : []),
+    ]),
+    ...(blockedCombatSummary.p95Ms > MAX_BLOCKED_COMBAT_P95_MS ? [`metric=blocked combat p95 ms actual=${blockedCombatSummary.p95Ms.toFixed(2)} threshold=${MAX_BLOCKED_COMBAT_P95_MS} seed=0 scenario=blocked-los`] : []),
+    ...(blockedCombatSummary.p99Ms > MAX_BLOCKED_COMBAT_P99_MS ? [`metric=blocked combat p99 ms actual=${blockedCombatSummary.p99Ms.toFixed(2)} threshold=${MAX_BLOCKED_COMBAT_P99_MS} seed=0 scenario=blocked-los`] : []),
+    ...(foregroundPathSample.p95Ms > MAX_FOREGROUND_PATH_P95_MS ? [`metric=foreground order p95 ms actual=${foregroundPathSample.p95Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P95_MS} seed=${foregroundPathSample.seed} scenario=48-unit-formation-order`] : []),
+    ...(foregroundPathSample.p99Ms > MAX_FOREGROUND_PATH_P99_MS ? [`metric=foreground order p99 ms actual=${foregroundPathSample.p99Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P99_MS} seed=${foregroundPathSample.seed} scenario=48-unit-formation-order`] : []),
+    ...routingFailures.flatMap((sample) => [
+      ...(sample.p95Ms > MAX_FOREGROUND_PATH_P95_MS ? [`metric=flow-field routing p95 ms actual=${sample.p95Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P95_MS} seed=${sample.seed} scenario=${sample.scenario}`] : []),
+      ...(sample.p99Ms > MAX_FOREGROUND_PATH_P99_MS ? [`metric=flow-field routing p99 ms actual=${sample.p99Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P99_MS} seed=${sample.seed} scenario=${sample.scenario}`] : []),
+    ]),
   ];
   throw new Error(`Performance budget exceeded:\n${failures.join("\n")}`);
 }

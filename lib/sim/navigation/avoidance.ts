@@ -61,7 +61,7 @@ export function trySidestep(
     const ny = cy + d.y;
     const isWaypoint = waypoint && Math.round(waypoint.x) === nx && Math.round(waypoint.y) === ny;
     if (nx === blockedX && ny === blockedY) continue;
-    if (e.owner === 0 && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
+    if (e.owner === 0 && e.scenarioRole !== "convoy" && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
     if (!tileFree(state, occupancy, reserved, e, nx, ny)) continue;
     if (!canClimb(state, cx, cy, nx, ny)) continue;
     if (diagonalCornerBlocked(state, cx, cy, nx, ny)) continue;

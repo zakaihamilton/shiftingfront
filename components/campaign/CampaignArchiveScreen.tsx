@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
@@ -9,6 +9,8 @@ import { ActionRail, StatusBadge } from "./CampaignDossier";
 import { RASTER_ART } from "@/lib/gen/visualAssets";
 import {
   cachedLocalStorage,
+  exportSlot,
+  importSlot,
   listArchiveEntries,
   listUnreadableSaves,
   listUnreadableSlots,
@@ -20,11 +22,17 @@ import { MenuBackdrop } from "@/components/menu/MenuBackdrop";
 import { SaveSlotList } from "@/components/menu/SaveSlotList";
 import styles from "./CampaignArchiveScreen.module.css";
 
+function safeExportName(value: string): string {
+  return value.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "slot";
+}
+
 export function CampaignArchiveScreen() {
   const router = useRouter();
   const [entries, setEntries] = useState<ArchiveEntry[]>([]);
   const [unreadableSaves, setUnreadableSaves] = useState<string[]>([]);
   const [unreadableSlots, setUnreadableSlots] = useState<string[]>([]);
+  const [portabilityNotice, setPortabilityNotice] = useState<{ tone: "success" | "alert"; text: string } | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const refreshSaves = useCallback(() => {
     const storage = cachedLocalStorage();
@@ -64,6 +72,43 @@ export function CampaignArchiveScreen() {
   const resetUnreadableSlot = useCallback((id: string) => {
     removeSlot(cachedLocalStorage(), id);
     refreshSaves();
+  }, [refreshSaves]);
+
+  const exportEntry = useCallback((entry: ArchiveEntry) => {
+    if (entry.kind !== "slot") return;
+    const raw = exportSlot(cachedLocalStorage(), entry.id);
+    if (!raw) {
+      setPortabilityNotice({ tone: "alert", text: `Could not export ${entry.name}. The slot may be damaged.` });
+      return;
+    }
+    const blob = new Blob([raw], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `shiftingfront-${entry.seed}-${safeExportName(entry.name)}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    setPortabilityNotice({ tone: "success", text: `Exported ${entry.name}.` });
+  }, []);
+
+  const importFile = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    try {
+      const result = importSlot(cachedLocalStorage(), await file.text());
+      if (!result.ok) {
+        setPortabilityNotice({ tone: "alert", text: "Could not import that file. It is invalid or unsupported." });
+        return;
+      }
+      setPortabilityNotice({ tone: "success", text: "Imported save as a new named slot." });
+      refreshSaves();
+    } catch {
+      setPortabilityNotice({ tone: "alert", text: "Unable to read that save file." });
+    }
   }, [refreshSaves]);
 
   const resumeEntry = useCallback((entry: ArchiveEntry) => {
@@ -110,11 +155,32 @@ export function CampaignArchiveScreen() {
             <div className={styles.archiveHeader}>
               <ConsoleLabel as="h2">Save slots</ConsoleLabel>
               <div className={styles.archiveControls}>
+                <ConsoleButton
+                  muted
+                  className={styles.importButton}
+                  onClick={() => importInputRef.current?.click()}
+                  tooltip="Import a named save slot from a JSON file"
+                >
+                  IMPORT JSON
+                </ConsoleButton>
+                <input
+                  ref={importInputRef}
+                  className={styles.hiddenInput}
+                  type="file"
+                  accept="application/json,.json"
+                  aria-label="Import named save slot JSON"
+                  onChange={importFile}
+                />
                 <StatusBadge className={styles.archiveStatus} tone={entries.length ? "success" : "muted"}>
                   {entries.length ? "Ready to resume" : "Archive empty"}
                 </StatusBadge>
               </div>
             </div>
+            {portabilityNotice ? (
+              <p className={portabilityNotice.tone === "success" ? styles.importNotice : styles.importError} role="status">
+                {portabilityNotice.text}
+              </p>
+            ) : null}
             <SaveSlotList
               entries={entries}
               emptyLabel="No save slots."
@@ -122,6 +188,7 @@ export function CampaignArchiveScreen() {
               showActions
               onResume={resumeEntry}
               onCampaignMap={(seed) => router.push(`/campaign?seed=${seed}`)}
+              onExport={exportEntry}
               onDelete={deleteEntry}
             />
 

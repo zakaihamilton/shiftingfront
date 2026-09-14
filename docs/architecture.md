@@ -99,7 +99,9 @@ const result = tick(state, commands);
 
 Static terrain and building occupancy are cached by `navigationRevision` in `staticNavigationFor`. Unit occupancy remains per-tick because units move frequently. Building placement, selling, cancellation, and destruction invalidate the revision. Flow fields and A* searches share this cached static grid.
 
-Performance-sensitive work should be measured with `yarn health:performance`. The benchmark covers late-game simulation, terrain atlas generation, foreground routing, multi-destination flow fields, and blocked-line-of-sight combat. Do not loosen a threshold without recording why the workload or target changed.
+Performance-sensitive work should be measured with `yarn health:performance`. The benchmark covers late-game simulation, terrain atlas generation, foreground routing, multi-destination flow fields, and blocked-line-of-sight combat. Simulation, routing, foreground orders, and blocked combat report p50/p95/p99/max; p95 and p99 share the 25 ms health budget while max remains diagnostic for isolated spikes. Simulation timings also separate commander planning from the mutable tick. Do not loosen a threshold without recording why the workload or target changed.
+
+The battlefield preloads only terrain and raster sources for living entities in the current mission. Asset Bay previews and newly introduced unit types remain lazy, and the renderer's image/raster caches remain session-scoped.
 
 Unit-test timing is published by `yarn ci:timed-tests` as `artifacts/test-timing.json`. The pre-refactor full-suite baseline was approximately 78 seconds wall-clock, with headless balance, balance regressions, terrain, commander, and profile suites as the principal hotspots. The exhaustive `yarn test` command has no hard duration gate; the timing report is the regression signal.
 
@@ -112,7 +114,7 @@ Unit-test timing is published by `yarn ci:timed-tests` as `artifacts/test-timing
 - `lib/persist/telemetry`: bounded local mission metrics.
 - `SaveSession`: best-effort same-tab and cross-tab conflict detection around `localStorage`.
 
-Explicit save/load actions may adopt a new snapshot. Implicit autosaves refuse to overwrite a detected external change so another tab is not silently lost. Named slots store a mission snapshot plus that moment's campaign progress. A slot load writes both records before replacing the active mission or navigating. If campaign writing fails, it attempts to restore the previous autosave and reports any rollback failure; localStorage does not provide multi-key transactions. A successful named-slot write is reported as saved even if updating the separate autosave fails.
+Explicit save/load actions may adopt a new snapshot. Implicit autosaves refuse to overwrite a detected external change so another tab is not silently lost. Named slots store a mission snapshot plus that moment's campaign progress. The campaign archive can export one validated named-slot envelope as JSON and import it as a fresh local slot; autosaves and pause-menu controls are intentionally excluded. A slot load writes both records before replacing the active mission or navigating. If campaign writing fails, it attempts to restore the previous autosave and reports any rollback failure; localStorage does not provide multi-key transactions. A successful named-slot write is reported as saved even if updating the separate autosave fails.
 
 The product remains local-only. Future online persistence should enter behind the existing `StorageAdapter`/`SaveSession` boundary so runtime controllers continue to depend on save-session operations rather than `localStorage`; authentication, cloud synchronization, multiplayer networking, server authority, and save migration are intentionally out of scope.
 

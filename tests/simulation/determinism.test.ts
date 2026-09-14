@@ -20,6 +20,22 @@ describe("determinism", () => {
     expect(new Set(biomes)).toEqual(new Set([a.world.biome]));
   });
 
+  it("deep-freezes cached campaign data without changing deterministic reuse", () => {
+    const campaign = createCampaign(421);
+    expect(Object.isFrozen(campaign)).toBe(true);
+    expect(Object.isFrozen(campaign.world)).toBe(true);
+    expect(Object.isFrozen(campaign.factions)).toBe(true);
+    expect(Object.isFrozen(campaign.factions[0]!.palette)).toBe(true);
+    expect(Object.isFrozen(campaign.missions)).toBe(true);
+    expect(Object.isFrozen(campaign.missions[0]!.briefing)).toBe(true);
+    expect(createCampaign(421)).toBe(campaign);
+
+    expect(() => {
+      (campaign.missions[0] as { name: string }).name = "mutated";
+    }).toThrow(TypeError);
+    expect(createCampaign(421).missions[0]!.name).not.toBe("mutated");
+  });
+
   it("assigns the campaign biome to every mission from the seed", () => {
     for (const seed of [0, 42, 421, 9999]) {
       const campaign = createCampaign(seed);

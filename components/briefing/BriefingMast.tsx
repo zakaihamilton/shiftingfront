@@ -2,7 +2,7 @@ import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { biomeLabel } from "@/lib/gen/names";
 import { objectiveHeadline } from "@/lib/gen/story";
 import { formatSeed } from "@/lib/seed/rng";
-import type { Campaign, MissionDef } from "@/lib/types";
+import type { Campaign, ReadonlyMissionDef } from "@/lib/types";
 import styles from "./BriefingMast.module.css";
 
 export function BriefingMast({
@@ -14,7 +14,7 @@ export function BriefingMast({
   seed: number;
   mission: number;
   campaign: Campaign;
-  def: MissionDef;
+  def: ReadonlyMissionDef;
 }) {
   return (
     <header className={styles.mast}>

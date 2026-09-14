@@ -27,7 +27,7 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
   const campaign = useMemo(() => createCampaign(seed), [seed]);
   const progress = useCampaignProgress(seed);
   const def = campaign.missions[mission];
-  const lines: BriefingLine[] = useMemo(() => def?.briefing ?? [], [def]);
+  const lines: readonly BriefingLine[] = useMemo(() => def?.briefing ?? [], [def]);
   const typewriter = useBriefingTypewriter(lines);
   const controller = useBriefingController({
     seed,

@@ -29,6 +29,7 @@ export function SaveSlotList({
   onSelect,
   onResume,
   onCampaignMap,
+  onExport,
   onDelete,
 }: {
   entries: ArchiveEntry[];
@@ -39,6 +40,7 @@ export function SaveSlotList({
   onSelect?: (entry: ArchiveEntry) => void;
   onResume?: (entry: ArchiveEntry) => void;
   onCampaignMap?: (seed: string) => void;
+  onExport?: (entry: ArchiveEntry) => void;
   onDelete?: (entry: ArchiveEntry) => void;
 }) {
   const [pendingDelete, setPendingDelete] = useState<ArchiveEntry | null>(null);
@@ -115,6 +117,17 @@ export function SaveSlotList({
                         onClick={() => onCampaignMap(entry.seed)}
                       >
                         OPS
+                      </ConsoleButton>
+                    ) : null}
+                    {showActions && onExport && entry.kind === "slot" ? (
+                      <ConsoleButton
+                        muted
+                        className={styles.export}
+                        aria-label={`Export save slot ${entry.name}`}
+                        tooltip={`Export save slot ${entry.name}`}
+                        onClick={() => onExport(entry)}
+                      >
+                        EXPORT
                       </ConsoleButton>
                     ) : null}
                     {showActions && onDelete ? (

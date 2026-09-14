@@ -1,8 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createCampaign } from "@/lib/gen/campaign";
+import { listMissionRasterSources } from "@/lib/gen/visualAssets";
 import { generateVisualProfile } from "@/lib/gen/visualProfile";
 import { cachedLocalStorage, createSaveSession } from "@/lib/persist/save";
 import type { SimState } from "@/lib/types";
+import { preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
+import { preloadRasterSources } from "@/lib/render/sprites";
 import { initialMission } from "./useGameSession";
 
 /** Owns the durable mission/session state and DOM refs used by runtime layers. */
@@ -30,6 +33,12 @@ export function useGameRuntimeState({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const miniRef = useRef<HTMLCanvasElement>(null);
   const mobileMiniRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const currentState = stateRef.current;
+    void preloadTerrainAtlas(currentState);
+    preloadRasterSources(listMissionRasterSources(currentState));
+  }, [mission, seed, stateRef]);
 
   return {
     campaign,

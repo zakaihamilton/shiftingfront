@@ -61,7 +61,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 0.25rem;
   min-width: 0;
   padding: 0.35rem 0;
@@ -163,6 +163,7 @@
 
 .list .item:hover:not(:disabled),
 .list .operations:hover:not(:disabled),
+.list .export:hover:not(:disabled),
 .list .delete:hover:not(:disabled) {
   border-color: transparent;
   background: linear-gradient(90deg, color-mix(in srgb, var(--chrome-cyan) 9%, transparent), transparent 80%);
@@ -197,6 +198,17 @@
   background: rgba(12, 35, 43, 0.42);
   box-shadow: inset 1px 1px rgba(255, 255, 255, 0.02);
   color: var(--chrome-cyan);
+  font-size: 0.65rem;
+}
+
+.export {
+  align-self: stretch;
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--chrome-radius-sm);
+  border-color: color-mix(in srgb, var(--chrome-gold) 30%, var(--chrome-line));
+  background: rgba(52, 42, 16, 0.34);
+  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.02);
+  color: var(--chrome-gold);
   font-size: 0.65rem;
 }
 
@@ -249,10 +261,11 @@
 
 @media (max-width: 420px) {
   .row {
-    grid-template-columns: minmax(0, 1fr) 4rem 2.5rem;
+    grid-template-columns: minmax(0, 1fr) 4rem auto 2.5rem;
   }
 
   .operations,
+  .export,
   .delete {
     padding-inline: 0.35rem;
   }

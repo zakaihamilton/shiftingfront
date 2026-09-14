@@ -4,7 +4,7 @@ import {
   TILE_RESOURCE,
   TILE_WATER,
   type BiomeName,
-  type WinCategory,
+  type ReadonlyWinCategory,
 } from "../../types";
 import { biomeTuning } from "./config";
 import { terrainFeatureAt } from "./features";
@@ -142,7 +142,6 @@ export function describeMap(map: GeneratedMap): {
   return { width: map.width, height: map.height, water, resources, valley, plains, hills, mountain };
 }
 
-export function winNeedsMarked(win: WinCategory): boolean {
+export function winNeedsMarked(win: ReadonlyWinCategory): boolean {
   return win.kind === "destroyMarked";
 }
-

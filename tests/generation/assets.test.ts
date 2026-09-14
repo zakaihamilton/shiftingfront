@@ -17,12 +17,15 @@ import {
 import { generateFactions } from "../../lib/gen/factions";
 import {
   listTacticalRasterSources,
+  listMissionRasterSources,
   SPRITE_ART,
   UNIT_DIRECTION_ART,
   UNIT_WALK_CYCLE_ART,
   unitWalkFrameCrop,
 } from "../../lib/gen/visualAssets";
 import { opaquePixelBounds, rotatedSpriteBounds } from "../../lib/render/sprites";
+import { fogIndex } from "../../lib/sim/fog";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 describe("tactical procedural assets", () => {
   const palette = generateFactions(421)[0].palette;
@@ -206,6 +209,26 @@ describe("tactical procedural assets", () => {
         expect(sources).toContain(src);
       }
     }
+  });
+
+  it("limits mission preload sources to living battlefield entities", () => {
+    const state = makeFixture({ win: { kind: "annihilate" }, width: 16, height: 16 });
+    addBuilding(state, 0, "constructionYard", 1, 1);
+    addUnit(state, 0, "infantry", 3, 3);
+    addUnit(state, 1, "tank", 12, 12);
+    state.fog.fill(0);
+    const sources = listMissionRasterSources(state);
+    expect(sources).toContain(SPRITE_ART.constructionYard);
+    expect(sources).toContain(UNIT_DIRECTION_ART.infantry.front);
+    expect(sources).toContain(UNIT_WALK_CYCLE_ART.infantry.front);
+    expect(sources).not.toContain(SPRITE_ART.turret);
+    expect(sources).not.toContain(UNIT_DIRECTION_ART.tank.front);
+    expect(sources.length).toBeLessThan(listTacticalRasterSources().length);
+
+    const tankFog = fogIndex(state, 12, 12);
+    expect(tankFog).not.toBeNull();
+    state.fog[tankFog!] = 2;
+    expect(listMissionRasterSources(state)).toContain(UNIT_DIRECTION_ART.tank.front);
   });
 
   it("ships every mapped directional raster with the application", () => {

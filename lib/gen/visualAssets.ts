@@ -1,4 +1,5 @@
-import type { AnimFrame, BiomeName, BuildingKind, Facing, SpriteCrop, UnitKind } from "../types";
+import type { AnimFrame, BiomeName, BuildingKind, Entity, Facing, SimState, SpriteCrop, UnitKind } from "../types";
+import { fogAt } from "../sim/fog";
 
 export type RasterArtKey = "menu" | "victory" | "defeat" | BiomeName;
 export type TextureArtKey = "brushed" | "worn" | "crt";
@@ -254,4 +255,45 @@ export function listTacticalRasterSources(): string[] {
     srcs.push(...Object.values(views));
   }
   return srcs;
+}
+
+/**
+ * Returns only the raster sources needed by living entities in a mission.
+ * Asset Bay and future unit types remain lazy so opening a battlefield does
+ * not download the complete art catalog.
+ */
+export function listMissionRasterSources(
+  state: Pick<SimState, "entities" | "fog" | "width" | "height">,
+): string[] {
+  const sources = new Set<string>();
+  for (const entity of state.entities) {
+    if (entity.hp <= 0 || !isMissionRasterVisible(state, entity)) continue;
+    if (entity.class === "building") {
+      sources.add(SPRITE_ART[entity.kind as BuildingKind]);
+      continue;
+    }
+    const directional = UNIT_DIRECTION_ART[entity.kind as UnitKind];
+    if (!directional) continue;
+    for (const source of Object.values(directional)) sources.add(source);
+    if (entity.kind === "infantry" || entity.kind === "antiArmor" || entity.kind === "medic") {
+      for (const source of Object.values(UNIT_WALK_CYCLE_ART[entity.kind])) sources.add(source);
+    }
+  }
+  return [...sources];
+}
+
+function isMissionRasterVisible(
+  state: Pick<SimState, "fog" | "width" | "height">,
+  entity: Pick<Entity, "class" | "owner" | "neutral" | "scenarioRole" | "x" | "y">,
+): boolean {
+  if (entity.owner === 1) {
+    const fog = fogAt(state, Math.round(entity.x), Math.round(entity.y));
+    return entity.class === "unit" ? fog > 0 : fog === 2;
+  }
+
+  if (entity.neutral && entity.scenarioRole === "stranded") {
+    return fogAt(state, Math.round(entity.x), Math.round(entity.y)) === 2;
+  }
+
+  return true;
 }

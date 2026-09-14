@@ -1,6 +1,6 @@
 import { createCampaign } from "../gen/campaign";
 import { generateMap } from "../gen/map";
-import type { MissionDef, SimState } from "../types";
+import type { ReadonlyMissionDef, SimState } from "../types";
 import { createMissionFromData } from "./api";
 
 export const TUTORIAL_SEED = 0;
@@ -9,7 +9,7 @@ export { tutorialPrompt, tutorialMoveTile, enterTutorialStage } from "./tutorial
 export function createTutorialMission(): SimState {
   const campaign = createCampaign(TUTORIAL_SEED);
   const campaignMission = campaign.missions[0]!;
-  const mission: MissionDef = {
+  const mission: ReadonlyMissionDef = {
     ...campaignMission,
     name: "Shifting Front Training Range",
     kind: "holdTheLine",

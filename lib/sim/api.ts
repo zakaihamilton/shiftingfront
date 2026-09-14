@@ -1,6 +1,6 @@
 import { STARTING_CREDITS } from "../catalog";
 import { createRng, mixSeed } from "../seed/rng";
-import type { Campaign, MissionDef, SimEvent, SimState, UnitKind } from "../types";
+import type { ReadonlyCampaign, ReadonlyMissionDef, SimEvent, SimState, UnitKind } from "../types";
 import { createCampaign } from "../gen/campaign";
 import { generateMap, type GeneratedMap } from "../gen/map";
 import { makeFog, tickFog } from "./fog";
@@ -40,8 +40,8 @@ export function createMission(opts: { seed: number; missionIndex: number }): Sim
 export function createMissionFromData(opts: {
   seed: number;
   missionIndex: number;
-  campaign: Campaign;
-  mission: MissionDef;
+  campaign: ReadonlyCampaign;
+  mission: ReadonlyMissionDef;
   map: GeneratedMap;
 }): SimState {
   const { campaign, mission, map } = opts;
@@ -60,9 +60,17 @@ export function createMissionFromData(opts: {
     resourceAmount: map.resourceAmount,
     fog: makeFog(map.width, map.height, 0),
     credits: [STARTING_CREDITS.player, STARTING_CREDITS.enemy],
-    win: { ...mission.win },
+    win: {
+      ...mission.win,
+      targetIds: mission.win.targetIds ? [...mission.win.targetIds] : undefined,
+    },
     rngState: mixSeed(opts.seed, `sim:${opts.missionIndex}`) || 1,
-    factions: campaign.factions,
+    // Campaigns are cached and frozen. Simulation state is mutable, so keep a
+    // separate faction graph at this boundary.
+    factions: campaign.factions.map((faction) => ({
+      ...faction,
+      palette: { ...faction.palette },
+    })) as SimState["factions"],
     missionName: mission.name,
   });
   state.missionKind = mission.win.kind;

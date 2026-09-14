@@ -7,7 +7,7 @@ import { briefingActiveLineIndex, briefingRevealedLines } from "./briefingWrap";
 const CHAR_MS = 40;
 const CHAR_BATCH = 2;
 
-export function useBriefingTypewriter(lines: BriefingLine[], onComplete?: () => void) {
+export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete?: () => void) {
   const [shown, setShown] = useState(0);
   const [playId, setPlayId] = useState(0);
   const storyRef = useRef<HTMLDivElement>(null);

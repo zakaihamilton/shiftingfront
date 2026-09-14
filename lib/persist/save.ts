@@ -48,6 +48,8 @@ export {
   normalizeSlotName,
   defaultSlotName,
   createSlotId,
+  exportSlot,
+  importSlot,
   writeSlot,
   readSlot,
   removeSlot,

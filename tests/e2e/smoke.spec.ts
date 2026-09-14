@@ -512,6 +512,31 @@ test("opens the campaign archive from the main menu", async ({ page }) => {
   await expect(page).toHaveURL(/\/$/);
 });
 
+test("exports and imports named save slots from the campaign archive", async ({ page }) => {
+  const state = distinctiveSave();
+  const slotId = "abcd1234abcd1234";
+  const raw = slotEnvelope(state, "Bridgehead");
+  await page.addInitScript(({ key, raw: slotRaw }) => {
+    localStorage.setItem(key, slotRaw);
+  }, { key: slotKey(slotId), raw });
+
+  await page.goto("/load");
+  await expect(page.getByRole("button", { name: "Export save slot Bridgehead" })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export save slot Bridgehead" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("shiftingfront-0421-Bridgehead.json");
+
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "IMPORT JSON" }).click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles({ name: "bridgehead.json", mimeType: "application/json", buffer: Buffer.from(raw) });
+
+  await expect(page.getByRole("button", { name: "Resume Bridgehead" })).toHaveCount(2);
+  const slotKeys = await page.evaluate((prefix) => Object.keys(localStorage).filter((key) => key.startsWith(prefix)), "shiftingfront:slot:");
+  expect(slotKeys).toHaveLength(2);
+});
+
 test("keeps briefing dialogue and battlefield status readable on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/briefing?seed=0421&mission=0");

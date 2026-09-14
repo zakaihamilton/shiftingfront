@@ -1,6 +1,6 @@
 import { labelFor } from "../catalog";
 import { createRng, type Rng } from "../seed/rng";
-import type { BuildingKind, MissionDef, MissionKind, SecondaryObjective, UnitKind, WinCategory } from "../types";
+import type { BuildingKind, MissionKind, ReadonlyMissionDef, ReadonlyWinCategory, SecondaryObjective, UnitKind, WinCategory } from "../types";
 import {
   CONVOY_STAGING_MINUTES,
   CONVOY_STAGING_TICKS,
@@ -52,22 +52,22 @@ export function missionDurationMinutesFor(
 }
 
 /** Returns the full player-facing time limit, including escort staging and its approach buffer. */
-export function missionTimeLimitTicks(win: Pick<WinCategory, "kind" | "ticks">): number | undefined {
+export function missionTimeLimitTicks(win: Pick<ReadonlyWinCategory, "kind" | "ticks">): number | undefined {
   if (win.ticks === undefined) return undefined;
   return win.ticks + (win.kind === "escort" ? CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS : 0);
 }
 
-export function missionTimeLimitClock(win: Pick<WinCategory, "kind" | "ticks">): string | undefined {
+export function missionTimeLimitClock(win: Pick<ReadonlyWinCategory, "kind" | "ticks">): string | undefined {
   const ticks = missionTimeLimitTicks(win);
   return ticks === undefined ? undefined : formatMissionClockFromTicks(ticks);
 }
 
-export function missionTimeLimitLabel(win: Pick<WinCategory, "kind" | "ticks">): string | undefined {
+export function missionTimeLimitLabel(win: Pick<ReadonlyWinCategory, "kind" | "ticks">): string | undefined {
   const ticks = missionTimeLimitTicks(win);
   return ticks === undefined ? undefined : formatMissionMinutesFromTicks(ticks);
 }
 
-export function secondaryObjectivesForMission(mission: Pick<MissionDef, "win" | "profile">, rng: Rng): SecondaryObjective[] {
+export function secondaryObjectivesForMission(mission: Pick<ReadonlyMissionDef, "win" | "profile">, rng: Rng): SecondaryObjective[] {
   const yard: SecondaryObjective = {
     id: "yard",
     kind: "preserveYard",
@@ -111,7 +111,7 @@ export function secondaryObjectivesForMission(mission: Pick<MissionDef, "win" | 
 /** Generates the same secondary objectives used when the mission runtime is created. */
 export function secondaryObjectivesForMissionSeed(
   seed: number,
-  mission: Pick<MissionDef, "index" | "win" | "profile">,
+  mission: Pick<ReadonlyMissionDef, "index" | "win" | "profile">,
 ): SecondaryObjective[] {
   const rng = createRng(seed, `mission-spawn:${mission.index}`);
   if (mission.win.kind === "destroyMarked") {
