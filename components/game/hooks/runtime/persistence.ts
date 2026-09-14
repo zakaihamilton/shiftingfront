@@ -1,7 +1,6 @@
-import { completeMission, readCampaignProgress, writeCampaignProgress } from "@/lib/persist/campaign";
+import { recordWonCampaignProgress } from "@/lib/persist/campaign";
 import { cachedLocalStorage, saveKey, type SaveSession, type SaveWriteStatus } from "@/lib/persist/save";
 import { recordTelemetry, telemetryFromMission } from "@/lib/persist/telemetry";
-import { missionMedals, missionScore } from "@/lib/sim/debrief";
 import type { SimState } from "@/lib/types";
 import type { RuntimeCounters, RuntimePersistenceState } from "./types";
 
@@ -96,7 +95,12 @@ export function createPersistenceCoordinator({
   };
 
   const saveOnPageHide = () => {
-    if (persistCampaign) saveImplicit(stateRef.current, performance.now());
+    if (!persistCampaign) return;
+    const state = stateRef.current;
+    saveImplicit(state, performance.now());
+    if (state.result === "won" && !campaignRecordedRef.current && recordWonCampaignProgress(cachedLocalStorage(), state)) {
+      campaignRecordedRef.current = true;
+    }
   };
 
   const suppressImplicitSaves = () => {
@@ -119,12 +123,7 @@ export function createPersistenceCoordinator({
       if (!persistCampaign || implicitSavesSuppressed) return;
       if (saveRetry.retry && now >= saveRetry.nextAttemptMs) saveImplicit(state, now);
       if (state.result === "won" && !campaignRecordedRef.current && now >= nextCampaignSaveAttemptMs) {
-        const storage = cachedLocalStorage();
-        const progress = readCampaignProgress(storage, state.seed);
-        const recorded = writeCampaignProgress(
-          storage,
-          completeMission(progress, state.missionIndex, missionMedals(state), missionScore(state)),
-        );
+        const recorded = recordWonCampaignProgress(cachedLocalStorage(), state);
         if (recorded) campaignRecordedRef.current = true;
         else {
           nextCampaignSaveAttemptMs = now + CAMPAIGN_SAVE_RETRY_MS;

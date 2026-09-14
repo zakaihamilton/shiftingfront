@@ -7,6 +7,8 @@ import { drawCombatEffects, drawFxLayer } from "../../renderCombat";
 import { drawCommandMarker, drawRallyPoint, drawSelectBox } from "../../renderOverlays";
 import type { RenderExtras } from "../../renderOverlays";
 import { facingFor as resolveFacing } from "../../renderEntities";
+import { pruneEntityVisibilityCache } from "../../renderPicking";
+import { pruneTurretAimCache } from "../../renderStructures/turret";
 import { drawList, entityById } from "../cache";
 import { renderTerrainPhase } from "./terrain";
 import { renderEntityPhase } from "./entities";
@@ -40,6 +42,10 @@ export function renderWorld(
 
   renderTerrainPhase(ctx, state, cam, w, h, extras, hoverTile);
   lap("fx");
+
+  const liveIds = state.entities.filter((entity) => entity.hp > 0).map((entity) => entity.id);
+  pruneEntityVisibilityCache(liveIds);
+  pruneTurretAimCache(liveIds);
 
   const clock = extras.clockMs;
   renderEntityPhase(ctx, state, cam, selected, w, h, clock, {

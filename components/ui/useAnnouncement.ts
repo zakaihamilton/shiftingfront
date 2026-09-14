@@ -11,7 +11,11 @@ export function useAnnouncement(onAnnounce?: (message: string) => void): [string
   const [message, setMessage] = useState("");
   const announce = useCallback(
     (next: string) => {
-      setMessage(next);
+      setMessage((current) => {
+        if (current === next) return `${next}\u200b`;
+        if (current === `${next}\u200b`) return next;
+        return next;
+      });
       onAnnounce?.(next);
     },
     [onAnnounce],

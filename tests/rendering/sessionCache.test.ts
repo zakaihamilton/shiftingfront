@@ -3,8 +3,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearVisualProfileCache, generateCampaignVisualProfile, generateVisualProfile, visualProfileCacheSize } from "../../lib/gen/visualProfile";
 import { clearRenderSessionCaches } from "../../lib/render/sessionCache";
-import { entityVisibilityCacheSize, renderEntityOpacity } from "../../lib/render/renderPicking";
-import { turretAimMap } from "../../lib/render/renderStructures/turret";
+import { entityVisibilityCacheSize, pruneEntityVisibilityCache, renderEntityOpacity } from "../../lib/render/renderPicking";
+import { pruneTurretAimCache, turretAimMap } from "../../lib/render/renderStructures/turret";
 import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { fogIndex } from "../../lib/sim/fog";
 import { cachedSprite, rasterize, spriteCacheSize } from "../../lib/render/sprites";
@@ -110,6 +110,21 @@ describe("render session caches", () => {
 
     expect(entityVisibilityCacheSize()).toBe(0);
     expect(turretAimMap.size).toBe(0);
+  });
+
+  it("prunes stale visibility and turret aim entries for destroyed entities", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    const enemy = addUnit(state, 1, "infantry", 4, 4);
+    renderEntityOpacity(state, enemy, 0);
+    turretAimMap.set(enemy.id, { angle: 0, lastMs: 0 });
+    turretAimMap.set(9999, { angle: 1, lastMs: 0 });
+
+    pruneEntityVisibilityCache([enemy.id]);
+    pruneTurretAimCache([enemy.id]);
+
+    expect(entityVisibilityCacheSize()).toBe(1);
+    expect(turretAimMap.has(enemy.id)).toBe(true);
+    expect(turretAimMap.has(9999)).toBe(false);
   });
 
   it("renders a hostile unit fully opaque as soon as its tile is discovered", () => {

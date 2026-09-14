@@ -86,6 +86,7 @@ const PROFILE_VARIANTS: Record<MissionFamily, readonly [MissionProfileVariant, M
 };
 
 const missionProfileCache = new Map<string, MissionProfile>();
+const MISSION_PROFILE_CACHE_LIMIT = 64;
 
 const PROFILE_CONTRACTS: Record<MissionProfileVariant, MissionProfileContract> = {
   resourceRace: {
@@ -226,6 +227,10 @@ export function missionProfileFor(seed: number, missionIndex: number, kind: Miss
   const variants = PROFILE_VARIANTS[family];
   const rng = createRng(seed, `mission-profile:${missionIndex}:${kind}`);
   const profile = { family, variant: variants[rng.int(variants.length)]! };
+  if (!missionProfileCache.has(key) && missionProfileCache.size >= MISSION_PROFILE_CACHE_LIMIT) {
+    const oldest = missionProfileCache.keys().next().value;
+    if (oldest !== undefined) missionProfileCache.delete(oldest);
+  }
   missionProfileCache.set(key, profile);
   return profile;
 }

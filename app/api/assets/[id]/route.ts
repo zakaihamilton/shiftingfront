@@ -1,4 +1,4 @@
-import { ASSET_API_HEADERS, ASSET_API_VERSION, toAssetApiItem, withAssetRoute } from "@/lib/gen/assetApi";
+import { ASSET_API_HEADERS, ASSET_API_VERSION, assetCorsPreflight, toAssetApiItem, withAssetRoute } from "@/lib/gen/assetApi";
 
 export const GET = withAssetRoute((asset, request) => {
   return Response.json(
@@ -6,3 +6,7 @@ export const GET = withAssetRoute((asset, request) => {
     { headers: ASSET_API_HEADERS },
   );
 });
+
+export function OPTIONS(request: Request) {
+  return assetCorsPreflight(request);
+}

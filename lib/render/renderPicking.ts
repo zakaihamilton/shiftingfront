@@ -77,6 +77,13 @@ export function entityVisibilityCacheSize(): number {
   return entityVisibility.size;
 }
 
+export function pruneEntityVisibilityCache(liveIds: Iterable<number>): void {
+  const live = liveIds instanceof Set ? liveIds : new Set(liveIds);
+  for (const id of entityVisibility.keys()) {
+    if (!live.has(id)) entityVisibility.delete(id);
+  }
+}
+
 export function renderEntityOpacity(state: SimState, e: Entity, timeMs: number): number {
   if (e.owner === 0 || e.class !== "unit") return entityVisible(state, e) ? 1 : 0;
   const fog = fogAt(state, Math.round(e.x), Math.round(e.y));

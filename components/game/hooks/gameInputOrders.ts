@@ -66,6 +66,16 @@ export function productionRallyOrder(
   return target ? [] : [{ type: "rally", buildingId: building.id, x, y }];
 }
 
+export function contextOrderNotice(commands: Command[]): string {
+  if (commands.some((command) => command.type === "rally")) return "Rally point set.";
+  if (commands.some((command) => command.type === "attack")) return "Attack order issued.";
+  if (commands.some((command) => command.type === "support")) return "Support order issued.";
+  if (commands.some((command) => command.type === "harvest")) return "Harvest order issued.";
+  if (commands.some((command) => command.type === "attackMove")) return "Attack-move order issued.";
+  if (commands.some((command) => command.type === "move")) return "Move order issued.";
+  return "Order issued.";
+}
+
 export function contextOrders(s: SimState, ids: number[], target: SimState["entities"][number] | undefined, x: number, y: number, attackMove = false): Command[] {
   const rallyOrders = productionRallyOrder(s, ids, target, x, y);
   if (rallyOrders !== undefined) return rallyOrders;

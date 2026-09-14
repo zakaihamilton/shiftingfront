@@ -11,6 +11,7 @@ import { hqThreatened } from "../director";
 import { TILE_BLOCKED, TILE_WATER, type BalanceStrategy, type Campaign, type Command, type MissionDirectorPhase, type ReadonlyMissionDef, type SimState, type UnitKind } from "../../types";
 import { missionFamilyFor } from "../../gen/profile";
 import { scenarioAffordances, type ScenarioAffordances } from "../scenarios";
+import { walkDistances } from "../../gen/map/generator/affordances";
 import { COMMANDER_CADENCE } from "../commander/queries";
 import { balanceFailureReason } from "./evaluation";
 import { BalanceTimeBudgetExceeded, type BalanceRecordWithScenario, type BalanceRunJob, type BalanceSweepJob } from "./types";
@@ -33,7 +34,10 @@ export function validMap(map: GeneratedMap): boolean {
       : map.profileVariant === "contestedRoute"
         ? map.affordances.routeSeparation >= 4
         : map.affordances.routeSeparation > 0;
+  const distances = walkDistances(map.tiles, map.heights, map.width, map.height, map.playerStart);
+  const enemyIndex = map.enemyStart.y * map.width + map.enemyStart.x;
   return start(map.playerStart) && start(map.enemyStart) && profileValid &&
+    distances[enemyIndex] >= 0 &&
     map.markedSpots.every((point) => start(point)) &&
     map.resourceAmount.reduce((sum, amount) => sum + amount, 0) >= 4000 &&
     map.affordances.laneCount >= 2 &&

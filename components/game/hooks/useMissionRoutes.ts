@@ -1,7 +1,9 @@
 import { useCallback, type MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
-import type { SaveSession } from "@/lib/persist/save";
+import { cachedLocalStorage, type SaveSession } from "@/lib/persist/save";
+import { recordWonCampaignProgress } from "@/lib/persist/campaign";
 import type { SimState } from "@/lib/types";
+import { MISSION_MAX } from "@/lib/seed/rng";
 import {
   briefingPath,
   campaignCompletePath,
@@ -26,7 +28,12 @@ export function useMissionRoutes({
 
   const prepareLeave = useCallback((leaveWithoutSave: () => void = () => undefined) => {
     if (tutorial) return true;
-    const status = saveSession.write(stateRef.current, "implicit");
+    const state = stateRef.current;
+    if (!recordWonCampaignProgress(cachedLocalStorage(), state)) {
+      onSaveError("Couldn't save campaign progress. Check browser storage, then try leaving again.", leaveWithoutSave);
+      return false;
+    }
+    const status = saveSession.write(state, "implicit");
     if (status === "saved") return true;
     onSaveError(status === "conflict"
       ? "This campaign changed in another tab. Use Save Mission or Load Mission to resolve it before leaving."
@@ -57,6 +64,10 @@ export function useMissionRoutes({
   const goHomeNow = useCallback(() => navigate(menuPath()), [navigate]);
   const goNextBriefing = useCallback(() => {
     const world = stateRef.current;
+    if (world.missionIndex >= MISSION_MAX) {
+      navigate(campaignCompletePath(world.seed));
+      return;
+    }
     navigate(briefingPath(world.seed, world.missionIndex + 1, false, "result"));
   }, [navigate, stateRef]);
   const goCampaignVictory = useCallback(() => {

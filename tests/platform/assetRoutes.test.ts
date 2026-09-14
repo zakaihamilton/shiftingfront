@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GET, OPTIONS } from "../../app/api/assets/route";
-import { GET as getAsset } from "../../app/api/assets/[id]/route";
-import { GET as getPreview } from "../../app/api/assets/[id]/preview/route";
+import { GET as getAsset, OPTIONS as assetOptions } from "../../app/api/assets/[id]/route";
+import { GET as getPreview, OPTIONS as previewOptions } from "../../app/api/assets/[id]/preview/route";
 import { ASSET_API_VERSION } from "../../lib/gen/assetApi";
 import { listGeneratedAssets } from "../../lib/gen/assetCatalog";
 
@@ -142,5 +142,26 @@ describe("GET /api/assets/:id/preview", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.get("Cache-Control")).toContain("max-age=3600");
     expect(response.headers.get("Location")).toMatch(/\/art\/sprites\/.+\.webp$/);
+  });
+});
+
+describe("nested Asset Bay CORS preflight", () => {
+  it("answers OPTIONS on metadata and preview routes", () => {
+    const headers = {
+      method: "OPTIONS",
+      headers: {
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "X-Asset-Client",
+      },
+    } satisfies RequestInit;
+    for (const response of [
+      assetOptions(request("/api/assets/unit:infantry", headers)),
+      previewOptions(request("/api/assets/unit:infantry/preview", headers)),
+    ]) {
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(response.headers.get("Allow")).toBe("GET, OPTIONS");
+      expect(response.headers.get("Access-Control-Allow-Headers")).toBe("X-Asset-Client");
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { ASSET_API_CATEGORIES, ASSET_API_HEADERS, ASSET_API_VERSION, toAssetApiItem } from "@/lib/gen/assetApi";
+import { ASSET_API_CATEGORIES, ASSET_API_HEADERS, ASSET_API_VERSION, assetCorsPreflight, toAssetApiItem } from "@/lib/gen/assetApi";
 import { listGeneratedAssets } from "@/lib/gen/assetCatalog";
 
 export function GET(request: Request) {
@@ -21,13 +21,5 @@ export function GET(request: Request) {
 }
 
 export function OPTIONS(request: Request) {
-  const requestedHeaders = request.headers.get("Access-Control-Request-Headers");
-  return new Response(null, {
-    headers: {
-      ...ASSET_API_HEADERS,
-      Allow: "GET, OPTIONS",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": requestedHeaders ?? "Content-Type",
-    },
-  });
+  return assetCorsPreflight(request);
 }

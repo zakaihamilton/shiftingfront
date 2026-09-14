@@ -5,7 +5,7 @@ import { COMMAND_MARKER_INVALID_MS, commandMarkerKind, type CommandMarker } from
 import type { Camera } from "@/lib/iso";
 import type { Command, SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
-import { contextOrders, pickSelectableEntity, pointerTile } from "./gameInputOrders";
+import { contextOrders, contextOrderNotice, pickSelectableEntity, pointerTile } from "./gameInputOrders";
 import { createRuntimeCommandPort, type RuntimeCommandPort } from "./runtime/facade";
 import type { CommandNoticeKind } from "./useGameChrome";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
@@ -91,8 +91,7 @@ export function useOrderDispatch({
     const kind = beepForCommands(commands);
     if (kind) beep(kind);
     if (commands.length) {
-      const rally = commands.some((command) => command.type === "rally");
-      onCommandNotice?.(rally ? "Rally point set." : `${attackMove ? "Attack-move" : target ? "Attack" : "Move"} order issued.`, "success");
+      onCommandNotice?.(contextOrderNotice(commands), "success");
     }
   }, [camRef, clearTools, markInvalidCommand, markUnitCommand, mobileCommandRef, onCommandNotice, onCommandRejection, repairRef, resolvedCommandPort, selectedRef, sellRef, setMobileCommandState, syncCursor, uxRef]);
 

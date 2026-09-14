@@ -1,4 +1,5 @@
 import type { Entity, SimState } from "../../types";
+import { refundQueuedUnits } from "../productionRefund";
 import { ensureDeadBuildingInvalidation } from "./terrain";
 
 export function compactDestroyedEntities(state: SimState): number {
@@ -10,7 +11,9 @@ export function compactDestroyedEntities(state: SimState): number {
   if (!removedIds) return 0;
 
   for (const entity of state.entities) {
-    if (entity.hp <= 0 && entity.class === "building") ensureDeadBuildingInvalidation(state, entity.id);
+    if (entity.hp > 0) continue;
+    refundQueuedUnits(state, entity);
+    if (entity.class === "building") ensureDeadBuildingInvalidation(state, entity.id);
   }
 
   for (const entity of state.entities) {

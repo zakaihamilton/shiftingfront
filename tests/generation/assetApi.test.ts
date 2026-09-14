@@ -17,6 +17,8 @@ describe("asset API contract", () => {
     expect(unit.render.supportsFacing).toBe(true);
     expect(unit.render.directions).toHaveLength(8);
     expect(unit.render.directions[7]!.previewUrl).toContain("facing=7");
+    expect(unit.render.directions[1]!.angleDegrees).toBeCloseTo(26.565, 2);
+    expect(unit.render.directions[0]!.angleDegrees).toBe(0);
     const convoy = items.find((item) => item.id === "unit:convoyTruck")!;
     expect(convoy.label).toBe("Convoy Truck");
     expect(convoy.render.directions).toHaveLength(8);
