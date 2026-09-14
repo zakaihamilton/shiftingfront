@@ -33,4 +33,21 @@ describe("scenario registry", () => {
       second.map((state) => ({ kind: state.win.kind, runtime: state.runtime })),
     );
   });
+
+  it("places destroyMarked targets as factories or objective buildings", () => {
+    for (let seed = 0; seed < 40; seed++) {
+      const campaign = createCampaign(seed);
+      for (const mission of campaign.missions) {
+        if (mission.win.kind !== "destroyMarked") continue;
+        const state = createMission({ seed, missionIndex: mission.index });
+        const targets = state.runtime?.targetIds ?? [];
+        expect(targets.length).toBeGreaterThan(0);
+        for (const id of targets) {
+          const entity = state.entities.find((candidate) => candidate.id === id);
+          expect(entity?.class).toBe("building");
+          expect(["factory", "objective"]).toContain(entity?.kind);
+        }
+      }
+    }
+  });
 });

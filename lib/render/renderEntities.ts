@@ -29,10 +29,7 @@ export function facingFor(state: SimState, e: Entity, entityById: Map<number, En
   if (target) {
     const dx = target.x - x;
     const dy = target.y - y;
-    if (Math.hypot(dx, dy) > 0.2) {
-      e.facing = toIsometricFacing(dx, dy);
-    }
-    return e.facing ?? ((e.owner === 0 ? 0 : 4) as Facing);
+    if (Math.hypot(dx, dy) > 0.2) return toIsometricFacing(dx, dy);
   }
   return e.facing ?? ((e.owner === 0 ? 0 : 4) as Facing);
 }

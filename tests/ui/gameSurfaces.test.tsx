@@ -16,6 +16,7 @@ import { MissionResult } from "../../components/game/MissionResult";
 import { MissionResultActions } from "../../components/game/MissionResultActions";
 import { MissionOutcome } from "../../components/game/MissionResultSections";
 import { missionDebrief } from "../../lib/sim/debrief";
+import { MISSION_MAX } from "../../lib/seed/rng";
 
 vi.mock("../../components/game/MobileCommandLauncher", () => ({
   MobileCommandLauncher: ({ open }: { open: boolean }) => <div data-testid="surface-mobile-launcher" data-open={open ? "true" : "false"} />,
@@ -200,6 +201,29 @@ describe("game overlay surfaces", () => {
     expect(onRetry).toHaveBeenCalledOnce();
     expect(screen.getByRole("button", { name: "Share result" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Next briefing" })).toHaveAttribute("data-default-action", "true");
+  });
+
+  it("offers campaign victory after the final mission", () => {
+    const state = {
+      ...makeFixture({ seed: 421, win: { kind: "annihilate" } }),
+      result: "won" as const,
+      missionIndex: MISSION_MAX,
+    };
+    const onCampaignVictory = vi.fn();
+
+    render(
+      <MissionResultActions
+        state={state}
+        onNextBriefing={vi.fn()}
+        onCampaignVictory={onCampaignVictory}
+        onRetry={vi.fn()}
+        onMenu={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Next briefing" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Campaign victory" }));
+    expect(onCampaignVictory).toHaveBeenCalledOnce();
   });
 
   it("uses retry as the default action and removes sharing after a failure", () => {

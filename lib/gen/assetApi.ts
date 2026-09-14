@@ -1,4 +1,5 @@
 import { BUILDING_STATS, UNIT_STATS } from "../catalog";
+import { isoFacingAngleDegrees } from "../iso";
 import { buildingSprite, rubbleSprite, unitSprite, wreckSprite } from "./assets";
 import { listGeneratedAssets, type CatalogAsset } from "./assetCatalog";
 import { generateVisualProfile } from "./visualProfile";
@@ -12,6 +13,19 @@ export const ASSET_API_HEADERS = {
   "Cache-Control": "public, max-age=3600, s-maxage=3600",
   "Access-Control-Allow-Origin": "*",
 };
+
+export function assetCorsPreflight(request: Request): Response {
+  const requestedHeaders = request.headers.get("Access-Control-Request-Headers");
+  return new Response(null, {
+    headers: {
+      ...ASSET_API_HEADERS,
+      Allow: "GET, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": requestedHeaders ?? "Content-Type",
+    },
+  });
+}
+
 const DEFAULT_SEED = 421;
 const DEFAULT_PALETTE = generateFactions(DEFAULT_SEED)[0].palette;
 const DEFAULT_PROFILE = { ...generateVisualProfile(DEFAULT_SEED, 0), designFamily: 0 as const };
@@ -119,7 +133,7 @@ export function toAssetApiItem(asset: CatalogAsset, requestUrl: string): AssetAp
   const directions = supportsFacing
     ? ASSET_FACINGS.map((facing) => ({
       facing,
-      angleDegrees: facing * 45,
+      angleDegrees: isoFacingAngleDegrees(facing),
       previewUrl: directionUrl(previewUrl, facing),
     }))
     : [];

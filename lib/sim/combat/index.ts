@@ -15,6 +15,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
   const rng = rngFromState(state.rngState);
   const grid = buildGrid(state);
   for (const e of livingView(state)) {
+    if (e.hp <= 0) continue;
     if (state.tutorialStage !== undefined && e.owner === 1) continue;
     if (e.class === "unit") e.suppression = Math.max(0, (e.suppression ?? 0) - 1);
     const st = statsFor(e);
@@ -64,20 +65,17 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
       }
     }
 
-    if (ordered && e.path.length > 0) {
+    if (ordered && (e.path.length > 0 || e.flowGoal || e.routePending)) {
       // Travel orders may fire at targets already in weapon range, but they
-      // never replace the route with a combat chase. Direct attack orders
-      // retain the committed-target behavior above.
+      // never replace the route with a combat chase. Empty paths with a flow
+      // goal or pending route are still in transit: marking them idle or
+      // chasing would strand the original destination.
       const opportunity = closestEnemy(grid, e, st.range, false);
       if (opportunity && lineOfSight(state, e, opportunity)) strike(state, e, opportunity, st, rng, events, pending);
       continue;
     }
 
-    // A grouped travel order can briefly have an empty path while its flow
-    // field is waiting for the next lane prefix. Do not mark that unit idle:
-    // doing so prevents the movement system from recovering the route on the
-    // following tick and can strand an assault force short of its target.
-    if (ordered && !e.flowGoal) e.idle = true;
+    if (ordered) e.idle = true;
 
     const stance = e.class === "unit" ? (e.stance ?? "aggressive") : "aggressive";
     const hold = stance === "hold";

@@ -7,6 +7,7 @@ import {
   damageFlicker,
   selectionPulse,
   toFacing,
+  facingVector,
   unitMovementOffset,
   unitWalkCycle,
   unitWalkPeriod,
@@ -14,7 +15,7 @@ import {
   unitPose,
   waterShimmer,
 } from "../../lib/render/anim";
-import { toIsometricFacing } from "../../lib/iso";
+import { isoFacingAngle, toIsometricFacing } from "../../lib/iso";
 import { UNIT_STATS } from "../../lib/catalog";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 
@@ -24,6 +25,13 @@ describe("animation helpers", () => {
     expect(toFacing(0, 1)).toBe(2);
     expect(toFacing(-1, 0)).toBe(4);
     expect(toFacing(0, -1)).toBe(6);
+  });
+
+  it("uses isometric screen angles for muzzle facing vectors", () => {
+    const dir = facingVector(1);
+    const angle = isoFacingAngle(1);
+    expect(dir.x).toBeCloseTo(Math.cos(angle), 8);
+    expect(dir.y).toBeCloseTo(Math.sin(angle) * 0.52, 8);
   });
 
   it("maps isometric tile deltas accurately to screen-isometric facings", () => {

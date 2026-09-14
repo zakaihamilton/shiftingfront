@@ -502,4 +502,31 @@ describe("combat alerts", () => {
     flushPlayerAlerts(s, pending, events);
     expect(events).toEqual([{ type: "alert", kind: "warning", text: "Command HQ under attack" }]);
   });
+
+  it("does not let a unit that died earlier in the pass fire", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    const tank = addUnit(s, 0, "tank", 4, 4);
+    const foe = addUnit(s, 1, "infantry", 5, 4);
+    foe.hp = 1;
+    const tankHp = tank.hp;
+    tickCombat(s);
+    expect(foe.hp).toBe(0);
+    expect(tank.hp).toBe(tankHp);
+  });
+
+  it("does not mark a pending travel order idle or replace it with a chase", () => {
+    const s = makeFixture({ width: 24, height: 12, win: { kind: "annihilate" } });
+    const mover = addUnit(s, 0, "infantry", 2, 2);
+    mover.idle = false;
+    mover.orderMode = "move";
+    mover.orderDestination = { x: 20, y: 2 };
+    mover.path = [];
+    mover.routePending = true;
+    addUnit(s, 1, "infantry", 4, 2);
+    tickCombat(s);
+    expect(mover.idle).toBe(false);
+    expect(mover.routePending).toBe(true);
+    expect(mover.path).toEqual([]);
+    expect(mover.orderDestination).toEqual({ x: 20, y: 2 });
+  });
 });

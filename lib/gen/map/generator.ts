@@ -149,6 +149,7 @@ export function generateMap(
       salt + 37,
     );
     carveRoute(tiles, heights, surfaces, width, height, rescueRoute, 1, salt + 29);
+    scenarioRoutePlans.push(rescueRoute);
   }
   if (mission.win.kind === "extraction") {
     const extractionRegions = [

@@ -423,6 +423,7 @@ describe("mission confirmation and routes", () => {
     expect(missionConfirmationFor("restart")).toMatchObject({
       action: "restart",
       confirmLabel: "Restart mission",
+      message: "Restart this mission from the beginning? Unsaved mission progress will be lost.",
     });
     expect(briefingPath(421, 2, true)).toBe("/briefing?seed=0421&mission=2&return=game");
     expect(tutorialPath()).toBe("/tutorial");
@@ -432,8 +433,11 @@ describe("mission confirmation and routes", () => {
     expect(campaignCompletePath(7)).toBe("/campaign-complete?seed=0007");
     expect(menuPath()).toBe("/");
     expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 3 })).toBe("/briefing?seed=0421&mission=4&from=result");
-    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 7 })).toBe("/");
+    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 5 })).toBe("/campaign-complete?seed=0421");
+    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 7 })).toBe("/campaign-complete?seed=0421");
     expect(resultPrimaryPath({ result: "lost", seed: 421, missionIndex: 3 })).toBe("/briefing?seed=0421&mission=3&from=result");
+    expect(missionConfirmationFor("menu", "won").message).toBe("Return to the main menu?");
+    expect(missionConfirmationFor("restart", "lost").message).toBe("Restart this mission from the beginning?");
   });
 });
 

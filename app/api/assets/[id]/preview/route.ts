@@ -1,4 +1,4 @@
-import { ASSET_API_HEADERS, ASSET_FACINGS, assetPreviewSpec, spriteSpecToSvg, withAssetRoute } from "@/lib/gen/assetApi";
+import { ASSET_API_HEADERS, ASSET_FACINGS, assetCorsPreflight, assetPreviewSpec, spriteSpecToSvg, withAssetRoute } from "@/lib/gen/assetApi";
 import type { Facing } from "@/lib/types";
 
 export const GET = withAssetRoute((asset, request) => {
@@ -31,3 +31,7 @@ export const GET = withAssetRoute((asset, request) => {
     },
   });
 });
+
+export function OPTIONS(request: Request) {
+  return assetCorsPreflight(request);
+}

@@ -9,6 +9,7 @@ import {
   expandIsoDiamond,
   isoAtlasTransform,
   isoFacingAngle,
+  isoFacingAngleDegrees,
   screenAngleToFacing,
   screenToGroundTile,
   screenToTile,
@@ -79,5 +80,13 @@ describe("iso projection", () => {
     expect(toIsometricFacing(-1, 0)).toBe(5);  // North-West
     expect(toIsometricFacing(-1, -1)).toBe(6); // North
     expect(toIsometricFacing(0, -1)).toBe(7);  // North-East
+  });
+
+  it("publishes screen-space facing degrees that match isoFacingAngle", () => {
+    expect(isoFacingAngleDegrees(0)).toBe(0);
+    expect(isoFacingAngleDegrees(1)).toBeCloseTo(26.565, 2);
+    expect(isoFacingAngleDegrees(2)).toBe(90);
+    expect(isoFacingAngleDegrees(4)).toBe(180);
+    expect(isoFacingAngleDegrees(6)).toBe(270);
   });
 });

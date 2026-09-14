@@ -32,6 +32,13 @@ export function isoFacingAngle(facing: Facing): number {
   }
 }
 
+/** Screen-space degrees in [0, 360) for an isometric facing, matching isoFacingAngle. */
+export function isoFacingAngleDegrees(facing: Facing): number {
+  let degrees = isoFacingAngle(facing) * (180 / Math.PI);
+  if (degrees < 0) degrees += 360;
+  return Math.round(degrees * 1000) / 1000;
+}
+
 /** Convert any screen angle in radians to the nearest 8-way isometric Facing based on true 2:1 isometric sector midpoints. */
 export function screenAngleToFacing(angle: number): Facing {
   let a = angle;

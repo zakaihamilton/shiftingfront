@@ -34,15 +34,26 @@ export function getNoiseBuffer(audio: AudioContext): AudioBuffer {
   return buffer;
 }
 
-export function connect(audio: AudioContext, source: AudioNode, dest: AudioNode, pan: number): void {
+export function connect(audio: AudioContext, source: AudioNode, dest: AudioNode, pan: number): StereoPannerNode | null {
   if (Math.abs(pan) < 0.01) {
     source.connect(dest);
-    return;
+    return null;
   }
   const panner = audio.createStereoPanner();
   panner.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), audio.currentTime);
   source.connect(panner);
   panner.connect(dest);
+  return panner;
+}
+
+function disconnectSfxGraph(nodes: Array<AudioNode | null | undefined>): void {
+  for (const node of nodes) {
+    try {
+      node?.disconnect();
+    } catch {
+      // Already disconnected.
+    }
+  }
 }
 
 export function driveCurve(amount: number): Float32Array {
@@ -98,14 +109,16 @@ export function tone(
   g.gain.exponentialRampToValueAtTime(Math.max(0.001, options.gain), start + attack);
   g.gain.exponentialRampToValueAtTime(0.001, start + options.duration);
   o.connect(f);
+  let shaper: WaveShaperNode | undefined;
   if (options.drive && options.drive > 1) {
-    const shaper = createDrive(audio, options.drive);
+    shaper = createDrive(audio, options.drive);
     f.connect(shaper);
     shaper.connect(g);
   } else {
     f.connect(g);
   }
-  connect(audio, g, dest, options.pan);
+  const panner = connect(audio, g, dest, options.pan);
+  o.onended = () => disconnectSfxGraph([o, f, shaper, g, panner]);
   o.start(start);
   o.stop(start + options.duration + 0.03);
 }
@@ -142,7 +155,8 @@ export function noise(
   g.gain.exponentialRampToValueAtTime(0.001, start + options.duration);
   source.connect(f);
   f.connect(g);
-  connect(audio, g, dest, options.pan);
+  const panner = connect(audio, g, dest, options.pan);
+  source.onended = () => disconnectSfxGraph([source, f, g, panner]);
   source.start(start);
   source.stop(start + options.duration + 0.03);
 }

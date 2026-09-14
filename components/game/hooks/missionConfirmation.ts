@@ -1,3 +1,5 @@
+import type { SimState } from "@/lib/types";
+
 export type MissionConfirmationAction = "restart" | "menu";
 
 export type MissionConfirmation = {
@@ -7,19 +9,27 @@ export type MissionConfirmation = {
   confirmLabel: string;
 };
 
-export const MISSION_CONFIRMATION_COPY: Record<MissionConfirmationAction, Omit<MissionConfirmation, "action">> = {
-  menu: {
-    title: "Leave mission?",
-    message: "Return to the main menu? Unsaved mission progress will be lost.",
-    confirmLabel: "Leave mission",
-  },
-  restart: {
+export function missionConfirmationFor(
+  action: MissionConfirmationAction,
+  result: SimState["result"] = "playing",
+): MissionConfirmation {
+  const terminal = result !== "playing";
+  if (action === "menu") {
+    return {
+      action,
+      title: "Leave mission?",
+      message: terminal
+        ? "Return to the main menu?"
+        : "Return to the main menu? Unsaved mission progress will be lost.",
+      confirmLabel: "Leave mission",
+    };
+  }
+  return {
+    action,
     title: "Restart mission?",
-    message: "Restart this mission from the beginning? Unsaved mission progress will be lost.",
+    message: terminal
+      ? "Restart this mission from the beginning?"
+      : "Restart this mission from the beginning? Unsaved mission progress will be lost.",
     confirmLabel: "Restart mission",
-  },
-};
-
-export function missionConfirmationFor(action: MissionConfirmationAction): MissionConfirmation {
-  return { action, ...MISSION_CONFIRMATION_COPY[action] };
+  };
 }

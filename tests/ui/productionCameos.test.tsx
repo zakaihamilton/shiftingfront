@@ -78,8 +78,7 @@ describe("production cameo availability", () => {
 
   it("explains how to unlock a gated unit", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
-    state.missionIndex = -1;
 
-    expect(productionBlockerText(state, "medic", 0, undefined)).toBe("Advance the campaign to unlock this unit");
+    expect(productionBlockerText(state, "convoyTruck", 0, undefined)).toBe("Advance the campaign to unlock this unit");
   });
 });

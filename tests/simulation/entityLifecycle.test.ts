@@ -3,6 +3,7 @@ import { compactDestroyedEntities } from "../../lib/sim/world";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { tick } from "../../lib/sim/api";
 import { deserializeState, serializeState } from "../../lib/persist/save";
+import { UNIT_STATS } from "../../lib/catalog";
 
 describe("destroyed entity lifecycle", () => {
   it("compacts dead entities and clears references without changing counters", () => {
@@ -69,5 +70,41 @@ describe("destroyed entity lifecycle", () => {
     expect(restored.entities.some((entity) => entity.id === target.id)).toBe(false);
     expect(restored.win.targetIds).toEqual([target.id]);
     expect(restored.runtime?.targetIds).toEqual([target.id]);
+  });
+
+  it("refunds prepaid production when a player producer is destroyed", () => {
+    const state = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    const barracks = addBuilding(state, 0, "barracks", 4, 4);
+    barracks.producing = { kind: "infantry", remaining: 20 };
+    barracks.queue = ["antiArmor"];
+    const startCredits = state.credits[0];
+    barracks.hp = 0;
+
+    compactDestroyedEntities(state);
+
+    expect(state.credits[0]).toBe(startCredits + UNIT_STATS.infantry.cost + UNIT_STATS.antiArmor.cost);
+    expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(false);
+  });
+
+  it("credits a save snapshot without double-refunding the live world", () => {
+    const state = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    const barracks = addBuilding(state, 0, "barracks", 4, 4);
+    barracks.producing = { kind: "infantry", remaining: 20 };
+    barracks.queue = ["antiArmor"];
+    barracks.hp = 0;
+    const payout = UNIT_STATS.infantry.cost + UNIT_STATS.antiArmor.cost;
+    const startCredits = state.credits[0];
+
+    const restored = deserializeState(serializeState(state));
+
+    expect(state.credits[0]).toBe(startCredits);
+    expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(true);
+    expect(restored.credits[0]).toBe(startCredits + payout);
+    expect(restored.entities.some((entity) => entity.id === barracks.id)).toBe(false);
+
+    compactDestroyedEntities(state);
+
+    expect(state.credits[0]).toBe(startCredits + payout);
+    expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(false);
   });
 });

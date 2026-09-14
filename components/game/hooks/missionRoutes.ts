@@ -1,4 +1,4 @@
-import { formatSeed } from "@/lib/seed/rng";
+import { formatSeed, MISSION_MAX } from "@/lib/seed/rng";
 import type { SimState } from "@/lib/types";
 
 export type NavigationOrigin = "menu" | "newGame" | "campaign" | "result";
@@ -46,7 +46,10 @@ export function campaignPath(seed: number): string {
 }
 
 export function resultPrimaryPath(state: Pick<SimState, "result" | "seed" | "missionIndex">): string {
-  if (state.result === "won" && state.missionIndex < 7) return briefingPath(state.seed, state.missionIndex + 1, false, "result");
+  if (state.result === "won" && state.missionIndex < MISSION_MAX) {
+    return briefingPath(state.seed, state.missionIndex + 1, false, "result");
+  }
+  if (state.result === "won") return campaignCompletePath(state.seed);
   if (state.result === "lost") return briefingPath(state.seed, state.missionIndex, false, "result");
   return menuPath();
 }
