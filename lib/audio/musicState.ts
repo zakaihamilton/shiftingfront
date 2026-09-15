@@ -69,6 +69,8 @@ export let pendingIntensity: MusicIntensity | null = null;
 export let cue: MusicCue = "menu";
 export let seed = TITLE_MUSIC_SEED;
 export let missionIndex = 0;
+export let trackIndex = 0;
+export let transitioning = false;
 export let pattern: MusicPattern | null = null;
 export let timer: number | null = null;
 export let nextNoteTime = 0;
@@ -85,6 +87,8 @@ export function setPendingIntensity(v: MusicIntensity | null) { pendingIntensity
 export function setCue(v: MusicCue) { cue = v; }
 export function setSeed(v: number) { seed = v; }
 export function setMissionIndex(v: number) { missionIndex = v; }
+export function setTrackIndex(v: number) { trackIndex = v; }
+export function setTransitioning(v: boolean) { transitioning = v; }
 export function setPattern(v: MusicPattern | null) { pattern = v; }
 export function setTimer(v: number | null) { timer = v; }
 export function setNextNoteTime(v: number) { nextNoteTime = v; }

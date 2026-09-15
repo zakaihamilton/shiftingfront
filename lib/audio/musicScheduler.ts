@@ -1,4 +1,4 @@
-import { composeMusic, midiToHz, STEPS_PER_BAR, BARS_PER_SECTION, type MusicIntensity, type MusicPattern, type MusicStem, type MusicVoiceType } from "./compose";
+import { composeMusic, midiToHz, STEPS_PER_BAR, BARS_PER_SECTION, TUTORIAL_MUSIC_MISSION, type MusicIntensity, type MusicPattern, type MusicStem, type MusicVoiceType } from "./compose";
 import { getAudioContext, peekAudioContext, resumeAudio } from "./context";
 import { getAudioBus } from "./mixer";
 import {
@@ -36,12 +36,26 @@ import {
   cue,
   seed,
   missionIndex,
+  trackIndex,
+  setTrackIndex,
+  transitioning,
+  setTransitioning,
   fadeGen,
   incrementFadeGen,
 } from "./musicState";
 import { readMusicPosition, saveMusicPosition, clearMusicPosition } from "./musicPosition";
 
 export { readMusicPosition, saveMusicPosition, clearMusicPosition };
+
+export const TOTAL_CAMPAIGN_TRACKS = 6;
+
+export function advanceMusicTrack(): void {
+  if (cue !== "mission" || missionIndex === TUTORIAL_MUSIC_MISSION || missionIndex < 0) return;
+  const nextTrack = ((trackIndex < 0 ? 0 : trackIndex) + 1) % TOTAL_CAMPAIGN_TRACKS;
+  setTrackIndex(nextTrack);
+  const next = composeMusic(seed, cue, nextTrack);
+  applyPattern(next);
+}
 
 export function applyIntensityAt(audio: AudioGraphContext, g: MusicGraph, value: MusicIntensity, time: number, isDucked = ducked): void {
   const t = Math.max(time, audio.currentTime);
@@ -176,6 +190,7 @@ function persistAudiblePositionThrottled(): void {
 
 function startGraph(audio: AudioContext): void {
   if (!pattern) return;
+  setTransitioning(false);
   const musicBus = getAudioBus("music");
   if (!musicBus) return;
   const g = createGraph(audio, musicBus, pattern);
@@ -202,15 +217,22 @@ function tickScheduler(): void {
   const audio = getAudioContext();
   const g = graph;
   const p = pattern;
-  if (!audio || !g || !p) return;
+  if (!audio || !g || !p || transitioning) return;
   const stepDuration = 60 / p.bpm / 4;
   let n = nextNoteTime;
   let s = step;
   while (n < audio.currentTime + SCHEDULE_AHEAD_S) {
     if (shouldApplyPendingIntensity(s, pendingIntensity)) applyPendingIntensityAtPhraseBoundary(audio, g);
     scheduleStep(audio, g, p, n, s, intensity);
+    const prev = s;
     n += stepDuration;
     s = (s + 1) % p.steps;
+    if (prev === p.steps - 1 && s === 0 && cue === "mission" && missionIndex !== TUTORIAL_MUSIC_MISSION && missionIndex >= 0) {
+      setNextNoteTime(n);
+      setStep(0);
+      advanceMusicTrack();
+      return;
+    }
   }
   setNextNoteTime(n);
   setStep(s);
@@ -218,6 +240,7 @@ function tickScheduler(): void {
 }
 
 function stopMusic(): void {
+  setTransitioning(false);
   saveAudibleMusicPosition();
   incrementFadeGen();
   const t = timer;
@@ -258,8 +281,11 @@ export function applyPattern(next: MusicPattern): void {
   const g = graph;
   if (!audio || !g || !timer) {
     setPattern(next);
+    setStep(0);
+    setTransitioning(false);
     return;
   }
+  setTransitioning(true);
   const generation = incrementFadeGen();
   const now = audio.currentTime;
   const half = 0.55 / 2;
@@ -268,10 +294,16 @@ export function applyPattern(next: MusicPattern): void {
   g.master.gain.setValueAtTime(current, now);
   g.master.gain.linearRampToValueAtTime(0.001, now + half);
   window.setTimeout(() => {
-    if (generation !== fadeGen) return;
+    if (generation !== fadeGen) {
+      setTransitioning(false);
+      return;
+    }
     setPattern(next);
     const activeGraph = graph;
-    if (!activeGraph) return;
+    if (!activeGraph) {
+      setTransitioning(false);
+      return;
+    }
     activeGraph.index = indexPattern(next);
     setStep(0);
     syncDelay(audio, activeGraph, next);
@@ -281,7 +313,8 @@ export function applyPattern(next: MusicPattern): void {
     activeGraph.master.gain.cancelScheduledValues(t);
     activeGraph.master.gain.setValueAtTime(0.001, t);
     activeGraph.master.gain.linearRampToValueAtTime(masterGain(intensity, ducked), t + half);
+    setTransitioning(false);
   }, half * 1000);
 }
 
-export { stopMusic };
+export { stopMusic, tickScheduler };

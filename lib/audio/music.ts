@@ -14,6 +14,9 @@ import {
   cue,
   seed,
   missionIndex,
+  trackIndex,
+  setTrackIndex,
+  setTransitioning,
   enabled,
   setEnabled,
   setPaused,
@@ -32,6 +35,8 @@ import {
   clearMusicPosition,
   getAudibleStep,
   saveAudibleMusicPosition,
+  advanceMusicTrack,
+  TOTAL_CAMPAIGN_TRACKS,
 } from "./musicScheduler";
 
 export { TITLE_MUSIC_SEED, TUTORIAL_MUSIC_MISSION };
@@ -43,6 +48,9 @@ export {
   clearMusicPosition,
   getAudibleStep,
   saveAudibleMusicPosition,
+  advanceMusicTrack,
+  TOTAL_CAMPAIGN_TRACKS,
+  trackIndex,
 };
 
 export function resetMusicPosition(targetCue?: MusicCue, targetSeed?: number, targetMissionIndex?: number): void {
@@ -54,11 +62,15 @@ export function resetMusicPosition(targetCue?: MusicCue, targetSeed?: number, ta
       (targetMissionIndex === undefined || targetMissionIndex === missionIndex))
   ) {
     setStep(0);
+    setTransitioning(false);
     if (targetCue === undefined) {
       setCue("menu");
       setSeed(TITLE_MUSIC_SEED);
       setMissionIndex(0);
+      setTrackIndex(0);
       setPattern(null);
+    } else if (targetMissionIndex !== undefined) {
+      setTrackIndex(targetMissionIndex);
     }
   }
 }
@@ -88,6 +100,7 @@ export function setMusicCue(nextCue: MusicCue, nextSeed: number, nextMissionInde
   setCue(nextCue);
   setSeed(nextSeed);
   setMissionIndex(nextMissionIndex);
+  setTrackIndex(nextMissionIndex);
   setIntensity("calm");
   setPendingIntensity(null);
   const next = composeMusic(nextSeed, nextCue, nextMissionIndex);
