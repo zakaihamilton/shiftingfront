@@ -207,7 +207,7 @@ describe("checkBalance", () => {
 
     expect(DEFAULT_BALANCE_THRESHOLDS.maxWinRate).toBeUndefined();
     expect(DEFAULT_BALANCE_THRESHOLDS.targetedKindWinRates).toMatchObject({
-      destroyMarked: 0.85,
+      destroyMarked: 0.70,
       sabotage: 0.85,
       annihilate: 0.85,
       decapitate: 0.85,

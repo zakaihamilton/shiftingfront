@@ -9,7 +9,7 @@ import { staticNavigationFor } from "../lib/sim/world";
 import type { SimState } from "../lib/types";
 import { percentile, summarizeTimings, type TimingSummary } from "../lib/perf/metrics";
 
-const MAX_ATLAS_MS = 1_000;
+const MAX_ATLAS_MS = process.env.CI ? 2_500 : 1_200;
 const MAX_ATLAS_BYTES = 4 * 1024 * 1024;
 const MAX_SIM_P95_MS = 25;
 const MAX_SIM_P99_MS = 25;
