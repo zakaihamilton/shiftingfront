@@ -11,6 +11,7 @@ import overlayStyles from "../../components/menu/MenuSignalOverlay.module.css";
 import { freshCampaignProgress, writeCampaignProgress } from "../../lib/persist/campaign";
 import { exportSlot, localStorageAdapter, writeSave, writeSlot } from "../../lib/persist/save";
 import { makeFixture } from "../../lib/sim/fixtures";
+import { APP_VERSION } from "../../lib/site";
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
 
@@ -104,7 +105,7 @@ describe("MenuScreen", () => {
     expect(screen.getByRole("button", { name: "Credits" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
     expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
-    expect(screen.getByRole("link", { name: "v1.0.0" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: `v${APP_VERSION}` })).toHaveAttribute(
       "href",
       "https://github.com/zakaihamilton/shiftingfront",
     );
