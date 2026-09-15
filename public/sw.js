@@ -4,6 +4,8 @@ const CACHE_NAME = "shiftingfront-v1";
 const PRECACHE_URLS = [
   "/",
   "/manifest.webmanifest",
+  "/tutorial",
+  "/load",
   "/favicon.ico",
   "/icon.png",
   "/apple-icon.png",

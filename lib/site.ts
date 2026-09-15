@@ -2,6 +2,7 @@ export const APP_NAME = "Shifting Front";
 export const APP_SHORT_NAME = "Shifting Front";
 export const APP_DESCRIPTION = "A seeded isometric RTS — one 4-digit code writes the war.";
 export const APP_THEME_COLOR = "#05080e";
+export const SITE_URL = "https://shiftingfront.com";
 
 const theme = Number.parseInt(APP_THEME_COLOR.slice(1), 16);
 

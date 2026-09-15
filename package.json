@@ -1,6 +1,25 @@
 {
   "name": "shiftingfront",
   "version": "0.1.0",
+  "description": "A seeded isometric RTS — one 4-digit code writes the war.",
+  "homepage": "https://shiftingfront.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zakaihamilton/shiftingfront.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zakaihamilton/shiftingfront/issues"
+  },
+  "keywords": [
+    "rts",
+    "real-time-strategy",
+    "strategy-game",
+    "isometric",
+    "procedural",
+    "canvas-2d",
+    "nextjs",
+    "web-audio"
+  ],
   "private": true,
   "license": "MIT",
   "packageManager": "yarn@1.22.22",

@@ -6,6 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: APP_NAME,
     short_name: APP_SHORT_NAME,
     description: APP_DESCRIPTION,
+    id: "/",
     start_url: "/",
     scope: "/",
     display: "standalone",
@@ -14,6 +15,31 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "en",
     orientation: "any",
     categories: ["games"],
+    screenshots: [
+      {
+        src: "/art/menu-command-vista.webp",
+        sizes: "1672x941",
+        type: "image/webp",
+        form_factor: "wide",
+        label: "Command Desk and Campaign Briefing",
+      },
+    ],
+    shortcuts: [
+      {
+        name: "Training Range",
+        short_name: "Tutorial",
+        description: "Learn tactical combat, base building, and unit command",
+        url: "/tutorial",
+        icons: [{ src: "/icons/pwa-192.png", sizes: "192x192" }],
+      },
+      {
+        name: "Saved Missions",
+        short_name: "Load Game",
+        description: "Resume saved operations and campaigns",
+        url: "/load",
+        icons: [{ src: "/icons/pwa-192.png", sizes: "192x192" }],
+      },
+    ],
     icons: [
       {
         src: "/icons/pwa-192.png",
