@@ -247,4 +247,21 @@ describe("persist", () => {
     const backfilled = deserializeState(JSON.stringify(raw));
     expect(backfilled.entities[0]?.repairing).toBe(false);
   });
+
+  it("clears all shiftingfront keys from storage on factory reset", async () => {
+    const { clearAllGameData } = await import("../../lib/persist/save");
+    const storage = memoryStorage({
+      "shiftingfront:settings": "{}",
+      "shiftingfront:telemetry": "{}",
+      "shiftingfront:save:0421": "{}",
+      "shiftingfront:slot:slot-1": "{}",
+      "unrelated-key": "important-user-data",
+    });
+
+    expect(storage.keys()).toHaveLength(5);
+    const ok = clearAllGameData(storage);
+    expect(ok).toBe(true);
+    expect(storage.keys()).toEqual(["unrelated-key"]);
+    expect(storage.getItem("unrelated-key")).toBe("important-user-data");
+  });
 });

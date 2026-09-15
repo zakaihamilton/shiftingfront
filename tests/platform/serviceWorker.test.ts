@@ -29,6 +29,12 @@ describe("Service Worker", () => {
 
     expect(urls).toContain("/");
     expect(urls).toContain("/manifest.webmanifest");
+    expect(urls).toContain("/tutorial");
+    expect(urls).toContain("/briefing");
+    expect(urls).toContain("/campaign");
+    expect(urls).toContain("/play");
+    expect(urls).toContain("/campaign-complete");
+    expect(urls).toContain("/load");
     expect(urls).toContain("/icons/pwa-192.png");
     expect(urls).toContain("/icons/pwa-512.png");
 

@@ -3,6 +3,7 @@ import { formatSeed } from "@/lib/seed/rng";
 import type { MissionObjective } from "@/lib/gen/story";
 import { deadlineUrgency, type ObjectiveCardModel } from "@/lib/ui/missionPresentation";
 import type { DoctrineHint } from "@/lib/ui/doctrine";
+import { useFullscreen } from "@/lib/ui/fullscreen";
 import styles from "./Battlefield.module.css";
 
 export function BattlefieldHud({
@@ -38,6 +39,7 @@ export function BattlefieldHud({
   timeLimitTicks?: number;
   onObjectivePanelToggle?: () => void;
 }) {
+  const fullscreen = useFullscreen();
   const [directiveExpanded, setDirectiveExpanded] = useState(true);
   const [seenDoctrine] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -122,17 +124,32 @@ export function BattlefieldHud({
         <div className={styles.directiveHeader}>
           <span className={styles.directiveKicker}>Mission directive</span>
           {phaseLabel ? <span className={styles.phase} data-testid="mission-phase"><span className={styles.phaseDot} aria-hidden="true" />{phaseLabel}</span> : null}
-          <button
-            type="button"
-            className={styles.directiveToggle}
-            aria-label={`${directiveExpanded ? "Collapse" : "Expand"} mission directive`}
-            aria-expanded={directiveExpanded}
-            aria-controls="mission-directive-body"
-            data-tooltip={`${directiveExpanded ? "Collapse" : "Expand"} mission directive`}
-            onClick={toggleDirective}
-          >
-            <span className={styles.directiveToggleIcon} aria-hidden="true">{directiveExpanded ? "−" : "+"}</span>
-          </button>
+          <div className={styles.directiveActions}>
+            {fullscreen.isSupported ? (
+              <button
+                type="button"
+                className={styles.directiveToggle}
+                aria-label={fullscreen.isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                data-tooltip={fullscreen.isFullscreen ? "Exit fullscreen" : "Enter fullscreen (F11)"}
+                onClick={fullscreen.toggle}
+              >
+                <span className={styles.directiveToggleIcon} aria-hidden="true">
+                  {fullscreen.isFullscreen ? "🗗" : "⛶"}
+                </span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={styles.directiveToggle}
+              aria-label={`${directiveExpanded ? "Collapse" : "Expand"} mission directive`}
+              aria-expanded={directiveExpanded}
+              aria-controls="mission-directive-body"
+              data-tooltip={`${directiveExpanded ? "Collapse" : "Expand"} mission directive`}
+              onClick={toggleDirective}
+            >
+              <span className={styles.directiveToggleIcon} aria-hidden="true">{directiveExpanded ? "−" : "+"}</span>
+            </button>
+          </div>
         </div>
         {!directiveExpanded ? timerReadout : null}
         <div id="mission-directive-body" className={styles.directiveBody} hidden={!directiveExpanded}>

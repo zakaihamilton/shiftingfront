@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
+import { APP_ISSUES_URL } from "@/lib/site";
 import { ConsoleButton } from "./ConsoleButton";
 import { ConsoleNotice, ConsoleNoticeLink } from "./ConsoleNotice";
 
@@ -56,8 +57,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               setTimeout(() => this.setState({ copied: false }), 2500);
             }}
           >
-            {this.state.copied ? "Copied!" : "Copy Diagnostics"}
+            {this.state.copied ? "Diagnostics Copied!" : "Copy Diagnostics"}
           </ConsoleButton>
+          <ConsoleNoticeLink
+            href={`${APP_ISSUES_URL}/new?title=${encodeURIComponent(
+              `[Crash] ${this.state.error?.message?.slice(0, 60) || "Runtime Error"}`,
+            )}`}
+            muted
+            testId="issue-link"
+          >
+            Report Issue ↗
+          </ConsoleNoticeLink>
           <ConsoleNoticeLink href="/" muted testId="home-link">
             Return to menu
           </ConsoleNoticeLink>

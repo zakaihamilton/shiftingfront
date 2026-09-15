@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { DocumentTitle } from "@/components/ui/DocumentTitle";
 import { RASTER_ART } from "@/lib/gen/visualAssets";
+import { APP_REPO_URL, APP_VERSION } from "@/lib/site";
 import { MenuHero } from "./MenuHero";
 import { MenuMainPanel } from "./MenuMainPanel";
 import { MenuOverlay } from "./MenuOverlay";
@@ -49,11 +50,19 @@ export function MenuScreen() {
               onOptions={controller.openOptions}
             />
             <footer className={styles.menuFooter}>
+              <button
+                type="button"
+                className={styles.footerLink}
+                onClick={controller.openCredits}
+              >
+                Credits
+              </button>
+              <span className={styles.footerDot}>·</span>
               <Link href="/privacy" className={styles.footerLink}>Privacy</Link>
               <span className={styles.footerDot}>·</span>
               <Link href="/terms" className={styles.footerLink}>Terms</Link>
               <span className={styles.footerDot}>·</span>
-              <a href="https://github.com/zakaihamilton/shiftingfront" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>MIT License</a>
+              <a href={APP_REPO_URL} target="_blank" rel="noopener noreferrer" className={styles.footerLink}>v{APP_VERSION}</a>
             </footer>
           </div>
         </main>

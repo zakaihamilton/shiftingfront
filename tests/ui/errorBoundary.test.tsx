@@ -53,6 +53,7 @@ describe("ErrorBoundary", () => {
     expect(screen.getByText("Battlefield offline")).toBeInTheDocument();
     expect(screen.getByText("reactor breach")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.getByTestId("issue-link")).toHaveAttribute("href", expect.stringContaining("github.com/zakaihamilton/shiftingfront/issues"));
     expect(screen.getByTestId("home-link")).toHaveAttribute("href", "/");
   });
 

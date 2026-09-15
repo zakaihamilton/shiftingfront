@@ -4,6 +4,7 @@ export {
   safeSetItem,
   safeRemoveItem,
   safeKeys,
+  clearAllGameData,
   memoryStorage,
   localStorageAdapter,
   cachedLocalStorage,

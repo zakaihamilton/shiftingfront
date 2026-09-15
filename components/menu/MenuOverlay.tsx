@@ -2,11 +2,12 @@ import type { RefObject } from "react";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { GameSettings } from "@/lib/persist/settings";
 import type { Campaign } from "@/lib/types";
+import { CreditsModal } from "./CreditsModal";
 import { MenuOptions } from "./MenuOptions";
 import { NewGameSetup } from "./NewGameSetup";
 import styles from "./MenuOverlay.module.css";
 
-export type MenuView = "main" | "newGame" | "options";
+export type MenuView = "main" | "newGame" | "options" | "credits";
 
 export function MenuOverlay({
   view,
@@ -74,6 +75,8 @@ export function MenuOverlay({
             onBack={onBack}
           />
         </div>
+      ) : view === "credits" ? (
+        <CreditsModal onBack={onBack} />
       ) : (
         <MenuOptions
           settings={settings}

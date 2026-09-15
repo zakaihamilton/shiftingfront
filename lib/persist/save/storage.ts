@@ -42,6 +42,20 @@ export function safeKeys(storage: StorageAdapter): string[] {
   }
 }
 
+export function clearAllGameData(storage: StorageAdapter): boolean {
+  try {
+    const keys = safeKeys(storage);
+    for (const key of keys) {
+      if (key.startsWith("shiftingfront:") || key.startsWith("shifting-front:")) {
+        safeRemoveItem(storage, key);
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function memoryStorage(initial: Record<string, string> = {}): StorageAdapter {
   const map = new Map(Object.entries(initial));
   return {

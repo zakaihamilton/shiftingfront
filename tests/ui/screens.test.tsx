@@ -101,12 +101,19 @@ describe("MenuScreen", () => {
     expect(screen.queryByText("PLAYS IN YOUR BROWSER")).toBeNull();
     const footer = document.querySelector("footer");
     expect(footer).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Credits" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
     expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
-    expect(screen.getByRole("link", { name: "MIT License" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "v1.0.0" })).toHaveAttribute(
       "href",
       "https://github.com/zakaihamilton/shiftingfront",
     );
+  });
+
+  it("opens the credits dialog from the welcome footer", () => {
+    render(<MenuScreen />);
+    fireEvent.click(screen.getByRole("button", { name: "Credits" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("credits");
   });
 
   it("renders the ISR signal overlay over the welcome scene", () => {

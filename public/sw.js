@@ -1,10 +1,14 @@
 // Shifting Front Service Worker — Offline PWA Cache
-const CACHE_NAME = "shiftingfront-v1";
+const CACHE_NAME = "shiftingfront-v2";
 
 const PRECACHE_URLS = [
   "/",
   "/manifest.webmanifest",
   "/tutorial",
+  "/briefing",
+  "/campaign",
+  "/play",
+  "/campaign-complete",
   "/load",
   "/favicon.ico",
   "/icon.png",

@@ -5,6 +5,11 @@ import { AudioSettingsControls } from "@/components/audio/AudioSettingsControls"
 import { KeybindingsModal } from "./KeybindingsModal";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
+import { useFullscreen } from "@/lib/ui/fullscreen";
+import { cachedLocalStorage, clearAllGameData } from "@/lib/persist/save";
+import { MetalPanel } from "@/components/ui/MetalPanel";
+import { useModalFocus } from "@/components/ui/useModalFocus";
+import { APP_ISSUES_URL } from "@/lib/site";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./PauseMenu.module.css";
 
@@ -21,6 +26,7 @@ export function PauseOptions({
   telemetryRecordCount,
   onExportTelemetry,
   onClearTelemetry,
+  onResetAllData,
   titleId = "pause-title",
   backTooltip = "Return to the pause menu",
 }: {
@@ -36,11 +42,15 @@ export function PauseOptions({
   telemetryRecordCount?: number;
   onExportTelemetry?: () => boolean;
   onClearTelemetry?: () => boolean;
+  onResetAllData?: () => void;
   titleId?: string;
   backTooltip?: string;
 }) {
   const [keybindsOpen, setKeybindsOpen] = useState(false);
   const [telemetryNotice, setTelemetryNotice] = useState("");
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const resetDialogRef = useModalFocus(confirmResetOpen, "reset-data-dialog", "dialog");
+  const fullscreen = useFullscreen();
   const telemetryEnabled = onExportTelemetry !== undefined && onClearTelemetry !== undefined;
 
   const exportTelemetry = () => {
@@ -54,6 +64,16 @@ export function PauseOptions({
     }
     const cleared = onClearTelemetry?.() ?? false;
     setTelemetryNotice(cleared ? "Telemetry cleared." : "Telemetry could not be cleared.");
+  };
+
+  const handleResetAllData = () => {
+    clearAllGameData(cachedLocalStorage());
+    setConfirmResetOpen(false);
+    if (onResetAllData) {
+      onResetAllData();
+    } else if (typeof window !== "undefined") {
+      window.location.replace("/");
+    }
   };
 
   return (
@@ -82,6 +102,15 @@ export function PauseOptions({
             Colorblind: {settings.colorblindMode === "deuteranopia" ? "Deuteranopia (Red-Green)" : settings.colorblindMode === "protanopia" ? "Protanopia (Red-Weak)" : settings.colorblindMode === "tritanopia" ? "Tritanopia (Blue-Yellow)" : "Off"}
           </ConsoleButton>
         ) : null}
+        {fullscreen.isSupported ? (
+          <ConsoleButton
+            className={styles.action}
+            tooltip="Toggle browser fullscreen"
+            onClick={fullscreen.toggle}
+          >
+            Fullscreen: {fullscreen.isFullscreen ? "On" : "Off"}
+          </ConsoleButton>
+        ) : null}
         {onUpdateKeyBindings ? (
           <ConsoleButton className={styles.action} tooltip="Customize keyboard shortcuts and camera controls" onClick={() => setKeybindsOpen(true)}>
             Configure Keybinds…
@@ -100,6 +129,26 @@ export function PauseOptions({
             {telemetryNotice ? <p className={styles.notice} role="status">{telemetryNotice}</p> : null}
           </div>
         ) : null}
+        <div className={styles.group}>
+          <ConsoleLabel className={styles.groupLabel}>Data &amp; Support</ConsoleLabel>
+          <ConsoleButton
+            muted
+            className={styles.action}
+            tooltip="Permanently clear all campaigns, saves, and settings"
+            onClick={() => setConfirmResetOpen(true)}
+          >
+            Reset All Game Data…
+          </ConsoleButton>
+          <a
+            href={APP_ISSUES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.action}
+            style={{ textAlign: "center", textDecoration: "none" }}
+          >
+            Report an Issue / Feedback ↗
+          </a>
+        </div>
         <ConsoleButton muted className={styles.action} tooltip={backTooltip} shortcut={SHORTCUT.back} onClick={onBack}>Back</ConsoleButton>
       </div>
       <AudioSettingsControls settings={settings} onChange={onVolumeChange} />
@@ -109,6 +158,33 @@ export function PauseOptions({
           onSave={onUpdateKeyBindings}
           onClose={() => setKeybindsOpen(false)}
         />
+      ) : null}
+      {confirmResetOpen ? (
+        <div className={styles.confirmOverlay}>
+          <MetalPanel
+            ref={resetDialogRef}
+            tabIndex={-1}
+            className={styles.confirmDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-data-title"
+          >
+            <ConsoleLabel as="h2" id="reset-data-title">
+              Reset All Game Data?
+            </ConsoleLabel>
+            <p className={styles.slotCopy} style={{ marginTop: "0.5rem" }}>
+              This will permanently erase all local campaign progress, named save slots, autosaves, and custom settings. This action cannot be undone.
+            </p>
+            <div className={styles.slotConfirmActions}>
+              <ConsoleButton muted onClick={() => setConfirmResetOpen(false)}>
+                Cancel
+              </ConsoleButton>
+              <ConsoleButton onClick={handleResetAllData}>
+                Confirm Reset
+              </ConsoleButton>
+            </div>
+          </MetalPanel>
+        </div>
       ) : null}
     </>
   );
