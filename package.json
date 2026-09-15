@@ -42,6 +42,7 @@
     "compress-art": "tsx scripts/compress-art.ts",
     "rasterize-icons": "tsx scripts/rasterize-icons.ts",
     "calibrate-portraits": "tsx scripts/calibrate-portraits.ts",
+    "generate-promo": "tsx scripts/generate-promo-assets.ts",
     "test:e2e": "tsx scripts/e2e-preflight.ts && playwright test",
     "health": "repnix check",
     "health:dead-code": "knip",

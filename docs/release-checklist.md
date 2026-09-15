@@ -29,22 +29,19 @@ Ensure all gates pass with 0 errors and 0 warnings.
 
 ---
 
-## 2. Production Web Deployment (`shiftingfront.com`)
+## 2. Production Web Deployment (`shiftingfront.com` / `www.shiftingfront.com`)
 
-Shifting Front is a fully client-side Next.js application that runs on any modern web host supporting Next.js (Vercel, Cloudflare Pages, AWS, Netlify, or self-hosted Node/Docker).
+Shifting Front is a fully client-side Next.js application running on Vercel production hosting.
 
 ### Domain & DNS Verification
 
-- [ ] Confirm DNS records for `shiftingfront.com` point to the production deployment target (e.g. Vercel CNAME `cname.vercel-dns.com` or A records `76.76.21.21`).
-- [ ] Verify SSL/TLS certificates are active and enforcing HTTPS.
-- [ ] Verify `https://shiftingfront.com` redirects `http://` traffic to `https://`.
-
-### Production Headers & Caching
-
-- [ ] Security headers active: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
-- [ ] Permission policy active: `Permissions-Policy: fullscreen=*, autoplay=*, clipboard-write=*`.
-- [ ] Static asset caching: `Cache-Control: public, max-age=31536000, immutable` for `/(art|icons)/:path*`.
-- [ ] Service worker registers and precaches all core routes: `/`, `/tutorial`, `/briefing`, `/campaign`, `/play`, `/campaign-complete`, and `/load`.
+- [x] DNS records point to Vercel production deployment (`www.shiftingfront.com` with `308` redirect from apex `shiftingfront.com`).
+- [x] SSL/TLS certificates active and enforcing HTTPS across both domains.
+- [x] Security headers active: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
+- [x] Permission policy active: `Permissions-Policy: fullscreen=*, autoplay=*, clipboard-write=*`.
+- [x] Static asset caching: `Cache-Control: public, max-age=31536000, immutable` for `/(art|icons)/:path*`.
+- [x] Service worker registers and precaches all core routes: `/`, `/tutorial`, `/briefing`, `/campaign`, `/play`, `/campaign-complete`, and `/load`.
+- [x] Universal social cards available at `/opengraph-image.png` and `/twitter-image.png`.
 
 ---
 
@@ -55,7 +52,7 @@ Shifting Front is a fully client-side Next.js application that runs on any moder
 The application is preconfigured with iframe frame-ancestor permissions for `https://*.itch.io`.
 
 - **Embed Type**: Web game (HTML / Embed in page).
-- **Direct Embed URL**: Point the itch.io embed to `https://shiftingfront.com`.
+- **Direct Embed URL**: Point the itch.io embed to `https://www.shiftingfront.com`.
 - **View Dimensions**: `1280 x 720` (or `1920 x 1080` with auto-scaling).
 - **Fullscreen Button**: Enabled (browser fullscreen button provided in-game).
 - **Orientation**: Landscape / Responsive.
@@ -70,12 +67,16 @@ The application is preconfigured with iframe frame-ancestor permissions for `htt
 
 ### Promotional Artwork Assets
 
-- **Cover Image**: `630 x 500` PNG/WebP (using `public/art/menu-command-vista.webp` or calibrated campaign crop).
-- **Screenshots**: At least 3–5 gameplay screenshots showing:
-  1. Base building with harvesters and ore fields.
-  2. Tactical combat with combat laser effects and health meters.
-  3. Tactical mission briefing with faction portraits.
-  4. Campaign dossier screen showing 6 operations.
+Generated automatically via `yarn generate-promo`:
+
+- **itch.io Cover Image**: `630 x 500` PNG at `docs/press/itch-cover-630x500.png` and `public/promo/itch-cover.png`.
+- **Header Banner**: `1920 x 1080` PNG at `docs/press/banner-1920x1080.png`.
+- **Gameplay Screenshots**: 5 high-resolution `1920 x 1080` PNGs ready for store upload in `docs/press/`:
+  1. `screenshot-1-base-building.png` — Base expansion, ore refinery, and harvesters.
+  2. `screenshot-2-tactical-combat.png` — Tactical combat skirmish, lasers, and unit selection rings.
+  3. `screenshot-3-mission-briefing.png` — Operations briefing with faction portraits and objectives.
+  4. `screenshot-4-campaign-dossier.png` — Campaign operation theater progression.
+  5. `screenshot-5-command-vista.png` — Command desk panoramic vista.
 
 ---
 

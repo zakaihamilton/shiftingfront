@@ -29,13 +29,7 @@ const ibmPlexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const metadataBase = new URL(
-  process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : SITE_URL,
-);
+const metadataBase = new URL(SITE_URL);
 
 export const metadata: Metadata = {
   metadataBase,
@@ -58,10 +52,10 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/art/menu-command-vista.webp",
-        width: 1672,
-        height: 941,
-        type: "image/webp",
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        type: "image/png",
         alt: `${APP_NAME} — Command Desk and Campaign Vista`,
       },
     ],
@@ -70,7 +64,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: ["/art/menu-command-vista.webp"],
+    images: ["/opengraph-image.png"],
   },
 };
 
@@ -91,8 +85,8 @@ const jsonLd = {
     price: "0",
     priceCurrency: "USD",
   },
-  image: `${SITE_URL}/art/menu-command-vista.webp`,
-  screenshot: `${SITE_URL}/art/menu-command-vista.webp`,
+  image: `${SITE_URL}/opengraph-image.png`,
+  screenshot: `${SITE_URL}/opengraph-image.png`,
   author: {
     "@type": "Person",
     name: "Zakai Hamilton",
