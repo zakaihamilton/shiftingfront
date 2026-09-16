@@ -33,6 +33,15 @@ export function useMenuController() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  useEffect(() => {
+    // Warm client-side route chunks for seamless offline readiness
+    router.prefetch?.("/tutorial");
+    router.prefetch?.("/load");
+    router.prefetch?.("/campaign");
+    router.prefetch?.("/briefing");
+    router.prefetch?.("/play");
+  }, [router]);
+
   useEffect(() => () => window.clearTimeout(copyTimer.current), []);
 
   const preview = useMemo(() => {

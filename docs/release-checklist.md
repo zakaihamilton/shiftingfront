@@ -40,7 +40,7 @@ Shifting Front is a fully client-side Next.js application running on Vercel prod
 - [x] Security headers active: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
 - [x] Permission policy active: `Permissions-Policy: fullscreen=*, autoplay=*, clipboard-write=*`.
 - [x] Static asset caching: `Cache-Control: public, max-age=31536000, immutable` for `/(art|icons)/:path*`.
-- [x] Service worker registers and precaches all core routes: `/`, `/tutorial`, `/briefing`, `/campaign`, `/play`, `/campaign-complete`, and `/load`.
+- [x] Service worker registers and precaches all routes (`/`, `/tutorial`, `/briefing`, `/campaign`, `/play`, `/campaign-complete`, `/load`, `/privacy`, `/terms`), all 112 visual art assets (biomes, 3D models, sprites, portraits, terrain, textures), and dynamically discovers/caches linked Next.js static bundles with offline query-parameter routing.
 - [x] Universal social cards available at `/opengraph-image.png` and `/twitter-image.png`.
 
 ---

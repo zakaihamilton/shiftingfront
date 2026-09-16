@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("Service Worker", () => {
@@ -46,5 +46,52 @@ describe("Service Worker", () => {
       const exists = existsSync(publicPath) || existsSync(appPath);
       expect(exists, `Precache asset should exist on disk: ${url}`).toBe(true);
     }
+  });
+
+  it("precaches all visual art assets under public/art", () => {
+    const swPath = resolve(process.cwd(), "public/sw.js");
+    const content = readFileSync(swPath, "utf-8");
+    const match = content.match(/const PRECACHE_URLS = \[([\s\S]*?)\];/);
+    expect(match).not.toBeNull();
+
+    const urls = new Set(
+      match![1]
+        .split("\n")
+        .map((line) => line.trim().replace(/^["']|["'],?$/g, ""))
+        .filter((line) => line.length > 0 && !line.startsWith("//")),
+    );
+
+    function collectFiles(dir: string, baseDir: string): string[] {
+      let results: string[] = [];
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          results = results.concat(collectFiles(full, baseDir));
+        } else {
+          results.push("/" + relative(baseDir, full).replace(/\\/g, "/"));
+        }
+      }
+      return results;
+    }
+
+    const artFiles = collectFiles(resolve(process.cwd(), "public/art"), resolve(process.cwd(), "public"));
+    expect(artFiles.length).toBeGreaterThanOrEqual(100);
+
+    for (const artFile of artFiles) {
+      expect(urls.has(artFile), `Missing art file in PRECACHE_URLS: ${artFile}`).toBe(true);
+    }
+  });
+
+  it("supports offline navigation with query parameters and dynamic subresource discovery", () => {
+    const swPath = resolve(process.cwd(), "public/sw.js");
+    const content = readFileSync(swPath, "utf-8");
+
+    // Must use ignoreSearch to allow offline navigation to ?seed=...&mission=...
+    expect(content).toContain("ignoreSearch: true");
+
+    // Must dynamically discover and cache Next.js static bundles from HTML pages
+    expect(content).toContain("_next/static/");
+    expect(content).toContain("matchAll");
   });
 });
