@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { addBuilding, addUnit, makeFixture, setHeight, setTile } from "../../lib/sim/fixtures";
-import { entityColor, minimapRegionForCell, terrainColors } from "../../lib/render/minimap";
+import { entityColor, minimapRegionForCell, renderMinimap, terrainColors } from "../../lib/render/minimap";
 import { SURFACE_CONCRETE, SURFACE_ROAD, TILE_BLOCKED, TILE_CLEAR, TILE_RESOURCE, TILE_WATER } from "../../lib/types";
 import type { BiomeName } from "../../lib/types";
 import {
@@ -856,6 +856,23 @@ describe("terrain scroll cache key", () => {
 });
 
 describe("minimap classification", () => {
+  it("renders terrain from solid tile samples instead of the atlas grid", () => {
+    const state = makeFixture({ width: 4, height: 4, win: { kind: "annihilate" } });
+    state.entities = [];
+    const fillRect = vi.fn();
+    const drawImage = vi.fn();
+    const ctx = {
+      canvas: { width: 32, height: 32 },
+      fillRect,
+      drawImage,
+    } as unknown as CanvasRenderingContext2D;
+
+    renderMinimap(ctx, state, []);
+
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(fillRect).toHaveBeenCalledTimes(1 + state.width * state.height);
+  });
+
   it("uses one faction color for all unmarked minimap entities", () => {
     const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     addBuilding(state, 0, "power", 1, 1);

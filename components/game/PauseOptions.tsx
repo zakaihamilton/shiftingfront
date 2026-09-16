@@ -105,7 +105,7 @@ export function PauseOptions({
         {fullscreen.isSupported ? (
           <ConsoleButton
             className={styles.action}
-            tooltip="Toggle browser fullscreen"
+            tooltip={`Toggle browser fullscreen (${fullscreen.shortcut})`}
             onClick={fullscreen.toggle}
           >
             Fullscreen: {fullscreen.isFullscreen ? "On" : "Off"}

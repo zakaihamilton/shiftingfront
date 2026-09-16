@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   enterFullscreen,
@@ -14,10 +14,12 @@ import {
 describe("fullscreen utility", () => {
   let originalFullscreenEnabled: PropertyDescriptor | undefined;
   let originalFullscreenElement: PropertyDescriptor | undefined;
+  let originalPlatform: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     originalFullscreenEnabled = Object.getOwnPropertyDescriptor(document, "fullscreenEnabled");
     originalFullscreenElement = Object.getOwnPropertyDescriptor(document, "fullscreenElement");
+    originalPlatform = Object.getOwnPropertyDescriptor(navigator, "platform");
   });
 
   afterEach(() => {
@@ -26,6 +28,9 @@ describe("fullscreen utility", () => {
     }
     if (originalFullscreenElement) {
       Object.defineProperty(document, "fullscreenElement", originalFullscreenElement);
+    }
+    if (originalPlatform) {
+      Object.defineProperty(navigator, "platform", originalPlatform);
     }
     vi.restoreAllMocks();
   });
@@ -81,5 +86,49 @@ describe("fullscreen utility", () => {
     });
 
     expect(result.current.isFullscreen).toBe(true);
+  });
+
+  it("uses F11 to toggle fullscreen", async () => {
+    Object.defineProperty(document, "fullscreenEnabled", { value: true, configurable: true });
+    Object.defineProperty(document, "fullscreenElement", { value: null, configurable: true });
+    const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(document.documentElement, "requestFullscreen", {
+      value: requestFullscreen,
+      configurable: true,
+      writable: true,
+    });
+
+    const { unmount } = renderHook(() => useFullscreen());
+    const event = new KeyboardEvent("keydown", { key: "F11", code: "F11" });
+    const preventDefault = vi.spyOn(event, "preventDefault");
+
+    act(() => window.dispatchEvent(event));
+
+    await waitFor(() => expect(requestFullscreen).toHaveBeenCalledOnce());
+    expect(preventDefault).toHaveBeenCalledOnce();
+    unmount();
+  });
+
+  it("uses the macOS fullscreen shortcut", async () => {
+    Object.defineProperty(navigator, "platform", { value: "MacIntel", configurable: true });
+    Object.defineProperty(document, "fullscreenEnabled", { value: true, configurable: true });
+    Object.defineProperty(document, "fullscreenElement", { value: null, configurable: true });
+    const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(document.documentElement, "requestFullscreen", {
+      value: requestFullscreen,
+      configurable: true,
+      writable: true,
+    });
+
+    const { result, unmount } = renderHook(() => useFullscreen());
+    expect(result.current.shortcut).toBe("Control+Command+F");
+    const event = new KeyboardEvent("keydown", { key: "f", ctrlKey: true, metaKey: true });
+    const preventDefault = vi.spyOn(event, "preventDefault");
+
+    act(() => window.dispatchEvent(event));
+
+    await waitFor(() => expect(requestFullscreen).toHaveBeenCalledOnce());
+    expect(preventDefault).toHaveBeenCalledOnce();
+    unmount();
   });
 });

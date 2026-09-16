@@ -130,7 +130,7 @@ export function BattlefieldHud({
                 type="button"
                 className={styles.directiveToggle}
                 aria-label={fullscreen.isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-                data-tooltip={fullscreen.isFullscreen ? "Exit fullscreen" : "Enter fullscreen (F11)"}
+                data-tooltip={fullscreen.isFullscreen ? `Exit fullscreen (${fullscreen.shortcut})` : `Enter fullscreen (${fullscreen.shortcut})`}
                 onClick={fullscreen.toggle}
               >
                 <span className={styles.directiveToggleIcon} aria-hidden="true">

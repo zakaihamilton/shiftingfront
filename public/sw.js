@@ -1,5 +1,5 @@
 // Shifting Front Service Worker — Offline PWA Cache (Complete Runtime Precache)
-const CACHE_NAME = "shiftingfront-v3";
+const CACHE_NAME = "shiftingfront-v4";
 
 const PRECACHE_URLS = [
   // Core routes
@@ -259,6 +259,14 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (!url.protocol.startsWith("http")) return;
+
+  // Local development must always see the current Next.js bundles. The page
+  // unregisters this worker on localhost, and this guard covers one final
+  // navigation while an older worker is being replaced.
+  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // 1. Navigation requests (HTML pages): Network-first with cache fallback
   if (request.mode === "navigate") {

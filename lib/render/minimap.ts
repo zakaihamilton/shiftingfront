@@ -1,4 +1,3 @@
-import { MAP_SKIRT } from "../gen/map";
 import {
   missionUsesObjectiveZone,
   OBJECTIVE_ZONE_RADIUS,
@@ -9,12 +8,13 @@ import {
   type SimState,
 } from "../types";
 import { fogAt } from "../sim/fog";
-import { atlasPixelAtTile, fogTerrainGain, getTerrainAtlas, isTerrainAtlasBaked, terrainColors } from "./terrainAtlas";
+import { atlasPixelAtTile, atlasRectForTile, fogTerrainGain, getTerrainAtlas, isTerrainAtlasBaked, terrainColors } from "./terrainAtlas";
 import type { ColorblindMode } from "../persist/settings";
 
-const MINIMAP_RENDER_REV = "world-atlas-v4";
+const MINIMAP_RENDER_REV = "world-atlas-v8-visible-detail";
 export const MINIMAP_OVERLAY_TICK_SHIFT = 1;
 const MINIMAP_FOG_COLOR = { r: 7, g: 15, b: 21 };
+const MINIMAP_SAMPLE_WEIGHTS = [1, 2, 3, 4, 3, 2, 1];
 
 export type MinimapRegion = "ground" | "elevation-mid" | "elevation-high" | "water" | "resource" | "blocked" | "road" | "concrete";
 
@@ -77,51 +77,141 @@ export function invalidateMinimap(): void {
 }
 
 function paintMinimapTerrain(ctx: CanvasRenderingContext2D, state: SimState, w: number, h: number): void {
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
+  // The full terrain atlas carries the battlefield's per-tile edge shading.
+  // Scaling it into the radar makes those seams read as an unintended grid,
+  // so sample one interior color per tile and scale a low-resolution raster
+  // smoothly instead.
   const atlas = getTerrainAtlas(state);
   const colors = terrainColors(state.biome);
   ctx.fillStyle = colors.low;
   ctx.fillRect(0, 0, w, h);
-  if (atlas.canvas) {
-    const sx = MAP_SKIRT * atlas.cell;
-    const sy = MAP_SKIRT * atlas.cell;
-    const sw = state.width * atlas.cell;
-    const sh = state.height * atlas.cell;
-    ctx.drawImage(atlas.canvas, sx, sy, sw, sh, 0, 0, w, h);
-    const cellW = w / state.width;
-    const cellH = h / state.height;
-    for (let y = 0; y < state.height; y++) {
-      for (let x = 0; x < state.width; x++) {
-        const fog = fogAt(state, x, y);
-        if (fog >= 2) continue;
-        const gain = fogTerrainGain(fog);
-        ctx.fillStyle = fog === 0
-          ? `rgb(${MINIMAP_FOG_COLOR.r},${MINIMAP_FOG_COLOR.g},${MINIMAP_FOG_COLOR.b})`
-          : `rgba(${MINIMAP_FOG_COLOR.r},${MINIMAP_FOG_COLOR.g},${MINIMAP_FOG_COLOR.b},${1 - gain})`;
-        ctx.fillRect(x * cellW, y * cellH, cellW, cellH);
-      }
-    }
-  } else {
-    const cellW = w / state.width;
-    const cellH = h / state.height;
-    const baked = atlas;
-    for (let y = 0; y < state.height; y++) {
-      for (let x = 0; x < state.width; x++) {
-        const [r, g, b] = atlasPixelAtTile(baked, x, y);
-        const fogState = fogAt(state, x, y);
-        if (fogState === 0) {
-          ctx.fillStyle = `rgb(${MINIMAP_FOG_COLOR.r},${MINIMAP_FOG_COLOR.g},${MINIMAP_FOG_COLOR.b})`;
-          ctx.fillRect(x * cellW, y * cellH, cellW, cellH);
-          continue;
-        }
-        const gain = fogTerrainGain(fogState);
-        const fog = 1 - gain;
-        ctx.fillStyle = `rgb(${Math.round(r * gain + MINIMAP_FOG_COLOR.r * fog)},${Math.round(g * gain + MINIMAP_FOG_COLOR.g * fog)},${Math.round(b * gain + MINIMAP_FOG_COLOR.b * fog)})`;
-        ctx.fillRect(x * cellW, y * cellH, cellW, cellH);
-      }
+
+  if (typeof document !== "undefined") {
+    const sampleCanvas = document.createElement("canvas");
+    sampleCanvas.width = state.width;
+    sampleCanvas.height = state.height;
+    const sampleCtx = sampleCanvas.getContext("2d", { alpha: false });
+    if (sampleCtx) {
+      const image = sampleCtx.createImageData(state.width, state.height);
+      paintMinimapSamples(image.data, atlas, state);
+      sampleCtx.putImageData(image, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(sampleCanvas, 0, 0, state.width, state.height, 0, 0, w, h);
+      paintMinimapVisibleTerrain(ctx, atlas, state, w, h);
+      return;
     }
   }
+
+  const cellW = w / state.width;
+  const cellH = h / state.height;
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      const [r, g, b] = minimapCellColor(atlas, state, x, y);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(x * cellW, y * cellH, cellW, cellH);
+    }
+  }
+}
+
+function paintMinimapVisibleTerrain(
+  ctx: CanvasRenderingContext2D,
+  atlas: ReturnType<typeof getTerrainAtlas>,
+  state: SimState,
+  w: number,
+  h: number,
+): void {
+  if (!atlas.canvas) return;
+  const cellW = w / state.width;
+  const cellH = h / state.height;
+  ctx.save();
+  // Visible terrain should retain the atlas texture. The smoothed sample
+  // raster underneath handles the shrouded bands, while nearest-neighbour
+  // copies keep discovered cells from looking washed out.
+  ctx.imageSmoothingEnabled = false;
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      if (fogAt(state, x, y) !== 2) continue;
+      const rect = atlasRectForTile(x, y, state.width);
+      const inset = Math.min(1, (rect.sw - 1) / 2, (rect.sh - 1) / 2);
+      ctx.drawImage(
+        atlas.canvas,
+        rect.sx + inset,
+        rect.sy + inset,
+        Math.max(1, rect.sw - inset * 2),
+        Math.max(1, rect.sh - inset * 2),
+        x * cellW,
+        y * cellH,
+        cellW,
+        cellH,
+      );
+    }
+  }
+  ctx.restore();
+}
+
+function paintMinimapSamples(
+  pixels: Uint8ClampedArray,
+  atlas: ReturnType<typeof getTerrainAtlas>,
+  state: SimState,
+): void {
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      const fogState = fogAt(state, x, y);
+      if (fogState === 2) {
+        const [r, g, b] = minimapCellColor(atlas, state, x, y);
+        const i = (y * state.width + x) * 4;
+        pixels[i] = r;
+        pixels[i + 1] = g;
+        pixels[i + 2] = b;
+        pixels[i + 3] = 255;
+        continue;
+      }
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+      let weightTotal = 0;
+      for (let oy = -3; oy <= 3; oy++) {
+        for (let ox = -3; ox <= 3; ox++) {
+          const nx = x + ox;
+          const ny = y + oy;
+          if (nx < 0 || ny < 0 || nx >= state.width || ny >= state.height) continue;
+          // Keep hidden terrain opaque and do not bleed discovered terrain
+          // across fog boundaries while smoothing the partially known raster.
+          if (fogAt(state, nx, ny) !== fogState) continue;
+          const [r, g, b] = minimapCellColor(atlas, state, nx, ny);
+          const weight = MINIMAP_SAMPLE_WEIGHTS[ox + 3]! * MINIMAP_SAMPLE_WEIGHTS[oy + 3]!;
+          red += r * weight;
+          green += g * weight;
+          blue += b * weight;
+          weightTotal += weight;
+        }
+      }
+      const i = (y * state.width + x) * 4;
+      pixels[i] = Math.round(red / Math.max(1, weightTotal));
+      pixels[i + 1] = Math.round(green / Math.max(1, weightTotal));
+      pixels[i + 2] = Math.round(blue / Math.max(1, weightTotal));
+      pixels[i + 3] = 255;
+    }
+  }
+}
+
+function minimapCellColor(
+  atlas: ReturnType<typeof getTerrainAtlas>,
+  state: SimState,
+  x: number,
+  y: number,
+): [number, number, number] {
+  const [r, g, b] = atlasPixelAtTile(atlas, x, y);
+  const fogState = fogAt(state, x, y);
+  if (fogState === 0) return [MINIMAP_FOG_COLOR.r, MINIMAP_FOG_COLOR.g, MINIMAP_FOG_COLOR.b];
+  const gain = fogTerrainGain(fogState);
+  const fog = 1 - gain;
+  return [
+    Math.round(r * gain + MINIMAP_FOG_COLOR.r * fog),
+    Math.round(g * gain + MINIMAP_FOG_COLOR.g * fog),
+    Math.round(b * gain + MINIMAP_FOG_COLOR.b * fog),
+  ];
 }
 
 function paintMinimapOverlay(

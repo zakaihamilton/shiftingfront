@@ -94,4 +94,13 @@ describe("Service Worker", () => {
     expect(content).toContain("_next/static/");
     expect(content).toContain("matchAll");
   });
+
+  it("bypasses stale caching during localhost development", () => {
+    const swPath = resolve(process.cwd(), "public/sw.js");
+    const content = readFileSync(swPath, "utf-8");
+
+    expect(content).toContain('const CACHE_NAME = "shiftingfront-v4"');
+    expect(content).toContain('url.hostname === "localhost"');
+    expect(content).toContain('url.hostname === "127.0.0.1"');
+  });
 });

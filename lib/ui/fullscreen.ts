@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { isMacPlatform } from "./shortcuts";
 
 export function isFullscreenSupported(): boolean {
   if (typeof document === "undefined") return false;
@@ -61,21 +62,51 @@ export async function toggleFullscreen(element?: HTMLElement): Promise<boolean> 
   return enterFullscreen(element);
 }
 
+let fullscreenShortcutSubscribers = 0;
+
+function onFullscreenShortcut(event: KeyboardEvent) {
+  const isF11 = event.key === "F11" || event.code === "F11";
+  const isMacCommand = typeof navigator !== "undefined"
+    && isMacPlatform(navigator.platform, navigator.userAgent)
+    && event.key.toLowerCase() === "f"
+    && event.ctrlKey
+    && event.metaKey
+    && !event.altKey
+    && !event.shiftKey;
+  if (!isF11 && !isMacCommand) return;
+  event.preventDefault();
+  if (event.repeat) return;
+  void toggleFullscreen();
+}
+
 function subscribeFullscreen(callback: () => void) {
   if (typeof document === "undefined") return () => undefined;
   document.addEventListener("fullscreenchange", callback);
   document.addEventListener("webkitfullscreenchange", callback);
+  if (typeof window !== "undefined" && fullscreenShortcutSubscribers === 0) {
+    window.addEventListener("keydown", onFullscreenShortcut, true);
+  }
+  fullscreenShortcutSubscribers += 1;
   return () => {
     document.removeEventListener("fullscreenchange", callback);
     document.removeEventListener("webkitfullscreenchange", callback);
+    fullscreenShortcutSubscribers = Math.max(0, fullscreenShortcutSubscribers - 1);
+    if (typeof window !== "undefined" && fullscreenShortcutSubscribers === 0) {
+      window.removeEventListener("keydown", onFullscreenShortcut, true);
+    }
   };
 }
 
 const noopSubscribe = () => () => undefined;
+const getMacSnapshot = () => (
+  typeof navigator !== "undefined" && isMacPlatform(navigator.platform, navigator.userAgent)
+);
+const getMacServerSnapshot = () => false;
 
 export function useFullscreen(): {
   isFullscreen: boolean;
   isSupported: boolean;
+  shortcut: string;
   toggle: () => void;
 } {
   const fullscreenActive = useSyncExternalStore(
@@ -88,6 +119,7 @@ export function useFullscreen(): {
     isFullscreenSupported,
     () => false,
   );
+  const isMac = useSyncExternalStore(noopSubscribe, getMacSnapshot, getMacServerSnapshot);
 
   const toggle = () => {
     void toggleFullscreen();
@@ -96,6 +128,7 @@ export function useFullscreen(): {
   return {
     isFullscreen: fullscreenActive,
     isSupported: supported,
+    shortcut: isMac ? "Control+Command+F" : "F11",
     toggle,
   };
 }

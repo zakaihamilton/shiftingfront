@@ -8,6 +8,8 @@ Shifting Front is a browser-based real-time strategy game about building a force
 
 The same code always creates the same campaign. Share a code to share a universe, return to a saved theater without an account, or start a new war with the roll of a button.
 
+![Shifting Front tactical combat gameplay](docs/press/screenshot-2-tactical-combat.png)
+
 ## Why play
 
 - **Every code is a theater.** Each seed creates its own world, rival factions, named characters, briefings, six-operation campaign, and changing battlefield.
