@@ -21,7 +21,10 @@ jobs:
       - name: Run tests with timing report
         run: |
           mkdir -p artifacts
-          yarn ci:timed-tests
+          # The simulation suite is CPU-bound and the hosted runner exposes
+          # fewer cores than Vitest's default pool. Keep the replay tests
+          # within their per-test timeout instead of oversubscribing the job.
+          yarn ci:timed-tests --maxWorkers=2
       - name: Upload test timing report
         if: always()
         uses: actions/upload-artifact@v4
