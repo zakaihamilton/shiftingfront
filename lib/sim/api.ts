@@ -164,7 +164,7 @@ export function tick(
   commands?: Command[],
   options: TickOptions = {},
 ): { state: SimState; events: SimEvent[]; commandRejections: number } {
-  resetPathBudget();
+  resetPathBudget(state);
   const collectEvents = options.collectEvents !== false;
   const events = collectEvents ? [] : EMPTY_EVENTS;
   const commandEvents = applyQueuedCommands(state, commands);

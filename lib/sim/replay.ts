@@ -61,9 +61,11 @@ export function simulationFingerprint(state: SimState): string {
     missionName: _missionName,
     missionKind: _missionKind,
     controlGroups: _controlGroups,
+    pathBudget: _pathBudget,
     entities,
     ...dynamicState
   } = state;
+  void _pathBudget;
   void _fog;
   void _seed;
   void _missionIndex;

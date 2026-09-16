@@ -465,6 +465,8 @@ export type SimState = {
   controlGroups: ControlGroups;
   /** Increments whenever a building footprint changes the static navigation grid. */
   navigationRevision: number;
+  /** Per-tick pathfinding search budget tracking. */
+  pathBudget?: { remaining: number; used: number };
 };
 
 export type Command =

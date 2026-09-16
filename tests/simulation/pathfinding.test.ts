@@ -1011,4 +1011,43 @@ describe("pathfinding budget", () => {
     expect(attacker.path).toEqual(prior);
     expect(backgroundPathSearches()).toBe(0);
   });
+
+  it("maintains independent search budgets across different SimState instances", () => {
+    const s1 = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const s2 = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+
+    resetPathBudget(s1, 1);
+    resetPathBudget(s2, 5);
+
+    expect(tryFindPath(s1, { x: 1, y: 1 }, { x: 2, y: 2 })).toBeDefined();
+    expect(tryFindPath(s1, { x: 1, y: 1 }, { x: 2, y: 2 })).toBeUndefined(); // s1 exhausted
+    expect(backgroundPathSearches(s1)).toBe(1);
+    expect(s1.pathBudget?.remaining).toBe(0);
+
+    // s2 should still have its full budget
+    expect(backgroundPathSearches(s2)).toBe(0);
+    expect(s2.pathBudget?.remaining).toBe(5);
+    expect(tryFindPath(s2, { x: 1, y: 1 }, { x: 2, y: 2 })).toBeDefined();
+    expect(backgroundPathSearches(s2)).toBe(1);
+    expect(s2.pathBudget?.remaining).toBe(4);
+
+    // Tick s1 resets s1's budget but leaves s2 alone
+    tick(s1);
+    expect(s1.pathBudget?.remaining).toBe(PATH_BUDGET_PER_TICK);
+    expect(s1.pathBudget?.used).toBe(0);
+    expect(s2.pathBudget?.remaining).toBe(4);
+    expect(s2.pathBudget?.used).toBe(1);
+  });
+
+  it("does not let an initialized state consume the default budget of a new state", () => {
+    const s1 = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const s2 = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+
+    resetPathBudget(1);
+    expect(tryFindPath(s1, { x: 1, y: 1 }, { x: 2, y: 2 })).toBeDefined();
+    expect(s1.pathBudget).toEqual({ remaining: 0, used: 1 });
+
+    expect(tryFindPath(s2, { x: 1, y: 1 }, { x: 2, y: 2 })).toBeDefined();
+    expect(s2.pathBudget).toEqual({ remaining: 0, used: 1 });
+  });
 });

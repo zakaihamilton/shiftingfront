@@ -23,7 +23,11 @@ export function getAudioContext(): AudioContext | null {
     try {
       ctx = new C({ sampleRate: AUDIO_SAMPLE_RATE });
     } catch {
-      return null;
+      try {
+        ctx = new C();
+      } catch {
+        return null;
+      }
     }
   }
   return ctx;

@@ -1,8 +1,8 @@
 import { formatSeed } from "../../seed/rng";
 import { SURFACE_NONE } from "../../types";
-import type { SimState, UnitKind } from "../../types";
+import type { SimState, SurfaceKind, UnitKind } from "../../types";
 import { generateWorld } from "../../gen/world";
-import { expandFog } from "../../sim/fog";
+import { expandFog, fogGridHeight, fogGridWidth } from "../../sim/fog";
 import { compactDestroyedEntities, compactedState } from "../../sim/world/lifecycle";
 import { isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
 import {
@@ -13,7 +13,9 @@ import {
 } from "./validation";
 import { isRecord } from "../utils";
 import { migrateSaveContent } from "./migrations";
+import { decodeRle, encodeRle, isRleEncoded, isRleString } from "./rle";
 export { SAVE_CONTENT_VERSION } from "./validation";
+export { encodeRle, decodeRle } from "./rle";
 
 export const SAVE_PREFIX = "shiftingfront:save:";
 export const SAVE_VERSION = 2;
@@ -68,8 +70,20 @@ export type SaveMeta = {
   savedAt: number;
 };
 
+export function encodeSavedState(state: SimState): unknown {
+  const compacted = compactedState(state);
+  return {
+    ...compacted,
+    tiles: Array.isArray(compacted.tiles) ? encodeRle(compacted.tiles) : compacted.tiles,
+    heights: Array.isArray(compacted.heights) ? encodeRle(compacted.heights) : compacted.heights,
+    surfaces: Array.isArray(compacted.surfaces) ? encodeRle(compacted.surfaces) : compacted.surfaces,
+    resourceAmount: Array.isArray(compacted.resourceAmount) ? encodeRle(compacted.resourceAmount) : compacted.resourceAmount,
+    fog: Array.isArray(compacted.fog) ? encodeRle(compacted.fog) : compacted.fog,
+  };
+}
+
 export function serializeState(state: SimState): string {
-  return JSON.stringify(compactedState(state));
+  return JSON.stringify(encodeSavedState(state));
 }
 
 export function deserializeState(raw: string): SimState {
@@ -86,14 +100,25 @@ function normalizeState(value: unknown): SimState {
   }
   const s = value as unknown as SimState;
   if (!Number.isInteger(s.navigationRevision) || s.navigationRevision < 0) s.navigationRevision = 0;
-  if (!s.heights || s.heights.length !== s.width * s.height) {
-    s.heights = new Array(s.width * s.height).fill(1);
+  const tileCount = s.width * s.height;
+  const canDecode = (raw: unknown, allowEmpty = false): boolean =>
+    (Array.isArray(raw) && raw.length > 0) ||
+    (isRleEncoded(raw) && (allowEmpty || raw.runs.length > 0)) ||
+    (isRleString(raw) && (allowEmpty || raw.length > 0));
+  if (canDecode(s.tiles)) s.tiles = decodeRle(s.tiles, tileCount);
+  if (canDecode(s.heights)) s.heights = decodeRle(s.heights, tileCount);
+  if (!canDecode(s.heights)) {
+    s.heights = new Array(tileCount).fill(1);
   }
-  if (!s.surfaces || s.surfaces.length !== s.width * s.height) {
-    s.surfaces = new Array(s.width * s.height).fill(SURFACE_NONE);
+  if (canDecode(s.surfaces)) s.surfaces = decodeRle(s.surfaces, tileCount) as SurfaceKind[];
+  if (!canDecode(s.surfaces)) {
+    s.surfaces = new Array(tileCount).fill(SURFACE_NONE);
   }
+  if (canDecode(s.resourceAmount)) s.resourceAmount = decodeRle(s.resourceAmount, tileCount);
   if (!s.biome) s.biome = generateWorld(s.seed).biome;
-  if (!Array.isArray(s.fog)) s.fog = [];
+  const fogW = fogGridWidth(s.width);
+  const fogH = fogGridHeight(s.height);
+  s.fog = canDecode(s.fog, true) ? decodeRle(s.fog, fogW * fogH, tileCount) : [];
   s.fog = expandFog(s.fog, s.width, s.height);
   if (!s.losses || !Array.isArray(s.losses.units) || !Array.isArray(s.losses.buildings)) {
     s.losses = { units: [0, 0], buildings: [0, 0] };

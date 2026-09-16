@@ -103,6 +103,14 @@ describe("normalizeState edge cases", () => {
     const restored = deserializeState(raw);
     expect(restored.heights).toBeDefined();
     expect(restored.heights.length).toBe(restored.width * restored.height);
+    expect(new Set(restored.heights)).toEqual(new Set([1]));
+  });
+
+  it("rejects missing required tile and resource arrays", () => {
+    const state = baseState(1000);
+    delete (state as { tiles?: unknown }).tiles;
+    delete (state as { resourceAmount?: unknown }).resourceAmount;
+    expect(() => deserializeState(serializeState(state))).toThrow("Invalid save state");
   });
 
   it("fills missing surfaces array", () => {

@@ -75,4 +75,29 @@ describe("audio context", () => {
     expect(isAudioUnlocked()).toBe(true);
     expect(resume).toHaveBeenCalledTimes(2);
   });
+
+  it("falls back to default AudioContext when sampleRate option throws (e.g. iOS/Safari)", async () => {
+    let attemptedWithOptions = false;
+    let fallbackCalled = false;
+    class AudioContextStub {
+      sampleRate = 48000;
+
+      constructor(options?: AudioContextOptions) {
+        if (options?.sampleRate) {
+          attemptedWithOptions = true;
+          throw new DOMException("The operation is not supported", "NotSupportedError");
+        }
+        fallbackCalled = true;
+      }
+    }
+
+    vi.stubGlobal("window", { AudioContext: AudioContextStub });
+    const { getAudioContext } = await import("../../lib/audio/context");
+
+    const ctx = getAudioContext();
+    expect(attemptedWithOptions).toBe(true);
+    expect(fallbackCalled).toBe(true);
+    expect(ctx).not.toBeNull();
+    expect(ctx?.sampleRate).toBe(48000);
+  });
 });

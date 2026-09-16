@@ -255,6 +255,7 @@ export function isStateShape(value: unknown): value is SimState {
   if (value.aiContacts !== undefined && (!isRecord(value.aiContacts) || !Object.entries(value.aiContacts).every(([key, contact]) =>
     isIntegerInRange(Number(key), 0, Number.MAX_SAFE_INTEGER) && isAiContact(contact),
   ))) return false;
+  if (value.pathBudget !== undefined && (!isRecord(value.pathBudget) || !isIntegerInRange(value.pathBudget.remaining, 0, Number.MAX_SAFE_INTEGER) || !isIntegerInRange(value.pathBudget.used, 0, Number.MAX_SAFE_INTEGER))) return false;
   return true;
 }
 

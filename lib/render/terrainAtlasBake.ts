@@ -334,7 +334,30 @@ function organicEdgeBlendStrength(
   return blendCap * Math.min(1, difference / spreadScale);
 }
 
-export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): TerrainAtlasData {
+export type AtlasBakeContext = {
+  state: AtlasWorld;
+  grainGeneration: number;
+  cols: number;
+  rows: number;
+  width: number;
+  height: number;
+  colors: Float32Array;
+  classes: Uint8Array;
+  features: Array<TerrainFeatureSample>;
+  waterCells: Uint8Array;
+  sceneryGrid: AtlasSceneryGrid;
+  shoreDist: Uint8Array;
+  salt: number;
+  mats: ReturnType<typeof materialsFor>;
+  rig: ReturnType<typeof terrainLightRigFor>;
+  pixelFractions: number[];
+  edgeFactors: number[];
+  organicCorners: ReturnType<typeof bakeOrganicCornerBridges>;
+  data: Uint8ClampedArray;
+  currentRow: number;
+};
+
+export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBakeContext {
   const { cols, rows, width, height } = atlasSize(state);
   const colors = new Float32Array(cols * rows * 3);
   const classes = new Uint8Array(cols * rows);
@@ -387,9 +410,55 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
   }
 
   const organicCorners = bakeOrganicCornerBridges(colors, classes, cols, rows, salt);
-
   const data = new Uint8ClampedArray(width * height * 4);
-  for (let row = 0; row < rows; row++) {
+
+  return {
+    state,
+    grainGeneration,
+    cols,
+    rows,
+    width,
+    height,
+    colors,
+    classes,
+    features,
+    waterCells,
+    sceneryGrid,
+    shoreDist,
+    salt,
+    mats,
+    rig,
+    pixelFractions,
+    edgeFactors,
+    organicCorners,
+    data,
+    currentRow: 0,
+  };
+}
+
+export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): boolean {
+  const {
+    state,
+    cols,
+    rows,
+    width,
+    colors,
+    classes,
+    features,
+    sceneryGrid,
+    shoreDist,
+    salt,
+    mats,
+    pixelFractions,
+    edgeFactors,
+    organicCorners,
+    data,
+  } = ctx;
+  const startRow = ctx.currentRow;
+  const sliceSize = Number.isFinite(rowCount) ? Math.max(1, Math.floor(rowCount)) : 1;
+  const endRow = Math.min(rows, startRow + sliceSize);
+
+  for (let row = startRow; row < endRow; row++) {
     for (let col = 0; col < cols; col++) {
       const gx = col - MAP_SKIRT;
       const gy = row - MAP_SKIRT;
@@ -819,16 +888,27 @@ export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): Te
     }
   }
 
+  ctx.currentRow = endRow;
+  return ctx.currentRow >= rows;
+}
+
+export function finalizeAtlasBake(ctx: AtlasBakeContext): TerrainAtlasData {
   return {
-    key: makeAtlasKey(state, grainGeneration),
-    data,
-    width,
-    height,
+    key: makeAtlasKey(ctx.state, ctx.grainGeneration),
+    data: ctx.data,
+    width: ctx.width,
+    height: ctx.height,
     cell: ATLAS_CELL,
-    mapWidth: state.width,
-    mapHeight: state.height,
-    waterCells,
+    mapWidth: ctx.state.width,
+    mapHeight: ctx.state.height,
+    waterCells: ctx.waterCells,
   };
+}
+
+export function bakeTerrainAtlasData(state: AtlasWorld, grainGeneration = 0): TerrainAtlasData {
+  const ctx = initAtlasBake(state, grainGeneration);
+  bakeAtlasRowSlice(ctx, ctx.rows);
+  return finalizeAtlasBake(ctx);
 }
 
 export function atlasPixelAtTile(atlas: TerrainAtlasData, tileX: number, tileY: number): [number, number, number] {

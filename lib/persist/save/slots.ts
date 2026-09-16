@@ -1,7 +1,6 @@
 import { formatSeed } from "../../seed/rng";
 import { generateWorld } from "../../gen/world";
 import type { CampaignProgress, SimState } from "../../types";
-import { compactedState } from "../../sim/world/lifecycle";
 import { isRecord } from "../utils";
 import {
   SAVE_CONTENT_VERSION,
@@ -9,7 +8,7 @@ import {
   isNumber,
   assertSupportedContentVersion,
 } from "./validation";
-import { decodeSavedState } from "./serialize";
+import { decodeSavedState, encodeSavedState } from "./serialize";
 import { migrateSaveContent } from "./migrations";
 import { listSaves } from "./api";
 import { safeGetItem, safeKeys, safeRemoveItem, safeSetItem, type StorageAdapter } from "./storage";
@@ -173,7 +172,7 @@ export function writeSlot(
       contentVersion: SAVE_CONTENT_VERSION,
       savedAt,
       name: normalizedName,
-      state: compactedState(state),
+      state: encodeSavedState(state),
       campaign,
     };
     if (!safeSetItem(storage, slotKey(slotId), JSON.stringify(payload))) return { ok: false };

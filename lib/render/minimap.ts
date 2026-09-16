@@ -9,7 +9,7 @@ import {
   type SimState,
 } from "../types";
 import { fogAt } from "../sim/fog";
-import { atlasPixelAtTile, fogTerrainGain, getTerrainAtlas, terrainColors } from "./terrainAtlas";
+import { atlasPixelAtTile, fogTerrainGain, getTerrainAtlas, isTerrainAtlasBaked, terrainColors } from "./terrainAtlas";
 import type { ColorblindMode } from "../persist/settings";
 
 const MINIMAP_RENDER_REV = "world-atlas-v4";
@@ -232,7 +232,7 @@ export function minimapCacheKeys(
     : "";
   const palKey = `${state.factions[0]?.palette.primary ?? ""}:${state.factions[1]?.palette.primary ?? ""}`;
   const selectedKeyValue = selectedKey(selectedIds);
-  const terrainKey = `${MINIMAP_RENDER_REV}:${state.seed}:${state.tick >> 4}:${state.biome}:${state.width}x${state.height}:${w}x${h}`;
+  const terrainKey = `${MINIMAP_RENDER_REV}:${state.seed}:${state.tick >> 4}:${state.biome}:${state.width}x${state.height}:${w}x${h}:${isTerrainAtlasBaked(state) ? "ready" : "pending"}`;
   const overlayKey = `${terrainKey}:${state.tick >> MINIMAP_OVERLAY_TICK_SHIFT}:${state.result}:${viewKey}:${state.entities.length}:${palKey}:${selectedKeyValue}:${mode}`;
   return { terrainKey, overlayKey };
 }
