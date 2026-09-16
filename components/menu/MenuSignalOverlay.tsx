@@ -20,12 +20,13 @@ import {
   type PreviewPhase,
   type Shot,
 } from "./menuBackdropSim";
-import { isTerrainAtlasReady, preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
+import { preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
 import styles from "./MenuSignalOverlay.module.css";
 
 const REDUCE_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const FEED_WIDTH = 768;
 const FEED_HEIGHT = 512;
+const PREVIEW_ATLAS_ROWS_PER_CHUNK = 32;
 
 function subscribeReduceMotion(onStoreChange: () => void) {
   const media = window.matchMedia?.(REDUCE_MOTION_QUERY);
@@ -81,8 +82,8 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
       previewMissionIndex(initialCycleIndex, initialSeed),
       previewScenarioKind(initialCycleIndex),
     );
-    preloadTerrainAtlas(scene.ground);
-    if (scene.state) preloadTerrainAtlas(scene.state);
+    preloadTerrainAtlas(scene.ground, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
+    if (scene.state) preloadTerrainAtlas(scene.state, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
 
     let nextScene: CinemaScene | null = null;
     let cycleIndex = previewRef.current.cycleIndex;
@@ -109,8 +110,8 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
           previewMissionIndex(next.cycleIndex, seed),
           previewScenarioKind(next.cycleIndex),
         );
-        preloadTerrainAtlas(scene.ground);
-        if (scene.state) preloadTerrainAtlas(scene.state);
+        preloadTerrainAtlas(scene.ground, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
+        if (scene.state) preloadTerrainAtlas(scene.state, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
         nextScene = null;
         shots.length = 0;
         cycleIndex = next.cycleIndex;
@@ -121,13 +122,15 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
           previewMissionIndex(next.cycleIndex + 1, nextSeed),
           previewScenarioKind(next.cycleIndex + 1),
         );
-        preloadTerrainAtlas(nextScene.ground);
-        if (nextScene.state) preloadTerrainAtlas(nextScene.state);
+        preloadTerrainAtlas(nextScene.ground, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
+        if (nextScene.state) preloadTerrainAtlas(nextScene.state, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
       }
 
-      const terrainReady = scene.state ? isTerrainAtlasReady(scene.state) : isTerrainAtlasReady(scene.ground);
-      const isExpanded = next.expanded && terrainReady;
-      const effectivePreview: PreviewPhase = isExpanded === next.expanded ? next : { ...next, expanded: false };
+      // The terrain renderer has a useful material fallback while the async
+      // atlas is baking, so do not suppress the first preview window waiting
+      // for the high-detail atlas. Otherwise a slow bake can consume the
+      // entire five-second play window and leave the menu with no live feed.
+      const effectivePreview = next;
 
       if (effectivePreview.expanded) {
         stepCinemaScene(scene, shots, t, now);

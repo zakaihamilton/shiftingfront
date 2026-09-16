@@ -67,7 +67,7 @@ export function CommandSidebar({
 
   useEffect(() => {
     if (!window.matchMedia) return;
-    const query = window.matchMedia("(max-width: 799px) and (orientation: portrait)");
+    const query = window.matchMedia("(max-width: 1023px) and (orientation: portrait)");
     const update = () => setPortraitViewport(query.matches);
     update();
     query.addEventListener?.("change", update);

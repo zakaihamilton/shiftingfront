@@ -220,6 +220,12 @@
   }
 }
 
+@media (max-width: 1023px) and (orientation: portrait) {
+  .inner {
+    grid-template-columns: minmax(4.25rem, 7.5rem) minmax(0, 1fr) minmax(4.25rem, 7.5rem);
+  }
+}
+
 @media (max-width: 639px) {
   .panelScroll {
     gap: 0.55rem;
@@ -262,7 +268,7 @@
   }
 
   .inner {
-    grid-template-columns: 3.2rem minmax(0, 1fr) 3.2rem;
+    grid-template-columns: minmax(4.25rem, 20vw) minmax(0, 1fr) minmax(4.25rem, 20vw);
     column-gap: 0.35rem;
     row-gap: 0.45rem;
   }

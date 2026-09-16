@@ -90,7 +90,10 @@ export function isTerrainAtlasBaked(state: AtlasWorld): boolean {
   return Boolean(atlasCache && atlasCache.key === terrainAtlasKey(state));
 }
 
-export function preloadTerrainAtlas(state: AtlasWorld): Promise<boolean> {
+export function preloadTerrainAtlas(
+  state: AtlasWorld,
+  options?: { rowsPerChunk?: number },
+): Promise<boolean> {
   if (typeof Image === "undefined") return Promise.resolve(true);
   if (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom")) return Promise.resolve(true);
   const biomeSrc = biomeArt(state.biome);
@@ -128,7 +131,7 @@ export function preloadTerrainAtlas(state: AtlasWorld): Promise<boolean> {
 
   return Promise.all([loadOne(biomeSrc), loadOne(plateSrc)]).then(async () => {
     if (typeof document !== "undefined") {
-      await getTerrainAtlasAsync(state);
+      await getTerrainAtlasAsync(state, options);
     }
     return true;
   });

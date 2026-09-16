@@ -169,7 +169,7 @@
   box-shadow: inset 1px 1px var(--chrome-bevel), inset -1px -1px var(--chrome-inset), 0 0 0 1px var(--a, var(--chrome-cyan));
 }
 
-@media (max-width: 799px) and (orientation: portrait) {
+@media (max-width: 1023px) and (orientation: portrait) {
   .sidebar {
     position: absolute;
     z-index: 55;
@@ -244,6 +244,19 @@
     padding: 0.55rem;
     border: 1px solid var(--chrome-cyan-dim);
     background: color-mix(in srgb, var(--chrome-cyan) 7%, var(--chrome-steel-lo));
+  }
+}
+
+@media (min-width: 800px) and (max-width: 1023px) and (orientation: portrait) {
+  .sidebar {
+    left: 50%;
+    right: auto;
+    width: min(32rem, calc(100% - 1rem));
+    transform: translate(-50%, 100%);
+  }
+
+  .sidebar[data-mobile-open="true"] {
+    transform: translate(-50%, 0);
   }
 }
 

@@ -100,4 +100,53 @@ describe("audio context", () => {
     expect(ctx).not.toBeNull();
     expect(ctx?.sampleRate).toBe(48000);
   });
+
+  it("handles legacy webkitAudioContext prefix when standard AudioContext is absent", async () => {
+    class WebkitAudioStub {
+      sampleRate = AUDIO_SAMPLE_RATE;
+    }
+    vi.stubGlobal("window", { webkitAudioContext: WebkitAudioStub });
+    const { getAudioContext } = await import("../../lib/audio/context");
+
+    const ctx = getAudioContext();
+    expect(ctx).not.toBeNull();
+    expect(ctx?.sampleRate).toBe(AUDIO_SAMPLE_RATE);
+  });
+
+  it("gracefully returns null when AudioContext is completely unsupported or throws fatally", async () => {
+    class BrokenAudioStub {
+      constructor() {
+        throw new Error("DeviceNotFound");
+      }
+    }
+    vi.stubGlobal("window", { AudioContext: BrokenAudioStub });
+    const { getAudioContext, resumeAudio, unlockAudioContext } = await import("../../lib/audio/context");
+
+    expect(getAudioContext()).toBeNull();
+    expect(resumeAudio()).toBeNull();
+    expect(unlockAudioContext()).toBeNull();
+  });
+
+  it("automatically recreates a new context if an existing context transitions to closed state", async () => {
+    let instances = 0;
+    class AudioContextStub {
+      sampleRate = AUDIO_SAMPLE_RATE;
+      state: AudioContextState = "running";
+      constructor() {
+        instances += 1;
+      }
+    }
+    vi.stubGlobal("window", { AudioContext: AudioContextStub });
+    const { getAudioContext } = await import("../../lib/audio/context");
+
+    const first = getAudioContext();
+    expect(instances).toBe(1);
+
+    // Simulate system closing the audio context (e.g. unplugging headphones / OS sleep)
+    if (first) Reflect.defineProperty(first, "state", { value: "closed", configurable: true });
+
+    const second = getAudioContext();
+    expect(instances).toBe(2);
+    expect(second).not.toBe(first);
+  });
 });

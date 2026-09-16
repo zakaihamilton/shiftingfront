@@ -1,5 +1,4 @@
 import { beforeEach, vi } from "vitest";
-import { resetPathBudget } from "../lib/sim/pathBudget";
 import { resetFxTileIndex } from "../lib/render/terrainWeather";
 import { clearTurretRasterCache } from "../lib/render/gl/turretRaster";
 import { invalidateMinimap } from "../lib/render/minimap";
@@ -12,7 +11,6 @@ import { clearVisualProfileCache } from "../lib/gen/visualProfile";
 vi.spyOn(console, "debug").mockImplementation(() => {});
 
 beforeEach(() => {
-  resetPathBudget();
   resetFxTileIndex();
   clearTurretRasterCache();
   invalidateMinimap();

@@ -246,7 +246,7 @@ for (let i = 0; i < BLOCKED_COMBAT_UNITS; i++) {
 }
 const blockedCombatTimings: number[] = [];
 for (let i = 0; i < BLOCKED_COMBAT_TICKS; i++) {
-  resetPathBudget();
+  resetPathBudget(blockedCombatState);
   const started = performance.now();
   tickCombat(blockedCombatState);
   if (i >= SIM_WARMUP_TICKS / 2) blockedCombatTimings.push(performance.now() - started);

@@ -39,28 +39,21 @@ export function entityColor(e: Entity, state: SimState, mode: ColorblindMode = "
   if (e.marked) return "#ffe066";
   if (mode === "deuteranopia" || mode === "protanopia") {
     if (e.owner === 0) {
-      if (e.class === "building") return e.kind === "turret" || e.kind === "constructionYard" ? "#7dd3fc" : "#0284c7";
       return "#38bdf8";
     }
-    if (e.class === "building") return e.kind === "turret" || e.kind === "objective" ? "#fed7aa" : "#ea580c";
     return "#fb923c";
   }
   if (mode === "tritanopia") {
     if (e.owner === 0) {
-      if (e.class === "building") return e.kind === "turret" || e.kind === "constructionYard" ? "#5eead4" : "#0d9488";
       return "#14b8a6";
     }
-    if (e.class === "building") return e.kind === "turret" || e.kind === "objective" ? "#fecdd3" : "#e11d48";
     return "#f43f5e";
   }
   const pal = state.factions[e.owner]?.palette;
   if (!pal) return "#888";
-  if (e.class === "building") {
-    if (e.kind === "turret") return pal.accent;
-    if (e.kind === "constructionYard" || e.kind === "objective") return pal.light;
-    return pal.primary;
-  }
-  if (e.kind === "harvester") return pal.accent;
+  // Minimap color communicates ownership; size already distinguishes units
+  // from buildings, so initial and newly created friendly entities should not
+  // be split into different shades based on their role.
   return pal.light;
 }
 

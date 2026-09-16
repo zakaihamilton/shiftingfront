@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { addUnit, makeFixture, setHeight, setTile } from "../../lib/sim/fixtures";
-import { minimapRegionForCell, terrainColors } from "../../lib/render/minimap";
+import { addBuilding, addUnit, makeFixture, setHeight, setTile } from "../../lib/sim/fixtures";
+import { entityColor, minimapRegionForCell, terrainColors } from "../../lib/render/minimap";
 import { SURFACE_CONCRETE, SURFACE_ROAD, TILE_BLOCKED, TILE_CLEAR, TILE_RESOURCE, TILE_WATER } from "../../lib/types";
 import type { BiomeName } from "../../lib/types";
 import {
@@ -856,6 +856,25 @@ describe("terrain scroll cache key", () => {
 });
 
 describe("minimap classification", () => {
+  it("uses one faction color for all unmarked minimap entities", () => {
+    const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    addBuilding(state, 0, "power", 1, 1);
+    addBuilding(state, 0, "turret", 3, 1);
+    addUnit(state, 0, "infantry", 1, 3);
+    addBuilding(state, 1, "power", 8, 8);
+    addBuilding(state, 1, "objective", 10, 8);
+    addUnit(state, 1, "tank", 8, 10);
+    const friendly = state.entities.filter((entity) => entity.owner === 0 && !entity.marked);
+    const hostile = state.entities.filter((entity) => entity.owner === 1 && !entity.marked);
+
+    expect(new Set(friendly.map((entity) => entityColor(entity, state))).size).toBe(1);
+    expect(new Set(hostile.map((entity) => entityColor(entity, state))).size).toBe(1);
+
+    const marked = friendly[0]!;
+    marked.marked = true;
+    expect(entityColor(marked, state)).toBe("#ffe066");
+  });
+
   it("keeps minimap region classification and palette semantics coordinated", () => {
     const state = makeFixture({ width: 10, height: 10, win: { kind: "annihilate" } });
     setTile(state, 1, 1, TILE_WATER);

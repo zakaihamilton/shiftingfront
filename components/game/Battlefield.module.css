@@ -604,7 +604,7 @@
   }
 }
 
-@media (max-width: 799px) and (orientation: portrait) {
+@media (max-width: 1023px) and (orientation: portrait) {
   .status {
     --status-backdrop-height: 9rem;
     padding: max(0.55rem, env(safe-area-inset-top)) 0.6rem 0.45rem;
@@ -612,6 +612,8 @@
   }
 
   .missionMeta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.45rem;
   }
 
@@ -636,6 +638,15 @@
   .seed,
   .level {
     letter-spacing: 0.14em;
+  }
+
+  .level {
+    width: max-content;
+    padding-left: 0;
+  }
+
+  .level::before {
+    display: none;
   }
 
   .objectiveStack { width: auto; max-width: none; }

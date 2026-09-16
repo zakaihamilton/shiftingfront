@@ -64,4 +64,13 @@ describe("RLE compression", () => {
     const compressionRatio = serialized.length / uncompressed.length;
     expect(compressionRatio).toBeLessThan(0.3); // >70% size reduction
   });
+
+  it("enforces a hard payload budget ceiling on serialized saves", () => {
+    for (const seed of [0, 421, 1337, 9999]) {
+      const state = createMission({ seed, missionIndex: 5 });
+      const serialized = serializeState(state);
+      // Hard ceiling: Must remain under 64 KB (providing ~75x safety margin under 5 MB quota)
+      expect(serialized.length).toBeLessThan(64 * 1024);
+    }
+  });
 });

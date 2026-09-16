@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 const root = join(process.cwd(), "lib");
@@ -21,6 +22,26 @@ describe("domain architecture boundary", () => {
     const violations = domainRoots.flatMap((domainRoot) => sourceFiles(join(root, domainRoot))
       .filter((path) => forbidden.test(readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")))
       .map((path) => relative(process.cwd(), path)));
+
+    expect(violations).toEqual([]);
+  });
+
+  it("forbids top-level mutable variables (let or var) in pure domain modules", () => {
+    const violations: Array<{ file: string; statement: string }> = [];
+    for (const domainRoot of domainRoots) {
+      for (const path of sourceFiles(join(root, domainRoot))) {
+        const code = readFileSync(path, "utf8");
+        const sf = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true);
+        for (const stmt of sf.statements) {
+          if (ts.isVariableStatement(stmt) && (stmt.declarationList.flags & ts.NodeFlags.Const) === 0) {
+            violations.push({
+              file: relative(process.cwd(), path),
+              statement: stmt.getText(sf).trim(),
+            });
+          }
+        }
+      }
+    }
 
     expect(violations).toEqual([]);
   });

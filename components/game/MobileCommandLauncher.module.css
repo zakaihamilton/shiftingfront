@@ -3,7 +3,7 @@
   display: none;
 }
 
-@media (max-width: 799px) and (orientation: portrait) {
+@media (max-width: 1023px) and (orientation: portrait) {
   .scrim {
     position: fixed;
     z-index: 45;

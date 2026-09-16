@@ -48,7 +48,7 @@ describe("pathfinding", () => {
     expect(units.every((unit) => !!unit.flowGoal)).toBe(true);
     tick(s);
     expect(units.every((unit) => unit.x !== 3 || unit.y !== 4 || unit.path.length > 0)).toBe(true);
-    expect(backgroundPathSearches()).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
+    expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
   });
 
   it("keeps grouped attack-move followers active while their flow route is pending", () => {
@@ -658,7 +658,7 @@ describe("pathfinding", () => {
       unit.routePending = true;
     }
     tick(s);
-    expect(backgroundPathSearches()).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
+    expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
     const stillFlowing = units.filter((unit) => unit.flowGoal);
     expect(stillFlowing.length).toBeGreaterThan(0);
     expect(stillFlowing.every((unit) => unit.path.length > 0 || unit.routePending)).toBe(true);
@@ -954,18 +954,18 @@ describe("pathfinding budget", () => {
   it("caps background searches and still honors player orders", () => {
     const s = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
     const mover = addUnit(s, 0, "infantry", 1, 1);
-    resetPathBudget(0);
+    resetPathBudget(s, 0);
     issue(s, { type: "move", unitIds: [mover.id], x: 8, y: 8 });
     expect(mover.path.length).toBeGreaterThan(0);
-    expect(backgroundPathSearches()).toBe(0);
+    expect(backgroundPathSearches(s)).toBe(0);
 
-    resetPathBudget(PATH_BUDGET_PER_TICK);
+    resetPathBudget(s, PATH_BUDGET_PER_TICK);
     const hits: Array<ReturnType<typeof tryFindPath>> = [];
     for (let i = 0; i < 10; i++) {
       hits.push(tryFindPath(s, { x: 1, y: 1 }, { x: 10, y: 10 }));
     }
     expect(hits.filter((path) => path !== undefined)).toHaveLength(PATH_BUDGET_PER_TICK);
-    expect(backgroundPathSearches()).toBe(PATH_BUDGET_PER_TICK);
+    expect(backgroundPathSearches(s)).toBe(PATH_BUDGET_PER_TICK);
   });
 
   it("does not exceed the per-tick detour cap on a crowded map", () => {
@@ -978,7 +978,7 @@ describe("pathfinding budget", () => {
       mover.path = [{ x: 4, y }, { x: 12, y }];
     }
     tick(s);
-    expect(backgroundPathSearches()).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
+    expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
   });
 
   it("does not clear AI paths when the budget is exhausted before tickAi", () => {
@@ -991,11 +991,11 @@ describe("pathfinding budget", () => {
     raider.path = prior.map((p) => ({ ...p }));
     raider.idle = false;
 
-    resetPathBudget(0);
+    resetPathBudget(s, 0);
     expect(() => tickAi(s)).not.toThrow();
     expect(s.aiState).toBe("retreat");
     expect(raider.path).toEqual(prior);
-    expect(backgroundPathSearches()).toBe(0);
+    expect(backgroundPathSearches(s)).toBe(0);
   });
 
   it("does not clear a combat chase path when the budget is exhausted", () => {
@@ -1006,10 +1006,10 @@ describe("pathfinding budget", () => {
     attacker.path = prior.map((p) => ({ ...p }));
     attacker.idle = true;
 
-    resetPathBudget(0);
+    resetPathBudget(s, 0);
     expect(() => tickCombat(s)).not.toThrow();
     expect(attacker.path).toEqual(prior);
-    expect(backgroundPathSearches()).toBe(0);
+    expect(backgroundPathSearches(s)).toBe(0);
   });
 
   it("maintains independent search budgets across different SimState instances", () => {
@@ -1043,7 +1043,8 @@ describe("pathfinding budget", () => {
     const s1 = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
     const s2 = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
 
-    resetPathBudget(1);
+    resetPathBudget(s1, 1);
+    resetPathBudget(s2, 1);
     expect(tryFindPath(s1, { x: 1, y: 1 }, { x: 2, y: 2 })).toBeDefined();
     expect(s1.pathBudget).toEqual({ remaining: 0, used: 1 });
 
