@@ -43,6 +43,7 @@
     "rasterize-icons": "tsx scripts/rasterize-icons.ts",
     "calibrate-portraits": "tsx scripts/calibrate-portraits.ts",
     "generate-promo": "tsx scripts/generate-promo-assets.ts",
+    "update-replay-baselines": "tsx scripts/update-replay-baselines.ts",
     "test:e2e": "tsx scripts/e2e-preflight.ts && playwright test",
     "health": "repnix check",
     "health:dead-code": "knip",
@@ -59,7 +60,7 @@
     "ci:timed-balance-archetypes": "tsx scripts/balance.ts --from 0 --to 39 --jobs 4 --strategy archetypes --check true --max-elapsed-ms 295000 --progress false > artifacts/balance-archetypes-timing.json",
     "ci:timed-balance-archetype": "tsx scripts/balance.ts --from 0 --to 39 --jobs 4 --check true --progress false --stratified true",
     "health:licenses": "license-checker --json",
-    "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#brag-output*/**\" \"#.repnix\" \"#node_modules\" \"#playwright-report\" \"#test-results\" \"#coverage\" \"#dist\" \"#build\" \"#.next\" \"#.turbo\" \"#.git\" \"#generated\""
+    "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#brag-output*/**\" \"#artifacts/**\" \"#.repnix\" \"#node_modules\" \"#playwright-report\" \"#test-results\" \"#coverage\" \"#dist\" \"#build\" \"#.next\" \"#.turbo\" \"#.git\" \"#generated\""
   },
   "dependencies": {
     "next": "16.3.1",

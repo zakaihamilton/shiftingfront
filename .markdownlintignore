@@ -6,3 +6,5 @@ build
 coverage
 playwright-report
 test-results
+brag-output*
+artifacts

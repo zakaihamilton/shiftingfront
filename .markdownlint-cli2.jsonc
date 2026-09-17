@@ -11,6 +11,8 @@
     "build",
     "coverage",
     "playwright-report",
-    "test-results"
+    "test-results",
+    "brag-output*",
+    "artifacts"
   ]
 }

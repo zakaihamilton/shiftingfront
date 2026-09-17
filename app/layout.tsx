@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Barlow, Barlow_Condensed, IBM_Plex_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { AudioRoot } from "@/components/audio/AudioRoot";
 import { TooltipLayer } from "@/components/TooltipLayer";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -8,23 +8,32 @@ import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { APP_DESCRIPTION, APP_NAME, APP_THEME_COLOR, SITE_URL } from "@/lib/site";
 import styles from "./layout.module.css";
 
-const barlowCondensed = Barlow_Condensed({
-  subsets: ["latin"],
-  weight: ["700", "800"],
+const barlowCondensed = localFont({
+  src: [
+    { path: "./fonts/barlow-condensed-700.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/barlow-condensed-800.woff2", weight: "800", style: "normal" },
+  ],
   variable: "--font-barlow-condensed",
   display: "swap",
 });
 
-const barlow = Barlow({
-  subsets: ["latin"],
-  weight: ["400", "600", "700", "800"],
+const barlow = localFont({
+  src: [
+    { path: "./fonts/barlow-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/barlow-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/barlow-700.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/barlow-800.woff2", weight: "800", style: "normal" },
+  ],
   variable: "--font-barlow",
   display: "swap",
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
+const ibmPlexMono = localFont({
+  src: [
+    { path: "./fonts/ibm-plex-mono-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-ibm-plex-mono",
   display: "swap",
 });
