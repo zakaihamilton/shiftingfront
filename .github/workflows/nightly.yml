@@ -47,7 +47,8 @@ jobs:
   archetype-balance:
     name: Archetype balance (${{ matrix.strategy }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Keep the nightly matrix budget aligned with CI; greed can exceed 20m.
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:

@@ -79,7 +79,9 @@ jobs:
   archetype-balance:
     name: Archetype balance (${{ matrix.strategy }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The greed archetype intentionally runs long late-game economic missions
+    # and exceeds the default 20-minute matrix budget on hosted runners.
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
