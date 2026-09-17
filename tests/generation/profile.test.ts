@@ -36,7 +36,7 @@ describe("mission profiles", () => {
     }
   });
 
-  it("varies the enemy base corner while keeping the player in the opposite upper-left theater", () => {
+  it("varies the enemy base corner while keeping the player in the opposite upper-left campaign", () => {
     const corners = new Set<string>();
     for (let seed = 0; seed < 40; seed++) {
       const campaign = createCampaign(seed);

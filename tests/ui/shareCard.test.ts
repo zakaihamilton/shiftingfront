@@ -11,7 +11,7 @@ describe("share cards", () => {
   it("uses the current browser origin for campaign links", () => {
     const card = formatCampaignShareCard(createCampaign(421), freshCampaignProgress(421));
 
-    expect(card).toContain("SHIFTING FRONT // Theater Dossier");
+    expect(card).toContain("SHIFTING FRONT // Campaign Dossier");
     expect(card).toContain("http://localhost:3000/?seed=0421");
   });
 
@@ -20,7 +20,7 @@ describe("share cards", () => {
 
     const card = formatCampaignShareCard(createCampaign(421), freshCampaignProgress(421));
 
-    expect(card).toContain("SHIFTING FRONT // Theater Dossier");
+    expect(card).toContain("SHIFTING FRONT // Campaign Dossier");
     expect(card).toContain("/?seed=0421");
     expect(card).not.toContain("vercel.app");
   });

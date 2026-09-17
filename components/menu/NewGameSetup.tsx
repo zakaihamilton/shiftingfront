@@ -169,7 +169,7 @@ export function NewGameSetup({
             <div className={styles.emptyMark} aria-hidden="true">+</div>
             <ConsoleLabel>Campaign preview</ConsoleLabel>
             <h3 className={styles.emptyTitle}>Choose a code</h3>
-            <p>Enter four digits to reveal your theater.</p>
+            <p>Enter four digits to reveal your campaign.</p>
           </div>
         )}
       </div>

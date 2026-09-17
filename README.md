@@ -4,19 +4,19 @@
 
 [Play now](https://shiftingfront.com) · [Run locally](#run-locally) · [View source](https://github.com/zakaihamilton/shiftingfront)
 
-Shifting Front is a browser-based real-time strategy game about building a force, reading the ground, and surviving the next push. Enter a 4-digit campaign code and the game writes a complete theater around it: factions, commanders, conflict, story, maps, and objectives.
+Shifting Front is a browser-based real-time strategy game about building a force, reading the ground, and surviving the next push. Enter a 4-digit campaign code and the game writes a complete campaign around it: factions, commanders, conflict, story, maps, and objectives.
 
-The same code always creates the same campaign. Share a code to share a universe, return to a saved theater without an account, or start a new war with the roll of a button.
+The same code always creates the same campaign. Share a code to share a universe, return to a saved campaign without an account, or start a new war with the roll of a button.
 
 ![Shifting Front tactical combat gameplay](docs/press/screenshot-2-tactical-combat.png)
 
 ## Why play
 
-- **Every code is a theater.** Each seed creates its own world, rival factions, named characters, briefings, six-operation campaign, and changing battlefield.
+- **Every code is a campaign.** Each seed creates its own world, rival factions, named characters, briefings, six-operation campaign, and changing battlefield.
 - **The objective keeps moving.** Build an economy, train combined-arms forces, destroy enemy positions, hold your HQ, or escort, rescue, sabotage, and extract under pressure.
 - **The ground is part of the fight.** Each campaign targets one seeded biome, such as ash plains, crystal flats, rust canyons, or the volcanic shelf. Choose routes, protect resource lines, and make every approach count as the operation grows.
 - **Your army has more than one job.** Field Medics keep infantry alive, Repair Trucks keep vehicles moving, Harvesters fund the war, and Convoy Trucks become the mission when the objective changes.
-- **The enemy reacts.** Rival forces expand, fortify, raid your harvesters, pressure your lines, and retreat when battered. A plan that works once may not survive the next theater.
+- **The enemy reacts.** Rival forces expand, fortify, raid your harvesters, pressure your lines, and retreat when battered. A plan that works once may not survive the next campaign.
 
 ## How a campaign works
 
@@ -24,7 +24,7 @@ The same code always creates the same campaign. Share a code to share a universe
 2. **Read the briefing.** Meet your commander, advisor, and enemy leader, then study the operation and its secondary objectives.
 3. **Build your foothold.** Harvest ore, manage credits and power, place infrastructure, and open production lines.
 4. **Command the battle.** Move, attack, defend, repair, support, and reposition your force as the enemy and terrain reveal themselves.
-5. **Earn the record.** Complete the operation, improve your score and medals, unlock the next deployment, or replay the theater with a better plan.
+5. **Earn the record.** Complete the operation, improve your score and medals, unlock the next deployment, or replay the campaign with a better plan.
 
 Every campaign contains six operations: three classic objectives and three scenario operations. Missions grow from compact early engagements into larger late-campaign battlefields, with typical play sessions ranging from a few minutes to longer timed operations.
 
@@ -37,7 +37,7 @@ Every campaign contains six operations: three classic objectives and three scena
 | Hold under pressure | Keep your Command HQ standing while the clock and enemy attacks close in. |
 | Run the operation | Escort a convoy, sabotage marked structures, rescue stranded units, or extract cargo before time runs out. |
 
-Every mission also carries secondary objectives, such as protecting your Construction Yard, keeping combat units alive, or finishing before the final push. Lose your Command HQ and the theater is lost.
+Every mission also carries secondary objectives, such as protecting your Construction Yard, keeping combat units alive, or finishing before the final push. Lose your Command HQ and the campaign is lost.
 
 ## Command the front
 

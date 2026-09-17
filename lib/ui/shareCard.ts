@@ -54,8 +54,8 @@ export function formatCampaignShareCard(campaign: Campaign, progress: CampaignPr
 
   const isWeekly = seedStr === weeklySeed();
   const header = isWeekly
-    ? `SHIFTING FRONT Week ${weeklyIndex()} // Theater Dossier`
-    : `SHIFTING FRONT // Theater Dossier`;
+    ? `SHIFTING FRONT Week ${weeklyIndex()} // Campaign Dossier`
+    : `SHIFTING FRONT // Campaign Dossier`;
 
   return [
     header,

@@ -218,7 +218,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
             <div className={styles.headerIdentity}>
               <ConsoleLabel>{operations ? "Campaign status" : "Strategic command record"}</ConsoleLabel>
               <h1 className={styles.title}>{operations ? "Operations map" : summary.isComplete ? "Campaign complete" : "Campaign record"}</h1>
-              <p className={styles.subtitle}>{operations ? "SELECT DEPLOYMENT" : summary.isComplete ? "THEATER SECURED" : "PROGRESS ARCHIVED"}</p>
+              <p className={styles.subtitle}>{operations ? "SELECT DEPLOYMENT" : summary.isComplete ? "CAMPAIGN SECURED" : "PROGRESS ARCHIVED"}</p>
             </div>
             <div className={styles.headerContext} aria-label="Campaign context">
               <span className={styles.contextSeed}>SEED {formatSeed(seed)}</span>
@@ -260,7 +260,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
 
           <ActionRail className={styles.actions}>
             <ConsoleButton
-              tooltip={copied ? "Theater dossier copied to clipboard!" : "Copy campaign score to clipboard"}
+              tooltip={copied ? "Campaign dossier copied to clipboard!" : "Copy campaign score to clipboard"}
               onClick={handleShare}
             >
               {copied ? "Copied!" : "Share dossier"}

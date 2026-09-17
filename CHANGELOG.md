@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Seeded Campaign Generation**: Over 10,000 unique theaters generated deterministically from 4-digit codes (`0000` to `9999`) with synchronized weekly operations.
+- **Seeded Campaign Generation**: Over 10,000 unique campaigns generated deterministically from 4-digit codes (`0000` to `9999`) with synchronized weekly operations.
 - **Biomes & Terrain Simulation**: 8 procedural planetary biomes (Ash Plains, Crystal Flats, Glass Desert, Jungle Wreckage, Rust Canyons, Salt Marshes, Tundra Grid, Volcanic Shelf) with elevation, cliffs, ramps, blockers, and dynamic weather effects.
 - **Combined-Arms Combat & Production**:
   - Structures: Command HQ, Power Plants, Ore Refineries, Barracks, Vehicle Plants, Turrets.

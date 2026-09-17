@@ -74,7 +74,7 @@ export async function GET(request: Request) {
                 letterSpacing: "2px",
               }}
             >
-              {isWeekly ? `WEEK ${week} OPERATION` : "CUSTOM THEATER"}
+              {isWeekly ? `WEEK ${week} OPERATION` : "CUSTOM CAMPAIGN"}
             </div>
           </div>
 

@@ -40,19 +40,19 @@ export function createCinemaScene(
   missionIndex = 0,
   scenarioOverride?: CinemaScenarioKind,
 ) {
-  const theater = ((seed | 0) % 10000 + 10000) % 10000;
-  const campaign = createCampaign(theater);
+  const campaignSeed = ((seed | 0) % 10000 + 10000) % 10000;
+  const campaign = createCampaign(campaignSeed);
   const mIndex = Math.max(0, Math.min(campaign.missions.length - 1, missionIndex | 0));
   const mission = campaign.missions[mIndex]!;
-  const map = generateMap(theater, mission);
+  const map = generateMap(campaignSeed, mission);
   const [us, them] = campaign.factions;
-  const state = createMission({ seed: theater, missionIndex: mIndex });
+  const state = createMission({ seed: campaignSeed, missionIndex: mIndex });
 
   // Pick deterministic tactical scenario for variety across previews
   const scenarioIndex =
-    theater >= 0 && theater < CINEMA_SCENARIO_KINDS.length
-      ? theater
-      : ((theater - CINEMA_SEED + mIndex) % CINEMA_SCENARIO_KINDS.length + CINEMA_SCENARIO_KINDS.length) % CINEMA_SCENARIO_KINDS.length;
+    campaignSeed >= 0 && campaignSeed < CINEMA_SCENARIO_KINDS.length
+      ? campaignSeed
+      : ((campaignSeed - CINEMA_SEED + mIndex) % CINEMA_SCENARIO_KINDS.length + CINEMA_SCENARIO_KINDS.length) % CINEMA_SCENARIO_KINDS.length;
   const scenarioKind = scenarioOverride ?? CINEMA_SCENARIO_KINDS[scenarioIndex]!;
 
   // Reveal the full battlefield for the preview reconnaissance feed
@@ -60,7 +60,7 @@ export function createCinemaScene(
   state.fog.fill(2);
 
   const ground: AtlasWorld = {
-    seed: theater,
+    seed: campaignSeed,
     missionIndex: mIndex,
     biome: map.biome,
     width: map.width,
@@ -189,7 +189,7 @@ export function createCinemaScene(
   const combatEpicenter = { x: clashX, y: clashY };
 
   return {
-    seed: theater,
+    seed: campaignSeed,
     missionIndex: mIndex,
     scenarioKind,
     map,

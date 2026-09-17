@@ -75,7 +75,7 @@ Generated automatically via `yarn generate-promo`:
   1. `screenshot-1-base-building.png` — Base expansion, ore refinery, and harvesters.
   2. `screenshot-2-tactical-combat.png` — Tactical combat skirmish, lasers, and unit selection rings.
   3. `screenshot-3-mission-briefing.png` — Operations briefing with faction portraits and objectives.
-  4. `screenshot-4-campaign-dossier.png` — Campaign operation theater progression.
+  4. `screenshot-4-campaign-dossier.png` — Campaign operation progression.
   5. `screenshot-5-command-vista.png` — Command desk panoramic vista.
 
 ---

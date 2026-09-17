@@ -97,7 +97,7 @@ describe("MenuScreen", () => {
   it("renders legal links instead of marketing promo copy in the welcome footer", () => {
     render(<MenuScreen />);
 
-    expect(screen.queryByText("SEED YOUR OWN THEATER")).toBeNull();
+    expect(screen.queryByText("SEED YOUR OWN CAMPAIGN")).toBeNull();
     expect(screen.queryByText("8 OPERATIONS / NO TWO WARS ALIKE")).toBeNull();
     expect(screen.queryByText("PLAYS IN YOUR BROWSER")).toBeNull();
     const footer = document.querySelector("footer");
