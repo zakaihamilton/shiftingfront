@@ -1,5 +1,6 @@
 import { TICKS_PER_SECOND } from "../catalog";
 import { formatMissionClockFromTicks } from "../gen/pacing";
+import { fogAt } from "../sim/fog";
 import { objectivePriorityFor, objectiveProgress, secondaryProgress, type ObjectiveProgress, type ObjectivePriority } from "../sim/objectives";
 import type { MissionRuntime, SimState } from "../types";
 
@@ -83,11 +84,14 @@ export function minimapPingFor(state: SimState, kind: "urgent" | "objective") {
   const runtime = state.runtime;
   const target = runtime?.targetIds
     ?.map((id) => state.entities.find((entity) => entity.id === id && entity.hp > 0))
-    .find((entity): entity is SimState["entities"][number] => Boolean(entity));
+    .find((entity): entity is SimState["entities"][number] =>
+      entity !== undefined && fogAt(state, Math.round(entity.x), Math.round(entity.y)) === 2,
+    );
   const point = target
     ?? runtime?.zone
     ?? state.entities.find((entity) => entity.owner === 1 && entity.kind === "constructionYard" && entity.hp > 0)
     ?? { x: state.width / 2, y: state.height / 2 };
+  if (fogAt(state, Math.round(point.x), Math.round(point.y)) !== 2) return undefined;
   return {
     kind,
     x: Math.max(0, Math.min(1, point.x / Math.max(1, state.width - 1))),

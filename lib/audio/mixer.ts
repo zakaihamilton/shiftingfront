@@ -35,6 +35,10 @@ export function clampAudioVolume(value: number): number {
   return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 }
 
+export function isAudioForeground(): boolean {
+  return foreground;
+}
+
 function applyLevels(audio: AudioContext): void {
   const now = audio.currentTime;
   master?.gain.setTargetAtTime(levels.masterVolume, now, RAMP_S);

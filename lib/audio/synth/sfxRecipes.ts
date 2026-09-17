@@ -16,11 +16,13 @@ export function playLayeredSfx(
     noise(audio, dest, { ...options, delay: (options.delay ?? 0) + delay });
   switch (kind) {
     case "uiSelect":
-      playTone({ frequency: 480, duration: 0.05, type: "square", gain: 0.05 * gain, pan, cutoff: 2400 });
+      playNoise({ duration: 0.02, gain: 0.025 * gain, pan, frequency: 3200, type: "bandpass" });
+      playTone({ frequency: 480, duration: 0.05, type: "square", gain: 0.05 * gain, pan, cutoff: 2400, delay: 0.01 });
       break;
     case "uiConfirm":
-      playTone({ frequency: 420, endFrequency: 640, duration: 0.1, type: "triangle", gain: 0.055 * gain, pan, cutoff: 2400 });
-      playTone({ frequency: 840, duration: 0.05, type: "sine", gain: 0.024 * gain, pan, cutoff: 3200 });
+      playNoise({ duration: 0.025, gain: 0.03 * gain, pan, frequency: 3400, type: "bandpass" });
+      playTone({ frequency: 420, endFrequency: 640, duration: 0.09, type: "triangle", gain: 0.055 * gain, pan, cutoff: 2400, delay: 0.01 });
+      playTone({ frequency: 840, duration: 0.05, type: "sine", gain: 0.024 * gain, pan, cutoff: 3200, delay: 0.02 });
       break;
     case "uiCancel":
       playTone({ frequency: 340, endFrequency: 160, duration: 0.12, type: "triangle", gain: 0.055 * gain, pan, cutoff: 1600 });
@@ -133,12 +135,14 @@ export function playLayeredSfx(
       playNoise({ duration: 0.2, gain: 0.055 * gain, pan, frequency: 500, type: "lowpass" });
       break;
     case "orderAttack":
-      playTone({ frequency: 620, duration: 0.06, type: "square", gain: 0.06 * gain, pan, cutoff: 2600 });
-      playTone({ frequency: 310, duration: 0.1, type: "square", gain: 0.055 * gain, pan, cutoff: 1800, delay: 0.05 });
+      playNoise({ duration: 0.03, gain: 0.035 * gain, pan, frequency: 2800, type: "bandpass" });
+      playTone({ frequency: 620, duration: 0.06, type: "square", gain: 0.06 * gain, pan, cutoff: 2600, delay: 0.015 });
+      playTone({ frequency: 310, duration: 0.1, type: "square", gain: 0.055 * gain, pan, cutoff: 1800, delay: 0.065 });
       break;
     case "orderHarvest":
-      playTone({ frequency: 640, duration: 0.05, type: "triangle", gain: 0.05 * gain, pan, cutoff: 2200 });
-      playTone({ frequency: 960, duration: 0.08, type: "triangle", gain: 0.045 * gain, pan, cutoff: 2800, delay: 0.04 });
+      playNoise({ duration: 0.025, gain: 0.03 * gain, pan, frequency: 2400, type: "bandpass" });
+      playTone({ frequency: 640, duration: 0.05, type: "triangle", gain: 0.05 * gain, pan, cutoff: 2200, delay: 0.015 });
+      playTone({ frequency: 960, duration: 0.08, type: "triangle", gain: 0.045 * gain, pan, cutoff: 2800, delay: 0.055 });
       break;
     case "credits":
       playTone({ frequency: 880, duration: 0.055, type: "triangle", gain: 0.055 * gain, pan, cutoff: 3200 });

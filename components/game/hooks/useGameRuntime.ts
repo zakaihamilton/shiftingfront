@@ -216,7 +216,7 @@ export function useGameRuntime({
 
   const { hoverRef, cursorRef, boxRef, commandMarkerRef, resetInput, onDown, onEnter, onMove, onLeave, onUp, onCancel } = input;
 
-  const { fxRef, fxSeq, redraw } = useGameRenderer({
+  const { fxRef, fxSeq, screenShakeRef, redraw } = useGameRenderer({
     stateRef,
     hostRef,
     canvasRef,
@@ -379,6 +379,7 @@ export function useGameRuntime({
     applyEdgePan,
     fxRef,
     fxSeq,
+    screenShakeRef,
     terminalSaveRef,
     campaignRecordedRef,
     saveSession,

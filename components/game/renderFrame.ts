@@ -18,6 +18,7 @@ export type RenderFrameOptions = {
   secondaryMiniCanvas: HTMLCanvasElement | null;
   secondaryMiniCtx: CanvasRenderingContext2D | null;
   cam: Camera;
+  minimapCam: Camera;
   selected: Set<number>;
   hover: Point | null;
   cursor: Point | null;
@@ -46,6 +47,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     canvas,
     host,
     cam,
+    minimapCam,
     selected,
     hover,
     cursor,
@@ -100,7 +102,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     }
     if (miniCtx) {
       const miniStarted = worldTimings ? performance.now() : 0;
-      renderMinimap(miniCtx, state, cameraViewQuad(cam, canvas.width, canvas.height), selected, options.colorblindMode);
+      renderMinimap(miniCtx, state, cameraViewQuad(minimapCam, canvas.width, canvas.height), selected, options.colorblindMode);
       if (worldTimings) minimapMs = performance.now() - miniStarted;
     }
   }
@@ -110,7 +112,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     }
     if (secondaryMiniCtx) {
       const miniStarted = worldTimings ? performance.now() : 0;
-      renderMinimap(secondaryMiniCtx, state, cameraViewQuad(cam, canvas.width, canvas.height), selected, options.colorblindMode);
+      renderMinimap(secondaryMiniCtx, state, cameraViewQuad(minimapCam, canvas.width, canvas.height), selected, options.colorblindMode);
       if (worldTimings) minimapMs += performance.now() - miniStarted;
     }
   }

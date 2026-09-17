@@ -7,6 +7,10 @@ export type { BlockerPropKind };
 export type ScatterKind =
   | "pebble"
   | "pebbleCluster"
+  | "rockSlab"
+  | "sandShard"
+  | "dryBrush"
+  | "mineralFlake"
   | "tuft"
   | "shrub"
   | "debris"
@@ -36,5 +40,12 @@ export type ScatterWorld = {
   surfaces: SurfaceKind[];
 };
 
-export const LUSH_SCATTER: ReadonlySet<ScatterKind> = new Set(["tuft", "shrub", "reed"]);
-export const ARID_SCATTER: ReadonlySet<ScatterKind> = new Set(["pebble", "pebbleCluster", "debris", "cinder"]);
+export const LUSH_SCATTER: ReadonlySet<ScatterKind> = new Set(["tuft", "shrub", "reed", "dryBrush"]);
+export const ARID_SCATTER: ReadonlySet<ScatterKind> = new Set([
+  "pebble",
+  "pebbleCluster",
+  "rockSlab",
+  "sandShard",
+  "debris",
+  "cinder",
+]);

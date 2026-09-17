@@ -97,6 +97,22 @@ describe("blocker prop art", () => {
     expect(ofKind(prims, "poly").length).toBeGreaterThanOrEqual(4);
   });
 
+  it("keeps geological and dry-shrub profiles visibly varied", () => {
+    const cases = [
+      ["boulder", "glass desert"],
+      ["sandstone", "glass desert"],
+      ["crystalOutcrop", "crystal flats"],
+      ["wreckage", "rust canyons"],
+      ["spire", "volcanic shelf"],
+      ["deadShrub", "glass desert"],
+    ] as const;
+    for (const [kind, biome] of cases) {
+      const signatures = new Set<string>();
+      for (let v = 0; v < 64; v++) signatures.add(JSON.stringify(blockerPropPrims(kind, v, TONE, biome)));
+      expect(signatures.size, `${kind} profiles`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
   it("stays deterministic for a biome variant", () => {
     const kind = blockerPropKind("volcanic shelf", 4);
     expect(blockerPropPrims(kind, 4, TONE, "volcanic shelf")).toEqual(

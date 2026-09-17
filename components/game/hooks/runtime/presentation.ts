@@ -1,9 +1,12 @@
 import { dispatchBattlefieldAudio } from "@/lib/audio/battlefield";
 import { pauseMusic, setMusicIntensity, type MusicIntensity } from "@/lib/audio/music";
 import { playSfx } from "@/lib/audio/synth";
+import { playVoiceBark } from "@/lib/audio/voice";
 import { burstsFromEvents, type FxBurst } from "@/lib/render/fx";
+import { addScreenShake, type ScreenShakeState } from "@/lib/render/screenShake";
 import type { Camera } from "@/lib/iso";
 import type { SimEvent, SimState } from "@/lib/types";
+import { isUnitKind } from "@/lib/catalog";
 import { commandRejectionMessage } from "@/lib/ui/copy";
 import { alertSfx, desiredMusicIntensity, firstAlert, rejectionSfx } from "../gameLoopEffects";
 
@@ -12,6 +15,7 @@ export function createPresentationCoordinator({
   canvasRef,
   fxRef,
   fxSequence,
+  screenShakeRef,
   onAlert,
   onCommandNotice,
 }: {
@@ -19,6 +23,7 @@ export function createPresentationCoordinator({
   canvasRef: { current: HTMLCanvasElement | null };
   fxRef: { current: FxBurst[] };
   fxSequence: { current: number };
+  screenShakeRef?: { current: ScreenShakeState };
   onAlert: (text: string, kind?: "warning" | "objective" | "contact" | "system") => void;
   onCommandNotice: (text: string, kind?: "success" | "info" | "warning" | "error") => void;
 }) {
@@ -63,6 +68,16 @@ export function createPresentationCoordinator({
       if (alert) {
         playSfx(alertSfx(alert.kind), { force: true });
         onAlert(alert.text, alert.kind);
+        if (alert.kind === "warning") {
+          playVoiceBark("threat");
+        }
+      }
+      if (screenShakeRef) {
+        for (const event of events) {
+          if (event.type === "destroyed" && !isUnitKind(event.kind)) {
+            addScreenShake(screenShakeRef.current, 0.7);
+          }
+        }
       }
       if (events.some((event) => ["combat", "destroyed", "support", "built", "produced"].includes(event.type))) {
         const spawned = burstsFromEvents(events, state, now, fxSequence.current);

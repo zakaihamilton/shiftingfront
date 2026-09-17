@@ -53,7 +53,7 @@ export const FX_DURATION: Record<FxKind, number> = {
   destruction: 900,
   wreck: 6500,
   rubble: 9000,
-  scorch: 11000,
+  scorch: 25000,
   build: 900,
   deploy: 720,
   repair: 520,
@@ -61,7 +61,7 @@ export const FX_DURATION: Record<FxKind, number> = {
 };
 
 export const MAX_TRANSIENT_FX = 64;
-export const MAX_PERSISTENT_FX = 24;
+export const MAX_PERSISTENT_FX = 36;
 
 const PERSISTENT_FX = new Set<FxKind>(["wreck", "rubble", "scorch"]);
 
@@ -256,6 +256,12 @@ export function burstsFromEvents(
       magnitude,
     } satisfies Omit<BurstInput, "kind">;
     push({ ...base, kind: "destruction" });
+    push({ ...base, kind: "scorch", magnitude: magnitude * 1.15 });
+    if (entityClass === "building") {
+      push({ ...base, kind: "rubble" });
+    } else if (targetDomain === "vehicle") {
+      push({ ...base, kind: "wreck" });
+    }
   }
 
   return { bursts, nextId: id };

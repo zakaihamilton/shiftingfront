@@ -36,6 +36,7 @@ export function useGameLoop({
   applyEdgePan,
   fxRef,
   fxSeq,
+  screenShakeRef,
   terminalSaveRef,
   campaignRecordedRef,
   redraw,
@@ -60,6 +61,7 @@ export function useGameLoop({
   applyEdgePan: (dir: PanDir | null) => void;
   fxRef: MutableRefObject<FxBurst[]>;
   fxSeq: MutableRefObject<number>;
+  screenShakeRef?: MutableRefObject<import("@/lib/render/screenShake").ScreenShakeState>;
   terminalSaveRef: MutableRefObject<boolean>;
   campaignRecordedRef: MutableRefObject<boolean>;
   redraw: (nowMs?: number, subTickAlpha?: number) => void;
@@ -96,6 +98,7 @@ export function useGameLoop({
       panAvailabilityRef: panAvailRef,
       fxRef,
       fxSequence: fxSeq,
+      screenShakeRef,
       terminalSaveRef,
       campaignRecordedRef,
       lifecycleRef,
@@ -140,5 +143,6 @@ export function useGameLoop({
     persistCampaign,
     uxRef,
     suppressImplicitSavesRef,
+    screenShakeRef,
   ]);
 }

@@ -10,11 +10,15 @@ import {
   drawCinder,
   drawCrystalChip,
   drawDebris,
+  drawDryBrush,
   drawIceChip,
   drawLandmark,
+  drawMineralFlake,
   drawPebble,
   drawPebbleCluster,
   drawReed,
+  drawRockSlab,
+  drawSandShard,
   drawShrub,
   drawTuft,
 } from "./render";
@@ -39,6 +43,18 @@ function paintItem(
       break;
     case "pebbleCluster":
       drawPebbleCluster(ctx, mats, z, item.scale, item.variant);
+      break;
+    case "rockSlab":
+      drawRockSlab(ctx, mats, z, item.scale, item.variant);
+      break;
+    case "sandShard":
+      drawSandShard(ctx, mats, z, item.scale, item.variant);
+      break;
+    case "dryBrush":
+      drawDryBrush(ctx, mats, z, item.scale, item.variant);
+      break;
+    case "mineralFlake":
+      drawMineralFlake(ctx, mats, z, item.scale, item.variant);
       break;
     case "tuft":
       drawTuft(ctx, mats, z, item.scale, item.variant);

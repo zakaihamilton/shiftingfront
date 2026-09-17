@@ -1,5 +1,6 @@
 import { useCallback, useMemo, type MutableRefObject, type PointerEvent } from "react";
 import { beep } from "@/lib/audio/synth";
+import { voiceBarkForBeep } from "@/lib/audio/voice";
 import type { BuildingKind, Command, SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
 import { canvasPointerPos } from "./canvasPointer";
@@ -92,7 +93,10 @@ export function usePointerUpHandler({
       sellRef.current = false;
       setSellMode(false);
     }
-    if (effect.beep) beep(effect.beep);
+    if (effect.beep) {
+      beep(effect.beep);
+      voiceBarkForBeep(effect.beep);
+    }
     syncCursor(event.currentTarget);
   }, [
     boxRef,

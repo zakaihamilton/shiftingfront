@@ -4,6 +4,7 @@ import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
 import type { Camera } from "@/lib/iso";
 import type { FxBurst } from "@/lib/render/fx";
 import type { PanAvailability, PanDir } from "@/lib/render/camera";
+import type { ScreenShakeState } from "@/lib/render/screenShake";
 import type { Command, SimEvent, SimState } from "@/lib/types";
 
 export type RuntimeRefs = {
@@ -18,6 +19,7 @@ export type RuntimeRefs = {
   panAvailabilityRef: MutableRefObject<PanAvailability>;
   fxRef: MutableRefObject<FxBurst[]>;
   fxSequence: MutableRefObject<number>;
+  screenShakeRef?: MutableRefObject<ScreenShakeState>;
   terminalSaveRef: MutableRefObject<boolean>;
   campaignRecordedRef: MutableRefObject<boolean>;
   lifecycleRef: MutableRefObject<RuntimeLifecycleState>;

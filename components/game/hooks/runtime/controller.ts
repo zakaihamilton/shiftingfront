@@ -43,6 +43,7 @@ export function createRuntimeController(refs: RuntimeRefs, ports: RuntimePorts):
     canvasRef: refs.canvasRef,
     fxRef: refs.fxRef,
     fxSequence: refs.fxSequence,
+    screenShakeRef: refs.screenShakeRef,
     onAlert: ports.onAlert,
     onCommandNotice: ports.onCommandNotice,
   });

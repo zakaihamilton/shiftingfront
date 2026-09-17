@@ -210,10 +210,11 @@ export function deadTreePrims(v: number, t: BlockerTone): PropPrim[] {
 }
 
 export function deadShrubPrims(v: number, t: BlockerTone): PropPrim[] {
+  const profile = (v >>> 4) % 3;
   const wood = mixHex(t.dark, t.blocked, 0.2);
   const dust = mixHex(t.light, t.blocked, 0.35);
   const lean = ((v % 3) - 1) * 0.4;
-  return [
+  const out: PropPrim[] = [
     shadow(11.5, 3.6),
     pl(0, 5.2, lean, -9, wood, 1.8, { minWidth: 1.25, cap: "round" }),
     pl(-0.5, -2.4, -7.4, -8.4, wood, 1.15, { minWidth: 0.9, cap: "round" }),
@@ -225,4 +226,17 @@ export function deadShrubPrims(v: number, t: BlockerTone): PropPrim[] {
     pe(4.6, -8.4, 3.0, 1.5, 0.3, dust, 0.55),
     pe(1.2, -11.2, 2.2, 1.15, 0.1, dust, 0.55),
   ];
+  if (profile === 1) {
+    out.push(
+      pl(-0.1, -5.6, -8.6, -4.2, wood, 1.05, { minWidth: 0.85, cap: "round" }),
+      pe(-7.8, -4.1, 2.3, 1.1, -0.25, dust, 0.5),
+    );
+  } else if (profile === 2) {
+    out.push(
+      pl(0.3, -6.4, 8.8, -3.4, wood, 1.05, { minWidth: 0.85, cap: "round" }),
+      pl(0.2, -8, -1.2, -15.2, wood, 0.95, { minWidth: 0.8, cap: "round" }),
+      pe(8.5, -3.3, 2.5, 1.2, 0.2, dust, 0.5),
+    );
+  }
+  return out;
 }

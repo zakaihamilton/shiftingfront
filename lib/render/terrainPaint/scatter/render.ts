@@ -87,6 +87,178 @@ export function drawPebbleCluster(
   }
 }
 
+export function drawRockSlab(
+  ctx: CanvasRenderingContext2D,
+  mats: BiomeMaterials,
+  z: number,
+  scale: number,
+  variant: number,
+): void {
+  const s = z * scale;
+  const profile = (variant >>> 5) % 3;
+  const lean = ((variant % 7) - 3) * 0.28 * s;
+  const dark = mixRgb(mats.dark, mats.blocked, 0.28);
+  const body = mixRgb(mats.blocked, mats.mid, 0.34);
+  const facet = mixRgb(mats.mid, mats.light, 0.28);
+  const edge = mixRgb(mats.light, mats.high, 0.2);
+  shadow(ctx, s, 7.8, 2.1, 2.7, mats.dark);
+  ctx.fillStyle = rgbOf(dark);
+  fillPoly(ctx, [-8.2 * s, 2.5 * s, 6.8 * s, 2.8 * s, 8 * s, 0.8 * s, -6.9 * s, 0.5 * s]);
+  ctx.fillStyle = rgbOf(body);
+  if (profile === 0) {
+    fillPoly(ctx, [
+      -8.2 * s + lean, 0.8 * s,
+      -4.3 * s + lean, -4.6 * s,
+      2.8 * s + lean * 0.35, -3.2 * s,
+      7.4 * s, -0.7 * s,
+      5.7 * s, 2.1 * s,
+      -6.4 * s, 1.9 * s,
+    ]);
+  } else if (profile === 1) {
+    fillPoly(ctx, [
+      -7.2 * s + lean, 1.3 * s,
+      -3.8 * s + lean, -5.2 * s,
+      5.8 * s + lean * 0.25, -4.2 * s,
+      7.8 * s, 0.2 * s,
+      3.9 * s, 2.1 * s,
+      -6.8 * s, 2.2 * s,
+    ]);
+  } else {
+    fillPoly(ctx, [
+      -8.6 * s + lean, 1.4 * s,
+      -1.4 * s + lean, -5.5 * s,
+      7.2 * s + lean * 0.15, -2.5 * s,
+      6.2 * s, 2.3 * s,
+      -5.7 * s, 2.1 * s,
+    ]);
+  }
+  ctx.fillStyle = rgbOf(facet);
+  fillPoly(ctx, [
+    (-3.6 + (profile === 2 ? 1.4 : 0)) * s,
+    -3.8 * s,
+    (1.4 + lean / s * 0.2) * s,
+    -3.2 * s,
+    4.8 * s,
+    -0.6 * s,
+    0.8 * s,
+    0.8 * s,
+  ]);
+  withAlpha(ctx, 0.42, () => {
+    ctx.fillStyle = rgbOf(edge);
+    ctx.beginPath();
+    ctx.ellipse((-1.5 + (variant % 3)) * s, -2.1 * s, 2.8 * s, 0.7 * s, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.strokeStyle = rgbOf(mixRgb(mats.dark, mats.light, 0.4));
+  ctx.lineWidth = Math.max(0.55, 0.65 * s);
+  ctx.beginPath();
+  ctx.moveTo((-5.4 + profile) * s, -1.9 * s);
+  ctx.lineTo((1.6 + profile * 1.4) * s, -2.8 * s);
+  ctx.lineTo((5.2 + lean / s) * s, -0.6 * s);
+  ctx.stroke();
+}
+
+export function drawSandShard(
+  ctx: CanvasRenderingContext2D,
+  mats: BiomeMaterials,
+  z: number,
+  scale: number,
+  variant: number,
+): void {
+  const s = z * scale;
+  const count = 1 + ((variant >>> 4) % 3);
+  const edge = mixRgb(mats.dark, mats.blocked, 0.18);
+  const shard = mixRgb(mats.light, mats.high, 0.18);
+  const face = mixRgb(shard, mats.ore, 0.12);
+  const hi = mixRgb(mats.light, shard, 0.22);
+  shadow(ctx, s, 6.2 + count, 2.0, 2.6, mats.dark);
+  for (let i = 0; i < count; i++) {
+    const t = i - (count - 1) / 2;
+    const x = t * 4.1 + ((variant >>> (i * 3)) % 3 - 1) * 0.7;
+    const height = 6.5 + ((variant >>> (i * 5 + 2)) % 8);
+    const half = 1.7 + ((variant >>> (i * 4 + 1)) % 4) * 0.35;
+    const lean = ((variant >>> (i * 2 + 1)) % 5 - 2) * 0.55;
+    ctx.fillStyle = rgbOf(edge);
+    fillPoly(ctx, [
+      (x - half - 1.2) * s, 2.2 * s,
+      (x + lean) * s, (-height - 1.4) * s,
+      (x + half + 1.2) * s, 2.2 * s,
+    ]);
+    ctx.fillStyle = rgbOf(i % 2 === 0 ? shard : face);
+    fillPoly(ctx, [
+      (x - half * 0.46) * s, 1.8 * s,
+      (x + lean * 0.78) * s, (-height + 0.4) * s,
+      (x + half * 0.46) * s, 1.8 * s,
+    ]);
+    withAlpha(ctx, 0.42, () => {
+      ctx.strokeStyle = rgbOf(hi);
+      ctx.lineWidth = Math.max(0.5, 0.62 * s);
+      ctx.beginPath();
+      ctx.moveTo((x - half * 0.18) * s, 0.8 * s);
+      ctx.lineTo((x + lean * 0.72) * s, (-height + 1.4) * s);
+      ctx.stroke();
+    });
+  }
+}
+
+export function drawDryBrush(
+  ctx: CanvasRenderingContext2D,
+  mats: BiomeMaterials,
+  z: number,
+  scale: number,
+  variant: number,
+): void {
+  const s = z * scale;
+  const stem = mixRgb(mats.dark, mats.blocked, 0.22);
+  const twig = mixRgb(mats.high, mats.mid, 0.28);
+  const dust = mixRgb(mats.light, mats.high, 0.2);
+  const stems = 3 + ((variant >>> 3) % 3);
+  shadow(ctx, s, 6.5, 1.8, 2.5, mats.dark);
+  ctx.lineCap = "round";
+  for (let i = 0; i < stems; i++) {
+    const t = i - (stems - 1) / 2;
+    const x = t * 2.2 * s;
+    const lean = ((variant >>> (i * 3)) % 5 - 2) * 0.65 * s;
+    const tipY = -(5.2 + ((variant >>> (i + 6)) % 4) * 0.9) * s;
+    ctx.strokeStyle = rgbOf(i % 2 === 0 ? stem : twig);
+    ctx.lineWidth = Math.max(0.7, 0.95 * s);
+    ctx.beginPath();
+    ctx.moveTo(x, 2.2 * s);
+    ctx.quadraticCurveTo(x + lean * 0.35, -1.6 * s, x + lean, tipY);
+    ctx.stroke();
+    if (i % 2 === (variant % 2)) {
+      ctx.fillStyle = rgbOf(dust);
+      ctx.beginPath();
+      ctx.ellipse(x + lean * 0.72, tipY + 0.7 * s, 1.35 * s, 0.7 * s, lean * 0.04, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+export function drawMineralFlake(
+  ctx: CanvasRenderingContext2D,
+  mats: BiomeMaterials,
+  z: number,
+  scale: number,
+  variant: number,
+): void {
+  const s = z * scale;
+  const dark = mixRgb(mats.dark, mats.ore, 0.3);
+  const gem = mixRgb(mats.ore, mats.light, 0.34);
+  const hi = mixRgb(mats.light, mats.high, 0.22);
+  const count = 2 + ((variant >>> 5) % 3);
+  shadow(ctx, s, 5.6, 1.8, 2.4, mats.dark);
+  for (let i = 0; i < count; i++) {
+    const x = (i - (count - 1) / 2) * 3.5 + ((variant >>> (i + 2)) % 3 - 1) * 0.5;
+    const rise = 2.4 + ((variant >>> (i * 4 + 1)) % 5) * 0.65;
+    const lean = ((variant >>> (i * 3 + 2)) % 5 - 2) * 0.45;
+    ctx.fillStyle = rgbOf(dark);
+    fillPoly(ctx, [(x - 2.1) * s, 1.8 * s, (x + lean) * s, -rise * s, (x + 2.2) * s, 1.8 * s]);
+    ctx.fillStyle = rgbOf(i % 2 ? gem : hi);
+    fillPoly(ctx, [(x - 0.8) * s, 1.1 * s, (x + lean * 0.6) * s, (-rise + 0.45) * s, (x + 0.8) * s, 1.1 * s]);
+  }
+}
+
 export function drawTuft(
   ctx: CanvasRenderingContext2D,
   mats: BiomeMaterials,
@@ -392,20 +564,56 @@ export function drawLandmark(
     return;
   }
   if (biome === "glass desert") {
-    ctx.fillStyle = rgbOf(mixRgb(mats.dark, mats.blocked, 0.24));
-    fillPoly(ctx, [-13 * s, 3 * s, -6 * s, -13 * s, -1 * s, 2 * s, 5 * s, -17 * s, 13 * s, 3 * s]);
-    ctx.fillStyle = rgbOf(mixRgb(mats.light, mats.high, 0.28));
-    fillPoly(ctx, [-7 * s, 2 * s, -5 * s, -11 * s, -1 * s, 2 * s, 5 * s, -14 * s, 8 * s, 2 * s]);
-    withAlpha(ctx, 0.34, () => {
-      ctx.strokeStyle = rgbOf(mixRgb(mats.light, mats.high, 0.36));
-      ctx.lineWidth = Math.max(0.65, 0.85 * s);
+    const profile = (variant >>> 4) % 4;
+    const jitter = ((variant >>> 8) % 5) - 2;
+    const edge = mixRgb(mats.dark, mats.blocked, 0.2);
+    const body = mixRgb(mats.high, mats.light, 0.24);
+    const face = mixRgb(body, mats.ore, 0.12);
+    const highlight = mixRgb(mats.light, body, 0.16);
+    const drawShard = (x: number, height: number, half: number, lean: number, tone: number): void => {
+      const base = 3.2;
+      ctx.fillStyle = rgbOf(edge);
+      fillPoly(ctx, [
+        (x - half - 1.5) * s, base * s,
+        (x + lean) * s, (-height - 1.6) * s,
+        (x + half + 1.5) * s, base * s,
+      ]);
+      ctx.fillStyle = rgbOf(tone % 2 === 0 ? body : face);
+      fillPoly(ctx, [
+        (x - half * 0.48) * s, (base - 0.7) * s,
+        (x + lean * 0.78) * s, (-height + 0.4) * s,
+        (x + half * 0.48) * s, (base - 0.7) * s,
+      ]);
+      withAlpha(ctx, 0.46, () => {
+        ctx.strokeStyle = rgbOf(highlight);
+        ctx.lineWidth = Math.max(0.65, 0.82 * s);
+        ctx.beginPath();
+        ctx.moveTo((x - half * 0.2) * s, (base - 0.9) * s);
+        ctx.lineTo((x + lean * 0.7) * s, (-height + 1.7) * s);
+        ctx.stroke();
+      });
+    };
+    if (profile === 0) {
+      drawShard(-7 + jitter * 0.4, 14 + jitter, 5.2, -1.4, 0);
+      drawShard(5 + jitter * 0.25, 18 - jitter * 0.4, 6.4, 2.2, 1);
+    } else if (profile === 1) {
+      drawShard(-1 + jitter * 0.2, 22 - jitter * 0.35, 7.4, -2.5, 1);
+      drawShard(8 + jitter * 0.4, 10 + jitter, 4.4, 1.8, 0);
+    } else if (profile === 2) {
+      drawShard(-10 + jitter * 0.2, 13 + jitter * 0.4, 4.6, -3.4, 0);
+      drawShard(-1 + jitter * 0.25, 18 - jitter * 0.3, 5.8, 0.4, 1);
+      drawShard(9 + jitter * 0.2, 15 + jitter * 0.25, 4.8, 2.8, 0);
+    } else {
+      drawShard(-9 + jitter * 0.3, 10 + jitter * 0.2, 5.2, 1.2, 0);
+      drawShard(0 + jitter * 0.25, 16 - jitter * 0.25, 7.2, -2.1, 1);
+      drawShard(9 + jitter * 0.3, 8 + jitter * 0.3, 4.2, 2.4, 0);
+      ctx.strokeStyle = rgbOf(mixRgb(mats.dark, mats.high, 0.42));
+      ctx.lineWidth = Math.max(0.55, 0.65 * s);
       ctx.beginPath();
-      ctx.moveTo(-4 * s, -9 * s);
-      ctx.lineTo(-1 * s, 1 * s);
-      ctx.moveTo(6 * s, -12 * s);
-      ctx.lineTo(7 * s, 0);
+      ctx.moveTo(-11 * s, -1.2 * s);
+      ctx.lineTo(10 * s, 0.8 * s);
       ctx.stroke();
-    });
+    }
     return;
   }
   const body = rgbOf(mixRgb(mats.blocked, mats.dark, 0.12));

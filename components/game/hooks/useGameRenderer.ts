@@ -5,6 +5,7 @@ import type { RenderExtras } from "@/lib/render/renderer";
 import type { CommandMarker } from "@/lib/render/renderOverlays/types";
 import type { BuildingKind, SimState } from "@/lib/types";
 import { renderGameFrame } from "../renderFrame";
+import { createScreenShakeState, updateScreenShake, type ScreenShakeState } from "@/lib/render/screenShake";
 import type { SelectionBox } from "./selectionBox";
 
 type Point = { x: number; y: number };
@@ -70,6 +71,7 @@ export function useGameRenderer({
   const mobileMiniCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const fxRef = useRef<FxBurst[]>([]);
   const fxSeq = useRef(1);
+  const screenShakeRef = useRef<ScreenShakeState>(createScreenShakeState());
 
   const redraw = useCallback((nowMs?: number, subTickAlpha = 0) => {
     const s = stateRef.current;
@@ -78,6 +80,13 @@ export function useGameRenderer({
     if (!s || !canvas || !host) return;
     extrasRef.current.commandMarker = commandMarkerRef?.current ?? null;
     extrasRef.current.reducedMotion = reducedMotion;
+
+    const currentNow = nowMs ?? performance.now();
+    const shake = updateScreenShake(screenShakeRef.current, currentNow, reducedMotion);
+    const renderCam = (shake.offsetX !== 0 || shake.offsetY !== 0)
+      ? { ...camRef.current, x: camRef.current.x + shake.offsetX, y: camRef.current.y + shake.offsetY }
+      : camRef.current;
+
     const frame = renderGameFrame({
       state: s,
       canvas,
@@ -87,7 +96,8 @@ export function useGameRenderer({
       miniCtx: miniCtxRef.current,
       secondaryMiniCanvas: mobileMiniRef.current,
       secondaryMiniCtx: mobileMiniCtxRef.current,
-      cam: camRef.current,
+      cam: renderCam,
+      minimapCam: camRef.current,
       selected: selected.current,
       hover: hoverRef.current,
       cursor: cursorRef.current,
@@ -97,7 +107,7 @@ export function useGameRenderer({
       selectBox: boxRef.current,
       extras: extrasRef.current,
       fx: fxRef.current,
-      nowMs,
+      nowMs: currentNow,
       subTickAlpha,
       colorblindMode,
     });
@@ -107,7 +117,7 @@ export function useGameRenderer({
     fxRef.current = frame.fx;
   }, [boxRef, camRef, canvasRef, colorblindMode, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, place, reducedMotion, repair, selected, sell, stateRef]);
 
-  return { extrasRef, fxRef, fxSeq, redraw };
+  return { extrasRef, fxRef, fxSeq, screenShakeRef, redraw };
 }
 
 export type GameRenderer = ReturnType<typeof useGameRenderer>;

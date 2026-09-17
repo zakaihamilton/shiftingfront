@@ -85,7 +85,7 @@ describe("combat fx bursts", () => {
     expect(cullFx([dead, live], 1000).map((item) => item.id)).toEqual([2]);
     const many = Array.from({ length: 70 }, (_, i) => burst({ id: i, kind: "impact", bornMs: 990, durationMs: 200 }));
     expect(cullFx(many, 1000)).toHaveLength(MAX_TRANSIENT_FX);
-    const aftermath = Array.from({ length: 30 }, (_, i) => burst({ id: 100 + i, kind: "scorch", bornMs: 990 }));
+    const aftermath = Array.from({ length: MAX_PERSISTENT_FX + 6 }, (_, i) => burst({ id: 100 + i, kind: "scorch", bornMs: 990 }));
     const culled = cullFx([...many, ...aftermath], 1000);
     expect(culled.filter((item) => item.kind === "scorch")).toHaveLength(MAX_PERSISTENT_FX);
     expect(culled.filter((item) => item.kind === "impact")).toHaveLength(MAX_TRANSIENT_FX);
@@ -106,12 +106,13 @@ describe("combat fx bursts", () => {
       500,
       10,
     );
-    expect(nextId).toBe(12);
-    expect(bursts.map((item) => item.kind)).toEqual(["destruction", "destruction"]);
-    expect(bursts.every((item) => item.durationMs === FX_DURATION.destruction)).toBe(true);
+    expect(nextId).toBe(16);
+    expect(bursts.some((item) => item.kind === "destruction")).toBe(true);
+    expect(bursts.some((item) => item.kind === "scorch")).toBe(true);
+    expect(bursts.some((item) => item.kind === "wreck")).toBe(true);
+    expect(bursts.some((item) => item.kind === "rubble")).toBe(true);
     expect(bursts.some((item) => item.entityKind === "tank" && item.entityClass === "unit")).toBe(true);
     expect(bursts.some((item) => item.entityKind === "constructionYard" && item.entityClass === "building")).toBe(true);
-    expect(bursts.some((item) => item.kind === "wreck" || item.kind === "rubble" || item.kind === "scorch")).toBe(false);
     expect(bursts.find((item) => item.entityKind === "tank")?.x).toBe(4);
     expect(bursts.find((item) => item.entityKind === "constructionYard")?.y).toBe(6);
   });
@@ -133,8 +134,9 @@ describe("combat fx bursts", () => {
 
     expect(fxTargetDomain("infantry")).toBe("human");
     expect(fxTargetDomain("tank")).toBe("vehicle");
-    expect(bursts.map((item) => item.targetDomain)).toEqual(["human", "vehicle"]);
-    expect(bursts.map((item) => item.magnitude)).toEqual([0.62, 0.9]);
+    const destructionBursts = bursts.filter((item) => item.kind === "destruction");
+    expect(destructionBursts.map((item) => item.targetDomain)).toEqual(["human", "vehicle"]);
+    expect(destructionBursts.map((item) => item.magnitude)).toEqual([0.62, 0.9]);
   });
 
   it("renders collapses for units and buildings and suppresses moving debris", () => {

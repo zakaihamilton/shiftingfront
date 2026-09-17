@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { deadlineUrgency, objectiveCardsFor, phaseLabel } from "../../lib/ui/missionPresentation";
-import { makeFixture } from "../../lib/sim/fixtures";
+import { deadlineUrgency, minimapPingFor, objectiveCardsFor, phaseLabel } from "../../lib/ui/missionPresentation";
+import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 describe("mission presentation models", () => {
   it("maps timer thresholds to explicit urgency states", () => {
@@ -53,5 +53,26 @@ describe("mission presentation models", () => {
       { id: "time", priority: "primary" },
       { id: "survivors", priority: "optional" },
     ]);
+  });
+
+  it("does not reveal a shrouded alert target with a minimap ping", () => {
+    const state = makeFixture({ win: { kind: "rescue", targetCount: 1 } });
+    const enemy = addUnit(state, 1, "infantry", 9, 9);
+    state.runtime = {
+      kind: "rescue",
+      phase: "active",
+      targetIds: [enemy.id],
+      rescued: 0,
+      required: 1,
+      secondary: [],
+    };
+
+    expect(minimapPingFor(state, "urgent")).toMatchObject({
+      x: 9 / (state.width - 1),
+      y: 9 / (state.height - 1),
+    });
+
+    state.fog.fill(0);
+    expect(minimapPingFor(state, "urgent")).toBeUndefined();
   });
 });

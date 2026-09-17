@@ -22,6 +22,27 @@
   gap: 0.5rem;
 }
 
+/* Keep the health meter below the identity card on one stable baseline while
+   unit order/support/status fields appear or disappear. */
+.unitRow {
+  min-height: 7.25rem;
+  align-items: flex-start;
+}
+
+.unitRow > :last-child {
+  min-width: 0;
+}
+
+.unitRow .name,
+.unitRow .stat,
+.unitRow .orderStatus,
+.unitRow .warning,
+.unitRow .carry {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .portrait {
   position: relative;
   display: flex;

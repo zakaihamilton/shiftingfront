@@ -12,41 +12,41 @@ import { tileVariant } from "../../terrainAtlas";
 import type { ScatterItem, ScatterKind, ScatterWorld } from "./types";
 
 const POOLS: Record<BiomeName, ScatterKind[]> = {
-  "jungle wreckage": ["tuft", "tuft", "shrub", "reed", "pebble", "tuft", "pebble"],
-  "salt marshes": ["tuft", "reed", "reed", "shrub", "shrub", "pebble"],
-  "ash plains": ["pebble", "pebble", "tuft", "pebbleCluster", "tuft"],
-  "crystal flats": ["crystalChip", "crystalChip", "pebble", "pebbleCluster"],
-  "tundra grid": ["iceChip", "iceChip", "pebble", "tuft", "tuft"],
-  "rust canyons": ["pebble", "debris", "debris", "pebbleCluster", "pebble"],
-  "volcanic shelf": ["pebble", "cinder", "cinder", "debris", "pebbleCluster"],
-  "glass desert": ["pebble", "pebble", "pebbleCluster", "debris", "cinder"],
+  "jungle wreckage": ["tuft", "tuft", "shrub", "reed", "pebble", "tuft", "pebble", "dryBrush"],
+  "salt marshes": ["tuft", "reed", "reed", "shrub", "shrub", "pebble", "dryBrush"],
+  "ash plains": ["pebble", "pebble", "tuft", "pebbleCluster", "tuft", "rockSlab"],
+  "crystal flats": ["crystalChip", "crystalChip", "pebble", "pebbleCluster", "mineralFlake", "sandShard"],
+  "tundra grid": ["iceChip", "iceChip", "pebble", "tuft", "tuft", "mineralFlake"],
+  "rust canyons": ["pebble", "debris", "debris", "pebbleCluster", "pebble", "rockSlab"],
+  "volcanic shelf": ["pebble", "cinder", "cinder", "debris", "pebbleCluster", "rockSlab"],
+  "glass desert": ["pebble", "pebbleCluster", "debris", "cinder", "rockSlab", "sandShard", "dryBrush"],
 };
 
 const FEATURE_POOLS: Partial<Record<TerrainFeatureKind, readonly ScatterKind[]>> = {
-  ashDrift: ["tuft", "pebble", "pebbleCluster"],
-  cinderBasin: ["cinder", "pebble", "debris"],
-  scoriaField: ["cinder", "pebbleCluster", "pebble"],
-  crystalVein: ["crystalChip", "crystalChip", "pebble"],
-  reflectivePan: ["crystalChip", "pebble", "iceChip"],
-  facetRise: ["crystalChip", "pebbleCluster", "pebble"],
-  strataGully: ["pebble", "debris", "pebbleCluster"],
-  mesaShelf: ["pebble", "pebbleCluster", "debris"],
+  ashDrift: ["tuft", "pebble", "pebbleCluster", "rockSlab"],
+  cinderBasin: ["cinder", "pebble", "debris", "rockSlab"],
+  scoriaField: ["cinder", "pebbleCluster", "pebble", "rockSlab"],
+  crystalVein: ["crystalChip", "crystalChip", "pebble", "mineralFlake"],
+  reflectivePan: ["crystalChip", "pebble", "iceChip", "mineralFlake"],
+  facetRise: ["crystalChip", "pebbleCluster", "pebble", "sandShard", "mineralFlake"],
+  strataGully: ["pebble", "debris", "pebbleCluster", "rockSlab"],
+  mesaShelf: ["pebble", "pebbleCluster", "debris", "rockSlab"],
   scrapWash: ["debris", "debris", "pebble"],
   mudflat: ["reed", "tuft", "pebble"],
   reedBed: ["reed", "reed", "shrub"],
-  saltPan: ["pebble", "iceChip", "tuft"],
-  duneSea: ["pebble", "pebbleCluster", "cinder"],
-  glassShards: ["crystalChip", "pebble", "debris"],
-  dryWash: ["pebble", "pebbleCluster", "debris"],
+  saltPan: ["pebble", "iceChip", "tuft", "dryBrush"],
+  duneSea: ["pebble", "pebbleCluster", "cinder", "sandShard", "rockSlab"],
+  glassShards: ["sandShard", "crystalChip", "pebble", "debris", "mineralFlake"],
+  dryWash: ["pebble", "pebbleCluster", "debris", "rockSlab", "sandShard"],
   frostPan: ["iceChip", "iceChip", "pebble"],
   iceRift: ["iceChip", "pebble", "tuft"],
-  driftMoraine: ["pebbleCluster", "iceChip", "pebble"],
+  driftMoraine: ["pebbleCluster", "iceChip", "pebble", "mineralFlake"],
   canopyGrove: ["tuft", "shrub", "reed"],
   wreckClearing: ["debris", "tuft", "pebble"],
   vineRidge: ["shrub", "tuft", "pebble"],
-  basaltShelf: ["cinder", "pebbleCluster", "pebble"],
-  lavaScar: ["cinder", "cinder", "debris"],
-  ashCone: ["cinder", "pebble", "pebbleCluster"],
+  basaltShelf: ["cinder", "pebbleCluster", "pebble", "rockSlab"],
+  lavaScar: ["cinder", "cinder", "debris", "rockSlab"],
+  ashCone: ["cinder", "pebble", "pebbleCluster", "rockSlab"],
 };
 
 export function mix(v: number, salt: number): number {
@@ -63,14 +63,14 @@ export function signed(v: number, salt: number, span: number): number {
 
 function scatterChance(biome: BiomeName): number {
   switch (biome) {
-    case "jungle wreckage": return 58;
-    case "salt marshes": return 54;
-    case "ash plains": return 44;
-    case "rust canyons": return 40;
-    case "crystal flats": return 38;
-    case "volcanic shelf": return 38;
-    case "tundra grid": return 36;
-    case "glass desert": return 34;
+    case "jungle wreckage": return 60;
+    case "salt marshes": return 58;
+    case "ash plains": return 50;
+    case "rust canyons": return 47;
+    case "crystal flats": return 45;
+    case "volcanic shelf": return 45;
+    case "tundra grid": return 42;
+    case "glass desert": return 44;
   }
 }
 
@@ -87,7 +87,7 @@ function makeItem(pool: readonly ScatterKind[], v: number, slot: number, scaleBo
 }
 
 function groundItems(biome: BiomeName, v: number, feature: TerrainFeatureSample): ScatterItem[] {
-  const chance = scatterChance(biome) + Math.round(feature.intensity * 10);
+  const chance = Math.min(68, scatterChance(biome) + Math.round(feature.intensity * 12));
   const roll = v % 100;
   if (roll >= chance) return [];
   const count = roll < chance * 0.16 ? 3 : roll < chance * 0.5 ? 2 : 1;

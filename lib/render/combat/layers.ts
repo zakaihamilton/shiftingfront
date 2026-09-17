@@ -208,15 +208,25 @@ export function drawFxLayer(
       const s = position(burst);
       if (!visible(s)) continue;
       const fade = p > 0.78 ? 1 - (p - 0.78) / 0.22 : 1;
-      const radius = (13 + (burst.magnitude ?? 1) * 13) * z;
+      const mag = burst.magnitude ?? 1;
+      const radius = (12 + mag * 14) * z;
+      const cy = s.y + (TILE_H / 2) * z;
       ctx.save();
-      ctx.globalAlpha = 0.26 * fade;
-      ctx.fillStyle = "#080909";
+      // Outer blast soot ring
+      ctx.globalAlpha = 0.32 * fade;
+      ctx.fillStyle = "#120e0b";
       ctx.beginPath();
-      ctx.ellipse(s.x, s.y + (TILE_H / 2) * z, radius, radius * 0.38, -0.08, 0, Math.PI * 2);
+      ctx.ellipse(s.x, cy, radius * 1.15, radius * 0.44, -0.06, 0, Math.PI * 2);
       ctx.fill();
-      ctx.globalAlpha = 0.14 * fade;
-      ctx.strokeStyle = "#5a3925";
+      // Core charred crater
+      ctx.globalAlpha = 0.48 * fade;
+      ctx.fillStyle = "#040404";
+      ctx.beginPath();
+      ctx.ellipse(s.x, cy, radius * 0.72, radius * 0.28, -0.04, 0, Math.PI * 2);
+      ctx.fill();
+      // Charred rim crack line
+      ctx.globalAlpha = 0.22 * fade;
+      ctx.strokeStyle = "#442b1a";
       ctx.lineWidth = Math.max(1, 2 * z);
       ctx.stroke();
       ctx.restore();

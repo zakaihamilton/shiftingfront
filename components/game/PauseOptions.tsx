@@ -81,36 +81,38 @@ export function PauseOptions({
       <ConsoleLabel>Options</ConsoleLabel>
       <h2 id={titleId} className={styles.title}>Game options</h2>
       <div className={styles.actions}>
-        <ConsoleButton className={styles.action} tooltip="Turn music on or off" shortcut={SHORTCUT.music} onClick={onToggleMusic}>
-          Music: {settings.musicEnabled ? "On" : "Off"}
-        </ConsoleButton>
-        <ConsoleButton className={styles.action} tooltip="Turn sound effects on or off" shortcut={SHORTCUT.mute} onClick={onToggleSound}>
-          Sound effects: {settings.sfxEnabled ? "On" : "Off"}
-        </ConsoleButton>
-        {onToggleReducedMotion ? (
-          <ConsoleButton className={styles.action} tooltip="Reduce interface animation and motion" onClick={onToggleReducedMotion}>
-            Reduced motion: {settings.reducedMotion ? "On" : "Off"}
+        <div className={styles.toggleGrid}>
+          <ConsoleButton className={styles.action} tooltip="Turn music on or off" shortcut={SHORTCUT.music} onClick={onToggleMusic}>
+            Music: {settings.musicEnabled ? "On" : "Off"}
           </ConsoleButton>
-        ) : null}
-        {onToggleHighContrast ? (
-          <ConsoleButton className={styles.action} tooltip="Increase interface contrast and status differentiation" onClick={onToggleHighContrast}>
-            High contrast: {settings.highContrast ? "On" : "Off"}
+          <ConsoleButton className={styles.action} tooltip="Turn sound effects on or off" shortcut={SHORTCUT.mute} onClick={onToggleSound}>
+            Sound effects: {settings.sfxEnabled ? "On" : "Off"}
           </ConsoleButton>
-        ) : null}
-        {onCycleColorblind ? (
-          <ConsoleButton className={styles.action} tooltip="Cycle colorblind palette for lasers, health bars, and minimap" onClick={onCycleColorblind}>
-            Colorblind: {settings.colorblindMode === "deuteranopia" ? "Deuteranopia (Red-Green)" : settings.colorblindMode === "protanopia" ? "Protanopia (Red-Weak)" : settings.colorblindMode === "tritanopia" ? "Tritanopia (Blue-Yellow)" : "Off"}
-          </ConsoleButton>
-        ) : null}
-        {fullscreen.isSupported ? (
-          <ConsoleButton
-            className={styles.action}
-            tooltip={`Toggle browser fullscreen (${fullscreen.shortcut})`}
-            onClick={fullscreen.toggle}
-          >
-            Fullscreen: {fullscreen.isFullscreen ? "On" : "Off"}
-          </ConsoleButton>
-        ) : null}
+          {onToggleReducedMotion ? (
+            <ConsoleButton className={styles.action} tooltip="Reduce interface animation and motion" onClick={onToggleReducedMotion}>
+              Reduced motion: {settings.reducedMotion ? "On" : "Off"}
+            </ConsoleButton>
+          ) : null}
+          {onToggleHighContrast ? (
+            <ConsoleButton className={styles.action} tooltip="Increase interface contrast and status differentiation" onClick={onToggleHighContrast}>
+              High contrast: {settings.highContrast ? "On" : "Off"}
+            </ConsoleButton>
+          ) : null}
+          {onCycleColorblind ? (
+            <ConsoleButton className={styles.action} tooltip="Cycle colorblind palette for lasers, health bars, and minimap" onClick={onCycleColorblind}>
+              Colorblind: {settings.colorblindMode === "deuteranopia" ? "Deuteranopia (Red-Green)" : settings.colorblindMode === "protanopia" ? "Protanopia (Red-Weak)" : settings.colorblindMode === "tritanopia" ? "Tritanopia (Blue-Yellow)" : "Off"}
+            </ConsoleButton>
+          ) : null}
+          {fullscreen.isSupported ? (
+            <ConsoleButton
+              className={styles.action}
+              tooltip={`Toggle browser fullscreen (${fullscreen.shortcut})`}
+              onClick={fullscreen.toggle}
+            >
+              Fullscreen: {fullscreen.isFullscreen ? "On" : "Off"}
+            </ConsoleButton>
+          ) : null}
+        </div>
         {onUpdateKeyBindings ? (
           <ConsoleButton className={styles.action} tooltip="Customize keyboard shortcuts and camera controls" onClick={() => setKeybindsOpen(true)}>
             Configure Keybinds…

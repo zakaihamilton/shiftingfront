@@ -1,4 +1,5 @@
 import { isUnitKind, UNIT_STATS, labelFor } from "@/lib/catalog";
+import { cx } from "@/lib/ui/cx";
 import type { Entity, FactionVisualProfile, Palette, Stance } from "@/lib/types";
 import { SUPPORT_MODE_LABEL, stanceLabel } from "@/lib/ui/copy";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
@@ -30,7 +31,7 @@ export function SelectionIdentity({
               : selected.idle ? "Idle" : "Holding position"
     : undefined;
   return (
-    <div className={styles.row}>
+    <div className={cx(styles.row, selected.class === "unit" && styles.unitRow)}>
       <div className={styles.portrait}>
         <SpritePreview kind={selected.kind} palette={palette} profile={profile} />
       </div>

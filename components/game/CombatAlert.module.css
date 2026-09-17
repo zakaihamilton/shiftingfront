@@ -32,8 +32,16 @@
   flex: 0 0 1rem;
   place-items: center;
   border: 1px solid currentColor;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
+}
+
+.iconSvg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 1.35;
 }
 
 .banner[data-kind="objective"] {

@@ -747,6 +747,12 @@ describe("PauseOptions telemetry controls", () => {
       />,
     );
 
+    // Verify toggles are structured inside toggleGrid container
+    const musicBtn = screen.getByRole("button", { name: /Music:/ });
+    const soundBtn = screen.getByRole("button", { name: /Sound effects:/ });
+    expect(musicBtn.parentElement).toHaveClass(/toggleGrid/);
+    expect(soundBtn.parentElement).toHaveClass(/toggleGrid/);
+
     // Colorblind toggle
     const colorblindBtn = screen.getByRole("button", { name: /Colorblind: Off/ });
     expect(colorblindBtn).toBeVisible();

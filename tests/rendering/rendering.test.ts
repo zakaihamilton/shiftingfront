@@ -54,6 +54,7 @@ import {
   visibleFxTileCoords,
   waterFxNeedsClip,
 } from "../../lib/render/terrainWeather";
+import { drawLandmark } from "../../lib/render/terrainPaint/scatter";
 import { spriteCacheKey, terrainContentKey } from "../../lib/render/renderer";
 import { minimapCacheKeys, minimapEntityVisible, MINIMAP_OVERLAY_TICK_SHIFT } from "../../lib/render/minimap";
 import { hash2, propMaterialsFor } from "../../lib/render/terrainMaterials";
@@ -985,6 +986,24 @@ describe("terrain scatter artifacts", () => {
     expect(JSON.stringify(collectScatter(jungle))).not.toBe(JSON.stringify(collectScatter(state)));
   });
 
+  it("uses the expanded motif vocabulary without changing tile limits", () => {
+    const base = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" }, seed: 832 });
+    const biomes: BiomeName[] = [
+      "ash plains", "crystal flats", "rust canyons", "salt marshes",
+      "glass desert", "tundra grid", "jungle wreckage", "volcanic shelf",
+    ];
+    for (const biome of biomes) {
+      const state = { ...base, biome };
+      const kinds = new Set(collectScatter(state).map((item) => item.kind));
+      expect(kinds.size, `motif variety for ${biome}`).toBeGreaterThanOrEqual(3);
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          expect(scatterForTile(state, x, y).length).toBeLessThanOrEqual(3);
+        }
+      }
+    }
+  });
+
   it("skips water, concrete, ore, and blocked tiles", () => {
     const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" }, seed: 832 });
     setTile(state, 1, 1, TILE_WATER);
@@ -1232,6 +1251,7 @@ describe("standalone tile sprite assets", () => {
 
 function createPaintMock() {
   const ops: string[] = [];
+  const geometry: string[] = [];
   const stack: number[] = [];
   let alpha = 1;
   const ctx = {
@@ -1246,19 +1266,34 @@ function createPaintMock() {
     restore() { alpha = stack.pop() ?? 1; },
     translate() {},
     rotate() {},
-    beginPath() {},
-    moveTo() {},
-    lineTo() {},
-    quadraticCurveTo() {},
-    closePath() {},
+    beginPath() { geometry.push("begin"); },
+    moveTo(x: number, y: number) { geometry.push(`m:${x.toFixed(2)},${y.toFixed(2)}`); },
+    lineTo(x: number, y: number) { geometry.push(`l:${x.toFixed(2)},${y.toFixed(2)}`); },
+    quadraticCurveTo(cx: number, cy: number, x: number, y: number) {
+      geometry.push(`q:${cx.toFixed(2)},${cy.toFixed(2)},${x.toFixed(2)},${y.toFixed(2)}`);
+    },
+    closePath() { geometry.push("close"); },
     fill() { ops.push(`fill:${ctx.fillStyle}`); },
     stroke() { ops.push(`stroke:${ctx.strokeStyle}`); },
-    ellipse() {},
+    ellipse(x: number, y: number, rx: number, ry: number, rotation: number) {
+      geometry.push(`e:${x.toFixed(2)},${y.toFixed(2)},${rx.toFixed(2)},${ry.toFixed(2)},${rotation.toFixed(2)}`);
+    },
   };
-  return { ctx: ctx as unknown as CanvasRenderingContext2D, ops };
+  return { ctx: ctx as unknown as CanvasRenderingContext2D, ops, geometry };
 }
 
 describe("terrain adornment painting", () => {
+  it("gives glass landmarks four deterministic silhouette families", () => {
+    const mats = biomeMaterials("glass desert");
+    const signatures = new Set<string>();
+    for (let variant = 0; variant < 64; variant++) {
+      const painted = createPaintMock();
+      drawLandmark(painted.ctx, mats, "glass desert", 1, 1, variant);
+      signatures.add(painted.geometry.join("|"));
+    }
+    expect(signatures.size).toBeGreaterThanOrEqual(4);
+  });
+
   it("paints layered scatter and blocker props deterministically", () => {
     const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed: 832 });
     let scatterTile = { x: 0, y: 0 };

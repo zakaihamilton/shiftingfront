@@ -1,7 +1,7 @@
 import { footprintOf } from "../../../catalog";
 import { buildingSprite, unitSprite } from "../../../gen/assets";
 import { generateVisualProfile } from "../../../gen/visualProfile";
-import type { BuildingKind, SimState, UnitKind } from "../../../types";
+import type { BuildingKind, Entity, SimState, UnitKind } from "../../../types";
 import {
   animClock,
   buildingAnim,
@@ -82,6 +82,62 @@ export function unitSpriteDrawPosition({
     : { dx: Math.round(rawX), dy: Math.round(rawY) };
 }
 
+const UNIT_DEPTH_STABILITY_EPSILON = 0.75;
+
+/**
+ * Sort entities by painter depth without letting a tight group of moving
+ * units reorder itself as their interpolated positions cross by a fraction of
+ * a tile. The near-depth units are sorted as a group after the raw depth sort;
+ * doing this in two phases keeps the ordering transitive for groups of three
+ * or more units.
+ */
+export function sortEntitiesForRender(
+  entities: Entity[],
+  depths: Map<number, number>,
+  previousOrder: Map<number, number>,
+  stabilityEpsilon = UNIT_DEPTH_STABILITY_EPSILON,
+): void {
+  entities.sort((a, b) => {
+    const delta = depths.get(a.id)! - depths.get(b.id)!;
+    return delta || (a.id - b.id);
+  });
+
+  let groupStart = 0;
+  while (groupStart < entities.length) {
+    if (entities[groupStart]!.class !== "unit") {
+      groupStart += 1;
+      continue;
+    }
+
+    let groupEnd = groupStart + 1;
+    while (
+      groupEnd < entities.length &&
+      entities[groupEnd]!.class === "unit" &&
+      Math.abs(depths.get(entities[groupEnd]!.id)! - depths.get(entities[groupEnd - 1]!.id)!) <= stabilityEpsilon
+    ) {
+      groupEnd += 1;
+    }
+
+    if (groupEnd - groupStart > 1) {
+      const rawOrder = new Map<number, number>();
+      for (let index = groupStart; index < groupEnd; index += 1) {
+        rawOrder.set(entities[index]!.id, index);
+      }
+      entities
+        .slice(groupStart, groupEnd)
+        .sort((a, b) => {
+          const orderA = previousOrder.get(a.id) ?? rawOrder.get(a.id)!;
+          const orderB = previousOrder.get(b.id) ?? rawOrder.get(b.id)!;
+          return orderA - orderB || a.id - b.id;
+        })
+        .forEach((entity, index) => {
+          entities[groupStart + index] = entity;
+        });
+    }
+    groupStart = groupEnd;
+  }
+}
+
 export function renderEntityPhase(
   ctx: CanvasRenderingContext2D,
   state: SimState,
@@ -111,8 +167,7 @@ export function renderEntityPhase(
   }
 
   // Pre-compute interpolated positions for units so the sort uses visual depth,
-  // not coarse integer tile coords. Without this, grouped units on the same
-  // isometric diagonal flip z-order every sub-tick (visible flickering).
+  // not coarse integer tile coords.
   updateUnitHistory(state, timeMs);
   const dynCache = new Map<number, ReturnType<typeof computeUnitDynamicTransform>>();
   for (const e of drawList) {
@@ -126,23 +181,7 @@ export function renderEntityPhase(
     depthCache.set(e.id, e.class === "unit" ? (dynCache.get(e.id)!.x + dynCache.get(e.id)!.y) : depthOf(e));
   }
 
-  // Keep nearly-overlapping grouped units in their established painter order.
-  // Their interpolated depths can cross by tiny amounts while they move, which
-  // otherwise makes the sprites swap z-order from frame to frame and flicker.
-  const UNIT_DEPTH_STABILITY_EPSILON = 0.75;
-  drawList.sort((a, b) => {
-    const da = depthCache.get(a.id)!;
-    const db = depthCache.get(b.id)!;
-    const delta = da - db;
-    if (a.class === "unit" && b.class === "unit" && Math.abs(delta) <= UNIT_DEPTH_STABILITY_EPSILON) {
-      const previousA = entityDrawOrder.get(a.id);
-      const previousB = entityDrawOrder.get(b.id);
-      if (previousA !== undefined && previousB !== undefined && previousA !== previousB) {
-        return previousA - previousB;
-      }
-    }
-    return delta || (a.id - b.id);
-  });
+  sortEntitiesForRender(drawList, depthCache, entityDrawOrder);
   drawList.forEach((e, index) => entityDrawOrder.set(e.id, index));
 
   drawFxLayer(ctx, state, cam, extras.fx, timeMs, "ground", extras.reducedMotion);

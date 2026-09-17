@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { buildingCameoStatus, buildingLimitReached, isSupportUnit, unitCameoStatus } from "@/lib/catalog";
 import { beep } from "@/lib/audio/synth";
+import { voiceBarkForBeep } from "@/lib/audio/voice";
 import { groundOrders } from "@/lib/sim/orders";
 import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
@@ -68,6 +69,7 @@ export function useGameActions({
     mobileCommand.current = command;
     setMobileCommandState(command);
     beep("select");
+    voiceBarkForBeep("select");
     notify(`${command === "attackMove" ? "Attack-move" : command.charAt(0).toUpperCase() + command.slice(1)} ready — tap a destination.`, "info");
   }, [clearTools, notify]);
 
@@ -97,6 +99,7 @@ export function useGameActions({
     mobileCommand.current = null;
     setMobileCommandState(null);
     beep("ack");
+    voiceBarkForBeep("ack");
     if (uxRef && uxRef.current.firstOrderTick === undefined) uxRef.current.firstOrderTick = stateRef.current.tick;
     notify(command === "stop"
       ? `Stop order issued to ${unitIds.length} unit${unitIds.length === 1 ? "" : "s"}.`
@@ -130,7 +133,10 @@ export function useGameActions({
     resolvedCommandPort.enqueueMany(commands);
     if (uxRef && uxRef.current.firstOrderTick === undefined) uxRef.current.firstOrderTick = state.tick;
     const kind = beepForCommands(commands);
-    if (kind) beep(kind);
+    if (kind) {
+      beep(kind);
+      voiceBarkForBeep(kind);
+    }
     notify(`${command === "attackMove" ? "Attack-move" : command.charAt(0).toUpperCase() + command.slice(1)} order issued.`, "success");
     return true;
   }, [notify, resolvedCommandPort, selected, selectedIds, stateRef, uxRef]);
@@ -151,7 +157,10 @@ export function useGameActions({
     enqueue(nextCommand);
     if (uxRef && uxRef.current.firstOrderTick === undefined) uxRef.current.firstOrderTick = stateRef.current.tick;
     const kind = beepForCommands([nextCommand]);
-    if (kind) beep(kind);
+    if (kind) {
+      beep(kind);
+      voiceBarkForBeep(kind);
+    }
     notify(`${command === "attack" ? "Attack" : "Support"} order issued.`, "success");
     return true;
   }, [enqueue, notify, selected, selectedIds, stateRef, uxRef]);
