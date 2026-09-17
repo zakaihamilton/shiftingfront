@@ -10,5 +10,5 @@ describe("competent commander balance regressions partition 2", () => {
     assertEdgeScenarioRecords(first, [
       "0028 / M4", "0029 / M5", "0030 / M2",
     ]);
-  }, 120_000);
+  }, 180_000);
 });

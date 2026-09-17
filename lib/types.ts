@@ -222,6 +222,12 @@ export function isBuildingEntity(entity: Entity): entity is BuildingEntity {
   return entity.class === "building";
 }
 
+/** Objective assets remain under shroud until the player discovers them. */
+export function isHiddenObjectiveAsset(entity: Pick<Entity, "owner" | "neutral" | "scenarioRole">): boolean {
+  return entity.owner === 0 && entity.neutral === true &&
+    (entity.scenarioRole === "stranded" || entity.scenarioRole === "cargo");
+}
+
 /** Stranded rescue units are objective actors, not player-selectable units. */
 export function isPlayerSelectableUnit(entity: Entity): boolean {
   return entity.class === "unit" && entity.scenarioRole !== "stranded";

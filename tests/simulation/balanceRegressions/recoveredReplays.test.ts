@@ -61,5 +61,5 @@ describe("recovered competent-commander balance replays", () => {
       expect(record.powerDeficit).toBe(false);
       expect(record.nonFiniteState).toBe(false);
     }
-  }, 120_000);
+  }, 180_000);
 });

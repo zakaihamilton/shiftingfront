@@ -1,7 +1,7 @@
 import { HEIGHT_STEP, TILE_H, TILE_W, screenToGroundTile, tileToScreen, type Camera } from "../iso";
 import { buildingAt, groundHeight, heightAt } from "../sim/world";
 import { fogAt } from "../sim/fog";
-import type { Entity, SimState } from "../types";
+import { isHiddenObjectiveAsset, type Entity, type SimState } from "../types";
 
 export function entityElev(state: SimState, e: Entity): number {
   return e.class === "unit" ? groundHeight(state, e.x, e.y) : heightAt(state, Math.round(e.x), Math.round(e.y));
@@ -63,7 +63,7 @@ export function entityVisible(state: SimState, e: Entity): boolean {
   const ty = Math.round(e.y);
   const fog = fogAt(state, tx, ty);
   if (e.owner === 1 && fog !== 2) return false;
-  if (e.owner === 0 && e.neutral && e.scenarioRole === "stranded" && fog !== 2) return false;
+  if (isHiddenObjectiveAsset(e) && fog !== 2) return false;
   return true;
 }
 

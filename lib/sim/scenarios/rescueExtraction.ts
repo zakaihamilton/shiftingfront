@@ -4,7 +4,7 @@ import { inRescueFlank, rescueFlankCenter } from "../../gen/map/generator/rescue
 import type { Rng } from "../../seed/rng";
 import { inObjectiveZone, RESCUE_CONTACT_RADIUS } from "../../types";
 import type { Entity, SimState, Vec2 } from "../../types";
-import { fogAt } from "../fog";
+import { tileInPlayerVision } from "../fog";
 import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
 import { closestApproach, distToEntity, isWalkable } from "../world";
@@ -65,7 +65,7 @@ function rescuePointCandidates(
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
       if (reachable && reachable[y * map.width + x] !== 1) continue;
-      if (!inRescueFlank(map, x, y) || !isWalkable(state, x, y)) continue;
+      if (!inRescueFlank(map, x, y) || !isWalkable(state, x, y) || tileInPlayerVision(state, x, y)) continue;
       candidates.push({ x, y });
     }
   }
@@ -144,7 +144,7 @@ function extractionPointCandidates(
     for (let x = 3; x < map.width - 3; x += 1) {
       const point = { x, y };
       if (reachable && reachable[y * map.width + x] !== 1) continue;
-      if (!isWalkable(state, x, y)) continue;
+      if (!isWalkable(state, x, y) || tileInPlayerVision(state, x, y)) continue;
       if (pointDistance(point, map.playerStart) < EXTRACTION_PLAYER_BASE_CLEARANCE) continue;
       if (playerBuildings.some((building) => distToEntity(point, building) < EXTRACTION_PLAYER_BASE_CLEARANCE)) continue;
       if (pointDistance(point, map.enemyStart) < EXTRACTION_ENEMY_BASE_CLEARANCE) continue;
@@ -263,11 +263,10 @@ function returnStrandedUnitToBase(state: SimState, unit: Entity, yard: Entity | 
   }
 }
 
-function strandedUnitDiscovered(state: SimState, target: Entity, rescuers: readonly Entity[]): boolean {
-  const fog = fogAt(state, Math.round(target.x), Math.round(target.y));
-  // Contact remains a fallback for headless callers that intentionally skip
-  // fog updates, while normal missions discover targets through revealed fog.
-  return fog === 2 || rescuers.some((rescuer) => Math.hypot(rescuer.x - target.x, rescuer.y - target.y) <= RESCUE_CONTACT_RADIUS);
+function strandedUnitContacted(target: Entity, rescuers: readonly Entity[]): boolean {
+  // Revealing a stranded unit only makes its blue contact halo visible. The
+  // rescue starts when a player unit actually enters that halo.
+  return rescuers.some((rescuer) => Math.hypot(rescuer.x - target.x, rescuer.y - target.y) <= RESCUE_CONTACT_RADIUS);
 }
 
 export function tickRescueExtraction(state: SimState): void {
@@ -297,7 +296,7 @@ export function tickRescueExtraction(state: SimState): void {
       target.path = [];
       target.routePending = false;
       target.idle = true;
-      if (strandedUnitDiscovered(state, target, rescuers)) {
+      if (strandedUnitContacted(target, rescuers)) {
         target.neutral = false;
         returnStrandedUnitToBase(state, target, yard, runtime.zone);
         contacted.push(id);
@@ -333,7 +332,7 @@ export function tickRescueExtraction(state: SimState): void {
     e.path = [];
     e.routePending = false;
     e.idle = true;
-    if (runtime.kind === "rescue" && strandedUnitDiscovered(state, e, rescuers)) {
+    if (runtime.kind === "rescue" && strandedUnitContacted(e, rescuers)) {
       e.neutral = false;
       returnStrandedUnitToBase(state, e, yard, runtime.zone);
       runtime.rescued += 1;

@@ -13,7 +13,8 @@ import { distToEntity } from "../../lib/sim/world";
 import { guardScenarioObjectives } from "../../lib/sim/ai/director";
 import { deserializeState, serializeState } from "../../lib/persist/save";
 import { inRescueFlank } from "../../lib/gen/map/generator/rescuePlacement";
-import { fogIndex } from "../../lib/sim/fog";
+import { fogAt, fogIndex } from "../../lib/sim/fog";
+import { entityVisible } from "../../lib/render/renderPicking";
 import { RESCUE_CONTACT_RADIUS, type MissionKind } from "../../lib/types";
 
 function missionOfKind(kind: MissionKind, missionIndex: number) {
@@ -177,6 +178,25 @@ describe("tactical expansion", () => {
     for (const id of state.runtime?.targetIds ?? []) {
       const target = state.entities.find((entity) => entity.id === id)!;
       expect(inRescueFlank(map, target.x, target.y)).toBe(true);
+    }
+  });
+
+  it("starts rescue and extraction assets under shroud", () => {
+    for (const [kind, missionIndex] of [["rescue", 0], ["extraction", 1]] as const) {
+      const state = missionOfKind(kind, missionIndex);
+      const targets = (state.runtime?.targetIds ?? [])
+        .map((id) => state.entities.find((entity) => entity.id === id))
+        .filter((target): target is NonNullable<typeof target> => target !== undefined);
+
+      expect(targets.length).toBeGreaterThan(0);
+      expect(targets.every((target) => fogAt(state, Math.round(target.x), Math.round(target.y)) === 0)).toBe(true);
+      expect(targets.every((target) => !entityVisible(state, target))).toBe(true);
+
+      const first = targets[0]!;
+      const index = fogIndex(state, Math.round(first.x), Math.round(first.y));
+      expect(index).not.toBeNull();
+      state.fog[index!] = 2;
+      expect(entityVisible(state, first)).toBe(true);
     }
   });
 
@@ -508,15 +528,14 @@ describe("tactical expansion", () => {
     expect(state.result).toBe("won");
   });
 
-  it("starts returning a stranded unit when it is discovered outside contact range", () => {
+  it("waits outside the halo and returns a stranded unit after contact", () => {
     const state = makeFixture({ width: 24, height: 24, win: { kind: "rescue", targetCount: 1, ticks: 500 } });
     const yard = addBuilding(state, 0, "constructionYard", 0, 0);
     const rescuer = addUnit(state, 0, "infantry", 2, 3);
     const stranded = addUnit(state, 0, "infantry", 10, 3);
     stranded.neutral = true;
     stranded.scenarioRole = "stranded";
-    state.fog.fill(0);
-    state.fog[fogIndex(state, stranded.x, stranded.y)!] = 2;
+    state.fog.fill(2);
     state.runtime = {
       kind: "rescue",
       phase: "active",
@@ -532,6 +551,14 @@ describe("tactical expansion", () => {
     tick(state);
 
     expect(Math.hypot(rescuer.x - stranded.x, rescuer.y - stranded.y)).toBeGreaterThan(RESCUE_CONTACT_RADIUS);
+    expect(stranded.neutral).toBe(true);
+    expect(state.runtime.contactedIds).toEqual([]);
+    expect(stranded.orderDestination).toBeUndefined();
+
+    rescuer.x = stranded.x - 2;
+    rescuer.y = stranded.y;
+    tick(state);
+
     expect(stranded.neutral).toBe(false);
     expect(state.runtime.contactedIds).toEqual([stranded.id]);
     expect(stranded.orderMode).toBe("move");

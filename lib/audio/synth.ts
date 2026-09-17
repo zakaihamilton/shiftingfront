@@ -1,5 +1,5 @@
 import { getAudioContext, isAudioUnlocked, resumeAudio } from "./context";
-import { getAudioBus, setAudioBusEnabled } from "./mixer";
+import { getAudioBus, isAudioForeground, setAudioBusEnabled } from "./mixer";
 import {
   type BeepKind,
   type SfxKind,
@@ -25,7 +25,7 @@ export function isSfxEnabled(): boolean {
 }
 
 export function playSfx(kind: SfxKind, options: SfxOptions = {}): void {
-  if (!sfxEnabled || !isAudioUnlocked()) return;
+  if (!sfxEnabled || !isAudioForeground() || !isAudioUnlocked()) return;
   const audio = getAudioContext();
   const dest = getAudioBus("sfx");
   if (!audio || !dest) return;

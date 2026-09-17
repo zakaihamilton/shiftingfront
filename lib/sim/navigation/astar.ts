@@ -48,6 +48,24 @@ function ignoreIdOf(from: Vec2, opts?: FindPathOptions): number | undefined {
   return typeof maybe.id === "number" ? maybe.id : undefined;
 }
 
+function buildingApproachCells(
+  navigation: ReturnType<typeof staticNavigationFor>,
+  x: number,
+  y: number,
+  footprint: { w: number; h: number },
+): Vec2[] {
+  const cells: Vec2[] = [];
+  for (let cy = y - 1; cy <= y + footprint.h; cy += 1) {
+    for (let cx = x - 1; cx <= x + footprint.w; cx += 1) {
+      const inside = cx >= x && cx < x + footprint.w && cy >= y && cy < y + footprint.h;
+      if (inside || !inBoundsNavigation(navigation, cx, cy)) continue;
+      if (navigation.walkable[cy * navigation.width + cx] !== 1) continue;
+      cells.push({ x: cx, y: cy });
+    }
+  }
+  return cells;
+}
+
 function occupancyAt(occupancy: Uint8Array, w: number, x: number, y: number): boolean {
   return occupancy[y * w + x] === 1;
 }
@@ -137,9 +155,11 @@ export function findPathDetailed(
   const navigationRevision = state.navigationRevision ?? 0;
   const target = to as Entity;
   const targetFootprint = isBuildingEntity(target) ? footprintOf(target.kind) : undefined;
+  const source = from as Entity;
+  const sourceFootprint = isBuildingEntity(source) ? footprintOf(source.kind) : undefined;
   const navigation = staticNavigationFor(state);
   const cacheKey = !avoidUnits
-    ? `${sx},${sy}:${gx},${gy}:${maxNodes}:${targetFootprint?.w ?? 0},${targetFootprint?.h ?? 0}`
+    ? `${sx},${sy}:${gx},${gy}:${maxNodes}:${sourceFootprint?.w ?? 0},${sourceFootprint?.h ?? 0}:${targetFootprint?.w ?? 0},${targetFootprint?.h ?? 0}`
     : undefined;
   if (cacheKey) {
     const sharedKey = `${navigation.geometryKey}:${cacheKey}`;
@@ -159,6 +179,12 @@ export function findPathDetailed(
     ? (opts?.occupancy ?? makeUnitOccupancy(state, ignoreId))
     : undefined;
   const startKey = sy * w + sx;
+  const starts = sourceFootprint
+    ? buildingApproachCells(navigation, sx, sy, sourceFootprint)
+    : [{ x: sx, y: sy }];
+  if (starts.length === 0) {
+    return cacheStaticResult(state, navigationRevision, cacheKey, { path: [], status: "unreachable" });
+  }
   const unitBlocked = (x: number, y: number) => {
     if (!occupancy) return false;
     const index = y * w + x;
@@ -186,12 +212,14 @@ export function findPathDetailed(
   const { stamps, gScore, parent, open } = buffers;
   open.clear();
 
-  const startH = heuristic(sx, sy, gx, gy);
-  gScore[startKey] = 0;
-  stamps[startKey] = generation;
-  parent[startKey] = -1;
   let pushSeq = 0;
-  open.push(sx, sy, 0, startH, pushSeq++);
+  for (const start of starts) {
+    const key = start.y * w + start.x;
+    gScore[key] = 0;
+    stamps[key] = generation;
+    parent[key] = -1;
+    open.push(start.x, start.y, 0, heuristic(start.x, start.y, gx, gy), pushSeq++);
+  }
 
   let bestKey = -1;
   let bestH = Infinity;

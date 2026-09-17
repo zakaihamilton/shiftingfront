@@ -141,6 +141,16 @@ describe("pathfinding", () => {
     expect(last.y).toBe(2);
   });
 
+  it("starts building-origin searches from the reachable footprint perimeter", () => {
+    const s = makeFixture({ width: 12, height: 10, win: { kind: "annihilate" } });
+    const yard = addBuilding(s, 0, "constructionYard", 0, 0);
+    const result = findPathDetailed(s, yard, { x: 8, y: 7 });
+
+    expect(result.status).toBe("complete");
+    expect(result.path.length).toBeGreaterThan(0);
+    expect(result.path[0]).not.toEqual({ x: yard.x, y: yard.y });
+  });
+
   it("routes to the reachable perimeter of a multi-tile building", () => {
     const s = makeFixture({ width: 12, height: 10, win: { kind: "annihilate" } });
     for (const [x, y] of [

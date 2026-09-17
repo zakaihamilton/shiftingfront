@@ -1,6 +1,6 @@
 import { BUILDING_STATS, UNIT_STATS, footprintOf } from "../catalog";
 import { MAP_SKIRT } from "../gen/map";
-import { isBuildingEntity, isUnitEntity, type SimState } from "../types";
+import { isBuildingEntity, isHiddenObjectiveAsset, isUnitEntity, type SimState } from "../types";
 import { livingView } from "./world";
 
 export function fogGridWidth(mapW: number): number {
@@ -51,6 +51,25 @@ export function fogAt(state: { width: number; height: number; fog: number[] }, x
   return state.fog[i] ?? 0;
 }
 
+/** Whether a tile is inside a current player-controlled sight radius. */
+export function tileInPlayerVision(state: SimState, x: number, y: number): boolean {
+  for (const e of livingView(state)) {
+    if (e.owner !== 0 || isHiddenObjectiveAsset(e)) continue;
+    const sight = isUnitEntity(e)
+      ? UNIT_STATS[e.kind].sight
+      : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;
+    let cx = e.x;
+    let cy = e.y;
+    if (isBuildingEntity(e)) {
+      const fp = footprintOf(e.kind);
+      cx = e.x + (fp.w - 1) / 2;
+      cy = e.y + (fp.h - 1) / 2;
+    }
+    if (Math.hypot(x - cx, y - cy) <= sight) return true;
+  }
+  return false;
+}
+
 export function tickFog(state: SimState): void {
   state.fog = expandFog(state.fog, state.width, state.height);
   const x0 = -MAP_SKIRT;
@@ -58,9 +77,10 @@ export function tickFog(state: SimState): void {
   const x1 = state.width + MAP_SKIRT;
   const y1 = state.height + MAP_SKIRT;
   for (const e of livingView(state)) {
-    // Stranded rescue targets are owner-0 entities for objective bookkeeping,
-    // but they are not player-controlled vision sources until contacted.
-    if (e.owner !== 0 || (e.neutral && e.scenarioRole === "stranded")) continue;
+    // Rescue and extraction targets are owner-0 entities for objective
+    // bookkeeping, but they are not player-controlled vision sources until
+    // contacted.
+    if (e.owner !== 0 || isHiddenObjectiveAsset(e)) continue;
     const sight = isUnitEntity(e)
       ? UNIT_STATS[e.kind].sight
       : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;

@@ -1,4 +1,4 @@
-import type { AnimFrame, BiomeName, BuildingKind, Entity, Facing, SimState, SpriteCrop, UnitKind } from "../types";
+import { isHiddenObjectiveAsset, type AnimFrame, type BiomeName, type BuildingKind, type Entity, type Facing, type SimState, type SpriteCrop, type UnitKind } from "../types";
 import { fogAt } from "../sim/fog";
 
 export type RasterArtKey = "menu" | "victory" | "defeat" | BiomeName;
@@ -291,7 +291,7 @@ function isMissionRasterVisible(
     return entity.class === "unit" ? fog > 0 : fog === 2;
   }
 
-  if (entity.neutral && entity.scenarioRole === "stranded") {
+  if (isHiddenObjectiveAsset(entity)) {
     return fogAt(state, Math.round(entity.x), Math.round(entity.y)) === 2;
   }
 

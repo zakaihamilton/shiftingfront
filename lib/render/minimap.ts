@@ -4,6 +4,7 @@ import {
   TILE_BLOCKED,
   TILE_RESOURCE,
   TILE_WATER,
+  isHiddenObjectiveAsset,
   type Entity,
   type SimState,
 } from "../types";
@@ -60,9 +61,9 @@ export function entityColor(e: Entity, state: SimState, mode: ColorblindMode = "
 export function minimapEntityVisible(state: SimState, e: Entity): boolean {
   const fog = fogAt(state, Math.round(e.x), Math.round(e.y));
   if (e.owner === 1 && fog !== 2) return false;
-  // Stranded units are owner-0 objective actors, so they need their own fog
+  // Hidden objective assets are owner-0 actors, so they need their own fog
   // check or their location would leak through the minimap.
-  if (e.scenarioRole === "stranded" && fog !== 2) return false;
+  if (isHiddenObjectiveAsset(e) && fog !== 2) return false;
   return true;
 }
 
