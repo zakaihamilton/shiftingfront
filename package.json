@@ -63,6 +63,7 @@
     "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#brag-output*/**\" \"#artifacts/**\" \"#.repnix\" \"#node_modules\" \"#playwright-report\" \"#test-results\" \"#coverage\" \"#dist\" \"#build\" \"#.next\" \"#.turbo\" \"#.git\" \"#generated\""
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"

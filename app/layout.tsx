@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import { AudioRoot } from "@/components/audio/AudioRoot";
 import { TooltipLayer } from "@/components/TooltipLayer";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -123,6 +124,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <AudioRoot />
         <ErrorBoundary>{children}</ErrorBoundary>
         <TooltipLayer />
+        <Analytics />
       </body>
     </html>
   );
