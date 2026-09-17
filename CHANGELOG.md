@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Coverage pathfinding timeouts**: The 128-unit cohesion, corridor, and 64-unit formation cases skip under coverage instrumentation and use a 120 s timeout otherwise.
 - **Service worker install**: Core routes and icons must precache; art assets remain best-effort. Cache bumped to `shiftingfront-v5`.
 - **Content-Security-Policy**: Default, script, style, image, font, connect, worker, and object policies now apply in addition to portal `frame-ancestors`, including Vercel Analytics endpoints.
+- **Local Vercel Analytics**: Web Analytics mounts only when `VERCEL=1`, so Playwright's `next start` server no longer 404s `/_vercel/insights/script.js`.
 
 ### Changed
 

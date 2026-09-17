@@ -11,6 +11,11 @@ export const APP_VERSION = "1.0.1";
 export const APP_REPO_URL = "https://github.com/zakaihamilton/shiftingfront";
 export const APP_ISSUES_URL = "https://github.com/zakaihamilton/shiftingfront/issues";
 
+/** `/_vercel/insights` only exists on Vercel. Local `next start` (including Playwright) 404s it. */
+export function shouldLoadVercelAnalytics(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.VERCEL === "1";
+}
+
 const theme = Number.parseInt(APP_THEME_COLOR.slice(1), 16);
 
 export const APP_THEME_RGB = {
