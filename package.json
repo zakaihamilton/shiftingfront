@@ -31,7 +31,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:fast": "vitest run --exclude tests/simulation/allSeeds --exclude tests/simulation/headlessBalance --exclude tests/simulation/balanceRegressions --exclude tests/simulation/terrain.test.ts --exclude tests/simulation/commander.test.ts --exclude tests/simulation/commanderGenerated.test.ts --exclude tests/generation/profile.test.ts --exclude tests/generation/profileMapValidity",
     "test:watch": "vitest",
@@ -59,7 +59,7 @@
     "ci:timed-balance-archetypes": "tsx scripts/balance.ts --from 0 --to 39 --jobs 4 --strategy archetypes --check true --max-elapsed-ms 295000 --progress false > artifacts/balance-archetypes-timing.json",
     "ci:timed-balance-archetype": "tsx scripts/balance.ts --from 0 --to 39 --jobs 4 --check true --progress false --stratified true",
     "health:licenses": "license-checker --json",
-    "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#.repnix\" \"#node_modules\" \"#playwright-report\" \"#test-results\" \"#coverage\" \"#dist\" \"#build\" \"#.next\" \"#.turbo\" \"#.git\" \"#generated\""
+    "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#brag-output*/**\" \"#.repnix\" \"#node_modules\" \"#playwright-report\" \"#test-results\" \"#coverage\" \"#dist\" \"#build\" \"#.next\" \"#.turbo\" \"#.git\" \"#generated\""
   },
   "dependencies": {
     "next": "16.3.1",

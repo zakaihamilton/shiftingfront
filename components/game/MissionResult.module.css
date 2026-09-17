@@ -585,6 +585,8 @@
 }
 
 .overlay[data-result="lost"] .actions {
+  display: grid;
+  grid-template-columns: max-content max-content;
   justify-content: space-between;
 }
 

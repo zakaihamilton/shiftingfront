@@ -7,7 +7,7 @@ import { formatSeed, parseSeed } from "@/lib/seed/rng";
 import { isEditableTarget, menuCommandFromKey } from "@/lib/ui/shortcuts";
 import { useAudioPreferences } from "@/components/audio/useAudioPreferences";
 import type { MenuView } from "./MenuOverlay";
-import { tutorialPath } from "../game/hooks/missionRoutes";
+import { tutorialPath } from "@/lib/navigation/routes";
 import { menuLaunchPath, rollSeed, weeklySeed } from "./menuLaunch";
 
 export function useMenuController() {

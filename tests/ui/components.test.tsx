@@ -16,7 +16,7 @@ import { NewGameSetup } from "../../components/menu/NewGameSetup";
 import { SeedEntry } from "../../components/menu/SeedEntry";
 import { PauseMenu } from "../../components/game/PauseMenu";
 import { PauseDiagnostics } from "../../components/game/PauseDiagnostics";
-import { PauseOptions } from "../../components/game/PauseOptions";
+import { PauseOptions } from "../../components/settings/PauseOptions";
 import { PauseSaveSlots } from "../../components/game/PauseSaveSlots";
 import { PauseLoadSlots } from "../../components/game/PauseLoadSlots";
 import { CommandHeader } from "../../components/game/CommandHeader";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createCinemaScene, renderCinemaFrame, stepCinemaScene, type Shot } from "./menuBackdropSim";
+import { createCinemaScene, renderCinemaFrame, stepCinemaScene, type Shot } from "./ambient/menuBackdropSim";
 import styles from "./MenuBackdrop.module.css";
 
 export function MenuBackdrop() {

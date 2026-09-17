@@ -8,9 +8,8 @@ import { createCampaign } from "../../lib/gen/campaign";
 import { defaultSettings } from "../../lib/persist/settings";
 import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { generateVisualProfile } from "../../lib/gen/visualProfile";
-import type { GameActions } from "../../components/game/hooks/useGameActions";
 import type { GameCamera } from "../../components/game/hooks/useGameCamera";
-import type { GameSession } from "../../components/game/hooks/useGameSession";
+import type { OverlaySurfaceModel } from "../../components/game/hooks/runtime/types";
 import { GameOverlays } from "../../components/game/GameOverlays";
 import { MissionResult } from "../../components/game/MissionResult";
 import { MissionResultActions } from "../../components/game/MissionResultActions";
@@ -53,68 +52,44 @@ vi.mock("../../components/game/PauseMenu", () => ({
 
 afterEach(() => cleanup());
 
-function testActions(): GameActions {
+function testCommands() {
   const noop = vi.fn();
   return {
-    place: { current: null },
-    placeRef: { current: null },
     placeKind: null,
-    setPlaceKind: noop,
-    repair: { current: false },
-    repairRef: { current: false },
     repairMode: false,
-    setRepairMode: noop,
-    sell: { current: false },
-    sellRef: { current: false },
     sellMode: false,
-    setSellMode: noop,
-    mobileCommand: { current: null },
-    mobileCommandRef: { current: null },
-    mobileCommandState: null,
-    setMobileCommandState: noop,
-    clearTools: noop,
-    chooseMobileCommand: noop,
-    cancelMobileCommand: noop,
-    issueSelectedCommand: noop,
-    togglePlace: noop,
-    toggleRepair: noop,
-    toggleSell: noop,
-    cancelBuilding: noop,
+    onPlace: noop,
+    onRepair: noop,
+    onSell: noop,
+    onCancelBuilding: noop,
+    onQueueUnit: noop,
+    onCancelUnit: noop,
     availableProducer: noop,
-    queueUnit: noop,
-    cancelUnit: noop,
-    activateCameo: noop,
-  } as unknown as GameActions;
+    onStop: noop,
+    onStance: noop,
+    onFormation: noop,
+  };
 }
 
-function testSession(): GameSession {
+function testPauseSession() {
   const noop = vi.fn();
   return {
-    confirmation: null,
-    confirmAction: noop,
-    cancelConfirmation: noop,
-    openPauseMenu: noop,
-    resumeMission: noop,
-    saveMission: noop,
-    loadMission: noop,
-    saveNamedSlot: () => false,
-    loadArchiveEntry: noop,
-    defaultSlotName: () => "Test · M1",
-    listSaveSlots: () => [],
-    listLoadEntries: () => [],
-    viewMissionBriefing: noop,
-    restartMission: noop,
-    toggleSound: noop,
-    toggleMusic: noop,
-    updateVolume: noop,
-    exitTutorial: noop,
-    resultPrimary: noop,
-    goHome: noop,
-    goMenu: noop,
-    goNextBriefing: noop,
-    goCampaignVictory: noop,
-    goRetry: noop,
-  } as unknown as GameSession;
+    saveSlots: [],
+    loadEntries: [],
+    defaultSlotName: "Test · M1",
+    telemetryEnabled: false,
+    onResume: noop,
+    onSave: noop,
+    onLoad: noop,
+    onCommitSave: () => false,
+    onLoadEntry: noop,
+    onBriefing: noop,
+    onRestart: noop,
+    onMenu: noop,
+    onToggleSound: noop,
+    onToggleMusic: noop,
+    onVolumeChange: noop,
+  };
 }
 
 describe("game overlay surfaces", () => {
@@ -127,29 +102,50 @@ describe("game overlay surfaces", () => {
       onMinimapPointerUp: vi.fn(),
       isMinimapDragging: false,
     } as unknown as GameCamera;
-    const props = {
+    const props: OverlaySurfaceModel = {
       campaign: createCampaign(421),
       state,
       playerVisualProfile: generateVisualProfile(421, 0),
       selectedIds: [unit.id],
       tutorial: false,
-      selectionMode: false,
       mobilePanelOpen: true,
       mobileLauncherRef: createRef<HTMLButtonElement>(),
       miniRef: createRef<HTMLCanvasElement>(),
       activeTab: "construction" as const,
       onTab: vi.fn(),
       paused: false,
-      pauseView: "main" as const,
-      pauseNotice: "",
       audioSettings: defaultSettings(),
       camera,
-      setPauseView: vi.fn(),
-      setPauseNotice: vi.fn(),
       onToggleMobilePanel: vi.fn(),
-      onPause: vi.fn(),
-      actions: testActions(),
-      session: testSession(),
+      sidebar: {
+        factionName: "Test faction",
+        state,
+        palette: state.factions[0].palette,
+        profile: generateVisualProfile(421, 0),
+        selected: state.entities.find((entity) => entity.id === unit.id),
+        activeTab: "construction",
+        power: 0,
+        produced: 0,
+        used: 0,
+        miniRef: createRef<HTMLCanvasElement>(),
+        camera,
+        onPause: vi.fn(),
+        onToggleMobilePanel: vi.fn(),
+        onTab: vi.fn(),
+        commands: testCommands(),
+        mobilePanelOpen: true,
+        selectionCount: 1,
+      },
+      pause: {
+        view: "main",
+        notice: "",
+        settings: defaultSettings(),
+        tutorial: false,
+        setView: vi.fn(),
+        setNotice: vi.fn(),
+        session: testPauseSession(),
+      },
+      confirmation: null,
     };
     const { rerender } = render(<GameOverlays {...props} />);
 
@@ -159,14 +155,15 @@ describe("game overlay surfaces", () => {
     rerender(
       <GameOverlays
         {...props}
-        session={{
-          ...props.session,
-          confirmation: {
+        confirmation={{
+          value: {
             action: "menu",
             title: "Leave mission?",
             message: "Return to the main menu?",
             confirmLabel: "Leave mission",
           },
+          onConfirm: vi.fn(),
+          onCancel: vi.fn(),
         }}
       />,
     );
@@ -304,21 +301,18 @@ describe("game overlay surfaces", () => {
 
   it("keeps command controls available during tutorial play", () => {
     const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
-    const props = {
+    const props: OverlaySurfaceModel = {
       campaign: createCampaign(421),
       state,
       playerVisualProfile: generateVisualProfile(421, 0),
       selectedIds: [],
       tutorial: true,
-      selectionMode: false,
       mobilePanelOpen: false,
       mobileLauncherRef: createRef<HTMLButtonElement>(),
       miniRef: createRef<HTMLCanvasElement>(),
       activeTab: "construction" as const,
       onTab: vi.fn(),
       paused: false,
-      pauseView: "main" as const,
-      pauseNotice: "",
       audioSettings: defaultSettings(),
       camera: {
         onMinimapPointerDown: vi.fn(),
@@ -326,12 +320,41 @@ describe("game overlay surfaces", () => {
         onMinimapPointerUp: vi.fn(),
         isMinimapDragging: false,
       } as unknown as GameCamera,
-      setPauseView: vi.fn(),
-      setPauseNotice: vi.fn(),
       onToggleMobilePanel: vi.fn(),
-      onPause: vi.fn(),
-      actions: testActions(),
-      session: testSession(),
+      sidebar: {
+        factionName: "Test faction",
+        state,
+        palette: state.factions[0].palette,
+        profile: generateVisualProfile(421, 0),
+        selected: undefined,
+        activeTab: "construction",
+        power: 0,
+        produced: 0,
+        used: 0,
+        miniRef: createRef<HTMLCanvasElement>(),
+        camera: {
+          onMinimapPointerDown: vi.fn(),
+          onMinimapPointerMove: vi.fn(),
+          onMinimapPointerUp: vi.fn(),
+          isMinimapDragging: false,
+        } as unknown as GameCamera,
+        onPause: vi.fn(),
+        onToggleMobilePanel: vi.fn(),
+        onTab: vi.fn(),
+        commands: testCommands(),
+        mobilePanelOpen: false,
+        selectionCount: 0,
+      },
+      pause: {
+        view: "main",
+        notice: "",
+        settings: defaultSettings(),
+        tutorial: true,
+        setView: vi.fn(),
+        setNotice: vi.fn(),
+        session: testPauseSession(),
+      },
+      confirmation: null,
     };
 
     render(<GameOverlays {...props} />);

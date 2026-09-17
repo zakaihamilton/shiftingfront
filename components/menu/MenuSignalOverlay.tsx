@@ -19,7 +19,7 @@ import {
   type CinemaScene,
   type PreviewPhase,
   type Shot,
-} from "./menuBackdropSim";
+} from "@/components/shared/ambient/menuBackdropSim";
 import { preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
 import styles from "./MenuSignalOverlay.module.css";
 

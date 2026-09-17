@@ -4,7 +4,7 @@ import { clearMusicPosition } from "@/lib/audio/music";
 import { clearBriefingSkippedIntent, markBriefingSkippedIntent, markFreshLaunchIntent } from "@/lib/persist/navigation";
 import { formatSeed } from "@/lib/seed/rng";
 import { briefingCommandFromKey, isEditableTarget } from "@/lib/ui/shortcuts";
-import { briefingBackPath, type NavigationOrigin } from "../game/hooks/missionRoutes";
+import { briefingBackPath, type NavigationOrigin } from "@/lib/navigation/routes";
 
 export function useBriefingController({
   seed,

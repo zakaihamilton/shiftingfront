@@ -41,7 +41,7 @@ vi.mock("../../components/game/renderFrame", () => ({ renderGameFrame }));
 import { useGameRenderer } from "../../components/game/hooks/useGameRenderer";
 import { initialMission } from "../../components/game/hooks/useGameSession";
 import { useGameRuntime } from "../../components/game/hooks/useGameRuntime";
-import { createGameRuntimeSurfaces } from "../../components/game/hooks/runtime/surfaces";
+import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "../../components/game/hooks/runtime/surfaces";
 
 afterEach(() => {
   cleanup();
@@ -371,14 +371,32 @@ describe("useGameRuntime", () => {
 
   it("adapts the runtime contract into independent screen surfaces", () => {
     const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
-    const surfaces = createGameRuntimeSurfaces(result.current);
+    const cache = createGameRuntimeSurfaceCache();
+    const surfaces = createGameRuntimeSurfaces(result.current, cache);
 
     expect(surfaces.playField.state).toBe(result.current.state);
-    expect(surfaces.playField.onPointerDown).toBe(result.current.onPointerDown);
-    expect(surfaces.playField.onNextBriefing).toBe(result.current.onNextBriefing);
+    expect(surfaces.playField.pointer.onPointerDown).toBe(result.current.onPointerDown);
+    expect(surfaces.playField.resultActions.onNextBriefing).toBe(result.current.onNextBriefing);
     expect(surfaces.overlays.state).toBe(result.current.state);
-    expect(surfaces.overlays.actions).toBe(result.current.actions);
-    expect(surfaces.overlays.session).toBe(result.current.session);
+    expect(surfaces.overlays).not.toHaveProperty("actions");
+    expect(surfaces.overlays).not.toHaveProperty("session");
+    expect(surfaces.overlays.sidebar.commands.onPlace).toBe(result.current.actions.togglePlace);
+    expect(surfaces.overlays.pause).toBeNull();
+    act(() => result.current.onPause());
+    const pausedSurfaces = createGameRuntimeSurfaces(result.current, cache);
+    expect(pausedSurfaces.overlays.pause?.session.onResume).toBe(result.current.session.resumeMission);
+  });
+
+  it("reuses the cached power model while the building signature is unchanged", () => {
+    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+    const cache = createGameRuntimeSurfaceCache();
+
+    createGameRuntimeSurfaces(result.current, cache);
+    const firstPower = cache.power;
+    createGameRuntimeSurfaces(result.current, cache);
+
+    expect(firstPower).not.toBeNull();
+    expect(cache.power).toBe(firstPower);
   });
 
   it("wires runtime lifecycle callbacks and stops the loop on unmount", () => {

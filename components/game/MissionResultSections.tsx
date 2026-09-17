@@ -1,4 +1,4 @@
-import { DossierSection, MetricCluster, StatusBadge } from "@/components/campaign/CampaignDossier";
+import { DossierSection, MetricCluster, StatusBadge } from "@/components/ui/Dossier";
 import type { ForceDebrief, MissionDebrief } from "@/lib/sim/debrief";
 import styles from "./MissionResult.module.css";
 

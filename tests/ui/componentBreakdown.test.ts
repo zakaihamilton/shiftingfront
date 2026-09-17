@@ -5,7 +5,7 @@ import { leastLoadedProducer } from "../../components/game/hooks/gameActions";
 import { resolvePointerUp, DOUBLE_CLICK_MS, isSameKindDoubleClick } from "../../components/game/hooks/gamePointerUp";
 import { alertSfx, desiredMusicIntensity, rejectionSfx, warningAlert } from "../../components/game/hooks/gameLoopEffects";
 import { missionConfirmationFor } from "../../components/game/hooks/missionConfirmation";
-import { briefingBackPath, briefingPath, campaignCompletePath, menuPath, resultPrimaryPath, tutorialPath } from "../../components/game/hooks/missionRoutes";
+import { briefingBackPath, briefingPath, campaignCompletePath, menuPath, resultPrimaryPath, tutorialPath } from "../../lib/navigation/routes";
 import { gameOverlayModel } from "../../components/game/gameOverlayModel";
 import { playFieldStatus } from "../../components/game/playFieldStatus";
 import { createCamera, tileToScreen } from "../../lib/iso";

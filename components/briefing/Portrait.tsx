@@ -3,7 +3,7 @@ import { cx } from "@/lib/ui/cx";
 import type { FaceTone } from "@/lib/render/portraits";
 import type { Character } from "@/lib/types";
 import { characterLabel } from "@/lib/gen/names";
-import { Face } from "./Face";
+import { Face } from "@/components/shared/Face";
 import styles from "./Portrait.module.css";
 
 export const Portrait = memo(function Portrait({

@@ -11,11 +11,11 @@ import {
   previewMissionIndex,
   previewScenarioKind,
   previewSeed,
-} from "../../components/menu/menuBackdropSim/cycle";
-import { CINEMA_SHOTS, cinemaShotCamera, PIP_ZOOM, PREVIEW_SHOT_COUNT } from "../../components/menu/menuBackdropSim/shots";
-import { cinemaGroundWorld } from "../../components/menu/menuBackdropSim/paint";
-import { stepCinemaScene } from "../../components/menu/menuBackdropSim/render";
-import { CINEMA_SCENARIO_KINDS, CINEMA_SEED, createCinemaScene, type Shot } from "../../components/menu/menuBackdropSim/scene";
+} from "../../components/shared/ambient/menuBackdropSim/cycle";
+import { CINEMA_SHOTS, cinemaShotCamera, PIP_ZOOM, PREVIEW_SHOT_COUNT } from "../../components/shared/ambient/menuBackdropSim/shots";
+import { cinemaGroundWorld } from "../../components/shared/ambient/menuBackdropSim/paint";
+import { stepCinemaScene } from "../../components/shared/ambient/menuBackdropSim/render";
+import { CINEMA_SCENARIO_KINDS, CINEMA_SEED, createCinemaScene, type Shot } from "../../components/shared/ambient/menuBackdropSim/scene";
 import { createCampaign } from "../../lib/gen/campaign";
 import { footprintOf } from "../../lib/catalog";
 import { createMission } from "../../lib/sim/api";

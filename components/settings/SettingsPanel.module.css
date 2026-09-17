@@ -1,0 +1,19 @@
+.dialog { width: 100%; max-width: 24rem; padding: 1.5rem; border-top: 2px solid var(--chrome-cyan-dim); }
+.title { margin: 0.5rem 0 0; font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--chrome-text); }
+.actions { margin-top: 1.5rem; display: grid; gap: 0.5rem; }
+.toggleGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+.action { width: 100%; text-align: left; }
+.volumeControls { display: grid; gap: 0.7rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--chrome-inset); }
+.volumeControl { display: grid; gap: 0.3rem; color: var(--chrome-body); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.volumeLabel { display: flex; justify-content: space-between; gap: 0.75rem; }
+.volumeLabel output { color: var(--chrome-cyan); font-variant-numeric: tabular-nums; }
+.volumeRange { width: 100%; accent-color: var(--chrome-cyan); }
+.group { display: grid; gap: 0.5rem; padding-top: 0.65rem; border-top: 1px solid var(--chrome-inset); }
+.groupLabel { margin: 0; }
+.confirmOverlay { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(0, 0, 0, 0.72); }
+.confirmDialog { width: min(100%, 24rem); padding: 1.25rem; }
+.slotCopy { margin: 0.75rem 0 0; color: var(--chrome-body); font-size: 0.75rem; line-height: 1.45; }
+.slotConfirmActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+.hint { margin-top: 1rem; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.025em; color: var(--chrome-muted); }
+@media (max-width: 480px) { .toggleGrid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .title { font-size: 1.2rem; } .actions { margin-top: 1rem; } .group { gap: 0.35rem; padding-top: 0.45rem; } .volumeControls { margin-top: 1rem; } }

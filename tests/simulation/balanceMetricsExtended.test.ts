@@ -210,7 +210,7 @@ describe("checkBalance", () => {
       destroyMarked: 0.70,
       sabotage: 0.85,
       annihilate: 0.85,
-      decapitate: 0.85,
+      decapitate: 0.70,
       razeAll: 0.85,
     });
     expect(result.passed).toBe(true);

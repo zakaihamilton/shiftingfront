@@ -1,5 +1,5 @@
 import { formatSeed, hash32, parseSeed } from "@/lib/seed/rng";
-import { briefingPath, type NavigationOrigin } from "../game/hooks/missionRoutes";
+import { briefingPath, type NavigationOrigin } from "@/lib/navigation/routes";
 
 const MS_PER_DAY = 86_400_000;
 const MS_PER_WEEK = 86_400_000 * 7;

@@ -1,7 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { useGameRuntime } from "./hooks/useGameRuntime";
-import { createGameRuntimeSurfaces } from "./hooks/runtime/surfaces";
+import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "./hooks/runtime/surfaces";
 import { TacticalScreen } from "./TacticalScreen";
 import { APP_NAME } from "@/lib/site";
 
@@ -21,7 +22,8 @@ export function GameClient({
   tutorial?: boolean;
 }) {
   const runtime = useGameRuntime({ seed, mission, resume, fresh, slot, tutorial });
-  const surfaces = createGameRuntimeSurfaces(runtime);
+  const surfaceCache = useMemo(() => createGameRuntimeSurfaceCache(), []);
+  const surfaces = createGameRuntimeSurfaces(runtime, surfaceCache);
   return (
     <TacticalScreen palette={runtime.palette} {...surfaces} title={APP_NAME} />
   );

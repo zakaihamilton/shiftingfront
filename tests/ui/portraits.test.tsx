@@ -5,11 +5,11 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PortraitGallery } from "../../components/portraits/PortraitGallery";
 
-vi.mock("@/components/briefing/FaceCanvas", () => ({
+vi.mock("@/components/portraits/FaceCanvas", () => ({
   FaceCanvas: () => <div data-testid="mock-face-canvas" />,
 }));
 
-vi.mock("@/components/briefing/useFacePortrait", () => ({
+vi.mock("@/components/portraits/useFacePortrait", () => ({
   useFacePortrait: () => ({
     offsetsRef: { current: { blink: { dx: 0, dy: 0 }, talk: { dx: 0, dy: 0 } } },
     mouthClipRef: { current: { cx: 0.5, cy: 0.635, rx: 0.18, ry: 0.09 } },

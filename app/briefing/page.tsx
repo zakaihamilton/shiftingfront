@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { BriefingScreen } from "@/components/briefing/BriefingScreen";
 import { RouteBoundary } from "@/components/ui/RouteBoundary";
 import { parseMissionIndex, parseSeed } from "@/lib/seed/rng";
-import { navigationOrigin } from "@/components/game/hooks/missionRoutes";
+import { navigationOrigin } from "@/lib/navigation/routes";
 
 function Inner() {
   const sp = useSearchParams();

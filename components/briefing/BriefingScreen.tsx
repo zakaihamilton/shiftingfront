@@ -17,10 +17,10 @@ import { BriefingObjectives } from "./BriefingObjectives";
 import { BriefingAllyPortraits, BriefingEnemyPortrait } from "./BriefingPortraits";
 import { BriefingStory } from "./BriefingStory";
 import styles from "./BriefingScreen.module.css";
-import { useCampaignProgress } from "../campaign/useCampaignProgress";
+import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
 import { useBriefingController } from "./useBriefingController";
 import { useBriefingTypewriter } from "./useBriefingTypewriter";
-import type { NavigationOrigin } from "../game/hooks/missionRoutes";
+import type { NavigationOrigin } from "@/lib/navigation/routes";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 
 export function BriefingScreen({ seed, mission, returnToGame = false, origin = "menu" }: { seed: number; mission: number; returnToGame?: boolean; origin?: NavigationOrigin }) {

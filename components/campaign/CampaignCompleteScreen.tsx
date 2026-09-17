@@ -6,7 +6,7 @@ import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { DocumentTitle } from "@/components/ui/DocumentTitle";
 import { MetalPanel } from "@/components/ui/MetalPanel";
-import { ActionRail, ArtBackedCard, DossierSection, MetricCluster, StatusBadge } from "./CampaignDossier";
+import { ActionRail, ArtBackedCard, DossierSection, MetricCluster, StatusBadge } from "@/components/ui/Dossier";
 import { createCampaign } from "@/lib/gen/campaign";
 import { missionDurationMinutesFor, missionTimeLimitLabel, secondaryObjectivesForMissionSeed } from "@/lib/gen/objectives";
 import { missionObjectives, objectiveHeadline } from "@/lib/gen/story";
@@ -15,10 +15,10 @@ import { biomeArt, RASTER_ART } from "@/lib/gen/visualAssets";
 import { formatSeed } from "@/lib/seed/rng";
 import { APP_NAME } from "@/lib/site";
 import { objectivePriorityFor } from "@/lib/sim/objectives";
-import { briefingPath } from "../game/hooks/missionRoutes";
+import { briefingPath } from "@/lib/navigation/routes";
 import styles from "./CampaignCompleteScreen.module.css";
 import { campaignSummary, missionMedalDisplay, missionUnlocks } from "./campaignSummary";
-import { useCampaignProgress } from "./useCampaignProgress";
+import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
 import { formatCampaignShareCard } from "@/lib/ui/shareCard";
 
 export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number; mode?: "record" | "operations" }) {

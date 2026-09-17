@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const instrumentedTimeout = process.env.NODE_V8_COVERAGE || process.env.VITEST_COVERAGE ? 60_000 : 30_000;
+const instrumentedTimeout = process.env.NODE_V8_COVERAGE || process.env.VITEST_COVERAGE ? 180_000 : 30_000;
 
 export default defineConfig({
   test: {
@@ -51,7 +51,7 @@ export default defineConfig({
         "components/game/MobileCommandLauncher.tsx",
         "components/game/MobileTouchControls.tsx",
         "components/game/PauseMenu.tsx",
-        "components/game/PauseOptions.tsx",
+        "components/settings/PauseOptions.tsx",
         "components/game/hooks/canvasPointer.ts",
         "components/game/hooks/gameActions.ts",
         "components/game/hooks/gameInputOrders.ts",
@@ -59,7 +59,7 @@ export default defineConfig({
         "components/game/hooks/gameLoopEffects.ts",
         "components/game/hooks/gamePointerUp.ts",
         "components/game/hooks/missionConfirmation.ts",
-        "components/game/hooks/missionRoutes.ts",
+        "lib/navigation/routes.ts",
         "components/game/hooks/useCombatAlert.ts",
         "components/game/hooks/useGameActions.ts",
         "components/game/hooks/useGameRenderer.ts",

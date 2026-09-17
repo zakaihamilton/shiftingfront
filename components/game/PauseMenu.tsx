@@ -11,7 +11,7 @@ import { PauseControls } from "./PauseControls";
 import { PauseDiagnostics } from "./PauseDiagnostics";
 import { PauseLoadSlots } from "./PauseLoadSlots";
 import { PauseMainMenu } from "./PauseMainMenu";
-import { PauseOptions } from "./PauseOptions";
+import { PauseOptions } from "@/components/settings/PauseOptions";
 import { PauseSaveSlots } from "./PauseSaveSlots";
 import styles from "./PauseMenu.module.css";
 

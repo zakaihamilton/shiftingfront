@@ -75,21 +75,10 @@
   white-space: nowrap;
 }
 
-.statusBadge[data-tone="gold"] {
-  color: var(--chrome-gold);
-}
-
-.statusBadge[data-tone="success"] {
-  color: var(--chrome-success);
-}
-
-.statusBadge[data-tone="alert"] {
-  color: var(--chrome-alert);
-}
-
-.statusBadge[data-tone="muted"] {
-  color: var(--chrome-muted);
-}
+.statusBadge[data-tone="gold"] { color: var(--chrome-gold); }
+.statusBadge[data-tone="success"] { color: var(--chrome-success); }
+.statusBadge[data-tone="alert"] { color: var(--chrome-alert); }
+.statusBadge[data-tone="muted"] { color: var(--chrome-muted); }
 
 .artCard {
   position: relative;
@@ -112,10 +101,7 @@
   mix-blend-mode: screen;
 }
 
-.artCard > * {
-  position: relative;
-  z-index: 1;
-}
+.artCard > * { position: relative; z-index: 1; }
 
 .actionRail {
   display: flex;

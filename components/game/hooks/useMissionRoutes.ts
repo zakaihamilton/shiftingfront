@@ -11,7 +11,7 @@ import {
   menuPath,
   resultPrimaryPath,
   tutorialPath,
-} from "./missionRoutes";
+} from "@/lib/navigation/routes";
 
 export function useMissionRoutes({
   stateRef,

@@ -1,42 +1,14 @@
-import type { PointerEventHandler, Ref } from "react";
-import type { PanAvailability, PanDir } from "@/lib/render/camera";
+import type { PlayFieldSurfaceModel } from "./hooks/runtime/types";
 import { tutorialPrompt, tutorialTargets } from "@/lib/sim/tutorial";
-import type { Campaign, SimState } from "@/lib/types";
 import { Battlefield } from "./Battlefield";
 import { CombatAlert } from "./CombatAlert";
 import { MissionResult } from "./MissionResult";
 import { TutorialOverlay } from "./TutorialOverlay";
 import { CommandNotice } from "./CommandNotice";
-import type { CommandNoticeState } from "./hooks/useGameChrome";
 import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "./hooks/useGameCamera";
 import { playFieldStatus } from "./playFieldStatus";
 
-export type GamePlayFieldProps = {
-  hostRef: Ref<HTMLDivElement>;
-  canvasRef: Ref<HTMLCanvasElement>;
-  panAvail: PanAvailability;
-  hotPan: PanDir | null;
-  campaign: Campaign;
-  state: SimState;
-  tutorial: boolean;
-  paused?: boolean;
-  onPointerDown: PointerEventHandler<HTMLCanvasElement>;
-  onPointerMove: PointerEventHandler<HTMLCanvasElement>;
-  onPointerEnter: PointerEventHandler<HTMLCanvasElement>;
-  onPointerLeave: PointerEventHandler<HTMLCanvasElement>;
-  onPointerUp: PointerEventHandler<HTMLCanvasElement>;
-  onPointerCancel: PointerEventHandler<HTMLCanvasElement>;
-  onExitTutorial: () => void;
-  onBackTutorial: () => void;
-  onNextBriefing: () => void;
-  onCampaignVictory: () => void;
-  onRetry: () => void;
-  onMenu: () => void;
-  onObjectivePanelToggle?: () => void;
-  combatAlert?: string | null;
-  combatAlertKind?: import("./hooks/useCombatAlert").CombatAlertKind;
-  commandNotice?: CommandNoticeState;
-};
+export type GamePlayFieldProps = PlayFieldSurfaceModel;
 
 export function GamePlayField({
   hostRef,
@@ -47,22 +19,10 @@ export function GamePlayField({
   state,
   tutorial,
   paused = false,
-  onPointerDown,
-  onPointerMove,
-  onPointerEnter,
-  onPointerLeave,
-  onPointerUp,
-  onPointerCancel,
-  onExitTutorial,
-  onBackTutorial,
-  onNextBriefing,
-  onCampaignVictory,
-  onRetry,
-  onMenu,
+  pointer,
+  resultActions,
+  feedback,
   onObjectivePanelToggle,
-  combatAlert,
-  combatAlertKind,
-  commandNotice,
 }: GamePlayFieldProps) {
   const status = playFieldStatus(state, campaign);
   return (
@@ -90,29 +50,24 @@ export function GamePlayField({
       onObjectivePanelToggle={onObjectivePanelToggle}
       showHud={state.result === "playing"}
       biome={state.biome}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerEnter={onPointerEnter}
-      onPointerLeave={onPointerLeave}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
+      {...pointer}
     >
-      {combatAlert ? <CombatAlert text={combatAlert} kind={combatAlertKind} /> : null}
-      <CommandNotice notice={commandNotice ?? null} />
+      {feedback.combatAlert ? <CombatAlert text={feedback.combatAlert} kind={feedback.combatAlertKind} /> : null}
+      <CommandNotice notice={feedback.commandNotice ?? null} />
       <MissionResult
         state={state}
-        onNextBriefing={onNextBriefing}
-        onCampaignVictory={onCampaignVictory}
-        onRetry={onRetry}
-        onMenu={onMenu}
+        onNextBriefing={resultActions.onNextBriefing}
+        onCampaignVictory={resultActions.onCampaignVictory}
+        onRetry={resultActions.onRetry}
+        onMenu={resultActions.onMenu}
       />
       {tutorial && !paused ? (
         <TutorialOverlay
           prompt={tutorialPrompt(state)}
           stage={state.tutorialStage}
           targets={tutorialTargets(state)}
-          onExit={onExitTutorial}
-          onBack={onBackTutorial}
+          onExit={resultActions.onExitTutorial}
+          onBack={resultActions.onBackTutorial}
         />
       ) : null}
     </Battlefield>

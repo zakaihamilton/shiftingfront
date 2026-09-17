@@ -33,9 +33,5 @@ function serverSnapshot(seed: number): CampaignProgress {
 }
 
 export function useCampaignProgress(seed: number): CampaignProgress {
-  return useSyncExternalStore(
-    subscribe,
-    () => clientSnapshot(seed),
-    () => serverSnapshot(seed),
-  );
+  return useSyncExternalStore(subscribe, () => clientSnapshot(seed), () => serverSnapshot(seed));
 }

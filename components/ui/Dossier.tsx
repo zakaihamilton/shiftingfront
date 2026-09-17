@@ -1,7 +1,7 @@
 import type { CSSProperties, ElementType, HTMLAttributes, ReactNode } from "react";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { cx } from "@/lib/ui/cx";
-import styles from "./CampaignDossier.module.css";
+import styles from "./Dossier.module.css";
 
 export type DossierTone = "cyan" | "gold" | "success" | "alert" | "muted";
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActionRail } from "@/components/campaign/CampaignDossier";
+import { ActionRail } from "@/components/ui/Dossier";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { formatMissionShareCard } from "@/lib/ui/shareCard";

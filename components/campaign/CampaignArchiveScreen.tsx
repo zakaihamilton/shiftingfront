@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
-import { ActionRail, StatusBadge } from "./CampaignDossier";
+import { ActionRail, StatusBadge } from "@/components/ui/Dossier";
 import { RASTER_ART } from "@/lib/gen/visualAssets";
 import {
   cachedLocalStorage,
@@ -18,8 +18,8 @@ import {
   removeSlot,
   type ArchiveEntry,
 } from "@/lib/persist/save";
-import { MenuBackdrop } from "@/components/menu/MenuBackdrop";
-import { SaveSlotList } from "@/components/menu/SaveSlotList";
+import { MenuBackdrop } from "@/components/shared/MenuBackdrop";
+import { SaveSlotList } from "@/components/save/SaveSlotList";
 import styles from "./CampaignArchiveScreen.module.css";
 
 function safeExportName(value: string): string {

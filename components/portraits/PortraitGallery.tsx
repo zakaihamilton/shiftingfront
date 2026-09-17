@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { PORTRAIT_ASSETS, type PortraitAsset } from "@/lib/gen/portraitCatalog";
 import type { Character, CharacterRole } from "@/lib/types";
-import { FaceCanvas } from "@/components/briefing/FaceCanvas";
-import { useFacePortrait } from "@/components/briefing/useFacePortrait";
+import { FaceCanvas } from "@/components/portraits/FaceCanvas";
+import { useFacePortrait } from "@/components/portraits/useFacePortrait";
 import type { FaceTone } from "@/lib/render/portraits";
 import styles from "./PortraitGallery.module.css";
 

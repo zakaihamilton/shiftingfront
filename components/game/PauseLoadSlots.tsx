@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
-import { archiveEntryKey, SaveSlotList } from "@/components/menu/SaveSlotList";
+import { archiveEntryKey, SaveSlotList } from "@/components/save/SaveSlotList";
 import { useModalFocus } from "@/components/ui/useModalFocus";
 import type { ArchiveEntry } from "@/lib/persist/save";
 import { SHORTCUT } from "@/lib/ui/shortcuts";

@@ -5,6 +5,12 @@ on:
     - cron: "17 7 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+
 jobs:
   health:
     runs-on: ubuntu-latest
