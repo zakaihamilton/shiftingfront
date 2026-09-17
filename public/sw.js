@@ -1,5 +1,24 @@
 // Shifting Front Service Worker — Offline PWA Cache (Complete Runtime Precache)
-const CACHE_NAME = "shiftingfront-v4";
+const CACHE_NAME = "shiftingfront-v5";
+
+const CORE_PRECACHE = [
+  "/",
+  "/manifest.webmanifest",
+  "/tutorial",
+  "/briefing",
+  "/campaign",
+  "/play",
+  "/campaign-complete",
+  "/load",
+  "/privacy",
+  "/terms",
+  "/favicon.ico",
+  "/icon.png",
+  "/apple-icon.png",
+  "/icons/pwa-192.png",
+  "/icons/pwa-512.png",
+  "/icons/pwa-maskable-512.png",
+];
 
 const PRECACHE_URLS = [
   // Core routes
@@ -191,49 +210,53 @@ const PRECACHE_URLS = [
   "/art/textures/worn-panel.webp",
 ];
 
+async function precacheUrl(cache, url, { required, discover }) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (required) throw new Error(`Failed to precache ${url}: ${response.status}`);
+      return;
+    }
+    await cache.put(url, response.clone());
+    if (!discover) return;
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("text/html")) return;
+
+    const html = await response.text();
+    const subResourceMatches = [...html.matchAll(/(?:src|href)="(\/_next\/static\/[^"]+)"/g)];
+    const subResources = [...new Set(subResourceMatches.map((match) => match[1]))];
+    await Promise.allSettled(
+      subResources.map(async (subUrl) => {
+        try {
+          const subRes = await fetch(subUrl);
+          if (subRes.ok) await cache.put(subUrl, subRes);
+        } catch {
+          // Ignore individual subresource fetch failure
+        }
+      }),
+    );
+  } catch (error) {
+    if (required) throw error;
+  }
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
       .then(async (cache) => {
-        // 1. Precache static assets and HTML routes resiliently in parallel
+        await Promise.all(
+          CORE_PRECACHE.map((url) => precacheUrl(cache, url, { required: true, discover: true })),
+        );
+        const core = new Set(CORE_PRECACHE);
         await Promise.allSettled(
-          PRECACHE_URLS.map(async (url) => {
-            try {
-              const response = await fetch(url);
-              if (response.ok) {
-                await cache.put(url, response.clone());
-
-                // 2. Discover and precache linked Next.js static bundles (JS, CSS, fonts) from HTML pages
-                const contentType = response.headers.get("content-type") || "";
-                if (contentType.includes("text/html")) {
-                  const html = await response.text();
-                  const subResourceMatches = [
-                    ...html.matchAll(/(?:src|href)="(\/_next\/static\/[^"]+)"/g),
-                  ];
-                  const subResources = [...new Set(subResourceMatches.map((m) => m[1]))];
-                  await Promise.allSettled(
-                    subResources.map(async (subUrl) => {
-                      try {
-                        const subRes = await fetch(subUrl);
-                        if (subRes.ok) {
-                          await cache.put(subUrl, subRes);
-                        }
-                      } catch {
-                        // Ignore individual subresource fetch failure
-                      }
-                    }),
-                  );
-                }
-              }
-            } catch {
-              // Ignore individual asset failure so installation always succeeds
-            }
-          }),
+          PRECACHE_URLS
+            .filter((url) => !core.has(url))
+            .map((url) => precacheUrl(cache, url, { required: false, discover: false })),
         );
       })
-      .then(() => self.skipWaiting())
-      .catch(() => self.skipWaiting()),
+      .then(() => self.skipWaiting()),
   );
 });
 

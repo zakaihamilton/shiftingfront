@@ -88,15 +88,14 @@ export function assaultReady(state: SimState, target: Entity, combat: Entity[]):
   if (!OFFENSIVE_KINDS.has(objectiveKind(state)) || target.owner !== 1) return true;
   const minimumUnits = objectiveKind(state) === "annihilate" || objectiveKind(state) === "razeAll"
     ? 5 + Math.floor(state.missionIndex / 2)
-    : objectiveKind(state) === "decapitate" && state.missionIndex < 2
-      ? 18
-      : 8 + Math.floor(state.missionIndex / 3);
+    : 8 + Math.floor(state.missionIndex / 3);
   if (combat.length < minimumUnits) return false;
   // Late offensive missions need a short staging window to let the opening
   // economy and local defense settle. Committing during the first exchange
   // sends the starting force into a fully staffed turret ring before the
-  // commander has had a chance to reinforce it.
-  if (state.missionIndex >= 4 && state.tick < 2400) return false;
+  // commander has had a chance to reinforce it. Decapitation is a surgical
+  // strike: waiting for a full production ring is what times the mission out.
+  if (state.missionIndex >= 4 && state.tick < 2400 && objectiveKind(state) !== "decapitate") return false;
 
   const playerStrength = combat.reduce((sum, entity) => sum + combatValue(entity), 0);
   const defenders = enemyEntitiesView(state).filter((entity) => distToEntity(target, entity) <= 22);
@@ -116,7 +115,8 @@ export function assaultReady(state: SimState, target: Entity, combat: Entity[]):
   if (defensiveStrength === 0 || playerStrength >= defensiveStrength) return true;
 
   const deadline = state.runtime?.deadline ?? state.win.ticks;
-  return deadline !== undefined && state.tick >= deadline * 0.4;
+  const closeoutRatio = objectiveKind(state) === "decapitate" ? 0.32 : 0.4;
+  return deadline !== undefined && state.tick >= deadline * closeoutRatio;
 }
 
 export function orderKey(command: Command): string {

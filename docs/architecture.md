@@ -99,7 +99,9 @@ const result = tick(state, commands);
 
 Static terrain and building occupancy are cached by `navigationRevision` in `staticNavigationFor`. Unit occupancy remains per-tick because units move frequently. Building placement, selling, cancellation, and destruction invalidate the revision. Flow fields and A* searches share this cached static grid.
 
-Performance-sensitive work should be measured with `yarn health:performance`. The benchmark covers late-game simulation, terrain atlas generation, foreground routing, multi-destination flow fields, and blocked-line-of-sight combat. Simulation, routing, foreground orders, and blocked combat report p50/p95/p99/max; p95 and p99 share the 25 ms health budget while max remains diagnostic for isolated spikes. Simulation timings also separate commander planning from the mutable tick. Do not loosen a threshold without recording why the workload or target changed.
+Performance-sensitive work should be measured with `yarn health:performance`. The benchmark covers late-game simulation, terrain atlas generation, foreground routing, multi-destination flow fields, and blocked-line-of-sight combat. Simulation, routing, foreground orders, and blocked combat report p50/p95/p99/max. p95 stays on a 25 ms health budget. Simulation p99 is 25 ms locally and 40 ms in CI after a JIT warmup, because hosted 2-vCPU runners can GC above the p95 line; max remains diagnostic for isolated spikes. Simulation timings also separate commander planning from the mutable tick. Do not loosen a threshold without recording why the workload or target changed.
+
+`DEFAULT_BALANCE_THRESHOLDS` in `lib/sim/balance/evaluation.ts` is the live balance gate (`yarn health:balance`). When those numbers change, name the live floors in `CHANGELOG.md` Unreleased; `tests/platform/docsDrift.test.ts` checks Unreleased against the code. `package.json` `version` and `APP_VERSION` must stay equal.
 
 The battlefield preloads only terrain and raster sources for living entities in the current mission. Asset Bay previews and newly introduced unit types remain lazy, and the renderer's image/raster caches remain session-scoped.
 

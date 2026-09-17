@@ -42,9 +42,19 @@ yarn health:dead-code
 # Markdown documentation linting
 yarn health:documentation
 
+# CI also runs yarn health:performance. Simulation p95 stays 25 ms; p99 is
+# 25 ms locally and 40 ms on GitHub-hosted 2-vCPU runners after warmup.
+yarn health:performance
+
 # Full Next.js production build
 yarn build
 ```
+
+## Reporting issues
+
+Use the GitHub issue templates. In-game crashes open a pre-filled crash report (seed, mission, version, diagnostics). Options and Credits open the bug/feedback form. Do not point players at a blank issue list.
+
+When you change `DEFAULT_BALANCE_THRESHOLDS` or `APP_VERSION`, update `CHANGELOG.md` Unreleased and keep `APP_VERSION` equal to the `package.json` version. `tests/platform/docsDrift.test.ts` checks both.
 
 ## Pull Request Guidelines
 

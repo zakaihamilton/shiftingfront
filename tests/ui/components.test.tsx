@@ -792,6 +792,23 @@ describe("PauseOptions controls", () => {
     );
     expect(screen.queryByRole("dialog", { name: "Keybindings" })).toBeNull();
   });
+
+  it("opens the structured bug form for player feedback", () => {
+    render(
+      <PauseOptions
+        settings={defaultSettings()}
+        onToggleSound={vi.fn()}
+        onToggleMusic={vi.fn()}
+        onVolumeChange={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Report an Issue / Feedback ↗" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/issues/new?template=bug.yml"),
+    );
+  });
 });
 
 describe("MissionConfirmation", () => {

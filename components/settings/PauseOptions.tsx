@@ -8,7 +8,7 @@ import { useFullscreen } from "@/lib/ui/fullscreen";
 import { cachedLocalStorage, clearAllGameData } from "@/lib/persist/save";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
-import { APP_ISSUES_URL } from "@/lib/site";
+import { feedbackIssueUrl } from "@/lib/ui/issueReport";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { AudioSettingsControls } from "./AudioSettingsControls";
 import styles from "./SettingsPanel.module.css";
@@ -57,7 +57,7 @@ export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleR
         <div className={styles.group}>
           <ConsoleLabel className={styles.groupLabel}>Data &amp; Support</ConsoleLabel>
           <ConsoleButton muted className={styles.action} tooltip="Permanently clear all campaigns, saves, and settings" onClick={() => setConfirmResetOpen(true)}>Reset All Game Data…</ConsoleButton>
-          <a href={APP_ISSUES_URL} target="_blank" rel="noopener noreferrer" className={styles.action} style={{ textAlign: "center", textDecoration: "none" }}>Report an Issue / Feedback ↗</a>
+          <a href={feedbackIssueUrl()} target="_blank" rel="noopener noreferrer" className={styles.action} style={{ textAlign: "center", textDecoration: "none" }}>Report an Issue / Feedback ↗</a>
         </div>
         <ConsoleButton muted className={styles.action} tooltip={backTooltip} shortcut={SHORTCUT.back} onClick={onBack}>Back</ConsoleButton>
       </div>

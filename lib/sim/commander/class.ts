@@ -146,7 +146,7 @@ export class CompetentCommander {
       const assaultCommitted = offensiveObjective && this.assaultTargetId !== undefined;
       const defenderLimit = Math.min(4, Math.max(2, Math.floor(combat.length / 3)));
       const scenarioDefenderLimit = ["rescue", "extraction"].includes(objectiveKind(state))
-        ? Math.max(objectiveKind(state) === "rescue" ? 3 : 2, Math.min(8, Math.ceil(objectiveCombat.length / 2)))
+        ? Math.max(objectiveKind(state) === "rescue" ? 2 : 1, Math.min(3, Math.floor(objectiveCombat.length / 3)))
         : 1;
       const reservedDefenders = scenarioObjective
         ? Math.min(scenarioDefenderLimit, Math.max(0, objectiveCombat.length - 1))
@@ -206,10 +206,22 @@ export class CompetentCommander {
             combatCommands.push({ type: "attack", unitIds: defenders.map((entity) => entity.id), targetId: threat.id });
           }
           const responseForce = assaultForce;
+          const pendingNeutral = objective?.neutral === true;
           const escortTarget = objectiveKind(state) === "extraction"
             ? extractionEscortTarget ?? objective
             : objective;
-          if (responseForce.length && escortTarget) {
+          if (responseForce.length && pendingNeutral && objective && objectiveKind(state) !== "escort") {
+            // Yard raids are the home guard's job. Pulling the contact team
+            // home every time a scout reaches the HQ is what blows rescue and
+            // extraction deadlines.
+            combatCommands.push({
+              type: objectiveKind(state) === "extraction" ? "attackMove" : "move",
+              unitIds: responseForce.map((entity) => entity.id),
+              x: objective.x,
+              y: objective.y,
+              formation: "line",
+            });
+          } else if (responseForce.length && escortTarget) {
             // A threatened scenario target takes priority over escort travel.
             // The force will receive its route to the target again once the
             // threat clears, while direct attack keeps the response force

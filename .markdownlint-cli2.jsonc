@@ -1,7 +1,10 @@
 {
   "config": {
     "MD013": false,
-    "MD033": false
+    "MD033": false,
+    "MD024": {
+      "siblings_only": true
+    }
   },
   "ignores": [
     ".repnix",
@@ -13,6 +16,7 @@
     "playwright-report",
     "test-results",
     "brag-output*",
-    "artifacts"
+    "artifacts",
+    ".github"
   ]
 }

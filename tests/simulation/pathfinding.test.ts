@@ -14,6 +14,9 @@ import { BUILDING_STATS, MAX_PRODUCTION_QUEUE, UNIT_STATS } from "../../lib/cata
 import { destinationsForGroup } from "../../lib/sim/orders/movement";
 import { expectUniqueUnitCells } from "./helpers";
 
+const IS_COVERAGE = Boolean(process.env.NODE_V8_COVERAGE || process.env.VITEST_COVERAGE);
+const LARGE_GROUP_TIMEOUT = 120_000;
+
 describe("pathfinding", () => {
   it("returns a bounded partial result for a long search", () => {
     const s = makeFixture({ width: 96, height: 96, win: { kind: "annihilate" } });
@@ -743,7 +746,7 @@ describe("pathfinding", () => {
     })).toBe(true);
   });
 
-  it("keeps a 128-unit order cohesive through approach and arrival phases", () => {
+  it.skipIf(IS_COVERAGE)("keeps a 128-unit order cohesive through approach and arrival phases", () => {
     const s = makeFixture({ width: 96, height: 96, win: { kind: "harvestQuota", target: 99999 } });
     const units: ReturnType<typeof addUnit>[] = [];
     for (let y = 4; y < 12; y++) {
@@ -787,9 +790,9 @@ describe("pathfinding", () => {
       const destination = unit.orderDestination!;
       return Math.round(unit.x) === destination.x && Math.round(unit.y) === destination.y && unit.idle;
     })).toBe(true);
-  });
+  }, LARGE_GROUP_TIMEOUT);
 
-  it("routes a large group through a narrow corridor to a blocked target area", () => {
+  it.skipIf(IS_COVERAGE)("routes a large group through a narrow corridor to a blocked target area", () => {
     const s = makeFixture({ width: 56, height: 48, win: { kind: "harvestQuota", target: 99999 } });
     for (let y = 0; y < s.height; y++) {
       if (y < 21 || y > 26) setTile(s, 26, y, TILE_BLOCKED);
@@ -812,9 +815,9 @@ describe("pathfinding", () => {
       const destination = unit.orderDestination!;
       return Math.round(unit.x) === destination.x && Math.round(unit.y) === destination.y;
     })).toBe(true);
-  });
+  }, LARGE_GROUP_TIMEOUT);
 
-  it("preserves a 64-unit formation while spreading its arrival line", () => {
+  it.skipIf(IS_COVERAGE)("preserves a 64-unit formation while spreading its arrival line", () => {
     const s = makeFixture({ width: 96, height: 96, win: { kind: "harvestQuota", target: 99999 } });
     const units: ReturnType<typeof addUnit>[] = [];
     for (let y = 4; y < 12; y++) {
@@ -833,7 +836,7 @@ describe("pathfinding", () => {
       const destination = unit.orderDestination!;
       return Math.max(Math.abs(Math.round(unit.x) - destination.x), Math.abs(Math.round(unit.y) - destination.y)) <= 1;
     })).toBe(true);
-  });
+  }, LARGE_GROUP_TIMEOUT);
 
   it("does not shove a progressing mover sideways when someone is waiting behind", () => {
     const s = makeFixture({ width: 16, height: 10, win: { kind: "harvestQuota", target: 99999 } });

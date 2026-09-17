@@ -1,0 +1,40 @@
+name: Bug or feedback
+description: Something is wrong, unfair, or confusing in the game
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Include a 4-digit campaign seed whenever the problem is reproducible.
+  - type: input
+    id: seed
+    attributes:
+      label: Campaign seed
+      placeholder: "0421"
+  - type: input
+    id: mission
+    attributes:
+      label: Mission
+      placeholder: "1–6, tutorial, or menu"
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where it happened
+      options:
+        - Menu
+        - Tutorial
+        - Briefing
+        - Battlefield
+        - Save / load
+        - Other
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, heard, or could not do.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected

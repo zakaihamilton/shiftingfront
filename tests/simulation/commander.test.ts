@@ -3,7 +3,7 @@ import { createCampaign } from "../../lib/gen/campaign";
 import { BUILDING_STATS } from "../../lib/catalog";
 import { createMission, inspect, tick } from "../../lib/sim/api";
 import { CompetentCommander } from "../../lib/sim/commander";
-import { defensiveThreat } from "../../lib/sim/commander/combat";
+import { assaultReady, defensiveThreat } from "../../lib/sim/commander/combat";
 import { planBuilding, planProduction } from "../../lib/sim/commander/production";
 import { missionDifficulty } from "../../lib/sim/difficulty";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
@@ -279,7 +279,7 @@ describe("competent commander", () => {
     expect(orders).toContainEqual(expect.objectContaining({ type: "move", unitIds: [infantry.id], x: target.x, y: target.y }));
   });
 
-  it("keeps three combat units at the yard during a rescue operation", () => {
+  it("keeps a minority home guard at the yard during a rescue operation", () => {
     const state = makeFixture({ width: 28, height: 28, win: { kind: "rescue", targetCount: 1, ticks: 5000 } });
     state.missionIndex = 4;
     const yard = addBuilding(state, 0, "constructionYard", 2, 2);
@@ -304,11 +304,11 @@ describe("competent commander", () => {
     const guard = orders.find((order) => order.type === "move" && order.x === yard.x && order.y === yard.y);
     const rescue = orders.find((order) => order.type === "move" && order.x === target.x && order.y === target.y);
 
-    expect(guard && "unitIds" in guard ? guard.unitIds : []).toHaveLength(3);
-    expect(rescue && "unitIds" in rescue ? rescue.unitIds : []).toHaveLength(combat.length - 3);
+    expect(guard && "unitIds" in guard ? guard.unitIds : []).toHaveLength(2);
+    expect(rescue && "unitIds" in rescue ? rescue.unitIds : []).toHaveLength(combat.length - 2);
   });
 
-  it("keeps the rescue guard separate from the rescue force when threatened", () => {
+  it("keeps the rescue team walking to stranded units when the yard is raided", () => {
     const state = makeFixture({ width: 28, height: 28, win: { kind: "rescue", targetCount: 1, ticks: 5000 } });
     state.missionIndex = 4;
     const yard = addBuilding(state, 0, "constructionYard", 2, 2);
@@ -331,14 +331,14 @@ describe("competent commander", () => {
     };
 
     const orders = new CompetentCommander().plan(state);
-    const guard = orders.find((order) => order.type === "attack" && order.targetId === threat.id && "unitIds" in order && order.unitIds.length === 3);
-    const response = orders.find((order) => order.type === "attack" && order.targetId === threat.id && "unitIds" in order && order.unitIds.length === combat.length - 3);
+    const guard = orders.find((order) => order.type === "attack" && order.targetId === threat.id);
+    const rescue = orders.find((order) => order.type === "move" && order.x === target.x && order.y === target.y);
     const guardIds = guard && "unitIds" in guard ? guard.unitIds : [];
-    const responseIds = response && "unitIds" in response ? response.unitIds : [];
+    const rescueIds = rescue && "unitIds" in rescue ? rescue.unitIds : [];
 
-    expect(guardIds).toHaveLength(3);
-    expect(responseIds).toHaveLength(combat.length - 3);
-    expect(new Set([...guardIds, ...responseIds])).toHaveLength(combat.length);
+    expect(guardIds).toHaveLength(2);
+    expect(rescueIds).toHaveLength(combat.length - 2);
+    expect(new Set([...guardIds, ...rescueIds])).toHaveLength(combat.length);
   });
 
   it.each(["rescue", "holdTheLine"] as const)("prioritizes an early defensive turret for %s missions", (kind) => {
@@ -352,6 +352,34 @@ describe("competent commander", () => {
     addBuilding(state, 0, "barracks", 2, 5);
 
     expect(planBuilding(state, yard)).toMatchObject({ type: "build", building: "turret" });
+  });
+
+  it.each(["rescue", "extraction"] as const)("does not spend the opening on a factory during %s", (kind) => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind, targetCount: 1, ticks: 5000 } });
+    state.missionIndex = 2;
+    const yard = addBuilding(state, 0, "constructionYard", 2, 2);
+    addBuilding(state, 0, "power", 5, 2);
+    addBuilding(state, 0, "barracks", 2, 5);
+    addBuilding(state, 0, "turret", 8, 2);
+
+    expect(planBuilding(state, yard)).toBeUndefined();
+  });
+
+  it("commits a decapitation strike without waiting for a late-game staging window", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "decapitate", ticks: 5000 } });
+    state.missionIndex = 4;
+    addBuilding(state, 0, "constructionYard", 2, 2);
+    addBuilding(state, 0, "power", 5, 2);
+    const attackers = Array.from({ length: 10 }, (_, index) => addUnit(state, 0, "infantry", 5 + (index % 5), 6 + Math.floor(index / 5)));
+    const enemyYard = addBuilding(state, 1, "constructionYard", 18, 18);
+
+    expect(assaultReady(state, enemyYard, attackers)).toBe(true);
+
+    const orders = new CompetentCommander().plan(state);
+    const strike = orders.find((order) => order.type === "attackMove" && order.x === enemyYard.x && order.y === enemyYard.y);
+
+    expect(strike).toBeDefined();
+    expect(strike && "unitIds" in strike ? strike.unitIds.length : 0).toBeGreaterThan(0);
   });
 
   it("keeps the exact hold-the-line reinforcement curve", () => {

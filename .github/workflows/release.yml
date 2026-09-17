@@ -14,15 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22.22.2
           cache: yarn
+          package-manager-cache: false
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -37,7 +38,7 @@ jobs:
         run: yarn build
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           name: Shifting Front ${{ github.ref_name }}

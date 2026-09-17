@@ -21,11 +21,17 @@ yarn test:fast
 # 4. Invariants & determinism suite
 yarn health:invariants
 
-# 5. Production Next.js build
+# 5. Performance health (CI health job; p95 25 ms, p99 25 ms local / 40 ms CI)
+yarn health:performance
+
+# 6. Markdown documentation
+yarn health:documentation
+
+# 7. Production Next.js build
 yarn build
 ```
 
-Ensure all gates pass with 0 errors and 0 warnings.
+Ensure all gates pass with 0 errors and 0 warnings. `yarn health:balance` runs on CI and nightly; run it locally when changing the commander or `DEFAULT_BALANCE_THRESHOLDS`.
 
 ---
 
@@ -37,10 +43,10 @@ Shifting Front is a fully client-side Next.js application running on Vercel prod
 
 - [x] DNS records point to Vercel production deployment (`www.shiftingfront.com` with `308` redirect from apex `shiftingfront.com`).
 - [x] SSL/TLS certificates active and enforcing HTTPS across both domains.
-- [x] Security headers active: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
+- [x] Security headers active: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and a Content-Security-Policy covering default/script/style/img/font/connect/worker/object plus portal `frame-ancestors`.
 - [x] Permission policy active: `Permissions-Policy: fullscreen=*, autoplay=*, clipboard-write=*`.
 - [x] Static asset caching: `Cache-Control: public, max-age=31536000, immutable` for `/(art|icons)/:path*`.
-- [x] Service worker registers and precaches all routes (`/`, `/tutorial`, `/briefing`, `/campaign`, `/play`, `/campaign-complete`, `/load`, `/privacy`, `/terms`), all 112 visual art assets (biomes, 3D models, sprites, portraits, terrain, textures), and dynamically discovers/caches linked Next.js static bundles with offline query-parameter routing.
+- [x] Service worker registers and precaches core routes (`/`, `/tutorial`, `/briefing`, `/campaign`, `/play`, `/campaign-complete`, `/load`, `/privacy`, `/terms`) and icons as a required install set, then best-effort precaches all 112 visual art assets (biomes, 3D models, sprites, portraits, terrain, textures), and dynamically discovers/caches linked Next.js static bundles with offline query-parameter routing.
 - [x] Universal social cards available at `/opengraph-image.png` and `/twitter-image.png`.
 
 ---
@@ -82,29 +88,21 @@ Generated automatically via `yarn generate-promo`:
 
 ## 4. Release Versioning & Tagging
 
-1. Ensure `package.json` reflects the target version:
-
-   ```json
-   "version": "1.0.0"
-   ```
-
-2. Commit release changes:
+1. Set `package.json` `version` and `lib/site.ts` `APP_VERSION` to the same target. `tests/platform/docsDrift.test.ts` fails if they diverge.
+2. Move `CHANGELOG.md` `[Unreleased]` notes into a dated `## [X.Y.Z]` section. Keep an Unreleased heading for the next cycle. If `DEFAULT_BALANCE_THRESHOLDS` changed, Unreleased must still name the live floors (`minKindWinRate` and the per-kind targets).
+3. Commit, tag, and push. The `v*` tag runs `.github/workflows/release.yml`.
 
    ```bash
-   git commit -m "release: v1.0.0 — initial public launch"
-   ```
-
-3. Tag the release:
-
-   ```bash
-   git tag -a v1.0.0 -m "Shifting Front v1.0.0 — seeded isometric RTS"
+   git tag -a vX.Y.Z -m "Shifting Front vX.Y.Z"
    git push origin master --tags
    ```
 
 ---
 
-## 5. Post-Launch Monitoring
+## 5. Ongoing operations
 
-- [ ] **Player Diagnostics**: Monitor GitHub Issues (`https://github.com/zakaihamilton/shiftingfront/issues`) for reports submitted via the in-game ErrorBoundary or Options feedback links.
-- [ ] **Weekly Seed Rotation**: Confirm the synchronized weekly operation updates correctly at UTC boundaries.
-- [ ] **Local Storage**: Verify that saves survive browser tab reloads and that the Save Archive export/import functions reliably.
+These are recurring process, not leftover launch TODOs.
+
+- **Player reports**: In-game crashes open `.github/ISSUE_TEMPLATE/crash.md` with seed, mission, version, and diagnostics. Options and Credits open the bug form. Triage [GitHub Issues](https://github.com/zakaihamilton/shiftingfront/issues).
+- **Weekly seed**: `weeklySeed()` rotates at Monday 00:00 UTC. Covered by `tests/ui/weeklyOperation.test.ts` and the menu **This Week** smoke in `tests/e2e/smoke.spec.ts`.
+- **Save archive**: Export/import is covered by `tests/persistence/saveSlots.test.ts`. Release smoke: named slot, reload the tab, export JSON, import on a fresh profile.

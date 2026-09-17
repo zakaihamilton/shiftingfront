@@ -4,7 +4,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CreditsModal } from "../../components/menu/CreditsModal";
-import { APP_ISSUES_URL, APP_REPO_URL, APP_VERSION } from "../../lib/site";
+import { APP_REPO_URL, APP_VERSION } from "../../lib/site";
+import { feedbackIssueUrl } from "../../lib/ui/issueReport";
 
 afterEach(() => {
   cleanup();
@@ -24,7 +25,7 @@ describe("CreditsModal", () => {
     expect(repoLink).toHaveAttribute("href", APP_REPO_URL);
 
     const issuesLink = screen.getByRole("link", { name: "Report an Issue / Feedback" });
-    expect(issuesLink).toHaveAttribute("href", APP_ISSUES_URL);
+    expect(issuesLink).toHaveAttribute("href", feedbackIssueUrl());
   });
 
   it("calls onBack when clicking Return to Menu", () => {

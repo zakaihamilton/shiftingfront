@@ -5,7 +5,8 @@ import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
-import { APP_ISSUES_URL, APP_NAME, APP_REPO_URL, APP_VERSION } from "@/lib/site";
+import { APP_NAME, APP_REPO_URL, APP_VERSION } from "@/lib/site";
+import { feedbackIssueUrl } from "@/lib/ui/issueReport";
 import styles from "./CreditsModal.module.css";
 
 export function CreditsModal({ onBack }: { onBack: () => void }) {
@@ -72,7 +73,7 @@ export function CreditsModal({ onBack }: { onBack: () => void }) {
               GitHub Repository
             </a>
             <span aria-hidden="true">·</span>
-            <a href={APP_ISSUES_URL} target="_blank" rel="noopener noreferrer" className={styles.link}>
+            <a href={feedbackIssueUrl()} target="_blank" rel="noopener noreferrer" className={styles.link}>
               Report an Issue / Feedback
             </a>
           </div>

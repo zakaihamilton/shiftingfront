@@ -1,7 +1,8 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
-import { APP_ISSUES_URL } from "@/lib/site";
+import { APP_VERSION } from "@/lib/site";
+import { crashIssueUrl } from "@/lib/ui/issueReport";
 import { ConsoleButton } from "./ConsoleButton";
 import { ConsoleNotice, ConsoleNoticeLink } from "./ConsoleNotice";
 
@@ -47,6 +48,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                   stack: this.state.error?.stack,
                   url: typeof window !== "undefined" ? window.location.href : "",
                   userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+                  version: APP_VERSION,
                   timestamp: new Date().toISOString(),
                 },
                 null,
@@ -60,9 +62,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             {this.state.copied ? "Diagnostics Copied!" : "Copy Diagnostics"}
           </ConsoleButton>
           <ConsoleNoticeLink
-            href={`${APP_ISSUES_URL}/new?title=${encodeURIComponent(
-              `[Crash] ${this.state.error?.message?.slice(0, 60) || "Runtime Error"}`,
-            )}`}
+            href={crashIssueUrl({
+              message: this.state.error?.message,
+              stack: this.state.error?.stack,
+              href: typeof window !== "undefined" ? window.location.href : "",
+              userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+              timestamp: new Date().toISOString(),
+            })}
             muted
             testId="issue-link"
           >

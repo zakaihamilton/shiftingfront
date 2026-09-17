@@ -20,11 +20,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22.22.2
           cache: yarn
+          package-manager-cache: false
       - run: yarn install --frozen-lockfile
       - run: yarn lint
       - run: yarn build
@@ -37,7 +38,7 @@ jobs:
           yarn ci:timed-tests --maxWorkers=2
       - name: Upload test timing report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-timing-${{ github.run_id }}
           path: artifacts/test-timing.json
@@ -48,11 +49,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22.22.2
           cache: yarn
+          package-manager-cache: false
       - run: yarn install --frozen-lockfile
       - run: yarn typecheck
       - run: yarn health:invariants
@@ -69,7 +71,7 @@ jobs:
       - run: yarn health:duplication
       - name: Upload health timing reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: health-timing-${{ github.run_id }}
           path: artifacts/
@@ -87,11 +89,12 @@ jobs:
       matrix:
         strategy: [rush, turtle, greed, infantry, vehicles]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22.22.2
           cache: yarn
+          package-manager-cache: false
       - run: yarn install --frozen-lockfile
       - name: Run stratified archetype balance
         run: |
@@ -99,7 +102,7 @@ jobs:
           yarn ci:timed-balance-archetype --strategy "${{ matrix.strategy }}" > "artifacts/balance-archetype-${{ matrix.strategy }}-timing.json"
       - name: Upload archetype timing report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: archetype-timing-${{ github.run_id }}-${{ matrix.strategy }}
           path: artifacts/
@@ -110,11 +113,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22.22.2
           cache: yarn
+          package-manager-cache: false
       - run: yarn install --frozen-lockfile
       - run: yarn playwright install --with-deps chromium webkit
       - run: yarn test:e2e

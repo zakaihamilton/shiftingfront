@@ -9,6 +9,7 @@ describe("Service Worker", () => {
 
     const content = readFileSync(swPath, "utf-8");
     expect(content).toContain("CACHE_NAME");
+    expect(content).toContain("CORE_PRECACHE");
     expect(content).toContain("PRECACHE_URLS");
     expect(content).toContain("addEventListener(\"install\"");
     expect(content).toContain("addEventListener(\"activate\"");
@@ -95,11 +96,23 @@ describe("Service Worker", () => {
     expect(content).toContain("matchAll");
   });
 
+  it("fails install when a core route or icon cannot be precached", () => {
+    const swPath = resolve(process.cwd(), "public/sw.js");
+    const content = readFileSync(swPath, "utf-8");
+    const install = content.slice(content.indexOf('addEventListener("install"'));
+
+    expect(content).toContain("CORE_PRECACHE");
+    expect(install).toContain("required: true");
+    expect(install).not.toContain(".catch(() => self.skipWaiting())");
+  });
+
   it("bypasses stale caching during localhost development", () => {
     const swPath = resolve(process.cwd(), "public/sw.js");
     const content = readFileSync(swPath, "utf-8");
 
-    expect(content).toContain('const CACHE_NAME = "shiftingfront-v4"');
+    expect(content).toContain('const CACHE_NAME = "shiftingfront-v5"');
+    expect(content).toContain("CORE_PRECACHE");
+    expect(content).toContain("required: true");
     expect(content).toContain('url.hostname === "localhost"');
     expect(content).toContain('url.hostname === "127.0.0.1"');
   });

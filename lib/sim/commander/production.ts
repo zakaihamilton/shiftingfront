@@ -132,7 +132,8 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
     (entity) => entity.class === "unit" && entity.kind !== "harvester" && distToEntity(yard, entity) <= YARD_THREAT_RADIUS,
   );
   const turretCount = completedOrBuilding(state, "turret");
-  const turretTarget = 1 + Math.min(2, Math.ceil(state.missionIndex / 2));
+  const timedRecovery = objectiveKind(state) === "rescue" || objectiveKind(state) === "extraction";
+  const turretTarget = timedRecovery ? 1 : 1 + Math.min(2, Math.ceil(state.missionIndex / 2));
   if (threat && turretCount < turretTarget && !pending) {
     const turret = buildCommand(state, "turret", yard);
     if (turret) return turret;
@@ -145,7 +146,7 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
 
   const needsFactory = objectiveKind(state) === "forceQuota" && state.win.role === "tank"
     ? true
-    : state.missionIndex >= 1 || objectiveKind(state) === "harvestQuota" || OFFENSIVE_KINDS.has(objectiveKind(state));
+    : !timedRecovery && (state.missionIndex >= 1 || objectiveKind(state) === "harvestQuota" || OFFENSIVE_KINDS.has(objectiveKind(state)));
   if (needsFactory && !playerBuildingsView(state, "factory").length && !pending) {
     const factory = buildCommand(state, "factory", yard);
     if (factory) return factory;
@@ -174,7 +175,7 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
     if (objectiveBuild) return objectiveBuild;
   }
 
-  if (!playerBuildingsView(state, "factory").length && state.tick < 1800 && !pending) {
+  if (!timedRecovery && !playerBuildingsView(state, "factory").length && state.tick < 1800 && !pending) {
     const factory = buildCommand(state, "factory", yard);
     if (factory) return factory;
   }

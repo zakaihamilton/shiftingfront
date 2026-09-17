@@ -122,5 +122,7 @@ For deterministic bug reports and regression fixtures, the replay helpers in `li
 
 - [Play the game](https://shiftingfront.com)
 - [GitHub repository](https://github.com/zakaihamilton/shiftingfront)
+- [Report an issue](https://github.com/zakaihamilton/shiftingfront/issues/new/choose)
+- [Contributing](CONTRIBUTING.md)
 - [Architecture guide](docs/architecture.md)
 - [Asset Bay](https://shiftingfront.com/assets)
