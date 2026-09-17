@@ -1,6 +1,6 @@
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
-import { terrainReachabilityForSources } from "../flowField";
+import { terrainComponentIdsFor } from "../flowField";
 import { isUnitEntity, type Entity, type Formation, type SimEvent, type SimState } from "../../types";
 import { byId, inBounds, isStaticWalkable } from "../world";
 import { clearSupportOrder } from "../support";
@@ -188,12 +188,20 @@ export function destinationsForGroup(
   commandFormation?: Formation,
 ): { x: number; y: number }[] {
   if (units.length === 0) return [];
-  const reachabilityByUnit = units.map((unit) => terrainReachabilityForSources(state, [unit]));
+  const componentIds = terrainComponentIdsFor(state);
+  const sourceComponents = units.map((unit) => {
+    const sx = Math.round(unit.x);
+    const sy = Math.round(unit.y);
+    return inBounds(state, sx, sy) ? componentIds[sy * state.width + sx] ?? -1 : -1;
+  });
+  const componentAt = (sx: number, sy: number) =>
+    inBounds(state, sx, sy) ? componentIds[sy * state.width + sx] ?? -1 : -1;
   const canReach = (unitIndex: number, sx: number, sy: number) =>
-    inBounds(state, sx, sy) && reachabilityByUnit[unitIndex]![sy * state.width + sx] !== -1;
-  const reachable = (sx: number, sy: number) => reachabilityByUnit.some((field) =>
-    inBounds(state, sx, sy) && field[sy * state.width + sx] !== -1,
-  );
+    componentAt(sx, sy) !== -1 && sourceComponents[unitIndex] === componentAt(sx, sy);
+  const reachable = (sx: number, sy: number) => {
+    const component = componentAt(sx, sy);
+    return component !== -1 && sourceComponents.includes(component);
+  };
   if (units.length === 1) {
     return [snapUnique(state, x, y, new Set<number>(), (sx, sy) => canReach(0, sx, sy))];
   }

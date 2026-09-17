@@ -1,5 +1,5 @@
 import type { SimState, Vec2 } from "../types";
-import { inBounds, staticNavigationFor } from "./world";
+import { inBounds, staticNavigationFor, type StaticNavigation } from "./world";
 import {
   navigationEdgeReserved,
   navigationStepAllowed,
@@ -40,6 +40,7 @@ export type FlowField = {
 };
 
 const fieldsByState = new WeakMap<SimState, Map<string, FlowField>>();
+const componentIdsByNavigation = new WeakMap<StaticNavigation, Int32Array>();
 const sharedFields = new Map<string, FlowField>();
 const SHARED_FLOW_FIELD_LIMIT = 512;
 const STATE_FLOW_FIELD_LIMIT = 128;
@@ -137,6 +138,46 @@ export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2
 
 export function flowFieldCacheSize(state: SimState): number {
   return fieldsByState.get(state)?.size ?? 0;
+}
+
+/**
+ * Return the static terrain component for every cell. Components are cached
+ * with the navigation geometry, so a group order pays for one connectivity
+ * search instead of one full-map search per selected unit.
+ */
+export function terrainComponentIdsFor(state: SimState): Int32Array {
+  const navigation = staticNavigationFor(state);
+  const cached = componentIdsByNavigation.get(navigation);
+  if (cached) return cached;
+
+  const components = new Int32Array(state.width * state.height);
+  components.fill(UNREACHABLE);
+  const queue = new Int32Array(components.length);
+  let component = 0;
+  for (let startKey = 0; startKey < components.length; startKey++) {
+    if (navigation.walkable[startKey] !== 1 || components[startKey] !== UNREACHABLE) continue;
+    let head = 0;
+    let tail = 0;
+    components[startKey] = component;
+    queue[tail++] = startKey;
+    while (head < tail) {
+      const currentKey = queue[head++]!;
+      const currentX = currentKey % state.width;
+      const currentY = Math.floor(currentKey / state.width);
+      for (const direction of PATH_DIRS) {
+        const nextX = currentX + direction.x;
+        const nextY = currentY + direction.y;
+        if (!navigationStepAllowed(navigation, currentX, currentY, nextX, nextY)) continue;
+        const nextKey = nextY * state.width + nextX;
+        if (components[nextKey] !== UNREACHABLE) continue;
+        components[nextKey] = component;
+        queue[tail++] = nextKey;
+      }
+    }
+    component += 1;
+  }
+  componentIdsByNavigation.set(navigation, components);
+  return components;
 }
 
 export function flowDistanceAt(field: FlowField, x: number, y: number): number {
