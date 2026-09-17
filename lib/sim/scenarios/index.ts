@@ -15,7 +15,7 @@ import { inObjectiveZone, isUnitEntity } from "../../types";
 import { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS } from "../../gen/pacing";
 import { resolveMissionProfile } from "../../gen/profile";
 import { spawnBuildingAt, spawnUnit } from "../world";
-import { enemyApproachPoint, reachableBuildingFilter, reachableScenarioCells, reachableScenarioPoint } from "./reachability";
+import { enemyApproachPoint, objectiveBuildingFilter, reachableScenarioCells, reachableScenarioPoint } from "./reachability";
 import { convoyStartPoint, convoyZonePoint, tickEscort } from "./escort";
 import { extractionPoints, rescuePoint, rescuePoints, tickRescueExtraction } from "./rescueExtraction";
 import { inRescueFlank } from "../../gen/map/generator/rescuePlacement";
@@ -35,10 +35,13 @@ function setupDestroyMarkedScenario({ state, map, mission, rng, reachable }: Sce
   const ids: number[] = [];
   const spots = map.markedSpots.length
     ? map.markedSpots
-    : [enemyApproachPoint(map, 6, -2), enemyApproachPoint(map, 6, 2)];
+    : [enemyApproachPoint(map, 10, -2), enemyApproachPoint(map, 10, 2)];
   const count = mission.win.targetCount ?? 1;
+  const alliedBase = state.entities.filter((entity): entity is Extract<Entity, { class: "building" }> =>
+    entity.owner === 0 && entity.class === "building" && entity.hp > 0,
+  );
   for (let i = 0; i < count; i++) {
-    const spot = spots[i] ?? enemyApproachPoint(map, 6 + i * 3, i % 2 === 0 ? -2 : 2);
+    const spot = spots[i] ?? enemyApproachPoint(map, 10 + i * 3, i % 2 === 0 ? -2 : 2);
     // Duplicate "objective" keeps the old 2/3 objective, 1/3 factory mix
     // (the previous pick listed "refinery", which was remapped to objective).
     const kind = rng.pick(["objective", "factory", "objective"] as const);
@@ -50,7 +53,8 @@ function setupDestroyMarkedScenario({ state, map, mission, rng, reachable }: Sce
       spot.y,
       0,
       true,
-      reachableBuildingFilter(state, kind, reachable),
+      objectiveBuildingFilter(state, kind, reachable, alliedBase),
+      24,
     );
     if (placed) ids.push(placed.id);
   }
@@ -96,14 +100,17 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
 
   if (kind === "sabotage") {
     for (let i = 0; i < count; i++) {
-      // Keep sabotage targets outside the enemy yard's immediate firing
-      // ring. The first legacy placement sat on top of the base perimeter,
-      // which made a technically reachable contract behave like an attrition
-      // wall for the competent baseline. The contested variant keeps its
-      // wider spacing while both routes still lead into the enemy approach.
-      const depth = 8;
+      // Keep sabotage targets well beyond the allied base perimeter. The first
+      // legacy placement sat on top of the allied approach, which made a
+      // technically reachable contract behave like an attrition wall for the
+      // competent baseline. The contested variant keeps its wider spacing
+      // while both routes still lead into the enemy approach.
+      const depth = 12;
       const spacing = 4;
       const spot = map.markedSpots[i] ?? enemyApproachPoint(map, depth + i * spacing, i % 2 === 0 ? -2 : 2);
+      const alliedBase = state.entities.filter((entity): entity is Extract<Entity, { class: "building" }> =>
+        entity.owner === 0 && entity.class === "building" && entity.hp > 0,
+      );
       const objective = spawnBuildingAt(
         state,
         1,
@@ -112,7 +119,8 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
         spot.y,
         0,
         true,
-        reachableBuildingFilter(state, "objective", reachable),
+        objectiveBuildingFilter(state, "objective", reachable, alliedBase),
+        24,
       );
       if (objective) targetIds.push(objective.id);
     }

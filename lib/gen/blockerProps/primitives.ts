@@ -7,6 +7,18 @@ export const SHADOW_ALPHA = 0.2;
 export const SNOW = "#ecf4f6";
 export const CURVE_SAMPLES = 6;
 
+export function detailHash(value: number, salt: number): number {
+  return Math.imul((value ^ salt) >>> 0, 1597334677) >>> 0;
+}
+
+export function detailUnit(value: number, salt: number): number {
+  return detailHash(value, salt) / 4294967296;
+}
+
+export function detailSigned(value: number, salt: number, span: number): number {
+  return (detailUnit(value, salt) * 2 - 1) * span;
+}
+
 export function pe(
   x: number,
   y: number,

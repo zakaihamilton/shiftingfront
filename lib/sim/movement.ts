@@ -4,7 +4,10 @@ import { isUnitEntity, type Entity, type SimState, type UnitEntity } from "../ty
 import { tryFindPathDetailed } from "./pathBudget";
 import { routePendingFor } from "./pathfinding";
 import { prepareFlowFieldRoutes } from "./flowFieldRouting";
+import { flowDistanceAt } from "./flowField";
+import { navigationEdgeKey, navigationEdgeReserved } from "./navigation/grid";
 import { invalidateUnitAtCache, unitOccupancyFor } from "./world";
+import type { FlowField } from "./flowField";
 
 type MovementBuffers = {
   occupancy: Uint8Array;
@@ -15,6 +18,8 @@ type MovementBuffers = {
   movementIntents: Map<number, string>;
   flowOrder: Map<number, number>;
   plannedVacates: Map<number, number>;
+  flowFields: Map<number, FlowField>;
+  edgeReservations: Map<number, number>;
 };
 
 const movementBuffers = new WeakMap<SimState, MovementBuffers>();
@@ -32,6 +37,8 @@ function buffersFor(state: SimState): MovementBuffers {
       movementIntents: new Map<number, string>(),
       flowOrder: new Map<number, number>(),
       plannedVacates: new Map<number, number>(),
+      flowFields: new Map<number, FlowField>(),
+      edgeReservations: new Map<number, number>(),
     };
     movementBuffers.set(state, buffers);
   } else {
@@ -40,6 +47,8 @@ function buffersFor(state: SimState): MovementBuffers {
     buffers.movers.length = 0;
     buffers.flowOrder.clear();
     buffers.plannedVacates.clear();
+    buffers.flowFields.clear();
+    buffers.edgeReservations.clear();
   }
   buffers.occupancy = unitOccupancyFor(state);
   return buffers;
@@ -57,9 +66,9 @@ import {
 } from "./navigation";
 
 export function tickMovement(state: SimState): void {
-  const { occupancy, atTile, reserved, movers, previousCells, movementIntents, flowOrder, plannedVacates } = buffersFor(state);
+  const { occupancy, atTile, reserved, movers, previousCells, movementIntents, flowOrder, plannedVacates, flowFields, edgeReservations } = buffersFor(state);
   resetPreviousCellsForNewOrders(state, previousCells, movementIntents);
-  prepareFlowFieldRoutes(state, occupancy, reserved, previousCells, undefined, flowOrder, plannedVacates);
+  prepareFlowFieldRoutes(state, occupancy, reserved, previousCells, undefined, flowOrder, plannedVacates, flowFields, edgeReservations);
   for (const e of state.entities) {
     // Convoys are neutral so combat targeting ignores them, but they still
     // need the normal background repath when a bounded search returned only
@@ -135,7 +144,11 @@ export function tickMovement(state: SimState): void {
     let blockedY = ny;
     let target = blockedY * state.width + blockedX;
     const claim = reserved.get(target);
-    let blocked = !!next && target !== current && (occupancy[target] === 1 || (claim !== undefined && claim !== e.id));
+    let blocked = !!next && target !== current && (
+      occupancy[target] === 1 ||
+      (claim !== undefined && claim !== e.id) ||
+      navigationEdgeReserved(edgeReservations, state.width, state.height, current % state.width, Math.floor(current / state.width), nx, ny, e.id)
+    );
 
     // A fractional diagonal step can round into a different cell before the
     // path waypoint itself is reached. Treat that proposed cell as the
@@ -148,7 +161,16 @@ export function tickMovement(state: SimState): void {
       if (proposedCell !== current) {
         const proposedX = proposedCell % state.width;
         const proposedY = Math.floor(proposedCell / state.width);
-        if (!tileFree(state, occupancy, reserved, e, proposedX, proposedY)) {
+        if (!tileFree(state, occupancy, reserved, e, proposedX, proposedY) || navigationEdgeReserved(
+          edgeReservations,
+          state.width,
+          state.height,
+          current % state.width,
+          Math.floor(current / state.width),
+          proposedX,
+          proposedY,
+          e.id,
+        )) {
           blockedX = proposedX;
           blockedY = proposedY;
           target = proposedCell;
@@ -174,7 +196,19 @@ export function tickMovement(state: SimState): void {
         e.blockedTicks = 0;
         continue;
       }
-      if (trySidestep(state, occupancy, reserved, e, blockedX, blockedY, e.owner === 0 ? previousCells.get(e.id) : undefined)) {
+      const progressField = flowFields.get(e.id);
+      const progressDistance = progressField ? (x: number, y: number) => flowDistanceAt(progressField, x, y) : undefined;
+      if (trySidestep(
+        state,
+        occupancy,
+        reserved,
+        e,
+        blockedX,
+        blockedY,
+        e.owner === 0 ? previousCells.get(e.id) : undefined,
+        progressDistance,
+        edgeReservations,
+      )) {
         e.blockedTicks = 0;
       } else if (blocker && blocker.id !== e.id && giveWay(
         state,
@@ -182,6 +216,7 @@ export function tickMovement(state: SimState): void {
         reserved,
         blocker,
         blocker.owner === 0 ? previousCells.get(blocker.id) : undefined,
+        edgeReservations,
       )) {
         e.blockedTicks = 0;
         continue;
@@ -189,13 +224,17 @@ export function tickMovement(state: SimState): void {
         e.blockedTicks = (e.blockedTicks ?? 0) + 1;
         if (e.blockedTicks === 1 || e.blockedTicks % 6 === 0) {
           const destination = e.path[e.path.length - 1];
+          let rerouted = false;
           if (destination) {
             const detourResult = tryFindPathDetailed(state, e, destination, {
               avoidUnits: true,
               ignoreId: e.id,
               occupancy,
             });
-            if (!detourResult) continue;
+            if (!detourResult) {
+              if (e.flowGoal) e.path = [];
+              continue;
+            }
             if (detourResult.status === "unreachable") {
               // A group can legitimately seal a unit's final tile after the
               // unit has arrived nearby. Do not keep walking into the same
@@ -224,10 +263,27 @@ export function tickMovement(state: SimState): void {
                 dy,
                 previousCells.get(e.id),
               );
-              if (!sameBlocked && !reverses && tileFree(state, occupancy, reserved, e, dx, dy)) {
+              if (!sameBlocked && !reverses && tileFree(state, occupancy, reserved, e, dx, dy) && !navigationEdgeReserved(
+                edgeReservations,
+                state.width,
+                state.height,
+                current % state.width,
+                Math.floor(current / state.width),
+                dx,
+                dy,
+                e.id,
+              )) {
                 e.path = detour;
+                rerouted = true;
               }
             }
+          }
+          if (!rerouted && e.flowGoal) {
+            // A stale prefix can retain a reservation that is no longer
+            // compatible with the current group order. Return control to the
+            // shared field so the next tick can select a different lane.
+            e.path = [];
+            e.routePending = true;
           }
         }
         continue;
@@ -238,11 +294,30 @@ export function tickMovement(state: SimState): void {
     const stepX = stepTarget ? Math.round(stepTarget.x) : Math.round(e.x);
     const stepY = stepTarget ? Math.round(stepTarget.y) : Math.round(e.y);
     const stepCell = stepY * state.width + stepX;
-    if (stepTarget && stepCell !== current && !tileFree(state, occupancy, reserved, e, stepX, stepY)) {
+    if (stepTarget && stepCell !== current && (!tileFree(state, occupancy, reserved, e, stepX, stepY) || navigationEdgeReserved(
+      edgeReservations,
+      state.width,
+      state.height,
+      current % state.width,
+      Math.floor(current / state.width),
+      stepX,
+      stepY,
+      e.id,
+    ))) {
       e.blockedTicks = (e.blockedTicks ?? 0) + 1;
       continue;
     }
     if (stepTarget && stepCell !== current) reserved.set(stepCell, e.id);
+    if (stepTarget && stepCell !== current) {
+      edgeReservations.set(navigationEdgeKey(
+        state.width,
+        state.height,
+        current % state.width,
+        Math.floor(current / state.width),
+        stepX,
+        stepY,
+      ), e.id);
+    }
     if (stepTarget) {
       const dx = stepTarget.x - e.x;
       const dy = stepTarget.y - e.y;
@@ -251,7 +326,7 @@ export function tickMovement(state: SimState): void {
       }
     }
     const before = current;
-    advanceAlongPath(state, occupancy, reserved, e, speed);
+    advanceAlongPath(state, occupancy, reserved, e, speed, edgeReservations);
     const after = cellOf(state, e.x, e.y);
     if (after !== before) {
       previousCells.set(e.id, before);

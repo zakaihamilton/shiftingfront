@@ -267,7 +267,7 @@ export function generateMap(
   const markedSpots: Vec2[] = [];
   const markCount =
     mission.win.kind === "destroyMarked" ? mission.win.targetCount ?? 1 : 0;
-  const markedDepth = profile.variant === "siege" ? 8 : 6;
+  const markedDepth = profile.variant === "siege" ? 12 : 10;
   const markedSpacing = profile.variant === "siege" ? 4 : 3;
   const towardPlayer = { x: -towardEnemy.x, y: -towardEnemy.y };
   const targetLateral = { x: -towardPlayer.y, y: towardPlayer.x };

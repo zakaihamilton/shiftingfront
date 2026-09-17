@@ -20,6 +20,7 @@ const SIM_WARMUP_TICKS = 60;
 const BLOCKED_COMBAT_UNITS = 24;
 const BLOCKED_COMBAT_TICKS = 120;
 const FOREGROUND_GROUP_UNITS = 48;
+const LARGE_GROUP_UNITS = 96;
 const FOREGROUND_PATH_SAMPLES = 6;
 const MAX_FOREGROUND_PATH_P95_MS = 25;
 const MAX_FOREGROUND_PATH_P99_MS = 25;
@@ -132,6 +133,16 @@ type ForegroundPathSample = {
   pendingAfterFirstTick: number;
 };
 
+type LargeGroupPathSample = Omit<ForegroundPathSample, "units"> & {
+  units: number;
+  orderP50Ms: number;
+  orderP95Ms: number;
+  orderP99Ms: number;
+  orderMaxMs: number;
+  tickP95Ms: number;
+  tickP99Ms: number;
+};
+
 const foregroundPathTimings: number[] = [];
 let pendingAfterOrder = 0;
 let pendingAfterFirstTick = 0;
@@ -161,6 +172,43 @@ const foregroundPathSample: ForegroundPathSample = {
   maxMs: Math.max(...foregroundPathTimings, 0),
   pendingAfterOrder,
   pendingAfterFirstTick,
+};
+
+const largeGroupTickTimings: number[] = [];
+const largeGroupOrderTimings: number[] = [];
+let largeGroupPendingAfterOrder = 0;
+let largeGroupPendingAfterFirstTick = 0;
+for (let sample = 0; sample < FOREGROUND_PATH_SAMPLES; sample++) {
+  const state = makeFixture({ width: 96, height: 96, win: { kind: "harvestQuota", target: 99999 } });
+  addBuilding(state, 0, "constructionYard", 0, 0);
+  const units = Array.from({ length: LARGE_GROUP_UNITS }, (_, i) =>
+    addUnit(state, 0, "infantry", 3 + (i % 12), 4 + Math.floor(i / 12)),
+  );
+  const orderStarted = performance.now();
+  issue(state, { type: "move", unitIds: units.map((unit) => unit.id), x: 80, y: 80 });
+  largeGroupOrderTimings.push(performance.now() - orderStarted);
+  largeGroupPendingAfterOrder = units.filter((unit) => unit.routePending).length;
+  const started = performance.now();
+  tick(state, undefined, { evaluateObjectives: false });
+  largeGroupTickTimings.push(performance.now() - started);
+  largeGroupPendingAfterFirstTick = units.filter((unit) => unit.routePending).length;
+}
+
+const largeGroupPathSample: LargeGroupPathSample = {
+  seed: 0,
+  units: LARGE_GROUP_UNITS,
+  orderP50Ms: percentile(largeGroupOrderTimings, 0.5),
+  orderP95Ms: percentile(largeGroupOrderTimings, 0.95),
+  orderP99Ms: percentile(largeGroupOrderTimings, 0.99),
+  orderMaxMs: Math.max(...largeGroupOrderTimings, 0),
+  p50Ms: percentile(largeGroupTickTimings, 0.5),
+  p95Ms: percentile(largeGroupTickTimings, 0.95),
+  p99Ms: percentile(largeGroupTickTimings, 0.99),
+  maxMs: Math.max(...largeGroupTickTimings, 0),
+  pendingAfterOrder: largeGroupPendingAfterOrder,
+  pendingAfterFirstTick: largeGroupPendingAfterFirstTick,
+  tickP95Ms: percentile(largeGroupTickTimings, 0.95),
+  tickP99Ms: percentile(largeGroupTickTimings, 0.99),
 };
 
 type RoutingSample = {
@@ -255,6 +303,8 @@ for (let i = 0; i < BLOCKED_COMBAT_TICKS; i++) {
 const atlasFailures = atlasSamples.filter((sample) => sample.ms > MAX_ATLAS_MS || sample.bytes > MAX_ATLAS_BYTES);
 const simulationFailures = simulationSamples.filter((sample) => sample.p95Ms > MAX_SIM_P95_MS || sample.p99Ms > MAX_SIM_P99_MS);
 const foregroundPathFailures = foregroundPathSample.p95Ms > MAX_FOREGROUND_PATH_P95_MS || foregroundPathSample.p99Ms > MAX_FOREGROUND_PATH_P99_MS;
+const largeGroupPathFailures = largeGroupPathSample.tickP95Ms > MAX_FOREGROUND_PATH_P95_MS || largeGroupPathSample.tickP99Ms > MAX_FOREGROUND_PATH_P99_MS;
+const largeGroupOrderFailures = largeGroupPathSample.orderP95Ms > MAX_FOREGROUND_PATH_P95_MS || largeGroupPathSample.orderP99Ms > MAX_FOREGROUND_PATH_P99_MS;
 const blockedCombatSummary = summarizeTimings(blockedCombatTimings);
 const routingFailures = routingSamples.filter((sample) => sample.p95Ms > MAX_FOREGROUND_PATH_P95_MS || sample.p99Ms > MAX_FOREGROUND_PATH_P99_MS);
 console.log(JSON.stringify({
@@ -270,6 +320,7 @@ console.log(JSON.stringify({
   atlasSamples,
   simulationSamples,
   foregroundPath: foregroundPathSample,
+  largeGroupPath: largeGroupPathSample,
   routing: routingSamples,
   blockedCombat: {
     units: BLOCKED_COMBAT_UNITS,
@@ -277,7 +328,7 @@ console.log(JSON.stringify({
     ...blockedCombatSummary,
   },
 }, null, 2));
-if (atlasFailures.length || simulationFailures.length || blockedCombatSummary.p95Ms > MAX_BLOCKED_COMBAT_P95_MS || blockedCombatSummary.p99Ms > MAX_BLOCKED_COMBAT_P99_MS || foregroundPathFailures || routingFailures.length) {
+if (atlasFailures.length || simulationFailures.length || blockedCombatSummary.p95Ms > MAX_BLOCKED_COMBAT_P95_MS || blockedCombatSummary.p99Ms > MAX_BLOCKED_COMBAT_P99_MS || foregroundPathFailures || largeGroupPathFailures || largeGroupOrderFailures || routingFailures.length) {
   const failures = [
     ...atlasFailures.flatMap((sample) => [
       ...(sample.ms > MAX_ATLAS_MS ? [`metric=terrain atlas ms actual=${sample.ms.toFixed(2)} threshold=${MAX_ATLAS_MS} seed=${sample.seed} scenario=mission-${sample.mission}`] : []),
@@ -291,6 +342,10 @@ if (atlasFailures.length || simulationFailures.length || blockedCombatSummary.p9
     ...(blockedCombatSummary.p99Ms > MAX_BLOCKED_COMBAT_P99_MS ? [`metric=blocked combat p99 ms actual=${blockedCombatSummary.p99Ms.toFixed(2)} threshold=${MAX_BLOCKED_COMBAT_P99_MS} seed=0 scenario=blocked-los`] : []),
     ...(foregroundPathSample.p95Ms > MAX_FOREGROUND_PATH_P95_MS ? [`metric=foreground order p95 ms actual=${foregroundPathSample.p95Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P95_MS} seed=${foregroundPathSample.seed} scenario=48-unit-formation-order`] : []),
     ...(foregroundPathSample.p99Ms > MAX_FOREGROUND_PATH_P99_MS ? [`metric=foreground order p99 ms actual=${foregroundPathSample.p99Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P99_MS} seed=${foregroundPathSample.seed} scenario=48-unit-formation-order`] : []),
+    ...(largeGroupPathSample.tickP95Ms > MAX_FOREGROUND_PATH_P95_MS ? [`metric=large-group tick p95 ms actual=${largeGroupPathSample.tickP95Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P95_MS} seed=${largeGroupPathSample.seed} scenario=96-unit-flow-order`] : []),
+    ...(largeGroupPathSample.tickP99Ms > MAX_FOREGROUND_PATH_P99_MS ? [`metric=large-group tick p99 ms actual=${largeGroupPathSample.tickP99Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P99_MS} seed=${largeGroupPathSample.seed} scenario=96-unit-flow-order`] : []),
+    ...(largeGroupPathSample.orderP95Ms > MAX_FOREGROUND_PATH_P95_MS ? [`metric=large-group order p95 ms actual=${largeGroupPathSample.orderP95Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P95_MS} seed=${largeGroupPathSample.seed} scenario=96-unit-slot-generation`] : []),
+    ...(largeGroupPathSample.orderP99Ms > MAX_FOREGROUND_PATH_P99_MS ? [`metric=large-group order p99 ms actual=${largeGroupPathSample.orderP99Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P99_MS} seed=${largeGroupPathSample.seed} scenario=96-unit-slot-generation`] : []),
     ...routingFailures.flatMap((sample) => [
       ...(sample.p95Ms > MAX_FOREGROUND_PATH_P95_MS ? [`metric=flow-field routing p95 ms actual=${sample.p95Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P95_MS} seed=${sample.seed} scenario=${sample.scenario}`] : []),
       ...(sample.p99Ms > MAX_FOREGROUND_PATH_P99_MS ? [`metric=flow-field routing p99 ms actual=${sample.p99Ms.toFixed(2)} threshold=${MAX_FOREGROUND_PATH_P99_MS} seed=${sample.seed} scenario=${sample.scenario}`] : []),

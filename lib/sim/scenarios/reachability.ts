@@ -1,8 +1,11 @@
 import type { GeneratedMap } from "../../gen/map";
 import { footprintOf } from "../../catalog";
-import type { BuildingKind, SimState, Vec2 } from "../../types";
+import type { BuildingEntity, BuildingKind, SimState, Vec2 } from "../../types";
 import { PATH_DIRS, diagonalCornerBlocked } from "../pathfinding";
 import { canClimb, inBounds, isStaticWalkable, isWalkable } from "../world";
+
+/** Keep enemy objective structures well away from the allied starting base. */
+export const OBJECTIVE_ALLIED_BASE_CLEARANCE = 18;
 
 export function enemyApproachPoint(
   map: Pick<GeneratedMap, "playerStart" | "enemyStart" | "width" | "height">,
@@ -61,6 +64,48 @@ export function reachableBuildingFilter(
     }
     return false;
   };
+}
+
+function footprintDistance(
+  x: number,
+  y: number,
+  kind: BuildingKind,
+  other: BuildingEntity,
+): number {
+  const footprint = footprintOf(kind);
+  const otherFootprint = footprintOf(other.kind);
+  const dx = x + footprint.w - 1 < other.x
+    ? other.x - (x + footprint.w - 1)
+    : other.x + otherFootprint.w - 1 < x
+      ? x - (other.x + otherFootprint.w - 1)
+      : 0;
+  const dy = y + footprint.h - 1 < other.y
+    ? other.y - (y + footprint.h - 1)
+    : other.y + otherFootprint.h - 1 < y
+      ? y - (other.y + otherFootprint.h - 1)
+      : 0;
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * Combines terrain reachability with a hard separation from the allied
+ * starting base. The base list is captured before scenario targets are added
+ * so multiple objectives are not treated as part of the base network.
+ */
+export function objectiveBuildingFilter(
+  state: SimState,
+  kind: BuildingKind,
+  seen: Uint8Array | undefined,
+  baseBuildings: ReadonlyArray<BuildingEntity> = state.entities.filter(
+    (entity): entity is BuildingEntity =>
+      entity.owner === 0 && entity.class === "building" && entity.hp > 0 && entity.kind !== "objective",
+  ),
+): ((x: number, y: number) => boolean) | undefined {
+  const reachableFilter = reachableBuildingFilter(state, kind, seen);
+  if (!reachableFilter && baseBuildings.length === 0) return undefined;
+  return (x, y) =>
+    (reachableFilter?.(x, y) ?? true) &&
+    baseBuildings.every((building) => footprintDistance(x, y, kind, building) >= OBJECTIVE_ALLIED_BASE_CLEARANCE);
 }
 
 export function reachableScenarioPoint(

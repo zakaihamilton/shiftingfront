@@ -113,6 +113,56 @@ describe("blocker prop art", () => {
     }
   });
 
+  it("adds deterministic bounded weathering detail to every prop family", () => {
+    const cases = [
+      ["boulder", "ash plains"],
+      ["tree", "jungle wreckage"],
+      ["pine", "tundra grid"],
+      ["deadTree", "ash plains"],
+      ["crystalOutcrop", "crystal flats"],
+      ["wreckage", "rust canyons"],
+      ["spire", "volcanic shelf"],
+      ["sandstone", "glass desert"],
+      ["deadShrub", "glass desert"],
+      ["snowRock", "tundra grid"],
+    ] as const;
+    for (const [kind, biome] of cases) {
+      for (let v = 0; v < 32; v++) {
+        const prims = blockerPropPrims(kind, v, TONE, biome);
+        expect(blockerPropPrims(kind, v, TONE, biome)).toEqual(prims);
+        expect(
+          prims.some((prim) => (prim.k === "line" || prim.k === "curve") && prim.alpha !== undefined && prim.alpha < 0.72),
+          `${kind} weathering detail`,
+        ).toBe(true);
+        for (const prim of prims) {
+          if (prim.k === "ell") {
+            expect(prim.x - prim.rx).toBeGreaterThanOrEqual(-24);
+            expect(prim.x + prim.rx).toBeLessThanOrEqual(24);
+            expect(prim.y - prim.ry).toBeGreaterThanOrEqual(-36);
+            expect(prim.y + prim.ry).toBeLessThanOrEqual(16);
+          } else if (prim.k === "poly") {
+            for (let i = 0; i < prim.pts.length; i += 2) {
+              expect(prim.pts[i]).toBeGreaterThanOrEqual(-24);
+              expect(prim.pts[i]).toBeLessThanOrEqual(24);
+              expect(prim.pts[i + 1]).toBeGreaterThanOrEqual(-36);
+              expect(prim.pts[i + 1]).toBeLessThanOrEqual(16);
+            }
+          } else if (prim.k === "line") {
+            expect(Math.min(prim.x0, prim.x1)).toBeGreaterThanOrEqual(-24);
+            expect(Math.max(prim.x0, prim.x1)).toBeLessThanOrEqual(24);
+            expect(Math.min(prim.y0, prim.y1)).toBeGreaterThanOrEqual(-36);
+            expect(Math.max(prim.y0, prim.y1)).toBeLessThanOrEqual(16);
+          } else {
+            expect(Math.min(prim.x0, prim.cx, prim.x1)).toBeGreaterThanOrEqual(-24);
+            expect(Math.max(prim.x0, prim.cx, prim.x1)).toBeLessThanOrEqual(24);
+            expect(Math.min(prim.y0, prim.cy, prim.y1)).toBeGreaterThanOrEqual(-36);
+            expect(Math.max(prim.y0, prim.cy, prim.y1)).toBeLessThanOrEqual(16);
+          }
+        }
+      }
+    }
+  });
+
   it("stays deterministic for a biome variant", () => {
     const kind = blockerPropKind("volcanic shelf", 4);
     expect(blockerPropPrims(kind, 4, TONE, "volcanic shelf")).toEqual(

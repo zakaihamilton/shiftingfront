@@ -55,7 +55,15 @@ import {
   visibleFxTileCoords,
   waterFxNeedsClip,
 } from "../../lib/render/terrainWeather";
-import { drawLandmark } from "../../lib/render/terrainPaint/scatter";
+import {
+  drawCinder,
+  drawCrystalChip,
+  drawIceChip,
+  drawLandmark,
+  drawPebble,
+  drawRockSlab,
+  drawSandShard,
+} from "../../lib/render/terrainPaint/scatter";
 import { spriteCacheKey, terrainContentKey } from "../../lib/render/renderer";
 import { minimapCacheKeys, minimapEntityVisible, MINIMAP_OVERLAY_TICK_SHIFT } from "../../lib/render/minimap";
 import { hash2, propMaterialsFor } from "../../lib/render/terrainMaterials";
@@ -1297,6 +1305,36 @@ describe("terrain adornment painting", () => {
       signatures.add(painted.geometry.join("|"));
     }
     expect(signatures.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("adds deterministic material detail to varied scatter silhouettes", () => {
+    const mats = biomeMaterials("glass desert");
+    const drawCases = [
+      (ctx: CanvasRenderingContext2D, variant: number) => drawPebble(ctx, mats, 1, 1, variant),
+      (ctx: CanvasRenderingContext2D, variant: number) => drawRockSlab(ctx, mats, 1, 1, variant),
+      (ctx: CanvasRenderingContext2D, variant: number) => drawSandShard(ctx, mats, 1, 1, variant),
+      (ctx: CanvasRenderingContext2D, variant: number) => drawCrystalChip(ctx, mats, 1, 1, variant),
+      (ctx: CanvasRenderingContext2D, variant: number) => drawIceChip(ctx, mats, 1, 1, variant),
+      (ctx: CanvasRenderingContext2D, variant: number) => drawCinder(ctx, mats, 1, 1, variant),
+    ];
+    for (const draw of drawCases) {
+      const signatures = new Set<string>();
+      for (let variant = 0; variant < 32; variant++) {
+        const painted = createPaintMock();
+        draw(painted.ctx, variant);
+        signatures.add(`${painted.geometry.join("|")}::${painted.ops.join("|")}`);
+        expect(painted.ctx.globalAlpha).toBe(1);
+      }
+      expect(signatures.size).toBeGreaterThanOrEqual(16);
+    }
+
+    const first = createPaintMock();
+    const second = createPaintMock();
+    drawSandShard(first.ctx, mats, 1, 1, 832);
+    drawSandShard(second.ctx, mats, 1, 1, 832);
+    expect(first.geometry).toEqual(second.geometry);
+    expect(first.ops).toEqual(second.ops);
+    expect(first.ops.filter((op) => op.startsWith("stroke:")).length).toBeGreaterThan(1);
   });
 
   it("paints layered scatter and blocker props deterministically", () => {

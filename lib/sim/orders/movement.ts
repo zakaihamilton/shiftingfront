@@ -1,6 +1,6 @@
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
-import { flowFieldFor } from "../flowField";
+import { terrainReachabilityForSources } from "../flowField";
 import { isUnitEntity, type Entity, type Formation, type SimEvent, type SimState } from "../../types";
 import { byId, inBounds, isStaticWalkable } from "../world";
 import { clearSupportOrder } from "../support";
@@ -104,7 +104,11 @@ function nearbyWalkableSlotsFrom(
     seen.add(key);
     slots.push({ x: sx, y: sy });
   };
-  const maxRadius = Math.max(16, Math.ceil(Math.sqrt(count)) * 2 + 4);
+  // Keep expanding until the whole map has been considered. A blocked goal
+  // or a narrow corridor may not have enough slots in the compact first
+  // ring, even though the connected walkable region can still accommodate
+  // the group farther away.
+  const maxRadius = Math.max(state.width, state.height);
   for (let r = 0; r <= maxRadius && slots.length < count; r++) {
     if (r === 0) {
       take(x, y);
@@ -128,7 +132,7 @@ export function snapUnique(
   taken: Set<number>,
   reachable?: (x: number, y: number) => boolean,
 ): { x: number; y: number } {
-  for (let r = 0; r <= 8; r++) {
+  for (let r = 0; r <= Math.max(state.width, state.height); r++) {
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
         if (r > 0 && Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
@@ -146,12 +150,21 @@ export function snapUnique(
   return { x, y };
 }
 
-export function assignNearest(units: Entity[], slots: { x: number; y: number }[]): { x: number; y: number }[] {
-  const dests: { x: number; y: number }[] = units.map(() => slots[0] ?? { x: 0, y: 0 });
+export function assignNearest(
+  units: Entity[],
+  slots: { x: number; y: number }[],
+  canReach?: (unitIndex: number, slot: { x: number; y: number }) => boolean,
+): { x: number; y: number }[] {
+  // If no target-area slots exist, start-cell fallbacks remain distinct and
+  // valid instead of manufacturing duplicate {0, 0} destinations.
+  const dests: { x: number; y: number }[] = units.map((unit) =>
+    slots[0] ?? { x: Math.round(unit.x), y: Math.round(unit.y) },
+  );
   const pairs: { ui: number; si: number; d: number }[] = [];
   for (let ui = 0; ui < units.length; ui++) {
     for (let si = 0; si < slots.length; si++) {
       const slot = slots[si]!;
+      if (canReach && !canReach(ui, slot)) continue;
       pairs.push({ ui, si, d: Math.hypot(units[ui]!.x - slot.x, units[ui]!.y - slot.y) });
     }
   }
@@ -175,26 +188,34 @@ export function destinationsForGroup(
   commandFormation?: Formation,
 ): { x: number; y: number }[] {
   if (units.length === 0) return [];
-  if (units.length === 1) return [{ x, y }];
-  const arrivalField = flowFieldFor(state, { x, y });
-  const reachable = (sx: number, sy: number) => arrivalField.distance[sy * state.width + sx] !== -1;
+  const reachabilityByUnit = units.map((unit) => terrainReachabilityForSources(state, [unit]));
+  const canReach = (unitIndex: number, sx: number, sy: number) =>
+    inBounds(state, sx, sy) && reachabilityByUnit[unitIndex]![sy * state.width + sx] !== -1;
+  const reachable = (sx: number, sy: number) => reachabilityByUnit.some((field) =>
+    inBounds(state, sx, sy) && field[sy * state.width + sx] !== -1,
+  );
+  if (units.length === 1) {
+    return [snapUnique(state, x, y, new Set<number>(), (sx, sy) => canReach(0, sx, sy))];
+  }
   const shared = units.every((e) => e.formation && e.formation === units[0]!.formation)
     ? units[0]!.formation
     : undefined;
   const formation = commandFormation ?? shared;
   if (formation) {
     const taken = new Set<number>();
-    const destinations = units.map((_, index) => {
+    const candidates = units.map((_, index) => {
       const raw = formationDestination(x, y, formation, index, units.length);
       return snapUnique(state, raw.x, raw.y, taken, reachable);
     });
-    return ensureUniqueGroupDestinations(state, units, destinations, reachable);
+    const destinations = assignNearest(units, candidates, (unitIndex, slot) => canReach(unitIndex, slot.x, slot.y));
+    return ensureUniqueGroupDestinations(state, units, destinations, reachable, canReach);
   }
   return ensureUniqueGroupDestinations(
     state,
     units,
-    assignNearest(units, nearbyWalkableSlotsFrom(state, x, y, units.length, reachable)),
+    assignNearest(units, nearbyWalkableSlotsFrom(state, x, y, units.length, reachable), (unitIndex, slot) => canReach(unitIndex, slot.x, slot.y)),
     reachable,
+    canReach,
   );
 }
 
@@ -204,13 +225,15 @@ function ensureUniqueGroupDestinations(
   units: Entity[],
   destinations: { x: number; y: number }[],
   reachable?: (x: number, y: number) => boolean,
+  canReach?: (unitIndex: number, x: number, y: number) => boolean,
 ): { x: number; y: number }[] {
   const taken = new Set<number>();
   return destinations.map((destination, index) => {
     const x = Math.round(destination.x);
     const y = Math.round(destination.y);
     const key = y * state.width + x;
-    if (inBounds(state, x, y) && isStaticWalkable(state, x, y) && (!reachable || reachable(x, y)) && !taken.has(key)) {
+    if (inBounds(state, x, y) && isStaticWalkable(state, x, y) && (!reachable || reachable(x, y)) &&
+      (!canReach || canReach(index, x, y)) && !taken.has(key)) {
       taken.add(key);
       return destination;
     }
@@ -219,7 +242,9 @@ function ensureUniqueGroupDestinations(
     const fallbackX = Math.round(unit.x);
     const fallbackY = Math.round(unit.y);
     const sizeBeforeFallback = taken.size;
-    const fallback = snapUnique(state, fallbackX, fallbackY, taken, reachable);
+    const fallback = snapUnique(state, fallbackX, fallbackY, taken, (sx, sy) =>
+      (!reachable || reachable(sx, sy)) && (!canReach || canReach(index, sx, sy)),
+    );
     const fallbackKey = Math.round(fallback.y) * state.width + Math.round(fallback.x);
     if (
       inBounds(state, Math.round(fallback.x), Math.round(fallback.y)) &&

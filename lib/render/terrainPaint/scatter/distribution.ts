@@ -78,10 +78,10 @@ function makeItem(pool: readonly ScatterKind[], v: number, slot: number, scaleBo
   const hashed = mix(v, 31 + slot * 17);
   return {
     kind: pool[hashed % pool.length]!,
-    ox: signed(v, 101 + slot, 8.5) + signed(v, 301 + slot, 2.2),
-    oy: signed(v, 151 + slot, 3.4) + signed(v, 331 + slot, 1.4),
-    rotation: signed(v, 361 + slot, 0.18),
-    scale: 0.9 + unit(v, 201 + slot) * 0.62 + scaleBoost,
+    ox: signed(v, 101 + slot, 9.3) + signed(v, 301 + slot, 2.7),
+    oy: signed(v, 151 + slot, 3.8) + signed(v, 331 + slot, 1.8),
+    rotation: signed(v, 361 + slot, 0.26),
+    scale: 0.82 + unit(v, 201 + slot) * 0.7 + scaleBoost,
     variant: mix(v, 251 + slot),
   };
 }

@@ -1,7 +1,7 @@
 import { footprintOf } from "../../catalog";
 import { isBuildingEntity, type Entity, type SimState, type Vec2 } from "../../types";
 import { inBounds, makeUnitOccupancy, staticNavigationFor } from "../world";
-import { diagonalCornerBlockedLocal, inBoundsNavigation, PATH_DIRS, PATH_MAX_NODES } from "./grid";
+import { inBoundsNavigation, navigationStepAllowed, navigationStepCost, PATH_DIRS, PATH_MAX_NODES } from "./grid";
 import { MinHeap } from "./heap";
 
 export type PathSearchStatus = "complete" | "partial" | "unreachable";
@@ -158,8 +158,6 @@ export function findPathDetailed(
   const occupancy = avoidUnits
     ? (opts?.occupancy ?? makeUnitOccupancy(state, ignoreId))
     : undefined;
-  const canClimbLocal = (x0: number, y0: number, x1: number, y1: number) =>
-    Math.abs(navigation.heights[y1 * w + x1]! - navigation.heights[y0 * w + x0]!) <= 1;
   const startKey = sy * w + sx;
   const unitBlocked = (x: number, y: number) => {
     if (!occupancy) return false;
@@ -225,13 +223,10 @@ export function findPathDetailed(
       const ny = cy + dir.y;
       if (!inBoundsNavigation(navigation, nx, ny)) continue;
       const neighborKey = ny * w + nx;
-      if (navigation.walkable[neighborKey] !== 1) continue;
-      if (!canClimbLocal(cx, cy, nx, ny)) continue;
-      if (diagonalCornerBlockedLocal(navigation, cx, cy, nx, ny)) continue;
+      if (!navigationStepAllowed(navigation, cx, cy, nx, ny)) continue;
       if (unitBlocked(nx, ny)) continue;
 
-      const stepCost = dir.x !== 0 && dir.y !== 0 ? 1.414 : 1;
-      const tentG = gScore[currentKey]! + stepCost;
+      const tentG = gScore[currentKey]! + navigationStepCost(cx, cy, nx, ny);
       if (stamps[neighborKey] !== generation || tentG < gScore[neighborKey]!) {
         parent[neighborKey] = currentKey;
         gScore[neighborKey] = tentG;

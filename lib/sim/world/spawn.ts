@@ -200,13 +200,14 @@ export function spawnBuildingAt(
   constructing = 0,
   marked = false,
   siteFilter?: (x: number, y: number) => boolean,
+  maxR = 14,
 ): Entity | undefined {
   const spot = findBuildSite(
     state,
     kind,
     x,
     y,
-    14,
+    maxR,
     owner,
     false,
     DEFAULT_BUILDING_CLEARANCE,

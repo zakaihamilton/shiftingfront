@@ -94,7 +94,6 @@ function selectEffect(ids: number[], extra: Omit<PointerUpEffect, "select" | "cl
   return {
     clearBox: true,
     select: ids,
-    ...(ids.length ? { beep: "select" as const } : {}),
     ...extra,
   };
 }

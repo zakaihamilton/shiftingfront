@@ -259,11 +259,13 @@ describe("pointer-up policy", () => {
     });
   });
 
-  it("beeps only when a selection actually gains units", () => {
+  it("keeps entity selection silent for units and buildings", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     const unit = addUnit(state, 0, "infantry", 2, 2);
+    const building = addBuilding(state, 0, "power", 4, 4);
     const cam = createCamera();
     const screen = tileToScreen(unit.x, unit.y, cam, heightAt(state, unit.x, unit.y));
+    const buildingScreen = tileToScreen(building.x, building.y, cam, heightAt(state, building.x, building.y));
 
     expect(resolvePointerUp({
       pointerType: "mouse",
@@ -297,7 +299,23 @@ describe("pointer-up policy", () => {
       placeKind: null,
       repairMode: false,
       sellMode: false,
-    })).toMatchObject({ select: [unit.id], beep: "select" });
+    })).toMatchObject({ select: [unit.id] });
+    expect(resolvePointerUp({
+      pointerType: "mouse",
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      p: buildingScreen,
+      state,
+      cam,
+      selectedIds: [],
+      box: null,
+      selectionMode: false,
+      mobileCommand: null,
+      placeKind: null,
+      repairMode: false,
+      sellMode: false,
+    })).toMatchObject({ select: [building.id] });
 
     expect(resolvePointerUp({
       pointerType: "mouse",
@@ -314,7 +332,7 @@ describe("pointer-up policy", () => {
       placeKind: null,
       repairMode: false,
       sellMode: false,
-    })).toMatchObject({ select: [unit.id], beep: "select" });
+    })).toMatchObject({ select: [unit.id] });
   });
 });
 
@@ -354,10 +372,9 @@ describe("double-click selection policy", () => {
       viewport,
     };
 
-    expect(resolvePointerUp(base)).toMatchObject({ select: [tank.id], beep: "select" });
+    expect(resolvePointerUp(base)).toMatchObject({ select: [tank.id] });
     expect(resolvePointerUp({ ...base, doubleClick: true })).toMatchObject({
       select: [tank.id, other.id],
-      beep: "select",
     });
   });
 

@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { findPath, findPathDetailed, PATH_MAX_NODES } from "../../lib/sim/pathfinding";
-import { flowFieldFor, flowStep } from "../../lib/sim/flowField";
+import { flowFieldCacheSize, flowFieldFor, flowFieldForGoals, flowStep } from "../../lib/sim/flowField";
 import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER, addBuilding, addUnit, makeFixture, setHeight, setTile } from "../../lib/sim/fixtures";
 import { issue, tick } from "../../lib/sim/api";
 import { tickAi } from "../../lib/sim/ai";
 import { tickCombat } from "../../lib/sim/combat";
 import { FOREGROUND_PATHS_PER_ORDER, PATH_BUDGET_PER_TICK, backgroundPathSearches, resetPathBudget, tryFindPath } from "../../lib/sim/pathBudget";
 import { groundOrders } from "../../lib/sim/orders";
-import { BUILDING_PLACEMENT_RADIUS, buildingAt, canPlaceBuilding, compactDestroyedEntities, makeUnitOccupancy, occupies, powerBreakdown, powerFor, staticNavigationFor, terrainAccess, unitAt } from "../../lib/sim/world";
+import { BUILDING_PLACEMENT_RADIUS, buildingAt, canPlaceBuilding, compactDestroyedEntities, heightAt, isStaticWalkable, makeUnitOccupancy, occupies, powerBreakdown, powerFor, staticNavigationFor, terrainAccess, unitAt } from "../../lib/sim/world";
+import { navigationStepAllowed } from "../../lib/sim/navigation/grid";
 import { tickProduction } from "../../lib/sim/production";
 import { BUILDING_STATS, MAX_PRODUCTION_QUEUE, UNIT_STATS } from "../../lib/catalog";
+import { destinationsForGroup } from "../../lib/sim/orders/movement";
 import { expectUniqueUnitCells } from "./helpers";
 
 describe("pathfinding", () => {
@@ -49,6 +51,42 @@ describe("pathfinding", () => {
     tick(s);
     expect(units.every((unit) => unit.x !== 3 || unit.y !== 4 || unit.path.length > 0)).toBe(true);
     expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
+  });
+
+  it("finds unique fallback slots around a sealed group target", () => {
+    const s = makeFixture({ width: 20, height: 20, win: { kind: "harvestQuota", target: 99999 } });
+    for (let y = 8; y <= 12; y++) {
+      for (let x = 8; x <= 12; x++) setTile(s, x, y, TILE_BLOCKED);
+    }
+    const units = [
+      addUnit(s, 0, "infantry", 2, 2),
+      addUnit(s, 0, "infantry", 3, 2),
+      addUnit(s, 0, "infantry", 2, 3),
+      addUnit(s, 0, "infantry", 3, 3),
+    ];
+    issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 10, y: 10 });
+
+    const destinations = units.map((unit) => unit.orderDestination!);
+    expect(new Set(destinations.map((destination) => `${destination.x},${destination.y}`)).size).toBe(units.length);
+    expect(destinations.every((destination) => isStaticWalkable(s, destination.x, destination.y))).toBe(true);
+    for (let i = 0; i < 600; i++) {
+      tick(s, undefined, { evaluateObjectives: false });
+      expectUniqueUnitCells(s);
+    }
+    expect(units.every((unit) => {
+      const destination = unit.orderDestination!;
+      return Math.round(unit.x) === destination.x && Math.round(unit.y) === destination.y;
+    })).toBe(true);
+  });
+
+  it("bounds the per-state cache for distinct multi-goal fields", () => {
+    const s = makeFixture({ width: 24, height: 24, win: { kind: "annihilate" } });
+    for (let i = 0; i < 160; i++) {
+      const x = 1 + (i % 20);
+      const y = 1 + Math.floor(i / 20);
+      flowFieldForGoals(s, [{ x, y }, { x: x + 1, y }]);
+    }
+    expect(flowFieldCacheSize(s)).toBeLessThan(160);
   });
 
   it("keeps grouped attack-move followers active while their flow route is pending", () => {
@@ -325,6 +363,73 @@ describe("pathfinding", () => {
     expect(last && last.x === 5 && last.y === 2).toBe(false);
   });
 
+  it("routes a group around a mountain ridge through a valid ramp", () => {
+    const s = makeFixture({ width: 40, height: 30, win: { kind: "harvestQuota", target: 99999 } });
+    for (let y = 0; y < 30; y++) setHeight(s, 18, y, 3);
+    for (const y of [27, 28]) {
+      setHeight(s, 17, y, 1);
+      setHeight(s, 18, y, 2);
+      setHeight(s, 19, y, 1);
+    }
+    const units = Array.from({ length: 8 }, (_, index) =>
+      addUnit(s, 0, "infantry", 4 + (index % 4), 8 + Math.floor(index / 4)),
+    );
+    issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 32, y: 15 });
+
+    const navigation = staticNavigationFor(s);
+    const previous = units.map((unit) => ({ x: Math.round(unit.x), y: Math.round(unit.y) }));
+    let crossedRamp = false;
+    for (let tickIndex = 0; tickIndex < 1_800; tickIndex++) {
+      tick(s, undefined, { evaluateObjectives: false });
+      expectUniqueUnitCells(s);
+      for (let index = 0; index < units.length; index++) {
+        const unit = units[index]!;
+        const current = { x: Math.round(unit.x), y: Math.round(unit.y) };
+        const before = previous[index]!;
+        if (current.x !== before.x || current.y !== before.y) {
+          expect(navigationStepAllowed(navigation, before.x, before.y, current.x, current.y)).toBe(true);
+        }
+        if (current.x === 18 && current.y >= 27) crossedRamp = true;
+        previous[index] = current;
+      }
+    }
+
+    expect(crossedRamp).toBe(true);
+    expect(units.every((unit) => {
+      const destination = unit.orderDestination!;
+      return unit.idle && Math.round(unit.x) === destination.x && Math.round(unit.y) === destination.y;
+    })).toBe(true);
+  });
+
+  it("settles a group beside an unreachable mountain plateau", () => {
+    const s = makeFixture({ width: 36, height: 28, win: { kind: "harvestQuota", target: 99999 } });
+    for (let y = 8; y <= 19; y++) {
+      for (let x = 17; x <= 25; x++) setHeight(s, x, y, 3);
+    }
+    const units = [
+      addUnit(s, 0, "infantry", 3, 10),
+      addUnit(s, 0, "infantry", 3, 11),
+      addUnit(s, 0, "infantry", 4, 10),
+      addUnit(s, 0, "infantry", 4, 11),
+    ];
+    issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 21, y: 14 });
+
+    expect(units.every((unit) => {
+      const destination = unit.orderDestination!;
+      return !(destination.x >= 17 && destination.x <= 25 && destination.y >= 8 && destination.y <= 19);
+    })).toBe(true);
+
+    for (let tickIndex = 0; tickIndex < 1_200; tickIndex++) {
+      tick(s, undefined, { evaluateObjectives: false });
+      expectUniqueUnitCells(s);
+    }
+
+    expect(units.every((unit) => {
+      const destination = unit.orderDestination!;
+      return unit.idle && Math.round(unit.x) === destination.x && Math.round(unit.y) === destination.y && heightAt(s, destination.x, destination.y) < 3;
+    })).toBe(true);
+  });
+
   it("uses a hill ramp to reach a mountain", () => {
     const s = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" } });
     setHeight(s, 3, 2, 3);
@@ -505,18 +610,20 @@ describe("pathfinding", () => {
     blocker.orderDestination = { x: blocker.x, y: blocker.y };
     blocker.idle = true;
     issue(s, { type: "move", unitIds: [mover.id], x: 14, y: 6 });
+    const resolvedDestination = { ...mover.orderDestination! };
 
     const history: { x: number; y: number; pathLength: number }[] = [];
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < 420; i++) {
       tick(s, undefined, { evaluateObjectives: false });
       history.push({ x: mover.x, y: mover.y, pathLength: mover.path.length });
     }
 
     const settledAt = history.findIndex((sample) =>
-      sample.pathLength === 0 && Math.round(sample.x) === 12 && Math.round(sample.y) === 6,
+      sample.pathLength === 0 && Math.round(sample.x) === resolvedDestination.x && Math.round(sample.y) === resolvedDestination.y,
     );
     expect(settledAt).toBeGreaterThan(0);
-    expect(history.slice(settledAt).every((sample) => sample.x === 12 && sample.y === 6)).toBe(true);
+    expect(history.slice(settledAt).every((sample) => sample.x === resolvedDestination.x && sample.y === resolvedDestination.y)).toBe(true);
+    expect(resolvedDestination).not.toEqual({ x: 14, y: 6 });
   });
 
   it("does not reverse a flow follower when occupancy removes its forward lane", () => {
@@ -620,6 +727,98 @@ describe("pathfinding", () => {
       expectUniqueUnitCells(s);
     }
     expect(new Set(units.map((unit) => `${Math.round(unit.x)},${Math.round(unit.y)}`)).size).toBe(units.length);
+    expect(units.every((unit) => {
+      const destination = unit.orderDestination!;
+      return Math.max(Math.abs(Math.round(unit.x) - destination.x), Math.abs(Math.round(unit.y) - destination.y)) <= 1;
+    })).toBe(true);
+  });
+
+  it("keeps a 128-unit order cohesive through approach and arrival phases", () => {
+    const s = makeFixture({ width: 96, height: 96, win: { kind: "harvestQuota", target: 99999 } });
+    const units: ReturnType<typeof addUnit>[] = [];
+    for (let y = 4; y < 12; y++) {
+      for (let x = 3; x < 19; x++) units.push(addUnit(s, 0, "infantry", x, y));
+    }
+    issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 80, y: 80 });
+
+    const initialDestinations = units.map((unit) => ({ ...unit.orderDestination! }));
+    expect(new Set(initialDestinations.map((destination) => `${destination.x},${destination.y}`)).size).toBe(128);
+    const approach = flowFieldFor(s, { x: 80, y: 80 });
+    expect(initialDestinations.every((destination) => approach.distance[destination.y * s.width + destination.x] !== -1)).toBe(true);
+    const fieldsAfterOrder = flowFieldCacheSize(s);
+    const olderCells = new Map<number, number>();
+    const previousCells = new Map<number, number>();
+    const averageDistance = () => units.reduce((sum, unit) => {
+      const destination = unit.orderDestination!;
+      return sum + Math.max(
+        Math.abs(Math.round(unit.x) - destination.x),
+        Math.abs(Math.round(unit.y) - destination.y),
+      );
+    }, 0) / units.length;
+    const startingDistance = averageDistance();
+
+    for (let tickIndex = 0; tickIndex < 3_000; tickIndex++) {
+      tick(s, undefined, { evaluateObjectives: false });
+      expectUniqueUnitCells(s);
+      expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
+      for (const unit of units) {
+        const cell = Math.round(unit.y) * s.width + Math.round(unit.x);
+        const previous = previousCells.get(unit.id);
+        const older = olderCells.get(unit.id);
+        if (previous !== undefined && older !== undefined && cell !== previous) expect(cell).not.toBe(older);
+        olderCells.set(unit.id, previous ?? cell);
+        previousCells.set(unit.id, cell);
+      }
+      if (tickIndex === 999) expect(averageDistance()).toBeLessThan(startingDistance - 20);
+    }
+
+    expect(flowFieldCacheSize(s)).toBeLessThanOrEqual(fieldsAfterOrder + 2);
+    expect(units.every((unit) => {
+      const destination = unit.orderDestination!;
+      return Math.round(unit.x) === destination.x && Math.round(unit.y) === destination.y && unit.idle;
+    })).toBe(true);
+  });
+
+  it("routes a large group through a narrow corridor to a blocked target area", () => {
+    const s = makeFixture({ width: 56, height: 48, win: { kind: "harvestQuota", target: 99999 } });
+    for (let y = 0; y < s.height; y++) {
+      if (y < 21 || y > 26) setTile(s, 26, y, TILE_BLOCKED);
+    }
+    for (const [x, y] of [[40, 23], [41, 23], [40, 24], [41, 24]]) setTile(s, x, y, TILE_BLOCKED);
+    const units: ReturnType<typeof addUnit>[] = [];
+    for (let y = 4; y < 12; y++) {
+      for (let x = 3; x < 11; x++) units.push(addUnit(s, 0, "infantry", x, y));
+    }
+    issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 40, y: 24 });
+
+    expect(new Set(units.map((unit) => `${unit.orderDestination!.x},${unit.orderDestination!.y}`)).size).toBe(units.length);
+    expect(units.every((unit) => isStaticWalkable(s, unit.orderDestination!.x, unit.orderDestination!.y))).toBe(true);
+    for (let i = 0; i < 4_000; i++) {
+      tick(s, undefined, { evaluateObjectives: false });
+      expectUniqueUnitCells(s);
+      expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
+    }
+    expect(units.every((unit) => {
+      const destination = unit.orderDestination!;
+      return Math.round(unit.x) === destination.x && Math.round(unit.y) === destination.y;
+    })).toBe(true);
+  });
+
+  it("preserves a 64-unit formation while spreading its arrival line", () => {
+    const s = makeFixture({ width: 96, height: 96, win: { kind: "harvestQuota", target: 99999 } });
+    const units: ReturnType<typeof addUnit>[] = [];
+    for (let y = 4; y < 12; y++) {
+      for (let x = 3; x < 11; x++) units.push(addUnit(s, 0, "infantry", x, y));
+    }
+    issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 72, y: 48, formation: "line" });
+    const destinations = destinationsForGroup(s, units, 72, 48, "line");
+    expect(new Set(destinations.map((destination) => `${destination.x},${destination.y}`)).size).toBe(units.length);
+
+    for (let i = 0; i < 3_500; i++) {
+      tick(s, undefined, { evaluateObjectives: false });
+      expectUniqueUnitCells(s);
+      expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
+    }
     expect(units.every((unit) => {
       const destination = unit.orderDestination!;
       return Math.max(Math.abs(Math.round(unit.x) - destination.x), Math.abs(Math.round(unit.y) - destination.y)) <= 1;

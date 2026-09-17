@@ -1,7 +1,7 @@
 import type { BiomeName } from "../../types";
 import { hash, mixHex } from "../tilePalette";
 import type { BlockerTone, PropPrim } from "./types";
-import { pe, pl, pc, pp, shadow, liftGreen, SNOW } from "./primitives";
+import { detailSigned, detailUnit, pe, pl, pc, pp, shadow, liftGreen, SNOW } from "./primitives";
 
 export function lushBiome(biome: BiomeName): boolean {
   return biome === "jungle wreckage" || biome === "salt marshes";
@@ -156,6 +156,17 @@ export function treePrims(v: number, t: BlockerTone, biome: BiomeName): PropPrim
     hi,
     0.2,
   ));
+  const bark = mixHex(wood, t.mid, 0.24);
+  out.push(
+    pc(rootX - 0.8 * scale, 4.8 * scale, rootX + lean * 0.2, -1.6 * scale, rootX + lean * 0.48, -9.2 * scale, bark, 0.72 * scale, { minWidth: 0.52 * scale, cap: "round", alpha: 0.58 }),
+    pc(rootX + 1.4 * scale, 4.9 * scale, rootX + lean * 0.55, -2.4 * scale, trunkTopX + 0.7 * scale, trunkTopY + 4.8 * scale, mixHex(wood, t.dark, 0.26), 0.58 * scale, { minWidth: 0.48 * scale, cap: "round", alpha: 0.46 }),
+  );
+  if (detailUnit(v, 211) > 0.34) {
+    out.push(
+      pe(-8 + lean * 0.4 + detailSigned(v, 223, 1.2), -13 + detailSigned(v, 227, 0.9), 2.2, 1.0, -0.18, mixHex(dark, t.dark, 0.2), 0.28),
+      pe(8 + lean * 0.35 + detailSigned(v, 229, 1.0), -18 + detailSigned(v, 233, 0.8), 1.8, 0.85, 0.14, mixHex(mid, dark, 0.22), 0.24),
+    );
+  }
   if (biome === "jungle wreckage" && v % 3 !== 1) {
     const vine = mixHex(dark, t.mid, 0.38);
     out.push(
@@ -192,7 +203,19 @@ export function pinePrims(v: number, t: BlockerTone, snow: boolean): PropPrim[] 
         0.42,
       ));
     }
+    out.push(
+      pl(
+        -w * 0.72 + lean + detailSigned(v, 241 + i, 0.6),
+        y + 4.4,
+        w * 0.54 + lean + detailSigned(v, 251 + i, 0.6),
+        y + 1.8,
+        mixHex(needle, t.dark, 0.26),
+        0.58,
+        { minWidth: 0.5, cap: "round", alpha: 0.48 },
+      ),
+    );
   }
+  out.push(pe(detailSigned(v, 263, 2.2), -18.5 + detailSigned(v, 269, 0.7), 2.2, 0.7, -0.12, mixHex(needle, t.light, 0.3), 0.18));
   return out;
 }
 
@@ -206,6 +229,8 @@ export function deadTreePrims(v: number, t: BlockerTone): PropPrim[] {
     pl(lean * 0.4, -8, 6.4, -14, wood, 1.45, { minWidth: 1.05, cap: "round" }),
     pl(lean * 0.5, -11, -3.2, -17, wood, 1.45, { minWidth: 1.05, cap: "round" }),
     pl(lean * 0.45, -7, 4.2, -9.5, wood, 1.45, { minWidth: 1.05, cap: "round" }),
+    pl(-0.2 + detailSigned(v, 277, 0.8), -3.5, -4.8 + detailSigned(v, 281, 0.6), -8.2, mixHex(wood, t.light, 0.22), 0.58, { minWidth: 0.52, cap: "round", alpha: 0.46 }),
+    pe(-2.2 + detailSigned(v, 283, 1.1), 1.6, 1.4, 0.55, 0, mixHex(wood, t.dark, 0.24), 0.34),
   ];
 }
 
@@ -238,5 +263,9 @@ export function deadShrubPrims(v: number, t: BlockerTone): PropPrim[] {
       pe(8.5, -3.3, 2.5, 1.2, 0.2, dust, 0.5),
     );
   }
+  out.push(
+    pl(-5.2 + detailSigned(v, 293, 0.7), -6.6, 0.5 + detailSigned(v, 307, 0.9), -9.2, mixHex(wood, dust, 0.24), 0.55, { minWidth: 0.48, cap: "round", alpha: 0.5 }),
+    pl(2.2 + detailSigned(v, 311, 0.8), -5.8, 6.4 + detailSigned(v, 313, 0.7), -7.6, mixHex(wood, dust, 0.2), 0.5, { minWidth: 0.45, cap: "round", alpha: 0.42 }),
+  );
   return out;
 }

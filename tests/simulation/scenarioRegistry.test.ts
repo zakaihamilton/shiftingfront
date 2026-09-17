@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { footprintOf } from "../../lib/catalog";
 import { createCampaign } from "../../lib/gen/campaign";
 import { createMission } from "../../lib/sim/api";
+import { distToEntity } from "../../lib/sim/world";
 import { SCENARIO_DEFINITIONS, scenarioDefinitionFor } from "../../lib/sim/scenarios";
-import type { MissionKind } from "../../lib/types";
+import { OBJECTIVE_ALLIED_BASE_CLEARANCE } from "../../lib/sim/scenarios/reachability";
+import { isBuildingEntity, type MissionKind } from "../../lib/types";
 
 const ALL_MISSION_KINDS: MissionKind[] = [
   "harvestQuota", "forceQuota", "structureQuota", "destroyMarked", "razeAll", "decapitate",
@@ -46,6 +49,35 @@ describe("scenario registry", () => {
           const entity = state.entities.find((candidate) => candidate.id === id);
           expect(entity?.class).toBe("building");
           expect(["factory", "objective"]).toContain(entity?.kind);
+        }
+      }
+    }
+  });
+
+  it("keeps offensive objective structures away from the allied base", () => {
+    for (const seed of [...Array.from({ length: 40 }, (_, index) => index), 1053]) {
+      const campaign = createCampaign(seed);
+      for (const mission of campaign.missions) {
+        if (mission.win.kind !== "destroyMarked" && mission.win.kind !== "sabotage") continue;
+        const state = createMission({ seed, missionIndex: mission.index });
+        const targetIds = new Set(state.runtime?.targetIds ?? []);
+        const targets = state.entities.filter((entity) => targetIds.has(entity.id));
+        const baseBuildings = state.entities.filter(
+          (entity) => entity.owner === 0 && entity.class === "building" && !targetIds.has(entity.id),
+        );
+
+        expect(targets).toHaveLength(mission.win.targetCount ?? 0);
+        for (const target of targets) {
+          expect(target.class).toBe("building");
+          if (!isBuildingEntity(target)) continue;
+          const footprint = footprintOf(target.kind);
+          for (let oy = 0; oy < footprint.h; oy++) {
+            for (let ox = 0; ox < footprint.w; ox++) {
+              const point = { x: target.x + ox, y: target.y + oy };
+              expect(Math.min(...baseBuildings.map((building) => distToEntity(point, building))))
+                .toBeGreaterThanOrEqual(OBJECTIVE_ALLIED_BASE_CLEARANCE);
+            }
+          }
         }
       }
     }
