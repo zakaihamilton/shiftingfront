@@ -1,5 +1,5 @@
 import { cliffFaces } from "../../gen/assets";
-import { MAP_SKIRT, isMountainScenery } from "../../gen/map";
+import { MAP_SKIRT, isMountainScenery, skirtAlpha } from "../../gen/map";
 import { generateCampaignVisualProfile } from "../../gen/visualProfile";
 import type { SimState } from "../../types";
 import { SURFACE_CONCRETE, TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../types";
@@ -105,6 +105,8 @@ function paintCell(
   const tw = TILE_W * z;
   const th = TILE_H * z;
   const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
+  ctx.save();
+  ctx.globalAlpha *= skirtAlpha(x, y, state.width, state.height);
   const concrete = inMap && state.surfaces[y * state.width + x] === SURFACE_CONCRETE;
   const cover = expandIsoDiamond(s.x, s.y, tw, th, concrete ? 1 : water ? WATER_COVER : TERRAIN_COVER);
   const eastSc = memoScenery(state, x + 1, y);
@@ -171,6 +173,7 @@ function paintCell(
     ctx.fill();
   }
   ctx.restore();
+  ctx.restore();
 }
 
 function paintCellScatter(
@@ -185,7 +188,10 @@ function paintCellScatter(
   const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
   const surface = inMap ? state.surfaces[y * state.width + x] : 0;
   const s = tileToScreen(x, y, cam, scenery.elev);
+  ctx.save();
+  ctx.globalAlpha *= skirtAlpha(x, y, state.width, state.height);
   drawTerrainScatter(ctx, state, x, y, s.x, s.y, cam.zoom, scenery.kind, surface);
+  ctx.restore();
 }
 
 function paintCellProps(
@@ -345,10 +351,20 @@ export function paintTerrainSurface(
   const atlas = getTerrainAtlas(state);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
+  // The decorative skirt sits behind the playable map. In particular, a
+  // low-elevation skirt-water diamond must not paint over the lower edge of
+  // a higher playable tile just because water is rendered in its own pass.
+  visitVisibleTiles(ctx, state, cam, (x, y) => {
+    const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
+    if (inMap || memoScenery(state, x, y).kind !== TILE_WATER) return;
+    paintCell(ctx, state, cam, atlas, x, y, true, gainAt);
+  });
   visitVisibleTiles(ctx, state, cam, (x, y) => {
     paintCell(ctx, state, cam, atlas, x, y, false, gainAt);
   });
   visitVisibleTiles(ctx, state, cam, (x, y) => {
+    const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
+    if (!inMap) return;
     paintCell(ctx, state, cam, atlas, x, y, true, gainAt);
   });
   // Low scatter sits with the atlas so the shroud darkens unexplored clutter.

@@ -13,6 +13,8 @@ type MovementBuffers = {
   movers: UnitEntity[];
   previousCells: Map<number, number>;
   movementIntents: Map<number, string>;
+  flowOrder: Map<number, number>;
+  plannedVacates: Map<number, number>;
 };
 
 const movementBuffers = new WeakMap<SimState, MovementBuffers>();
@@ -28,12 +30,16 @@ function buffersFor(state: SimState): MovementBuffers {
       movers: [],
       previousCells: new Map<number, number>(),
       movementIntents: new Map<number, string>(),
+      flowOrder: new Map<number, number>(),
+      plannedVacates: new Map<number, number>(),
     };
     movementBuffers.set(state, buffers);
   } else {
     buffers.atTile.clear();
     buffers.reserved.clear();
     buffers.movers.length = 0;
+    buffers.flowOrder.clear();
+    buffers.plannedVacates.clear();
   }
   buffers.occupancy = unitOccupancyFor(state);
   return buffers;
@@ -51,9 +57,9 @@ import {
 } from "./navigation";
 
 export function tickMovement(state: SimState): void {
-  const { occupancy, atTile, reserved, movers, previousCells, movementIntents } = buffersFor(state);
+  const { occupancy, atTile, reserved, movers, previousCells, movementIntents, flowOrder, plannedVacates } = buffersFor(state);
   resetPreviousCellsForNewOrders(state, previousCells, movementIntents);
-  prepareFlowFieldRoutes(state, occupancy, reserved);
+  prepareFlowFieldRoutes(state, occupancy, reserved, previousCells, undefined, flowOrder, plannedVacates);
   for (const e of state.entities) {
     // Convoys are neutral so combat targeting ignores them, but they still
     // need the normal background repath when a bounded search returned only
@@ -109,7 +115,14 @@ export function tickMovement(state: SimState): void {
     if (e.hp <= 0 || !isUnitEntity(e)) continue;
     movers.push(e);
   }
-  movers.sort((a, b) => goalDistance(a) - goalDistance(b) || a.id - b.id);
+  movers.sort((a, b) => {
+    const aOrder = flowOrder.get(a.id);
+    const bOrder = flowOrder.get(b.id);
+    if (aOrder !== undefined || bOrder !== undefined) {
+      return (aOrder ?? Number.POSITIVE_INFINITY) - (bOrder ?? Number.POSITIVE_INFINITY) || a.id - b.id;
+    }
+    return goalDistance(a) - goalDistance(b) || a.id - b.id;
+  });
 
   for (const e of movers) {
     const speed = UNIT_STATS[e.kind].speed * (1 - Math.min(0.4, (e.suppression ?? 0) / 250));
@@ -145,6 +158,7 @@ export function tickMovement(state: SimState): void {
     }
 
     if (blocked) {
+      if (e.flowGoal && e.routePending === false) e.routePending = true;
       const blocker = atTile.get(target);
       const orderDest = e.orderDestination;
       if (
@@ -245,8 +259,10 @@ export function tickMovement(state: SimState): void {
       occupancy[after] = 1;
       atTile.delete(before);
       atTile.set(after, e);
+      plannedVacates.delete(before);
       e.blockedTicks = 0;
     }
+    if (!e.path.length && e.flowGoal && !holdingDestination(e)) e.routePending = true;
     if (!e.path.length && stepTarget && reserved.get(stepCell) === e.id) reserved.delete(stepCell);
   }
   // Positions changed during this tick are not reflected in the O(1) unitAt

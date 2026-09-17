@@ -56,7 +56,7 @@ export function defaultSettings(): GameSettings {
     musicEnabled: true,
     masterVolume: 1,
     musicVolume: 0.5,
-    sfxVolume: 0.9,
+    sfxVolume: 0.25,
     reducedMotion: false,
     highContrast: false,
     colorblindMode: "none",

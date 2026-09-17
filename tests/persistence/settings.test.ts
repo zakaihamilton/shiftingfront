@@ -22,9 +22,11 @@ describe("audio settings", () => {
     expect(readSettings(memoryStorage())).toEqual(defaultSettings());
   });
 
-  it("defaults music volume to 50%", () => {
+  it("defaults music volume to 50% and sound effects to 25%", () => {
     expect(defaultSettings().musicVolume).toBe(0.5);
+    expect(defaultSettings().sfxVolume).toBe(0.25);
     expect(readSettings(memoryStorage()).musicVolume).toBe(0.5);
+    expect(readSettings(memoryStorage()).sfxVolume).toBe(0.25);
   });
 
   it("rejects mismatched versions and malformed envelopes", () => {
@@ -66,7 +68,7 @@ describe("audio settings", () => {
       ...defaultSettings(),
       masterVolume: 1,
       musicVolume: 0,
-      sfxVolume: 0.9,
+      sfxVolume: 0.25,
     });
   });
 

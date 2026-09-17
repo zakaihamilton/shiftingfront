@@ -47,6 +47,8 @@ export function trySidestep(
   blockedX: number,
   blockedY: number,
   previousCell?: number,
+  flowDistance?: (x: number, y: number) => number,
+  goalConstraint?: Vec2,
 ): boolean {
   if (!e.path.length) return false;
   const cx = Math.round(e.x);
@@ -55,6 +57,7 @@ export function trySidestep(
   const stayD = Math.hypot(cx - dest.x, cy - dest.y);
   const allowFarther = (e.blockedTicks ?? 0) > 0;
   const waypoint = e.path[0];
+  const currentFlowDistance = flowDistance?.(cx, cy) ?? 0;
   let best: { x: number; y: number; d: number; rank: number } | undefined;
   for (const d of PATH_DIRS) {
     const nx = cx + d.x;
@@ -62,6 +65,9 @@ export function trySidestep(
     const isWaypoint = waypoint && Math.round(waypoint.x) === nx && Math.round(waypoint.y) === ny;
     if (nx === blockedX && ny === blockedY) continue;
     if (e.owner === 0 && e.scenarioRole !== "convoy" && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
+    if (flowDistance && flowDistance(nx, ny) >= currentFlowDistance) continue;
+    if (goalConstraint && Math.max(Math.abs(nx - Math.round(goalConstraint.x)), Math.abs(ny - Math.round(goalConstraint.y))) >
+      Math.max(Math.abs(cx - Math.round(goalConstraint.x)), Math.abs(cy - Math.round(goalConstraint.y)))) continue;
     if (!tileFree(state, occupancy, reserved, e, nx, ny)) continue;
     if (!canClimb(state, cx, cy, nx, ny)) continue;
     if (diagonalCornerBlocked(state, cx, cy, nx, ny)) continue;
