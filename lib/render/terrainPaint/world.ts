@@ -332,7 +332,9 @@ function paintShroudLayer(
   ctx.restore();
 }
 
-export const WATER_COVER = TERRAIN_COVER;
+// Water must stay within its own diamond. Unlike land, it should not expand
+// across shared cell edges where the neighboring tile may be dry ground.
+export const WATER_COVER = 1;
 
 export function paintTerrainSurface(
   ctx: CanvasRenderingContext2D,

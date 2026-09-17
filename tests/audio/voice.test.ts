@@ -68,6 +68,52 @@ describe("voice bark system", () => {
     vi.unstubAllGlobals();
   });
 
+  it("selects different movement phrases for different random values", () => {
+    const spoken: string[] = [];
+    const speakMock = vi.fn();
+    const synthMock = {
+      speak: speakMock,
+      cancel: vi.fn(),
+      getVoices: () => [],
+    };
+    class UtteranceMock {
+      rate = 1;
+      pitch = 1;
+      volume = 1;
+      lang = "en-US";
+      constructor(public text: string) {
+        spoken.push(text);
+      }
+    }
+    vi.stubGlobal("speechSynthesis", synthMock);
+    vi.stubGlobal("SpeechSynthesisUtterance", UtteranceMock);
+    if (typeof window !== "undefined") {
+      Object.defineProperty(window, "speechSynthesis", {
+        value: synthMock,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(window, "SpeechSynthesisUtterance", {
+        value: UtteranceMock,
+        configurable: true,
+        writable: true,
+      });
+    }
+
+    const randomSpy = vi.spyOn(Math, "random")
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.99);
+    resetVoiceCooldown();
+    playVoiceBark("move", true);
+    playVoiceBark("move", true);
+
+    expect(spoken).toEqual(["Acknowledged.", "Coordinates set."]);
+    expect(speakMock).toHaveBeenCalledTimes(2);
+
+    randomSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
   it("suppresses voice barks when window is blurred and cancels speech on blur", () => {
     const speakMock = vi.fn();
     const cancelMock = vi.fn();

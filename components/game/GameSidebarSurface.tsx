@@ -1,7 +1,6 @@
 import type { PointerEventHandler, Ref } from "react";
 import type { Entity, FactionVisualProfile, Palette, SimState } from "@/lib/types";
 import type { CommandTab } from "@/lib/ui/shortcuts";
-import type { MobileCommand } from "./mobileCommandTypes";
 import { CommandSidebar } from "./CommandSidebar";
 import type { MinimapPing } from "./MinimapFrame";
 import type { GameActions } from "./hooks/useGameActions";
@@ -29,9 +28,6 @@ export function GameSidebarSurface({
   actions,
   mobilePanelOpen,
   selectionCount,
-  selectionMode,
-  activeMobileCommand,
-  onSelectionMode,
   minimapPing,
 }: {
   factionName: string;
@@ -54,9 +50,6 @@ export function GameSidebarSurface({
   actions: GameActions;
   mobilePanelOpen: boolean;
   selectionCount: number;
-  selectionMode: boolean;
-  activeMobileCommand: MobileCommand | null;
-  onSelectionMode: (active: boolean) => void;
   minimapPing?: MinimapPing;
 }) {
   const onMinimapPointerDown: PointerEventHandler<HTMLCanvasElement> = camera.onMinimapPointerDown;
@@ -100,10 +93,6 @@ export function GameSidebarSurface({
       onStance={(stance) => actions.issueSelectedCommand("stance", stance)}
       onFormation={(formation) => actions.issueSelectedCommand("formation", formation)}
       selectionCount={selectionCount}
-      selectionMode={selectionMode}
-      activeMobileCommand={activeMobileCommand}
-      onMobileCommand={actions.chooseMobileCommand}
-      onSelectionMode={onSelectionMode}
     />
   );
 }

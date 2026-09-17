@@ -43,6 +43,7 @@ export function BriefingActions({
       </ConsoleButton>
       {!isComplete ? (
         <ConsoleButton
+          className={styles.skip}
           muted
           tooltip="Reveal the full transmission"
           shortcut={SHORTCUT.skip}

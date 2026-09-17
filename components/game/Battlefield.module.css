@@ -628,8 +628,8 @@
     width: auto;
     max-width: none;
     margin-left: 0;
-    margin-top: 0.35rem;
-    padding-top: 0.35rem;
+    margin-top: 0;
+    padding-top: 0;
     border-top: 1px solid color-mix(in srgb, var(--chrome-cyan) 20%, transparent);
     text-align: left;
   }

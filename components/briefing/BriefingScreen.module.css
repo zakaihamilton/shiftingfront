@@ -222,7 +222,17 @@
 
 @media (max-width: 1023px) and (orientation: portrait) {
   .inner {
-    grid-template-columns: minmax(4.25rem, 7.5rem) minmax(0, 1fr) minmax(4.25rem, 7.5rem);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "mast mast mast"
+      "portraits portraits enemy"
+      "panel panel panel";
+  }
+
+  .portraits {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
   }
 }
 
@@ -242,18 +252,24 @@
   .actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, 52px) auto;
+    grid-template-rows: repeat(3, 52px) auto;
     gap: 0.45rem;
+  }
+
+  .skip {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    white-space: nowrap;
   }
 
   .launch {
     grid-column: 2;
-    grid-row: 2;
+    grid-row: 3;
   }
 
   .actions .tone {
     grid-column: 1 / -1;
-    grid-row: 3;
+    grid-row: 4;
     justify-self: stretch;
     overflow: visible;
     text-overflow: clip;
@@ -268,7 +284,6 @@
   }
 
   .inner {
-    grid-template-columns: minmax(4.25rem, 20vw) minmax(0, 1fr) minmax(4.25rem, 20vw);
     column-gap: 0.35rem;
     row-gap: 0.45rem;
   }
@@ -278,7 +293,7 @@
   }
 
   .actions {
-    grid-template-rows: 64px 52px auto;
+    grid-template-rows: 64px 52px 52px auto;
     margin-top: 0.55rem;
     padding-top: 0.55rem;
   }
@@ -289,7 +304,7 @@
 
   .tone {
     grid-column: 1 / -1;
-    grid-row: 3;
+    grid-row: 4;
     justify-self: stretch;
     text-align: center;
   }

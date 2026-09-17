@@ -14,6 +14,7 @@ import {
   scatterForTile,
   smoothFogGain,
   withAlpha,
+  WATER_COVER,
 } from "../../lib/render/terrainPaint";
 import { hash } from "../../lib/gen/tilePalette";
 import { generateMap, terrainFeatureAt } from "../../lib/gen/map";
@@ -736,6 +737,10 @@ describe("ore veins", () => {
 });
 
 describe("terrain weather and water motion", () => {
+  it("keeps water terrain and shoreline effects inside the owning cell", () => {
+    expect(WATER_COVER).toBe(1);
+  });
+
   it("is deterministic for a given clock", () => {
     const a = weatherParticleAt(832, "tundra grid", 4, 1200, 640, 360);
     const b = weatherParticleAt(832, "tundra grid", 4, 1200, 640, 360);

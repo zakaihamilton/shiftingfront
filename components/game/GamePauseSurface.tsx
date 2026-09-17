@@ -44,6 +44,18 @@ export function GamePauseSurface({
         setView("controls");
         setNotice("");
       }}
+      onDiagnostics={
+        session.telemetryEnabled
+          ? () => {
+              setView("diagnostics");
+              setNotice("");
+            }
+          : undefined
+      }
+      onBackToOptions={() => {
+        setView("options");
+        setNotice("");
+      }}
       onOptions={() => {
         setView("options");
         setNotice("");

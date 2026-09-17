@@ -136,6 +136,16 @@ async function waitForBattlefield(page: import("@playwright/test").Page) {
   }));
 }
 
+async function waitForCommandSidebarToSettle(
+  sidebar: import("@playwright/test").Locator,
+  viewportWidth: number,
+) {
+  await expect.poll(async () => {
+    const bounds = await sidebar.boundingBox();
+    return bounds ? bounds.x + bounds.width : Number.POSITIVE_INFINITY;
+  }).toBeLessThanOrEqual(viewportWidth);
+}
+
 async function waitForStableSelection(page: import("@playwright/test").Page) {
   await page.waitForTimeout(100);
   await page.evaluate(() => new Promise<void>((resolve) => {
@@ -362,7 +372,7 @@ test.describe("mission briefing responsive layout", () => {
     { width: 844, height: 390, name: "phone landscape" },
     { width: 1280, height: 720, name: "desktop" },
   ]) {
-    test(`keeps allies, briefing, and enemy in desktop order at ${viewport.name}`, async ({ page }) => {
+    test(`keeps briefing sections in responsive order at ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await page.goto("/briefing?seed=0421&mission=0");
       const screen = page.getByTestId("briefing-screen");
@@ -394,12 +404,22 @@ test.describe("mission briefing responsive layout", () => {
               && Math.abs(allyRect.y - panelRect.y) <= 1
               && Math.abs(panelRect.y - enemyRect.y) <= 1,
           ),
+          mobilePortraitOrder: Boolean(
+            allyRect && panelRect && enemyRect
+              && allyRect.y < panelRect.y
+              && Math.abs(allyRect.y - enemyRect.y) <= 1
+              && Math.abs(allyRect.bottom - enemyRect.bottom) <= 1,
+          ),
           cards,
         };
       });
 
       expect(layout.bodyOverflow).toBe(false);
-      expect(layout.desktopOrder).toBe(true);
+      if (viewport.width < viewport.height && viewport.width < 1024) {
+        expect(layout.mobilePortraitOrder).toBe(true);
+      } else {
+        expect(layout.desktopOrder).toBe(true);
+      }
       expect(layout.cards).toHaveLength(3);
       expect(Math.max(...layout.cards) - Math.min(...layout.cards)).toBeLessThanOrEqual(1);
     });
@@ -539,6 +559,11 @@ test.describe("mobile-first layouts", () => {
         const launcherBounds = await launcher.boundingBox();
         expect(launcherBounds).not.toBeNull();
         expect(launcherBounds!.y + launcherBounds!.height).toBeLessThanOrEqual(viewport.height);
+        const launcherButton = launcher.getByTestId("mobile-command-toggle");
+        const launcherButtonBounds = await launcherButton.boundingBox();
+        expect(launcherButtonBounds).not.toBeNull();
+        expect(launcherButtonBounds!.x + launcherButtonBounds!.width).toBeLessThanOrEqual(viewport.width - 8);
+        await expect(launcher.locator("span")).toBeHidden();
         const sidebar = page.getByTestId("command-sidebar");
         await expect(sidebar).not.toBeVisible();
         await expect(sidebar).toHaveAttribute("aria-hidden", "true");
@@ -550,7 +575,7 @@ test.describe("mobile-first layouts", () => {
         expect(sidebarBounds).not.toBeNull();
         expect(sidebarBounds!.x + sidebarBounds!.width).toBeLessThanOrEqual(viewport.width);
       }
-      await expect(page.getByTestId("mobile-touch-controls")).toHaveCount(1);
+      await expect(page.getByTestId("mobile-touch-controls")).toHaveCount(0);
     });
   }
 
@@ -569,6 +594,7 @@ test.describe("mobile-first layouts", () => {
     await launcher.getByTestId("mobile-command-toggle").click();
     const panel = page.getByTestId("command-sidebar");
     await expect(panel).toBeVisible();
+    await waitForCommandSidebarToSettle(panel, 390);
     await expect(panel).not.toHaveAttribute("aria-hidden");
     await expect(panel).not.toHaveAttribute("inert");
     await expect(page.getByTestId("mobile-command-scrim")).toBeVisible();
@@ -577,10 +603,10 @@ test.describe("mobile-first layouts", () => {
     expect(panelBounds).not.toBeNull();
     expect(panelBounds!.x).toBeGreaterThanOrEqual(0);
     expect(panelBounds!.x + panelBounds!.width).toBeLessThanOrEqual(390);
-    await expect(panel.getByTestId("mobile-touch-controls")).toBeVisible();
+    await expect(panel.getByTestId("mobile-touch-controls")).toHaveCount(0);
     await expect(panel.getByRole("tab", { name: "Construction" })).toBeVisible();
 
-    await launcher.getByTestId("mobile-command-toggle").click();
+    await page.getByTestId("mobile-command-scrim").click({ position: { x: 12, y: 96 } });
     await expect(panel).not.toBeVisible();
     await launcher.getByTestId("mobile-command-toggle").click();
     await expect(panel).toBeVisible();
@@ -603,6 +629,7 @@ test.describe("mobile-first layouts", () => {
 
       const sidebar = page.getByTestId("command-sidebar");
       await expect(sidebar).toBeVisible();
+      await waitForCommandSidebarToSettle(sidebar, viewport.width);
       const layout = await sidebar.evaluate((element) => {
         const bounds = (node: Element) => {
           const rect = node.getBoundingClientRect();
@@ -664,7 +691,31 @@ test.describe("mobile-first layouts", () => {
     await expect(page.getByTestId("mobile-command-launcher")).toBeVisible();
   });
 
-  test("exposes the bottom command sheet for a selected base", async ({ page }) => {
+  test("starts the mobile mission directive directly below the operation header", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/play?seed=0421&mission=0");
+    await waitForBattlefield(page);
+
+    const spacing = await page.getByTestId("battlefield-status").evaluate((element) => {
+      const operation = element.querySelector("[class*='operationBar']");
+      const directive = element.querySelector("[class*='objectiveStack']");
+      if (!operation || !directive) throw new Error("Mission directive layout is missing");
+      const operationBounds = operation.getBoundingClientRect();
+      const directiveBounds = directive.getBoundingClientRect();
+      const style = window.getComputedStyle(directive);
+      return {
+        gap: directiveBounds.top - operationBounds.bottom,
+        marginTop: style.marginTop,
+        paddingTop: style.paddingTop,
+      };
+    });
+
+    expect(spacing.gap).toBeLessThanOrEqual(1);
+    expect(spacing.marginTop).toBe("0px");
+    expect(spacing.paddingTop).toBe("0px");
+  });
+
+  test("opens the command sidebar for a selected base", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/play?seed=0421&mission=0");
     await waitForBattlefield(page);
@@ -673,7 +724,7 @@ test.describe("mobile-first layouts", () => {
     await dispatchTouch(page, "pointerdown", yard);
     await dispatchTouch(page, "pointerup", yard);
     await page.getByTestId("mobile-command-toggle").click();
-    await expect(page.getByTestId("command-sidebar").getByTestId("mobile-touch-controls")).toBeVisible();
+    await expect(page.getByTestId("command-sidebar").getByRole("tab", { name: "Construction" })).toBeVisible();
   });
 
   test("supports touch panning and direct commands for a selected unit", async ({ page }) => {

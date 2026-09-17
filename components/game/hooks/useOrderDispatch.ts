@@ -1,6 +1,7 @@
 import { useCallback, type MutableRefObject } from "react";
 import { beep } from "@/lib/audio/synth";
 import { beepForCommands } from "@/lib/audio/uiOrders";
+import { voiceBarkForBeep } from "@/lib/audio/voice";
 import { COMMAND_MARKER_INVALID_MS, commandMarkerKind, type CommandMarker } from "@/lib/render/renderOverlays";
 import type { Camera } from "@/lib/iso";
 import type { Command, SimState } from "@/lib/types";
@@ -89,7 +90,12 @@ export function useOrderDispatch({
     mobileCommandRef.current = null;
     setMobileCommandState(null);
     const kind = beepForCommands(commands);
-    if (kind) beep(kind);
+    if (kind) {
+      beep(kind);
+      if (commands.some((command) => "unitIds" in command && command.unitIds.length > 0)) {
+        voiceBarkForBeep(kind);
+      }
+    }
     if (commands.length) {
       onCommandNotice?.(contextOrderNotice(commands), "success");
     }

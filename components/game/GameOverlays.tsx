@@ -24,7 +24,6 @@ export type GameOverlayProps = {
   playerVisualProfile: FactionVisualProfile;
   selectedIds: number[];
   tutorial: boolean;
-  selectionMode?: boolean;
   mobilePanelOpen: boolean;
   mobileLauncherRef: Ref<HTMLButtonElement>;
   miniRef: Ref<HTMLCanvasElement>;
@@ -43,7 +42,6 @@ export type GameOverlayProps = {
   onControlsOpened?: () => void;
   combatAlert?: string | null;
   combatAlertKind?: import("./hooks/useCombatAlert").CombatAlertKind;
-  onSelectionMode?: (active: boolean) => void;
   actions: GameActions;
   session: GameSession;
 };
@@ -54,7 +52,6 @@ export function GameOverlays({
   playerVisualProfile,
   selectedIds,
   tutorial,
-  selectionMode = false,
   mobilePanelOpen,
   mobileLauncherRef,
   miniRef,
@@ -73,7 +70,6 @@ export function GameOverlays({
   onControlsOpened,
   combatAlert,
   combatAlertKind,
-  onSelectionMode = () => undefined,
   actions,
   session,
 }: GameOverlayProps) {
@@ -104,7 +100,6 @@ export function GameOverlays({
           onDrag={onMobileSheetDrag}
           buttonRef={mobileLauncherRef}
           tutorialFocus={tutorial && !mobilePanelOpen && tutorialNeedsCommandSurface(state.tutorialStage) ? "command-launcher" : undefined}
-          statusText={`${selectionMode ? "Select units" : selectedIds.length ? `${selectedIds.length} selected` : "No selection"} · ${actions.mobileCommandState ? actions.mobileCommandState === "attackMove" ? "Attack-move ready" : `${actions.mobileCommandState.charAt(0).toUpperCase()}${actions.mobileCommandState.slice(1)} ready` : "Command sheet"}`}
         />
       ) : null}
 
@@ -130,9 +125,6 @@ export function GameOverlays({
           actions={actions}
           mobilePanelOpen={mobilePanelOpen}
           selectionCount={selectedIds.length}
-          selectionMode={selectionMode}
-          activeMobileCommand={actions.mobileCommandState}
-          onSelectionMode={onSelectionMode}
           minimapPing={minimapPing}
         />
       ) : null}

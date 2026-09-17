@@ -77,6 +77,7 @@ describe("shortcut matching", () => {
     expect(gameCommandFromKey({ key: "m" }, paused)).toEqual({ type: "menu" });
     expect(gameCommandFromKey({ key: "Escape" }, { ...paused, pauseView: "options" })).toEqual({ type: "pauseBack" });
     expect(gameCommandFromKey({ key: "F1" }, { ...paused, pauseView: "options" })).toEqual({ type: "controls" });
+    expect(gameCommandFromKey({ key: "Escape" }, { ...paused, pauseView: "diagnostics" })).toEqual({ type: "options" });
     expect(gameCommandFromKey({ key: "Escape" }, { ...paused, pauseView: "controls" })).toEqual({ type: "pauseBack" });
     expect(gameCommandFromKey({ key: "F1" }, { ...paused, pauseView: "controls" })).toEqual({ type: "pauseBack" });
     expect(gameCommandFromKey({ key: "Escape" }, { ...paused, pauseView: "save" })).toEqual({ type: "pauseBack" });

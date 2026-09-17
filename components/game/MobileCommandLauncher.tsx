@@ -6,14 +6,12 @@ export function MobileCommandLauncher({
   open,
   onToggle,
   buttonRef,
-  statusText = "No selection · Commands",
   onDrag,
   tutorialFocus,
 }: {
   open: boolean;
   onToggle: () => void;
   buttonRef: Ref<HTMLButtonElement>;
-  statusText?: string;
   onDrag?: (direction: "open" | "close") => void;
   tutorialFocus?: string;
 }) {
@@ -69,7 +67,6 @@ export function MobileCommandLauncher({
         data-snap={open ? "expanded" : "collapsed"}
         data-testid="mobile-command-launcher"
       >
-        <span className={styles.status} data-testid="mobile-command-status">{statusText}</span>
         <span
           className={styles.handle}
           aria-hidden="true"

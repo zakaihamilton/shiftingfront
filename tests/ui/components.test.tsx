@@ -15,6 +15,7 @@ import { MenuMainPanel } from "../../components/menu/MenuMainPanel";
 import { NewGameSetup } from "../../components/menu/NewGameSetup";
 import { SeedEntry } from "../../components/menu/SeedEntry";
 import { PauseMenu } from "../../components/game/PauseMenu";
+import { PauseDiagnostics } from "../../components/game/PauseDiagnostics";
 import { PauseOptions } from "../../components/game/PauseOptions";
 import { PauseSaveSlots } from "../../components/game/PauseSaveSlots";
 import { PauseLoadSlots } from "../../components/game/PauseLoadSlots";
@@ -613,6 +614,8 @@ describe("PauseMenu", () => {
     const onResume = vi.fn();
     const onOptions = vi.fn();
     const onControls = vi.fn();
+    const onDiagnostics = vi.fn();
+    const onBackToOptions = vi.fn();
     const onBack = vi.fn();
     const onCommitSave = vi.fn(() => true);
     const onLoadEntry = vi.fn();
@@ -632,6 +635,8 @@ describe("PauseMenu", () => {
       onBriefing: vi.fn(),
       onRestart: vi.fn(),
       onControls,
+      onDiagnostics,
+      onBackToOptions,
       onOptions,
       onMenu: vi.fn(),
       onLeaveWithoutSave,
@@ -662,6 +667,17 @@ describe("PauseMenu", () => {
     expect(screen.getByTestId("pause-controls")).toBeVisible();
     expect(screen.getByTestId("pause-controls")).toHaveTextContent("Double-click");
 
+    rerender(<PauseMenu {...props} view="options" notice="" />);
+    expect(screen.getByRole("button", { name: "Diagnostics" })).toBeVisible();
+    expect(screen.queryByText(/Stored mission telemetry/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
+    expect(onDiagnostics).toHaveBeenCalledOnce();
+
+    rerender(<PauseMenu {...props} view="diagnostics" notice="" />);
+    expect(screen.getByRole("heading", { name: "Diagnostics" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(onBackToOptions).toHaveBeenCalledOnce();
+
     rerender(<PauseMenu {...props} view="save" notice="" />);
     expect(screen.getByRole("heading", { name: "Save mission" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -677,18 +693,14 @@ describe("PauseMenu", () => {
   });
 });
 
-describe("PauseOptions telemetry controls", () => {
+describe("PauseDiagnostics telemetry controls", () => {
   it("exports telemetry, confirms clearing, and reports status without touching saves", () => {
     const onExportTelemetry = vi.fn(() => true);
     const onClearTelemetry = vi.fn(() => true);
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
 
     render(
-      <PauseOptions
-        settings={defaultSettings()}
-        onToggleSound={vi.fn()}
-        onToggleMusic={vi.fn()}
-        onVolumeChange={vi.fn()}
+      <PauseDiagnostics
         onBack={vi.fn()}
         telemetryRecordCount={3}
         onExportTelemetry={onExportTelemetry}
@@ -714,11 +726,7 @@ describe("PauseOptions telemetry controls", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(
-      <PauseOptions
-        settings={defaultSettings()}
-        onToggleSound={vi.fn()}
-        onToggleMusic={vi.fn()}
-        onVolumeChange={vi.fn()}
+      <PauseDiagnostics
         onBack={vi.fn()}
         telemetryRecordCount={1}
         onExportTelemetry={vi.fn(() => true)}
@@ -731,6 +739,9 @@ describe("PauseOptions telemetry controls", () => {
     confirm.mockRestore();
   });
 
+});
+
+describe("PauseOptions controls", () => {
   it("cycles colorblind mode and configures custom keybinds", () => {
     const onCycleColorblind = vi.fn();
     const onUpdateKeyBindings = vi.fn();

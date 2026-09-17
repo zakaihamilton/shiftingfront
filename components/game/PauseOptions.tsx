@@ -22,10 +22,8 @@ export function PauseOptions({
   onCycleColorblind,
   onUpdateKeyBindings,
   onVolumeChange,
+  onDiagnostics,
   onBack,
-  telemetryRecordCount,
-  onExportTelemetry,
-  onClearTelemetry,
   onResetAllData,
   titleId = "pause-title",
   backTooltip = "Return to the pause menu",
@@ -38,34 +36,16 @@ export function PauseOptions({
   onCycleColorblind?: () => void;
   onUpdateKeyBindings?: (bindings: KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
+  onDiagnostics?: () => void;
   onBack: () => void;
-  telemetryRecordCount?: number;
-  onExportTelemetry?: () => boolean;
-  onClearTelemetry?: () => boolean;
   onResetAllData?: () => void;
   titleId?: string;
   backTooltip?: string;
 }) {
   const [keybindsOpen, setKeybindsOpen] = useState(false);
-  const [telemetryNotice, setTelemetryNotice] = useState("");
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const resetDialogRef = useModalFocus(confirmResetOpen, "reset-data-dialog", "dialog");
   const fullscreen = useFullscreen();
-  const telemetryEnabled = onExportTelemetry !== undefined && onClearTelemetry !== undefined;
-
-  const exportTelemetry = () => {
-    const exported = onExportTelemetry?.() ?? false;
-    setTelemetryNotice(exported ? "Telemetry exported." : "Telemetry export unavailable.");
-  };
-
-  const clearMissionTelemetry = () => {
-    if (typeof window !== "undefined" && !window.confirm("Clear all locally stored mission telemetry? This does not affect saves or campaign progress.")) {
-      return;
-    }
-    const cleared = onClearTelemetry?.() ?? false;
-    setTelemetryNotice(cleared ? "Telemetry cleared." : "Telemetry could not be cleared.");
-  };
-
   const handleResetAllData = () => {
     clearAllGameData(cachedLocalStorage());
     setConfirmResetOpen(false);
@@ -118,18 +98,10 @@ export function PauseOptions({
             Configure Keybinds…
           </ConsoleButton>
         ) : null}
-        {telemetryEnabled ? (
-          <div className={styles.group}>
-            <ConsoleLabel className={styles.groupLabel}>Diagnostics</ConsoleLabel>
-            <p className={styles.slotCopy}>Stored mission telemetry: {telemetryRecordCount ?? 0} records</p>
-            <ConsoleButton className={styles.action} tooltip="Download the bounded local telemetry envelope as JSON" onClick={exportTelemetry}>
-              Export Telemetry
-            </ConsoleButton>
-            <ConsoleButton className={styles.action} tooltip="Clear only locally stored mission telemetry" onClick={clearMissionTelemetry}>
-              Clear Telemetry
-            </ConsoleButton>
-            {telemetryNotice ? <p className={styles.notice} role="status">{telemetryNotice}</p> : null}
-          </div>
+        {onDiagnostics ? (
+          <ConsoleButton className={styles.action} tooltip="View stored mission telemetry and diagnostic tools" onClick={onDiagnostics}>
+            Diagnostics
+          </ConsoleButton>
         ) : null}
         <div className={styles.group}>
           <ConsoleLabel className={styles.groupLabel}>Data &amp; Support</ConsoleLabel>

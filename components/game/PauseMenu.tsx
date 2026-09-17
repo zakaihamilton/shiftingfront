@@ -8,6 +8,7 @@ import type { ArchiveEntry, SlotMeta } from "@/lib/persist/save";
 import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
 import type { PauseView } from "@/lib/ui/shortcuts";
 import { PauseControls } from "./PauseControls";
+import { PauseDiagnostics } from "./PauseDiagnostics";
 import { PauseLoadSlots } from "./PauseLoadSlots";
 import { PauseMainMenu } from "./PauseMainMenu";
 import { PauseOptions } from "./PauseOptions";
@@ -31,6 +32,8 @@ export function PauseMenu({
   onBriefing,
   onRestart,
   onControls,
+  onDiagnostics,
+  onBackToOptions,
   onOptions,
   onMenu,
   onLeaveWithoutSave,
@@ -62,6 +65,8 @@ export function PauseMenu({
   onBriefing: () => void;
   onRestart: () => void;
   onControls: () => void;
+  onDiagnostics?: () => void;
+  onBackToOptions: () => void;
   onOptions: () => void;
   onMenu: () => void;
   onLeaveWithoutSave?: () => void;
@@ -102,6 +107,13 @@ export function PauseMenu({
           />
         ) : view === "controls" ? (
           <PauseControls onBack={onBack} />
+        ) : view === "diagnostics" ? (
+          <PauseDiagnostics
+            telemetryRecordCount={telemetryRecordCount}
+            onExportTelemetry={onExportTelemetry}
+            onClearTelemetry={onClearTelemetry}
+            onBack={onBackToOptions}
+          />
         ) : view === "save" ? (
           <PauseSaveSlots
             defaultName={defaultSlotName}
@@ -127,9 +139,7 @@ export function PauseMenu({
             onCycleColorblind={onCycleColorblind}
             onUpdateKeyBindings={onUpdateKeyBindings}
             onVolumeChange={onVolumeChange}
-            telemetryRecordCount={telemetryRecordCount}
-            onExportTelemetry={onExportTelemetry}
-            onClearTelemetry={onClearTelemetry}
+            onDiagnostics={onDiagnostics}
             onBack={onBack}
           />
         )}
@@ -139,7 +149,9 @@ export function PauseMenu({
             Leave without saving
           </ConsoleButton>
         ) : null}
-        <p className={styles.hint}>{view === "main" ? "Escape resumes the mission" : "Escape returns to the pause menu"}</p>
+        <p className={styles.hint}>
+          {view === "main" ? "Escape resumes the mission" : view === "diagnostics" ? "Escape returns to game options" : "Escape returns to the pause menu"}
+        </p>
       </MetalPanel>
     </div>
   );

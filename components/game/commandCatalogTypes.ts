@@ -1,6 +1,5 @@
 import type { BuildingKind, Entity, FactionVisualProfile, Formation, Palette, SimState, Stance, UnitKind } from "@/lib/types";
 import type { CommandTab } from "@/lib/ui/shortcuts";
-import type { MobileCommand } from "./mobileCommandTypes";
 
 export type CommandCatalogActions = {
   onPlace: (kind: BuildingKind) => void;
@@ -12,10 +11,6 @@ export type CommandCatalogActions = {
   onStance: (stance: Stance) => void;
   onFormation: (formation: Formation) => void;
   selectionCount?: number;
-  selectionMode?: boolean;
-  activeMobileCommand?: MobileCommand | null;
-  onMobileCommand?: (command: MobileCommand) => void;
-  onSelectionMode?: (active: boolean) => void;
 };
 
 export type CommandBuildControls = CommandCatalogActions & {

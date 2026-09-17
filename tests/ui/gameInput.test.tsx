@@ -9,8 +9,10 @@ import { heightAt } from "../../lib/sim/world";
 import type { BuildingKind, Command, SimState } from "../../lib/types";
 import { useGameInput } from "../../components/game/hooks/useGameInput";
 import { useTouchGestures } from "../../components/game/hooks/useTouchGestures";
+import { voiceBarkForBeep } from "../../lib/audio/voice";
 
 vi.mock("@/lib/audio/synth", () => ({ beep: vi.fn() }));
+vi.mock("@/lib/audio/voice", () => ({ voiceBarkForBeep: vi.fn() }));
 
 function testCanvas() {
   const canvas = {
@@ -275,13 +277,15 @@ describe("command markers", () => {
     expect(result.current.commandMarkerRef.current).toBeNull();
   });
 
-  it("pings an attack-and-continue order when selected units receive it, and stays quiet with no selection", () => {
+  it("pings and voices an attack-and-continue order, and stays quiet with no selection", () => {
     const canvas = testCanvas();
     const { result: empty } = renderInput(canvas);
+    vi.mocked(voiceBarkForBeep).mockClear();
     act(() => {
       empty.current.onUp(pointerEvent(canvas, { button: 2, buttons: 0 }));
     });
     expect(empty.current.commandMarkerRef.current).toBeNull();
+    expect(voiceBarkForBeep).not.toHaveBeenCalled();
 
     const selected = new Set<number>();
     const { result: armed } = renderInput(canvas, {
@@ -290,10 +294,13 @@ describe("command markers", () => {
       },
       selected,
     });
+    vi.mocked(voiceBarkForBeep).mockClear();
     act(() => {
       armed.current.onUp(pointerEvent(canvas, { button: 2, buttons: 0 }));
     });
     expect(armed.current.commandMarkerRef.current?.kind).toBe("attack");
+    expect(voiceBarkForBeep).toHaveBeenCalledOnce();
+    expect(voiceBarkForBeep).toHaveBeenCalledWith("ackAttack");
   });
 });
 

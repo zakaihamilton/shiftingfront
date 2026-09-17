@@ -16,39 +16,16 @@
 
   .launcher {
     position: absolute;
-    z-index: 80;
-    right: 50%;
-    bottom: max(0.65rem, env(safe-area-inset-bottom));
+    z-index: 50;
+    top: max(0.65rem, env(safe-area-inset-top));
+    right: max(0.65rem, env(safe-area-inset-right));
+    width: 3rem;
     display: block;
-    transform: translateX(50%);
+    transform: none;
   }
 
   .handle {
-    cursor: grab;
-    display: block;
-    width: 3.5rem;
-    height: 3px;
-    margin: 0 auto 0.3rem;
-    border-radius: 99px;
-    background: var(--chrome-bevel);
-    box-shadow: 0 0 0 1px var(--chrome-inset), 0 0 10px color-mix(in srgb, var(--chrome-cyan) 28%, transparent);
-    touch-action: none;
-  }
-
-  .status {
-    display: block;
-    max-width: min(14rem, calc(100vw - 2rem));
-    margin: 0 auto 0.28rem;
-    overflow: hidden;
-    color: var(--chrome-muted);
-    font-family: var(--font-mono);
-    font-size: 0.52rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-align: center;
-    text-overflow: ellipsis;
-    text-transform: uppercase;
-    white-space: nowrap;
+    display: none;
   }
 
   .button {
