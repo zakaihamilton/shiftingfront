@@ -4,7 +4,7 @@ import styles from "../legal.module.css";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Shifting Front",
-  description: "Privacy policy for Shifting Front RTS: 100% client-side, zero tracking, local-only storage.",
+  description: "Privacy policy for Shifting Front RTS, including local game storage and Vercel Web Analytics.",
 };
 
 export default function PrivacyPage() {
@@ -14,24 +14,25 @@ export default function PrivacyPage() {
         <header className={styles.header}>
           <div className={styles.eyebrow}>Command Desk // Security Clearance</div>
           <h1 className={styles.title}>Privacy Policy</h1>
-          <div className={styles.lastUpdated}>Effective Date: September 14, 2026</div>
+          <div className={styles.lastUpdated}>Effective Date: September 17, 2026</div>
         </header>
 
         <section className={styles.content}>
           <h2>1. Overview</h2>
           <p>
-            Shifting Front is designed from the ground up as a standalone, deterministic, client-side browser real-time strategy game. We believe privacy is an absolute operational requirement. We do not track, collect, monetize, or transmit your personal information.
+            Shifting Front is a deterministic, client-side browser real-time strategy game. Game simulation, saves, progress, preferences, and diagnostics are stored locally in your browser. The website also uses Vercel Web Analytics to understand aggregated traffic and page views. Vercel Web Analytics does not use cookies and is designed not to identify individual visitors, but it does transmit limited page-view information to Vercel.
           </p>
 
-          <h2>2. Zero Server-Side Collection</h2>
+          <h2>2. Game Data and Website Analytics</h2>
           <p>
-            When you play Shifting Front:
+            When you use Shifting Front:
           </p>
           <ul>
             <li>No user account or login is required.</li>
-            <li>No personally identifiable information (PII) is requested or transmitted.</li>
-            <li>No tracking cookies, fingerprinting scripts, or third-party ad beacons are embedded.</li>
-            <li>Game campaign generation and combat simulations occur entirely within your local browser sandbox.</li>
+            <li>Game campaign generation, combat simulations, and game-state handling occur entirely within your local browser sandbox.</li>
+            <li>The site does not request personal information for gameplay, and the game does not transmit your saves, progress, preferences, or local diagnostics to us.</li>
+            <li>Vercel Web Analytics automatically records page views, including full page loads and client-side navigation.</li>
+            <li>No advertising scripts or third-party ad beacons are embedded.</li>
           </ul>
 
           <h2>3. Local Device Storage</h2>
@@ -47,21 +48,28 @@ export default function PrivacyPage() {
 
           <h2>4. Managing and Clearing Your Data</h2>
           <p>
-            Because all game data resides strictly on your device, you have complete control over it at all times:
+            You have control over the game data stored on your device:
           </p>
           <ul>
             <li>You can reset diagnostic telemetry directly from the in-game Options menu.</li>
             <li>You can clear all saved games, progress, and settings at any time by clearing site data or cookies for this domain in your browser settings.</li>
+            <li>Clearing browser site data does not delete page-view data already sent to Vercel Web Analytics. Vercel describes its analytics retention and privacy practices in its <a href="https://vercel.com/docs/analytics/privacy-policy">Web Analytics Privacy and Compliance documentation</a>.</li>
           </ul>
 
-          <h2>5. Third-Party Services</h2>
+          <h2>5. Hosting and Vercel Web Analytics</h2>
           <p>
-            Shifting Front is hosted as static assets via Next.js. The hosting infrastructure may log standard HTTP request metadata (such as IP address, user agent, and requested asset path) for routine DDoS protection and network performance. No game-related state or telemetry is linked to these server logs.
+            Shifting Front is hosted as static assets via Next.js. The hosting infrastructure may log standard HTTP request metadata, such as IP address, user agent, and requested asset path, for routine DDoS protection and network performance. These hosting logs are separate from the local game data described above.
+          </p>
+          <p>
+            Vercel Web Analytics is provided by Vercel Inc. For each analytics data point, Vercel may receive information such as the event timestamp, page URL or route, referrer, filtered query parameters, approximate geolocation, browser and version, operating system and version, device type, and analytics script version. Vercel states that Web Analytics uses anonymized, aggregated data, does not associate data points with an individual or IP address, and does not use third-party cookies. Visitors are identified using a hash created from the incoming request, and the visitor session is automatically discarded after 24 hours. This site currently uses automatic page-view tracking only and does not send custom analytics events.
+          </p>
+          <p>
+            For more information, see <a href="https://vercel.com/docs/analytics/privacy-policy">Vercel&apos;s Web Analytics Privacy and Compliance documentation</a> and <a href="https://vercel.com/legal/privacy-notice">Vercel&apos;s Privacy Notice</a>.
           </p>
 
           <h2>6. Updates to This Policy</h2>
           <p>
-            If architectural modifications introduce new local features or options, this document will be updated accordingly with a revised effective date.
+            If architectural modifications introduce new data collection, third-party services, local features, or options, this document will be updated accordingly with a revised effective date.
           </p>
         </section>
 
