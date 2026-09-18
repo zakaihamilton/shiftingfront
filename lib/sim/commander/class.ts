@@ -115,7 +115,9 @@ export class CompetentCommander {
         .filter(isCombatEntity)
         .sort((a, b) => distToEntity(a, yard) - distToEntity(b, yard) || a.id - b.id)[0]
       : undefined;
-    const threat = defensiveThreat(state, yard) ?? scenarioThreat(state) ?? emergencyThreat;
+    const yardThreat = defensiveThreat(state, yard);
+    const threat = yardThreat ?? scenarioThreat(state) ?? emergencyThreat;
+    const yardRaidActive = yardThreat !== undefined && yardRaid(state, yard);
     const objective = objectiveEntity(state);
     const approachObjective = objective && objective.owner === 1 ? offensiveApproachTarget(state, objective) : objective;
     const extractionCargo = objectiveKind(state) === "extraction"
@@ -223,31 +225,35 @@ export class CompetentCommander {
         }
       } else if (threat) {
         if (["escort", "rescue", "extraction"].includes(objectiveKind(state)) && objectiveCombat.length) {
-          if (defenders.length) {
-            combatCommands.push({ type: "attack", unitIds: defenders.map((entity) => entity.id), targetId: threat.id });
-          }
-          const responseForce = assaultForce;
-          const pendingNeutral = objective?.neutral === true;
-          const escortTarget = objectiveKind(state) === "extraction"
-            ? extractionEscortTarget ?? objective
-            : objective;
-          if (responseForce.length && pendingNeutral && objective && objectiveKind(state) !== "escort") {
-            // Yard raids are the home guard's job. Pulling the contact team
-            // home every time a scout reaches the HQ is what blows rescue and
-            // extraction deadlines.
-            combatCommands.push({
-              type: objectiveKind(state) === "extraction" ? "attackMove" : "move",
-              unitIds: responseForce.map((entity) => entity.id),
-              x: objective.x,
-              y: objective.y,
-              formation: "line",
-            });
-          } else if (responseForce.length && escortTarget) {
-            // A threatened scenario target takes priority over escort travel.
-            // The force will receive its route to the target again once the
-            // threat clears, while direct attack keeps the response force
-            // from walking past the attacker.
-            combatCommands.push({ type: "attack", unitIds: responseForce.map((entity) => entity.id), targetId: threat.id });
+          if (yardRaidActive && isTimedRecovery(objectiveKind(state))) {
+            combatCommands.push({ type: "attack", unitIds: combat.map((entity) => entity.id), targetId: threat.id });
+          } else {
+            if (defenders.length) {
+              combatCommands.push({ type: "attack", unitIds: defenders.map((entity) => entity.id), targetId: threat.id });
+            }
+            const responseForce = assaultForce;
+            const pendingNeutral = objective?.neutral === true;
+            const escortTarget = objectiveKind(state) === "extraction"
+              ? extractionEscortTarget ?? objective
+              : objective;
+            if (responseForce.length && pendingNeutral && objective && objectiveKind(state) !== "escort") {
+              // Yard raids are the home guard's job. Pulling the contact team
+              // home every time a scout reaches the HQ is what blows rescue and
+              // extraction deadlines.
+              combatCommands.push({
+                type: objectiveKind(state) === "extraction" ? "attackMove" : "move",
+                unitIds: responseForce.map((entity) => entity.id),
+                x: objective.x,
+                y: objective.y,
+                formation: "line",
+              });
+            } else if (responseForce.length && escortTarget) {
+              // A threatened scenario target takes priority over escort travel.
+              // The force will receive its route to the target again once the
+              // threat clears, while direct attack keeps the response force
+              // from walking past the attacker.
+              combatCommands.push({ type: "attack", unitIds: responseForce.map((entity) => entity.id), targetId: threat.id });
+            }
           }
         } else {
           // Keep the rescue guard assigned to local defense instead of sending it with the rescue force.
