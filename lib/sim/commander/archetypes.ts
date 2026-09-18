@@ -32,7 +32,7 @@ const MAX_ARCHETYPE_QUEUE = 3;
 // low-value late-game entities after the outcome is already decided.
 const MAX_TURTLE_COMBAT_UNITS = 24;
 const MAX_GREED_COMBAT_UNITS = 24;
-const MAX_INFANTRY_COMBAT_UNITS = 28;
+const MAX_INFANTRY_COMBAT_UNITS = 22;
 const MAX_VEHICLES_COMBAT_UNITS = 20;
 
 function buildCommand(state: SimState, kind: BuildingKind, yard: Entity, reserve = 120): Command | undefined {

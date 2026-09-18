@@ -22,7 +22,14 @@ jobs:
           node-version: 22.22.2
           cache: yarn
           package-manager-cache: false
-      - run: yarn install --frozen-lockfile
+      - name: Cache node_modules
+        uses: actions/cache@v6
+        id: yarn-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}
+      - if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile
       - run: yarn typecheck
       - run: yarn health:invariants
       - run: yarn health:dead-code
@@ -66,7 +73,14 @@ jobs:
           node-version: 22.22.2
           cache: yarn
           package-manager-cache: false
-      - run: yarn install --frozen-lockfile
+      - name: Cache node_modules
+        uses: actions/cache@v6
+        id: yarn-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}
+      - if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile
       - name: Run stratified archetype balance
         run: |
           mkdir -p artifacts

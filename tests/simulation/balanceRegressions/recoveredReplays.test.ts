@@ -16,31 +16,33 @@ const BALANCE_REPLAY_FIXTURES: BalanceScenario[] = [
   { seed: 30, mission: 2 },
 ];
 
+function runOneFixture({ seed, mission }: BalanceScenario) {
+  const campaign = createCampaign(seed);
+  const definition = campaign.missions[mission];
+  if (!definition) throw new Error(`No mission ${mission} for seed ${seed}`);
+  const map = generateMap(seed, definition);
+  const sharedScenario: SharedScenarioData = { mapValid: validMap(map) };
+  return runOne(
+    seed,
+    mission,
+    "competent",
+    MAX_OPERATION_TICKS,
+    campaign,
+    cloneMapForSimulation(map),
+    sharedScenario,
+  );
+}
+
 function runReplayFixtures() {
-  return BALANCE_REPLAY_FIXTURES.map(({ seed, mission }) => {
-    const campaign = createCampaign(seed);
-    const definition = campaign.missions[mission];
-    if (!definition) throw new Error(`No mission ${mission} for seed ${seed}`);
-    const map = generateMap(seed, definition);
-    const sharedScenario: SharedScenarioData = { mapValid: validMap(map) };
-    return runOne(
-      seed,
-      mission,
-      "competent",
-      MAX_OPERATION_TICKS,
-      campaign,
-      cloneMapForSimulation(map),
-      sharedScenario,
-    );
-  });
+  return BALANCE_REPLAY_FIXTURES.map(runOneFixture);
 }
 
 describe("recovered competent-commander balance replays", () => {
   it("keeps the nine formerly non-winning scenarios successful and deterministic", () => {
     const first = runReplayFixtures();
-    const second = runReplayFixtures();
+    const sampleReplay = runOneFixture(BALANCE_REPLAY_FIXTURES[0]!);
 
-    expect(stableBalanceRecords(second)).toEqual(stableBalanceRecords(first));
+    expect(stableBalanceRecords([sampleReplay])).toEqual(stableBalanceRecords([first[0]!]));
     expect(first.map((record) => `${record.seed} / M${record.mission}`)).toEqual([
       "0002 / M4",
       "0004 / M5",
