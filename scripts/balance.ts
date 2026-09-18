@@ -16,16 +16,25 @@ import { archetypeFailureRecords, balanceFailureReason, checkArchetypeBalance, c
 import type { BalanceStrategy } from "../lib/types";
 
 function arg(name: string, fallback: string): string {
-  const index = process.argv.indexOf(`--${name}`);
-  return index >= 0 ? process.argv[index + 1] ?? fallback : fallback;
+  const prefix = `--${name}=`;
+  for (let i = 0; i < process.argv.length; i++) {
+    const item = process.argv[i];
+    if (item === `--${name}`) {
+      return process.argv[i + 1] ?? fallback;
+    }
+    if (item && item.startsWith(prefix)) {
+      return item.slice(prefix.length);
+    }
+  }
+  return fallback;
 }
 
 function optionalNumberArg(name: string): number | undefined {
-  const index = process.argv.indexOf(`--${name}`);
-  if (index < 0) return undefined;
-  const value = Number(process.argv[index + 1]);
-  if (!Number.isFinite(value)) throw new Error(`Invalid --${name} value`);
-  return value;
+  const value = arg(name, "");
+  if (!value) return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error(`Invalid --${name} value`);
+  return parsed;
 }
 
 function parseShard(value: string): { index: number; total: number } {

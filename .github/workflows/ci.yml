@@ -140,9 +140,43 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        strategy: [rush, turtle, greed, infantry, vehicles]
-        shardIndex: [1, 2]
-        shardTotal: [2]
+        include:
+          - strategy: turtle
+            shardIndex: 1
+            shardTotal: 3
+          - strategy: turtle
+            shardIndex: 2
+            shardTotal: 3
+          - strategy: turtle
+            shardIndex: 3
+            shardTotal: 3
+          - strategy: infantry
+            shardIndex: 1
+            shardTotal: 3
+          - strategy: infantry
+            shardIndex: 2
+            shardTotal: 3
+          - strategy: infantry
+            shardIndex: 3
+            shardTotal: 3
+          - strategy: greed
+            shardIndex: 1
+            shardTotal: 3
+          - strategy: greed
+            shardIndex: 2
+            shardTotal: 3
+          - strategy: greed
+            shardIndex: 3
+            shardTotal: 3
+          - strategy: vehicles
+            shardIndex: 1
+            shardTotal: 2
+          - strategy: vehicles
+            shardIndex: 2
+            shardTotal: 2
+          - strategy: rush
+            shardIndex: 1
+            shardTotal: 1
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -178,8 +212,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        shardIndex: [1, 2, 3, 4, 5, 6]
+        shardTotal: [6]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
