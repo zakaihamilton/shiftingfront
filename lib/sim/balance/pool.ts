@@ -1,6 +1,6 @@
 import { Worker } from "node:worker_threads";
 import { defaultBalanceJobs, balanceScenarios } from "./sampling";
-import { assertWithinDeadline, runBalanceJob, runBalanceSweepJob } from "./runner";
+import { assertWithinDeadline, runBalanceSweepJob } from "./runner";
 import type {
   BalanceProgress,
   BalanceRecordWithScenario,
@@ -176,31 +176,10 @@ export async function runBalanceScenarios(
     scenarioList?: BalanceScenario[];
   },
 ): Promise<BalanceRecordWithScenario[]> {
-  const scenarios = options.scenarioList ?? balanceScenarios(options);
-  const requestedJobs = options.jobs ?? defaultBalanceJobs(scenarios.length);
-  const jobs = Math.max(1, Math.min(Math.floor(requestedJobs) || 1, scenarios.length || 1));
-  let completed = 0;
-  const report = (record: BalanceRecordWithScenario) => {
-    completed += 1;
-    options.onProgress?.({ completed, total: scenarios.length, record });
-  };
-  const jobOptions = {
-    from: options.from,
-    to: options.to,
-    missions: options.missions,
-    maxTicks: options.maxTicks,
-    deadlineAt: options.deadlineAt,
-    strategy: options.strategy,
-  };
-  if (jobs === 1 || scenarios.length < 2) return sortBalanceRecords(runBalanceJob({ ...jobOptions, scenarios }, report));
-
-  const assignments = Array.from({ length: jobs }, () => [] as Array<{ seed: number; mission: number }>);
-  const seedGroups = groupScenariosBySeed(scenarios);
-  seedGroups.forEach((group, index) => assignments[index % jobs]!.push(...group));
-  const results = await Promise.all(assignments.filter((assignment) => assignment.length).map((assignment) =>
-    runWorker({ ...jobOptions, scenarios: assignment }, report),
-  ));
-  return sortBalanceRecords(results.flat());
+  return runBalanceSweepScenarios({
+    ...options,
+    strategies: [options.strategy ?? "competent"],
+  });
 }
 
 /** Remove machine timing so gameplay records can be compared byte-for-byte. */
