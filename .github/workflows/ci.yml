@@ -19,7 +19,7 @@ env:
 jobs:
   test:
     name: Test (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -27,8 +27,8 @@ jobs:
         shardIndex: [1, 2]
         shardTotal: [2]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.22.2
           cache: yarn
@@ -44,7 +44,7 @@ jobs:
           yarn ci:timed-tests --maxWorkers=2 --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
       - name: Upload test timing report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: test-timing-${{ github.run_id }}-shard-${{ matrix.shardIndex }}
           path: artifacts/
@@ -52,11 +52,11 @@ jobs:
           retention-days: 14
 
   health:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.22.2
           cache: yarn
@@ -73,7 +73,7 @@ jobs:
       - run: yarn health:duplication
       - name: Upload health timing reports
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: health-timing-${{ github.run_id }}
           path: artifacts/
@@ -82,11 +82,11 @@ jobs:
 
   balance-health:
     name: Balance health (competent)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.22.2
           cache: yarn
@@ -98,7 +98,7 @@ jobs:
           yarn ci:timed-balance
       - name: Upload balance timing reports
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: balance-timing-${{ github.run_id }}
           path: artifacts/
@@ -107,7 +107,7 @@ jobs:
 
   archetype-balance:
     name: Archetype balance (${{ matrix.strategy }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The greed archetype intentionally runs long late-game economic missions
     # and exceeds the default 20-minute matrix budget on hosted runners.
     timeout-minutes: 20
@@ -116,8 +116,8 @@ jobs:
       matrix:
         strategy: [rush, turtle, greed, infantry, vehicles]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.22.2
           cache: yarn
@@ -129,7 +129,7 @@ jobs:
           yarn ci:timed-balance-archetype --strategy "${{ matrix.strategy }}" > "artifacts/balance-archetype-${{ matrix.strategy }}-timing.json"
       - name: Upload archetype timing report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: archetype-timing-${{ github.run_id }}-${{ matrix.strategy }}
           path: artifacts/
@@ -138,7 +138,7 @@ jobs:
 
   e2e:
     name: E2E (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -146,15 +146,15 @@ jobs:
         shardIndex: [1, 2]
         shardTotal: [2]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.22.2
           cache: yarn
           package-manager-cache: false
       - run: yarn install --frozen-lockfile
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
