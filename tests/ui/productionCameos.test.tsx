@@ -80,5 +80,7 @@ describe("production cameo availability", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
 
     expect(productionBlockerText(state, "convoyTruck", 0, undefined)).toBe("Advance the campaign to unlock this unit");
+    expect(productionBlockerText(state, "medic", 0, undefined)).toBe("Build a Barracks");
+    expect(productionBlockerText(state, "repairTruck", 0, undefined)).toBe("Build a Vehicle Plant");
   });
 });

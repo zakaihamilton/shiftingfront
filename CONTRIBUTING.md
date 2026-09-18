@@ -30,7 +30,9 @@ Thank you for your interest in contributing to **Shifting Front**!
 Before submitting a Pull Request, ensure that all quality gates pass cleanly:
 
 ```bash
-# Recommended local pre-push check (typecheck, lint, fast tests)
+# Recommended local pre-push check (typecheck, lint, fast tests).
+# verify:fast is not a substitute for health:invariants or health:balance
+# when changing the commander, maps, or DEFAULT_BALANCE_THRESHOLDS.
 yarn verify:fast
 
 # Determinism & simulation invariants

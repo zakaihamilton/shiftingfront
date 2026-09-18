@@ -67,6 +67,15 @@ export function defensiveThreat(state: SimState, yard: Entity): Entity | undefin
     .find((entity) => distToEntity(yard, entity) <= responseRadius);
 }
 
+/** Three combat units or a tank in the HQ radius is a raid, not a scout. */
+export function yardRaid(state: SimState, yard: Entity): boolean {
+  const responseRadius = OFFENSIVE_RESPONSE_KINDS.has(objectiveKind(state)) ? OFFENSIVE_RESPONSE_RADIUS : YARD_THREAT_RADIUS;
+  const attackers = enemyEntitiesView(state).filter(
+    (entity) => isCombatEntity(entity) && distToEntity(yard, entity) <= responseRadius,
+  );
+  return attackers.length >= 3 || attackers.some((entity) => entity.kind === "tank");
+}
+
 export function scenarioThreat(state: SimState): Entity | undefined {
   const kind = objectiveKind(state);
   if (kind !== "escort" && kind !== "rescue" && kind !== "extraction") return undefined;
@@ -86,16 +95,18 @@ export function scenarioThreat(state: SimState): Entity | undefined {
 
 export function assaultReady(state: SimState, target: Entity, combat: Entity[]): boolean {
   if (!OFFENSIVE_KINDS.has(objectiveKind(state)) || target.owner !== 1) return true;
+  const deadline = state.runtime?.deadline ?? state.win.ticks;
+  const closeoutRatio = objectiveKind(state) === "decapitate" ? 0.28 : 0.4;
+  const closeout = deadline !== undefined && state.tick >= deadline * closeoutRatio;
   const minimumUnits = objectiveKind(state) === "annihilate" || objectiveKind(state) === "razeAll"
     ? 5 + Math.floor(state.missionIndex / 2)
     : 8 + Math.floor(state.missionIndex / 3);
-  if (combat.length < minimumUnits) return false;
+  if (combat.length < minimumUnits && !closeout) return false;
   // Late offensive missions need a short staging window to let the opening
   // economy and local defense settle. Committing during the first exchange
   // sends the starting force into a fully staffed turret ring before the
-  // commander has had a chance to reinforce it. Decapitation is a surgical
-  // strike: waiting for a full production ring is what times the mission out.
-  if (state.missionIndex >= 4 && state.tick < 2400 && objectiveKind(state) !== "decapitate") return false;
+  // commander has had a chance to reinforce it.
+  if (state.missionIndex >= 4 && state.tick < 2400) return false;
 
   const playerStrength = combat.reduce((sum, entity) => sum + combatValue(entity), 0);
   const defenders = enemyEntitiesView(state).filter((entity) => distToEntity(target, entity) <= 22);
@@ -113,10 +124,7 @@ export function assaultReady(state: SimState, target: Entity, combat: Entity[]):
   // force has a meaningful counter advantage; the deadline fallback still
   // guarantees a finite closeout when the board is unusually resistant.
   if (defensiveStrength === 0 || playerStrength >= defensiveStrength) return true;
-
-  const deadline = state.runtime?.deadline ?? state.win.ticks;
-  const closeoutRatio = objectiveKind(state) === "decapitate" ? 0.32 : 0.4;
-  return deadline !== undefined && state.tick >= deadline * closeoutRatio;
+  return closeout;
 }
 
 export function orderKey(command: Command): string {

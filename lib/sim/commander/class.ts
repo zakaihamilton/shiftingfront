@@ -24,7 +24,9 @@ import {
   assaultReady,
   offensiveApproachTarget,
   orderKey,
+  yardRaid,
 } from "./combat";
+import { isTimedRecovery, scenarioHomeGuardSize } from "../policy";
 import type { CommanderMetrics } from "./queries";
 
 const COMMANDER_REPAIR_CREDIT_RESERVE = 0;
@@ -37,6 +39,25 @@ function finalPushActive(state: SimState): boolean {
   if (director && (director.phase === "finale" || state.tick >= director.finaleStart)) return true;
   const deadline = state.runtime?.deadline ?? state.win.ticks;
   return deadline !== undefined && state.tick >= deadline * COMMANDER_FINAL_PUSH_RATIO;
+}
+
+const DECAPITATE_FIRE_RANGE = 4;
+
+function pushAssault(commands: Command[], state: SimState, target: Entity, unitIds: number[], kind: MissionKind): void {
+  if (kind !== "decapitate") {
+    commands.push({ type: "attackMove", unitIds, x: target.x, y: target.y, formation: "wedge" });
+    return;
+  }
+  const close: number[] = [];
+  const far: number[] = [];
+  for (const id of unitIds) {
+    const unit = state.entities.find((entity) => entity.id === id);
+    if (!unit) continue;
+    if (distToEntity(unit, target) <= DECAPITATE_FIRE_RANGE) close.push(id);
+    else far.push(id);
+  }
+  if (far.length) commands.push({ type: "attackMove", unitIds: far, x: target.x, y: target.y, formation: "wedge" });
+  if (close.length) commands.push({ type: "attack", unitIds: close, targetId: target.id });
 }
 
 function repairPriority(kind: Entity["kind"]): number {
@@ -110,7 +131,7 @@ export class CompetentCommander {
     const rescueEscortTarget = [...rescueReturnUnits]
       .sort((a, b) => distToEntity(b, yard) - distToEntity(a, yard) || a.id - b.id)[0];
     const combat = combatUnits(state);
-    const objectiveCombat = objectiveKind(state) === "extraction" || objectiveKind(state) === "rescue"
+    const objectiveCombat = isTimedRecovery(objectiveKind(state))
       ? combat.filter((entity) => !extractionCargoIds.has(entity.id) && !rescueReturnIds.has(entity.id))
       : combat;
     const finalPush = finalPushActive(state);
@@ -126,10 +147,11 @@ export class CompetentCommander {
     if (combat.length) {
       const combatCommands: Command[] = [];
       const offensiveObjective = objective && objective.owner === 1 && OFFENSIVE_KINDS.has(objectiveKind(state));
+      const strikeTarget = objectiveKind(state) === "decapitate" ? objective : approachObjective;
       const assaultTargets = offensiveObjective
         ? objectiveKind(state) !== "sabotage" && parallelOffensiveTargets(state).length > 1
           ? parallelOffensiveTargets(state)
-          : approachObjective ? [approachObjective] : []
+          : strikeTarget ? [strikeTarget] : []
         : [];
       if (!offensiveObjective || this.assaultKind !== objectiveKind(state)) {
         this.assaultKind = offensiveObjective ? objectiveKind(state) : undefined;
@@ -145,9 +167,7 @@ export class CompetentCommander {
       }
       const assaultCommitted = offensiveObjective && this.assaultTargetId !== undefined;
       const defenderLimit = Math.min(4, Math.max(2, Math.floor(combat.length / 3)));
-      const scenarioDefenderLimit = ["rescue", "extraction"].includes(objectiveKind(state))
-        ? Math.max(objectiveKind(state) === "rescue" ? 2 : 1, Math.min(3, Math.floor(objectiveCombat.length / 3)))
-        : 1;
+      const scenarioDefenderLimit = scenarioHomeGuardSize(objectiveKind(state), objectiveCombat.length);
       const reservedDefenders = scenarioObjective
         ? Math.min(scenarioDefenderLimit, Math.max(0, objectiveCombat.length - 1))
         : offensiveObjective
@@ -170,17 +190,18 @@ export class CompetentCommander {
         combatCommands.push({ type: "attack", unitIds: combat.map((entity) => entity.id), targetId: emergencyThreat.id });
       } else if (offensiveObjective && objective) {
         if (threat) {
-          const splitFinalPush = finalPush && defenders.length > 0 && assaultForce.length > 0;
-          if (splitFinalPush) {
-            // Keep one close defender on the immediate threat while the rest
-            // continue the committed objective assault. A final push should
-            // tolerate local pressure without abandoning the win condition.
+          const keepAssaultUnderThreat = assaultCommitted && defenders.length > 0 && assaultForce.length > 0 && (
+            finalPush || (objectiveKind(state) === "decapitate" && !yardRaid(state, yard))
+          );
+          if (keepAssaultUnderThreat) {
+            // Keep the home guard on a scout or finale raid; a committed
+            // decapitation assault should not walk home for one infantry.
             combatCommands.push({ type: "attack", unitIds: defenders.map((entity) => entity.id), targetId: threat.id });
             for (let index = 0; index < assaultTargets.length; index++) {
               const target = assaultTargets[index]!;
               const unitIds = assaultForce.filter((_, unitIndex) => unitIndex % assaultTargets.length === index).map((entity) => entity.id);
               if (unitIds.length) {
-                combatCommands.push({ type: "attackMove", unitIds, x: target.x, y: target.y, formation: "wedge" });
+                pushAssault(combatCommands, state, target, unitIds, objectiveKind(state));
               }
             }
           } else {
@@ -194,7 +215,7 @@ export class CompetentCommander {
             const target = assaultTargets[index]!;
             const unitIds = assaultForce.filter((_, unitIndex) => unitIndex % assaultTargets.length === index).map((entity) => entity.id);
             if (unitIds.length) {
-              combatCommands.push({ type: "attackMove", unitIds, x: target.x, y: target.y, formation: "wedge" });
+              pushAssault(combatCommands, state, target, unitIds, objectiveKind(state));
             }
           }
         } else {

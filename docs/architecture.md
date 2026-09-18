@@ -110,7 +110,7 @@ Unit-test timing is published by `yarn ci:timed-tests` as `artifacts/test-timing
 ## Persistence boundaries
 
 - `lib/persist/save`: versioned simulation serialization, per-seed autosaves, and named save slots.
-- `lib/persist/save/migrations.ts`: pure content-version migrations shared by autosaves and named slots.
+- `lib/persist/save/migrations.ts`: pure content-version migrations shared by autosaves and named slots. Loaders accept integer content versions from 1 through `SAVE_CONTENT_VERSION` and apply each registry step; the live registry is empty while the format is still version 1.
 - `lib/persist/campaign`: unlocks, medals, and best scores.
 - `lib/persist/settings`: audio and UI preferences.
 - `lib/persist/telemetry`: bounded local mission metrics.

@@ -31,6 +31,18 @@ describe("save migrations", () => {
     expect(() => migrateSaveContent({}, "1")).toThrow("Unsupported save content version");
   });
 
+  it("applies a registry chain when loading older content into a later format", () => {
+    const migrated = migrateSaveContent({ seed: 7 }, 1, {
+      currentVersion: 2,
+      migrations: {
+        1: (state) => ({ ...(state as { seed: number }), migrated: true }),
+      },
+    });
+    expect(migrated).toEqual({ seed: 7, migrated: true });
+    expect(() => migrateSaveContent({ seed: 7 }, 1, { currentVersion: 2, migrations: {} }))
+      .toThrow("Missing save migration from content version 1");
+  });
+
   it("uses the same migration path for named slots", () => {
     const state = createMission({ seed: 421, missionIndex: 0 });
     const storage = memoryStorage();

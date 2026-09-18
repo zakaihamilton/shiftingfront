@@ -33,7 +33,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:fast": "vitest run --exclude tests/simulation/allSeeds --exclude tests/simulation/headlessBalance --exclude tests/simulation/balanceRegressions --exclude tests/simulation/terrain.test.ts --exclude tests/simulation/commander.test.ts --exclude tests/simulation/commanderGenerated.test.ts --exclude tests/generation/profile.test.ts --exclude tests/generation/profileMapValidity",
+    "test:fast": "vitest run --exclude tests/simulation/allSeeds --exclude tests/simulation/headlessBalance --exclude tests/simulation/balanceRegressions --exclude tests/simulation/terrain.test.ts --exclude tests/simulation/commanderGenerated.test.ts --exclude tests/generation/profile.test.ts --exclude tests/generation/profileMapValidity",
     "test:watch": "vitest",
     "verify:fast": "yarn typecheck && yarn lint && yarn test:fast",
     "inspect": "tsx scripts/inspect.ts",

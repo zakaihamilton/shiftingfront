@@ -527,7 +527,15 @@ describe("assertSupportedContentVersion", () => {
     expect(() => assertSupportedContentVersion(SAVE_CONTENT_VERSION)).not.toThrow();
   });
 
+  it("accepts older integer versions up to a later current format", () => {
+    expect(() => assertSupportedContentVersion(1, 2)).not.toThrow();
+    expect(() => assertSupportedContentVersion(2, 2)).not.toThrow();
+  });
+
   it("throws for a wrong version", () => {
     expect(() => assertSupportedContentVersion(SAVE_CONTENT_VERSION + 1)).toThrow("Unsupported save content version");
+    expect(() => assertSupportedContentVersion(0, 2)).toThrow("Unsupported save content version");
+    expect(() => assertSupportedContentVersion(3, 2)).toThrow("Unsupported save content version");
+    expect(() => assertSupportedContentVersion("1")).toThrow("Unsupported save content version");
   });
 });

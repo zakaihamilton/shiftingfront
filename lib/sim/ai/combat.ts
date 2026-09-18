@@ -4,7 +4,7 @@ import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
 import { byId, closestApproach, distToEntity, livingView } from "../world";
 import { contestedResourcePoint } from "./helpers";
-import { homeGuardCount } from "./director";
+import { homeGuardCount } from "../policy";
 import { nearestKnownPlayer } from "./visibility";
 
 function sameTile(a: { x: number; y: number } | undefined, b: { x: number; y: number }): boolean {

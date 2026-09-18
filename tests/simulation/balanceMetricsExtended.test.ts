@@ -212,6 +212,8 @@ describe("checkBalance", () => {
       annihilate: 0.85,
       decapitate: 0.70,
       razeAll: 0.85,
+      rescue: 0.80,
+      extraction: 0.85,
     });
     expect(result.passed).toBe(true);
   });

@@ -5,7 +5,7 @@ import { reversesPreviousStep } from "./pathfinding";
 import { tryFindPathDetailed } from "./pathBudget";
 
 const FLOW_PATH_PREFIX_LENGTH = 2;
-const MIN_CONGESTION_GROUP_SIZE = 24;
+const MIN_CONGESTION_GROUP_SIZE = 16;
 const ARRIVAL_DISTANCE = 2;
 const ARRIVAL_SWITCH_DISTANCE = 12;
 

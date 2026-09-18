@@ -7,8 +7,9 @@ export const COMBAT_ORDER_REFRESH = 96;
 export const BUILDING_RESERVE = 180;
 export const YARD_THREAT_RADIUS = 18;
 // Offensive missions need a larger response buffer so the reserve can turn
-// around before an assault wave reaches weapon range. Keep the generic radius
-// unchanged for timed operations, where early defensive detours cost deadline.
+// around before an assault wave reaches weapon range. Decapitation is a
+// surgical strike: chasing scouts at the larger radius is what blows the
+// deadline. Timed recovery already uses the generic yard radius.
 export const OFFENSIVE_RESPONSE_RADIUS = 24;
 // Keep this list aligned with generated structure-quota objectives. Barracks
 // and factories are single-instance buildings, so asking the commander to
@@ -26,7 +27,6 @@ export const OFFENSIVE_KINDS = new Set<MissionKind>([
 // offensive objective set used for production and assault readiness.
 export const OFFENSIVE_RESPONSE_KINDS = new Set<MissionKind>([
   "destroyMarked",
-  "decapitate",
   "razeAll",
   "annihilate",
 ]);

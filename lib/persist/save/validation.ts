@@ -280,8 +280,18 @@ export function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-export function assertSupportedContentVersion(contentVersion: unknown): void {
-  if (contentVersion !== SAVE_CONTENT_VERSION) throw new Error("Unsupported save content version");
+export function assertSupportedContentVersion(
+  contentVersion: unknown,
+  currentVersion: number = SAVE_CONTENT_VERSION,
+): asserts contentVersion is number {
+  if (
+    typeof contentVersion !== "number"
+    || !Number.isInteger(contentVersion)
+    || contentVersion < 1
+    || contentVersion > currentVersion
+  ) {
+    throw new Error("Unsupported save content version");
+  }
 }
 
 export { MISSION_KINDS, BIOMES, LOSS_REASONS, SCENARIO_ROLES, ORDER_MODES, STANCES, FORMATIONS, ARMOR_TYPES, WEAPON_TYPES, SURFACE_KINDS, TILE_KINDS };

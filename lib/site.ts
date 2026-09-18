@@ -12,7 +12,9 @@ export const APP_REPO_URL = "https://github.com/zakaihamilton/shiftingfront";
 export const APP_ISSUES_URL = "https://github.com/zakaihamilton/shiftingfront/issues";
 
 /** `/_vercel/insights` only exists on Vercel. Local `next start` (including Playwright) 404s it. */
-export function shouldLoadVercelAnalytics(env: NodeJS.ProcessEnv = process.env): boolean {
+export function shouldLoadVercelAnalytics(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): boolean {
   return env.VERCEL === "1";
 }
 

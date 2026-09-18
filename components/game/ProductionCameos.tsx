@@ -27,7 +27,8 @@ export function ProductionCameos({
       {PRODUCIBLE.map((unit, index) => {
         const cameo = unitCameoStatus(state.entities, 0, unit);
         const producer = availableProducer(unit);
-        const canBuy = state.credits[0] >= UNIT_STATS[unit].cost && !!producer && power >= 0;
+        const canBuy = isUnitAvailable(unit, state.missionIndex)
+          && state.credits[0] >= UNIT_STATS[unit].cost && !!producer && power >= 0;
         const disabled = cameo.phase === "idle" && !canBuy;
         const recommendation = supportRecommendationText(state, unit);
         return (

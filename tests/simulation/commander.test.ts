@@ -3,7 +3,7 @@ import { createCampaign } from "../../lib/gen/campaign";
 import { BUILDING_STATS } from "../../lib/catalog";
 import { createMission, inspect, tick } from "../../lib/sim/api";
 import { CompetentCommander } from "../../lib/sim/commander";
-import { assaultReady, defensiveThreat } from "../../lib/sim/commander/combat";
+import { assaultReady, defensiveThreat, yardRaid } from "../../lib/sim/commander/combat";
 import { planBuilding, planProduction } from "../../lib/sim/commander/production";
 import { missionDifficulty } from "../../lib/sim/difficulty";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
@@ -23,6 +23,25 @@ describe("competent commander", () => {
     addUnit(assault, 1, "infantry", 25, 5);
 
     expect(defensiveThreat(assault, assaultYard)).toBeDefined();
+  });
+
+  it("keeps decapitation on the normal HQ response radius", () => {
+    const state = makeFixture({ width: 40, height: 40, win: { kind: "decapitate", ticks: 5000 } });
+    const yard = addBuilding(state, 0, "constructionYard", 5, 5);
+    addUnit(state, 1, "infantry", 25, 5);
+
+    expect(defensiveThreat(state, yard)).toBeUndefined();
+  });
+
+  it("treats a lone infantry as a scout and a tank as a yard raid", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "decapitate", ticks: 5000 } });
+    const yard = addBuilding(state, 0, "constructionYard", 5, 5);
+    addUnit(state, 1, "infantry", 6, 5);
+
+    expect(yardRaid(state, yard)).toBe(false);
+
+    addUnit(state, 1, "tank", 7, 5);
+    expect(yardRaid(state, yard)).toBe(true);
   });
 
   it("returns snapshots instead of exposing cached query state", () => {
@@ -365,7 +384,7 @@ describe("competent commander", () => {
     expect(planBuilding(state, yard)).toBeUndefined();
   });
 
-  it("commits a decapitation strike without waiting for a late-game staging window", () => {
+  it("stages a late-game decapitation strike after the opening settle", () => {
     const state = makeFixture({ width: 24, height: 24, win: { kind: "decapitate", ticks: 5000 } });
     state.missionIndex = 4;
     addBuilding(state, 0, "constructionYard", 2, 2);
@@ -373,12 +392,81 @@ describe("competent commander", () => {
     const attackers = Array.from({ length: 10 }, (_, index) => addUnit(state, 0, "infantry", 5 + (index % 5), 6 + Math.floor(index / 5)));
     const enemyYard = addBuilding(state, 1, "constructionYard", 18, 18);
 
+    expect(assaultReady(state, enemyYard, attackers)).toBe(false);
+
+    state.tick = 2400;
     expect(assaultReady(state, enemyYard, attackers)).toBe(true);
 
     const orders = new CompetentCommander().plan(state);
     const strike = orders.find((order) => order.type === "attackMove" && order.x === enemyYard.x && order.y === enemyYard.y);
 
     expect(strike).toBeDefined();
+    expect(strike && "unitIds" in strike ? strike.unitIds.length : 0).toBeGreaterThan(0);
+  });
+
+  it("lets a late-game closeout commit an understrength decapitation force", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "decapitate", ticks: 5000 } });
+    state.missionIndex = 4;
+    const attackers = Array.from({ length: 4 }, (_, index) => addUnit(state, 0, "infantry", 5 + index, 6));
+    const enemyYard = addBuilding(state, 1, "constructionYard", 18, 18);
+
+    expect(assaultReady(state, enemyYard, attackers)).toBe(false);
+    state.tick = 2399;
+    expect(assaultReady(state, enemyYard, attackers)).toBe(false);
+    state.tick = 2400;
+    expect(assaultReady(state, enemyYard, attackers)).toBe(true);
+  });
+
+  it("aims a decapitation strike at the enemy construction yard", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "decapitate", ticks: 5000 } });
+    state.missionIndex = 2;
+    addBuilding(state, 0, "constructionYard", 2, 2);
+    addBuilding(state, 0, "power", 5, 2);
+    Array.from({ length: 10 }, (_, index) => addUnit(state, 0, "infantry", 5 + (index % 5), 6 + Math.floor(index / 5)));
+    const enemyYard = addBuilding(state, 1, "constructionYard", 18, 18);
+    addBuilding(state, 1, "turret", 16, 16, 0, true);
+
+    const orders = new CompetentCommander().plan(state);
+    const strike = orders.find((order) => order.type === "attackMove" && order.x === enemyYard.x && order.y === enemyYard.y);
+    const turretStrike = orders.find((order) => order.type === "attackMove" && order.x === 16 && order.y === 16);
+
+    expect(strike).toBeDefined();
+    expect(turretStrike).toBeUndefined();
+  });
+
+  it("fires on the enemy construction yard once a decapitation force is in range", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "decapitate", ticks: 5000 } });
+    state.missionIndex = 2;
+    addBuilding(state, 0, "constructionYard", 2, 2);
+    const enemyYard = addBuilding(state, 1, "constructionYard", 18, 18);
+    Array.from({ length: 10 }, (_, index) => addUnit(state, 0, "infantry", 17 + (index % 5), 17 + Math.floor(index / 5)));
+
+    const orders = new CompetentCommander().plan(state);
+    const fire = orders.find((order) => order.type === "attack" && order.targetId === enemyYard.id);
+
+    expect(fire).toBeDefined();
+    expect(fire && "unitIds" in fire ? fire.unitIds.length : 0).toBeGreaterThan(0);
+  });
+
+  it("keeps a committed decapitation assault moving when a scout reaches HQ", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "decapitate", ticks: 5000 } });
+    state.missionIndex = 2;
+    addBuilding(state, 0, "constructionYard", 2, 2);
+    addBuilding(state, 0, "power", 5, 2);
+    Array.from({ length: 10 }, (_, index) => addUnit(state, 0, "infantry", 5 + (index % 5), 6 + Math.floor(index / 5)));
+    const enemyYard = addBuilding(state, 1, "constructionYard", 18, 18);
+    const commander = new CompetentCommander();
+
+    expect(commander.plan(state).some((order) => order.type === "attackMove" && order.x === enemyYard.x && order.y === enemyYard.y)).toBe(true);
+
+    addUnit(state, 1, "infantry", 4, 2);
+    state.tick = 24;
+    const orders = commander.plan(state);
+    const strike = orders.find((order) => order.type === "attackMove" && order.x === enemyYard.x && order.y === enemyYard.y);
+    const intercept = orders.find((order) => order.type === "attack");
+
+    expect(strike).toBeDefined();
+    expect(intercept).toBeDefined();
     expect(strike && "unitIds" in strike ? strike.unitIds.length : 0).toBeGreaterThan(0);
   });
 

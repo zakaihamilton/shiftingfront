@@ -14,6 +14,7 @@ import {
   powerBreakdown,
   powerFor,
 } from "../world";
+import { isTimedRecovery } from "../policy";
 import {
   BUILDING_RESERVE,
   OFFENSIVE_KINDS,
@@ -57,7 +58,6 @@ export function targetForProduction(state: SimState): UnitKind | undefined {
 }
 
 export function supportNeed(state: SimState): UnitKind | undefined {
-  if (state.missionIndex < 2) return undefined;
   const humansWounded = playerUnitsView(
     state,
     (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].domain === "human" && entity.hp < entity.maxHp,
@@ -66,8 +66,12 @@ export function supportNeed(state: SimState): UnitKind | undefined {
     state,
     (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].domain === "vehicle" && entity.hp < entity.maxHp,
   ).length > 0;
-  if (humansWounded && totalUnitCount(state, "medic") + queuedUnitCount(state, "medic") === 0) return "medic";
-  if (vehiclesWounded && totalUnitCount(state, "repairTruck") + queuedUnitCount(state, "repairTruck") === 0) return "repairTruck";
+  if (humansWounded && isUnitAvailable("medic", state.missionIndex) && totalUnitCount(state, "medic") + queuedUnitCount(state, "medic") === 0) {
+    return "medic";
+  }
+  if (vehiclesWounded && isUnitAvailable("repairTruck", state.missionIndex) && totalUnitCount(state, "repairTruck") + queuedUnitCount(state, "repairTruck") === 0) {
+    return "repairTruck";
+  }
   return undefined;
 }
 
@@ -132,7 +136,7 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
     (entity) => entity.class === "unit" && entity.kind !== "harvester" && distToEntity(yard, entity) <= YARD_THREAT_RADIUS,
   );
   const turretCount = completedOrBuilding(state, "turret");
-  const timedRecovery = objectiveKind(state) === "rescue" || objectiveKind(state) === "extraction";
+  const timedRecovery = isTimedRecovery(objectiveKind(state));
   const turretTarget = timedRecovery ? 1 : 1 + Math.min(2, Math.ceil(state.missionIndex / 2));
   if (threat && turretCount < turretTarget && !pending) {
     const turret = buildCommand(state, "turret", yard);

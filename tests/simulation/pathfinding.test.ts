@@ -746,6 +746,52 @@ describe("pathfinding", () => {
     })).toBe(true);
   });
 
+  it("keeps a 16-unit order cohesive through approach and arrival phases", () => {
+    const s = makeFixture({ width: 48, height: 48, win: { kind: "harvestQuota", target: 99999 } });
+    const units: ReturnType<typeof addUnit>[] = [];
+    for (let y = 4; y < 8; y++) {
+      for (let x = 3; x < 7; x++) units.push(addUnit(s, 0, "infantry", x, y));
+    }
+    issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 36, y: 36 });
+
+    const initialDestinations = units.map((unit) => ({ ...unit.orderDestination! }));
+    expect(new Set(initialDestinations.map((destination) => `${destination.x},${destination.y}`)).size).toBe(16);
+    const approach = flowFieldFor(s, { x: 36, y: 36 });
+    expect(initialDestinations.every((destination) => approach.distance[destination.y * s.width + destination.x] !== -1)).toBe(true);
+    const fieldsAfterOrder = flowFieldCacheSize(s);
+    const olderCells = new Map<number, number>();
+    const previousCells = new Map<number, number>();
+    const averageDistance = () => units.reduce((sum, unit) => {
+      const destination = unit.orderDestination!;
+      return sum + Math.max(
+        Math.abs(Math.round(unit.x) - destination.x),
+        Math.abs(Math.round(unit.y) - destination.y),
+      );
+    }, 0) / units.length;
+    const startingDistance = averageDistance();
+
+    for (let tickIndex = 0; tickIndex < 2_000; tickIndex++) {
+      tick(s, undefined, { evaluateObjectives: false });
+      expectUniqueUnitCells(s);
+      expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
+      for (const unit of units) {
+        const cell = Math.round(unit.y) * s.width + Math.round(unit.x);
+        const previous = previousCells.get(unit.id);
+        const older = olderCells.get(unit.id);
+        if (previous !== undefined && older !== undefined && cell !== previous) expect(cell).not.toBe(older);
+        olderCells.set(unit.id, previous ?? cell);
+        previousCells.set(unit.id, cell);
+      }
+      if (tickIndex === 399) expect(averageDistance()).toBeLessThan(startingDistance - 8);
+    }
+
+    expect(flowFieldCacheSize(s)).toBeLessThanOrEqual(fieldsAfterOrder + 2);
+    expect(units.every((unit) => {
+      const destination = unit.orderDestination!;
+      return Math.round(unit.x) === destination.x && Math.round(unit.y) === destination.y && unit.idle;
+    })).toBe(true);
+  });
+
   it.skipIf(IS_COVERAGE)("keeps a 128-unit order cohesive through approach and arrival phases", () => {
     const s = makeFixture({ width: 96, height: 96, win: { kind: "harvestQuota", target: 99999 } });
     const units: ReturnType<typeof addUnit>[] = [];

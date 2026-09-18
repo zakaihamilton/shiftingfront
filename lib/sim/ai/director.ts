@@ -9,6 +9,7 @@ import { assignAttack, assignAssault, assignMove, sendHome } from "./combat";
 import { contestedResourcePoint, distance, queueUnit, shouldAutoRepair, shouldRetreat } from "./helpers";
 import { enemyKnownPlayerEntities, nearestKnownPlayer } from "./visibility";
 import { isCombatTarget } from "../combat/grid";
+import { homeGuardCount, isTimedRecovery } from "../policy";
 
 const YARD_DEFENSE_RANGE = 14;
 
@@ -37,10 +38,6 @@ export function directorPhase(state: SimState): MissionDirectorPhase {
     ?? (state.tick >= missionDifficulty(state.missionIndex).enemyAssaultEvery ? "pressure" : "opening");
 }
 
-export function homeGuardCount(missionIndex: number): number {
-  return 1 + (missionIndex >= 4 ? 1 : 0);
-}
-
 export function guardScenarioObjectives(state: SimState, units: Entity[]): void {
   const runtime = state.runtime;
   if (!runtime || !["sabotage", "destroyMarked", "rescue", "extraction"].includes(runtime.kind)) return;
@@ -48,7 +45,7 @@ export function guardScenarioObjectives(state: SimState, units: Entity[]): void 
     .map((id) => byId(state, id))
     .filter((entity): entity is Entity => {
       if (!entity || entity.hp <= 0) return false;
-      return runtime.kind === "rescue" || runtime.kind === "extraction"
+      return isTimedRecovery(runtime.kind)
         ? entity.owner === 0 && entity.neutral === true
         : entity.owner === 1;
     });
@@ -143,7 +140,7 @@ export function tickAi(state: SimState): void {
   const objectiveContract = objectiveContractFor(state.win.kind);
   const phase = directorPhase(state);
   const timedScenario = state.runtime?.director !== undefined && state.missionIndex >= 4 && (
-    state.runtime.kind === "escort" || state.runtime.kind === "rescue" || state.runtime.kind === "extraction"
+    state.runtime.kind === "escort" || isTimedRecovery(state.runtime.kind)
   );
   const openingOffensive = state.win.kind === "decapitate" && state.missionIndex < 2;
   const timedProductionScale = state.runtime?.kind === "extraction" ? 2.5 : 2;
@@ -168,11 +165,10 @@ export function tickAi(state: SimState): void {
     const hasRefinery = enemyBuildings.some((e) => e.kind === "refinery");
     const want: UnitKind = playerTanks > playerInfantry ? "antiArmor" : rng.chance(0.4) ? "tank" : "infantry";
     const producer = want === "infantry" || want === "antiArmor" ? barracks : factory;
-    const supportWant = state.missionIndex >= 2 && (
-      woundedHumans && medicCount === 0 ? "medic" :
-      woundedVehicles && repairTruckCount === 0 ? "repairTruck" :
-      undefined
-    );
+    const supportWant =
+      woundedHumans && medicCount === 0 && isUnitAvailable("medic", state.missionIndex) ? "medic"
+        : woundedVehicles && repairTruckCount === 0 && isUnitAvailable("repairTruck", state.missionIndex) ? "repairTruck"
+          : undefined;
     const supportProducer = supportWant === "medic" ? barracks : supportWant === "repairTruck" ? factory : undefined;
     const power = powerFor(state, 1);
     if (power < 0) {
@@ -187,7 +183,7 @@ export function tickAi(state: SimState): void {
       // Keep ore income before spending on combat.
     } else if (!hasHarvester && factory && queueUnit(state, factory, "harvester")) {
       // Replace a lost harvester before more combat units.
-    } else if (supportWant && supportProducer && isUnitAvailable(supportWant, state.missionIndex) && queueUnit(state, supportProducer, supportWant)) {
+    } else if (supportWant && supportProducer && queueUnit(state, supportProducer, supportWant)) {
       // Add one support unit when the army has a matching damaged domain.
     } else if (producer && queueUnit(state, producer, want)) {
       // Counter-produce against the player mix.
