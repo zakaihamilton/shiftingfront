@@ -31,6 +31,9 @@ const MAX_ARCHETYPE_QUEUE = 3;
 // defensive run from spending most of its wall time resolving hundreds of
 // low-value late-game entities after the outcome is already decided.
 const MAX_TURTLE_COMBAT_UNITS = 24;
+const MAX_GREED_COMBAT_UNITS = 24;
+const MAX_INFANTRY_COMBAT_UNITS = 36;
+const MAX_VEHICLES_COMBAT_UNITS = 20;
 
 function buildCommand(state: SimState, kind: BuildingKind, yard: Entity, reserve = 120): Command | undefined {
   if (state.credits[0] < BUILDING_STATS[kind].cost + reserve) return undefined;
@@ -137,6 +140,9 @@ function productionCommands(state: SimState, strategy: ArchetypeStrategy): Comma
     const unit = desiredUnit(state, strategy, producer);
     if (!unit || !isUnitAvailable(unit, state.missionIndex) || producerFor(unit) !== producer.kind) continue;
     if (strategy === "turtle" && unit !== "harvester" && combatCount >= MAX_TURTLE_COMBAT_UNITS) continue;
+    if (strategy === "greed" && unit !== "harvester" && combatCount >= MAX_GREED_COMBAT_UNITS) continue;
+    if (strategy === "infantry" && unit !== "harvester" && combatCount >= MAX_INFANTRY_COMBAT_UNITS) continue;
+    if (strategy === "vehicles" && unit !== "harvester" && combatCount >= MAX_VEHICLES_COMBAT_UNITS) continue;
     if (availableCredits < UNIT_STATS[unit].cost || powerFor(state, 0) < 0) continue;
     commands.push({ type: "produce", fromId: producer.id, unit });
     availableCredits -= UNIT_STATS[unit].cost;

@@ -28,7 +28,6 @@ jobs:
           package-manager-cache: false
       - run: yarn install --frozen-lockfile
       - run: yarn lint
-      - run: yarn build
       - name: Run tests with timing report
         run: |
           mkdir -p artifacts
@@ -120,7 +119,18 @@ jobs:
           cache: yarn
           package-manager-cache: false
       - run: yarn install --frozen-lockfile
-      - run: yarn playwright install --with-deps chromium webkit
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('yarn.lock') }}
+      - name: Install Playwright browsers with deps
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: yarn playwright install --with-deps chromium webkit
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: yarn playwright install-deps chromium webkit
       - run: yarn test:e2e
         env:
           CI: true
