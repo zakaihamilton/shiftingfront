@@ -414,6 +414,7 @@ export function archetypeFailureRecords(
   summary: BalanceSummary,
   records: BalanceRecord[],
   strategiesToCheck: readonly BalanceStrategy[] = ARCHETYPE_STRATEGIES,
+  minKindSamples = 8,
 ): BalanceRecord[] {
   const failures = new Set<BalanceRecord>();
   for (const strategy of strategiesToCheck) {
@@ -427,7 +428,7 @@ export function archetypeFailureRecords(
     }
     for (const kind of cappedKindsForStrategy(strategy)) {
       const kindSummary = strategySummary.byMissionKind[kind];
-      if (kindSummary && kindSummary.samples >= 8 && kindSummary.winRate > 0.75) {
+      if (kindSummary && kindSummary.samples >= minKindSamples && kindSummary.winRate > 0.75) {
         strategyRecords.filter((record) => record.kind === kind).forEach((record) => failures.add(record));
       }
     }
@@ -440,6 +441,7 @@ export function checkArchetypeBalance(
   summary: BalanceSummary,
   records: BalanceRecord[],
   strategiesToCheck: readonly BalanceStrategy[] = ARCHETYPE_STRATEGIES,
+  minKindSamples = 8,
 ): BalanceCheck {
   const failures: string[] = [];
   for (const strategy of strategiesToCheck) {
@@ -464,7 +466,7 @@ export function checkArchetypeBalance(
     }
     for (const kind of cappedKindsForStrategy(strategy)) {
       const kindSummary = strategySummary.byMissionKind[kind];
-      if (!kindSummary || kindSummary.samples < 8) continue;
+      if (!kindSummary || kindSummary.samples < minKindSamples) continue;
       if (kindSummary.winRate > 0.75) {
         failures.push(`${strategy} ${kind} win rate ${(kindSummary.winRate * 100).toFixed(1)}% exceeds 75.0%`);
       }

@@ -11,9 +11,10 @@ export default defineConfig({
   // The app and its production web server are shared by all projects. Running
   // individual tests from the same file concurrently causes intermittent
   // navigation and hydration races on local runs, especially for WebKit.
-  // Keep CI fully serialized and allow only two file-level workers locally.
+  // Keep file-level execution serialized with fullyParallel: false, and allow
+  // 2 file-level workers to utilize both runner vCPUs.
   fullyParallel: false,
-  workers: process.env.CI ? 1 : 2,
+  workers: 2,
   retries: process.env.CI ? 2 : 0,
   reporter: "line",
   use: {

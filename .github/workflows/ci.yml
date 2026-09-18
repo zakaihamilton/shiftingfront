@@ -95,9 +95,14 @@ jobs:
           retention-days: 14
 
   balance-health:
-    name: Balance health (competent)
+    name: Balance health (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2]
+        shardTotal: [2]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -116,26 +121,28 @@ jobs:
       - name: Run balance health with timing report
         run: |
           mkdir -p artifacts
-          yarn ci:timed-balance
+          yarn ci:timed-balance --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} > "artifacts/balance-timing-shard-${{ matrix.shardIndex }}.json"
       - name: Upload balance timing reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: balance-timing-${{ github.run_id }}
+          name: balance-timing-${{ github.run_id }}-shard-${{ matrix.shardIndex }}
           path: artifacts/
           if-no-files-found: warn
           retention-days: 14
 
   archetype-balance:
-    name: Archetype balance (${{ matrix.strategy }})
+    name: Archetype balance (${{ matrix.strategy }}, shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: ubuntu-24.04
     # The greed archetype intentionally runs long late-game economic missions
     # and exceeds the default 20-minute matrix budget on hosted runners.
-    timeout-minutes: 20
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         strategy: [rush, turtle, greed, infantry, vehicles]
+        shardIndex: [1, 2]
+        shardTotal: [2]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -154,12 +161,12 @@ jobs:
       - name: Run stratified archetype balance
         run: |
           mkdir -p artifacts
-          yarn ci:timed-balance-archetype --strategy "${{ matrix.strategy }}" > "artifacts/balance-archetype-${{ matrix.strategy }}-timing.json"
+          yarn ci:timed-balance-archetype --strategy "${{ matrix.strategy }}" --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} > "artifacts/balance-archetype-${{ matrix.strategy }}-shard-${{ matrix.shardIndex }}-timing.json"
       - name: Upload archetype timing report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: archetype-timing-${{ github.run_id }}-${{ matrix.strategy }}
+          name: archetype-timing-${{ github.run_id }}-${{ matrix.strategy }}-shard-${{ matrix.shardIndex }}
           path: artifacts/
           if-no-files-found: warn
           retention-days: 14

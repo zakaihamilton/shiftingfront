@@ -28,6 +28,15 @@ function optionalNumberArg(name: string): number | undefined {
   return value;
 }
 
+function parseShard(value: string): { index: number; total: number } {
+  const match = /^(\d+)\/(\d+)$/.exec(value);
+  if (!match) throw new Error(`Invalid --shard format "${value}"; use <index>/<total>, e.g. 1/2`);
+  const index = Number(match[1]);
+  const total = Number(match[2]);
+  if (index < 1 || index > total) throw new Error(`Shard index ${index} out of bounds (1..${total})`);
+  return { index, total };
+}
+
 const from = Number(arg("from", "0"));
 const to = Number(arg("to", "99"));
 const missionArg = arg("mission", "all");
@@ -36,6 +45,8 @@ const strategyArg = arg("strategy", "competent");
 const details = arg("details", "false") === "true";
 const shouldCheck = arg("check", "false") === "true";
 const stratified = arg("stratified", "false") === "true";
+const shardArg = arg("shard", "");
+const shard = shardArg ? parseShard(shardArg) : undefined;
 const progressEnabled = arg("progress", "true") !== "false";
 const progressEvery = Math.max(1, Number(arg("progress-every", "1")) || 1);
 const requestedJobs = Math.max(0, Number(arg("jobs", "0")) || 0);
@@ -54,8 +65,13 @@ async function main() {
     ? [...ARCHETYPE_STRATEGIES]
     : [strategyArg as BalanceStrategy];
   const baseOptions: Omit<BalanceRunOptions, "strategy"> = { from, to, missions, maxTicks };
-  const scenarioList = archetypeSweep || stratified ? stratifiedBalanceScenarios(from, to, 8) : undefined;
-  const scenarioCount = scenarioList?.length ?? balanceScenarios({ ...baseOptions, strategy: strategies[0] }).length;
+  const allScenarios = archetypeSweep || stratified
+    ? stratifiedBalanceScenarios(from, to, 8)
+    : balanceScenarios({ ...baseOptions, strategy: strategies[0] });
+  const scenarioList = shard
+    ? allScenarios.filter((_, i) => i % shard.total === shard.index - 1)
+    : (archetypeSweep || stratified ? allScenarios : undefined);
+  const scenarioCount = scenarioList?.length ?? allScenarios.length;
   const jobs = requestedJobs > 0 ? requestedJobs : defaultBalanceJobs(scenarioCount);
   const startedAt = performance.now();
   const deadlineAt = maxElapsedMs > 0 ? startedAt + maxElapsedMs : undefined;
@@ -92,24 +108,25 @@ async function main() {
   const elapsedBudgetExceeded = maxElapsedMs > 0 && elapsedMs >= maxElapsedMs;
   const summary = summarizeBalance(records);
   const thresholds: BalanceThresholds = {
-  ...DEFAULT_BALANCE_THRESHOLDS,
-  minWinRate: Number(arg("min-win-rate", String(DEFAULT_BALANCE_THRESHOLDS.minWinRate))),
-  ...(maxWinRate === undefined ? {} : { maxWinRate }),
-  maxTimeoutRate: Number(arg("max-timeout-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxTimeoutRate))),
-  minKindSamples: Number(arg("min-kind-samples", String(DEFAULT_BALANCE_THRESHOLDS.minKindSamples))),
-  minKindWinRate: Number(arg("min-kind-win-rate", String(DEFAULT_BALANCE_THRESHOLDS.minKindWinRate))),
-  maxKindTimeoutRate: Number(arg("max-kind-timeout-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxKindTimeoutRate))),
-  maxTruncatedRate: Number(arg("max-truncated-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxTruncatedRate))),
-  maxMapFailureRate: Number(arg("max-map-failure-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxMapFailureRate))),
-  maxPowerDeficitRate: Number(arg("max-power-deficit-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxPowerDeficitRate))),
-  maxCommandRejectionRate: Number(arg("max-command-rejection-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxCommandRejectionRate))),
-  maxAverageCasualties: Number(arg("max-average-casualties", String(DEFAULT_BALANCE_THRESHOLDS.maxAverageCasualties))),
+    ...DEFAULT_BALANCE_THRESHOLDS,
+    minWinRate: Number(arg("min-win-rate", String(DEFAULT_BALANCE_THRESHOLDS.minWinRate))),
+    ...(maxWinRate === undefined ? {} : { maxWinRate }),
+    maxTimeoutRate: Number(arg("max-timeout-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxTimeoutRate))),
+    minKindSamples: Number(arg("min-kind-samples", String(shard ? Math.max(1, Math.floor(DEFAULT_BALANCE_THRESHOLDS.minKindSamples / shard.total)) : DEFAULT_BALANCE_THRESHOLDS.minKindSamples))),
+    minKindWinRate: Number(arg("min-kind-win-rate", String(DEFAULT_BALANCE_THRESHOLDS.minKindWinRate))),
+    maxKindTimeoutRate: Number(arg("max-kind-timeout-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxKindTimeoutRate))),
+    maxTruncatedRate: Number(arg("max-truncated-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxTruncatedRate))),
+    maxMapFailureRate: Number(arg("max-map-failure-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxMapFailureRate))),
+    maxPowerDeficitRate: Number(arg("max-power-deficit-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxPowerDeficitRate))),
+    maxCommandRejectionRate: Number(arg("max-command-rejection-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxCommandRejectionRate))),
+    maxAverageCasualties: Number(arg("max-average-casualties", String(DEFAULT_BALANCE_THRESHOLDS.maxAverageCasualties))),
   };
+  const minArchetypeKindSamples = shard ? Math.max(1, Math.floor(8 / shard.total)) : 8;
   const acceptance = shouldCheck
     ? archetypeSweep
-      ? checkArchetypeBalance(summary, records)
+      ? checkArchetypeBalance(summary, records, undefined, minArchetypeKindSamples)
       : isArchetypeStrategy(strategyArg as BalanceStrategy)
-        ? checkArchetypeBalance(summary, records, [strategyArg as BalanceStrategy])
+        ? checkArchetypeBalance(summary, records, [strategyArg as BalanceStrategy], minArchetypeKindSamples)
         : checkBalance(summary, thresholds)
     : undefined;
   const failureSet = new Set<BalanceRecord>(records.filter((record) => record.result !== "won"
@@ -120,7 +137,7 @@ async function main() {
     || record.nonFiniteState === true));
   if (archetypeSweep || isArchetypeStrategy(strategyArg as BalanceStrategy)) {
     const strategiesToReport = archetypeSweep ? undefined : [strategyArg as BalanceStrategy];
-    for (const record of archetypeFailureRecords(summary, records, strategiesToReport)) failureSet.add(record);
+    for (const record of archetypeFailureRecords(summary, records, strategiesToReport, minArchetypeKindSamples)) failureSet.add(record);
   }
   const failedScenarios = records
     .filter((record) => failureSet.has(record))
@@ -173,10 +190,11 @@ async function main() {
   const slowestIndex = scenarioTimes.reduce((best, value, index) => value > (scenarioTimes[best] ?? -1) ? index : best, 0);
   const slowest = records[slowestIndex];
   console.log(JSON.stringify({
-  strategy: strategyArg,
-  strategies,
-  jobs,
-  range: { from, to },
+    strategy: strategyArg,
+    strategies,
+    jobs,
+    ...(shard ? { shard } : {}),
+    range: { from, to },
   missions: [...new Set(missions)].filter((mission) => Number.isInteger(mission) && mission >= 0 && mission < 6).sort((a, b) => a - b),
   ticks: maxTicks,
   samples: records.length,

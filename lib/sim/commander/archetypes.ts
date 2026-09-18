@@ -167,7 +167,7 @@ function commitTick(state: SimState, strategy: ArchetypeStrategy): number {
   const horizon = state.runtime?.deadline ?? state.win.ticks ?? 3600;
   if (strategy === "rush") return Math.max(180, Math.floor(horizon * 0.10));
   if (strategy === "greed") return Math.floor(horizon * 0.90);
-  if (strategy === "turtle") return Math.floor(horizon * 0.90);
+  if (strategy === "turtle") return Math.floor(horizon * 0.75);
   return Math.floor(horizon * 0.35);
 }
 
@@ -230,7 +230,9 @@ export class ArchetypeCommander {
     const combat = commandCombat(state, this.strategy, yard);
     if (combat) {
       const key = `${orderKey(combat)}:${"unitIds" in combat ? combat.unitIds.join(",") : ""}`;
-      if (key !== this.lastOrder || state.tick - this.lastOrderTick >= 96) {
+      const isMoveToYard = combat.type === "move" && combat.x === yard.x && combat.y === yard.y;
+      const alreadyAtYard = isMoveToYard && key === this.lastOrder && combatUnits(state).every((unit) => distToEntity(unit, yard) <= 8);
+      if (!alreadyAtYard && (key !== this.lastOrder || state.tick - this.lastOrderTick >= 96)) {
         commands.push(combat);
         this.lastOrder = key;
         this.lastOrderTick = state.tick;
