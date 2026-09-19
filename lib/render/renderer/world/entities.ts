@@ -1,4 +1,4 @@
-import { footprintOf } from "../../../catalog";
+import { footprintOf, isAirUnit } from "../../../catalog";
 import { buildingSprite, unitSprite } from "../../../gen/assets";
 import { generateVisualProfile } from "../../../gen/visualProfile";
 import type { BuildingKind, Entity, SimState, UnitKind } from "../../../types";
@@ -204,7 +204,7 @@ export function renderEntityPhase(
       const dyn = dynCache.get(e.id)!;
       cx = dyn.x;
       cy = dyn.y;
-      elev = dyn.z;
+      elev = dyn.z + (isAirUnit(e.kind) ? 3 : 0);
     } else {
       const fp = footprintOf(e.kind as BuildingKind);
       cx = e.x + (fp.w - 1) / 2;
@@ -367,7 +367,7 @@ export function renderEntityPhase(
     }
 
     if (bAnim) drawBuildingFx(ctx, e, s, z, bAnim);
-    if (e.kind === "turret" && e.class === "building") {
+    if ((e.kind === "turret" || e.kind === "antiAirTurret") && e.class === "building") {
       const targetEntity = e.attackTarget !== undefined ? entityById.get(e.attackTarget) : undefined;
       drawTurretCannon(ctx, e, s, z, state, cam, timeMs, targetEntity, extras.colorblindMode);
     }

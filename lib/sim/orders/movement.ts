@@ -1,9 +1,11 @@
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
 import { terrainComponentIdsFor } from "../flowField";
+import { isAirUnit } from "../../catalog";
 import { isUnitEntity, type Entity, type Formation, type SimEvent, type SimState } from "../../types";
 import { byId, inBounds, isStaticWalkable } from "../world";
 import { clearSupportOrder } from "../support";
+import { launchAircraft } from "../aircraft";
 
 export function moveUnits(state: SimState, ids: number[], x: number, y: number, formation?: Formation): SimEvent[] {
   return issueTravelOrder(state, ids, x, y, "move", formation);
@@ -30,13 +32,19 @@ function issueTravelOrder(
   const tx = Math.round(x);
   const ty = Math.round(y);
   const movers = collectMovers(state, ids, orderMode === "attackMove");
-  const dests = destinationsForGroup(state, movers, tx, ty, formation);
-  const sharedFlowGoal = movers.length > 1 ? { x: tx, y: ty } : undefined;
-  movers.forEach((e, index) => {
+  const groundMovers = movers.filter((entity) => !isAirUnit(entity.kind));
+  const groundDests = destinationsForGroup(state, groundMovers, tx, ty, formation);
+  const sharedFlowGoal = groundMovers.length > 1 ? { x: tx, y: ty } : undefined;
+  let groundIndex = 0;
+  movers.forEach((e) => {
     clearSupportOrder(e);
+    if (isAirUnit(e.kind)) launchAircraft(state, e);
     e.attackTarget = undefined;
     e.orderMode = orderMode;
-    const destination = dests[index] ?? { x: tx, y: ty };
+    const groundDestinationIndex = groundIndex;
+    const destination = isAirUnit(e.kind)
+      ? { x: tx, y: ty }
+      : groundDests[groundIndex++] ?? { x: tx, y: ty };
     e.orderDestination = destination;
     e.gatherX = undefined;
     e.gatherY = undefined;
@@ -46,15 +54,20 @@ function issueTravelOrder(
     // The shared flow goal is only an approach field. The personal order
     // destination remains the unit's actual landing cell, so the group peels
     // off into distinct cells when it reaches the destination area.
-    e.flowGoal = sharedFlowGoal ? { ...sharedFlowGoal } : undefined;
+    e.flowGoal = !isAirUnit(e.kind) && sharedFlowGoal ? { ...sharedFlowGoal } : undefined;
     e.routePending = false;
+    if (isAirUnit(e.kind)) {
+      e.path = [];
+      e.landingRunwayId = undefined;
+      return;
+    }
     if (sharedFlowGoal) {
       e.path = [];
       e.routePending = true;
       return;
     }
-    if (index < FOREGROUND_PATHS_PER_ORDER) {
-      const result = findPathDetailed(state, e, dests[index] ?? { x: tx, y: ty }, { maxNodes: FOREGROUND_PATH_MAX_NODES });
+    if (groundDestinationIndex < FOREGROUND_PATHS_PER_ORDER) {
+      const result = findPathDetailed(state, e, destination, { maxNodes: FOREGROUND_PATH_MAX_NODES });
       e.path = result.path;
       e.routePending = routePendingFor(result.status);
     } else {

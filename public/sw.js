@@ -109,6 +109,9 @@ const PRECACHE_URLS = [
   "/art/results/victory.webp",
 
   // Sprites (Units & Buildings)
+  "/art/sprites/sleek-modular/air-support/anti-air-turret-v1.webp",
+  "/art/sprites/sleek-modular/air-support/runway-v1.webp",
+  "/art/sprites/sleek-modular/air-support/strike-plane-front-right-v1.webp",
   "/art/sprites/sleek-modular/anti-armor-back-left-v1.webp",
   "/art/sprites/sleek-modular/anti-armor-back-right-v1.webp",
   "/art/sprites/sleek-modular/anti-armor-back.webp",

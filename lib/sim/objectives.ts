@@ -1,5 +1,5 @@
-import { labelFor, TICKS_PER_SECOND } from "../catalog";
-import type { InspectReport, MissionRuntime, SimEvent, SimState } from "../types";
+import { isAirUnit, labelFor, TICKS_PER_SECOND } from "../catalog";
+import type { Entity, InspectReport, MissionRuntime, SimEvent, SimState } from "../types";
 import { formatSeed } from "../seed/rng";
 import { formatMissionClock, formatMissionClockFromTicks } from "../gen/pacing";
 import { livingView } from "./world";
@@ -45,6 +45,16 @@ function timeRemainingTicks(state: SimState): number | undefined {
 }
 
 const DEADLINE_WARNING_SECONDS = [60, 30, 10] as const;
+
+function isOperationalEnemy(entity: Entity): boolean {
+  return !(
+    entity.class === "unit"
+    && isAirUnit(entity.kind)
+    && entity.flightState === "airborne"
+    && (entity.ammo ?? 0) <= 0
+    && entity.assignedRunwayId === undefined
+  );
+}
 
 function deadlineWarningEvent(state: SimState): SimEvent | undefined {
   if (!state.runtime || !DEADLINE_SCENARIO_KINDS.includes(state.runtime.kind)) return undefined;
@@ -125,7 +135,7 @@ export function objectiveProgress(state: SimState): ObjectiveProgress {
       break;
     }
     case "annihilate": {
-      const left = livingView(state).filter((e) => e.owner === 1).length;
+      const left = livingView(state).filter((e) => e.owner === 1 && isOperationalEnemy(e)).length;
       progress = { current: left === 0 ? 1 : 0, target: 1, label: left === 0 ? "Campaign clear" : `Hostiles left ${left}` };
       break;
     }
@@ -196,7 +206,7 @@ export function evaluateObjectives(state: SimState, eventSink?: SimEvent[], coll
       won = !livingView(state).some((e) => e.owner === 1 && e.kind === "constructionYard");
       break;
     case "annihilate":
-      won = !livingView(state).some((e) => e.owner === 1);
+      won = !livingView(state).some((e) => e.owner === 1 && isOperationalEnemy(e));
       break;
     case "holdTheLine":
       if (state.tick >= (w.ticks ?? Infinity) && playerCy) won = true;

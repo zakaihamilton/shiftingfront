@@ -1,15 +1,19 @@
-import { footprintOf } from "../../catalog";
+import { BUILDING_STATS, footprintOf } from "../../catalog";
 import { tileToScreen, type Camera } from "../../iso";
 import { lerpAngle } from "../gl/glMath";
 import { isBuildingEntity, type Entity, type SimState } from "../../types";
 import { iffColors } from "../iff";
 import { entityElev } from "../renderPicking";
-import { buildTurretHeadModel, type UnitModel } from "../gl/modelLoader";
+import { buildAntiAirTurretModel, buildTurretHeadModel, type UnitModel } from "../gl/modelLoader";
 import { drawCachedTurretModel } from "../gl/turretRaster";
 import { distToEntity } from "../../sim/world";
 
 export const turretAimMap = new Map<number, { angle: number; lastMs: number }>();
 export const TURRET_WEAPON_RANGE = 5.5;
+
+function turretRange(turret: Entity): number {
+  return isBuildingEntity(turret) ? BUILDING_STATS[turret.kind].combat?.range ?? TURRET_WEAPON_RANGE : TURRET_WEAPON_RANGE;
+}
 
 /**
  * Render locks only while the target is a valid nearby enemy. Combat can leave
@@ -18,11 +22,11 @@ export const TURRET_WEAPON_RANGE = 5.5;
  */
 export function turretTargetInRange(turret: Entity, target: Entity): boolean {
   return turret.class === "building" &&
-    turret.kind === "turret" &&
+    (turret.kind === "turret" || turret.kind === "antiAirTurret") &&
     target.hp > 0 &&
     target.owner !== turret.owner &&
     !target.neutral &&
-    distToEntity(turret, target) <= TURRET_WEAPON_RANGE;
+    distToEntity(turret, target) <= turretRange(turret);
 }
 
 /** Aim at the nearest cell of a building footprint instead of its top-left corner. */
@@ -46,12 +50,13 @@ export function pruneTurretAimCache(liveIds: Iterable<number>): void {
   }
 }
 
-let cachedTurretModel: UnitModel | null = null;
-export function getTurretModel(): UnitModel {
-  if (!cachedTurretModel) {
-    cachedTurretModel = buildTurretHeadModel();
-  }
-  return cachedTurretModel;
+const cachedTurretModels = new Map<"turret" | "antiAirTurret", UnitModel>();
+export function getTurretModel(kind: "turret" | "antiAirTurret" = "turret"): UnitModel {
+  const cached = cachedTurretModels.get(kind);
+  if (cached) return cached;
+  const model = kind === "antiAirTurret" ? buildAntiAirTurretModel() : buildTurretHeadModel();
+  cachedTurretModels.set(kind, model);
+  return model;
 }
 
 export function drawTurretCannon(
@@ -65,7 +70,7 @@ export function drawTurretCannon(
   targetEntity?: Entity,
   colorblindMode: import("../../persist/settings").ColorblindMode = "none",
 ): void {
-  if (e.hp <= 0 || e.constructing > 0) return;
+  if (e.hp <= 0 || e.constructing > 0 || e.class !== "building" || (e.kind !== "turret" && e.kind !== "antiAirTurret")) return;
   const target = targetEntity && turretTargetInRange(e, targetEntity) ? targetEntity : undefined;
   const targetPoint = target ? turretTargetPoint(e, target) : undefined;
 
@@ -92,8 +97,9 @@ export function drawTurretCannon(
   aim.angle = lerpAngle(aim.angle, targetAngle, Math.min(1, dt * 10.0));
 
   const angle = aim.angle;
-  const isFiring = e.cooldown >= 11;
-  const recoil = isFiring ? ((e.cooldown - 11) / 3) * 3 * z : 0;
+  const cooldown = BUILDING_STATS[e.kind].combat?.cooldown ?? 14;
+  const isFiring = e.cooldown >= Math.max(1, cooldown - 3);
+  const recoil = isFiring ? ((e.cooldown - (cooldown - 3)) / 3) * 3 * z : 0;
 
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
@@ -135,8 +141,8 @@ export function drawTurretCannon(
   ctx.restore();
 
   const pal = state.factions[e.owner]?.palette ?? state.factions[0]?.palette;
-  const model = getTurretModel();
-  const recoilRatio = isFiring ? (e.cooldown - 11) / 3 : 0;
+  const model = getTurretModel(e.kind);
+  const recoilRatio = isFiring ? (e.cooldown - (cooldown - 3)) / 3 : 0;
   drawCachedTurretModel(ctx, model, mountX, mountY - 3 * z, z, angle - Math.PI / 4, pal, recoilRatio);
 
   const forwardDist = 26 * z - recoil;

@@ -1,7 +1,7 @@
 import { BUILDING_STATS, UNIT_STATS } from "../catalog";
 import { TICK_MS } from "../game/loop";
 import { isoFacingAngle, screenAngleToFacing } from "../iso";
-import type { BuildingKind, Entity, Facing, UnitKind } from "../types";
+import { isBuildingEntity, type BuildingKind, type Entity, type Facing, type UnitKind } from "../types";
 
 export type AnimFrame = 0 | 1 | 2 | 3;
 export type UnitPose = "idle" | "move" | "attack" | "work";
@@ -253,7 +253,9 @@ export function damageFlicker(timeMs: number, id: number, damageStage: 0 | 1 | 2
 }
 
 function attackRecoil(e: Entity): number {
-  const max = e.class === "unit" ? UNIT_STATS[e.kind as UnitKind].cooldown : e.kind === "turret" ? 14 : 0;
+  const max = e.class === "unit"
+    ? UNIT_STATS[e.kind as UnitKind].cooldown
+    : isBuildingEntity(e) ? BUILDING_STATS[e.kind].combat?.cooldown ?? 0 : 0;
   if (max <= 0 || e.cooldown <= 0) return 0;
   const firedAgo = max - e.cooldown;
   if (firedAgo > 4) return 0;

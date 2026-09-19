@@ -1,4 +1,4 @@
-import { BUILDING_DEFINITIONS, UNIT_STATS, footprintOf } from "../catalog";
+import { BUILDING_DEFINITIONS, isAirUnit, UNIT_STATS, footprintOf } from "../catalog";
 import { isBuildingEntity, type BuildingKind, type Entity, type SimEvent, type SimState } from "../types";
 import { frontTileNear, invalidatePowerCache, openTileNear, powerFor, trySpawnUnit } from "./world";
 import { assignMoveDestination } from "./orders/movement";
@@ -140,6 +140,14 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
           y: spawned.y,
           sourceId: e.id,
         });
+        if (isAirUnit(kind) && isBuildingEntity(e) && e.kind === "runway") {
+          spawned.assignedRunwayId = e.id;
+          spawned.flightState = "servicing";
+          spawned.serviceTicks = 0;
+          spawned.ammo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo ?? 0;
+          spawned.maxAmmo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo;
+          e.assignedPlaneId = spawned.id;
+        }
         if (e.rallyPoint) assignMoveDestination(state, spawned, e.rallyPoint.x, e.rallyPoint.y);
         const next = e.queue.shift();
         e.producing = next

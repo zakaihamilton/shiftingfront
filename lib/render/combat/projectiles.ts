@@ -1,10 +1,10 @@
-import { UNIT_STATS } from "../../catalog";
+import { BUILDING_STATS, isAirUnit, UNIT_STATS } from "../../catalog";
 import { animClock, facingVector } from "../anim";
 import { tileToScreen, type Camera } from "../../iso";
 import { entityElev } from "../renderPicking";
 import { turretAimMap, turretTargetInRange, turretTargetPoint } from "../renderStructures";
 import { distToEntity } from "../../sim/world";
-import type { Entity, Facing, SimState, UnitKind } from "../../types";
+import { isBuildingEntity, type Entity, type Facing, type SimState, type UnitKind } from "../../types";
 
 export function drawCombatProjectiles(
   ctx: CanvasRenderingContext2D,
@@ -21,7 +21,9 @@ export function drawCombatProjectiles(
     if (e.attackTarget === undefined || e.cooldown <= 0) continue;
     const target = entityById.get(e.attackTarget);
     if (!target || target.hp <= 0) continue;
-    if (e.kind === "turret" && !turretTargetInRange(e, target)) continue;
+    const buildingCombat = isBuildingEntity(e) ? BUILDING_STATS[e.kind].combat : undefined;
+    const isTurret = buildingCombat !== undefined;
+    if (isTurret && !turretTargetInRange(e, target)) continue;
     if (e.class === "unit") {
       const range = UNIT_STATS[e.kind as UnitKind].range;
       // Combat can leave a target assigned while the unit is chasing it, or
@@ -29,18 +31,18 @@ export function drawCombatProjectiles(
       // screen-spanning projectile.
       if (range <= 0 || target.owner === e.owner || target.neutral || distToEntity(e, target) > range) continue;
     }
-    const maxCooldown = e.class === "unit" ? UNIT_STATS[e.kind as UnitKind].cooldown : e.kind === "turret" ? 14 : 0;
+    const maxCooldown = e.class === "unit" ? UNIT_STATS[e.kind as UnitKind].cooldown : buildingCombat?.cooldown ?? 0;
     if (maxCooldown <= 0 || e.cooldown < maxCooldown - 3) continue;
     const facing = facingFor(state, e);
     const dir = facingVector(facing);
     const a = tileToScreen(e.x, e.y, cam, entityElev(state, e));
-    const targetPoint = e.kind === "turret" ? turretTargetPoint(e, target) : { x: target.x, y: target.y };
+    const targetPoint = isTurret ? turretTargetPoint(e, target) : { x: target.x, y: target.y };
     const b = tileToScreen(targetPoint.x, targetPoint.y, cam, entityElev(state, target));
     const age = maxCooldown - e.cooldown;
     const u = Math.max(0, Math.min(1, (age + (t % 80) / 80) / 2.4));
     let ax: number;
     let ay: number;
-    if (e.kind === "turret") {
+    if (isTurret) {
       const aim = turretAimMap.get(e.id);
       const mountX = a.x + 1.67 * z;
       const mountY = a.y + 15.34 * z;
@@ -56,12 +58,13 @@ export function drawCombatProjectiles(
     const by = b.y + 9 * z;
     const px = ax + (bx - ax) * u;
     const py = ay + (by - ay) * u;
-    const anti = e.kind === "antiArmor";
-    const heavy = e.kind === "tank" || e.kind === "turret";
+    const anti = e.kind === "antiArmor" || e.kind === "antiAirTurret";
+    const airStrike = e.class === "unit" && isAirUnit(e.kind);
+    const heavy = e.kind === "tank" || e.kind === "turret" || e.kind === "antiAirTurret";
     const coreWidth = Math.max(1, Math.round(z * (heavy ? 3 : anti ? 2 : 1)));
     const glowWidth = coreWidth + Math.max(2, Math.round((heavy ? 5 : 3) * z));
-    const coreColor = anti ? "#ff8b3d" : heavy ? "#ffe08a" : "#f6d06c";
-    const glowColor = anti ? "rgba(255, 90, 40, 0.32)" : "rgba(255, 213, 106, 0.34)";
+    const coreColor = airStrike ? "#ffcc72" : anti ? "#ff8b3d" : heavy ? "#ffe08a" : "#f6d06c";
+    const glowColor = airStrike ? "rgba(255, 185, 76, 0.36)" : anti ? "rgba(255, 90, 40, 0.32)" : "rgba(255, 213, 106, 0.34)";
     ctx.save();
     ctx.lineCap = "round";
     ctx.globalAlpha = 0.55 + (1 - u) * 0.35;

@@ -53,6 +53,11 @@ describe("turret raster cache", () => {
     expect(TURRET_YAW_STEPS).toBe(32);
   });
 
+  it("keeps normal and anti-air heads in separate raster cache namespaces", () => {
+    expect(turretRasterKey(palette, 0.2, 0.1, 1, "turret"))
+      .not.toBe(turretRasterKey(palette, 0.2, 0.1, 1, "antiAirTurret"));
+  });
+
   it("reuses one offscreen raster for matching quantized poses", () => {
     const created: unknown[] = [];
     const offscreenCalls: string[] = [];

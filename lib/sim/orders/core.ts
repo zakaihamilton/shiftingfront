@@ -1,10 +1,11 @@
-import { isSupportEntity } from "../../catalog";
+import { isAirUnit, isSupportEntity } from "../../catalog";
 import { TILE_RESOURCE, type Command, type Entity, type SimEvent, type SimState, type TutorialStage } from "../../types";
 import { enterTutorialStage, tutorialCommandCompletesStage, tutorialTargets, type TutorialWorldTarget } from "../tutorialStage";
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
 import { byId, inBounds, tileAt } from "../world";
 import { holdSupport } from "../support";
+import { landAircraft } from "../aircraft";
 import { moveUnits, attackMoveUnits } from "./movement";
 import { attackUnits, supportUnits, setStance, setFormation } from "./combat";
 import { startBuild, cancelBuild, sellBuilding, setRallyPoint, toggleRepair } from "./building";
@@ -26,6 +27,9 @@ export function issue(state: SimState, command: Command): SimEvent[] {
       break;
     case "support":
       events = supportUnits(state, command.unitIds, command.targetId);
+      break;
+    case "land":
+      events = landAircraft(state, command.unitIds, command.runwayId);
       break;
     case "harvest":
       events = harvestUnits(state, command.unitIds, command.x, command.y);
@@ -116,6 +120,7 @@ function stopUnits(state: SimState, ids: number[]): SimEvent[] {
     e.routePending = false;
     e.idle = true;
     e.moveToHarvest = undefined;
+    if (isAirUnit(e.kind)) e.landingRunwayId = undefined;
     if (isSupportEntity(e)) holdSupport(e);
   }
   return [];

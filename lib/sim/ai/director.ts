@@ -1,10 +1,10 @@
-import { BUILDING_STATS, UNIT_STATS, footprintOf, isSupportUnit, isUnitAvailable } from "../../catalog";
+import { BUILDING_STATS, UNIT_STATS, footprintOf, isAirUnit, isSupportUnit, isUnitAvailable } from "../../catalog";
 import { isUnitEntity, type Entity, type MissionDirectorPhase, type SimState, type UnitKind } from "../../types";
 import { rngFromState } from "../../seed/rng";
 import { missionDifficulty } from "../difficulty";
 import { objectiveContractFor, profileContractFor, resolveMissionProfile } from "../../gen/profile";
 import { byId, closestApproach, distToEntity, findBuildSite, livingView, powerFor, spawnBuilding, trySpawnUnit } from "../world";
-import { tryBuildForwardInfrastructure, tryBuildPower, tryBuildRefinery, tryBuildTurret } from "./building";
+import { tryBuildAntiAir, tryBuildForwardInfrastructure, tryBuildPower, tryBuildRefinery, tryBuildRunway, tryBuildTurret } from "./building";
 import { assignAttack, assignAssault, assignMove, sendHome } from "./combat";
 import { contestedResourcePoint, distance, queueUnit, shouldAutoRepair, shouldRetreat } from "./helpers";
 import { enemyKnownPlayerEntities, nearestKnownPlayer } from "./visibility";
@@ -16,6 +16,7 @@ const YARD_DEFENSE_RANGE = 14;
 type DirectorBuffers = {
   enemyBuildings: Entity[];
   enemyUnits: Entity[];
+  enemyAircraft: Entity[];
 };
 
 const directorBuffers = new WeakMap<SimState, DirectorBuffers>();
@@ -25,9 +26,10 @@ function buffersFor(state: SimState): DirectorBuffers {
   if (cached) {
     cached.enemyBuildings.length = 0;
     cached.enemyUnits.length = 0;
+    cached.enemyAircraft.length = 0;
     return cached;
   }
-  const buffers = { enemyBuildings: [], enemyUnits: [] };
+  const buffers = { enemyBuildings: [], enemyUnits: [], enemyAircraft: [] };
   directorBuffers.set(state, buffers);
   return buffers;
 }
@@ -102,7 +104,7 @@ export function tickAi(state: SimState): void {
   // list during production, repair, and assault decisions.
   const active = livingView(state);
   const knownPlayers = enemyKnownPlayerEntities(state);
-  const { enemyBuildings, enemyUnits } = buffersFor(state);
+  const { enemyBuildings, enemyUnits, enemyAircraft } = buffersFor(state);
   let hasHarvester = false;
   let playerTanks = 0;
   let playerInfantry = 0;
@@ -117,7 +119,8 @@ export function tickAi(state: SimState): void {
   for (const entity of active) {
     if (entity.owner === 1 && entity.class === "building") enemyBuildings.push(entity);
     if (entity.owner === 1 && isUnitEntity(entity)) {
-      if (UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind)) enemyUnits.push(entity);
+      if (isAirUnit(entity.kind)) enemyAircraft.push(entity);
+      else if (UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind)) enemyUnits.push(entity);
       if (entity.kind === "harvester") hasHarvester = true;
       if (entity.kind === "medic") medicCount += 1;
       if (entity.kind === "repairTruck") repairTruckCount += 1;
@@ -162,6 +165,13 @@ export function tickAi(state: SimState): void {
   if (productionWindow || powerDeficit) {
     const factory = enemyBuildings.find((e) => e.kind === "factory" && e.constructing === 0 && !e.producing);
     const barracks = enemyBuildings.find((e) => e.kind === "barracks" && e.constructing === 0 && !e.producing);
+    const runway = enemyBuildings.find((e) => e.kind === "runway" && e.constructing === 0 && !e.producing);
+    const runwayCount = enemyBuildings.filter((e) => e.kind === "runway").length;
+    // Introduce dedicated air infrastructure from mission 2 onward, after the
+    // player has completed the opening mission and can answer the new threat.
+    const airEnabled = state.missionIndex >= 2;
+    const desiredRunways = state.missionIndex >= 4 ? 2 : 1;
+    const aircraftCap = state.missionIndex >= 4 ? 2 : 1;
     const hasRefinery = enemyBuildings.some((e) => e.kind === "refinery");
     const want: UnitKind = playerTanks > playerInfantry ? "antiArmor" : rng.chance(0.4) ? "tank" : "infantry";
     const producer = want === "infantry" || want === "antiArmor" ? barracks : factory;
@@ -183,6 +193,10 @@ export function tickAi(state: SimState): void {
       // Keep ore income before spending on combat.
     } else if (!hasHarvester && factory && queueUnit(state, factory, "harvester")) {
       // Replace a lost harvester before more combat units.
+    } else if (airEnabled && phase !== "opening" && runwayCount < desiredRunways && tryBuildRunway(state, yard, desiredRunways)) {
+      // Establish dedicated air infrastructure before committing to a sortie.
+    } else if (airEnabled && phase !== "opening" && runway && enemyAircraft.length < aircraftCap && queueUnit(state, runway, "strikePlane")) {
+      // Runways each service one finite-ammunition strike plane.
     } else if (supportWant && supportProducer && queueUnit(state, supportProducer, supportWant)) {
       // Add one support unit when the army has a matching damaged domain.
     } else if (producer && queueUnit(state, producer, want)) {
@@ -234,6 +248,12 @@ export function tickAi(state: SimState): void {
     ) && !(e.scenarioRole === "convoy" && state.runtime?.convoyStartTick !== undefined),
     knownPlayers,
   );
+  const airThreat = nearestKnownPlayer(
+    state,
+    yard,
+    (e) => e.owner === 0 && isUnitEntity(e) && isAirUnit(e.kind) && e.hp > 0 && isCombatTarget(state, e),
+    knownPlayers,
+  );
   const units = enemyUnits;
   const averageHealth = units.length ? units.reduce((sum, unit) => sum + unit.hp / unit.maxHp, 0) / units.length : 1;
   if (shouldRetreat(state, averageHealth)) state.aiState = "retreat";
@@ -241,6 +261,10 @@ export function tickAi(state: SimState): void {
   else if (playerYard && state.tick >= waveEvery) state.aiState = "assault";
   else if (units.length > 0 && state.tick % 180 === 0) state.aiState = "regroup";
   else state.aiState = "economy";
+
+  if (airThreat && distToEntity(yard, airThreat) <= YARD_DEFENSE_RANGE + 4) {
+    tryBuildAntiAir(state, yard, airThreat);
+  }
 
   if (state.aiState === "defense" && threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) {
     tryBuildTurret(state, yard, threat);
@@ -250,6 +274,21 @@ export function tickAi(state: SimState): void {
     }
   } else if (state.aiState === "assault" && playerYard && state.tick > 0) {
     assignAssault(state, units, yard, playerYard, state.tick % waveEvery === 0, knownPlayers);
+    for (const aircraft of enemyAircraft) {
+      if (aircraft.attackTarget !== undefined && byId(state, aircraft.attackTarget)) continue;
+      const aircraftTarget = nearestKnownPlayer(
+        state,
+        aircraft,
+        (entity) => entity.owner === 0
+          && entity.class === "unit"
+          && entity.kind !== "harvester"
+          && !isAirUnit(entity.kind)
+          && entity.hp > 0
+          && isCombatTarget(state, entity),
+        knownPlayers,
+      ) ?? playerYard;
+      assignAttack(state, aircraft, aircraftTarget);
+    }
   } else if (state.aiState === "retreat") {
     for (const u of units) sendHome(state, u, yard);
   } else if (state.aiState === "economy" || state.aiState === "regroup") {

@@ -1,6 +1,6 @@
 import { finalizeMultiSelect, pickEntity } from "@/lib/render/pick";
 import { pickTile, visibleBuildingAt } from "@/lib/render/renderer";
-import { BUILDING_DEFINITIONS } from "@/lib/catalog";
+import { BUILDING_DEFINITIONS, isAirUnit } from "@/lib/catalog";
 import { TILE_H, screenToGroundTile, tileToScreen, type Camera } from "@/lib/iso";
 import { groundOrders } from "@/lib/sim/orders";
 import { canSupportEntity } from "@/lib/sim/support";
@@ -70,6 +70,7 @@ const ORDER_NOTICE_LABELS: { type: Command["type"]; label: string }[] = [
   { type: "rally", label: "rally point" },
   { type: "attack", label: "attack" },
   { type: "support", label: "support" },
+  { type: "land", label: "land" },
   { type: "harvest", label: "harvest" },
   { type: "attackMove", label: "attack-move" },
   { type: "move", label: "move" },
@@ -98,6 +99,16 @@ export function contextOrders(s: SimState, ids: number[], target: SimState["enti
   if (rallyOrders !== undefined) return rallyOrders;
   const supportOrders = target ? friendlySupportOrders(s, ids, target, x, y) : [];
   if (supportOrders.length) return supportOrders;
+  if (target?.owner === 0 && target.class === "building" && target.kind === "runway") {
+    const aircraft = ids.filter((id) => {
+      const entity = s.entities.find((candidate) => candidate.id === id && candidate.hp > 0);
+      return entity?.owner === 0 && entity.class === "unit" && isAirUnit(entity.kind) && entity.assignedRunwayId === target.id;
+    });
+    const others = ids.filter((id) => !aircraft.includes(id));
+    const commands: Command[] = aircraft.length ? [{ type: "land", unitIds: aircraft, runwayId: target.id }] : [];
+    if (others.length) commands.push(...groundOrders(s, others, x, y, attackMove));
+    if (commands.length) return commands;
+  }
   if (target && target.owner === 1) return [{ type: "attack", unitIds: ids, targetId: target.id }];
   return groundOrders(s, ids, x, y, attackMove || target === undefined);
 }
@@ -114,6 +125,13 @@ export function mobileCommandOrders(
   if (rallyOrders !== undefined) return rallyOrders;
   const supportOrders = target ? friendlySupportOrders(s, ids, target, x, y) : [];
   if (supportOrders.length) return supportOrders;
+  if (target?.owner === 0 && target.class === "building" && target.kind === "runway") {
+    const aircraft = ids.filter((id) => {
+      const entity = s.entities.find((candidate) => candidate.id === id && candidate.hp > 0);
+      return entity?.owner === 0 && entity.class === "unit" && isAirUnit(entity.kind) && entity.assignedRunwayId === target.id;
+    });
+    if (aircraft.length) return [{ type: "land", unitIds: aircraft, runwayId: target.id }];
+  }
   if (command === "move") return groundOrders(s, ids, x, y, true);
   if (command === "attackMove") return groundOrders(s, ids, x, y, true);
   if (command === "attack" && target?.owner === 1) return [{ type: "attack", unitIds: ids, targetId: target.id }];
@@ -128,7 +146,7 @@ export function unitOnScreen(
   entity: Entity,
 ): boolean {
   const z = cam.zoom;
-  const elev = groundHeight(s, entity.x, entity.y);
+  const elev = entity.class === "unit" && isAirUnit(entity.kind) ? groundHeight(s, entity.x, entity.y) + 3 : groundHeight(s, entity.x, entity.y);
   const pos = tileToScreen(entity.x, entity.y, cam, elev);
   const bodyX = pos.x;
   const bodyY = pos.y + (TILE_H / 2) * z - 12 * z;
@@ -169,7 +187,7 @@ export function selectionIdsInBox(s: SimState, cam: Camera, box: SelectionBox, f
   const y1 = Math.max(projectedBox.y0, projectedBox.y1);
   for (const en of s.entities) {
     if (en.hp <= 0 || en.owner !== 0 || !isPlayerSelectableUnit(en) || (en.neutral && !isContactTarget(s, en))) continue;
-    const elev = heightAt(s, Math.round(en.x), Math.round(en.y));
+    const elev = en.class === "unit" && isAirUnit(en.kind) ? heightAt(s, Math.round(en.x), Math.round(en.y)) + 3 : heightAt(s, Math.round(en.x), Math.round(en.y));
     const sp = tileToScreen(en.x, en.y, { x: 0, y: 0, zoom: cam.zoom }, elev);
     const projected = { x: sp.x / cam.zoom, y: sp.y / cam.zoom };
     if (projected.x >= x0 && projected.x <= x1 && projected.y >= y0 && projected.y <= y1) ids.push(en.id);

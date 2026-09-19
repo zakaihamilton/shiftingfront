@@ -2,9 +2,12 @@ import { HEIGHT_STEP, TILE_H, TILE_W, screenToGroundTile, tileToScreen, type Cam
 import { buildingAt, groundHeight, heightAt } from "../sim/world";
 import { fogAt } from "../sim/fog";
 import { isHiddenObjectiveAsset, type Entity, type SimState } from "../types";
+import { isAirUnit } from "../catalog";
 
 export function entityElev(state: SimState, e: Entity): number {
-  return e.class === "unit" ? groundHeight(state, e.x, e.y) : heightAt(state, Math.round(e.x), Math.round(e.y));
+  return e.class === "unit"
+    ? groundHeight(state, e.x, e.y) + (isAirUnit(e.kind) ? 3 : 0)
+    : heightAt(state, Math.round(e.x), Math.round(e.y));
 }
 
 function pointInDiamond(px: number, py: number, x: number, y: number, w: number, h: number): boolean {
@@ -124,7 +127,7 @@ export function entityAtPointer(state: SimState, sx: number, sy: number, cam: Ca
     // discovered stranded unit can show its objective tooltip without being
     // eligible for commands.
     if (e.hp <= 0 || e.class !== "unit" || !entityVisible(state, e)) continue;
-    const elev = groundHeight(state, e.x, e.y);
+    const elev = groundHeight(state, e.x, e.y) + (isAirUnit(e.kind) ? 3 : 0);
     const s = tileToScreen(e.x, e.y, cam, elev);
     const d = Math.hypot(sx - s.x, sy - (s.y + (TILE_H / 2) * cam.zoom - 12 * cam.zoom));
     if (d < bestD) {

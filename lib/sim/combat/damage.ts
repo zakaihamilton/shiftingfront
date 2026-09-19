@@ -1,7 +1,8 @@
 import type { Entity, SimEvent, SimState } from "../../types";
 import { isUnitEntity } from "../../types";
+import { isAirUnit } from "../../catalog";
 import { closestApproach, invalidateLivingCache } from "../world";
-import { isCombatTarget, statsFor } from "./grid";
+import { canTarget, isCombatTarget, statsFor } from "./grid";
 import { armorFor, damageMultiplier, heightMultiplier } from "./targeting";
 import type { Rng } from "../../seed/rng";
 import { type PendingAlerts, notePlayerAlert } from "./alerts";
@@ -18,6 +19,10 @@ export function strike(
   pending?: PendingAlerts,
 ): void {
   if (e.cooldown > 0) return;
+  if (isUnitEntity(e) && isAirUnit(e.kind)) {
+    if ((e.ammo ?? 0) <= 0) return;
+    e.ammo = Math.max(0, (e.ammo ?? 0) - 1);
+  }
   if (pending) notePlayerAlert(e, target, pending);
   const jitter = 0.85 + rng.next() * 0.3;
   const damage = stats.damage * jitter * damageMultiplier(stats.weapon, armorFor(target)) * heightMultiplier(state, e, target);
@@ -29,7 +34,7 @@ export function strike(
   if (stats.splashRadius > 0) {
     for (const splash of state.entities) {
       if (splash.hp <= 0) continue;
-      if (splash.id === target.id || splash.owner === e.owner || splash.neutral || !isCombatTarget(state, splash)) continue;
+      if (splash.id === target.id || splash.owner === e.owner || splash.neutral || !isCombatTarget(state, splash) || !canTarget(e, splash)) continue;
       if (Math.hypot(splash.x - target.x, splash.y - target.y) > stats.splashRadius) continue;
       splash.hp -= damage * 0.35;
       if (splash.class === "unit") splash.suppression = Math.min(100, (splash.suppression ?? 0) + Math.round(stats.suppression * 0.35));
@@ -74,6 +79,13 @@ export function strike(
 
 export function chase(state: SimState, e: Entity, target: Entity): void {
   e.flowGoal = undefined;
+  if (isUnitEntity(e) && isAirUnit(e.kind)) {
+    e.orderDestination = { x: target.x, y: target.y };
+    e.path = [];
+    e.routePending = false;
+    e.idle = false;
+    return;
+  }
   const dest = target.class === "building" ? closestApproach(state, e, target) : target;
   const end = pathDest(e.path);
   const stale = !end || Math.hypot(end.x - dest.x, end.y - dest.y) > 1.25;

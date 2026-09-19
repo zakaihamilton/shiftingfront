@@ -14,6 +14,20 @@ export function compactDestroyedEntities(state: SimState): number {
     if (entity.hp > 0) continue;
     refundQueuedUnits(state, entity);
     if (entity.class === "building") ensureDeadBuildingInvalidation(state, entity.id);
+    if (entity.class === "unit" && entity.assignedRunwayId !== undefined) {
+      const runway = state.entities.find((candidate) => candidate.id === entity.assignedRunwayId);
+      if (runway?.class === "building" && runway.kind === "runway" && runway.assignedPlaneId === entity.id) {
+        runway.assignedPlaneId = undefined;
+      }
+    }
+    if (entity.class === "building" && entity.kind === "runway" && entity.assignedPlaneId !== undefined) {
+      const aircraft = state.entities.find((candidate) => candidate.id === entity.assignedPlaneId);
+      if (aircraft?.class === "unit" && aircraft.assignedRunwayId === entity.id) {
+        aircraft.assignedRunwayId = undefined;
+        aircraft.landingRunwayId = undefined;
+        aircraft.flightState = "airborne";
+      }
+    }
   }
 
   for (const entity of state.entities) {

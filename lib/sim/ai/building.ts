@@ -86,3 +86,20 @@ export function tryBuildTurret(state: SimState, yard: Entity, threat: Entity): b
     ?? findBuildSite(state, "turret", yard.x, yard.y, 12, 1);
   return tryPlaceBuilding(state, "turret", spot);
 }
+
+export function tryBuildRunway(state: SimState, yard: Entity, desiredCount: number): boolean {
+  const runways = livingView(state).filter((e) => e.owner === 1 && e.class === "building" && e.kind === "runway");
+  if (runways.length >= desiredCount || runways.some((e) => e.constructing > 0)) return false;
+  const spot = findBuildSite(state, "runway", yard.x + 4, yard.y, 14, 1)
+    ?? findBuildSite(state, "runway", yard.x, yard.y + 4, 14, 1);
+  return tryPlaceBuilding(state, "runway", spot);
+}
+
+export function tryBuildAntiAir(state: SimState, yard: Entity, threat: Entity): boolean {
+  const cap = 1 + Math.floor(state.missionIndex / 2);
+  const antiAir = livingView(state).filter((e) => e.owner === 1 && e.class === "building" && e.kind === "antiAirTurret");
+  if (antiAir.length >= cap || antiAir.some((e) => e.constructing > 0)) return false;
+  const spot = findBuildSite(state, "antiAirTurret", threat.x, threat.y, 12, 1)
+    ?? findBuildSite(state, "antiAirTurret", yard.x, yard.y, 12, 1);
+  return tryPlaceBuilding(state, "antiAirTurret", spot);
+}

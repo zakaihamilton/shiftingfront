@@ -16,8 +16,30 @@ export const SPRITE_ART: Record<BuildingKind, string> = {
   barracks: "/art/sprites/sleek-modular/barracks-v2.webp",
   factory: "/art/sprites/sleek-modular/factory-v2.webp",
   turret: "/art/sprites/sleek-modular/turret-v2.webp",
+  runway: "/art/sprites/sleek-modular/air-support/runway-v1.webp",
+  antiAirTurret: "/art/sprites/sleek-modular/air-support/anti-air-turret-v1.webp",
   objective: "/art/sprites/sleek-modular/objective-v2.webp",
 };
+
+export const AIR_SUPPORT_ART = {
+  strikePlane: "/art/sprites/sleek-modular/air-support/strike-plane-front-right-v1.webp",
+  runway: "/art/sprites/sleek-modular/air-support/runway-v1.webp",
+  antiAirTurret: "/art/sprites/sleek-modular/air-support/anti-air-turret-v1.webp",
+} as const;
+
+// The generated anti-air image contains a separate upper assembly. Keep only
+// its lower platform in the building sprite so the animated model can replace
+// the static guns and radar head at render time.
+export const ANTI_AIR_TURRET_BASE_CROP = {
+  x: 0,
+  y: 600,
+  w: 1315,
+  h: 597,
+  sourceW: 1315,
+  sourceH: 1197,
+  refW: 1315,
+  refH: 1197,
+} as const;
 
 
 export type UnitView =
@@ -109,6 +131,16 @@ export const UNIT_DIRECTION_ART: Record<UnitKind, Record<UnitView, string>> = {
     back: "/art/sprites/sleek-modular/convoy-truck-back-v1.webp",
     left: "/art/sprites/sleek-modular/convoy-truck-left-v1.webp",
     "back-right": "/art/sprites/sleek-modular/convoy-truck-back-right-v1.webp",
+  },
+  strikePlane: {
+    "front-right": AIR_SUPPORT_ART.strikePlane,
+    front: AIR_SUPPORT_ART.strikePlane,
+    right: AIR_SUPPORT_ART.strikePlane,
+    "front-left": AIR_SUPPORT_ART.strikePlane,
+    "back-left": AIR_SUPPORT_ART.strikePlane,
+    back: AIR_SUPPORT_ART.strikePlane,
+    left: AIR_SUPPORT_ART.strikePlane,
+    "back-right": AIR_SUPPORT_ART.strikePlane,
   },
 };
 

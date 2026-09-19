@@ -45,6 +45,8 @@ describe("authoritative catalogs", () => {
       675,
       975,
       480,
+      750,
+      420,
       1350,
     ]);
     expect(BUILDING_STATS.turret.hp).toBe(480);

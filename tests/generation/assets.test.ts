@@ -18,6 +18,8 @@ import { generateFactions } from "../../lib/gen/factions";
 import {
   listTacticalRasterSources,
   listMissionRasterSources,
+  AIR_SUPPORT_ART,
+  ANTI_AIR_TURRET_BASE_CROP,
   SPRITE_ART,
   UNIT_DIRECTION_ART,
   UNIT_WALK_CYCLE_ART,
@@ -65,6 +67,16 @@ describe("tactical procedural assets", () => {
     }
   });
 
+  it("separates the anti-air base from its animated upper assembly", () => {
+    const antiAir = buildingSprite("antiAirTurret", palette);
+    expect(antiAir.imageSrc).toBe(AIR_SUPPORT_ART.antiAirTurret);
+    expect(antiAir.imageCrop).toEqual(ANTI_AIR_TURRET_BASE_CROP);
+
+    const rubble = rubbleSprite("antiAirTurret", palette);
+    expect(rubble.imageSrc).toBe(antiAir.imageSrc);
+    expect(rubble.imageCrop).toBeUndefined();
+  });
+
   it("provides valid construction and damage stages for every building", () => {
     for (const kind of BUILDING_KINDS) {
       const ids = new Set<string>();
@@ -87,7 +99,7 @@ describe("tactical procedural assets", () => {
     expect(new Set(unitFingerprints).size).toBe(UNIT_KINDS.length);
     const buildingFingerprints = BUILDING_KINDS.map((kind) => {
       const spec = buildingSprite(kind, palette, { variant: 13 });
-      return spec.imageSrc ?? spec.svg;
+      return spec.imageSrc ?? spec.svg ?? JSON.stringify(spec.shapes);
     });
     expect(new Set(buildingFingerprints).size).toBe(BUILDING_KINDS.length);
   });
@@ -177,6 +189,10 @@ describe("tactical procedural assets", () => {
       const views = Array.from({ length: 8 }, (_, facing) =>
         unitSprite(kind, palette, { facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 }),
       );
+      if (kind === "strikePlane") {
+        expect(views.every((spec) => spec.imageSrc === AIR_SUPPORT_ART.strikePlane && spec.rotation === undefined)).toBe(true);
+        continue;
+      }
       expect(views.every((spec) => spec.rotation === undefined)).toBe(true);
       expect(new Set(views.map((spec) => spec.imageSrc)).size).toBe(8);
       expect(views[0]!.imageSrc).toMatch(/-right(?:-v[12])?\.webp/);
@@ -195,7 +211,8 @@ describe("tactical procedural assets", () => {
     for (const kind of UNIT_KINDS) {
       const views = UNIT_DIRECTION_ART[kind];
       expect(Object.keys(views)).toHaveLength(8);
-      expect(new Set(Object.values(views)).size).toBe(8);
+      if (kind === "strikePlane") expect(new Set(Object.values(views))).toEqual(new Set([AIR_SUPPORT_ART.strikePlane]));
+      else expect(new Set(Object.values(views)).size).toBe(8);
     }
   });
 
@@ -400,9 +417,13 @@ describe("tactical procedural assets", () => {
         expect(spec.imageSrc).toMatch(/\/art\/sprites\//);
         continue;
       }
-      expect(spec.svg).toContain("#9aabba");
-      expect(spec.svg).toContain("#26323d");
-      expect(spec.svg).not.toMatch(/ [QC]/);
+      if (spec.svg) {
+        expect(spec.svg).toContain("#9aabba");
+        expect(spec.svg).toContain("#26323d");
+        expect(spec.svg).not.toMatch(/ [QC]/);
+      } else {
+        expect(spec.shapes.length).toBeGreaterThan(0);
+      }
     }
   });
 

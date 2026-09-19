@@ -1,5 +1,6 @@
 import { isPlayerSelectableUnit, type Entity, type SimState } from "../types";
 import { groundHeight } from "../sim/world";
+import { isAirUnit } from "../catalog";
 import { TILE_H, tileToScreen, type Camera } from "../iso";
 import { pickTile, visibleBuildingAt } from "./renderer";
 import { entityVisible } from "./renderPicking";
@@ -11,11 +12,14 @@ export function pickEntity(state: SimState, sx: number, sy: number, cam: Camera,
   const z = cam.zoom;
   for (const e of state.entities) {
     if (!isPlayerSelectableUnit(e) || e.hp <= 0 || (!allowNeutral && e.neutral) || !entityVisible(state, e)) continue;
-    const elev = groundHeight(state, e.x, e.y);
+    const elev = isAirUnit(e.kind) ? groundHeight(state, e.x, e.y) + 3 : groundHeight(state, e.x, e.y);
     const s = tileToScreen(e.x, e.y, cam, elev);
     const bodyX = s.x;
     const bodyY = s.y + (TILE_H / 2) * z - 12 * z;
-    const radius = e.kind === "harvester" || e.kind === "tank" || e.kind === "repairTruck" || e.kind === "convoyTruck" ? 42 * z : 30 * z;
+    const unitKind = e.class === "unit" ? e.kind : undefined;
+    const radius = unitKind && isAirUnit(unitKind) ? 38 * z
+      : unitKind === "harvester" || unitKind === "tank" || unitKind === "repairTruck" || unitKind === "convoyTruck" ? 42 * z
+        : 30 * z;
     const d = Math.hypot(sx - bodyX, sy - bodyY);
     if (d <= radius && d < bestD) {
       bestD = d;

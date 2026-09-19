@@ -35,9 +35,10 @@ export function turretRasterKey(
   yaw: number,
   recoil: number,
   zoom: number,
+  modelKind: string = "turret",
 ): string {
   const pal = palette ? `${palette.primary}:${palette.secondary}` : "";
-  return `${turretYawStep(yaw)}:${turretRecoilStep(recoil)}:${turretZoomStep(zoom)}:${pal}`;
+  return `${modelKind}:${turretYawStep(yaw)}:${turretRecoilStep(recoil)}:${turretZoomStep(zoom)}:${pal}`;
 }
 
 export function quantizedTurretPose(yaw: number, recoil: number, zoom: number): {
@@ -82,7 +83,7 @@ export function drawCachedTurretModel(
     draw3dModel(ctx, model, screenX, screenY, scale, yawAngle, palette, recoil);
     return;
   }
-  const key = turretRasterKey(palette, yawAngle, recoil, scale);
+  const key = turretRasterKey(palette, yawAngle, recoil, scale, model.kind);
   let hit = cache.get(key);
   if (!hit) {
     const pose = quantizedTurretPose(yawAngle, recoil, scale);

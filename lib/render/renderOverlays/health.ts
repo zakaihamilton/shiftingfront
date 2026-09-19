@@ -17,7 +17,7 @@ export function entityHasWorldHealthMeter(
   e: Pick<Entity, "class" | "kind">,
   isRepairing = false,
 ): boolean {
-  return e.class === "unit" || (e.class === "building" && (e.kind === "turret" || isRepairing));
+  return e.class === "unit" || (e.class === "building" && (e.kind === "turret" || e.kind === "antiAirTurret" || isRepairing));
 }
 
 /** Returns entities currently receiving a building repair or support heal. */
@@ -49,7 +49,7 @@ export function worldHealthMeterLayout(
   const centerX = Math.round(dx + (spec.w * z) / 2);
   // Turret sprites include empty sky padding, so dy is far above the 3D cannon.
   // Sit the meter just above the projected turret head (antenna tip ~ tileY - 3z).
-  const meterY = e.kind === "turret"
+  const meterY = e.kind === "turret" || e.kind === "antiAirTurret"
     ? Math.round(tileScreenY - 10 * z)
     : Math.round(dy - 7 * z);
   return { barW, meterY, centerX };

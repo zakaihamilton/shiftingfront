@@ -41,6 +41,8 @@ export function firingPosition(state: SimState, from: Entity, target: Entity, ra
 export function damageMultiplier(weapon: import("../../types").WeaponType, armor: import("../../types").ArmorType): number {
   if (weapon === "smallArms") return armor === "light" ? 1 : armor === "heavy" ? 0.45 : 0.2;
   if (weapon === "antiArmor") return armor === "heavy" ? 1.35 : armor === "structure" ? 0.95 : 0.9;
+  if (weapon === "antiAir") return armor === "light" ? 1.35 : 1;
+  if (weapon === "airStrike") return armor === "structure" ? 1.25 : armor === "heavy" ? 1.1 : 1.2;
   return armor === "light" ? 1.15 : 1;
 }
 

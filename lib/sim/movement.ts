@@ -1,6 +1,6 @@
-import { UNIT_STATS } from "../catalog";
+import { isAirUnit, UNIT_STATS } from "../catalog";
 import { toIsometricFacing } from "../iso";
-import { isUnitEntity, type Entity, type SimState, type UnitEntity } from "../types";
+import { isUnitEntity, type Entity, type SimEvent, type SimState, type UnitEntity } from "../types";
 import { tryFindPathDetailed } from "./pathBudget";
 import { routePendingFor } from "./pathfinding";
 import { prepareFlowFieldRoutes } from "./flowFieldRouting";
@@ -8,6 +8,7 @@ import { flowDistanceAt } from "./flowField";
 import { navigationEdgeKey, navigationEdgeReserved } from "./navigation/grid";
 import { invalidateUnitAtCache, unitOccupancyFor } from "./world";
 import type { FlowField } from "./flowField";
+import { tickAircraft } from "./aircraft";
 
 type MovementBuffers = {
   occupancy: Uint8Array;
@@ -65,7 +66,8 @@ import {
   trySidestep,
 } from "./navigation";
 
-export function tickMovement(state: SimState): void {
+export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
+  tickAircraft(state, eventSink);
   const { occupancy, atTile, reserved, movers, previousCells, movementIntents, flowOrder, plannedVacates, flowFields, edgeReservations } = buffersFor(state);
   resetPreviousCellsForNewOrders(state, previousCells, movementIntents);
   prepareFlowFieldRoutes(state, occupancy, reserved, previousCells, undefined, flowOrder, plannedVacates, flowFields, edgeReservations);
@@ -73,7 +75,7 @@ export function tickMovement(state: SimState): void {
     // Convoys are neutral so combat targeting ignores them, but they still
     // need the normal background repath when a bounded search returned only
     // a partial route. Other neutral scenario actors have no movement orders.
-    if (e.hp <= 0 || e.class !== "unit" || (e.neutral && e.scenarioRole !== "convoy") || e.flowGoal || e.path.length || !e.orderDestination) continue;
+    if (e.hp <= 0 || e.class !== "unit" || isAirUnit(e.kind) || (e.neutral && e.scenarioRole !== "convoy") || e.flowGoal || e.path.length || !e.orderDestination) continue;
     if (holdingDestination(e)) continue;
     const dest = e.orderDestination;
     const destX = Math.round(dest.x);
@@ -116,12 +118,12 @@ export function tickMovement(state: SimState): void {
     e.idle = result.status === "unreachable";
   }
   for (const e of state.entities) {
-    if (e.hp <= 0 || e.class !== "unit") continue;
+    if (e.hp <= 0 || e.class !== "unit" || isAirUnit(e.kind)) continue;
     atTile.set(cellOf(state, e.x, e.y), e);
   }
 
   for (const e of state.entities) {
-    if (e.hp <= 0 || !isUnitEntity(e)) continue;
+    if (e.hp <= 0 || !isUnitEntity(e) || isAirUnit(e.kind)) continue;
     movers.push(e);
   }
   movers.sort((a, b) => {

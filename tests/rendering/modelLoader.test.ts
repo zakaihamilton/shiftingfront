@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAntiArmorModel,
+  buildAntiAirTurretModel,
   buildConvoyTruckModel,
   buildHarvesterModel,
   buildInfantryModel,
@@ -81,6 +82,10 @@ describe("modelLoader 3D meshes and parser", () => {
     const turret = buildTurretHeadModel();
     expect(turret.kind).toBe("turret");
     expect(turret.nodes.map((n) => n.name)).toEqual(["turretHead", "barrel"]);
+
+    const antiAirTurret = buildAntiAirTurretModel();
+    expect(antiAirTurret.kind).toBe("antiAirTurret");
+    expect(antiAirTurret.nodes.map((n) => n.name)).toEqual(["turretHead", "barrel"]);
   });
 
   it("parses Wavefront OBJ models with object groups and material mapping", () => {
@@ -110,6 +115,7 @@ describe("modelLoader 3D meshes and parser", () => {
     expect(buildUnitModel("antiArmor").nodes.length).toBeGreaterThan(1);
     expect(buildUnitModel("convoyTruck").nodes.length).toBeGreaterThan(1);
     expect(buildUnitModel("turret").nodes.length).toBeGreaterThan(1);
+    expect(buildUnitModel("antiAirTurret").nodes.length).toBeGreaterThan(1);
   });
 
   it("renders 3D soldier model with articulated leg transformations without throwing", () => {

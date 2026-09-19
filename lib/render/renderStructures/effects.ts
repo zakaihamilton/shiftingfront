@@ -12,7 +12,7 @@ export function drawBuildingFx(
 ): void {
   const kind = e.kind as BuildingKind;
   ctx.save();
-  if (anim.lightOn && (kind === "power" || kind === "constructionYard" || kind === "objective" || kind === "turret")) {
+  if (anim.lightOn && (kind === "power" || kind === "constructionYard" || kind === "objective" || kind === "turret" || kind === "antiAirTurret")) {
     ctx.fillStyle = kind === "objective" ? "#f3dc79" : "#c7f0d4";
     ctx.globalAlpha = 0.5 + anim.smoke * 0.3;
     ctx.beginPath();

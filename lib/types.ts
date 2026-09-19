@@ -1,7 +1,8 @@
 export type Owner = 0 | 1;
 
-export type UnitKind = "harvester" | "infantry" | "antiArmor" | "tank" | "medic" | "repairTruck" | "convoyTruck";
-export type UnitDomain = "human" | "vehicle";
+export type UnitKind = "harvester" | "infantry" | "antiArmor" | "tank" | "medic" | "repairTruck" | "convoyTruck" | "strikePlane";
+export type UnitDomain = "human" | "vehicle" | "air";
+export type CombatTargetDomain = "ground" | "air";
 export type SupportRole = "medic" | "repairTruck";
 export type BuildingKind =
   | "constructionYard"
@@ -10,6 +11,8 @@ export type BuildingKind =
   | "barracks"
   | "factory"
   | "turret"
+  | "runway"
+  | "antiAirTurret"
   | "objective";
 
 export type EntityClass = "unit" | "building";
@@ -48,7 +51,7 @@ export type ScenarioRole = "convoy" | "stranded" | "cargo";
 export type OrderMode = "move" | "attackMove" | "attack";
 export type LossReason = "yardDestroyed" | "deadline" | "objectiveTargetLost";
 export type MissionDirectorPhase = "opening" | "pressure" | "finale";
-export type WeaponType = "smallArms" | "antiArmor" | "cannon";
+export type WeaponType = "smallArms" | "antiArmor" | "cannon" | "airStrike" | "antiAir";
 export type ArmorType = "light" | "heavy" | "structure";
 export type TutorialStage = "select" | "move" | "build" | "produce" | "attack" | "repair" | "complete";
 export type AiBehavior = "economy" | "defense" | "assault" | "retreat" | "regroup";
@@ -204,6 +207,20 @@ export type Entity = {
   scenarioGuardTargetId?: number;
   supportTargetId?: number;
   supportMode?: "auto" | "assigned" | "hold";
+  /** Ammunition remaining for aircraft. */
+  ammo?: number;
+  /** Maximum ammunition for aircraft. */
+  maxAmmo?: number;
+  /** Dedicated runway assigned to an aircraft. */
+  assignedRunwayId?: number;
+  /** Aircraft state while flying or being serviced. */
+  flightState?: "airborne" | "servicing";
+  /** Number of ticks spent servicing since the last ammo refill. */
+  serviceTicks?: number;
+  /** Runway the aircraft is currently approaching. */
+  landingRunwayId?: number;
+  /** Plane assigned to a dedicated runway. */
+  assignedPlaneId?: number;
   /** When true, the harvester is executing a player-issued move command and should
    *  travel to orderDestination before the economy loop starts searching for ore. */
   moveToHarvest?: boolean;
@@ -480,6 +497,7 @@ export type Command =
   | { type: "attackMove"; unitIds: number[]; x: number; y: number; formation?: Formation }
   | { type: "attack"; unitIds: number[]; targetId: number }
   | { type: "support"; unitIds: number[]; targetId: number }
+  | { type: "land"; unitIds: number[]; runwayId: number }
   | { type: "harvest"; unitIds: number[]; x: number; y: number }
   | { type: "build"; building: BuildingKind; x: number; y: number }
   | { type: "produce"; fromId: number; unit: UnitKind }
@@ -525,6 +543,7 @@ export type SimEvent =
       targetX: number;
       targetY: number;
     }
+  | { type: "aircraftStatus"; owner: Owner; aircraftId: number; runwayId?: number; status: "returning" | "landed" | "launched"; x: number; y: number }
   | { type: "credits"; owner: Owner; amount: number }
   | { type: "won" }
   | { type: "lost" }

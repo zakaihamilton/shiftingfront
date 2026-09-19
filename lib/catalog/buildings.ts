@@ -1,4 +1,4 @@
-import type { ArmorType, BuildingKind, Entity, WeaponType } from "../types";
+import type { ArmorType, BuildingKind, CombatTargetDomain, Entity, WeaponType } from "../types";
 import { UNIT_DEFINITIONS } from "./units";
 
 export const BUILDING_KINDS: BuildingKind[] = [
@@ -8,6 +8,8 @@ export const BUILDING_KINDS: BuildingKind[] = [
   "barracks",
   "factory",
   "turret",
+  "runway",
+  "antiAirTurret",
   "objective",
 ];
 
@@ -22,6 +24,14 @@ export type BuildingStats = {
   footprint: Footprint;
   armor: ArmorType;
   weapon?: WeaponType;
+  combat?: {
+    damage: number;
+    range: number;
+    cooldown: number;
+    splashRadius: number;
+    suppression: number;
+    targetDomains: readonly CombatTargetDomain[];
+  };
 };
 
 export type BuildingAiRole = "base" | "economy" | "production" | "defense" | "objective";
@@ -122,6 +132,50 @@ export const BUILDING_DEFINITIONS: Record<BuildingKind, BuildingDefinition> = {
     footprint: { w: 1, h: 1 },
     armor: "structure",
     weapon: "cannon",
+    combat: {
+      damage: 9,
+      range: 5.5,
+      cooldown: 14,
+      splashRadius: 0.5,
+      suppression: 10,
+      targetDomains: ["ground"],
+    },
+  },
+  runway: {
+    label: "Airport Runway",
+    renderKey: "runway",
+    aiRole: "production",
+    production: ["strikePlane"],
+    requiresFlatGround: true,
+    hp: 750,
+    cost: 650,
+    buildTicks: 150,
+    power: -10,
+    sight: 5,
+    footprint: { w: 4, h: 2 },
+    armor: "structure",
+  },
+  antiAirTurret: {
+    label: "Anti-Air Turret",
+    renderKey: "antiAirTurret",
+    aiRole: "defense",
+    requiresFlatGround: true,
+    hp: 420,
+    cost: 325,
+    buildTicks: 96,
+    power: -10,
+    sight: 8,
+    footprint: { w: 1, h: 1 },
+    armor: "structure",
+    weapon: "antiAir",
+    combat: {
+      damage: 14,
+      range: 8,
+      cooldown: 18,
+      splashRadius: 0,
+      suppression: 0,
+      targetDomains: ["air"],
+    },
   },
   objective: {
     label: "Marked Structure",

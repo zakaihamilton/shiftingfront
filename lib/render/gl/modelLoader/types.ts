@@ -12,7 +12,7 @@ export {
   mergeMeshes,
 } from "../meshPrimitives";
 
-export type ModelKind = UnitKind | "turret" | "turretHead";
+export type ModelKind = UnitKind | "turret" | "turretHead" | "antiAirTurret";
 
 export type ModelNode = {
   name: string;

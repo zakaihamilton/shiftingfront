@@ -19,7 +19,7 @@ import { objectiveContractFor } from "./profile";
 
 // Structure quotas may ask for several copies, so do not generate a quota for
 // the producer buildings that are capped at one per mission.
-const BUILDABLE: BuildingKind[] = ["power", "refinery", "turret"];
+const BUILDABLE: BuildingKind[] = ["power", "refinery", "turret", "runway", "antiAirTurret"];
 const COMBAT_ROLES: UnitKind[] = ["infantry", "antiArmor", "tank"];
 const SCENARIO_KINDS: MissionKind[] = ["escort", "sabotage", "rescue", "extraction"];
 

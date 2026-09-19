@@ -4,7 +4,7 @@ import type { SimState, SurfaceKind, UnitKind } from "../../types";
 import { generateWorld } from "../../gen/world";
 import { expandFog, fogGridHeight, fogGridWidth } from "../../sim/fog";
 import { compactDestroyedEntities, compactedState } from "../../sim/world/lifecycle";
-import { isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
+import { isAirUnit, isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
 import {
   SAVE_CONTENT_VERSION,
   isStateShape,
@@ -164,6 +164,27 @@ function normalizeState(value: unknown): SimState {
       delete e.supportTargetId;
       delete e.supportMode;
     }
+    if (e.class === "unit" && isAirUnit(e.kind)) {
+      const maxAmmo = UNIT_STATS[e.kind].ammoMax ?? 0;
+      e.maxAmmo = typeof e.maxAmmo === "number" && e.maxAmmo >= 0 ? e.maxAmmo : maxAmmo;
+      e.ammo = typeof e.ammo === "number" && e.ammo >= 0 ? Math.min(e.ammo, e.maxAmmo) : e.maxAmmo;
+      if (e.flightState !== "servicing" && e.flightState !== "airborne") e.flightState = "airborne";
+      if (e.flightState === "servicing") {
+        e.serviceTicks = typeof e.serviceTicks === "number" && Number.isInteger(e.serviceTicks) && e.serviceTicks >= 0
+          ? e.serviceTicks
+          : 0;
+      } else {
+        delete e.serviceTicks;
+      }
+    } else {
+      delete e.ammo;
+      delete e.maxAmmo;
+      delete e.assignedRunwayId;
+      delete e.flightState;
+      delete e.serviceTicks;
+      delete e.landingRunwayId;
+    }
+    if (e.class !== "building" || e.kind !== "runway") delete e.assignedPlaneId;
     if (e.scenarioRole === undefined && e.class === "unit" && scenarioRole && scenarioTargetIds.has(e.id)) {
       e.scenarioRole = scenarioRole;
     }

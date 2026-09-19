@@ -1,4 +1,4 @@
-import { isSupportUnit, UNIT_STATS } from "../../catalog";
+import { isAirUnit, isSupportUnit, UNIT_STATS } from "../../catalog";
 import { isUnitEntity, type Entity, type SimState } from "../../types";
 import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
@@ -6,6 +6,7 @@ import { byId, closestApproach, distToEntity, livingView } from "../world";
 import { contestedResourcePoint } from "./helpers";
 import { homeGuardCount } from "../policy";
 import { nearestKnownPlayer } from "./visibility";
+import { launchAircraft } from "../aircraft";
 
 function sameTile(a: { x: number; y: number } | undefined, b: { x: number; y: number }): boolean {
   return !!a && Math.round(a.x) === Math.round(b.x) && Math.round(a.y) === Math.round(b.y);
@@ -16,6 +17,15 @@ export function enemyCombat(state: SimState): Entity[] {
 }
 
 export function sendHome(state: SimState, unit: Entity, yard: Entity): void {
+  if (unit.class === "unit" && isAirUnit(unit.kind)) {
+    unit.attackTarget = undefined;
+    unit.orderMode = "move";
+    unit.orderDestination = { x: yard.x, y: yard.y };
+    unit.path = [];
+    unit.routePending = false;
+    unit.idle = false;
+    return;
+  }
   const destination = { x: yard.x, y: yard.y };
   // The director runs every simulation tick. Preserve an existing route to
   // this yard; repeatedly selecting the nearest perimeter tile can otherwise
@@ -36,11 +46,20 @@ export function sendHome(state: SimState, unit: Entity, yard: Entity): void {
 }
 
 export function assignAttack(state: SimState, unit: Entity, target: Entity): void {
+  if (unit.class === "unit" && isAirUnit(unit.kind)) {
+    if (unit.flightState === "servicing" && (unit.ammo ?? 0) <= 0) return;
+    launchAircraft(state, unit);
+  }
   unit.attackTarget = target.id;
   unit.flowGoal = undefined;
   unit.orderMode = "attack";
   unit.orderDestination = { x: target.x, y: target.y };
   unit.idle = false;
+  if (unit.class === "unit" && isAirUnit(unit.kind)) {
+    unit.path = [];
+    unit.routePending = false;
+    return;
+  }
   const result = tryFindPathDetailed(state, unit, closestApproach(state, unit, target));
   if (result) {
     unit.path = result.path;
