@@ -428,7 +428,7 @@ export function archetypeFailureRecords(
     }
     for (const kind of cappedKindsForStrategy(strategy)) {
       const kindSummary = strategySummary.byMissionKind[kind];
-      if (kindSummary && kindSummary.samples >= minKindSamples && kindSummary.winRate > 0.75) {
+      if (kindSummary && kindSummary.samples >= Math.max(4, minKindSamples) && kindSummary.winRate > 0.75) {
         strategyRecords.filter((record) => record.kind === kind).forEach((record) => failures.add(record));
       }
     }
@@ -466,7 +466,7 @@ export function checkArchetypeBalance(
     }
     for (const kind of cappedKindsForStrategy(strategy)) {
       const kindSummary = strategySummary.byMissionKind[kind];
-      if (!kindSummary || kindSummary.samples < minKindSamples) continue;
+      if (!kindSummary || kindSummary.samples < Math.max(4, minKindSamples)) continue;
       if (kindSummary.winRate > 0.75) {
         failures.push(`${strategy} ${kind} win rate ${(kindSummary.winRate * 100).toFixed(1)}% exceeds 75.0%`);
       }
