@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { PLACEABLE } from "../../components/game/hooks/gameActions";
 import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "../../components/game/hooks/useGameCamera";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { TILE_H, tileToScreen } from "../../lib/iso";
@@ -664,7 +665,7 @@ test.describe("mobile-first layouts", () => {
       expect(layout.sidebar.width).toBeGreaterThan(0);
       expect(layout.sidebar.right).toBeLessThanOrEqual(viewport.width);
       expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width);
-      expect(layout.cards).toHaveLength(5);
+      expect(layout.cards).toHaveLength(PLACEABLE.length);
 
       const cardWidths = layout.cards.map(({ card }) => card.width);
       expect(Math.max(...cardWidths) - Math.min(...cardWidths)).toBeLessThanOrEqual(1);
