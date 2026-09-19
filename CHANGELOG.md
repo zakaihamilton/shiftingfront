@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Live balance gates (`minKindWinRate` 0.70, rescue 0.80, extraction 0.85, `destroyMarked`/`decapitate` 0.70). `tests/platform/docsDrift.test.ts` fails if Unreleased stops naming these floors.
+
+## [1.1.0] - 2026-09-19
+
 ### Fixed
 
 - **Simulation health p99**: CI warms the late-game tick path and uses a 40 ms p99 budget on 2-vCPU runners while keeping the 25 ms p95 gate (and 25 ms p99 locally). Isolated GC spikes no longer fail `yarn health:performance`.
@@ -32,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI Runner Calibration**: Adjusted texture atlas generation performance budget in `scripts/perf.ts` to accommodate 2-vCPU cloud runner speeds after recent terrain material feathering additions.
 - **Balance Matrix Thresholds**: Calibrated `minKindWinRate` and `targetedKindWinRates.destroyMarked` to `0.70` in `lib/sim/balance/evaluation.ts` to match baseline targets and eliminate false-positive balance failures across sample seed ranges.
 
-> After 1.0.1, unreleased commits lowered the overall kind floor and added per-kind targets. The live values are listed under [Unreleased].
+> After 1.0.1, commits lowered the overall kind floor and added per-kind targets before shipping in [1.1.0]. The live values are listed under [Unreleased].
 
 ## [1.0.0] - 2026-09-15
 
