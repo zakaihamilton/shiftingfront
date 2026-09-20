@@ -3,6 +3,8 @@ import type { UnitModel } from "./modelLoader";
 import { draw3dModel } from "./modelRenderer";
 
 export const TURRET_YAW_STEPS = 32;
+// Keep a true zero-pitch center pose while still allowing a modest upward/downward range.
+export const TURRET_PITCH_STEPS = 17;
 export const TURRET_RECOIL_STEPS = 4;
 export const TURRET_ZOOM_SCALE = 4;
 const CACHE_LIMIT = 384;
@@ -26,6 +28,11 @@ export function turretRecoilStep(recoil: number): number {
   return Math.round(clamped * (TURRET_RECOIL_STEPS - 1));
 }
 
+export function turretPitchStep(pitch: number): number {
+  const clamped = Math.max(-0.6, Math.min(0.6, pitch));
+  return Math.round(((clamped + 0.6) / 1.2) * (TURRET_PITCH_STEPS - 1));
+}
+
 export function turretZoomStep(zoom: number): number {
   return Math.max(1, Math.round(Math.max(0.25, zoom) * TURRET_ZOOM_SCALE));
 }
@@ -36,19 +43,23 @@ export function turretRasterKey(
   recoil: number,
   zoom: number,
   modelKind: string = "turret",
+  barrelPitch = 0,
 ): string {
   const pal = palette ? `${palette.primary}:${palette.secondary}` : "";
-  return `${modelKind}:${turretYawStep(yaw)}:${turretRecoilStep(recoil)}:${turretZoomStep(zoom)}:${pal}`;
+  return `${modelKind}:${turretYawStep(yaw)}:${turretRecoilStep(recoil)}:${turretPitchStep(barrelPitch)}:${turretZoomStep(zoom)}:${pal}`;
 }
 
-export function quantizedTurretPose(yaw: number, recoil: number, zoom: number): {
+export function quantizedTurretPose(yaw: number, recoil: number, zoom: number, barrelPitch = 0): {
   yaw: number;
   recoil: number;
+  barrelPitch: number;
   scale: number;
 } {
+  const pitchStep = turretPitchStep(barrelPitch);
   return {
     yaw: (turretYawStep(yaw) / TURRET_YAW_STEPS) * Math.PI * 2,
     recoil: turretRecoilStep(recoil) / (TURRET_RECOIL_STEPS - 1),
+    barrelPitch: (pitchStep / (TURRET_PITCH_STEPS - 1)) * 1.2 - 0.6,
     scale: turretZoomStep(zoom) / TURRET_ZOOM_SCALE,
   };
 }
@@ -78,25 +89,29 @@ export function drawCachedTurretModel(
   yawAngle: number,
   palette?: Palette,
   recoil = 0,
+  barrelPitch = 0,
 ): void {
   if (typeof document === "undefined") {
-    draw3dModel(ctx, model, screenX, screenY, scale, yawAngle, palette, recoil);
+    draw3dModel(ctx, model, screenX, screenY, scale, yawAngle, palette, { recoil, barrelPitch });
     return;
   }
-  const key = turretRasterKey(palette, yawAngle, recoil, scale, model.kind);
+  const key = turretRasterKey(palette, yawAngle, recoil, scale, model.kind, barrelPitch);
   let hit = cache.get(key);
   if (!hit) {
-    const pose = quantizedTurretPose(yawAngle, recoil, scale);
+    const pose = quantizedTurretPose(yawAngle, recoil, scale, barrelPitch);
     const pad = Math.ceil(80 * pose.scale);
     const canvas = document.createElement("canvas");
     canvas.width = pad * 2;
     canvas.height = pad * 2;
     const off = canvas.getContext("2d");
     if (!off) {
-      draw3dModel(ctx, model, screenX, screenY, scale, yawAngle, palette, recoil);
+      draw3dModel(ctx, model, screenX, screenY, scale, yawAngle, palette, { recoil, barrelPitch });
       return;
     }
-    draw3dModel(off, model, pad, pad, pose.scale, pose.yaw, palette, pose.recoil);
+    draw3dModel(off, model, pad, pad, pose.scale, pose.yaw, palette, {
+      recoil: pose.recoil,
+      barrelPitch: pose.barrelPitch,
+    });
     hit = { canvas, originX: pad, originY: pad };
     retainRaster(key, hit);
   }

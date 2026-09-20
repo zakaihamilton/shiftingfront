@@ -8,6 +8,7 @@ import { issue, tick } from "../../lib/sim/api";
 import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
 import { heightAt } from "../../lib/sim/world";
 import { setHeight } from "../../lib/sim/fixtures";
+import { computeUnitDynamicTransform, resetUnitTransformTracker, updateUnitHistory } from "../../lib/render/gl/unitTransformTracker";
 import { selectionProjectionPoint } from "../../components/game/hooks/selectionBox";
 import { pointerTile, selectVisibleUnitsOfKind, selectionIdsInBox } from "../../components/game/hooks/gameInputOrders";
 
@@ -29,6 +30,27 @@ describe("harvester selection", () => {
     const pos = tileToScreen(truck.x, truck.y, cam, heightAt(s, 5, 5));
     const nearEdge = pickEntity(s, pos.x + 36, pos.y - 12, cam);
     expect(nearEdge?.id).toBe(truck.id);
+  });
+
+  it("selects a plane at its interpolated landing position", () => {
+    resetUnitTransformTracker();
+    const s = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const plane = addUnit(s, 0, "strikePlane", 10, 8);
+    plane.flightState = "airborne";
+    updateUnitHistory(s, 1000);
+    computeUnitDynamicTransform(plane, s, 0, 1000);
+
+    s.tick += 1;
+    plane.x = 3.5;
+    plane.y = 2.5;
+    plane.flightState = "servicing";
+    updateUnitHistory(s, 1083);
+    const rendered = computeUnitDynamicTransform(plane, s, 0, 1443);
+    const cam = createCamera();
+    const elev = heightAt(s, rendered.x, rendered.y) + 5 * rendered.airborneMix;
+    const pos = tileToScreen(rendered.x, rendered.y, cam, elev);
+
+    expect(pickEntity(s, pos.x, pos.y - 12, cam, false, 1443)?.id).toBe(plane.id);
   });
 
   it("selects a convoy truck with the vehicle hit radius", () => {

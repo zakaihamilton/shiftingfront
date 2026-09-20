@@ -7,7 +7,7 @@
   flex-shrink: 0;
   flex-direction: column;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 0.5rem 0.5rem 0.5rem 0.875rem;
   font-size: 0.75rem;
   border-left: 3px solid color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 40%, var(--chrome-inset));
@@ -98,12 +98,24 @@
 
 .build {
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid var(--chrome-inset);
   background: linear-gradient(145deg, var(--chrome-steel-hi), var(--chrome-steel-lo));
   box-shadow: inset 1px 1px var(--chrome-bevel), inset -1px -1px var(--chrome-void), 2px 2px 0 var(--chrome-inset);
+}
+
+.contentScroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
+  scrollbar-width: thin;
 }
 
 .selected {
@@ -183,8 +195,7 @@
     height: 100dvh;
     min-height: 0;
     flex: none;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
     border-top: 0;
     border-left: 3px solid color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 40%, var(--chrome-inset));
     padding: max(0.65rem, env(safe-area-inset-top)) max(0.65rem, env(safe-area-inset-right)) max(0.65rem, env(safe-area-inset-bottom)) 0.65rem;
@@ -266,8 +277,7 @@
     min-height: 0;
     flex: 0 0 min(18rem, 38vw);
     gap: 0.35rem;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
     border-top: 0;
     border-left: 3px solid color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 40%, var(--chrome-inset));
     padding: max(0.35rem, env(safe-area-inset-top)) 0.35rem max(0.35rem, env(safe-area-inset-bottom)) 0.65rem;
@@ -277,6 +287,11 @@
   .sidebar > *:not(.rail) {
     flex: 0 0 auto;
     margin-top: 0;
+  }
+
+  .sidebar > .build {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .header {
@@ -307,7 +322,12 @@
   .build {
     min-height: 0;
     margin-top: 0.35rem;
-    overflow: visible;
+    overflow: hidden;
+  }
+
+  .contentScroll {
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .rail {

@@ -3,10 +3,18 @@ import { buildingAt, groundHeight, heightAt } from "../sim/world";
 import { fogAt } from "../sim/fog";
 import { isHiddenObjectiveAsset, type Entity, type SimState } from "../types";
 import { isAirUnit } from "../catalog";
+import { unitRenderPosition, updateUnitHistory } from "./gl/unitTransformTracker";
+
+/** Render-space altitude in terrain-height steps for airborne units. */
+export const AIR_UNIT_RENDER_ELEVATION = 5;
+
+export function isAirborneUnit(e: Entity): boolean {
+  return e.class === "unit" && isAirUnit(e.kind) && e.flightState !== "servicing";
+}
 
 export function entityElev(state: SimState, e: Entity): number {
   return e.class === "unit"
-    ? groundHeight(state, e.x, e.y) + (isAirUnit(e.kind) ? 3 : 0)
+    ? groundHeight(state, e.x, e.y) + (isAirborneUnit(e) ? AIR_UNIT_RENDER_ELEVATION : 0)
     : heightAt(state, Math.round(e.x), Math.round(e.y));
 }
 
@@ -118,7 +126,14 @@ export function visibleBuildingAt(state: SimState, x: number, y: number): Entity
   return b;
 }
 
-export function entityAtPointer(state: SimState, sx: number, sy: number, cam: Camera): Entity | undefined {
+export function entityAtPointer(
+  state: SimState,
+  sx: number,
+  sy: number,
+  cam: Camera,
+  clockMs = typeof performance !== "undefined" ? performance.now() : state.tick * (1000 / 12),
+): Entity | undefined {
+  updateUnitHistory(state, clockMs);
   const tile = pickTile(state, sx, sy, cam);
   let bestUnit: Entity | undefined;
   let bestD = 28 * cam.zoom;
@@ -127,8 +142,13 @@ export function entityAtPointer(state: SimState, sx: number, sy: number, cam: Ca
     // discovered stranded unit can show its objective tooltip without being
     // eligible for commands.
     if (e.hp <= 0 || e.class !== "unit" || !entityVisible(state, e)) continue;
-    const elev = groundHeight(state, e.x, e.y) + (isAirUnit(e.kind) ? 3 : 0);
-    const s = tileToScreen(e.x, e.y, cam, elev);
+    const visual = isAirUnit(e.kind) ? unitRenderPosition(e, clockMs) : undefined;
+    const x = visual?.x ?? e.x;
+    const y = visual?.y ?? e.y;
+    const elev = visual
+      ? groundHeight(state, x, y) + AIR_UNIT_RENDER_ELEVATION * visual.airborneMix
+      : entityElev(state, e);
+    const s = tileToScreen(x, y, cam, elev);
     const d = Math.hypot(sx - s.x, sy - (s.y + (TILE_H / 2) * cam.zoom - 12 * cam.zoom));
     if (d < bestD) {
       bestD = d;

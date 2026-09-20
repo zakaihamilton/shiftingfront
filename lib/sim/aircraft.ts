@@ -1,6 +1,7 @@
 import { footprintOf, isAirUnit, UNIT_STATS } from "../catalog";
 import { isBuildingEntity, isUnitEntity, type Entity, type SimEvent, type SimState } from "../types";
 import { byId } from "./world";
+import { canTarget, isCombatTarget } from "./combat/grid";
 
 type Aircraft = import("../types").UnitEntity & { kind: "strikePlane" };
 
@@ -25,7 +26,7 @@ function assignedRunway(state: SimState, aircraft: Entity): Entity | undefined {
   const runwayId = aircraft.assignedRunwayId;
   if (runwayId === undefined) return undefined;
   const runway = byId(state, runwayId);
-  return runway && isBuildingEntity(runway) && runway.kind === "runway" && runway.owner === aircraft.owner
+  return runway && isBuildingEntity(runway) && runway.kind === "runway" && runway.owner === aircraft.owner && runway.hp > 0
     ? runway
     : undefined;
 }
@@ -36,6 +37,14 @@ function clearRunwayAssignment(state: SimState, aircraft: Entity): void {
     runway.assignedPlaneId = undefined;
   }
   aircraft.assignedRunwayId = undefined;
+}
+
+function resumableAttackTarget(state: SimState, aircraft: Aircraft): Entity | undefined {
+  if (aircraft.attackTarget === undefined) return undefined;
+  const target = byId(state, aircraft.attackTarget);
+  return target && target.hp > 0 && target.owner !== aircraft.owner && !target.neutral && isCombatTarget(state, target) && canTarget(aircraft, target)
+    ? target
+    : undefined;
 }
 
 function setAirborne(aircraft: Entity): void {
@@ -65,7 +74,7 @@ export function launchAircraft(state: SimState, aircraft: Entity, events?: SimEv
 
 export function landAircraft(state: SimState, ids: number[], runwayId: number): SimEvent[] {
   const runway = byId(state, runwayId);
-  if (!runway || !isBuildingEntity(runway) || runway.kind !== "runway" || runway.owner !== 0 || runway.constructing > 0) {
+  if (!runway || !isBuildingEntity(runway) || runway.kind !== "runway" || runway.owner !== 0 || runway.constructing > 0 || runway.hp <= 0) {
     return [{ type: "commandRejected", reason: "invalid runway" }];
   }
 
@@ -91,7 +100,6 @@ function beginReturn(state: SimState, aircraft: Entity, runway: Entity, events?:
   aircraft.landingRunwayId = runway.id;
   aircraft.orderMode = "move";
   aircraft.orderDestination = runwayServicePoint(runway);
-  aircraft.attackTarget = undefined;
   aircraft.path = [];
   aircraft.idle = false;
   events?.push({
@@ -126,14 +134,18 @@ function serviceAircraft(state: SimState, aircraft: Entity, events?: SimEvent[])
     aircraft.serviceTicks = serviceTicks;
   }
   aircraft.hp = Math.min(aircraft.maxHp, aircraft.hp + AIRCRAFT_SERVICE_REPAIR_PER_TICK);
-  aircraft.x = runwayServicePoint(runway).x;
-  aircraft.y = runwayServicePoint(runway).y;
+  const servicePoint = runwayServicePoint(runway);
+  aircraft.x = servicePoint.x;
+  aircraft.y = servicePoint.y;
+  aircraft.facing = aircraft.owner === 0 ? 1 : 5;
   aircraft.path = [];
   aircraft.orderDestination = undefined;
   aircraft.orderMode = undefined;
-  aircraft.attackTarget = undefined;
   aircraft.idle = true;
-  void events;
+  if ((aircraft.ammo ?? 0) >= maxAmmo && aircraft.hp >= aircraft.maxHp) {
+    if (resumableAttackTarget(state, aircraft)) launchAircraft(state, aircraft, events);
+    else aircraft.attackTarget = undefined;
+  }
 }
 
 function moveAircraft(aircraft: Aircraft, destination: { x: number; y: number }): void {
@@ -173,7 +185,7 @@ export function tickAircraft(state: SimState, eventSink?: SimEvent[]): void {
     }
 
     const landingRunway = aircraft.landingRunwayId === undefined ? undefined : byId(state, aircraft.landingRunwayId);
-    if (aircraft.landingRunwayId !== undefined && (!landingRunway || landingRunway.kind !== "runway" || landingRunway.owner !== aircraft.owner || landingRunway.constructing > 0)) {
+    if (aircraft.landingRunwayId !== undefined && (!landingRunway || landingRunway.kind !== "runway" || landingRunway.owner !== aircraft.owner || landingRunway.constructing > 0 || landingRunway.hp <= 0)) {
       aircraft.landingRunwayId = undefined;
     }
     if (landingRunway && aircraft.landingRunwayId === landingRunway.id) {
@@ -181,6 +193,10 @@ export function tickAircraft(state: SimState, eventSink?: SimEvent[]): void {
       if (Math.hypot(aircraft.x - point.x, aircraft.y - point.y) <= AIRCRAFT_LANDING_RADIUS) {
         aircraft.x = point.x;
         aircraft.y = point.y;
+        // The runway art is aligned with the positive isometric x-axis. Set
+        // the parked aircraft to that heading so its centered sprite rests
+        // along the runway instead of pointing across it.
+        aircraft.facing = aircraft.owner === 0 ? 1 : 5;
         aircraft.flightState = "servicing";
         aircraft.serviceTicks = 0;
         aircraft.landingRunwayId = undefined;
@@ -188,7 +204,6 @@ export function tickAircraft(state: SimState, eventSink?: SimEvent[]): void {
         aircraft.path = [];
         aircraft.orderDestination = undefined;
         aircraft.orderMode = undefined;
-        aircraft.attackTarget = undefined;
         landingRunway.assignedPlaneId = aircraft.id;
         eventSink?.push({
           type: "aircraftStatus",

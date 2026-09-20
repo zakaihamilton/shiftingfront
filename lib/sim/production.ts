@@ -143,6 +143,7 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
         if (isAirUnit(kind) && isBuildingEntity(e) && e.kind === "runway") {
           spawned.assignedRunwayId = e.id;
           spawned.flightState = "servicing";
+          spawned.facing = spawned.owner === 0 ? 1 : 5;
           spawned.serviceTicks = 0;
           spawned.ammo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo ?? 0;
           spawned.maxAmmo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo;

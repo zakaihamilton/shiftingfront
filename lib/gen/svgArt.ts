@@ -3,6 +3,7 @@ import {
   AIR_SUPPORT_ART,
   ANTI_AIR_TURRET_BASE_CROP,
   SPRITE_ART,
+  STRIKE_PLANE_DIRECTION_ART,
   TEXTURE_ART,
   UNIT_DIRECTION_ART,
   UNIT_DIRECTION_CROPS,
@@ -135,20 +136,23 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
   if (kind === "strikePlane") {
     const w = 96;
     const h = 64;
+    const view = unitViewForFacing(facing);
     return {
-      id: `unit:airframe-raster-v1:${kind}:${facing}:${palette.primary}:${visualKey(profile)}:${variant}:${frame}:${options.damageStage ?? 0}`,
+      id: `unit:airframe-directional-v2:${kind}:${facing}:${view}:${palette.primary}:${visualKey(profile)}:${variant}:${frame}:${options.damageStage ?? 0}`,
       kind: "unit",
       w,
       h,
       palette,
       shapes: [],
-      imageSrc: AIR_SUPPORT_ART.strikePlane,
+      imageSrc: STRIKE_PLANE_DIRECTION_ART[view],
       imageTint: rasterTreatment(profile, palette),
       imageTextureSrc: TEXTURE_ART.worn,
       imageTextureOpacity: options.damageStage ? 0.28 : 0.12,
       imageTextureOffset: kindOffset(kind),
       anchorX: w / 2,
-      anchorY: h,
+      // Aircraft are top-down silhouettes: their world position is the center
+      // of the airframe, including when the plane is parked on a runway.
+      anchorY: h / 2,
       pixelScale: 1,
     };
   }

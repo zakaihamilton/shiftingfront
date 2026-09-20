@@ -30,6 +30,7 @@ describe("air support", () => {
     expect(plane.hp).toBe(180);
     expect(plane.x).toBeCloseTo(3.5);
     expect(plane.y).toBeCloseTo(2.5);
+    expect(plane.facing).toBe(1);
   });
 
   it("accepts manual landing and automatically returns after a finite sortie", () => {
@@ -83,6 +84,66 @@ describe("air support", () => {
       tickAircraft(state);
     }
     expect(plane.ammo).toBe(1);
+  });
+
+  it("automatically relaunches toward its previous target after rearming", () => {
+    const state = makeFixture({ width: 30, height: 20, win: { kind: "annihilate" } });
+    const runway = addBuilding(state, 0, "runway", 2, 2);
+    const plane = addUnit(state, 0, "strikePlane", 12, 8);
+    const target = addBuilding(state, 1, "power", 18, 8);
+    plane.assignedRunwayId = runway.id;
+    runway.assignedPlaneId = plane.id;
+    plane.ammo = 0;
+    plane.maxAmmo = 3;
+    plane.attackTarget = target.id;
+
+    tickAircraft(state);
+    expect(plane.landingRunwayId).toBe(runway.id);
+
+    for (let tick = 0; tick < 120 && plane.flightState !== "servicing"; tick += 1) {
+      state.tick += 1;
+      tickAircraft(state);
+    }
+    expect(plane.flightState).toBe("servicing");
+
+    for (let tick = 0; tick < 60 && plane.flightState === "servicing"; tick += 1) {
+      state.tick += 1;
+      tickAircraft(state);
+    }
+
+    expect(plane.flightState).toBe("airborne");
+    expect(plane.attackTarget).toBe(target.id);
+    expect(plane.ammo).toBe(3);
+  });
+
+  it("does not return to a destroyed runway", () => {
+    const state = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
+    const runway = addBuilding(state, 0, "runway", 2, 2);
+    const plane = addUnit(state, 0, "strikePlane", 12, 8);
+    runway.hp = 0;
+    plane.assignedRunwayId = runway.id;
+    plane.ammo = 0;
+    plane.maxAmmo = 3;
+    plane.flightState = "airborne";
+
+    tickAircraft(state);
+
+    expect(plane.assignedRunwayId).toBeUndefined();
+    expect(plane.landingRunwayId).toBeUndefined();
+    expect(plane.flightState).toBe("airborne");
+  });
+
+  it("rejects landing on a destroyed runway", () => {
+    const state = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
+    const runway = addBuilding(state, 0, "runway", 2, 2);
+    const plane = addUnit(state, 0, "strikePlane", 12, 8);
+    runway.hp = 0;
+    plane.assignedRunwayId = runway.id;
+
+    expect(issue(state, { type: "land", unitIds: [plane.id], runwayId: runway.id })).toEqual([
+      { type: "commandRejected", reason: "invalid runway" },
+    ]);
+    expect(plane.landingRunwayId).toBeUndefined();
   });
 
   it("does not let a spent plane without a runway block annihilation", () => {

@@ -20,11 +20,25 @@ export function depthOf(e: Entity): number {
   return e.x + e.y;
 }
 
+// Parked aircraft share the runway's ground elevation, so keep their sprite
+// above the runway in the painter's order while preserving normal depth order
+// for aircraft in flight.
+export const SERVICING_AIRCRAFT_DEPTH_BIAS = 3;
+
+export function renderDepthOf(e: Entity, position?: { x: number; y: number }): number {
+  const depth = e.class === "unit" && position ? position.x + position.y : depthOf(e);
+  return e.class === "unit" && e.kind === "strikePlane" && e.flightState === "servicing"
+    ? depth + SERVICING_AIRCRAFT_DEPTH_BIAS
+    : depth;
+}
+
 export function facingFor(state: SimState, e: Entity, entityById: Map<number, Entity>, from?: { x: number; y: number }): Facing {
   const x = from?.x ?? e.x;
   const y = from?.y ?? e.y;
   let target: { x: number; y: number } | undefined;
-  if (e.attackTarget !== undefined) target = entityById.get(e.attackTarget);
+  if (!(e.class === "unit" && e.kind === "strikePlane" && e.flightState === "servicing") && e.attackTarget !== undefined) {
+    target = entityById.get(e.attackTarget);
+  }
   if (!target && e.path.length) target = e.path[0];
   if (target) {
     const dx = target.x - x;

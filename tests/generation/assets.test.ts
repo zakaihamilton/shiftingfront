@@ -21,6 +21,7 @@ import {
   AIR_SUPPORT_ART,
   ANTI_AIR_TURRET_BASE_CROP,
   SPRITE_ART,
+  STRIKE_PLANE_DIRECTION_ART,
   UNIT_DIRECTION_ART,
   UNIT_WALK_CYCLE_ART,
   unitWalkFrameCrop,
@@ -190,7 +191,18 @@ describe("tactical procedural assets", () => {
         unitSprite(kind, palette, { facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 }),
       );
       if (kind === "strikePlane") {
-        expect(views.every((spec) => spec.imageSrc === AIR_SUPPORT_ART.strikePlane && spec.rotation === undefined)).toBe(true);
+        expect(views.every((spec) => spec.rotation === undefined)).toBe(true);
+        expect(views.map((spec) => spec.imageSrc)).toEqual([
+          STRIKE_PLANE_DIRECTION_ART.right,
+          STRIKE_PLANE_DIRECTION_ART["front-right"],
+          STRIKE_PLANE_DIRECTION_ART.front,
+          STRIKE_PLANE_DIRECTION_ART["front-left"],
+          STRIKE_PLANE_DIRECTION_ART.left,
+          STRIKE_PLANE_DIRECTION_ART["back-left"],
+          STRIKE_PLANE_DIRECTION_ART.back,
+          STRIKE_PLANE_DIRECTION_ART["back-right"],
+        ]);
+        expect(new Set(views.map((spec) => spec.imageSrc)).size).toBe(8);
         continue;
       }
       expect(views.every((spec) => spec.rotation === undefined)).toBe(true);
@@ -211,7 +223,7 @@ describe("tactical procedural assets", () => {
     for (const kind of UNIT_KINDS) {
       const views = UNIT_DIRECTION_ART[kind];
       expect(Object.keys(views)).toHaveLength(8);
-      if (kind === "strikePlane") expect(new Set(Object.values(views))).toEqual(new Set([AIR_SUPPORT_ART.strikePlane]));
+      if (kind === "strikePlane") expect(new Set(Object.values(views))).toEqual(new Set(Object.values(STRIKE_PLANE_DIRECTION_ART)));
       else expect(new Set(Object.values(views)).size).toBe(8);
     }
   });
@@ -356,6 +368,11 @@ describe("tactical procedural assets", () => {
   it("plants unit sprites on a contact shadow at the feet", () => {
     for (const kind of UNIT_KINDS) {
       const spec = unitSprite(kind, palette, { facing: 0, variant: 11 });
+      if (kind === "strikePlane") {
+        expect(spec.anchorY).toBe(spec.h / 2);
+        expect(spec.anchorX).toBe(spec.w / 2);
+        continue;
+      }
       if (spec.imageSrc) {
         expect(spec.anchorY ?? spec.h).toBeGreaterThan(spec.h * 0.8);
         expect(spec.anchorX).toBe(spec.w / 2);

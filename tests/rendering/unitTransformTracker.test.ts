@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMission } from "../../lib/sim/api";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import {
   computeUnitDynamicTransform,
   resetUnitTransformTracker,
@@ -225,5 +226,70 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
     // Leg and foot-plant state varies across the shared walk cycle; the
     // native raster art supplies the body motion without an extra bob.
     expect(t1.strideRatio).not.toBe(t2.strideRatio);
+  });
+
+  it("animates a plane gliding from the air onto the runway", () => {
+    const state = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const plane = addUnit(state, 0, "strikePlane", 10, 8);
+    plane.flightState = "airborne";
+    updateUnitHistory(state, 1000);
+    computeUnitDynamicTransform(plane, state, 0, 1000);
+
+    const runwayX = 3.5;
+    const runwayY = 2.5;
+    state.tick += 1;
+    plane.x = runwayX;
+    plane.y = runwayY;
+    plane.flightState = "servicing";
+    updateUnitHistory(state, 1083);
+
+    const mid = computeUnitDynamicTransform(plane, state, 0, 1083 + 360);
+    expect(mid.x).toBeGreaterThan(runwayX);
+    expect(mid.x).toBeLessThan(10);
+    expect(mid.airborneMix).toBeGreaterThan(0);
+    expect(mid.airborneMix).toBeLessThan(1);
+
+    const end = computeUnitDynamicTransform(plane, state, 0, 1083 + 720);
+    expect(end.x).toBeCloseTo(runwayX, 4);
+    expect(end.y).toBeCloseTo(runwayY, 4);
+    expect(end.airborneMix).toBe(0);
+  });
+
+  it("animates a plane lifting off from the runway", () => {
+    const state = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const plane = addUnit(state, 0, "strikePlane", 3.5, 2.5);
+    plane.flightState = "servicing";
+    updateUnitHistory(state, 1000);
+    computeUnitDynamicTransform(plane, state, 0, 1000);
+
+    state.tick += 1;
+    plane.flightState = "airborne";
+    updateUnitHistory(state, 1083);
+
+    const mid = computeUnitDynamicTransform(plane, state, 0, 1083 + 360);
+    expect(mid.x).toBeCloseTo(plane.x, 4);
+    expect(mid.y).toBeCloseTo(plane.y, 4);
+    expect(mid.airborneMix).toBeGreaterThan(0);
+    expect(mid.airborneMix).toBeLessThan(1);
+
+    const end = computeUnitDynamicTransform(plane, state, 0, 1083 + 720);
+    expect(end.airborneMix).toBe(1);
+  });
+
+  it("keeps a servicing plane pointed along the runway while retaining its target", () => {
+    const state = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
+    const plane = addUnit(state, 0, "strikePlane", 3.5, 2.5);
+    const target = addBuilding(state, 1, "power", 12, 8);
+    plane.flightState = "servicing";
+    plane.facing = 1;
+    plane.attackTarget = target.id;
+
+    updateUnitHistory(state, 1000);
+    let dyn = computeUnitDynamicTransform(plane, state, 0, 1000, new Map(state.entities.map((e) => [e.id, e])));
+    for (let time = 1050; time <= 2000; time += 50) {
+      dyn = computeUnitDynamicTransform(plane, state, 0, time, new Map(state.entities.map((e) => [e.id, e])));
+    }
+
+    expect(dyn.baseFacing).toBe(1);
   });
 });

@@ -21,7 +21,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     if (e.class === "unit") e.suppression = Math.max(0, (e.suppression ?? 0) - 1);
     const st = statsFor(e);
     if (st.damage <= 0 || e.neutral) continue;
-    if (e.class === "unit" && e.flightState === "servicing") continue;
+    if (e.class === "unit" && (e.flightState === "servicing" || e.landingRunwayId !== undefined)) continue;
     if (e.constructing > 0) continue;
     if (e.cooldown > 0) e.cooldown -= 1;
 

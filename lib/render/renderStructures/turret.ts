@@ -10,6 +10,8 @@ import { distToEntity } from "../../sim/world";
 
 export const turretAimMap = new Map<number, { angle: number; lastMs: number }>();
 export const TURRET_WEAPON_RANGE = 5.5;
+/** Clearly visible upward elevation for anti-air barrels while tracking aircraft. */
+export const ANTI_AIR_BARREL_PITCH = 0.34;
 
 function turretRange(turret: Entity): number {
   return isBuildingEntity(turret) ? BUILDING_STATS[turret.kind].combat?.range ?? TURRET_WEAPON_RANGE : TURRET_WEAPON_RANGE;
@@ -97,6 +99,7 @@ export function drawTurretCannon(
   aim.angle = lerpAngle(aim.angle, targetAngle, Math.min(1, dt * 10.0));
 
   const angle = aim.angle;
+  const barrelPitch = e.kind === "antiAirTurret" ? ANTI_AIR_BARREL_PITCH : 0;
   const cooldown = BUILDING_STATS[e.kind].combat?.cooldown ?? 14;
   const isFiring = e.cooldown >= Math.max(1, cooldown - 3);
   const recoil = isFiring ? ((e.cooldown - (cooldown - 3)) / 3) * 3 * z : 0;
@@ -143,17 +146,18 @@ export function drawTurretCannon(
   const pal = state.factions[e.owner]?.palette ?? state.factions[0]?.palette;
   const model = getTurretModel(e.kind);
   const recoilRatio = isFiring ? (e.cooldown - (cooldown - 3)) / 3 : 0;
-  drawCachedTurretModel(ctx, model, mountX, mountY - 3 * z, z, angle - Math.PI / 4, pal, recoilRatio);
+  drawCachedTurretModel(ctx, model, mountX, mountY - 3 * z, z, angle - Math.PI / 4, pal, recoilRatio, barrelPitch);
 
   const forwardDist = 26 * z - recoil;
+  const pitchLift = Math.sin(barrelPitch) * 16 * z;
   const barrelSpread = 2.4 * z;
   const perpX = -sin * barrelSpread;
   const perpY = cos * barrelSpread * 0.5;
 
   const muzzleLX = mountX + cos * forwardDist + perpX;
-  const muzzleLY = mountY + sin * forwardDist + perpY - 3 * z;
+  const muzzleLY = mountY + sin * forwardDist + perpY - 3 * z - pitchLift;
   const muzzleRX = mountX + cos * forwardDist - perpX;
-  const muzzleRY = mountY + sin * forwardDist - perpY - 3 * z;
+  const muzzleRY = mountY + sin * forwardDist - perpY - 3 * z - pitchLift;
 
   if (target && target.hp > 0) {
     const b = tileToScreen(target.x, target.y, cam, entityElev(state, target));

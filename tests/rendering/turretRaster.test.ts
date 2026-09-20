@@ -5,8 +5,10 @@ import {
   drawCachedTurretModel,
   turretRasterCacheSize,
   turretRasterKey,
+  turretPitchStep,
   TURRET_YAW_STEPS,
 } from "../../lib/render/gl/turretRaster";
+import { ANTI_AIR_BARREL_PITCH } from "../../lib/render/renderStructures/turret";
 import type { Palette } from "../../lib/types";
 
 const palette: Palette = {
@@ -56,6 +58,13 @@ describe("turret raster cache", () => {
   it("keeps normal and anti-air heads in separate raster cache namespaces", () => {
     expect(turretRasterKey(palette, 0.2, 0.1, 1, "turret"))
       .not.toBe(turretRasterKey(palette, 0.2, 0.1, 1, "antiAirTurret"));
+  });
+
+  it("keeps differently pitched barrels in separate raster poses", () => {
+    expect(ANTI_AIR_BARREL_PITCH).toBeGreaterThan(0);
+    expect(turretPitchStep(ANTI_AIR_BARREL_PITCH)).not.toBe(turretPitchStep(0));
+    expect(turretRasterKey(palette, 0.2, 0.1, 1, "antiAirTurret", ANTI_AIR_BARREL_PITCH))
+      .not.toBe(turretRasterKey(palette, 0.2, 0.1, 1, "antiAirTurret", 0));
   });
 
   it("reuses one offscreen raster for matching quantized poses", () => {

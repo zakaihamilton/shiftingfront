@@ -1,6 +1,7 @@
 import { buildingAnim } from "./anim";
 import { buildAntiAirTurretModel, buildTurretHeadModel, type UnitModel } from "./gl/modelLoader";
 import { draw3dModel } from "./gl/modelRenderer";
+import { ANTI_AIR_BARREL_PITCH } from "./renderStructures/turret";
 import type { BuildingKind, Entity, Facing, Palette } from "../types";
 
 const cachedTurretModels = new Map<"turret" | "antiAirTurret", UnitModel>();
@@ -80,7 +81,16 @@ export function paintBuildingAssetOverlay(
     ctx.fill();
     ctx.restore();
 
-    draw3dModel(ctx, getTurretModel(kind), cx, cy - 3 * scale, scale, currentAngle - Math.PI / 4, palette);
+    draw3dModel(
+      ctx,
+      getTurretModel(kind),
+      cx,
+      cy - 3 * scale,
+      scale,
+      currentAngle - Math.PI / 4,
+      palette,
+      { barrelPitch: kind === "antiAirTurret" ? ANTI_AIR_BARREL_PITCH : 0 },
+    );
   }
   ctx.restore();
 }

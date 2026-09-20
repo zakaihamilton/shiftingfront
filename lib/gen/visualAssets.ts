@@ -52,6 +52,17 @@ export type UnitView =
   | "back"
   | "back-right";
 
+export const STRIKE_PLANE_DIRECTION_ART: Record<UnitView, string> = {
+  right: "/art/sprites/sleek-modular/air-support/strike-plane-right-v1.webp",
+  "front-right": AIR_SUPPORT_ART.strikePlane,
+  front: "/art/sprites/sleek-modular/air-support/strike-plane-front-v1.webp",
+  "front-left": "/art/sprites/sleek-modular/air-support/strike-plane-front-left-v1.webp",
+  left: "/art/sprites/sleek-modular/air-support/strike-plane-left-v1.webp",
+  "back-left": "/art/sprites/sleek-modular/air-support/strike-plane-back-left-v1.webp",
+  back: "/art/sprites/sleek-modular/air-support/strike-plane-back-v1.webp",
+  "back-right": "/art/sprites/sleek-modular/air-support/strike-plane-back-right-v1.webp",
+};
+
 export type WalkerKind = "infantry" | "antiArmor" | "medic";
 
 const WALK_CYCLE_SHEET_SIZE = 1024;
@@ -132,16 +143,7 @@ export const UNIT_DIRECTION_ART: Record<UnitKind, Record<UnitView, string>> = {
     left: "/art/sprites/sleek-modular/convoy-truck-left-v1.webp",
     "back-right": "/art/sprites/sleek-modular/convoy-truck-back-right-v1.webp",
   },
-  strikePlane: {
-    "front-right": AIR_SUPPORT_ART.strikePlane,
-    front: AIR_SUPPORT_ART.strikePlane,
-    right: AIR_SUPPORT_ART.strikePlane,
-    "front-left": AIR_SUPPORT_ART.strikePlane,
-    "back-left": AIR_SUPPORT_ART.strikePlane,
-    back: AIR_SUPPORT_ART.strikePlane,
-    left: AIR_SUPPORT_ART.strikePlane,
-    "back-right": AIR_SUPPORT_ART.strikePlane,
-  },
+  strikePlane: STRIKE_PLANE_DIRECTION_ART,
 };
 
 /** Generated four-frame walk cycles for units with visible legs and feet. */

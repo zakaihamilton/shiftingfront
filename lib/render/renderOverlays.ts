@@ -5,4 +5,4 @@ export { drawRescueHalo, drawObjectiveZone } from "./renderOverlays/zones";
 export { drawUnitGlow, drawDamageOverlay } from "./renderOverlays/unitEffects";
 export { drawSelectBox } from "./renderOverlays/selection";
 export { drawTooltip, tileTooltipLines, tooltipLines } from "./renderOverlays/tooltips";
-export { healthMeterColors, drawUnitHealthMeter, entityHasWorldHealthMeter, repairTargetIds, worldHealthMeterLayout, worldHealthMeterHeight } from "./renderOverlays/health";
+export { healthMeterColors, drawUnitAmmoMeter, drawUnitHealthMeter, entityHasWorldAmmoMeter, entityHasWorldHealthMeter, repairTargetIds, worldHealthMeterLayout, worldHealthMeterHeight } from "./renderOverlays/health";

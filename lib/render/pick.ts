@@ -1,19 +1,33 @@
 import { isPlayerSelectableUnit, type Entity, type SimState } from "../types";
-import { groundHeight } from "../sim/world";
 import { isAirUnit } from "../catalog";
 import { TILE_H, tileToScreen, type Camera } from "../iso";
 import { pickTile, visibleBuildingAt } from "./renderer";
-import { entityVisible } from "./renderPicking";
+import { AIR_UNIT_RENDER_ELEVATION, entityElev, entityVisible } from "./renderPicking";
+import { unitRenderPosition, updateUnitHistory } from "./gl/unitTransformTracker";
+import { groundHeight } from "../sim/world";
 
 /** Screen-space pick: units first so vehicles overlapping a building stay selectable. */
-export function pickEntity(state: SimState, sx: number, sy: number, cam: Camera, allowNeutral = false): Entity | undefined {
+export function pickEntity(
+  state: SimState,
+  sx: number,
+  sy: number,
+  cam: Camera,
+  allowNeutral = false,
+  clockMs = typeof performance !== "undefined" ? performance.now() : state.tick * (1000 / 12),
+): Entity | undefined {
+  updateUnitHistory(state, clockMs);
   let bestUnit: Entity | undefined;
   let bestD = Infinity;
   const z = cam.zoom;
   for (const e of state.entities) {
     if (!isPlayerSelectableUnit(e) || e.hp <= 0 || (!allowNeutral && e.neutral) || !entityVisible(state, e)) continue;
-    const elev = isAirUnit(e.kind) ? groundHeight(state, e.x, e.y) + 3 : groundHeight(state, e.x, e.y);
-    const s = tileToScreen(e.x, e.y, cam, elev);
+    const visual = e.class === "unit" && isAirUnit(e.kind) ? unitRenderPosition(e, clockMs) : undefined;
+    const x = visual?.x ?? e.x;
+    const y = visual?.y ?? e.y;
+    const elev = visual
+      ? groundHeight(state, x, y) + AIR_UNIT_RENDER_ELEVATION * visual.airborneMix
+      : entityElev(state, e);
+    const s = tileToScreen(x, y, cam, elev);
     const bodyX = s.x;
     const bodyY = s.y + (TILE_H / 2) * z - 12 * z;
     const unitKind = e.class === "unit" ? e.kind : undefined;
