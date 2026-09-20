@@ -1,15 +1,25 @@
-import { footprintOf } from "../../catalog";
+import { BUILDING_STATS, footprintOf } from "../../catalog";
 import { tileToScreen, type Camera } from "../../iso";
 import { lerpAngle } from "../gl/glMath";
 import { isBuildingEntity, type Entity, type SimState } from "../../types";
 import { iffColors } from "../iff";
 import { entityElev } from "../renderPicking";
-import { buildTurretHeadModel, type UnitModel } from "../gl/modelLoader";
+import { buildAntiAirTurretModel, buildTurretHeadModel, type UnitModel } from "../gl/modelLoader";
 import { drawCachedTurretModel } from "../gl/turretRaster";
 import { distToEntity } from "../../sim/world";
 
 export const turretAimMap = new Map<number, { angle: number; lastMs: number }>();
 export const TURRET_WEAPON_RANGE = 5.5;
+/**
+ * Match the steep skyward stance in the authored anti-air portrait. This is
+ * shared by battlefield and sidebar model renders so the weapon never appears
+ * level on the battlefield while raised in the preview.
+ */
+export const ANTI_AIR_BARREL_PITCH = 0.52;
+
+function turretRange(turret: Entity): number {
+  return isBuildingEntity(turret) ? BUILDING_STATS[turret.kind].combat?.range ?? TURRET_WEAPON_RANGE : TURRET_WEAPON_RANGE;
+}
 
 /**
  * Render locks only while the target is a valid nearby enemy. Combat can leave
@@ -18,11 +28,11 @@ export const TURRET_WEAPON_RANGE = 5.5;
  */
 export function turretTargetInRange(turret: Entity, target: Entity): boolean {
   return turret.class === "building" &&
-    turret.kind === "turret" &&
+    (turret.kind === "turret" || turret.kind === "antiAirTurret") &&
     target.hp > 0 &&
     target.owner !== turret.owner &&
     !target.neutral &&
-    distToEntity(turret, target) <= TURRET_WEAPON_RANGE;
+    distToEntity(turret, target) <= turretRange(turret);
 }
 
 /** Aim at the nearest cell of a building footprint instead of its top-left corner. */
@@ -46,12 +56,13 @@ export function pruneTurretAimCache(liveIds: Iterable<number>): void {
   }
 }
 
-let cachedTurretModel: UnitModel | null = null;
-export function getTurretModel(): UnitModel {
-  if (!cachedTurretModel) {
-    cachedTurretModel = buildTurretHeadModel();
-  }
-  return cachedTurretModel;
+const cachedTurretModels = new Map<"turret" | "antiAirTurret", UnitModel>();
+export function getTurretModel(kind: "turret" | "antiAirTurret" = "turret"): UnitModel {
+  const cached = cachedTurretModels.get(kind);
+  if (cached) return cached;
+  const model = kind === "antiAirTurret" ? buildAntiAirTurretModel() : buildTurretHeadModel();
+  cachedTurretModels.set(kind, model);
+  return model;
 }
 
 export function drawTurretCannon(
@@ -65,7 +76,7 @@ export function drawTurretCannon(
   targetEntity?: Entity,
   colorblindMode: import("../../persist/settings").ColorblindMode = "none",
 ): void {
-  if (e.hp <= 0 || e.constructing > 0) return;
+  if (e.hp <= 0 || e.constructing > 0 || e.class !== "building" || (e.kind !== "turret" && e.kind !== "antiAirTurret")) return;
   const target = targetEntity && turretTargetInRange(e, targetEntity) ? targetEntity : undefined;
   const targetPoint = target ? turretTargetPoint(e, target) : undefined;
 
@@ -92,33 +103,16 @@ export function drawTurretCannon(
   aim.angle = lerpAngle(aim.angle, targetAngle, Math.min(1, dt * 10.0));
 
   const angle = aim.angle;
-  const isFiring = e.cooldown >= 11;
-  const recoil = isFiring ? ((e.cooldown - 11) / 3) * 3 * z : 0;
+  const barrelPitch = e.kind === "antiAirTurret" ? ANTI_AIR_BARREL_PITCH : 0;
+  const cooldown = BUILDING_STATS[e.kind].combat?.cooldown ?? 14;
+  const isFiring = e.cooldown >= Math.max(1, cooldown - 3);
+  const recoil = isFiring ? ((e.cooldown - (cooldown - 3)) / 3) * 3 * z : 0;
 
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
 
   const iff = iffColors(e.owner, false, colorblindMode);
   ctx.save();
-
-  if (target && targetPoint) {
-    const b = tileToScreen(targetPoint.x, targetPoint.y, cam, entityElev(state, target));
-    const muzzleX = mountX + cos * (24 * z - recoil);
-    const muzzleY = mountY + sin * (24 * z - recoil);
-    ctx.strokeStyle = iff.laser;
-    ctx.lineWidth = Math.max(1, 1.2 * z);
-    ctx.setLineDash([4 * z, 4 * z]);
-    ctx.beginPath();
-    ctx.moveTo(muzzleX, muzzleY);
-    ctx.lineTo(b.x, b.y + 6 * z);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = iff.hex;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y + 6 * z, 2 * z, 0, Math.PI * 2);
-    ctx.fill();
-  }
 
   ctx.save();
   ctx.fillStyle = "rgba(8, 12, 16, 0.55)";
@@ -135,19 +129,20 @@ export function drawTurretCannon(
   ctx.restore();
 
   const pal = state.factions[e.owner]?.palette ?? state.factions[0]?.palette;
-  const model = getTurretModel();
-  const recoilRatio = isFiring ? (e.cooldown - 11) / 3 : 0;
-  drawCachedTurretModel(ctx, model, mountX, mountY - 3 * z, z, angle - Math.PI / 4, pal, recoilRatio);
+  const model = getTurretModel(e.kind);
+  const recoilRatio = isFiring ? (e.cooldown - (cooldown - 3)) / 3 : 0;
+  drawCachedTurretModel(ctx, model, mountX, mountY - 3 * z, z, angle - Math.PI / 4, pal, recoilRatio, barrelPitch);
 
   const forwardDist = 26 * z - recoil;
+  const pitchLift = Math.sin(barrelPitch) * 16 * z;
   const barrelSpread = 2.4 * z;
   const perpX = -sin * barrelSpread;
   const perpY = cos * barrelSpread * 0.5;
 
   const muzzleLX = mountX + cos * forwardDist + perpX;
-  const muzzleLY = mountY + sin * forwardDist + perpY - 3 * z;
+  const muzzleLY = mountY + sin * forwardDist + perpY - 3 * z - pitchLift;
   const muzzleRX = mountX + cos * forwardDist - perpX;
-  const muzzleRY = mountY + sin * forwardDist - perpY - 3 * z;
+  const muzzleRY = mountY + sin * forwardDist - perpY - 3 * z - pitchLift;
 
   if (target && target.hp > 0) {
     const b = tileToScreen(target.x, target.y, cam, entityElev(state, target));
@@ -179,7 +174,7 @@ export function drawTurretCannon(
 
   if (isFiring) {
     ctx.save();
-    const flashStage = (e.cooldown - 11) / 3;
+    const flashStage = recoilRatio;
     const flashR = (3.5 + flashStage * 3.5) * z;
 
     for (const [mx, my] of [[muzzleLX, muzzleLY], [muzzleRX, muzzleRY]]) {

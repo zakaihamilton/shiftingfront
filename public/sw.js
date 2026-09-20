@@ -109,6 +109,16 @@ const PRECACHE_URLS = [
   "/art/results/victory.webp",
 
   // Sprites (Units & Buildings)
+  "/art/sprites/sleek-modular/air-support/anti-air-turret-v1.webp",
+  "/art/sprites/sleek-modular/air-support/runway-v1.webp",
+  "/art/sprites/sleek-modular/air-support/strike-plane-back-left-v1.webp",
+  "/art/sprites/sleek-modular/air-support/strike-plane-back-right-v1.webp",
+  "/art/sprites/sleek-modular/air-support/strike-plane-back-v1.webp",
+  "/art/sprites/sleek-modular/air-support/strike-plane-front-left-v1.webp",
+  "/art/sprites/sleek-modular/air-support/strike-plane-front-v1.webp",
+  "/art/sprites/sleek-modular/air-support/strike-plane-front-right-v1.webp",
+  "/art/sprites/sleek-modular/air-support/strike-plane-left-v1.webp",
+  "/art/sprites/sleek-modular/air-support/strike-plane-right-v1.webp",
   "/art/sprites/sleek-modular/anti-armor-back-left-v1.webp",
   "/art/sprites/sleek-modular/anti-armor-back-right-v1.webp",
   "/art/sprites/sleek-modular/anti-armor-back.webp",

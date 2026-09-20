@@ -104,6 +104,8 @@ export function forwardRefinerySite(state: SimState, yard: Entity, point: Vec2):
 
 export function queueUnit(state: SimState, producer: Entity, kind: UnitKind): boolean {
   if (!isUnitAvailable(kind, state.missionIndex)) return false;
+  if (producer.class !== "building" || producer.constructing > 0 || producer.producing) return false;
+  if (producer.kind === "runway" && producer.assignedPlaneId !== undefined) return false;
   const cost = UNIT_STATS[kind].cost;
   if (state.credits[1] < cost || powerFor(state, 1) < 0) return false;
   state.credits[1] -= cost;

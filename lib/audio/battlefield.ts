@@ -9,7 +9,8 @@ export function fireSfxFor(attackerKind: UnitKind | BuildingKind, weapon: Weapon
   if (attackerKind === "infantry") return "smallArms";
   if (attackerKind === "antiArmor") return "antiArmor";
   if (attackerKind === "tank") return "cannon";
-  if (attackerKind === "turret") return "turret";
+  if (attackerKind === "turret" || attackerKind === "antiAirTurret") return "turret";
+  if (attackerKind === "strikePlane") return "cannon";
   if (weapon === "smallArms") return "smallArms";
   if (weapon === "antiArmor") return "antiArmor";
   return "cannon";
@@ -34,6 +35,7 @@ export function supportSfxFor(providerKind: UnitKind): SfxKind {
 export function impactDelayFor(weapon: WeaponType): number {
   if (weapon === "smallArms") return 0.025;
   if (weapon === "antiArmor") return 0.11;
+  if (weapon === "airStrike") return 0.14;
   return 0.085;
 }
 

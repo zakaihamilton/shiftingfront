@@ -1,12 +1,13 @@
-import { footprintOf } from "../../../catalog";
+import { footprintOf, isAirUnit } from "../../../catalog";
 import type { SimState } from "../../../types";
 import { TILE_H, TILE_W, tileToScreen, type Camera } from "../../../iso";
 import { canRepair } from "../../../sim/repair";
 import { canSell } from "../../../sim/sell";
 import { tutorialTargets, type TutorialWorldTarget } from "../../../sim/tutorialStage";
-import { heightAt } from "../../../sim/world";
+import { groundHeight, heightAt } from "../../../sim/world";
 import { selectionPulse } from "../../anim";
-import { entityAtPointer, entityElev, visibleBuildingAt } from "../../renderPicking";
+import { AIR_UNIT_RENDER_ELEVATION, entityAtPointer, entityElev, visibleBuildingAt } from "../../renderPicking";
+import { unitRenderPosition } from "../../gl/unitTransformTracker";
 import { strokeFootprint } from "../../renderStructures";
 import { drawDiamond, drawDiamondStroke, drawTooltip, tileTooltipLines, tooltipLines, type RenderExtras } from "../../renderOverlays";
 
@@ -71,22 +72,28 @@ export function renderHoverPhase(
 
   const cursor = extras.cursor;
   if (cursor) {
-    const ent = entityAtPointer(state, cursor.x, cursor.y, cam);
+    const clockMs = extras.clockMs ?? (typeof performance !== "undefined" ? performance.now() : state.tick * (1000 / 12));
+    const ent = entityAtPointer(state, cursor.x, cursor.y, cam, clockMs);
     if (ent) {
-      const elev = entityElev(state, ent);
-      let cx = ent.x;
-      let cy = ent.y;
+      const visual = ent.class === "unit" && isAirUnit(ent.kind) ? unitRenderPosition(ent, clockMs) : undefined;
+      const cx = visual?.x ?? ent.x;
+      const cy = visual?.y ?? ent.y;
+      const elev = visual
+        ? groundHeight(state, cx, cy) + AIR_UNIT_RENDER_ELEVATION * visual.airborneMix
+        : entityElev(state, ent);
       let unitH = 42;
       if (ent.class === "building") {
         const fp = footprintOf(ent.kind as import("../../../types").BuildingKind);
-        cx = ent.x + (fp.w - 1) / 2;
-        cy = ent.y + (fp.h - 1) / 2;
+        const buildingCx = ent.x + (fp.w - 1) / 2;
+        const buildingCy = ent.y + (fp.h - 1) / 2;
+        const s = tileToScreen(buildingCx, buildingCy, cam, elev);
         unitH = 55;
+        drawTooltip(ctx, s.x, s.y - unitH * cam.zoom, tooltipLines(state, ent, extras), w, h, true);
       } else {
         unitH = ent.kind === "infantry" ? 44 : ent.kind === "antiArmor" ? 48 : 56;
+        const s = tileToScreen(cx, cy, cam, elev);
+        drawTooltip(ctx, s.x, s.y - unitH * cam.zoom, tooltipLines(state, ent, extras), w, h, true);
       }
-      const s = tileToScreen(cx, cy, cam, elev);
-      drawTooltip(ctx, s.x, s.y - unitH * cam.zoom, tooltipLines(state, ent, extras), w, h, true);
     } else if (hoverTile) {
       const s = tileToScreen(hoverTile.x, hoverTile.y, cam, heightAt(state, hoverTile.x, hoverTile.y));
       drawTooltip(ctx, s.x, s.y - 18 * cam.zoom, tileTooltipLines(state, hoverTile.x, hoverTile.y), w, h, true);

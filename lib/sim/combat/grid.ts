@@ -1,4 +1,4 @@
-import { BUILDING_STATS, UNIT_STATS } from "../../catalog";
+import { BUILDING_STATS, isAirUnit, targetDomainsFor, UNIT_STATS } from "../../catalog";
 import { isBuildingEntity, isUnitEntity, type Entity, type SimState, type WeaponType } from "../../types";
 
 export type CombatGrid = {
@@ -21,9 +21,9 @@ type CombatStats = {
   weapon: WeaponType;
   splashRadius: number;
   suppression: number;
+  targetDomains: readonly import("../../types").CombatTargetDomain[];
 };
-const TURRET_STATS: CombatStats = { damage: 9, range: 5.5, cooldown: 14, weapon: "cannon", splashRadius: 0.5, suppression: 10 };
-const NON_COMBAT_BUILDING_STATS: CombatStats = { damage: 0, range: 0, cooldown: 0, weapon: "smallArms", splashRadius: 0, suppression: 0 };
+const NON_COMBAT_BUILDING_STATS: CombatStats = { damage: 0, range: 0, cooldown: 0, weapon: "smallArms", splashRadius: 0, suppression: 0, targetDomains: ["ground"] };
 
 export function isCombatTarget(state: SimState, e: Entity): boolean {
   // Once a stranded rescue unit has been contacted, it is an evacuee rather
@@ -40,9 +40,32 @@ export function isCombatThreat(state: SimState, e: Entity): boolean {
   return statsFor(e).damage > 0;
 }
 
+function combatDomainOf(e: Entity): import("../../types").CombatTargetDomain {
+  return e.class === "unit" && isAirUnit(e.kind) ? "air" : "ground";
+}
+
+export function canTarget(attacker: Entity, target: Entity): boolean {
+  return statsFor(attacker).targetDomains.includes(combatDomainOf(target));
+}
+
 export function statsFor(e: Entity): CombatStats {
-  if (isUnitEntity(e)) return UNIT_STATS[e.kind];
-  if (e.kind === "turret") return TURRET_STATS;
+  if (isUnitEntity(e)) {
+    const stats = UNIT_STATS[e.kind];
+    return { ...stats, targetDomains: targetDomainsFor(e.kind) };
+  }
+  if (!isBuildingEntity(e)) return NON_COMBAT_BUILDING_STATS;
+  const combat = BUILDING_STATS[e.kind].combat;
+  if (combat) {
+    return {
+      damage: combat.damage,
+      range: combat.range,
+      cooldown: combat.cooldown,
+      weapon: BUILDING_STATS[e.kind].weapon ?? "cannon",
+      splashRadius: combat.splashRadius,
+      suppression: combat.suppression,
+      targetDomains: combat.targetDomains,
+    };
+  }
   return NON_COMBAT_BUILDING_STATS;
 }
 
@@ -110,6 +133,7 @@ export function closestEnemy(
         if (o.hp <= 0) continue;
         if (grid.targetable[o.id] !== 1) continue;
         if (o.owner === e.owner) continue;
+        if (!canTarget(e, o)) continue;
         if (threatsOnly && grid.threat[o.id] !== 1) continue;
         const dx = e.x - o.x;
         const dy = e.y - o.y;

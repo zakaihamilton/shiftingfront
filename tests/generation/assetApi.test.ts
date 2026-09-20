@@ -44,9 +44,9 @@ describe("asset API contract", () => {
         const spec = assetPreviewSpec(asset, facing);
         const svg = spriteSpecToSvg(spec, "https://example.test/unit.png");
         expect(spec.rotation).toBeUndefined();
+        expect(svg).not.toContain("rotate(");
         if (spec.imageSrc) expect(svg).toContain(`<image href="https://example.test/unit.png"`);
         else expect(svg).toContain("<svg ");
-        expect(svg).not.toContain("rotate(");
       }
     }
 

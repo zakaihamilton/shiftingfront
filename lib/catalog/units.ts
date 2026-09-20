@@ -1,5 +1,5 @@
 import { isUnitEntity } from "../types";
-import type { ArmorType, Entity, SupportRole, UnitDomain, UnitKind, WeaponType } from "../types";
+import type { ArmorType, BuildingKind, CombatTargetDomain, Entity, SupportRole, UnitDomain, UnitKind, WeaponType } from "../types";
 
 export const UNIT_KINDS: UnitKind[] = [
   "harvester",
@@ -9,6 +9,7 @@ export const UNIT_KINDS: UnitKind[] = [
   "medic",
   "repairTruck",
   "convoyTruck",
+  "strikePlane",
 ];
 
 export type UnitStats = {
@@ -26,6 +27,8 @@ export type UnitStats = {
   splashRadius: number;
   suppression: number;
   domain: UnitDomain;
+  targetDomains?: readonly CombatTargetDomain[];
+  ammoMax?: number;
   supportRole?: SupportRole;
   supportRange?: number;
   supportAmount?: number;
@@ -39,7 +42,7 @@ export type UnitDefinition = UnitStats & {
   label: string;
   renderKey: string;
   aiRole: UnitAiRole;
-  producer?: "barracks" | "factory";
+  producer?: "barracks" | "factory" | "runway";
 };
 
 /**
@@ -194,6 +197,28 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
     domain: "vehicle",
     scenarioOnly: true,
   },
+  strikePlane: {
+    label: "Strike Plane",
+    renderKey: "strikePlane",
+    aiRole: "combat",
+    producer: "runway",
+    hp: 180,
+    speed: 0.16,
+    damage: 28,
+    range: 4.5,
+    cooldown: 36,
+    cost: 650,
+    buildTicks: 150,
+    sight: 12,
+    carryMax: 0,
+    armor: "light",
+    weapon: "airStrike",
+    splashRadius: 0.75,
+    suppression: 16,
+    domain: "air",
+    targetDomains: ["ground"],
+    ammoMax: 3,
+  },
 };
 
 /** Compatibility view containing only simulation statistics. */
@@ -232,4 +257,14 @@ export function supportTargetDomain(kind: UnitKind): UnitDomain | undefined {
 export function canSupportTarget(provider: UnitKind, target: UnitKind): boolean {
   const domain = supportTargetDomain(provider);
   return domain !== undefined && domain === UNIT_DEFINITIONS[target].domain && !isSupportUnit(target);
+}
+
+export type AirUnitKind = Extract<UnitKind, "strikePlane">;
+
+export function isAirUnit(kind: UnitKind | BuildingKind): kind is AirUnitKind {
+  return (UNIT_KINDS as readonly string[]).includes(kind) && UNIT_DEFINITIONS[kind as UnitKind].domain === "air";
+}
+
+export function targetDomainsFor(kind: UnitKind): readonly CombatTargetDomain[] {
+  return UNIT_DEFINITIONS[kind].targetDomains ?? ["ground"];
 }

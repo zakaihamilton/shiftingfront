@@ -8,6 +8,11 @@ export function startProduce(state: SimState, fromId: number, unit: UnitKind): S
   if (!b || b.class !== "building" || b.owner !== 0 || b.constructing > 0) return [{ type: "commandRejected", reason: "producer unavailable" }];
   if (!BUILDING_DEFINITIONS[b.kind as BuildingKind].production?.includes(unit)) return [{ type: "commandRejected", reason: "wrong producer" }];
   if (!b.queue) b.queue = [];
+  if (b.kind === "runway" && (
+    b.assignedPlaneId !== undefined ||
+    b.producing !== undefined ||
+    b.queue.length > 0
+  )) return [{ type: "commandRejected", reason: "runway already assigned" }];
   if (productionQueueSize(b) >= MAX_PRODUCTION_QUEUE) return [{ type: "commandRejected", reason: "production queue full" }];
   const stats = UNIT_STATS[unit];
   if (state.credits[0] < stats.cost) return [{ type: "commandRejected", reason: "insufficient credits" }];

@@ -1,7 +1,8 @@
-import { BUILDING_DEFINITIONS, UNIT_STATS, footprintOf } from "../catalog";
+import { BUILDING_DEFINITIONS, isAirUnit, UNIT_STATS, footprintOf } from "../catalog";
 import { isBuildingEntity, type BuildingKind, type Entity, type SimEvent, type SimState } from "../types";
 import { frontTileNear, invalidatePowerCache, openTileNear, powerFor, trySpawnUnit } from "./world";
 import { assignMoveDestination } from "./orders/movement";
+import { runwayServicePoint } from "./aircraft";
 
 const playerPowerOk = new WeakMap<SimState, boolean>();
 
@@ -120,14 +121,28 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
       if (e.producing.remaining <= 0) {
         const kind = e.producing.kind;
         const fp = isBuildingEntity(e) ? footprintOf(e.kind) : { w: 1, h: 1 };
-        const spot = isBuildingEntity(e) && isUnitProducer(e.kind)
-          ? frontTileNear(state, e)
-          : openTileNear(state, e.x, e.y, fp.w, fp.h);
+        const isRunway = isBuildingEntity(e) && e.kind === "runway";
+        const spot = isRunway
+          ? runwayServicePoint(e)
+          : isBuildingEntity(e) && isUnitProducer(e.kind)
+            ? frontTileNear(state, e)
+            : openTileNear(state, e.x, e.y, fp.w, fp.h);
         const spawned = trySpawnUnit(state, e.owner, kind, spot.x, spot.y);
         if (!spawned) {
           // Keep the completed job pending until the producer has somewhere to deploy it.
           e.producing.remaining = 1;
           continue;
+        }
+        if (isAirUnit(kind) && isRunway) {
+          spawned.x = spot.x;
+          spawned.y = spot.y;
+          spawned.assignedRunwayId = e.id;
+          spawned.flightState = "servicing";
+          spawned.facing = spawned.owner === 0 ? 1 : 5;
+          spawned.serviceTicks = 0;
+          spawned.ammo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo ?? 0;
+          spawned.maxAmmo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo;
+          e.assignedPlaneId = spawned.id;
         }
         state.unitsProduced[e.owner] += 1;
         if (e.owner === 0) state.unitsProducedByRole[kind] += 1;

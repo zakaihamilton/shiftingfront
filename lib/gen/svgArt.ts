@@ -1,6 +1,10 @@
 import { BUILDING_STATS } from "../catalog";
 import {
+  AIR_SUPPORT_ART,
+  ANTI_AIR_TURRET_BASE_CROP,
   SPRITE_ART,
+  STRIKE_PLANE_DIRECTION_ART,
+  STRIKE_PLANE_IMAGE_ANCHORS,
   TEXTURE_ART,
   UNIT_DIRECTION_ART,
   UNIT_DIRECTION_CROPS,
@@ -130,6 +134,34 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
   const w = infantry ? 38 : antiArmor ? 44 : 64;
   const h = infantry ? 42 : antiArmor ? 46 : 60;
   const facing = options.facing ?? 0;
+  if (kind === "strikePlane") {
+    const w = 96;
+    const h = 64;
+    const view = unitViewForFacing(facing);
+    const [imageAnchorX, imageAnchorY] = STRIKE_PLANE_IMAGE_ANCHORS[view];
+    return {
+      id: `unit:airframe-directional-v2:${kind}:${facing}:${view}:${palette.primary}:${visualKey(profile)}:${variant}:${frame}:${options.damageStage ?? 0}`,
+      kind: "unit",
+      w,
+      h,
+      palette,
+      shapes: [],
+      imageSrc: STRIKE_PLANE_DIRECTION_ART[view],
+      imageTint: rasterTreatment(profile, palette),
+      imageTextureSrc: TEXTURE_ART.worn,
+      imageTextureOpacity: options.damageStage ? 0.28 : 0.12,
+      imageTextureOffset: kindOffset(kind),
+      // Plane art is top-down and its source canvases are not uniform. Keep
+      // the airframe centered in the logical frame for every authored view.
+      imageAnchorX,
+      imageAnchorY,
+      anchorX: w / 2,
+      // Aircraft are top-down silhouettes: their world position is the center
+      // of the airframe, including when the plane is parked on a runway.
+      anchorY: h / 2,
+      pixelScale: 1,
+    };
+  }
   const view = unitViewForFacing(facing);
   const walkArt = options.motion === "walk" && (kind === "infantry" || kind === "antiArmor" || kind === "medic")
     ? UNIT_WALK_CYCLE_ART[kind]
@@ -171,6 +203,8 @@ function pt(iso: Iso, lx: number, ly: number, z: number): [number, number] {
 function buildingSky(kind: BuildingKind): number {
   switch (kind) {
     case "turret": return 28;
+    case "antiAirTurret": return 30;
+    case "runway": return 34;
     case "barracks": return 38;
     case "power": return 52;
     case "refinery": return 54;
@@ -189,6 +223,7 @@ export function buildingSprite(kind: BuildingKind, palette: Palette, options: Bu
   const variant = options.variant ?? 0;
   const profile = options.profile ?? DEFAULT_PROFILE;
   const ground = pt(iso, fp.w / 2, fp.h / 2, 0);
+  const specialAsset = kind === "runway" || kind === "antiAirTurret" ? AIR_SUPPORT_ART[kind] : undefined;
   const reveal = constructionReveal(construction);
   return {
     id: `bld:raster-v4:${kind}:${palette.primary}:${visualKey(profile)}:${variant}:${construction}:${dmg}`,
@@ -197,7 +232,8 @@ export function buildingSprite(kind: BuildingKind, palette: Palette, options: Bu
     h: iso.h,
     palette,
     shapes: buildingStageOverlays(iso, ground, construction, dmg),
-    imageSrc: SPRITE_ART[kind],
+    imageSrc: specialAsset ?? SPRITE_ART[kind],
+    imageCrop: kind === "antiAirTurret" ? ANTI_AIR_TURRET_BASE_CROP : undefined,
     imageTint: buildingStageTint(profile, construction, dmg, palette),
     imageTextureSrc: construction < 3 || dmg > 0 ? TEXTURE_ART.worn : undefined,
     imageTextureOpacity: dmg > 1 ? 0.4 : dmg > 0 ? 0.28 : construction <= 0 ? 0.34 : 0.2,
@@ -278,6 +314,9 @@ export function rubbleSprite(kind: BuildingKind, palette: Palette, options: Buil
   return {
     ...live,
     id: `rubble:raster-v1:${kind}:${palette.primary}:${visualKey(profile)}`,
+    // A destroyed anti-air turret has no animated head overlay, so restore
+    // the complete source art for its rubble silhouette.
+    imageCrop: kind === "antiAirTurret" ? undefined : live.imageCrop,
     imageTint: rubbleTreatment(),
     imageTextureSrc: TEXTURE_ART.worn,
     imageTextureOpacity: 0.44,

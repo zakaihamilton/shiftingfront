@@ -46,4 +46,19 @@ function clearDeadReferences(entity: Entity, removedIds: Set<number>): void {
     entity.supportTargetId = undefined;
     if (entity.supportMode === "assigned") entity.supportMode = "auto";
   }
+  if (entity.assignedRunwayId !== undefined && removedIds.has(entity.assignedRunwayId)) {
+    entity.assignedRunwayId = undefined;
+    entity.landingRunwayId = undefined;
+    if (entity.flightState === "servicing") {
+      entity.flightState = "airborne";
+      entity.serviceTicks = undefined;
+      entity.idle = true;
+    }
+  }
+  if (entity.landingRunwayId !== undefined && removedIds.has(entity.landingRunwayId)) {
+    entity.landingRunwayId = undefined;
+  }
+  if (entity.assignedPlaneId !== undefined && removedIds.has(entity.assignedPlaneId)) {
+    entity.assignedPlaneId = undefined;
+  }
 }

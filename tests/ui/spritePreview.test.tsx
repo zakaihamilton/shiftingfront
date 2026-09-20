@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     palette: {},
     shapes: [],
     imageSrc: "/art/power.webp",
+    imageCrop: { x: 0, y: 40, w: 100, h: 40, sourceW: 100, sourceH: 80 },
   })),
   unitSprite: vi.fn(() => ({
     id: "unit:infantry",
@@ -144,6 +145,29 @@ describe("SpritePreview", () => {
       false,
       palette,
     );
+  });
+
+  it("uses the complete authored anti-air silhouette in sidebar portraits", () => {
+    mocks.buildingSprite.mockReturnValueOnce({
+      id: "building:anti-air",
+      kind: "building",
+      w: 100,
+      h: 80,
+      palette: {},
+      shapes: [],
+      imageSrc: "/art/anti-air-turret.webp",
+      imageCrop: { x: 0, y: 40, w: 100, h: 40, sourceW: 100, sourceH: 80 },
+    });
+    render(<SpritePreview kind="antiAirTurret" palette={palette} profile={profile} />);
+
+    expect(mocks.rasterize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageSrc: "/art/anti-air-turret.webp",
+        imageCrop: undefined,
+      }),
+      expect.any(Function),
+    );
+    expect(mocks.paintBuildingAssetOverlay).not.toHaveBeenCalled();
   });
 
   it("keeps unit portraits static in the sidebar", () => {

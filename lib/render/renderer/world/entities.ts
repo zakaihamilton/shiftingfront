@@ -1,4 +1,4 @@
-import { footprintOf } from "../../../catalog";
+import { footprintOf, isAirUnit, UNIT_STATS } from "../../../catalog";
 import { buildingSprite, unitSprite } from "../../../gen/assets";
 import { generateVisualProfile } from "../../../gen/visualProfile";
 import type { BuildingKind, Entity, SimState, UnitKind } from "../../../types";
@@ -15,6 +15,7 @@ import { drawUnitShadow, movementDustFill, paintUnitMovementFx } from "../../uni
 import { computeUnitDynamicTransform, updateUnitHistory } from "../../gl/unitTransformTracker";
 import { isPerfHudEnabled, type WorldPhaseTimings } from "../../perfHud";
 import {
+  AIR_UNIT_RENDER_ELEVATION,
   entityElev,
   renderEntityOpacity,
 } from "../../renderPicking";
@@ -33,8 +34,10 @@ import {
 import {
   drawDamageOverlay,
   drawRescueHalo,
+  drawUnitAmmoMeter,
   drawUnitGlow,
   drawUnitHealthMeter,
+  entityHasWorldAmmoMeter,
   entityHasWorldHealthMeter,
   repairTargetIds,
   worldHealthMeterHeight,
@@ -45,6 +48,7 @@ import {
   depthOf,
   entityVariant,
   facingFor as resolveFacing,
+  renderDepthOf,
 } from "../../renderEntities";
 
 import {
@@ -178,7 +182,7 @@ export function renderEntityPhase(
 
   const depthCache = new Map<number, number>();
   for (const e of drawList) {
-    depthCache.set(e.id, e.class === "unit" ? (dynCache.get(e.id)!.x + dynCache.get(e.id)!.y) : depthOf(e));
+    depthCache.set(e.id, e.class === "unit" ? renderDepthOf(e, dynCache.get(e.id)) : depthOf(e));
   }
 
   sortEntitiesForRender(drawList, depthCache, entityDrawOrder);
@@ -204,7 +208,9 @@ export function renderEntityPhase(
       const dyn = dynCache.get(e.id)!;
       cx = dyn.x;
       cy = dyn.y;
-      elev = dyn.z;
+      elev = dyn.z + (e.class === "unit" && isAirUnit(e.kind)
+        ? AIR_UNIT_RENDER_ELEVATION * dyn.airborneMix
+        : 0);
     } else {
       const fp = footprintOf(e.kind as BuildingKind);
       cx = e.x + (fp.w - 1) / 2;
@@ -215,6 +221,8 @@ export function renderEntityPhase(
     const pal = state.factions[e.owner]!.palette;
     const profile = generateVisualProfile(state.seed, e.owner);
     const dyn = e.class === "unit" ? dynCache.get(e.id) : undefined;
+    const aircraft = e.class === "unit" && isAirUnit(e.kind);
+    const groundS = aircraft && dyn ? tileToScreen(cx, cy, cam, dyn.z) : s;
     const isWalker = e.class === "unit" && (e.kind === "infantry" || e.kind === "medic" || e.kind === "antiArmor");
     const isVehicle = e.class === "unit" && !isWalker;
 
@@ -272,8 +280,12 @@ export function renderEntityPhase(
 
     const dir = facingVector(facing);
     const recoil = uAnim?.recoil ?? 0;
-    const groundX = s.x;
-    const groundY = s.y + (TILE_H / 2) * z;
+    const groundX = groundS.x;
+    const groundY = groundS.y + (TILE_H / 2) * z;
+    // tileToScreen returns the tile's top vertex. Every unit's logical world
+    // anchor is the tile center, including the center-pivoted aircraft sprite;
+    // the aircraft's extra elevation is already represented by `s.y`.
+    const spriteGroundY = s.y + (TILE_H / 2) * z;
 
     if (e.class === "building") {
       drawBuildingShadow(ctx, state, cam, e, z);
@@ -298,7 +310,7 @@ export function renderEntityPhase(
 
     const spritePosition = unitSpriteDrawPosition({
       screenX: s.x,
-      groundY,
+      groundY: spriteGroundY,
       anchorX: ax,
       anchorY: ay,
       bob,
@@ -317,7 +329,7 @@ export function renderEntityPhase(
         dy,
         dw,
         dh,
-        groundY,
+        spriteGroundY,
         z,
         uAnim.frame,
         entityAlpha,
@@ -367,7 +379,7 @@ export function renderEntityPhase(
     }
 
     if (bAnim) drawBuildingFx(ctx, e, s, z, bAnim);
-    if (e.kind === "turret" && e.class === "building") {
+    if ((e.kind === "turret" || e.kind === "antiAirTurret") && e.class === "building") {
       const targetEntity = e.attackTarget !== undefined ? entityById.get(e.attackTarget) : undefined;
       drawTurretCannon(ctx, e, s, z, state, cam, timeMs, targetEntity, extras.colorblindMode);
     }
@@ -383,7 +395,7 @@ export function renderEntityPhase(
         strokeFootprint(ctx, state, cam, e.x, e.y, fp.w, fp.h);
       } else {
         ctx.beginPath();
-        ctx.ellipse(s.x, s.y + (TILE_H / 2) * z, (16 + pulse * 3) * z, (6 + pulse * 1.5) * z, 0, 0, Math.PI * 2);
+        ctx.ellipse(groundS.x, groundS.y + (TILE_H / 2) * z, (16 + pulse * 3) * z, (6 + pulse * 1.5) * z, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
@@ -406,10 +418,26 @@ export function renderEntityPhase(
         extras.colorblindMode,
       );
 
+      let secondaryMeterY = meterY + worldHealthMeterHeight(z) + 4;
+      if (entityHasWorldAmmoMeter(e)) {
+        const maxAmmo = e.maxAmmo ?? UNIT_STATS.strikePlane.ammoMax ?? 0;
+        drawUnitAmmoMeter(
+          ctx,
+          centerX,
+          secondaryMeterY,
+          e.ammo ?? maxAmmo,
+          maxAmmo,
+          z,
+          spriteAlpha,
+          barW,
+        );
+        secondaryMeterY += worldHealthMeterHeight(z) + 3;
+      }
+
       if (e.class === "unit" && (e.suppression ?? 0) > 0) {
         const suppW = barW;
         const suppX = Math.round(centerX - suppW / 2);
-        const suppY = meterY + worldHealthMeterHeight(z) + 2;
+        const suppY = secondaryMeterY;
         ctx.save();
         ctx.globalAlpha = spriteAlpha;
         ctx.fillStyle = "rgba(8, 12, 14, 0.85)";

@@ -1,4 +1,4 @@
-import { isUnitKind, UNIT_STATS, labelFor } from "@/lib/catalog";
+import { isAirUnit, isUnitKind, UNIT_STATS, labelFor } from "@/lib/catalog";
 import { cx } from "@/lib/ui/cx";
 import type { Entity, FactionVisualProfile, Palette, Stance } from "@/lib/types";
 import { SUPPORT_MODE_LABEL, stanceLabel } from "@/lib/ui/copy";
@@ -60,6 +60,17 @@ export function SelectionIdentity({
         {selected.kind === "harvester" ? (
           <span className={styles.carry}>
             Cargo {selected.carry} / {UNIT_STATS.harvester.carryMax}
+          </span>
+        ) : null}
+        {selected.class === "unit" && isAirUnit(selected.kind) ? (
+          <span className={styles.stat} data-testid="selected-ammo">
+            Ammo {selected.ammo ?? 0} / {selected.maxAmmo ?? UNIT_STATS[selected.kind].ammoMax ?? 0}
+            {selected.flightState === "servicing" ? " · Servicing runway" : selected.landingRunwayId !== undefined ? " · Returning to runway" : ""}
+          </span>
+        ) : null}
+        {selected.class === "building" && selected.kind === "runway" ? (
+          <span className={styles.stat} data-testid="runway-status">
+            {selected.assignedPlaneId !== undefined ? `Assigned plane #${selected.assignedPlaneId}` : "Ready for aircraft"}
           </span>
         ) : null}
       </div>

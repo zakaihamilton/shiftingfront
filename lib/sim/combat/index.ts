@@ -1,6 +1,7 @@
+import { isAirUnit } from "../../catalog";
 import { distToEntity, livingView } from "../world";
 import { rngFromState } from "../../seed/rng";
-import { buildGrid, statsFor, isCombatTarget, isCombatThreat, acquire, acquirePreferred, closestEnemy } from "./grid";
+import { buildGrid, statsFor, canTarget, isCombatTarget, isCombatThreat, acquire, acquirePreferred, closestEnemy } from "./grid";
 import { lineOfSight, firingPosition } from "./targeting";
 import { strike, chase } from "./damage";
 import { createPendingAlerts, flushPlayerAlerts } from "./alerts";
@@ -20,6 +21,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     if (e.class === "unit") e.suppression = Math.max(0, (e.suppression ?? 0) - 1);
     const st = statsFor(e);
     if (st.damage <= 0 || e.neutral) continue;
+    if (e.class === "unit" && (e.flightState === "servicing" || e.landingRunwayId !== undefined)) continue;
     if (e.constructing > 0) continue;
     if (e.cooldown > 0) e.cooldown -= 1;
 
@@ -27,7 +29,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     if (ordered && e.orderMode === "attackMove") e.attackTarget = undefined;
     if (ordered && e.attackTarget !== undefined && e.orderMode !== "attackMove") {
       const assignedCandidate = grid.byId[e.attackTarget];
-      const assigned = assignedCandidate && assignedCandidate.hp > 0 && isCombatTarget(state, assignedCandidate)
+        const assigned = assignedCandidate && assignedCandidate.hp > 0 && isCombatTarget(state, assignedCandidate) && canTarget(e, assignedCandidate)
         ? assignedCandidate
         : undefined;
       if (!assigned) {
@@ -38,7 +40,9 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
           e.path = [];
           e.routePending = false;
           e.flowGoal = undefined;
-          if (lineOfSight(state, e, assigned)) {
+          if ((e.class === "unit" && isAirUnit(e.kind)) || (assigned.class === "unit" && isAirUnit(assigned.kind))) {
+            strike(state, e, assigned, st, rng, events, pending);
+          } else if (lineOfSight(state, e, assigned)) {
             strike(state, e, assigned, st, rng, events, pending);
           } else {
             const flank = firingPosition(state, e, assigned, st.range);
@@ -51,7 +55,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
           const intercept = e.owner === 1 && !isCombatThreat(state, assigned)
             ? closestEnemy(grid, e, st.range, true)
             : undefined;
-          if (intercept && lineOfSight(state, e, intercept)) {
+          if (intercept && ((e.class === "unit" && isAirUnit(e.kind)) || (intercept.class === "unit" && isAirUnit(intercept.kind)) || lineOfSight(state, e, intercept))) {
             e.attackTarget = intercept.id;
             e.path = [];
             e.routePending = false;
@@ -71,7 +75,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
       // goal or pending route are still in transit: marking them idle or
       // chasing would strand the original destination.
       const opportunity = closestEnemy(grid, e, st.range, false);
-      if (opportunity && lineOfSight(state, e, opportunity)) strike(state, e, opportunity, st, rng, events, pending);
+      if (opportunity && ((e.class === "unit" && isAirUnit(e.kind)) || (opportunity.class === "unit" && isAirUnit(opportunity.kind)) || lineOfSight(state, e, opportunity))) strike(state, e, opportunity, st, rng, events, pending);
       continue;
     }
 
@@ -99,7 +103,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     }
 
     const d = distToEntity(e, target);
-    if (d <= st.range && lineOfSight(state, e, target)) {
+    if (d <= st.range && ((e.class === "unit" && isAirUnit(e.kind)) || (target.class === "unit" && isAirUnit(target.kind)) || lineOfSight(state, e, target))) {
       e.path = [];
       e.routePending = false;
       strike(state, e, target, st, rng, events, pending);

@@ -193,9 +193,19 @@ export function draw3dModel(
 
       // Rotated surface normal
       const refIdx = vertIndices[0]!;
-      const nx = normals[refIdx * 3]!;
+      let nx = normals[refIdx * 3]!;
       const ny = normals[refIdx * 3 + 1]!;
-      const nz = normals[refIdx * 3 + 2]!;
+      let nz = normals[refIdx * 3 + 2]!;
+      // Keep the lighting attached to the elevated gun assembly. Without
+      // rotating the normals here, the barrels would move skyward while their
+      // highlights still described a level weapon.
+      if (isBarrel && barrelPitch !== 0) {
+        const cosA = Math.cos(barrelPitch);
+        const sinA = Math.sin(barrelPitch);
+        const pitchedNx = nx * cosA - nz * sinA;
+        nz = nx * sinA + nz * cosA;
+        nx = pitchedNx;
+      }
       const rnx = nx * cos - ny * sin;
       const rny = nx * sin + ny * cos;
       const rnz = nz;

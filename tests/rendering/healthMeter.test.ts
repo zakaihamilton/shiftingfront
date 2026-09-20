@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  drawUnitAmmoMeter,
   drawUnitHealthMeter,
+  entityHasWorldAmmoMeter,
   entityHasWorldHealthMeter,
   healthMeterColors,
   repairTargetIds,
@@ -161,6 +163,53 @@ describe("drawUnitHealthMeter canvas rendering", () => {
 
 });
 
+describe("drawUnitAmmoMeter canvas rendering", () => {
+  function createMockCtx(): CanvasRenderingContext2D {
+    const grad = {
+      addColorStop: vi.fn(),
+    };
+    return {
+      save: vi.fn(),
+      restore: vi.fn(),
+      fillRect: vi.fn(),
+      strokeRect: vi.fn(),
+      createLinearGradient: vi.fn().mockReturnValue(grad),
+      globalAlpha: 1,
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+  }
+
+  it("skips rendering when the aircraft has no ammunition capacity", () => {
+    const ctx = createMockCtx();
+    drawUnitAmmoMeter(ctx, 100, 50, 0, 0, 1);
+    expect(ctx.save).not.toHaveBeenCalled();
+  });
+
+  it("renders a full cyan ammo bar", () => {
+    const ctx = createMockCtx();
+    drawUnitAmmoMeter(ctx, 100, 50, 3, 3, 1, 0.8, 20);
+
+    expect(ctx.save).toHaveBeenCalled();
+    expect(ctx.restore).toHaveBeenCalled();
+    expect(ctx.globalAlpha).toBe(0.8);
+    expect(ctx.createLinearGradient).toHaveBeenCalledWith(90, 50, 90, 52);
+    expect(ctx.fillRect).toHaveBeenCalledWith(89, 49, 22, 4);
+    expect(ctx.fillRect).toHaveBeenCalledWith(90, 50, 20, 2);
+    expect(ctx.fillRect).toHaveBeenCalledWith(94, 50, 1, 2);
+    expect(ctx.fillRect).toHaveBeenCalledWith(106, 50, 1, 2);
+  });
+
+  it("keeps the track visible when ammunition is empty", () => {
+    const ctx = createMockCtx();
+    drawUnitAmmoMeter(ctx, 100, 50, 0, 3, 1, 1, 20);
+
+    expect(ctx.fillRect).toHaveBeenCalledWith(90, 50, 20, 2);
+    expect(ctx.createLinearGradient).not.toHaveBeenCalled();
+  });
+});
+
 describe("repairTargetIds", () => {
   it("tracks repairing buildings and units assigned to support providers", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
@@ -198,6 +247,14 @@ describe("entityHasWorldHealthMeter", () => {
     expect(entityHasWorldHealthMeter({ class: "building", kind: "barracks" })).toBe(false);
     expect(entityHasWorldHealthMeter({ class: "building", kind: "factory" })).toBe(false);
     expect(entityHasWorldHealthMeter({ class: "building", kind: "objective" })).toBe(false);
+  });
+});
+
+describe("entityHasWorldAmmoMeter", () => {
+  it("shows the world ammo meter only for strike planes", () => {
+    expect(entityHasWorldAmmoMeter({ class: "unit", kind: "strikePlane" })).toBe(true);
+    expect(entityHasWorldAmmoMeter({ class: "unit", kind: "tank" })).toBe(false);
+    expect(entityHasWorldAmmoMeter({ class: "building", kind: "runway" })).toBe(false);
   });
 });
 

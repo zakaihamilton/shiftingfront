@@ -1,4 +1,4 @@
-import { UNIT_STATS } from "../../catalog";
+import { isAirUnit, UNIT_STATS } from "../../catalog";
 import { groundHeight } from "../../sim/world";
 import { isoFacingAngle, isoHeadingAngle, screenAngleToFacing } from "../../iso";
 import { unitMovementOffset, unitWalkCycle } from "../anim";
@@ -31,6 +31,8 @@ export type UnitDynamicTransform = {
   gaitTilt: number;
   scaleX: number;
   scaleY: number;
+  /** Normalized aircraft altitude used for smooth runway transitions. */
+  airborneMix: number;
 };
 
 type UnitStateHistory = {
@@ -45,9 +47,60 @@ type UnitStateHistory = {
   turretYaw: number;
   stridePhase: number;
   lastClockMs: number;
+  flightState: "airborne" | "servicing";
+  flightTransition?: AircraftFlightTransition;
+};
+
+type AircraftFlightTransition = {
+  kind: "landing" | "takeoff";
+  startedAt: number;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  fromAirborneMix: number;
+  toAirborneMix: number;
+};
+
+const AIRCRAFT_FLIGHT_TRANSITION_MS = 720;
+
+export type UnitRenderPosition = {
+  x: number;
+  y: number;
+  airborneMix: number;
 };
 
 const historyMap = new Map<number, UnitStateHistory>();
+
+function aircraftTransitionPosition(
+  e: Entity,
+  hist: UnitStateHistory | undefined,
+  clockMs: number,
+): UnitRenderPosition | undefined {
+  if (e.kind !== "strikePlane" || !hist?.flightTransition) return undefined;
+  const transition = hist.flightTransition;
+  const progress = Math.max(0, (clockMs - transition.startedAt) / AIRCRAFT_FLIGHT_TRANSITION_MS);
+  if (progress >= 1) {
+    hist.flightTransition = undefined;
+    return undefined;
+  }
+  const eased = progress * progress * (3 - 2 * progress);
+  return {
+    x: lerp(transition.fromX, transition.toX, eased),
+    y: lerp(transition.fromY, transition.toY, eased),
+    airborneMix: lerp(transition.fromAirborneMix, transition.toAirborneMix, eased),
+  };
+}
+
+/** Return the position and altitude used by the canvas renderer for an aircraft transition. */
+export function unitRenderPosition(e: Entity, clockMs: number): UnitRenderPosition {
+  const hist = historyMap.get(e.id);
+  return aircraftTransitionPosition(e, hist, clockMs) ?? {
+    x: e.x,
+    y: e.y,
+    airborneMix: isAirUnit(e.kind) && e.flightState !== "servicing" ? 1 : 0,
+  };
+}
 
 function createUnitHistory(e: Entity, state: SimState, clockMs: number): UnitStateHistory {
   const initialYaw = e.facing !== undefined ? (e.facing / 8) * Math.PI * 2 - Math.PI / 4 : -Math.PI / 4;
@@ -64,6 +117,7 @@ function createUnitHistory(e: Entity, state: SimState, clockMs: number): UnitSta
     turretYaw: initialYaw,
     stridePhase: 0,
     lastClockMs: clockMs,
+    flightState: e.flightState === "servicing" ? "servicing" : "airborne",
   };
 }
 
@@ -83,6 +137,22 @@ export function updateUnitHistory(state: SimState, clockMs: number): void {
       hist = createUnitHistory(e, state, clockMs);
       historyMap.set(e.id, hist);
     } else {
+      const previousX = hist.currX;
+      const previousY = hist.currY;
+      const nextFlightState = e.flightState === "servicing" ? "servicing" : "airborne";
+      if (e.kind === "strikePlane" && hist.flightState !== nextFlightState) {
+        hist.flightTransition = {
+          kind: nextFlightState === "servicing" ? "landing" : "takeoff",
+          startedAt: clockMs,
+          fromX: previousX,
+          fromY: previousY,
+          toX: e.x,
+          toY: e.y,
+          fromAirborneMix: nextFlightState === "servicing" ? 1 : 0,
+          toAirborneMix: nextFlightState === "servicing" ? 0 : 1,
+        };
+        hist.flightState = nextFlightState;
+      }
       if (state.tick !== hist.lastUpdateTick) {
         const tickGap = state.tick - hist.lastUpdateTick;
         const jump = Math.hypot(e.x - hist.currX, e.y - hist.currY);
@@ -96,6 +166,13 @@ export function updateUnitHistory(state: SimState, clockMs: number): void {
         hist.currX = e.x;
         hist.currY = e.y;
         hist.lastUpdateTick = state.tick;
+      }
+      if (e.kind === "strikePlane" && hist.flightTransition?.kind === "takeoff") {
+        // The sortie may receive an attack or movement order on the same tick
+        // that servicing completes. Keep the takeoff animation connected to
+        // the live flight path so it never snaps back when the animation ends.
+        hist.flightTransition.toX = e.x;
+        hist.flightTransition.toY = e.y;
       }
     }
   }
@@ -125,8 +202,20 @@ export function computeUnitDynamicTransform(
   hist.lastClockMs = clockMs;
 
   const alpha = Math.max(0, Math.min(1, subTickAlpha));
-  const x = lerp(hist.prevX, hist.currX, alpha);
-  const y = lerp(hist.prevY, hist.currY, alpha);
+  let x = lerp(hist.prevX, hist.currX, alpha);
+  let y = lerp(hist.prevY, hist.currY, alpha);
+  let airborneMix = isAirUnit(e.kind) && e.flightState !== "servicing" ? 1 : 0;
+  const transitionPosition = aircraftTransitionPosition(e, hist, clockMs);
+  if (transitionPosition) {
+    // Smoothstep keeps both ends of the runway transition soft: the plane
+    // settles onto the runway and lifts away without a visible snap.
+    x = transitionPosition.x;
+    y = transitionPosition.y;
+    airborneMix = transitionPosition.airborneMix;
+    const transition = hist.flightTransition!;
+    const progress = Math.max(0, Math.min(1, (clockMs - transition.startedAt) / AIRCRAFT_FLIGHT_TRANSITION_MS));
+    if (progress >= 1) hist.flightTransition = undefined;
+  }
   const z = groundHeight(state, x, y);
 
   // Terrain slope calculation (pitch / roll)
@@ -143,7 +232,8 @@ export function computeUnitDynamicTransform(
   const moveDx = hist.currX - hist.prevX;
   const moveDy = hist.currY - hist.prevY;
   const moveDist = Math.hypot(moveDx, moveDy);
-  const attackTargetCandidate = e.attackTarget !== undefined
+  const parkedAircraft = e.kind === "strikePlane" && e.flightState === "servicing";
+  const attackTargetCandidate = !parkedAircraft && e.attackTarget !== undefined
     ? entityById?.get(e.attackTarget) ?? state.entities.find((entity) => entity.id === e.attackTarget)
     : undefined;
   const attackTarget = attackTargetCandidate && attackTargetCandidate.hp > 0 ? attackTargetCandidate : undefined;
@@ -183,16 +273,17 @@ export function computeUnitDynamicTransform(
     targetScreenAngle = isoFacingAngle(e.facing);
   }
 
-  // Smooth fluid turning rate: vehicles pivot cleanly through intermediate facings, while infantry turn swiftly
+  // Smooth fluid turning rate: vehicles preserve their established per-unit
+  // rates, while walkers turn responsively through intermediate facings too.
   const isWalker = e.kind === "infantry" || e.kind === "antiArmor" || e.kind === "medic";
   const isMoving = moveDist > 0.001 || waypointDist > 0.001;
-  const vehicleTurnSpeed = isMoving
-    ? (e.kind === "tank" ? 14.0 : e.kind === "harvester" ? 16.0 : 20.0)
-    : (e.kind === "tank" ? 8.0 : e.kind === "harvester" ? 9.0 : 12.0);
+  const turnSpeed = isWalker
+    ? (isMoving ? 18.0 : 12.0)
+    : isMoving
+      ? (e.kind === "tank" ? 14.0 : e.kind === "harvester" ? 16.0 : 20.0)
+      : (e.kind === "tank" ? 8.0 : e.kind === "harvester" ? 9.0 : 12.0);
   const prevAngle = hist.screenAngle;
-  hist.screenAngle = isWalker
-    ? targetScreenAngle
-    : lerpAngle(hist.screenAngle, targetScreenAngle, Math.min(1, dt * vehicleTurnSpeed));
+  hist.screenAngle = lerpAngle(hist.screenAngle, targetScreenAngle, Math.min(1, dt * turnSpeed));
   const angularVelocity = (hist.screenAngle - prevAngle) / dt;
 
   // Determine nearest 8-way isometric facing and rotation offset
@@ -202,6 +293,12 @@ export function computeUnitDynamicTransform(
   let rotationOffset = hist.screenAngle - nominalAngle;
   while (rotationOffset > Math.PI) rotationOffset -= Math.PI * 2;
   while (rotationOffset < -Math.PI) rotationOffset += Math.PI * 2;
+  // Keep the authored 8-way perspective authoritative. The raster art is
+  // positioned against the logical contact anchor for its discrete view; a
+  // large residual rotation makes that perspective swing around the anchor
+  // and reads as a position jump. The existing vehicle envelope also keeps
+  // the transition continuous without allowing an adjacent view to be
+  // over-rotated while its sprite is still selected.
   rotationOffset = Math.max(-Math.PI / 8, Math.min(Math.PI / 8, rotationOffset));
 
   // Compute pitch and roll aligned with current heading, plus centrifugal chassis roll during turns
@@ -293,5 +390,6 @@ export function computeUnitDynamicTransform(
     gaitTilt,
     scaleX,
     scaleY,
+    airborneMix,
   };
 }

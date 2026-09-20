@@ -20,7 +20,7 @@ const ORDER_MODES = ["move", "attackMove", "attack"] as const;
 const STANCES = ["aggressive", "defensive", "hold"] as const;
 const FORMATIONS = ["line", "column", "wedge"] as const;
 const ARMOR_TYPES = ["light", "heavy", "structure"] as const;
-const WEAPON_TYPES = ["smallArms", "antiArmor", "cannon"] as const;
+const WEAPON_TYPES = ["smallArms", "antiArmor", "cannon", "airStrike", "antiAir"] as const;
 const SURFACE_KINDS = [0, 1, 2] as const;
 const TILE_KINDS = [0, 1, 2, 3] as const;
 const RNG_STATE_MIN = -0x80000000;
@@ -131,6 +131,14 @@ export function isEntity(value: unknown): value is Entity {
   if (value.routePending !== undefined && typeof value.routePending !== "boolean") return false;
   if (value.supportTargetId !== undefined && !isIntegerInRange(value.supportTargetId, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (value.supportMode !== undefined && !isOneOf(value.supportMode, ["auto", "assigned", "hold"] as const)) return false;
+  if (value.ammo !== undefined && (!classIsUnit || !isNonNegativeNumber(value.ammo))) return false;
+  if (value.maxAmmo !== undefined && (!classIsUnit || !isNonNegativeNumber(value.maxAmmo))) return false;
+  if (value.ammo !== undefined && value.maxAmmo !== undefined && value.ammo > value.maxAmmo) return false;
+  if (value.assignedRunwayId !== undefined && (!classIsUnit || !isIntegerInRange(value.assignedRunwayId, 0, Number.MAX_SAFE_INTEGER))) return false;
+  if (value.flightState !== undefined && (!classIsUnit || !isOneOf(value.flightState, ["airborne", "servicing"] as const))) return false;
+  if (value.serviceTicks !== undefined && (!classIsUnit || !isIntegerInRange(value.serviceTicks, 0, Number.MAX_SAFE_INTEGER))) return false;
+  if (value.landingRunwayId !== undefined && (!classIsUnit || !isIntegerInRange(value.landingRunwayId, 0, Number.MAX_SAFE_INTEGER))) return false;
+  if (value.assignedPlaneId !== undefined && (!classIsBuilding || !isIntegerInRange(value.assignedPlaneId, 0, Number.MAX_SAFE_INTEGER))) return false;
   if (value.moveToHarvest !== undefined && typeof value.moveToHarvest !== "boolean") return false;
   return true;
 }

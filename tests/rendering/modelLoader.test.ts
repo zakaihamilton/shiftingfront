@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAntiArmorModel,
+  buildAntiAirTurretModel,
   buildConvoyTruckModel,
   buildHarvesterModel,
   buildInfantryModel,
+  buildStrikePlaneModel,
   buildTankModel,
   buildTurretHeadModel,
   buildUnitModel,
@@ -81,6 +83,17 @@ describe("modelLoader 3D meshes and parser", () => {
     const turret = buildTurretHeadModel();
     expect(turret.kind).toBe("turret");
     expect(turret.nodes.map((n) => n.name)).toEqual(["turretHead", "barrel"]);
+
+    const antiAirTurret = buildAntiAirTurretModel();
+    expect(antiAirTurret.kind).toBe("antiAirTurret");
+    expect(antiAirTurret.nodes.map((n) => n.name)).toEqual(["turretHead", "barrel"]);
+    const antiAirBarrelMesh = antiAirTurret.nodes.find((node) => node.name === "barrel")!.mesh;
+    expect(new Set(Array.from(antiAirBarrelMesh.masks))).toEqual(new Set([1, 2, 3, 4, 5]));
+    expect(antiAirBarrelMesh.positions.length).toBeGreaterThan(900);
+
+    const strikePlane = buildStrikePlaneModel();
+    expect(strikePlane.kind).toBe("strikePlane");
+    expect(strikePlane.nodes.map((n) => n.name)).toEqual(["airframe", "wings", "tail", "stores"]);
   });
 
   it("parses Wavefront OBJ models with object groups and material mapping", () => {
@@ -110,6 +123,8 @@ describe("modelLoader 3D meshes and parser", () => {
     expect(buildUnitModel("antiArmor").nodes.length).toBeGreaterThan(1);
     expect(buildUnitModel("convoyTruck").nodes.length).toBeGreaterThan(1);
     expect(buildUnitModel("turret").nodes.length).toBeGreaterThan(1);
+    expect(buildUnitModel("antiAirTurret").nodes.length).toBeGreaterThan(1);
+    expect(buildUnitModel("strikePlane").nodes.length).toBeGreaterThan(1);
   });
 
   it("renders 3D soldier model with articulated leg transformations without throwing", () => {
@@ -135,6 +150,10 @@ describe("modelLoader 3D meshes and parser", () => {
     draw3dModel(fakeCtx, infantry, 100, 100, 1.0, 0, undefined, {
       legLAngle: 0.5,
       legRAngle: -0.5,
+    });
+
+    draw3dModel(fakeCtx, buildAntiAirTurretModel(), 100, 100, 1.0, 0.2, undefined, {
+      barrelPitch: 0.52,
     });
 
     expect(calls).toContain("fill");

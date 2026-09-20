@@ -1,4 +1,4 @@
-import { BUILDING_STATS, footprintOf } from "../../catalog";
+import { BUILDING_STATS, footprintOf, isAirUnit } from "../../catalog";
 import { isBuildingEntity, type Entity, type SimState, type TileKind, type Vec2 } from "../../types";
 
 type LivingCache = { tick: number; entities: SimState["entities"]; value: Entity[] };
@@ -67,7 +67,7 @@ export function unitAt(state: SimState, x: number, y: number): Entity | undefine
       : new Array<Entity | undefined>(state.width * state.height);
     value.fill(undefined);
     for (const entity of state.entities) {
-      if (entity.hp <= 0 || entity.class !== "unit") continue;
+      if (entity.hp <= 0 || entity.class !== "unit" || isAirUnit(entity.kind)) continue;
       const ex = Math.round(entity.x);
       const ey = Math.round(entity.y);
       if (!inBounds(state, ex, ey)) continue;
@@ -91,7 +91,7 @@ export function unitOccupancyFor(state: SimState): Uint8Array {
     const value = cached?.value.length === state.width * state.height ? cached.value : new Uint8Array(state.width * state.height);
     value.fill(0);
     for (const entity of state.entities) {
-      if (entity.hp <= 0 || entity.class !== "unit") continue;
+      if (entity.hp <= 0 || entity.class !== "unit" || isAirUnit(entity.kind)) continue;
       const ex = Math.round(entity.x);
       const ey = Math.round(entity.y);
       if (inBounds(state, ex, ey)) value[ey * state.width + ex] = 1;

@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { buildingCameoStatus, buildingLimitReached, isSupportUnit, unitCameoStatus } from "@/lib/catalog";
+import { buildingCameoStatus, buildingLimitReached, isAirUnit, isSupportUnit, unitCameoStatus } from "@/lib/catalog";
 import { beep } from "@/lib/audio/synth";
 import { voiceBarkForBeep } from "@/lib/audio/voice";
 import { groundOrders } from "@/lib/sim/orders";
 import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { isPlayerSelectableUnit, type BuildingKind, type Command, type Formation, type SimState, type Stance, type UnitKind } from "@/lib/types";
-import { terrainAccess } from "@/lib/sim/world";
+import { inBounds, terrainAccess } from "@/lib/sim/world";
 import type { MobileCommand } from "../mobileCommandTypes";
 import { PLACEABLE, PRODUCIBLE, leastLoadedProducer } from "./gameActions";
 import { createRuntimeCommandPort, type RuntimeCommandPort } from "./runtime/facade";
@@ -119,7 +119,12 @@ export function useGameActions({
       return true;
     });
     const access = terrainAccess(state, tx, ty);
-    if (!unitIds.length || !Number.isInteger(tx) || !Number.isInteger(ty) || !access.traversable || (command === "harvest" && access.label !== "Ore field")) {
+    const groundOrder = unitIds.some((id) => {
+      const entity = state.entities.find((candidate) => candidate.id === id);
+      return !entity || entity.class !== "unit" || !isAirUnit(entity.kind);
+    });
+    if (!unitIds.length || !Number.isInteger(tx) || !Number.isInteger(ty) || !inBounds(state, tx, ty) ||
+      (groundOrder && !access.traversable) || (command === "harvest" && access.label !== "Ore field")) {
       notify(command === "harvest" ? "Select an ore field for harvesting." : "That destination cannot be reached.", "error");
       return false;
     }

@@ -1,6 +1,7 @@
 import {
   BUILDING_STATS,
   UNIT_STATS,
+  isAirUnit,
   isSupportUnit,
   isUnitAvailable,
   producerFor,
@@ -133,9 +134,16 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
   }
 
   const threat = enemyEntitiesView(state).find(
-    (entity) => entity.class === "unit" && entity.kind !== "harvester" && distToEntity(yard, entity) <= YARD_THREAT_RADIUS,
+    (entity) => entity.class === "unit"
+      && entity.kind !== "harvester"
+      && !isAirUnit(entity.kind)
+      && distToEntity(yard, entity) <= YARD_THREAT_RADIUS,
+  );
+  const airThreat = enemyEntitiesView(state).find(
+    (entity) => entity.class === "unit" && isAirUnit(entity.kind),
   );
   const turretCount = completedOrBuilding(state, "turret");
+  const antiAirCount = completedOrBuilding(state, "antiAirTurret");
   const timedRecovery = isTimedRecovery(objectiveKind(state));
   const turretTarget = timedRecovery ? 1 : 1 + Math.min(2, Math.ceil(state.missionIndex / 2));
   if (threat && turretCount < turretTarget && !pending) {
@@ -166,6 +174,10 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
   if (defensiveTurretNeeded && turretCount < turretTarget && !pending) {
     const turret = buildCommand(state, "turret", yard);
     if (turret) return turret;
+  }
+  if (airThreat && antiAirCount < 1 && turretCount > 0 && !pending) {
+    const antiAir = buildCommand(state, "antiAirTurret", yard);
+    if (antiAir) return antiAir;
   }
 
   const objectiveBuilding = missingStructureQuota(state) ?? structureQuotaBuilding(state);

@@ -1,4 +1,5 @@
 import { inObjectiveZone } from "../../types";
+import { isAirUnit } from "../../catalog";
 import type { Command, Entity, MissionKind, SimState } from "../../types";
 import { canRepair } from "../repair";
 import { distToEntity } from "../world";
@@ -112,7 +113,7 @@ export class CompetentCommander {
     const emergency = yard.hp / Math.max(1, yard.maxHp) < 0.78;
     const emergencyThreat = emergency
       ? enemyEntitiesView(state)
-        .filter(isCombatEntity)
+        .filter((entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)))
         .sort((a, b) => distToEntity(a, yard) - distToEntity(b, yard) || a.id - b.id)[0]
       : undefined;
     const yardThreat = defensiveThreat(state, yard);

@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Live balance gates (`minKindWinRate` 0.70, rescue 0.80, extraction 0.85, `destroyMarked`/`decapitate` 0.70). `tests/platform/docsDrift.test.ts` fails if Unreleased stops naming these floors.
 
+## [1.1.1] - 2026-09-19
+
+### Added
+
+- **Air support**: Strike aircraft, airport runways for ammunition and repairs, and anti-air turrets with dedicated graphical assets.
+
+### Fixed
+
+- **Anti-air turret animation**: The anti-air upper assembly now rotates, tracks targets, and preserves its full silhouette in destroyed-state rubble.
+
 ## [1.1.0] - 2026-09-19
 
 ### Fixed

@@ -11,13 +11,19 @@ const METER_SEGMENT = "rgba(5, 8, 14, 0.45)";
 const METER_SELECT = "#f5e6a8";
 const METER_REPAIR_GLOW = "rgba(255, 214, 72, 0.92)";
 const METER_REPAIR_EDGE = "#ffe58a";
+const METER_AMMO_TOP = "#67e8f9";
+const METER_AMMO_BOTTOM = "#0e7490";
 const SEGMENT_PX = 4;
 
 export function entityHasWorldHealthMeter(
   e: Pick<Entity, "class" | "kind">,
   isRepairing = false,
 ): boolean {
-  return e.class === "unit" || (e.class === "building" && (e.kind === "turret" || isRepairing));
+  return e.class === "unit" || (e.class === "building" && (e.kind === "turret" || e.kind === "antiAirTurret" || isRepairing));
+}
+
+export function entityHasWorldAmmoMeter(e: Pick<Entity, "class" | "kind">): boolean {
+  return e.class === "unit" && e.kind === "strikePlane";
 }
 
 /** Returns entities currently receiving a building repair or support heal. */
@@ -49,7 +55,7 @@ export function worldHealthMeterLayout(
   const centerX = Math.round(dx + (spec.w * z) / 2);
   // Turret sprites include empty sky padding, so dy is far above the 3D cannon.
   // Sit the meter just above the projected turret head (antenna tip ~ tileY - 3z).
-  const meterY = e.kind === "turret"
+  const meterY = e.kind === "turret" || e.kind === "antiAirTurret"
     ? Math.round(tileScreenY - 10 * z)
     : Math.round(dy - 7 * z);
   return { barW, meterY, centerX };
@@ -145,6 +151,54 @@ export function drawUnitHealthMeter(
   if (isSelected) {
     ctx.fillStyle = METER_SELECT;
     ctx.fillRect(x, y + h + 1, w, 1);
+  }
+
+  ctx.restore();
+}
+
+/** Draws the compact cyan ammunition meter used beneath an aircraft's health. */
+export function drawUnitAmmoMeter(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  topY: number,
+  ammo: number,
+  maxAmmo: number,
+  z: number,
+  alpha = 1,
+  barWidth?: number,
+): void {
+  if (maxAmmo <= 0) return;
+  const ratio = Math.max(0, Math.min(1, ammo / maxAmmo));
+  const w = barWidth ?? Math.max(16, Math.round(20 * z));
+  const h = worldHealthMeterHeight(z);
+  const x = Math.round(centerX - w / 2);
+  const y = Math.round(topY);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  ctx.fillStyle = METER_HOUSING;
+  ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+
+  ctx.strokeStyle = METER_STEEL;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
+
+  ctx.fillStyle = METER_TRACK;
+  ctx.fillRect(x, y, w, h);
+
+  const fillW = Math.max(0, Math.min(w, Math.round(w * ratio)));
+  if (fillW > 0) {
+    const grad = ctx.createLinearGradient(x, y, x, y + h);
+    grad.addColorStop(0, METER_AMMO_TOP);
+    grad.addColorStop(1, METER_AMMO_BOTTOM);
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, fillW, h);
+
+    ctx.fillStyle = METER_SEGMENT;
+    for (let sx = x + SEGMENT_PX; sx < x + fillW; sx += SEGMENT_PX) {
+      ctx.fillRect(sx, y, 1, h);
+    }
   }
 
   ctx.restore();

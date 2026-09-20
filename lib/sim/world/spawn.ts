@@ -1,4 +1,4 @@
-import { BUILDING_STATS, UNIT_STATS, footprintOf } from "../../catalog";
+import { BUILDING_STATS, UNIT_STATS, footprintOf, isAirUnit } from "../../catalog";
 import { isBuildingEntity, type BuildingKind, type Entity, type Owner, type SimState, type UnitKind, type Vec2 } from "../../types";
 import { livingView, invalidateEntityCaches, distToEntity, powerBreakdownFor } from "./queries";
 import { invalidateNavigation, isWalkable, canClimb } from "./terrain";
@@ -45,6 +45,7 @@ export function makeUnit(
   y: number,
 ): Entity {
   const stats = UNIT_STATS[kind];
+  const air = isAirUnit(kind);
   return {
     id: nextEntityId(state),
     owner,
@@ -67,6 +68,9 @@ export function makeUnit(
     armor: stats.armor,
     weapon: stats.weapon,
     supportMode: stats.supportRole ? "auto" : undefined,
+    ammo: stats.ammoMax,
+    maxAmmo: stats.ammoMax,
+    flightState: air ? "airborne" : undefined,
   };
 }
 
@@ -165,7 +169,12 @@ export function trySpawnUnit(
   x: number,
   y: number,
 ): Entity | undefined {
-  const site = unitSite(state, x, y);
+  const site = isAirUnit(kind)
+    ? {
+        x: Math.max(0, Math.min(state.width - 1, Math.round(x))),
+        y: Math.max(0, Math.min(state.height - 1, Math.round(y))),
+      }
+    : unitSite(state, x, y);
   if (!site) return undefined;
   const e = makeUnit(state, owner, kind, x, y);
   e.x = site.x;
@@ -219,5 +228,5 @@ export function spawnBuildingAt(
 }
 
 export function emptyRoleCounts(): Record<UnitKind, number> {
-  return { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0, convoyTruck: 0 };
+  return { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0, convoyTruck: 0, strikePlane: 0 };
 }

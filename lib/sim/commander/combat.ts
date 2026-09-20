@@ -1,4 +1,5 @@
 import { inObjectiveZone } from "../../types";
+import { isAirUnit } from "../../catalog";
 import type { Command, Entity, SimState } from "../../types";
 import { distToEntity } from "../world";
 import {
@@ -33,7 +34,9 @@ export function objectiveEntity(state: SimState): Entity | undefined {
   if (kind === "razeAll") return enemyEntitiesView(state).find((entity) => entity.class === "building");
   if (kind === "annihilate") {
     const enemies = enemyEntitiesView(state);
-    return enemies.find((entity) => entity.class === "unit") ?? enemies[0];
+    return enemies.find((entity) => entity.class === "unit" && !isAirUnit(entity.kind))
+      ?? enemies.find((entity) => entity.class === "building")
+      ?? enemies[0];
   }
   return undefined;
 }
@@ -62,7 +65,7 @@ export function parallelOffensiveTargets(state: SimState): Entity[] {
 export function defensiveThreat(state: SimState, yard: Entity): Entity | undefined {
   const responseRadius = OFFENSIVE_RESPONSE_KINDS.has(objectiveKind(state)) ? OFFENSIVE_RESPONSE_RADIUS : YARD_THREAT_RADIUS;
   return enemyEntitiesView(state)
-    .filter((entity) => isCombatEntity(entity))
+    .filter((entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)))
     .sort((a, b) => distToEntity(yard, a) - distToEntity(yard, b) || a.id - b.id)
     .find((entity) => distToEntity(yard, entity) <= responseRadius);
 }
@@ -71,7 +74,7 @@ export function defensiveThreat(state: SimState, yard: Entity): Entity | undefin
 export function yardRaid(state: SimState, yard: Entity): boolean {
   const responseRadius = OFFENSIVE_RESPONSE_KINDS.has(objectiveKind(state)) ? OFFENSIVE_RESPONSE_RADIUS : YARD_THREAT_RADIUS;
   const attackers = enemyEntitiesView(state).filter(
-    (entity) => isCombatEntity(entity) && distToEntity(yard, entity) <= responseRadius,
+    (entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)) && distToEntity(yard, entity) <= responseRadius,
   );
   return attackers.length >= 3 || attackers.some((entity) => entity.kind === "tank");
 }
@@ -84,7 +87,7 @@ export function scenarioThreat(state: SimState): Entity | undefined {
     .filter((entity): entity is Entity => !!entity && (kind === "escort" || !entity.neutral));
   if (!scenarioTargets.length) return undefined;
   return enemyEntitiesView(state)
-    .filter((entity) => isCombatEntity(entity))
+    .filter((entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)))
     .sort((a, b) => {
       const aDistance = Math.min(...scenarioTargets.map((target) => distToEntity(target, a)));
       const bDistance = Math.min(...scenarioTargets.map((target) => distToEntity(target, b)));

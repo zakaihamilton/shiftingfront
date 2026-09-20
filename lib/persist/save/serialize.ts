@@ -4,7 +4,7 @@ import type { SimState, SurfaceKind, UnitKind } from "../../types";
 import { generateWorld } from "../../gen/world";
 import { expandFog, fogGridHeight, fogGridWidth } from "../../sim/fog";
 import { compactDestroyedEntities, compactedState } from "../../sim/world/lifecycle";
-import { isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
+import { isAirUnit, isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
 import {
   SAVE_CONTENT_VERSION,
   isStateShape,
@@ -164,6 +164,27 @@ function normalizeState(value: unknown): SimState {
       delete e.supportTargetId;
       delete e.supportMode;
     }
+    if (e.class === "unit" && isAirUnit(e.kind)) {
+      const maxAmmo = UNIT_STATS[e.kind].ammoMax ?? 0;
+      e.maxAmmo = typeof e.maxAmmo === "number" && e.maxAmmo >= 0 ? e.maxAmmo : maxAmmo;
+      e.ammo = typeof e.ammo === "number" && e.ammo >= 0 ? Math.min(e.ammo, e.maxAmmo) : e.maxAmmo;
+      if (e.flightState !== "servicing" && e.flightState !== "airborne") e.flightState = "airborne";
+      if (e.flightState === "servicing") {
+        e.serviceTicks = typeof e.serviceTicks === "number" && Number.isInteger(e.serviceTicks) && e.serviceTicks >= 0
+          ? e.serviceTicks
+          : 0;
+      } else {
+        delete e.serviceTicks;
+      }
+    } else {
+      delete e.ammo;
+      delete e.maxAmmo;
+      delete e.assignedRunwayId;
+      delete e.flightState;
+      delete e.serviceTicks;
+      delete e.landingRunwayId;
+    }
+    if (e.class !== "building" || e.kind !== "runway") delete e.assignedPlaneId;
     if (e.scenarioRole === undefined && e.class === "unit" && scenarioRole && scenarioTargetIds.has(e.id)) {
       e.scenarioRole = scenarioRole;
     }
@@ -177,5 +198,39 @@ function normalizeState(value: unknown): SimState {
   if (!s.aiContacts || typeof s.aiContacts !== "object" || Array.isArray(s.aiContacts)) s.aiContacts = {};
   delete (s as { appliedUpgrades?: unknown }).appliedUpgrades;
   compactDestroyedEntities(s);
+  const livingEntities = new Map(s.entities.map((entity) => [entity.id, entity]));
+  for (const entity of s.entities) {
+    if (entity.attackTarget !== undefined && !livingEntities.has(entity.attackTarget)) {
+      delete entity.attackTarget;
+    }
+    if (entity.supportTargetId !== undefined && !livingEntities.has(entity.supportTargetId)) {
+      delete entity.supportTargetId;
+      if (entity.supportMode === "assigned") entity.supportMode = "auto";
+    }
+    if (entity.assignedRunwayId !== undefined) {
+      const runway = livingEntities.get(entity.assignedRunwayId);
+      if (!runway || runway.class !== "building" || runway.kind !== "runway" || runway.owner !== entity.owner) {
+        delete entity.assignedRunwayId;
+        delete entity.landingRunwayId;
+        if (entity.flightState === "servicing") {
+          entity.flightState = "airborne";
+          delete entity.serviceTicks;
+          entity.idle = true;
+        }
+      }
+    }
+    if (entity.landingRunwayId !== undefined) {
+      const runway = livingEntities.get(entity.landingRunwayId);
+      if (!runway || runway.class !== "building" || runway.kind !== "runway" || runway.owner !== entity.owner) {
+        delete entity.landingRunwayId;
+      }
+    }
+    if (entity.assignedPlaneId !== undefined) {
+      const plane = livingEntities.get(entity.assignedPlaneId);
+      if (!plane || plane.class !== "unit" || !isAirUnit(plane.kind) || plane.owner !== entity.owner) {
+        delete entity.assignedPlaneId;
+      }
+    }
+  }
   return s;
 }

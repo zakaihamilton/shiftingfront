@@ -46,12 +46,18 @@ export function SpritePreview({
       const spec = isUnitKind(kind)
         ? unitSprite(kind, palette, { facing: 0, animationFrame: 0, profile })
         : buildingSprite(kind, palette, { profile });
+      const staticAntiAirPreview = kind === "antiAirTurret";
+      // The battlefield intentionally crops the anti-air source so its upper
+      // assembly can be animated separately. Sidebar portraits are static, so
+      // show the authored full silhouette instead of layering a differently
+      // scaled procedural turret over the cropped base.
+      const previewSpec = staticAntiAirPreview ? { ...spec, imageCrop: undefined } : spec;
       const logicalWidth = SPRITE_PREVIEW_WIDTH;
       const logicalHeight = SPRITE_PREVIEW_HEIGHT;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const image = rasterize(spec, () => {
+      const image = rasterize(previewSpec, () => {
         if (!disposed) paint();
       });
       const bounds = spriteContentBounds(image) ?? { minX: 0, minY: 0, width: image.width, height: image.height };
@@ -76,8 +82,8 @@ export function SpritePreview({
         );
       }
 
-      drawSprite(ctx, spec, image, renderDx, renderDy, layout.width, layout.height, bounds);
-      if (!isUnitKind(kind)) {
+      drawSprite(ctx, previewSpec, image, renderDx, renderDy, layout.width, layout.height, bounds);
+      if (!isUnitKind(kind) && !staticAntiAirPreview) {
         const overlayScale = kind === "turret" ? layout.scale * 2 : layout.scale;
         const overlayY = logicalHeight / 2 - (kind === "turret" ? 8 : 0);
         paintBuildingAssetOverlay(ctx, kind, logicalWidth / 2, overlayY, overlayScale, 0, 3, false, palette);

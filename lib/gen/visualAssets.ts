@@ -16,8 +16,30 @@ export const SPRITE_ART: Record<BuildingKind, string> = {
   barracks: "/art/sprites/sleek-modular/barracks-v2.webp",
   factory: "/art/sprites/sleek-modular/factory-v2.webp",
   turret: "/art/sprites/sleek-modular/turret-v2.webp",
+  runway: "/art/sprites/sleek-modular/air-support/runway-v1.webp",
+  antiAirTurret: "/art/sprites/sleek-modular/air-support/anti-air-turret-v1.webp",
   objective: "/art/sprites/sleek-modular/objective-v2.webp",
 };
+
+export const AIR_SUPPORT_ART = {
+  strikePlane: "/art/sprites/sleek-modular/air-support/strike-plane-front-right-v1.webp",
+  runway: "/art/sprites/sleek-modular/air-support/runway-v1.webp",
+  antiAirTurret: "/art/sprites/sleek-modular/air-support/anti-air-turret-v1.webp",
+} as const;
+
+// The generated anti-air image contains a separate upper assembly. Keep only
+// its lower platform in the building sprite so the animated model can replace
+// the static guns and radar head at render time.
+export const ANTI_AIR_TURRET_BASE_CROP = {
+  x: 0,
+  y: 600,
+  w: 1315,
+  h: 597,
+  sourceW: 1315,
+  sourceH: 1197,
+  refW: 1315,
+  refH: 1197,
+} as const;
 
 
 export type UnitView =
@@ -29,6 +51,36 @@ export type UnitView =
   | "back-left"
   | "back"
   | "back-right";
+
+export const STRIKE_PLANE_DIRECTION_ART: Record<UnitView, string> = {
+  right: "/art/sprites/sleek-modular/air-support/strike-plane-right-v1.webp",
+  "front-right": AIR_SUPPORT_ART.strikePlane,
+  front: "/art/sprites/sleek-modular/air-support/strike-plane-front-v1.webp",
+  "front-left": "/art/sprites/sleek-modular/air-support/strike-plane-front-left-v1.webp",
+  left: "/art/sprites/sleek-modular/air-support/strike-plane-left-v1.webp",
+  // The authored rear diagonal files are named from the aircraft's view, so
+  // their screen-left/screen-right placement is the opposite of the logical
+  // isometric facing used by the game.
+  "back-left": "/art/sprites/sleek-modular/air-support/strike-plane-back-right-v1.webp",
+  back: "/art/sprites/sleek-modular/air-support/strike-plane-back-v1.webp",
+  "back-right": "/art/sprites/sleek-modular/air-support/strike-plane-back-left-v1.webp",
+};
+
+// The aircraft source canvases have intentionally generous, view-specific
+// transparent margins. These are the normalized centers of the opaque
+// airframe in those canvases, so each authored view shares one world pivot.
+// Ground units keep the main-branch bottom alignment; this correction is only
+// for the top-down plane sprites.
+export const STRIKE_PLANE_IMAGE_ANCHORS: Record<UnitView, readonly [number, number]> = {
+  right: [0.5049, 0.4956],
+  "front-right": [0.5003, 0.4829],
+  front: [0.5007, 0.4976],
+  "front-left": [0.5192, 0.4927],
+  left: [0.5190, 0.5049],
+  "back-left": [0.5055, 0.5060],
+  back: [0.5003, 0.4634],
+  "back-right": [0.5212, 0.4858],
+};
 
 export type WalkerKind = "infantry" | "antiArmor" | "medic";
 
@@ -110,6 +162,7 @@ export const UNIT_DIRECTION_ART: Record<UnitKind, Record<UnitView, string>> = {
     left: "/art/sprites/sleek-modular/convoy-truck-left-v1.webp",
     "back-right": "/art/sprites/sleek-modular/convoy-truck-back-right-v1.webp",
   },
+  strikePlane: STRIKE_PLANE_DIRECTION_ART,
 };
 
 /** Generated four-frame walk cycles for units with visible legs and feet. */

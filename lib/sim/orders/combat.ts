@@ -1,9 +1,10 @@
-import { UNIT_STATS, isSupportUnit } from "../../catalog";
+import { UNIT_STATS, isAirUnit, isSupportUnit } from "../../catalog";
 import { isUnitEntity, type Formation, type SimEvent, type SimState } from "../../types";
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
 import { byId, closestApproach } from "../world";
 import { assignSupportTarget, canSupportEntity } from "../support";
+import { launchAircraft } from "../aircraft";
 
 export function attackUnits(state: SimState, ids: number[], targetId: number): SimEvent[] {
   const target = byId(state, targetId);
@@ -13,6 +14,7 @@ export function attackUnits(state: SimState, ids: number[], targetId: number): S
     const e = byId(state, id);
     if (!e || !isUnitEntity(e) || e.owner !== 0 || e.neutral) continue;
     if (e.kind === "harvester" || isSupportUnit(e.kind)) continue;
+    if (isAirUnit(e.kind)) launchAircraft(state, e);
     e.attackTarget = targetId;
     e.flowGoal = undefined;
     e.orderMode = "attack";
@@ -20,10 +22,15 @@ export function attackUnits(state: SimState, ids: number[], targetId: number): S
     e.gatherX = undefined;
     e.gatherY = undefined;
     e.routePending = false;
+    e.landingRunwayId = undefined;
     e.idle = false;
     const range = UNIT_STATS[e.kind].range;
     const dest = target.class === "building" ? closestApproach(state, e, target) : target;
     if (Math.hypot(e.x - dest.x, e.y - dest.y) > range) {
+      if (isAirUnit(e.kind)) {
+        e.path = [];
+        continue;
+      }
       if (searches < FOREGROUND_PATHS_PER_ORDER) {
         const result = findPathDetailed(state, e, dest, { maxNodes: FOREGROUND_PATH_MAX_NODES });
         e.path = result.path;

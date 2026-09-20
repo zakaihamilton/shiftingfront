@@ -68,11 +68,13 @@ export function CommandBuildSection({
         onSell={onSell}
         tutorialFocus={tutorialFocus}
       />
-      {activeTab === "selected" ? (
-        <div className={styles.selected} data-testid="selected-panel">
-          {catalog}
-        </div>
-      ) : catalog}
+      <div className={styles.contentScroll} data-testid="command-items-scroll">
+        {activeTab === "selected" ? (
+          <div className={styles.selected} data-testid="selected-panel">
+            {catalog}
+          </div>
+        ) : catalog}
+      </div>
     </section>
   );
 }

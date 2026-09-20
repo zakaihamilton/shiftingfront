@@ -1,11 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { footprintOf } from "../../lib/catalog";
+import { BUILDING_KINDS, footprintOf } from "../../lib/catalog";
 import { TILE_H, tileToScreen } from "../../lib/iso";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { createMission } from "../../lib/sim/api";
 import { createTutorialMission } from "../../lib/sim/tutorial";
 import { heightAt } from "../../lib/sim/world";
 import { spawnBuilding } from "../../lib/sim/world";
+import { listGeneratedAssets } from "../../lib/gen/assetCatalog";
+import { PLACEABLE, PRODUCIBLE } from "../../components/game/hooks/gameActions";
 import { CAMPAIGN_PROGRESS_VERSION, campaignKey, freshCampaignProgress } from "../../lib/persist/campaign";
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, saveKey, SLOT_VERSION, slotKey } from "../../lib/persist/save";
 import { SETTINGS_KEY, SETTINGS_VERSION } from "../../lib/persist/settings";
@@ -429,7 +431,7 @@ test("keeps sidebar item portraits sharp across command tabs", async ({ page }) 
   };
 
   const constructionPortraits = await portraitMetrics();
-  expect(constructionPortraits).toHaveLength(5);
+  expect(constructionPortraits).toHaveLength(PLACEABLE.length);
   for (const portrait of constructionPortraits) {
     expectInsideSidebar(portrait.card);
     expect(portrait.backingWidth).toBeGreaterThanOrEqual(portrait.cssWidth);
@@ -440,7 +442,7 @@ test("keeps sidebar item portraits sharp across command tabs", async ({ page }) 
 
   await sidebar.getByRole("tab", { name: "Production" }).click();
   const productionPortraits = await portraitMetrics();
-  expect(productionPortraits).toHaveLength(6);
+  expect(productionPortraits).toHaveLength(PRODUCIBLE.length);
   productionPortraits.forEach((portrait) => expectInsideSidebar(portrait.card));
   expect(productionPortraits.every((portrait) => portrait.backingWidth >= portrait.cssWidth && portrait.backingHeight >= portrait.cssHeight)).toBe(true);
 
@@ -732,11 +734,11 @@ test("keeps Asset Bay selection synchronized with category filters", async ({ pa
 
   const browser = page.getByTestId("assets-browser");
   const list = browser.getByRole("listbox");
-  await expect(list.getByRole("option")).toHaveCount(28);
+  await expect(list.getByRole("option")).toHaveCount(listGeneratedAssets().length);
 
   await browser.getByRole("button", { name: "Buildings" }).click();
   await expect(browser.getByRole("button", { name: "Buildings" })).toHaveAttribute("aria-pressed", "true");
-  await expect(list.getByRole("option")).toHaveCount(7);
+  await expect(list.getByRole("option")).toHaveCount(BUILDING_KINDS.length);
   await expect(list.locator('[aria-selected="true"]')).toHaveCount(1);
   await expect(page.getByLabel("Command HQ preview")).toBeVisible();
 

@@ -1,4 +1,4 @@
-import { footprintOf } from "../../catalog";
+import { footprintOf, isAirUnit } from "../../catalog";
 import { isBuildingEntity, type SimState } from "../../types";
 import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../types";
 import { heightAt, inBounds, tileAt, unitOccupied } from "./queries";
@@ -133,7 +133,7 @@ export function makeUnitOccupancy(state: SimState, ignoreId?: number): Uint8Arra
 export function fillUnitOccupancy(state: SimState, occupancy: Uint8Array, ignoreId?: number): Uint8Array {
   occupancy.fill(0);
   for (const e of state.entities) {
-    if (e.hp <= 0 || e.class !== "unit" || e.id === ignoreId) continue;
+    if (e.hp <= 0 || e.class !== "unit" || isAirUnit(e.kind) || e.id === ignoreId) continue;
     const x = Math.round(e.x);
     const y = Math.round(e.y);
     if (!inBounds(state, x, y)) continue;

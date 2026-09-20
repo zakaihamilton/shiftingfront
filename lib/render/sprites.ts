@@ -55,6 +55,62 @@ const SVG_RASTER_SCALE = 2;
 const CONTENT_ALPHA_MIN = 12;
 const contentBoundsCache = new WeakMap<HTMLCanvasElement, SpriteBounds>();
 
+export type SpriteRasterPlacement = {
+  destX: number;
+  destY: number;
+  dw: number;
+  dh: number;
+};
+
+/**
+ * Resolve an image's draw rectangle independently of Canvas. Keeping this
+ * calculation shared with rasterize makes directional contact-point tests
+ * exercise the exact placement used in the game.
+ */
+export function spriteRasterPlacement(
+  spec: SpriteSpec,
+  sourceW: number,
+  sourceH: number,
+  canvasW: number,
+  canvasH: number,
+  inset: number,
+): SpriteRasterPlacement {
+  const crop = spec.imageCrop ?? {
+    x: 0,
+    y: 0,
+    w: sourceW,
+    h: sourceH,
+    sourceW,
+    sourceH,
+  };
+  const refW = crop.refW ?? (crop.sourceW > 0 ? crop.sourceW : crop.w);
+  const refH = crop.refH ?? (crop.sourceH > 0 ? crop.sourceH : crop.h);
+  const scale = Math.min((canvasW - inset * 2) / refW, (canvasH - inset * 2) / refH);
+  const dw = Math.round(crop.w * scale);
+  const dh = Math.round(crop.h * scale);
+  const hasImageAnchor = spec.imageAnchorX !== undefined || spec.imageAnchorY !== undefined;
+  if (!hasImageAnchor) {
+    return {
+      destX: Math.round((canvasW - dw) / 2),
+      destY: Math.round(canvasH - dh - inset * 0.25),
+      dw,
+      dh,
+    };
+  }
+
+  // Anchors are normalized against the complete source image. Convert them
+  // into the selected crop before positioning so cropped anchored assets do
+  // not acquire a view-dependent offset.
+  const anchorInCropX = ((spec.imageAnchorX ?? 0.5) * crop.sourceW - crop.x) / crop.w;
+  const anchorInCropY = ((spec.imageAnchorY ?? 1) * crop.sourceH - crop.y) / crop.h;
+  return {
+    destX: Math.round(((spec.anchorX ?? spec.w / 2) / spec.w) * canvasW - dw * anchorInCropX),
+    destY: Math.round(((spec.anchorY ?? spec.h) / spec.h) * canvasH - dh * anchorInCropY),
+    dw,
+    dh,
+  };
+}
+
 export function opaquePixelBounds(
   data: ArrayLike<number>,
   width: number,
@@ -97,11 +153,14 @@ function rasterCacheKey(spec: SpriteSpec): string {
   const crop = spec.imageCrop
     ? `${spec.imageCrop.x},${spec.imageCrop.y},${spec.imageCrop.w},${spec.imageCrop.h}:${spec.imageCrop.sourceW},${spec.imageCrop.sourceH}:${spec.imageCrop.refW ?? ""}:${spec.imageCrop.refH ?? ""}`
     : "";
+  const imageAnchor = spec.imageAnchorX !== undefined || spec.imageAnchorY !== undefined
+    ? `:${spec.imageAnchorX ?? ""},${spec.imageAnchorY ?? ""}`
+    : "";
   const texture = spec.imageTextureSrc
     ? `${spec.imageTextureSrc}:${spec.imageTextureOpacity ?? ""}:${spec.imageTextureOffset ?? 0}`
     : "";
   const shapes = spec.shapes.map((s) => `${s.type}:${s.x}:${s.y}:${s.w}:${s.h}`).join("|");
-  return `image:${spec.imageSrc}:${spec.imageTint ?? ""}:${crop}:${spec.w}x${spec.h}:${spec.imageReveal ?? 1}:${shapes}:${texture}`;
+  return `image:${spec.imageSrc}:${spec.imageTint ?? ""}:${crop}${imageAnchor}:${spec.w}x${spec.h}:${spec.imageReveal ?? 1}:${shapes}:${texture}`;
 }
 
 function notifyImageReady(key: string, generation: number): void {
@@ -209,14 +268,15 @@ export function rasterize(spec: SpriteSpec, onReady?: () => void): HTMLCanvasEle
         sourceW: image.naturalWidth,
         sourceH: image.naturalHeight,
       };
-      const refW = crop.refW ?? (crop.sourceW > 0 ? crop.sourceW : crop.w);
-      const refH = crop.refH ?? (crop.sourceH > 0 ? crop.sourceH : crop.h);
-      const scale = Math.min((c.width - inset * 2) / refW, (c.height - inset * 2) / refH);
-      const dw = Math.round(crop.w * scale);
-      const dh = Math.round(crop.h * scale);
+      const { destX, destY, dw, dh } = spriteRasterPlacement(
+        spec,
+        image.naturalWidth,
+        image.naturalHeight,
+        c.width,
+        c.height,
+        inset,
+      );
       ctx.clearRect(0, 0, c.width, c.height);
-      const destX = Math.round((c.width - dw) / 2);
-      const destY = Math.round(c.height - dh - inset * 0.25);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       ctx.save();

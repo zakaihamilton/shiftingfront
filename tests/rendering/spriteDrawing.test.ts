@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { unitSprite } from "../../lib/gen/svgArt";
 import { drawSprite } from "../../lib/render/sprites";
 import { unitSpriteDrawPosition } from "../../lib/render/renderer/world/entities";
 import type { Palette, SpriteSpec } from "../../lib/types";
@@ -77,5 +78,19 @@ describe("sprite drawing", () => {
     expect(smoothingAtDraw).toEqual([true]);
     expect(qualityAtDraw).toEqual(["high"]);
     expect(ctx.imageSmoothingEnabled).toBe(false);
+  });
+
+  it("draws authored unit views without a transform", () => {
+    const ctx = createContext();
+    const image = {} as CanvasImageSource;
+    const spec = unitSprite("tank", palette, { facing: 3 });
+
+    drawSprite(ctx, spec, image, 11, 22, 200, 160);
+
+    expect(spec.rotation).toBeUndefined();
+    expect(ctx.save).not.toHaveBeenCalled();
+    expect(ctx.translate).not.toHaveBeenCalled();
+    expect(ctx.rotate).not.toHaveBeenCalled();
+    expect(ctx.drawImage).toHaveBeenCalledWith(image, 11, 22, 200, 160);
   });
 });

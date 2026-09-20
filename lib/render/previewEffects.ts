@@ -1,13 +1,17 @@
 import { buildingAnim } from "./anim";
-import { buildTurretHeadModel, type UnitModel } from "./gl/modelLoader";
+import { buildAntiAirTurretModel, buildTurretHeadModel, type UnitModel } from "./gl/modelLoader";
 import { draw3dModel } from "./gl/modelRenderer";
+import { ANTI_AIR_BARREL_PITCH } from "./renderStructures/turret";
 import type { BuildingKind, Entity, Facing, Palette } from "../types";
 
-let cachedTurretModel: UnitModel | null = null;
+const cachedTurretModels = new Map<"turret" | "antiAirTurret", UnitModel>();
 
-function getTurretModel(): UnitModel {
-  if (!cachedTurretModel) cachedTurretModel = buildTurretHeadModel();
-  return cachedTurretModel;
+function getTurretModel(kind: "turret" | "antiAirTurret"): UnitModel {
+  const cached = cachedTurretModels.get(kind);
+  if (cached) return cached;
+  const model = kind === "antiAirTurret" ? buildAntiAirTurretModel() : buildTurretHeadModel();
+  cachedTurretModels.set(kind, model);
+  return model;
 }
 
 function fakeBuilding(kind: BuildingKind): Entity {
@@ -44,7 +48,7 @@ export function paintBuildingAssetOverlay(
 ): void {
   const anim = buildingAnim(fakeBuilding(kind), 0, timeMs);
   ctx.save();
-  if (anim.lightOn && (kind === "power" || kind === "constructionYard" || kind === "objective" || kind === "turret")) {
+  if (anim.lightOn && (kind === "power" || kind === "constructionYard" || kind === "objective" || kind === "turret" || kind === "antiAirTurret")) {
     ctx.fillStyle = kind === "objective" ? "#f3dc79" : "#c7f0d4";
     ctx.globalAlpha = 0.5 + anim.smoke * 0.3;
     ctx.beginPath();
@@ -67,7 +71,7 @@ export function paintBuildingAssetOverlay(
     ctx.fillStyle = "#ffc14a";
     ctx.fillRect(cx - 6 * scale, cy + 4 * scale, 12 * scale, 5 * scale);
   }
-  if (kind === "turret") {
+  if (kind === "turret" || kind === "antiAirTurret") {
     let currentAngle = (facing / 8) * Math.PI * 2;
     if (playing) currentAngle += Math.sin(timeMs * 0.0012) * 0.55;
     ctx.save();
@@ -77,7 +81,16 @@ export function paintBuildingAssetOverlay(
     ctx.fill();
     ctx.restore();
 
-    draw3dModel(ctx, getTurretModel(), cx, cy - 3 * scale, scale, currentAngle - Math.PI / 4, palette);
+    draw3dModel(
+      ctx,
+      getTurretModel(kind),
+      cx,
+      cy - 3 * scale,
+      scale,
+      currentAngle - Math.PI / 4,
+      palette,
+      { barrelPitch: kind === "antiAirTurret" ? ANTI_AIR_BARREL_PITCH : 0 },
+    );
   }
   ctx.restore();
 }

@@ -18,7 +18,10 @@ import { generateFactions } from "../../lib/gen/factions";
 import {
   listTacticalRasterSources,
   listMissionRasterSources,
+  AIR_SUPPORT_ART,
+  ANTI_AIR_TURRET_BASE_CROP,
   SPRITE_ART,
+  STRIKE_PLANE_DIRECTION_ART,
   UNIT_DIRECTION_ART,
   UNIT_WALK_CYCLE_ART,
   unitWalkFrameCrop,
@@ -65,6 +68,16 @@ describe("tactical procedural assets", () => {
     }
   });
 
+  it("separates the anti-air base from its animated upper assembly", () => {
+    const antiAir = buildingSprite("antiAirTurret", palette);
+    expect(antiAir.imageSrc).toBe(AIR_SUPPORT_ART.antiAirTurret);
+    expect(antiAir.imageCrop).toEqual(ANTI_AIR_TURRET_BASE_CROP);
+
+    const rubble = rubbleSprite("antiAirTurret", palette);
+    expect(rubble.imageSrc).toBe(antiAir.imageSrc);
+    expect(rubble.imageCrop).toBeUndefined();
+  });
+
   it("provides valid construction and damage stages for every building", () => {
     for (const kind of BUILDING_KINDS) {
       const ids = new Set<string>();
@@ -87,7 +100,7 @@ describe("tactical procedural assets", () => {
     expect(new Set(unitFingerprints).size).toBe(UNIT_KINDS.length);
     const buildingFingerprints = BUILDING_KINDS.map((kind) => {
       const spec = buildingSprite(kind, palette, { variant: 13 });
-      return spec.imageSrc ?? spec.svg;
+      return spec.imageSrc ?? spec.svg ?? JSON.stringify(spec.shapes);
     });
     expect(new Set(buildingFingerprints).size).toBe(BUILDING_KINDS.length);
   });
@@ -177,6 +190,23 @@ describe("tactical procedural assets", () => {
       const views = Array.from({ length: 8 }, (_, facing) =>
         unitSprite(kind, palette, { facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 }),
       );
+      if (kind === "strikePlane") {
+        expect(views.every((spec) => spec.rotation === undefined)).toBe(true);
+        expect(views.map((spec) => spec.imageSrc)).toEqual([
+          STRIKE_PLANE_DIRECTION_ART.right,
+          STRIKE_PLANE_DIRECTION_ART["front-right"],
+          STRIKE_PLANE_DIRECTION_ART.front,
+          STRIKE_PLANE_DIRECTION_ART["front-left"],
+          STRIKE_PLANE_DIRECTION_ART.left,
+          STRIKE_PLANE_DIRECTION_ART["back-left"],
+          STRIKE_PLANE_DIRECTION_ART.back,
+          STRIKE_PLANE_DIRECTION_ART["back-right"],
+        ]);
+        expect(views[5]!.imageSrc).toContain("-back-right-v1.webp");
+        expect(views[7]!.imageSrc).toContain("-back-left-v1.webp");
+        expect(new Set(views.map((spec) => spec.imageSrc)).size).toBe(8);
+        continue;
+      }
       expect(views.every((spec) => spec.rotation === undefined)).toBe(true);
       expect(new Set(views.map((spec) => spec.imageSrc)).size).toBe(8);
       expect(views[0]!.imageSrc).toMatch(/-right(?:-v[12])?\.webp/);
@@ -195,7 +225,8 @@ describe("tactical procedural assets", () => {
     for (const kind of UNIT_KINDS) {
       const views = UNIT_DIRECTION_ART[kind];
       expect(Object.keys(views)).toHaveLength(8);
-      expect(new Set(Object.values(views)).size).toBe(8);
+      if (kind === "strikePlane") expect(new Set(Object.values(views))).toEqual(new Set(Object.values(STRIKE_PLANE_DIRECTION_ART)));
+      else expect(new Set(Object.values(views)).size).toBe(8);
     }
   });
 
@@ -339,6 +370,11 @@ describe("tactical procedural assets", () => {
   it("plants unit sprites on a contact shadow at the feet", () => {
     for (const kind of UNIT_KINDS) {
       const spec = unitSprite(kind, palette, { facing: 0, variant: 11 });
+      if (kind === "strikePlane") {
+        expect(spec.anchorY).toBe(spec.h / 2);
+        expect(spec.anchorX).toBe(spec.w / 2);
+        continue;
+      }
       if (spec.imageSrc) {
         expect(spec.anchorY ?? spec.h).toBeGreaterThan(spec.h * 0.8);
         expect(spec.anchorX).toBe(spec.w / 2);
@@ -400,9 +436,13 @@ describe("tactical procedural assets", () => {
         expect(spec.imageSrc).toMatch(/\/art\/sprites\//);
         continue;
       }
-      expect(spec.svg).toContain("#9aabba");
-      expect(spec.svg).toContain("#26323d");
-      expect(spec.svg).not.toMatch(/ [QC]/);
+      if (spec.svg) {
+        expect(spec.svg).toContain("#9aabba");
+        expect(spec.svg).toContain("#26323d");
+        expect(spec.svg).not.toMatch(/ [QC]/);
+      } else {
+        expect(spec.shapes.length).toBeGreaterThan(0);
+      }
     }
   });
 
