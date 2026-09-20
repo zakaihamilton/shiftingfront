@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { unitSprite, wreckSprite } from "../../lib/gen/svgArt";
-import { UNIT_DIRECTION_CROPS, unitViewForFacing } from "../../lib/gen/visualAssets";
+import { STRIKE_PLANE_IMAGE_ANCHORS, UNIT_DIRECTION_CROPS, unitViewForFacing } from "../../lib/gen/visualAssets";
+import { spriteRasterPlacement } from "../../lib/render/sprites";
 import type { Palette, UnitKind } from "../../lib/types";
 
 const palette: Palette = {
@@ -13,6 +14,15 @@ const palette: Palette = {
 };
 
 const VEHICLE_KINDS: UnitKind[] = ["tank", "harvester", "repairTruck", "convoyTruck"];
+const GROUND_KINDS: UnitKind[] = [
+  "tank",
+  "harvester",
+  "repairTruck",
+  "convoyTruck",
+  "infantry",
+  "antiArmor",
+  "medic",
+];
 
 describe("vehicle perspective consistency", () => {
   it("defines directional crops for all 8 perspectives across all vehicles", () => {
@@ -55,6 +65,62 @@ describe("vehicle perspective consistency", () => {
       const maxGround = Math.max(...groundLines);
       // All perspectives must stay firmly planted on the ground baseline within 1px
       expect(maxGround - minGround, `${kind} ground variance must be <= 1px`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("preserves main-branch world contact for every ground unit facing", () => {
+    const canvasW = 128;
+    const canvasH = 120;
+    const inset = Math.max(1, Math.round(Math.min(canvasW, canvasH) * 0.025));
+    const expectedCenterX = canvasW / 2;
+    const expectedGroundY = Math.round(canvasH - inset * 0.25);
+
+    for (const kind of GROUND_KINDS) {
+      for (const motion of kind === "infantry" || kind === "antiArmor" || kind === "medic" ? [undefined, "walk"] as const : [undefined] as const) {
+        for (let facing = 0; facing < 8; facing++) {
+          const spec = unitSprite(kind, palette, {
+            facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+            motion,
+          });
+          // Main keeps ground art centered and bottom-aligned. This explicit
+          // invariant catches any future per-view anchor that would make a
+          // unit appear to jump when its authored facing changes.
+          expect(spec.rotation, `${kind} ${motion ?? "static"} facing ${facing} must use authored orientation`).toBeUndefined();
+          expect(spec.imageAnchorX, `${kind} ${motion ?? "static"} facing ${facing} x anchor`).toBeUndefined();
+          expect(spec.imageAnchorY, `${kind} ${motion ?? "static"} facing ${facing} y anchor`).toBeUndefined();
+          const crop = spec.imageCrop;
+          const placement = spriteRasterPlacement(
+            spec,
+            crop?.sourceW ?? 1024,
+            crop?.sourceH ?? 1024,
+            canvasW,
+            canvasH,
+            inset,
+          );
+          expect(Math.abs(placement.destX + placement.dw / 2 - expectedCenterX), `${kind} ${motion ?? "static"} facing ${facing} x contact`).toBeLessThanOrEqual(0.5);
+          expect(placement.destY + placement.dh, `${kind} ${motion ?? "static"} facing ${facing} ground contact`).toBe(expectedGroundY);
+        }
+      }
+    }
+  });
+
+  it("centers every authored plane view in its logical airframe frame", () => {
+    const canvasW = 192;
+    const canvasH = 128;
+    const inset = Math.max(1, Math.round(Math.min(canvasW, canvasH) * 0.025));
+
+    for (let facing = 0; facing < 8; facing++) {
+      const spec = unitSprite("strikePlane", palette, {
+        facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+      });
+      const placement = spriteRasterPlacement(spec, 1536, 1024, canvasW, canvasH, inset);
+      const view = unitViewForFacing(facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7);
+      const [anchorX, anchorY] = STRIKE_PLANE_IMAGE_ANCHORS[view];
+      expect(spec.rotation, `strikePlane facing ${facing} must use authored orientation`).toBeUndefined();
+      expect(spec.imageAnchorX).toBe(anchorX);
+      expect(spec.imageAnchorY).toBe(anchorY);
+      expect(Math.abs(placement.destX + placement.dw * anchorX - canvasW / 2)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(placement.destY + placement.dh * anchorY - canvasH / 2)).toBeLessThanOrEqual(0.5);
     }
   });
 

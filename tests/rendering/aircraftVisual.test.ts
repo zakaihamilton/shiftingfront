@@ -24,4 +24,16 @@ describe("aircraft world rendering", () => {
 
     expect(renderDepthOf(plane, plane)).toBeGreaterThan(depthOf(runway));
   });
+
+  it("keeps a plane above the runway throughout takeoff", () => {
+    const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    const runway = addBuilding(state, 0, "runway", 2, 2);
+    const plane = addUnit(state, 0, "strikePlane", 3.5, 2.5);
+    plane.flightState = "airborne";
+
+    expect(renderDepthOf(plane, { x: plane.x, y: plane.y, airborneMix: 0.5 }))
+      .toBeGreaterThan(depthOf(runway));
+    expect(renderDepthOf(plane, { x: plane.x, y: plane.y, airborneMix: 1 }))
+      .toBe(plane.x + plane.y);
+  });
 });

@@ -87,6 +87,9 @@ describe("modelLoader 3D meshes and parser", () => {
     const antiAirTurret = buildAntiAirTurretModel();
     expect(antiAirTurret.kind).toBe("antiAirTurret");
     expect(antiAirTurret.nodes.map((n) => n.name)).toEqual(["turretHead", "barrel"]);
+    const antiAirBarrelMesh = antiAirTurret.nodes.find((node) => node.name === "barrel")!.mesh;
+    expect(new Set(Array.from(antiAirBarrelMesh.masks))).toEqual(new Set([1, 2, 3, 4, 5]));
+    expect(antiAirBarrelMesh.positions.length).toBeGreaterThan(900);
 
     const strikePlane = buildStrikePlaneModel();
     expect(strikePlane.kind).toBe("strikePlane");
@@ -147,6 +150,10 @@ describe("modelLoader 3D meshes and parser", () => {
     draw3dModel(fakeCtx, infantry, 100, 100, 1.0, 0, undefined, {
       legLAngle: 0.5,
       legRAngle: -0.5,
+    });
+
+    draw3dModel(fakeCtx, buildAntiAirTurretModel(), 100, 100, 1.0, 0.2, undefined, {
+      barrelPitch: 0.52,
     });
 
     expect(calls).toContain("fill");

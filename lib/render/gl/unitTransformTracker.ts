@@ -273,16 +273,17 @@ export function computeUnitDynamicTransform(
     targetScreenAngle = isoFacingAngle(e.facing);
   }
 
-  // Smooth fluid turning rate: vehicles pivot cleanly through intermediate facings, while infantry turn swiftly
+  // Smooth fluid turning rate: vehicles preserve their established per-unit
+  // rates, while walkers turn responsively through intermediate facings too.
   const isWalker = e.kind === "infantry" || e.kind === "antiArmor" || e.kind === "medic";
   const isMoving = moveDist > 0.001 || waypointDist > 0.001;
-  const vehicleTurnSpeed = isMoving
-    ? (e.kind === "tank" ? 14.0 : e.kind === "harvester" ? 16.0 : 20.0)
-    : (e.kind === "tank" ? 8.0 : e.kind === "harvester" ? 9.0 : 12.0);
+  const turnSpeed = isWalker
+    ? (isMoving ? 18.0 : 12.0)
+    : isMoving
+      ? (e.kind === "tank" ? 14.0 : e.kind === "harvester" ? 16.0 : 20.0)
+      : (e.kind === "tank" ? 8.0 : e.kind === "harvester" ? 9.0 : 12.0);
   const prevAngle = hist.screenAngle;
-  hist.screenAngle = isWalker
-    ? targetScreenAngle
-    : lerpAngle(hist.screenAngle, targetScreenAngle, Math.min(1, dt * vehicleTurnSpeed));
+  hist.screenAngle = lerpAngle(hist.screenAngle, targetScreenAngle, Math.min(1, dt * turnSpeed));
   const angularVelocity = (hist.screenAngle - prevAngle) / dt;
 
   // Determine nearest 8-way isometric facing and rotation offset
@@ -292,6 +293,12 @@ export function computeUnitDynamicTransform(
   let rotationOffset = hist.screenAngle - nominalAngle;
   while (rotationOffset > Math.PI) rotationOffset -= Math.PI * 2;
   while (rotationOffset < -Math.PI) rotationOffset += Math.PI * 2;
+  // Keep the authored 8-way perspective authoritative. The raster art is
+  // positioned against the logical contact anchor for its discrete view; a
+  // large residual rotation makes that perspective swing around the anchor
+  // and reads as a position jump. The existing vehicle envelope also keeps
+  // the transition continuous without allowing an adjacent view to be
+  // over-rotated while its sprite is still selected.
   rotationOffset = Math.max(-Math.PI / 8, Math.min(Math.PI / 8, rotationOffset));
 
   // Compute pitch and roll aligned with current heading, plus centrifugal chassis roll during turns

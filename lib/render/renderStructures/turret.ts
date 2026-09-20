@@ -10,8 +10,12 @@ import { distToEntity } from "../../sim/world";
 
 export const turretAimMap = new Map<number, { angle: number; lastMs: number }>();
 export const TURRET_WEAPON_RANGE = 5.5;
-/** Clearly visible upward elevation for anti-air barrels while tracking aircraft. */
-export const ANTI_AIR_BARREL_PITCH = 0.34;
+/**
+ * Match the steep skyward stance in the authored anti-air portrait. This is
+ * shared by battlefield and sidebar model renders so the weapon never appears
+ * level on the battlefield while raised in the preview.
+ */
+export const ANTI_AIR_BARREL_PITCH = 0.52;
 
 function turretRange(turret: Entity): number {
   return isBuildingEntity(turret) ? BUILDING_STATS[turret.kind].combat?.range ?? TURRET_WEAPON_RANGE : TURRET_WEAPON_RANGE;
@@ -109,25 +113,6 @@ export function drawTurretCannon(
 
   const iff = iffColors(e.owner, false, colorblindMode);
   ctx.save();
-
-  if (target && targetPoint) {
-    const b = tileToScreen(targetPoint.x, targetPoint.y, cam, entityElev(state, target));
-    const muzzleX = mountX + cos * (24 * z - recoil);
-    const muzzleY = mountY + sin * (24 * z - recoil);
-    ctx.strokeStyle = iff.laser;
-    ctx.lineWidth = Math.max(1, 1.2 * z);
-    ctx.setLineDash([4 * z, 4 * z]);
-    ctx.beginPath();
-    ctx.moveTo(muzzleX, muzzleY);
-    ctx.lineTo(b.x, b.y + 6 * z);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = iff.hex;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y + 6 * z, 2 * z, 0, Math.PI * 2);
-    ctx.fill();
-  }
 
   ctx.save();
   ctx.fillStyle = "rgba(8, 12, 16, 0.55)";

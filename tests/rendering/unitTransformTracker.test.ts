@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMission } from "../../lib/sim/api";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { isoFacingAngle } from "../../lib/iso";
 import {
   computeUnitDynamicTransform,
   resetUnitTransformTracker,
@@ -202,6 +203,81 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
 
     expect(turned.baseFacing).toBe(2);
     expect(turned.rotationOffset).toBeCloseTo(0, 1);
+  });
+
+  it.each([
+    ["tank", 14],
+    ["strikePlane", 20],
+    ["infantry", 18],
+  ] as const)("turns %s through intermediate screen angles", (kind, turnRate) => {
+    const state = createMission({ seed: 101, missionIndex: 0 });
+    const unit = state.entities.find((e) => e.class === "unit");
+    if (!unit) throw new Error("Expected unit");
+
+    unit.kind = kind;
+    unit.facing = 0;
+    unit.path = [{ x: unit.x + 5, y: unit.y + 5 }];
+    if (kind === "strikePlane") unit.flightState = "airborne";
+
+    updateUnitHistory(state, 1000);
+    const initial = computeUnitDynamicTransform(unit, state, 0, 1000);
+    const next = computeUnitDynamicTransform(unit, state, 0, 1016);
+    const target = Math.PI / 2;
+    const expectedStep = Math.abs(target - initial.screenAngle) * Math.min(1, 0.016 * turnRate);
+
+    expect(next.screenAngle).not.toBeCloseTo(target, 4);
+    expect(Math.abs(next.screenAngle - initial.screenAngle)).toBeCloseTo(expectedStep, 3);
+    expect(Math.abs(next.rotationOffset)).toBeLessThan(Math.PI / 3);
+  });
+
+  it("takes the shortest path across the screen-angle wrap boundary", () => {
+    const state = createMission({ seed: 101, missionIndex: 0 });
+    const unit = state.entities.find((e) => e.class === "unit");
+    if (!unit) throw new Error("Expected unit");
+
+    unit.kind = "infantry";
+    unit.facing = 4;
+    // Facing 4 is at +PI while this westward waypoint is just below -PI.
+    unit.path = [{ x: unit.x - 5, y: unit.y }];
+
+    updateUnitHistory(state, 1000);
+    const initial = computeUnitDynamicTransform(unit, state, 0, 1000);
+    const next = computeUnitDynamicTransform(unit, state, 0, 1050);
+
+    expect(Math.abs(next.screenAngle - initial.screenAngle)).toBeLessThan(Math.PI / 2);
+    expect(next.screenAngle).toBeGreaterThan(Math.PI / 2);
+    expect(Math.abs(next.rotationOffset)).toBeLessThan(Math.PI / 3);
+  });
+
+  it("crosses an 8-way facing boundary without snapping the sprite heading", () => {
+    const state = createMission({ seed: 101, missionIndex: 0 });
+    const unit = state.entities.find((e) => e.class === "unit");
+    if (!unit) throw new Error("Expected unit");
+
+    unit.kind = "infantry";
+    unit.facing = 1;
+    // Move from facing 1 toward facing 2, whose isometric sectors are wider
+    // than the fixed 22.5-degree clamp previously allowed.
+    unit.path = [{ x: unit.x + 5, y: unit.y + 5 }];
+
+    updateUnitHistory(state, 1000);
+    let previous = computeUnitDynamicTransform(unit, state, 0, 1000);
+    let crossed = false;
+    for (let time = 1050; time <= 2200; time += 50) {
+      const current = computeUnitDynamicTransform(unit, state, 0, time);
+      if (current.baseFacing !== previous.baseFacing) crossed = true;
+      expect(Math.abs(current.screenAngle - previous.screenAngle)).toBeLessThan(1.0);
+      expect(Math.abs(current.rotationOffset)).toBeLessThan(Math.PI / 3);
+      if (current.baseFacing !== previous.baseFacing) {
+        const previousRenderedHeading = isoFacingAngle(previous.baseFacing) + previous.rotationOffset;
+        const currentRenderedHeading = isoFacingAngle(current.baseFacing) + current.rotationOffset;
+        expect(Math.abs(currentRenderedHeading - previousRenderedHeading)).toBeLessThan(1.0);
+        expect(currentRenderedHeading).toBeCloseTo(current.screenAngle, 6);
+      }
+      previous = current;
+    }
+
+    expect(crossed).toBe(true);
   });
 
   it("computes dynamic bipedal gait properties for walking soldiers", () => {

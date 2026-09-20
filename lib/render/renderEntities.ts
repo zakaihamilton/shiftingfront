@@ -20,15 +20,24 @@ export function depthOf(e: Entity): number {
   return e.x + e.y;
 }
 
-// Parked aircraft share the runway's ground elevation, so keep their sprite
-// above the runway in the painter's order while preserving normal depth order
-// for aircraft in flight.
-export const SERVICING_AIRCRAFT_DEPTH_BIAS = 3;
+// Aircraft that are parked or still in the runway transition must remain above
+// the runway in the painter's order. Once fully airborne, normal world-depth
+// ordering resumes.
+export const AIRCRAFT_RUNWAY_DEPTH_BIAS = 3;
+/** @deprecated Use AIRCRAFT_RUNWAY_DEPTH_BIAS. */
+export const SERVICING_AIRCRAFT_DEPTH_BIAS = AIRCRAFT_RUNWAY_DEPTH_BIAS;
 
-export function renderDepthOf(e: Entity, position?: { x: number; y: number }): number {
+export function renderDepthOf(
+  e: Entity,
+  position?: { x: number; y: number; airborneMix?: number },
+): number {
   const depth = e.class === "unit" && position ? position.x + position.y : depthOf(e);
-  return e.class === "unit" && e.kind === "strikePlane" && e.flightState === "servicing"
-    ? depth + SERVICING_AIRCRAFT_DEPTH_BIAS
+  const aircraftOnRunway = e.class === "unit" && e.kind === "strikePlane" && (
+    e.flightState === "servicing" ||
+    (position?.airborneMix !== undefined && position.airborneMix < 1)
+  );
+  return aircraftOnRunway
+    ? depth + AIRCRAFT_RUNWAY_DEPTH_BIAS
     : depth;
 }
 

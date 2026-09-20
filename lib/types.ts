@@ -393,6 +393,9 @@ export type SpriteSpec = {
   imageTint?: string;
   /** Optional source-image crop used to remove adjacent artwork from generated raster assets. */
   imageCrop?: SpriteCrop;
+  /** Normalized source-image point that should sit on the sprite's logical anchor. */
+  imageAnchorX?: number;
+  imageAnchorY?: number;
   /** A subtle material plate composited into procedural terrain without replacing map geometry. */
   imageTextureSrc?: string;
   imageTextureOpacity?: number;

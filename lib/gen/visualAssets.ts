@@ -63,6 +63,22 @@ export const STRIKE_PLANE_DIRECTION_ART: Record<UnitView, string> = {
   "back-right": "/art/sprites/sleek-modular/air-support/strike-plane-back-right-v1.webp",
 };
 
+// The aircraft source canvases have intentionally generous, view-specific
+// transparent margins. These are the normalized centers of the opaque
+// airframe in those canvases, so each authored view shares one world pivot.
+// Ground units keep the main-branch bottom alignment; this correction is only
+// for the top-down plane sprites.
+export const STRIKE_PLANE_IMAGE_ANCHORS: Record<UnitView, readonly [number, number]> = {
+  right: [0.5049, 0.4956],
+  "front-right": [0.5003, 0.4829],
+  front: [0.5007, 0.4976],
+  "front-left": [0.5192, 0.4927],
+  left: [0.5190, 0.5049],
+  "back-left": [0.5212, 0.4858],
+  back: [0.5003, 0.4634],
+  "back-right": [0.5055, 0.5060],
+};
+
 export type WalkerKind = "infantry" | "antiArmor" | "medic";
 
 const WALK_CYCLE_SHEET_SIZE = 1024;

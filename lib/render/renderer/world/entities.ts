@@ -282,6 +282,9 @@ export function renderEntityPhase(
     const recoil = uAnim?.recoil ?? 0;
     const groundX = groundS.x;
     const groundY = groundS.y + (TILE_H / 2) * z;
+    // tileToScreen returns the tile's top vertex. Every unit's logical world
+    // anchor is the tile center, including the center-pivoted aircraft sprite;
+    // the aircraft's extra elevation is already represented by `s.y`.
     const spriteGroundY = s.y + (TILE_H / 2) * z;
 
     if (e.class === "building") {

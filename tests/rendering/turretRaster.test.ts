@@ -61,7 +61,7 @@ describe("turret raster cache", () => {
   });
 
   it("keeps differently pitched barrels in separate raster poses", () => {
-    expect(ANTI_AIR_BARREL_PITCH).toBeGreaterThan(0);
+    expect(ANTI_AIR_BARREL_PITCH).toBeGreaterThan(0.45);
     expect(turretPitchStep(ANTI_AIR_BARREL_PITCH)).not.toBe(turretPitchStep(0));
     expect(turretRasterKey(palette, 0.2, 0.1, 1, "antiAirTurret", ANTI_AIR_BARREL_PITCH))
       .not.toBe(turretRasterKey(palette, 0.2, 0.1, 1, "antiAirTurret", 0));

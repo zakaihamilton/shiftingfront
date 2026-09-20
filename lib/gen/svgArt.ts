@@ -4,6 +4,7 @@ import {
   ANTI_AIR_TURRET_BASE_CROP,
   SPRITE_ART,
   STRIKE_PLANE_DIRECTION_ART,
+  STRIKE_PLANE_IMAGE_ANCHORS,
   TEXTURE_ART,
   UNIT_DIRECTION_ART,
   UNIT_DIRECTION_CROPS,
@@ -137,6 +138,7 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
     const w = 96;
     const h = 64;
     const view = unitViewForFacing(facing);
+    const [imageAnchorX, imageAnchorY] = STRIKE_PLANE_IMAGE_ANCHORS[view];
     return {
       id: `unit:airframe-directional-v2:${kind}:${facing}:${view}:${palette.primary}:${visualKey(profile)}:${variant}:${frame}:${options.damageStage ?? 0}`,
       kind: "unit",
@@ -149,6 +151,10 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
       imageTextureSrc: TEXTURE_ART.worn,
       imageTextureOpacity: options.damageStage ? 0.28 : 0.12,
       imageTextureOffset: kindOffset(kind),
+      // Plane art is top-down and its source canvases are not uniform. Keep
+      // the airframe centered in the logical frame for every authored view.
+      imageAnchorX,
+      imageAnchorY,
       anchorX: w / 2,
       // Aircraft are top-down silhouettes: their world position is the center
       // of the airframe, including when the plane is parked on a runway.
