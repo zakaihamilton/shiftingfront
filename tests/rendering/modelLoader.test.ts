@@ -5,6 +5,7 @@ import {
   buildConvoyTruckModel,
   buildHarvesterModel,
   buildInfantryModel,
+  buildStrikePlaneModel,
   buildTankModel,
   buildTurretHeadModel,
   buildUnitModel,
@@ -86,6 +87,10 @@ describe("modelLoader 3D meshes and parser", () => {
     const antiAirTurret = buildAntiAirTurretModel();
     expect(antiAirTurret.kind).toBe("antiAirTurret");
     expect(antiAirTurret.nodes.map((n) => n.name)).toEqual(["turretHead", "barrel"]);
+
+    const strikePlane = buildStrikePlaneModel();
+    expect(strikePlane.kind).toBe("strikePlane");
+    expect(strikePlane.nodes.map((n) => n.name)).toEqual(["airframe", "wings", "tail", "stores"]);
   });
 
   it("parses Wavefront OBJ models with object groups and material mapping", () => {
@@ -116,6 +121,7 @@ describe("modelLoader 3D meshes and parser", () => {
     expect(buildUnitModel("convoyTruck").nodes.length).toBeGreaterThan(1);
     expect(buildUnitModel("turret").nodes.length).toBeGreaterThan(1);
     expect(buildUnitModel("antiAirTurret").nodes.length).toBeGreaterThan(1);
+    expect(buildUnitModel("strikePlane").nodes.length).toBeGreaterThan(1);
   });
 
   it("renders 3D soldier model with articulated leg transformations without throwing", () => {

@@ -415,20 +415,20 @@ export function renderEntityPhase(
         extras.colorblindMode,
       );
 
-      let secondaryMeterY = meterY + worldHealthMeterHeight(z) + 2;
+      let secondaryMeterY = meterY + worldHealthMeterHeight(z) + 4;
       if (entityHasWorldAmmoMeter(e)) {
         const maxAmmo = e.maxAmmo ?? UNIT_STATS.strikePlane.ammoMax ?? 0;
         drawUnitAmmoMeter(
           ctx,
           centerX,
-          meterY + worldHealthMeterHeight(z) + 5,
+          secondaryMeterY,
           e.ammo ?? maxAmmo,
           maxAmmo,
           z,
           spriteAlpha,
           barW,
         );
-        secondaryMeterY = meterY + worldHealthMeterHeight(z) * 2 + 7;
+        secondaryMeterY += worldHealthMeterHeight(z) + 3;
       }
 
       if (e.class === "unit" && (e.suppression ?? 0) > 0) {

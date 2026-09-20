@@ -1,10 +1,10 @@
 import { finalizeMultiSelect, pickEntity } from "@/lib/render/pick";
 import { pickTile, visibleBuildingAt } from "@/lib/render/renderer";
+import { entityElev } from "@/lib/render/renderPicking";
 import { BUILDING_DEFINITIONS, isAirUnit } from "@/lib/catalog";
 import { TILE_H, screenToGroundTile, tileToScreen, type Camera } from "@/lib/iso";
 import { groundOrders } from "@/lib/sim/orders";
 import { canSupportEntity } from "@/lib/sim/support";
-import { groundHeight, heightAt } from "@/lib/sim/world";
 import { isBuildingEntity, isPlayerSelectableUnit, type Command, type Entity, type SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
 import { selectionBoxProjection, type SelectionBox } from "./selectionBox";
@@ -102,7 +102,9 @@ export function contextOrders(s: SimState, ids: number[], target: SimState["enti
   if (target?.owner === 0 && target.class === "building" && target.kind === "runway") {
     const aircraft = ids.filter((id) => {
       const entity = s.entities.find((candidate) => candidate.id === id && candidate.hp > 0);
-      return entity?.owner === 0 && entity.class === "unit" && isAirUnit(entity.kind) && entity.assignedRunwayId === target.id;
+      const runwayDeadOrMissing = entity?.assignedRunwayId === undefined || !s.entities.some((c) => c.id === entity.assignedRunwayId && c.hp > 0);
+      return entity?.owner === 0 && entity.class === "unit" && isAirUnit(entity.kind) &&
+        (entity.assignedRunwayId === target.id || (target.assignedPlaneId === undefined && runwayDeadOrMissing));
     });
     const others = ids.filter((id) => !aircraft.includes(id));
     const commands: Command[] = aircraft.length ? [{ type: "land", unitIds: aircraft, runwayId: target.id }] : [];
@@ -128,7 +130,9 @@ export function mobileCommandOrders(
   if (target?.owner === 0 && target.class === "building" && target.kind === "runway") {
     const aircraft = ids.filter((id) => {
       const entity = s.entities.find((candidate) => candidate.id === id && candidate.hp > 0);
-      return entity?.owner === 0 && entity.class === "unit" && isAirUnit(entity.kind) && entity.assignedRunwayId === target.id;
+      const runwayDeadOrMissing = entity?.assignedRunwayId === undefined || !s.entities.some((c) => c.id === entity.assignedRunwayId && c.hp > 0);
+      return entity?.owner === 0 && entity.class === "unit" && isAirUnit(entity.kind) &&
+        (entity.assignedRunwayId === target.id || (target.assignedPlaneId === undefined && runwayDeadOrMissing));
     });
     if (aircraft.length) return [{ type: "land", unitIds: aircraft, runwayId: target.id }];
   }
@@ -146,7 +150,7 @@ export function unitOnScreen(
   entity: Entity,
 ): boolean {
   const z = cam.zoom;
-  const elev = entity.class === "unit" && isAirUnit(entity.kind) ? groundHeight(s, entity.x, entity.y) + 3 : groundHeight(s, entity.x, entity.y);
+  const elev = entityElev(s, entity);
   const pos = tileToScreen(entity.x, entity.y, cam, elev);
   const bodyX = pos.x;
   const bodyY = pos.y + (TILE_H / 2) * z - 12 * z;
@@ -187,7 +191,7 @@ export function selectionIdsInBox(s: SimState, cam: Camera, box: SelectionBox, f
   const y1 = Math.max(projectedBox.y0, projectedBox.y1);
   for (const en of s.entities) {
     if (en.hp <= 0 || en.owner !== 0 || !isPlayerSelectableUnit(en) || (en.neutral && !isContactTarget(s, en))) continue;
-    const elev = en.class === "unit" && isAirUnit(en.kind) ? heightAt(s, Math.round(en.x), Math.round(en.y)) + 3 : heightAt(s, Math.round(en.x), Math.round(en.y));
+    const elev = entityElev(s, en);
     const sp = tileToScreen(en.x, en.y, { x: 0, y: 0, zoom: cam.zoom }, elev);
     const projected = { x: sp.x / cam.zoom, y: sp.y / cam.zoom };
     if (projected.x >= x0 && projected.x <= x1 && projected.y >= y0 && projected.y <= y1) ids.push(en.id);

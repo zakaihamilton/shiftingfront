@@ -4,6 +4,7 @@ import { issue } from "../../lib/sim/api";
 import { tickAircraft } from "../../lib/sim/aircraft";
 import { tickCombat } from "../../lib/sim/combat";
 import { evaluateObjectives } from "../../lib/sim/objectives";
+import { compactDestroyedEntities } from "../../lib/sim/world/lifecycle";
 
 describe("air support", () => {
   it("services one assigned plane on its dedicated runway", () => {
@@ -175,5 +176,57 @@ describe("air support", () => {
     tickCombat(groundTurretState);
     expect(groundPlane.hp).toBe(groundPlane.maxHp);
     expect(groundTurret.attackTarget).toBeUndefined();
+  });
+
+  it("allows unassigned planes to land on and claim an unassigned runway", () => {
+    const state = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
+    const runway = addBuilding(state, 0, "runway", 2, 2);
+    const plane = addUnit(state, 0, "strikePlane", 12, 8);
+    plane.assignedRunwayId = undefined;
+    runway.assignedPlaneId = undefined;
+
+    const result = issue(state, { type: "land", unitIds: [plane.id], runwayId: runway.id });
+    expect(result).toEqual([]);
+    expect(plane.landingRunwayId).toBe(runway.id);
+    expect(plane.assignedRunwayId).toBe(runway.id);
+    expect(runway.assignedPlaneId).toBe(plane.id);
+
+    for (let i = 0; i < 80 && plane.flightState !== "servicing"; i += 1) {
+      state.tick += 1;
+      tickAircraft(state);
+    }
+    expect(plane.flightState).toBe("servicing");
+  });
+
+  it("launches servicing plane into airborne state when runway is destroyed in lifecycle cleanup", () => {
+    const state = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const runway = addBuilding(state, 0, "runway", 2, 2);
+    const plane = addUnit(state, 0, "strikePlane", 3.5, 2.5);
+    plane.assignedRunwayId = runway.id;
+    runway.assignedPlaneId = plane.id;
+    plane.flightState = "servicing";
+    plane.serviceTicks = 5;
+
+    runway.hp = 0;
+    compactDestroyedEntities(state);
+
+    expect(plane.assignedRunwayId).toBeUndefined();
+    expect(plane.landingRunwayId).toBeUndefined();
+    expect(plane.flightState).toBe("airborne");
+    expect(plane.serviceTicks).toBeUndefined();
+    expect(plane.idle).toBe(true);
+  });
+
+  it("clears orderDestination and orderMode when plane reaches destination", () => {
+    const state = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const plane = addUnit(state, 0, "strikePlane", 5, 5);
+    plane.flightState = "airborne";
+    plane.orderDestination = { x: 5.1, y: 5.1 };
+    plane.orderMode = "move";
+
+    tickAircraft(state);
+
+    expect(plane.orderDestination).toBeUndefined();
+    expect(plane.orderMode).toBeUndefined();
   });
 });

@@ -82,8 +82,17 @@ export function landAircraft(state: SimState, ids: number[], runwayId: number): 
   for (const id of ids) {
     const aircraft = byId(state, id);
     if (!aircraft || !isAircraft(aircraft) || aircraft.owner !== 0 || aircraft.neutral) continue;
-    if (aircraft.assignedRunwayId !== runway.id) continue;
-    if (runway.assignedPlaneId !== undefined && runway.assignedPlaneId !== aircraft.id) continue;
+    const currentRunway = aircraft.assignedRunwayId !== undefined ? byId(state, aircraft.assignedRunwayId) : undefined;
+    const runwayAvailable = runway.assignedPlaneId === undefined || runway.assignedPlaneId === aircraft.id;
+    if (aircraft.assignedRunwayId !== runway.id) {
+      if (!runwayAvailable) continue;
+      if (currentRunway && currentRunway.hp > 0 && currentRunway.owner === aircraft.owner) continue;
+      clearRunwayAssignment(state, aircraft);
+      aircraft.assignedRunwayId = runway.id;
+      runway.assignedPlaneId = aircraft.id;
+    } else if (!runwayAvailable) {
+      continue;
+    }
     aircraft.landingRunwayId = runway.id;
     aircraft.orderMode = "move";
     aircraft.orderDestination = runwayServicePoint(runway);
@@ -159,6 +168,8 @@ function moveAircraft(aircraft: Aircraft, destination: { x: number; y: number })
     aircraft.path = [];
     aircraft.idle = true;
     aircraft.routePending = false;
+    aircraft.orderDestination = undefined;
+    aircraft.orderMode = undefined;
     return;
   }
   aircraft.x += dx / distance * stats.speed;
@@ -227,6 +238,9 @@ export function tickAircraft(state: SimState, eventSink?: SimEvent[]): void {
       aircraft.idle = false;
       continue;
     }
-    if (aircraft.orderDestination) moveAircraft(aircraft, aircraft.orderDestination);
+    const destination = target && target.hp > 0 && aircraft.orderMode === "attack"
+      ? { x: target.x, y: target.y }
+      : aircraft.orderDestination;
+    if (destination) moveAircraft(aircraft, destination);
   }
 }

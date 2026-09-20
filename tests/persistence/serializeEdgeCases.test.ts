@@ -284,6 +284,41 @@ describe("normalizeState edge cases", () => {
     (state as { height: unknown }).height = 0;
     expect(() => deserializeState(serializeState(state))).toThrow("Invalid save state");
   });
+
+  it("cleans up orphaned aircraft, runway, and targeting references", () => {
+    const state = baseState(1000);
+    const plane = addUnit(state, 0, "strikePlane", 5, 5);
+    plane.assignedRunwayId = 99999;
+    plane.landingRunwayId = 99999;
+    plane.flightState = "servicing";
+    plane.serviceTicks = 10;
+    plane.attackTarget = 88888;
+
+    const runway = addBuilding(state, 0, "runway", 10, 10);
+    runway.assignedPlaneId = 77777;
+
+    const medic = addUnit(state, 0, "medic", 6, 6);
+    medic.supportMode = "assigned";
+    medic.supportTargetId = 66666;
+
+    const raw = serializeState(state);
+    const restored = deserializeState(raw);
+
+    const restoredPlane = restored.entities.find((e) => e.id === plane.id)!;
+    expect(restoredPlane.assignedRunwayId).toBeUndefined();
+    expect(restoredPlane.landingRunwayId).toBeUndefined();
+    expect(restoredPlane.flightState).toBe("airborne");
+    expect(restoredPlane.serviceTicks).toBeUndefined();
+    expect(restoredPlane.idle).toBe(true);
+    expect(restoredPlane.attackTarget).toBeUndefined();
+
+    const restoredRunway = restored.entities.find((e) => e.id === runway.id)!;
+    expect(restoredRunway.assignedPlaneId).toBeUndefined();
+
+    const restoredMedic = restored.entities.find((e) => e.id === medic.id)!;
+    expect(restoredMedic.supportTargetId).toBeUndefined();
+    expect(restoredMedic.supportMode).toBe("auto");
+  });
 });
 
 describe("save allocation limits", () => {

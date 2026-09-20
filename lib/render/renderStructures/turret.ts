@@ -189,7 +189,7 @@ export function drawTurretCannon(
 
   if (isFiring) {
     ctx.save();
-    const flashStage = (e.cooldown - 11) / 3;
+    const flashStage = recoilRatio;
     const flashR = (3.5 + flashStage * 3.5) * z;
 
     for (const [mx, my] of [[muzzleLX, muzzleLY], [muzzleRX, muzzleRY]]) {

@@ -14,20 +14,6 @@ export function compactDestroyedEntities(state: SimState): number {
     if (entity.hp > 0) continue;
     refundQueuedUnits(state, entity);
     if (entity.class === "building") ensureDeadBuildingInvalidation(state, entity.id);
-    if (entity.class === "unit" && entity.assignedRunwayId !== undefined) {
-      const runway = state.entities.find((candidate) => candidate.id === entity.assignedRunwayId);
-      if (runway?.class === "building" && runway.kind === "runway" && runway.assignedPlaneId === entity.id) {
-        runway.assignedPlaneId = undefined;
-      }
-    }
-    if (entity.class === "building" && entity.kind === "runway" && entity.assignedPlaneId !== undefined) {
-      const aircraft = state.entities.find((candidate) => candidate.id === entity.assignedPlaneId);
-      if (aircraft?.class === "unit" && aircraft.assignedRunwayId === entity.id) {
-        aircraft.assignedRunwayId = undefined;
-        aircraft.landingRunwayId = undefined;
-        aircraft.flightState = "airborne";
-      }
-    }
   }
 
   for (const entity of state.entities) {
@@ -59,5 +45,20 @@ function clearDeadReferences(entity: Entity, removedIds: Set<number>): void {
   if (entity.supportTargetId !== undefined && removedIds.has(entity.supportTargetId)) {
     entity.supportTargetId = undefined;
     if (entity.supportMode === "assigned") entity.supportMode = "auto";
+  }
+  if (entity.assignedRunwayId !== undefined && removedIds.has(entity.assignedRunwayId)) {
+    entity.assignedRunwayId = undefined;
+    entity.landingRunwayId = undefined;
+    if (entity.flightState === "servicing") {
+      entity.flightState = "airborne";
+      entity.serviceTicks = undefined;
+      entity.idle = true;
+    }
+  }
+  if (entity.landingRunwayId !== undefined && removedIds.has(entity.landingRunwayId)) {
+    entity.landingRunwayId = undefined;
+  }
+  if (entity.assignedPlaneId !== undefined && removedIds.has(entity.assignedPlaneId)) {
+    entity.assignedPlaneId = undefined;
   }
 }

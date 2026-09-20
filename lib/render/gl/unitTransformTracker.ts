@@ -79,7 +79,11 @@ function aircraftTransitionPosition(
 ): UnitRenderPosition | undefined {
   if (e.kind !== "strikePlane" || !hist?.flightTransition) return undefined;
   const transition = hist.flightTransition;
-  const progress = Math.max(0, Math.min(1, (clockMs - transition.startedAt) / AIRCRAFT_FLIGHT_TRANSITION_MS));
+  const progress = Math.max(0, (clockMs - transition.startedAt) / AIRCRAFT_FLIGHT_TRANSITION_MS);
+  if (progress >= 1) {
+    hist.flightTransition = undefined;
+    return undefined;
+  }
   const eased = progress * progress * (3 - 2 * progress);
   return {
     x: lerp(transition.fromX, transition.toX, eased),
