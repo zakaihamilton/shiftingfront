@@ -56,10 +56,19 @@ function setAirborne(aircraft: Entity): void {
 
 export function launchAircraft(state: SimState, aircraft: Entity, events?: SimEvent[]): void {
   if (!isAircraft(aircraft) || aircraft.flightState !== "servicing") return;
+  // Auto-returning aircraft retain their target while they service. Restore
+  // the attack order here so the normal aircraft tick resumes the sortie
+  // instead of leaving the plane parked with only a stale target id.
+  const resumedTarget = resumableAttackTarget(state, aircraft);
   setAirborne(aircraft);
   aircraft.path = [];
-  aircraft.orderDestination = undefined;
-  aircraft.orderMode = undefined;
+  if (resumedTarget) {
+    aircraft.orderMode = "attack";
+    aircraft.orderDestination = { x: resumedTarget.x, y: resumedTarget.y };
+  } else {
+    aircraft.orderDestination = undefined;
+    aircraft.orderMode = undefined;
+  }
   events?.push({
     type: "aircraftStatus",
     owner: aircraft.owner,
@@ -69,7 +78,6 @@ export function launchAircraft(state: SimState, aircraft: Entity, events?: SimEv
     x: aircraft.x,
     y: aircraft.y,
   });
-  void state;
 }
 
 export function landAircraft(state: SimState, ids: number[], runwayId: number): SimEvent[] {

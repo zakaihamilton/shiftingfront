@@ -115,6 +115,13 @@ describe("air support", () => {
     expect(plane.flightState).toBe("airborne");
     expect(plane.attackTarget).toBe(target.id);
     expect(plane.ammo).toBe(3);
+    expect(plane.orderMode).toBe("attack");
+    expect(plane.orderDestination).toEqual({ x: target.x, y: target.y });
+
+    const runwayPosition = { x: plane.x, y: plane.y };
+    state.tick += 1;
+    tickAircraft(state);
+    expect(Math.hypot(plane.x - runwayPosition.x, plane.y - runwayPosition.y)).toBeGreaterThan(0);
   });
 
   it("does not return to a destroyed runway", () => {

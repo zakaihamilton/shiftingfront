@@ -53,6 +53,34 @@ describe("harvester selection", () => {
     expect(pickEntity(s, pos.x, pos.y - 12, cam, false, 1443)?.id).toBe(plane.id);
   });
 
+  it("marquee-selects a plane at its interpolated landing position", () => {
+    resetUnitTransformTracker();
+    const s = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const plane = addUnit(s, 0, "strikePlane", 10, 8);
+    plane.flightState = "airborne";
+    updateUnitHistory(s, 1000);
+    computeUnitDynamicTransform(plane, s, 0, 1000);
+
+    s.tick += 1;
+    plane.x = 3.5;
+    plane.y = 2.5;
+    plane.flightState = "servicing";
+    updateUnitHistory(s, 1083);
+    const rendered = computeUnitDynamicTransform(plane, s, 0, 1443);
+    const cam = createCamera();
+    const elev = heightAt(s, rendered.x, rendered.y) + 5 * rendered.airborneMix;
+    const pos = tileToScreen(rendered.x, rendered.y, cam, elev);
+    const box = {
+      x0: pos.x - 12,
+      y0: pos.y - 12,
+      x1: pos.x + 12,
+      y1: pos.y + 12,
+      anchor: selectionProjectionPoint({ x: pos.x - 12, y: pos.y - 12 }, cam),
+    };
+
+    expect(selectionIdsInBox(s, cam, box, false, 1443)).toContain(plane.id);
+  });
+
   it("selects a convoy truck with the vehicle hit radius", () => {
     const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     const truck = addUnit(s, 0, "convoyTruck", 5, 5);

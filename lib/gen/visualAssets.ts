@@ -58,9 +58,12 @@ export const STRIKE_PLANE_DIRECTION_ART: Record<UnitView, string> = {
   front: "/art/sprites/sleek-modular/air-support/strike-plane-front-v1.webp",
   "front-left": "/art/sprites/sleek-modular/air-support/strike-plane-front-left-v1.webp",
   left: "/art/sprites/sleek-modular/air-support/strike-plane-left-v1.webp",
-  "back-left": "/art/sprites/sleek-modular/air-support/strike-plane-back-left-v1.webp",
+  // The authored rear diagonal files are named from the aircraft's view, so
+  // their screen-left/screen-right placement is the opposite of the logical
+  // isometric facing used by the game.
+  "back-left": "/art/sprites/sleek-modular/air-support/strike-plane-back-right-v1.webp",
   back: "/art/sprites/sleek-modular/air-support/strike-plane-back-v1.webp",
-  "back-right": "/art/sprites/sleek-modular/air-support/strike-plane-back-right-v1.webp",
+  "back-right": "/art/sprites/sleek-modular/air-support/strike-plane-back-left-v1.webp",
 };
 
 // The aircraft source canvases have intentionally generous, view-specific
@@ -74,9 +77,9 @@ export const STRIKE_PLANE_IMAGE_ANCHORS: Record<UnitView, readonly [number, numb
   front: [0.5007, 0.4976],
   "front-left": [0.5192, 0.4927],
   left: [0.5190, 0.5049],
-  "back-left": [0.5212, 0.4858],
+  "back-left": [0.5055, 0.5060],
   back: [0.5003, 0.4634],
-  "back-right": [0.5055, 0.5060],
+  "back-right": [0.5212, 0.4858],
 };
 
 export type WalkerKind = "infantry" | "antiArmor" | "medic";

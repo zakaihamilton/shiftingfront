@@ -124,6 +124,11 @@ describe("vehicle perspective consistency", () => {
     }
   });
 
+  it("maps the plane's upper-left and upper-right views to the correct screen sides", () => {
+    expect(unitSprite("strikePlane", palette, { facing: 5 }).imageSrc).toContain("strike-plane-back-right-v1.webp");
+    expect(unitSprite("strikePlane", palette, { facing: 7 }).imageSrc).toContain("strike-plane-back-left-v1.webp");
+  });
+
   it("prevents aspect ratio and height ballooning when turning between perspectives", () => {
     const cWidth = 128;
     const cHeight = 120;

@@ -202,6 +202,8 @@ describe("tactical procedural assets", () => {
           STRIKE_PLANE_DIRECTION_ART.back,
           STRIKE_PLANE_DIRECTION_ART["back-right"],
         ]);
+        expect(views[5]!.imageSrc).toContain("-back-right-v1.webp");
+        expect(views[7]!.imageSrc).toContain("-back-left-v1.webp");
         expect(new Set(views.map((spec) => spec.imageSrc)).size).toBe(8);
         continue;
       }
