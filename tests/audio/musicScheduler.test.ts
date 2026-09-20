@@ -172,6 +172,7 @@ function createMockMusicGraph(p?: MusicPattern) {
           notes: {
             bass: new Map(),
             pulse: new Map(),
+            harmony: new Map(),
             counter: new Map(),
             melody: new Map(),
           },
@@ -383,4 +384,3 @@ describe("automatic music track variety", () => {
     }
   });
 });
-

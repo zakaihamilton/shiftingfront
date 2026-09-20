@@ -2,13 +2,16 @@ import { TILE_H } from "../../../iso";
 import { terrainFeatureAt, type TerrainFeatureSample } from "../../../gen/map";
 import type { BiomeName, SurfaceKind } from "../../../types";
 import { biomeMaterials } from "../../terrainAtlas";
-import { mixRgb, propMaterialsFor, type BiomeMaterials } from "../../terrainMaterials";
+import { mixRgb, propMaterialsFor, terrainVisualTuningFor, type BiomeMaterials } from "../../terrainMaterials";
 import { terrainPropLightGain } from "../../terrainLighting";
 import type { ScatterItem, ScatterWorld } from "./types";
 import { scatterForTile } from "./distribution";
 import {
+  drawCactus,
   drawCinder,
   drawCrystalChip,
+  drawDesertShrub,
+  drawDesertTree,
   drawDebris,
   drawDryBrush,
   drawIceChip,
@@ -18,7 +21,7 @@ import {
   drawPebbleCluster,
   drawReed,
   drawRockSlab,
-  drawSandShard,
+  drawMineralFragment,
   drawShrub,
   drawTuft,
 } from "./render";
@@ -47,8 +50,8 @@ function paintItem(
     case "rockSlab":
       drawRockSlab(ctx, mats, z, item.scale, item.variant);
       break;
-    case "sandShard":
-      drawSandShard(ctx, mats, z, item.scale, item.variant);
+    case "mineralFragment":
+      drawMineralFragment(ctx, mats, z, item.scale, item.variant);
       break;
     case "dryBrush":
       drawDryBrush(ctx, mats, z, item.scale, item.variant);
@@ -76,6 +79,15 @@ function paintItem(
       break;
     case "iceChip":
       drawIceChip(ctx, mats, z, item.scale, item.variant);
+      break;
+    case "desertTree":
+      drawDesertTree(ctx, mats, z, item.scale, item.variant);
+      break;
+    case "cactus":
+      drawCactus(ctx, mats, z, item.scale, item.variant);
+      break;
+    case "desertShrub":
+      drawDesertShrub(ctx, mats, z, item.scale, item.variant);
       break;
     case "landmark":
       drawLandmark(ctx, mats, biome, z, item.scale, item.variant);
@@ -120,7 +132,10 @@ export function drawTerrainScatter(
   const items = scatterForTile(state, x, y, tileKind, surface);
   if (items.length === 0) return;
   const feature = terrainFeatureAt(state, x, y);
-  const mats = featurePropMaterials(propMaterialsFor(biomeMaterials(state.biome)), feature);
+  const mats = featurePropMaterials(
+    propMaterialsFor(biomeMaterials(state.biome), terrainVisualTuningFor(state.biome)),
+    feature,
+  );
   ctx.save();
   ctx.globalAlpha *= terrainPropLightGain(state, x, y);
   ctx.globalAlpha *= 1 - Math.min(0.06, Math.max(0, feature.wetness) * 0.12);

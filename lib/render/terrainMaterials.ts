@@ -10,7 +10,7 @@ import type { SceneryWorld } from "../gen/map";
 export const hash2 = hashNoise;
 
 export const ATLAS_CELL = 8;
-export const TERRAIN_ATLAS_REV = "world-atlas-v18-organic-land-material-transitions";
+export const TERRAIN_ATLAS_REV = "world-atlas-v19-grounded-material-relief";
 export const CONCRETE_STEEL = { r: 89, g: 104, b: 117 };
 export const CONCRETE_STEEL_LIGHT = { r: 154, g: 171, b: 186 };
 export const CONCRETE_STEEL_DARK = { r: 38, g: 50, b: 61 };
@@ -33,6 +33,34 @@ export type TerrainSample = {
 
 export type Rgb = { r: number; g: number; b: number };
 
+export type TerrainMotionStyle = "snow" | "ash" | "dust" | "ember" | "pollen" | "mist";
+
+export type TerrainVisualTuning = {
+  /** World-space scale of broad material regions. */
+  macroScale: number;
+  /** World-space scale of local surface roughness. */
+  detailScale: number;
+  /** Strength of broad value and material-region variation. */
+  macroStrength: number;
+  /** Strength of small roughness and fleck response. */
+  roughness: number;
+  /** Extra response to elevation and directional surface lighting. */
+  reliefStrength: number;
+  /** Additional contact and ground shadow depth. */
+  shadowDepth: number;
+  /** Directional key-light contribution. */
+  keyStrength: number;
+  /** How much prop materials retain their local contrast. */
+  propContrast: number;
+  /** Relative frequency of low scatter items. */
+  scatterDensity: number;
+  /** Likelihood of grouped scatter instead of isolated items. */
+  clusterBias: number;
+  motion: TerrainMotionStyle;
+  windX: number;
+  windY: number;
+};
+
 export type BiomeMaterials = {
   low: Rgb;
   mid: Rgb;
@@ -51,6 +79,49 @@ export type BiomeMaterials = {
   patchA: Rgb;
   /** Accent flecks: frost, glass, scoria, leaf litter. */
   patchB: Rgb;
+};
+
+const BIOME_VISUAL_TUNING: Record<BiomeName, TerrainVisualTuning> = {
+  "ash plains": {
+    macroScale: 0.055, detailScale: 0.34, macroStrength: 0.2, roughness: 0.16,
+    reliefStrength: 0.12, shadowDepth: 0.07, keyStrength: 0.16, propContrast: 0.16,
+    scatterDensity: 1.04, clusterBias: 0.24, motion: "ash", windX: 0.68, windY: 0.22,
+  },
+  "crystal flats": {
+    macroScale: 0.07, detailScale: 0.42, macroStrength: 0.18, roughness: 0.2,
+    reliefStrength: 0.14, shadowDepth: 0.06, keyStrength: 0.18, propContrast: 0.22,
+    scatterDensity: 0.98, clusterBias: 0.28, motion: "mist", windX: 0.42, windY: 0.12,
+  },
+  "rust canyons": {
+    macroScale: 0.045, detailScale: 0.3, macroStrength: 0.24, roughness: 0.18,
+    reliefStrength: 0.18, shadowDepth: 0.09, keyStrength: 0.19, propContrast: 0.2,
+    scatterDensity: 1.02, clusterBias: 0.3, motion: "dust", windX: 0.76, windY: 0.18,
+  },
+  "salt marshes": {
+    macroScale: 0.06, detailScale: 0.36, macroStrength: 0.2, roughness: 0.14,
+    reliefStrength: 0.1, shadowDepth: 0.07, keyStrength: 0.15, propContrast: 0.13,
+    scatterDensity: 1.08, clusterBias: 0.38, motion: "mist", windX: 0.38, windY: 0.18,
+  },
+  "glass desert": {
+    macroScale: 0.042, detailScale: 0.28, macroStrength: 0.28, roughness: 0.22,
+    reliefStrength: 0.17, shadowDepth: 0.1, keyStrength: 0.2, propContrast: 0.24,
+    scatterDensity: 0.98, clusterBias: 0.34, motion: "dust", windX: 0.84, windY: 0.16,
+  },
+  "tundra grid": {
+    macroScale: 0.065, detailScale: 0.38, macroStrength: 0.22, roughness: 0.19,
+    reliefStrength: 0.15, shadowDepth: 0.08, keyStrength: 0.17, propContrast: 0.2,
+    scatterDensity: 0.96, clusterBias: 0.26, motion: "snow", windX: 0.34, windY: 0.72,
+  },
+  "jungle wreckage": {
+    macroScale: 0.052, detailScale: 0.32, macroStrength: 0.24, roughness: 0.2,
+    reliefStrength: 0.12, shadowDepth: 0.09, keyStrength: 0.14, propContrast: 0.16,
+    scatterDensity: 1.1, clusterBias: 0.44, motion: "pollen", windX: 0.28, windY: 0.12,
+  },
+  "volcanic shelf": {
+    macroScale: 0.048, detailScale: 0.3, macroStrength: 0.26, roughness: 0.22,
+    reliefStrength: 0.19, shadowDepth: 0.11, keyStrength: 0.2, propContrast: 0.23,
+    scatterDensity: 1.02, clusterBias: 0.32, motion: "ember", windX: 0.4, windY: -0.74,
+  },
 };
 
 const BIOME_MATERIALS: Record<BiomeName, BiomeMaterials> = {
@@ -244,6 +315,10 @@ export function biomeMaterials(biome: BiomeName): BiomeMaterials {
   return BIOME_MATERIALS[biome];
 }
 
+export function terrainVisualTuningFor(biome: BiomeName): TerrainVisualTuning {
+  return BIOME_VISUAL_TUNING[biome];
+}
+
 export function fogTerrainGain(fog: number): number {
   if (fog >= 2) return 1;
   if (fog === 1) return 0.55;
@@ -284,15 +359,19 @@ export function materialsFor(state: AtlasWorld): BiomeMaterials {
   return mats;
 }
 
-const propMaterialMemo = new WeakMap<object, BiomeMaterials>();
+const propMaterialMemo = new WeakMap<object, Map<number, BiomeMaterials>>();
 
 /** Props inherit the biome without reading like brightly painted icons. */
-export function propMaterialsFor(mats: BiomeMaterials): BiomeMaterials {
-  const cached = propMaterialMemo.get(mats);
+export function propMaterialsFor(mats: BiomeMaterials, tuning?: TerrainVisualTuning): BiomeMaterials {
+  const propContrast = tuning?.propContrast ?? 0.1;
+  const cacheKey = Math.round(propContrast * 1000);
+  const cachedByContrast = propMaterialMemo.get(mats);
+  const cached = cachedByContrast?.get(cacheKey);
   if (cached) return cached;
   const soften = (color: Rgb, amount: number): Rgb => {
     const luma = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
-    return mixRgb(color, { r: luma, g: luma, b: luma }, amount);
+    const adjustedAmount = Math.max(0.025, amount - Math.max(0, propContrast - 0.1) * 0.18);
+    return mixRgb(color, { r: luma, g: luma, b: luma }, adjustedAmount);
   };
   const muted: BiomeMaterials = {
     ...mats,
@@ -300,7 +379,7 @@ export function propMaterialsFor(mats: BiomeMaterials): BiomeMaterials {
     mid: soften(mats.mid, 0.1),
     high: soften(mats.high, 0.1),
     light: soften(mats.light, 0.08),
-    dark: mixRgb(soften(mats.dark, 0.1), mats.mid, 0.08),
+    dark: mixRgb(soften(mats.dark, 0.1), mats.mid, Math.max(0.025, 0.08 - propContrast * 0.08)),
     waterDeep: soften(mats.waterDeep, 0.08),
     waterMid: soften(mats.waterMid, 0.08),
     waterHi: soften(mats.waterHi, 0.12),
@@ -308,11 +387,13 @@ export function propMaterialsFor(mats: BiomeMaterials): BiomeMaterials {
     road: soften(mats.road, 0.1),
     concrete: soften(mats.concrete, 0.08),
     ore: soften(mats.ore, 0.14),
-    blocked: mixRgb(soften(mats.blocked, 0.1), mats.mid, 0.06),
+    blocked: mixRgb(soften(mats.blocked, 0.1), mats.mid, Math.max(0.02, 0.06 - propContrast * 0.06)),
     patchA: soften(mats.patchA, 0.12),
     patchB: soften(mats.patchB, 0.12),
   };
-  propMaterialMemo.set(mats, muted);
+  const byContrast = cachedByContrast ?? new Map<number, BiomeMaterials>();
+  byContrast.set(cacheKey, muted);
+  propMaterialMemo.set(mats, byContrast);
   return muted;
 }
 

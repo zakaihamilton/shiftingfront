@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Live balance gates (`minKindWinRate` 0.70, rescue 0.80, extraction 0.85, `destroyMarked`/`decapitate` 0.70). `tests/platform/docsDrift.test.ts` fails if Unreleased stops naming these floors.
 
+## [1.1.2] - 2026-09-20
+
+### Changed
+
+- Welcome previews now use high-fidelity gameplay rendering with distinct deterministic tactical scenarios, objective-focused camera framing, and improved preview asset readiness.
+
 ## [1.1.1] - 2026-09-19
 
 ### Added

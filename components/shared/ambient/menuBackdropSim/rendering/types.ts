@@ -9,6 +9,7 @@ export type RenderCinemaOptions = {
   camera?: Camera;
   paintAmbient?: boolean;
   useTerrainCache?: boolean;
+  renderMode?: "gameplay" | "cinema";
 };
 
 export const CINEMA_TERRAIN_CACHE_LIMIT = 4;

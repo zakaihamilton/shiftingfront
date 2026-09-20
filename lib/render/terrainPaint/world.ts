@@ -14,7 +14,8 @@ import { smoothFogGain, drawBlockerProp, drawOreCrystals } from "./details";
 import { drawTerrainScatter } from "./scatter";
 import { SHROUD_FILL, SHROUD_RGB, TERRAIN_COVER } from "./constants";
 import { drawElevationFaces, fillElevationPoly, fillElevationRamp, softElevationRampStops } from "./cliffs";
-import { terrainLightRigFor } from "../terrainLighting";
+import { terrainLightRigForBiome } from "../terrainLighting";
+import { terrainVisualTuningFor } from "../terrainMaterials";
 
 const sceneryMemo = new SceneryMemo();
 
@@ -122,10 +123,11 @@ function paintCell(
     eastSc.kind === TILE_WATER,
     southSc.kind === TILE_WATER,
   );
+  const tuning = terrainVisualTuningFor(state.biome);
 
   if (!water && (elev >= 2 || dropE > 0 || dropS > 0)) {
     ctx.save();
-    ctx.globalAlpha = Math.min(0.2, 0.055 + elev * 0.025 + (dropE + dropS) * 0.03) * gain;
+    ctx.globalAlpha = Math.min(0.25, 0.05 + tuning.shadowDepth * 0.32 + elev * 0.025 + (dropE + dropS) * 0.03) * gain;
     ctx.fillStyle = "#071014";
     ctx.beginPath();
     ctx.ellipse(s.x, s.y + th * 0.58 + HEIGHT_STEP * z * 0.1, tw * 0.44, th * 0.16, 0, 0, Math.PI * 2);
@@ -148,7 +150,7 @@ function paintCell(
       faceColors,
       x,
       y,
-      terrainLightRigFor(state.seed),
+      terrainLightRigForBiome(state.seed, state.biome),
     );
     ctx.restore();
   }

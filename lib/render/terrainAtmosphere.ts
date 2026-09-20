@@ -4,7 +4,7 @@ import { expandIsoDiamond, TILE_H, TILE_W, tileToScreen, type Camera } from "../
 import { sceneryAt } from "../gen/map";
 import { fogTerrainGain } from "./terrainAtlas";
 import { isoDiamondPath } from "./isoDiamond";
-import { terrainAtmosphereFrame, terrainLightRigFor, biomeAtmosphereColor } from "./terrainLighting";
+import { terrainAtmosphereFrame, terrainLightRigForBiome, biomeAtmosphereColor } from "./terrainLighting";
 import { visibleTileRange } from "./terrainPaint/world";
 
 const MASK_SCALE = 0.25;
@@ -110,7 +110,7 @@ export function paintTerrainAtmosphere(
   const layerCtx = layer.getContext("2d");
   if (!layerCtx) return;
   const frame = terrainAtmosphereFrame(state.seed, timeMs, reducedMotion);
-  const rig = terrainLightRigFor(state.seed);
+  const rig = terrainLightRigForBiome(state.seed, state.biome);
   const atmosphere = biomeAtmosphereColor(state.biome, rig);
   const layerWidth = layer.width;
   const layerHeight = layer.height;

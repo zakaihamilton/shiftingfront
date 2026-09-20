@@ -105,6 +105,8 @@ describe("blocker prop art", () => {
       ["wreckage", "rust canyons"],
       ["spire", "volcanic shelf"],
       ["deadShrub", "glass desert"],
+      ["desertTree", "glass desert"],
+      ["cactus", "glass desert"],
     ] as const;
     for (const [kind, biome] of cases) {
       const signatures = new Set<string>();
@@ -124,6 +126,8 @@ describe("blocker prop art", () => {
       ["spire", "volcanic shelf"],
       ["sandstone", "glass desert"],
       ["deadShrub", "glass desert"],
+      ["desertTree", "glass desert"],
+      ["cactus", "glass desert"],
       ["snowRock", "tundra grid"],
     ] as const;
     for (const [kind, biome] of cases) {
@@ -168,6 +172,18 @@ describe("blocker prop art", () => {
     expect(blockerPropPrims(kind, 4, TONE, "volcanic shelf")).toEqual(
       blockerPropPrims(kind, 4, TONE, "volcanic shelf"),
     );
+  });
+
+  it("gives desert flora multiple restrained color families", () => {
+    for (const kind of ["desertTree", "cactus"] as const) {
+      const colors = new Set<string>();
+      for (let v = 0; v < 32; v++) {
+        for (const prim of blockerPropPrims(kind, v, TONE, "glass desert")) {
+          colors.add(prim.k === "line" || prim.k === "curve" ? prim.stroke : prim.fill);
+        }
+      }
+      expect(colors.size, `${kind} color families`).toBeGreaterThanOrEqual(8);
+    }
   });
 
   it("keeps every biome's blocker variants muted, bounded, and non-black", () => {

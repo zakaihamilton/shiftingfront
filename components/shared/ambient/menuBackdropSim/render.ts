@@ -8,17 +8,16 @@ import {
   scrollLayerPaintCamera,
   terrainScrollPad,
 } from "@/lib/render/scrollLayer";
-import { terrainColors } from "@/lib/render/terrainMaterials";
 import { isSupportUnit, UNIT_STATS } from "@/lib/catalog";
 import { burstsFromEvents, cullFx } from "@/lib/render/fx";
 import { renderWorld } from "@/lib/render/renderer";
-import { isTerrainAtlasReady } from "@/lib/render/terrainAtlas";
 import { tick } from "@/lib/sim/api";
-import { nearest, spawnUnit } from "@/lib/sim/world";
-import { assignAttack } from "@/lib/sim/ai/combat";
-import { assignSupportTarget } from "@/lib/sim/support";
+import { spawnUnit } from "@/lib/sim/world";
+import { assignMove } from "@/lib/sim/ai/combat";
 import type { UnitKind } from "@/lib/types";
 import { type CinemaScene, type Shot } from "./scene";
+import { assignClashTargets } from "./combat";
+import { CINEMA_SCENARIOS } from "./scenarios";
 import { cinemaCamera, cinemaOrigin, paintCinemaStatic } from "./paint";
 import {
   type CinemaTerrainCache,
@@ -126,7 +125,7 @@ function stepCinemaSimulation(scene: CinemaScene, shots: Shot[]): void {
 
     for (const e of scene.state.entities) {
       if (e.class !== "unit" || e.hp <= 0) continue;
-      if (e.orderDestination && Math.hypot(e.orderDestination.x - cx, e.orderDestination.y - cy) > 4) {
+      if (e.orderDestination && Math.hypot(e.orderDestination.x - cx, e.orderDestination.y - cy) > 10) {
         e.path = [];
         e.routePending = false;
         e.orderDestination = undefined;
@@ -144,39 +143,30 @@ function stepCinemaSimulation(scene: CinemaScene, shots: Shot[]): void {
 
     // Keep active combat alive so the preview camera never frames an empty battlefield
     if (pCombat.length < 2) {
-      const pSpawnKind: UnitKind = scene.scenarioKind === "infantryStorm" ? "infantry" : "tank";
+      const replacementKinds = CINEMA_SCENARIOS[scene.scenarioKind].replacementKinds.player;
+      const pSpawnKind = replacementKinds[scene.state.tick % replacementKinds.length]!;
       const newP = spawnUnit(scene.state, 0, pSpawnKind, cx - 1, cy + 1);
       pCombat.push(newP);
     }
     if (eCombat.length < 2) {
-      const eSpawnKind: UnitKind = scene.scenarioKind === "infantryStorm" ? "infantry" : "tank";
+      const replacementKinds = CINEMA_SCENARIOS[scene.scenarioKind].replacementKinds.enemy;
+      const eSpawnKind = replacementKinds[scene.state.tick % replacementKinds.length]!;
       const newE = spawnUnit(scene.state, 1, eSpawnKind, cx + 1, cy - 1);
       eCombat.push(newE);
     }
 
-    for (const u of eCombat) {
-      if (u.attackTarget === undefined || u.idle) {
-        const target = nearest(scene.state, u, (e) => e.owner === 0 && e.hp > 0 && Math.hypot(e.x - cx, e.y - cy) <= 8);
-        if (target) assignAttack(scene.state, u, target);
-      }
+    const convoy = scene.scenarioKind === "convoyRaid" && scene.scenarioTargetId !== undefined
+      ? scene.state.entities.find((entity) => entity.id === scene.scenarioTargetId)
+      : undefined;
+    if (convoy?.class === "unit" && scene.convoyRoute?.length) {
+      const waypoint = scene.convoyRoute[scene.convoyRouteIndex % scene.convoyRoute.length]!;
+      const reached = Math.hypot(convoy.x - waypoint.x, convoy.y - waypoint.y) < 0.75;
+      if (reached) scene.convoyRouteIndex = (scene.convoyRouteIndex + 1) % scene.convoyRoute.length;
+      const nextWaypoint = scene.convoyRoute[scene.convoyRouteIndex % scene.convoyRoute.length]!;
+      if (reached || convoy.orderMode !== "move" || convoy.idle) assignMove(scene.state, convoy, nextWaypoint);
     }
 
-    for (const u of pCombat) {
-      if (u.attackTarget === undefined || u.idle) {
-        const target = nearest(scene.state, u, (e) => e.owner === 1 && e.hp > 0 && Math.hypot(e.x - cx, e.y - cy) <= 8);
-        if (target) assignAttack(scene.state, u, target);
-      }
-    }
-
-    const supportUnits = scene.state.entities.filter(
-      (e) => e.class === "unit" && e.hp > 0 && isSupportUnit(e.kind as UnitKind),
-    );
-    for (const u of supportUnits) {
-      if (u.supportTargetId === undefined || u.idle) {
-        const target = nearest(scene.state, u, (e) => e.owner === u.owner && e.hp > 0 && e.hp < e.maxHp && Math.hypot(e.x - cx, e.y - cy) <= 8);
-        if (target) assignSupportTarget(scene.state, u, target);
-      }
-    }
+    assignClashTargets(scene.state, scene.scenarioKind, scene.scenarioTargetId, cx, cy, 10);
   }
 }
 
@@ -225,40 +215,31 @@ export function renderCinemaFrame(
 ) {
   const { map, actors } = scene;
   const cam = options?.camera ?? cinemaCamera(w, h, t);
-  const paintAmbient = options?.paintAmbient ?? true;
+  const renderMode = options?.renderMode ?? "cinema";
+  const paintAmbient = options?.paintAmbient ?? renderMode === "cinema";
   const useTerrainCache = options?.useTerrainCache ?? true;
   const followCamera = Boolean(options?.camera);
-  const preview = !paintAmbient;
   const clockMs = typeof performance !== "undefined" ? performance.now() : t * 16;
   scene.fx = cullFx(scene.fx, clockMs);
 
-  if (preview && scene.state && isTerrainAtlasReady(scene.state)) {
-    try {
-      renderWorld(ctx, scene.state, cam, new Set(), null, {
-        clockMs,
-        subTickAlpha: Math.max(0, Math.min(1, scene.simulationAccumulatorMs / TICK_MS)),
-        fx: scene.fx,
-      });
-      return;
-    } catch {
-      // Fall through to standard cinema renderer if renderWorld is unsupported in this context
-    }
+  if (renderMode === "gameplay") {
+    if (!scene.state) return;
+    renderWorld(ctx, scene.state, cam, new Set(), null, {
+      clockMs,
+      subTickAlpha: Math.max(0, Math.min(1, scene.simulationAccumulatorMs / TICK_MS)),
+      fx: scene.fx,
+    });
+    return;
   }
 
   ctx.imageSmoothingEnabled = true;
-  if (preview && "imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
 
-  if (preview) {
-    ctx.fillStyle = terrainColors(scene.map.biome).mid;
-    ctx.fillRect(0, 0, w, h);
-  } else {
-    const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, "#0a1018");
-    sky.addColorStop(0.45, "#12180f");
-    sky.addColorStop(1, "#1a140c");
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, w, h);
-  }
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, "#0a1018");
+  sky.addColorStop(0.45, "#12180f");
+  sky.addColorStop(1, "#1a140c");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, h);
 
   const cached = useTerrainCache ? ensureCinemaTerrain(scene, w, h, cam, followCamera) : null;
   if (cached?.canvas) {
@@ -270,11 +251,8 @@ export function renderCinemaFrame(
 
   const profile0 = generateVisualProfile(scene.seed, 0);
   const profile1 = generateVisualProfile(scene.seed, 1);
-  const ordered = preview
-    ? [...actors].sort((left, right) => left.x + left.y - (right.x + right.y))
-    : actors;
-  for (const a of ordered) {
-    paintCinemaActor(ctx, scene, cam, a, t, preview, profile0, profile1);
+  for (const a of actors) {
+    paintCinemaActor(ctx, scene, cam, a, t, false, profile0, profile1);
   }
 
   for (const sh of shots) {
@@ -283,7 +261,7 @@ export function renderCinemaFrame(
     const sa = tileToScreen(sh.ax, sh.ay, cam, ea);
     const sb = tileToScreen(sh.bx, sh.by, cam, eb);
     ctx.strokeStyle = "#ffe27d";
-    ctx.lineWidth = preview ? 1.05 : 1.8;
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(sa.x, sa.y);
     ctx.lineTo(sb.x, sb.y);

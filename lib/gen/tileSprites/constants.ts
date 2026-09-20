@@ -10,7 +10,7 @@ export const SPRITE_W = TW + TILE_SPRITE_PAD_X * 2;
 export const SPRITE_H = TH + TILE_SPRITE_PAD_Y * 2;
 export const INK = "#202a32";
 export const ART_PIXEL_SCALE = 1;
-export const TERRAIN_ART_REV = "tactical-surface-v14-grounded-extras";
+export const TERRAIN_ART_REV = "tactical-surface-v17-rounded-minerals";
 
 export function tileCx(): number {
   return TILE_SPRITE_PAD_X + TW / 2;

@@ -54,7 +54,7 @@ export function renderTerrainPhase(
   const timeMs = animClock(state.tick, clock);
   paintWaterFx(ctx, state, cam, timeMs);
   paintOreGlints(ctx, state, cam, timeMs);
-  paintTerrainWeather(ctx, state, cam, timeMs);
+  paintTerrainWeather(ctx, state, cam, timeMs, extras.reducedMotion);
   paintTerrainAtmosphere(ctx, state, cam, timeMs, extras.reducedMotion);
   paintBuildingPlates(ctx, state, cam, footprintOf, entityVisible, entityElev);
   drawObjectiveZone(ctx, state, cam, timeMs, heightAt);

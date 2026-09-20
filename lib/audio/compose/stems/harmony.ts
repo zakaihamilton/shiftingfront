@@ -1,5 +1,19 @@
-import { chordToneMidi } from "../helpers";
-import { STEPS_PER_BAR, type MusicPulseRole } from "../types";
+import { chordToneMidi, noteEvent } from "../helpers";
+import { STEPS_PER_BAR, type MusicNoteEvent, type MusicPulseRole } from "../types";
+
+export function placeHarmony(
+  notes: MusicNoteEvent[],
+  origin: number,
+  voicing: readonly number[],
+  step: number,
+  duration: number,
+  velocity: number,
+  accent = false,
+): void {
+  for (const [index, midi] of voicing.entries()) {
+    noteEvent(notes, origin + step, midi, duration, velocity * (index === 0 ? 1 : 0.82), accent && index === 0);
+  }
+}
 
 export function pulseStepsFor(role: MusicPulseRole, stride: number): number[] {
   if (role === "none") return [];

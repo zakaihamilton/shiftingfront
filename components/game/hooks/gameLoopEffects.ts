@@ -7,10 +7,11 @@ export function desiredMusicIntensity(
   tick: number,
   lastCombatTick: number,
   warningAlert: boolean,
+  criticalUntilTick = Number.NEGATIVE_INFINITY,
 ): MusicIntensity {
   let desired: MusicIntensity = phase === "finale" ? "critical" : phase === "pressure" ? "engaged" : "calm";
   if (tick - lastCombatTick <= 48) desired = desired === "critical" ? desired : "engaged";
-  if (warningAlert) desired = "critical";
+  if (warningAlert || tick < criticalUntilTick) desired = "critical";
   return desired;
 }
 

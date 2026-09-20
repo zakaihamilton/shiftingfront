@@ -1,7 +1,7 @@
 import type { BiomeName } from "../../types";
 import { hash, mixHex } from "../tilePalette";
 import type { BlockerTone, PropPrim } from "./types";
-import { detailSigned, detailUnit, pe, pl, pc, pp, shadow, liftGreen, SNOW } from "./primitives";
+import { detailHash, detailSigned, detailUnit, pe, pl, pc, pp, shadow, liftGreen, SNOW } from "./primitives";
 
 export function lushBiome(biome: BiomeName): boolean {
   return biome === "jungle wreckage" || biome === "salt marshes";
@@ -266,6 +266,130 @@ export function deadShrubPrims(v: number, t: BlockerTone): PropPrim[] {
   out.push(
     pl(-5.2 + detailSigned(v, 293, 0.7), -6.6, 0.5 + detailSigned(v, 307, 0.9), -9.2, mixHex(wood, dust, 0.24), 0.55, { minWidth: 0.48, cap: "round", alpha: 0.5 }),
     pl(2.2 + detailSigned(v, 311, 0.8), -5.8, 6.4 + detailSigned(v, 313, 0.7), -7.6, mixHex(wood, dust, 0.2), 0.5, { minWidth: 0.45, cap: "round", alpha: 0.42 }),
+  );
+  return out;
+}
+
+type DesertOrganicPalette = {
+  stem: string;
+  stemHi: string;
+  foliageDark: string;
+  foliage: string;
+  foliageHi: string;
+  dry: string;
+};
+
+const DESERT_ORGANIC_TINTS = [
+  { stem: "#3e482a", stemHi: "#6f7b4b", dark: "#52683d", mid: "#7f9858", hi: "#afb87a", dry: "#a06d36" },
+  { stem: "#344447", stemHi: "#6b8585", dark: "#4c7070", mid: "#789a98", hi: "#aec7b2", dry: "#887955" },
+  { stem: "#563822", stemHi: "#966536", dark: "#794a2b", mid: "#aa6f3d", hi: "#cf9b59", dry: "#ba6a2b" },
+  { stem: "#4d3645", stemHi: "#886273", dark: "#704c5b", mid: "#966978", hi: "#bd9a90", dry: "#9c6047" },
+] as const;
+
+function desertOrganicPalette(v: number, t: BlockerTone): DesertOrganicPalette {
+  const tint = DESERT_ORGANIC_TINTS[detailHash(v, 1001) % DESERT_ORGANIC_TINTS.length]!;
+  return {
+    stem: mixHex(t.dark, tint.stem, 0.64),
+    stemHi: mixHex(t.mid, tint.stemHi, 0.5),
+    foliageDark: mixHex(t.blocked, tint.dark, 0.62),
+    foliage: mixHex(t.high, tint.mid, 0.5),
+    foliageHi: mixHex(t.light, tint.hi, 0.42),
+    dry: mixHex(t.ore, tint.dry, 0.42),
+  };
+}
+
+export function desertTreePrims(v: number, t: BlockerTone): PropPrim[] {
+  const palette = desertOrganicPalette(v, t);
+  const profile = detailHash(v, 1013) % 3;
+  const scale = 0.92 + detailUnit(v, 1021) * 0.14;
+  const lean = detailSigned(v, 1027, 2.6);
+  const height = (18.5 + detailUnit(v, 1033) * 4.5) * scale;
+  const topX = lean * 0.8;
+  const canopyProfiles = [
+    [[-9.5, -13.8, 8.0, 4.7], [0.5, -17.8, 10.5, 5.5], [10.0, -13.4, 6.8, 4.0]],
+    [[-6.7, -14.7, 7.2, 5.0], [5.4, -17.2, 8.8, 5.3], [-0.6, -21.1, 6.6, 4.4]],
+    [[-11.0, -12.6, 6.8, 3.9], [-2.4, -15.8, 8.7, 4.8], [7.2, -13.0, 7.3, 4.1], [2.8, -19.0, 5.8, 3.8]],
+  ] as const;
+  const canopy = canopyProfiles[profile]!;
+  const out: PropPrim[] = [
+    shadow(17.5 * scale, 4.5 * scale, 5.6 * scale),
+    pc(0, 6 * scale, lean * 0.28, -4.5 * scale, topX, -height, palette.stem, 3.1 * scale, { minWidth: 2.0 * scale, cap: "round" }),
+    pl(-2.4 * scale, 6.3 * scale, 2.4 * scale, 6.3 * scale, palette.stem, 4.0 * scale, { minWidth: 2.5 * scale, cap: "round" }),
+  ];
+  const branches = profile === 2 ? 3 : 2;
+  for (let i = 0; i < branches; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const branchY = -(7.0 + i * 3.2) * scale;
+    const branchX = side * (6.5 + i * 2.1) + lean * 0.45;
+    out.push(pc(
+      topX * 0.55,
+      branchY * 0.42,
+      branchX * 0.45,
+      branchY - 3.4 * scale,
+      branchX,
+      branchY - 5.0 * scale,
+      palette.stem,
+      1.35 * scale,
+      { minWidth: 0.9 * scale, cap: "round" },
+    ));
+  }
+  for (let i = 0; i < canopy.length; i++) {
+    const [x, y, rx, ry] = canopy[i]!;
+    const jitterX = detailSigned(v, 1039 + i * 7, 1.0);
+    const jitterY = detailSigned(v, 1043 + i * 11, 0.8);
+    const lobeScale = 0.9 + detailUnit(v, 1049 + i * 13) * 0.18;
+    out.push(pe(
+      x * scale + lean * Math.max(0, (-y - 5) / 18) + jitterX,
+      y * scale + jitterY,
+      rx * scale * lobeScale,
+      ry * scale * lobeScale,
+      detailSigned(v, 1057 + i * 17, 0.12),
+      i % 3 === 0 ? palette.foliageDark : palette.foliage,
+      i === canopy.length - 1 ? 0.48 : 0.72,
+    ));
+  }
+  out.push(
+    pe(1.2 * scale + lean * 0.35, -20.8 * scale, 6.5 * scale, 1.8 * scale, -0.16, palette.foliageHi, 0.24),
+    pc(-1.0 * scale, 4.7 * scale, lean * 0.18, -2.0 * scale, topX * 0.48, -9.3 * scale, palette.stemHi, 0.72 * scale, { minWidth: 0.5 * scale, cap: "round", alpha: 0.58 }),
+    pc(1.4 * scale, 4.9 * scale, lean * 0.5, -3.4 * scale, topX + 0.6 * scale, -height + 4.5 * scale, palette.stemHi, 0.58 * scale, { minWidth: 0.44 * scale, cap: "round", alpha: 0.45 }),
+    pe(-5.2 + detailSigned(v, 1063, 1.4), -11.5 + detailSigned(v, 1069, 0.9), 2.3, 0.9, -0.18, palette.dry, 0.3),
+  );
+  return out;
+}
+
+export function cactusPrims(v: number, t: BlockerTone): PropPrim[] {
+  const palette = desertOrganicPalette(v, t);
+  const profile = detailHash(v, 1073) % 3;
+  const lean = detailSigned(v, 1079, 1.0);
+  const body = mixHex(palette.foliageDark, palette.foliage, 0.35);
+  const edge = mixHex(palette.stem, body, 0.28);
+  const out: PropPrim[] = [shadow(13.5, 4.0), pp([
+    -13, 3.0, 13, 3.2, 9, 6.2, -10, 6.0,
+  ], t.dark)];
+  if (profile === 0) {
+    out.push(
+      pp([-2.6 + lean, 3, -2.9 + lean, -7.6, -1.2 + lean, -12.6, 2.0 + lean, -11.6, 2.8 + lean, 3], body),
+      pp([-2.6 + lean, -2.2, -7.4 + lean, -2.8, -8.7 + lean, -6.6, -7.0 + lean, -7.7, -4.3 + lean, -5.5, -2.5 + lean, -5.0], body),
+      pp([2.1 + lean, -4.2, 6.4 + lean, -4.7, 8.1 + lean, -8.4, 6.6 + lean, -9.7, 4.2 + lean, -7.7, 2.0 + lean, -7.0], body),
+    );
+  } else if (profile === 1) {
+    out.push(
+      pp([-3.0 + lean, 3, -3.5 + lean, -6.8, -1.7 + lean, -10.2, 1.6 + lean, -9.4, 3.2 + lean, 3], body),
+      pp([-2.8 + lean, -1.8, -8.2 + lean, -2.8, -9.3 + lean, -7.0, -7.6 + lean, -8.2, -4.7 + lean, -6.0, -2.7 + lean, -5.0], body),
+      pp([2.4 + lean, -3.4, 7.8 + lean, -3.8, 9.2 + lean, -7.0, 7.4 + lean, -8.5, 4.4 + lean, -6.0, 2.3 + lean, -5.8], body),
+    );
+  } else {
+    out.push(
+      pp([-4.6 + lean, 3, -5.0 + lean, -3.2, -3.4 + lean, -9.4, 0.0 + lean, -11.3, 3.8 + lean, -8.6, 4.6 + lean, 3], body),
+      pp([-3.8 + lean, -0.8, -9.0 + lean, -1.4, -10.0 + lean, -5.4, -8.5 + lean, -6.3, -6.1 + lean, -4.6, -3.8 + lean, -4.0], body),
+    );
+  }
+  out.push(
+    pp([-1.2 + lean, 2.2, -1.6 + lean, -6.4, 0.1 + lean, -9.7, 1.2 + lean, 2.2], palette.foliageHi, 0.34),
+    pl(-5.6 + lean, -3.4, -4.1 + lean, -6.0, edge, 0.72, { minWidth: 0.52, cap: "round", alpha: 0.62 }),
+    pl(3.6 + lean, -5.4, 5.4 + lean, -7.4, palette.stemHi, 0.62, { minWidth: 0.46, cap: "round", alpha: 0.56 }),
+    pe(-3.0 + detailSigned(v, 1087, 1.8), -1.8 + detailSigned(v, 1093, 0.7), 1.0, 0.42, 0.1, palette.dry, 0.36),
+    pe(4.1 + detailSigned(v, 1099, 1.4), -4.3 + detailSigned(v, 1103, 0.6), 0.9, 0.38, -0.1, palette.dry, 0.32),
   );
   return out;
 }

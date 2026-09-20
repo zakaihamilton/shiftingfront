@@ -526,6 +526,8 @@ describe("loop audio intensity", () => {
     expect(desiredMusicIntensity("finale", 10, Number.NEGATIVE_INFINITY, false)).toBe("critical");
     expect(desiredMusicIntensity("opening", 50, 40, false)).toBe("engaged");
     expect(desiredMusicIntensity("finale", 50, 40, true)).toBe("critical");
+    expect(desiredMusicIntensity("opening", 20, Number.NEGATIVE_INFINITY, false, 24)).toBe("critical");
+    expect(desiredMusicIntensity("opening", 24, Number.NEGATIVE_INFINITY, false, 24)).toBe("calm");
     expect(warningAlert([{ type: "alert", kind: "warning", text: "Incoming" }])).toBe(true);
     expect(warningAlert([
       { type: "alert", kind: "contact", text: "Spotted" },

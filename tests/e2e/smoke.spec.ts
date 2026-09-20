@@ -12,6 +12,7 @@ import { CAMPAIGN_PROGRESS_VERSION, campaignKey, freshCampaignProgress } from ".
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, saveKey, SLOT_VERSION, slotKey } from "../../lib/persist/save";
 import { SETTINGS_KEY, SETTINGS_VERSION } from "../../lib/persist/settings";
 import { isBuildingEntity, type Entity, type SimState } from "../../lib/types";
+import { PREVIEW_CYCLE_MS } from "../../components/shared/ambient/menuBackdropSim/cycle";
 
 async function openBriefing(page: Page) {
   await page.goto("/");
@@ -43,6 +44,19 @@ async function canvasDigest(canvas: Locator): Promise<number> {
       hash = Math.imul(hash, 16777619);
     }
     return hash >>> 0;
+  });
+}
+
+async function canvasInk(canvas: Locator): Promise<number> {
+  return canvas.evaluate((element) => {
+    const context = (element as HTMLCanvasElement).getContext("2d");
+    if (!context) throw new Error("Canvas context unavailable");
+    const { data } = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+    let ink = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      ink += (data[i] ?? 0) + (data[i + 1] ?? 0) + (data[i + 2] ?? 0) + (data[i + 3] ?? 0);
+    }
+    return ink;
   });
 }
 
@@ -510,7 +524,18 @@ test("keeps the unified menu and operations chrome inside the desktop viewport",
 
   const expandedLock = page.locator("[data-lock][data-expanded='true']");
   await expect(expandedLock).toHaveCount(1, { timeout: 10_000 });
+  await expect(expandedLock).toHaveAttribute("data-render-mode", "gameplay");
+  const firstScenario = await expandedLock.getAttribute("data-scenario");
+  expect(firstScenario).toBeTruthy();
   await expect(expandedLock.locator("canvas")).toBeAttached();
+  await expect.poll(() => canvasInk(expandedLock.locator("canvas"))).toBeGreaterThan(0);
+
+  const nextExpandedLock = page.locator("[data-lock][data-expanded='true']");
+  await expect.poll(async () => {
+    const scenario = await nextExpandedLock.getAttribute("data-scenario");
+    return scenario ?? firstScenario;
+  }, { timeout: PREVIEW_CYCLE_MS + 10_000 }).not.toBe(firstScenario);
+  await expect.poll(() => canvasInk(nextExpandedLock.locator("canvas"))).toBeGreaterThan(0);
   const lockBox = await expandedLock.boundingBox();
   const newGameBox = await page.getByRole("button", { name: "NEW GAME" }).boundingBox();
   expect(lockBox).toBeTruthy();

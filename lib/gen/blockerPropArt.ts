@@ -5,8 +5,10 @@ import {
   type BlockerTone,
   type PropPrim,
   boulderPrims,
+  cactusPrims,
   crystalPrims,
   deadShrubPrims,
+  desertTreePrims,
   deadTreePrims,
   lushBiome,
   pinePrims,
@@ -39,6 +41,10 @@ export function blockerPropPrims(
       return spirePrims(v, tone);
     case "deadShrub":
       return deadShrubPrims(v, tone);
+    case "desertTree":
+      return desertTreePrims(v, tone);
+    case "cactus":
+      return cactusPrims(v, tone);
     case "sandstone":
       return sandstonePrims(v, tone);
     case "snowRock":

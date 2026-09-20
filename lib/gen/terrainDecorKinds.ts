@@ -10,6 +10,8 @@ export type BlockerPropKind =
   | "spire"
   | "sandstone"
   | "deadShrub"
+  | "desertTree"
+  | "cactus"
   | "snowRock";
 
 export function blockerPropKind(biome: BiomeName, variant: number): BlockerPropKind {
@@ -22,7 +24,9 @@ export function blockerPropKind(biome: BiomeName, variant: number): BlockerPropK
     case "tundra grid":
       return roll <= 2 ? "snowRock" : "pine";
     case "glass desert":
-      return roll <= 3 ? "sandstone" : "deadShrub";
+      if (roll <= 2 || roll === 7) return "sandstone";
+      if (roll <= 4) return "deadShrub";
+      return roll === 5 ? "desertTree" : "cactus";
     case "crystal flats":
       return roll <= 1 ? "boulder" : "crystalOutcrop";
     case "rust canyons":

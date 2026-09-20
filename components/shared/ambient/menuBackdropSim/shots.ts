@@ -1,4 +1,5 @@
-import { HEIGHT_STEP, TILE_H, TILE_W, type Camera } from "@/lib/iso";
+import { HEIGHT_STEP, TILE_H, TILE_W, tileToScreen, type Camera } from "@/lib/iso";
+import { footprintOf } from "@/lib/catalog";
 import type { CinemaScene } from "./scene";
 
 export type CinemaShot =
@@ -18,14 +19,84 @@ export const CINEMA_SHOTS: readonly CinemaShot[] = [
 export const PREVIEW_SHOT_COUNT = CINEMA_SHOTS.length;
 
 export const PIP_ZOOM = 1.5;
+const CINEMA_VIEW_MARGIN = 18;
+
+function cinemaCameraAtZoom(
+  scene: CinemaScene,
+  w: number,
+  h: number,
+  target: { x: number; y: number },
+  offset: { x: number; y: number },
+  zoom: number,
+): Camera {
+  const elev = smoothElevAt(scene.map, target.x, target.y);
+  return {
+    zoom,
+    x: Math.round(w / 2 - (target.x - target.y) * (TILE_W / 2) * zoom + offset.x),
+    y: Math.round(h / 2 - (target.x + target.y) * (TILE_H / 2) * zoom + elev * HEIGHT_STEP * zoom + offset.y),
+  };
+}
+
+function cinemaEntityProjection(
+  scene: CinemaScene,
+  entity: { class: string; kind: string; x: number; y: number; hp: number },
+  cam: Camera,
+): { x: number; y: number; halfWidth: number; halfHeight: number } {
+  const isBuilding = entity.class === "building";
+  const footprint = isBuilding ? footprintOf(entity.kind as Parameters<typeof footprintOf>[0]) : undefined;
+  const x = isBuilding ? entity.x + (footprint!.w - 1) / 2 : entity.x;
+  const y = isBuilding ? entity.y + (footprint!.h - 1) / 2 : entity.y;
+  const elev = isBuilding
+    ? scene.map.heights[Math.floor(entity.y) * scene.map.width + Math.floor(entity.x)] ?? 1
+    : smoothElevAt(scene.map, x, y);
+  const screen = tileToScreen(x, y, cam, elev);
+  return {
+    x: screen.x,
+    y: screen.y,
+    halfWidth: (isBuilding ? 96 : 36) * cam.zoom,
+    halfHeight: (isBuilding ? 88 : 36) * cam.zoom,
+  };
+}
+
+function cinemaFitZoom(
+  scene: CinemaScene,
+  w: number,
+  h: number,
+  target: { x: number; y: number },
+  offset: { x: number; y: number },
+): number {
+  const entities = scene.cameraFramingEntities ?? scene.state.entities;
+  const fits = (zoom: number): boolean => {
+    const cam = cinemaCameraAtZoom(scene, w, h, target, offset, zoom);
+    return entities.every((entity) => {
+      if (entity.hp <= 0) return true;
+      const projected = cinemaEntityProjection(scene, entity, cam);
+      return projected.x - projected.halfWidth >= CINEMA_VIEW_MARGIN
+        && projected.x + projected.halfWidth <= w - CINEMA_VIEW_MARGIN
+        && projected.y - projected.halfHeight >= CINEMA_VIEW_MARGIN
+        && projected.y + projected.halfHeight <= h - CINEMA_VIEW_MARGIN;
+    });
+  };
+
+  const minZoom = 0.35;
+  if (fits(PIP_ZOOM)) return PIP_ZOOM;
+  let lo = minZoom;
+  let hi = PIP_ZOOM;
+  for (let i = 0; i < 20; i++) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
 
 export const SHOT_OFFSETS: readonly { x: number; y: number }[] = [
-  { x: -5, y: -3 },
-  { x: 5, y: 3 },
-  { x: -4, y: 4 },
-  { x: 4, y: -4 },
-  { x: -6, y: 1 },
-  { x: 6, y: -1 },
+  { x: -10, y: -6 },
+  { x: 10, y: 6 },
+  { x: -8, y: 8 },
+  { x: 8, y: -8 },
+  { x: -12, y: 2 },
+  { x: 12, y: -2 },
 ];
 
 function smoothElevAt(map: { width: number; height: number; heights: number[] }, tx: number, ty: number): number {
@@ -55,17 +126,15 @@ export function cinemaShotCamera(
   const focus = shot.type === "actor" ? scene.actors[shot.index]! : scene.buildings[shot.index]!;
   const off = SHOT_OFFSETS[((shotIndex % SHOT_OFFSETS.length) + SHOT_OFFSETS.length) % SHOT_OFFSETS.length]!;
 
-  // Keep the map focus fixed for the full play window. Buildings are placed
-  // around this anchor and remain visible without following moving units.
-  const tx = scene.combatEpicenter ? scene.combatEpicenter.x : focus.x;
-  const ty = scene.combatEpicenter ? scene.combatEpicenter.y : focus.y;
+  // Keep the camera stable for a play window while still giving each scenario
+  // a distinct subject. The focus points are captured before simulation starts
+  // so moving actors never make the camera jitter or chase the fight.
+  const subject = scene.cameraFocusPoints?.[shotIndex] ?? focus;
+  const anchor = scene.cameraFocus ?? scene.combatEpicenter ?? focus;
+  const focusWeight = shot.type === "building" ? 0.34 : 0.24;
+  const tx = anchor.x + (subject.x - anchor.x) * focusWeight;
+  const ty = anchor.y + (subject.y - anchor.y) * focusWeight;
 
-  const elev = smoothElevAt(scene.map, tx, ty);
-  const zoom = PIP_ZOOM;
-
-  return {
-    zoom,
-    x: Math.round(w / 2 - (tx - ty) * (TILE_W / 2) * zoom + off.x),
-    y: Math.round(h / 2 - (tx + ty) * (TILE_H / 2) * zoom + elev * HEIGHT_STEP * zoom + off.y),
-  };
+  const zoom = cinemaFitZoom(scene, w, h, { x: tx, y: ty }, off);
+  return cinemaCameraAtZoom(scene, w, h, { x: tx, y: ty }, off, zoom);
 }

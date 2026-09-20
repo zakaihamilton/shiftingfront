@@ -7,7 +7,7 @@ export const SITE_URL =
   (process.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "https://www.shiftingfront.com");
-export const APP_VERSION = "1.1.1";
+export const APP_VERSION = "1.1.2";
 export const APP_REPO_URL = "https://github.com/zakaihamilton/shiftingfront";
 export const APP_ISSUES_URL = "https://github.com/zakaihamilton/shiftingfront/issues";
 

@@ -19,6 +19,7 @@ import {
   resourceAt,
   scaleRgb,
   surfaceAt,
+  terrainVisualTuningFor,
   type AtlasWorld,
   type BiomeMaterials,
   type Rgb,
@@ -29,7 +30,7 @@ import {
   gradeTerrainColor,
   restrainTerrainColor,
   terrainLightFactor,
-  terrainLightRigFor,
+  terrainLightRigForBiome,
 } from "./terrainLighting";
 
 export const WATER_SHORE_MAX = 8;
@@ -39,7 +40,7 @@ export type TerrainMaterialContext = {
   east?: { kind: number; elev: number };
   south?: { kind: number; elev: number };
   mats?: BiomeMaterials;
-  rig?: ReturnType<typeof terrainLightRigFor>;
+  rig?: ReturnType<typeof terrainLightRigForBiome>;
   salt?: number;
   waterNeighbor?: boolean;
 };
@@ -180,7 +181,8 @@ export function sampleTerrainMaterial(
   const east = context.east ?? sceneryAt(state, x + 1, y);
   const south = context.south ?? sceneryAt(state, x, y + 1);
   const mats = context.mats ?? materialsFor(state);
-  const rig = context.rig ?? terrainLightRigFor(state.seed);
+  const tuning = terrainVisualTuningFor(state.biome);
+  const rig = context.rig ?? terrainLightRigForBiome(state.seed, state.biome);
   const salt = context.salt ?? artSalt(state);
   const grain = fbm(mapX * 0.45, mapY * 0.45, salt);
   const micro = hash2(x * 13, y * 17, salt);
@@ -205,11 +207,15 @@ export function sampleTerrainMaterial(
       color = mixRgb(color, mats.dark, 0.28);
       color = mixRgb(color, mats.ore, 0.22);
     }
-    color = tintGroundPatches(color, mats, mapX, mapY, salt);
+    color = tintGroundPatches(color, mats, mapX, mapY, salt, tuning);
     if (scenery.kind === TILE_BLOCKED) color = mixRgb(color, mats.blocked, 0.42);
-    const slope = (scenery.elev - east.elev) * 0.08 + (scenery.elev - south.elev) * 0.12;
-    color = scaleRgb(color, 0.88 + scenery.elev * 0.055 + slope + (grain - 0.5) * 0.1);
-    color = restrainTerrainColor(color, scenery.kind === TILE_BLOCKED ? 0.2 : 0.16);
+    const slope = (scenery.elev - east.elev) * (0.08 + tuning.reliefStrength * 0.05)
+      + (scenery.elev - south.elev) * (0.12 + tuning.reliefStrength * 0.06);
+    color = scaleRgb(color, 0.88 + scenery.elev * 0.055 + slope + (grain - 0.5) * (0.15 + tuning.roughness * 0.24));
+    const restraint = scenery.kind === TILE_BLOCKED
+      ? 0.18
+      : Math.max(0.045, 0.12 - tuning.macroStrength * 0.18);
+    color = restrainTerrainColor(color, restraint);
     color = gradeTerrainColor(color, terrainLightFactor(rig, elev, east.elev, south.elev, fx, fy), rig);
   }
   if (water) {

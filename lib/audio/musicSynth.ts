@@ -23,6 +23,7 @@ export function playSynthTone(
   const oscA = audio.createOscillator();
   const bass = voice === "bass";
   const pulse = voice === "pulse";
+  const harmony = voice === "harmony";
   const lead = voice === "melody";
   const chip = engine === "chip";
   const acid = engine === "acid-res";
@@ -31,15 +32,15 @@ export function playSynthTone(
   const cinematic = engine === "cinematic";
   const cleanType = cinematic && type === "square" ? (bass ? "triangle" : "sawtooth") : type;
   const attack = Math.min(
-    chip ? 0.002 : cinematic ? (lead ? 0.035 : bass ? 0.012 : 0.018) : lead ? 0.02 : bass ? (acid ? 0.008 : 0.004) : pulse ? 0.003 : ATTACK_S,
+    chip ? 0.002 : cinematic ? (lead ? 0.035 : harmony ? 0.028 : bass ? 0.012 : 0.018) : lead ? 0.02 : harmony ? 0.014 : bass ? (acid ? 0.008 : 0.004) : pulse ? 0.003 : ATTACK_S,
     duration * 0.22,
   );
   const release = Math.min(
-    chip ? 0.04 : cinematic ? (bass ? 0.16 : pulse ? 0.08 : lead ? 0.38 : 0.28) : bass ? (acid ? 0.11 : 0.07) : pulse ? 0.045 : lead ? (fm ? 0.32 : 0.22) : 0.18,
+    chip ? 0.04 : cinematic ? (bass ? 0.16 : pulse ? 0.08 : lead ? 0.38 : harmony ? 0.22 : 0.28) : bass ? (acid ? 0.11 : 0.07) : pulse ? 0.045 : lead ? (fm ? 0.32 : 0.22) : harmony ? 0.16 : 0.18,
     duration * (chip ? 0.35 : pulse ? 0.55 : 0.4),
   );
   const end = time + Math.max(duration, attack + release + 0.02);
-  const peak = Math.max(0.006, velocity * (accent ? 0.24 : pulse ? (cinematic ? 0.12 : 0.14) : chip ? 0.17 : cinematic ? 0.2 : 0.22));
+  const peak = Math.max(0.006, velocity * (accent ? 0.24 : harmony ? 0.12 : pulse ? (cinematic ? 0.12 : 0.14) : chip ? 0.17 : cinematic ? 0.2 : 0.22));
 
   filter.type = "lowpass";
   filter.Q.setValueAtTime(
@@ -79,7 +80,7 @@ export function playSynthTone(
     time + Math.min(acid ? 0.28 : cinematic ? 0.24 : 0.16, duration * (acid ? 0.8 : cinematic ? 0.72 : 0.55)),
   );
   const panCenter = notePan(voice);
-  const panWidth = bass ? 0.02 : pulse ? 0.07 : lead ? 0.08 : 0.05;
+  const panWidth = bass ? 0.02 : pulse ? 0.07 : lead ? 0.08 : harmony ? 0.025 : 0.05;
   const panMotion = Math.sin(freq * 0.013 + duration * 4.7) * panWidth;
   const panTarget = Math.max(-0.82, Math.min(0.82, panCenter + panMotion));
   pan.pan.setValueAtTime(panCenter, time);
@@ -161,7 +162,7 @@ export function playSynthTone(
     oscB.stop(end + 0.04);
   }
 
-  if (!pulse && !chip && !fm) {
+  if (!pulse && !harmony && !chip && !fm) {
     const oscSub = audio.createOscillator();
     const subGain = audio.createGain();
     oscSub.type = bass ? "sine" : lead ? g.style.counterType : "triangle";
@@ -175,13 +176,13 @@ export function playSynthTone(
 
   const voiceHighpass = audio.createBiquadFilter();
   voiceHighpass.type = "highpass";
-  voiceHighpass.frequency.setValueAtTime(bass ? 32 : pulse ? 88 : lead ? 118 : 96, time);
+  voiceHighpass.frequency.setValueAtTime(bass ? 32 : pulse ? 88 : lead ? 118 : harmony ? 72 : 96, time);
   voiceHighpass.Q.setValueAtTime(0.55, time);
   filter.connect(voiceHighpass);
   voiceHighpass.connect(envelope);
   envelope.connect(pan);
   pan.connect(dest);
-  if (lead || voice === "counter") envelope.connect(g.reverbSend);
+  if (lead || harmony || voice === "counter") envelope.connect(g.reverbSend);
 
   oscA.start(time);
   oscA.stop(end + 0.04);

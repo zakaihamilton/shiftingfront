@@ -65,12 +65,12 @@ export function applyIntensityAt(audio: AudioGraphContext, g: MusicGraph, value:
   };
   set(g.master, masterGain(value, isDucked));
   set(g.bassBus, value === "calm" ? 0.9 : value === "critical" ? 1.06 : 0.96);
-  set(g.rhythmBus, value === "calm" ? 0.72 : value === "critical" ? 1.06 : 0.88);
-  set(g.harmonyBus, value === "calm" ? 0.78 : value === "critical" ? 0.6 : 0.7);
-  set(g.pulseBus, value === "calm" ? 0.78 : value === "critical" ? 1 : 0.88);
-  set(g.leadBus, value === "calm" ? 0.92 : value === "critical" ? 1.1 : 1);
-  set(g.counterBus, value === "calm" ? 0.44 : value === "critical" ? 0.8 : 0.58);
-  set(g.fxBus, value === "critical" ? 0.78 : value === "engaged" ? 0.5 : 0.32);
+  set(g.rhythmBus, value === "calm" ? 0.7 : value === "critical" ? 1.02 : 0.84);
+  set(g.harmonyBus, value === "calm" ? 0.74 : value === "critical" ? 0.86 : 0.8);
+  set(g.pulseBus, value === "calm" ? 0.74 : value === "critical" ? 0.96 : 0.84);
+  set(g.leadBus, value === "calm" ? 0.9 : value === "critical" ? 1.04 : 0.98);
+  set(g.counterBus, value === "calm" ? 0.38 : value === "critical" ? 0.66 : 0.5);
+  set(g.fxBus, value === "critical" ? 0.7 : value === "engaged" ? 0.46 : 0.28);
   g.highpass.frequency.setTargetAtTime(value === "critical" ? 48 : 38, t, ramp);
   g.padFilter.frequency.setTargetAtTime(value === "critical" ? 1_300 : value === "engaged" ? 1_000 : 820, t, ramp);
   g.padBase = padGainFor(value);
@@ -79,7 +79,7 @@ export function applyIntensityAt(audio: AudioGraphContext, g: MusicGraph, value:
 
 export function shouldApplyPendingIntensity(step: number, pending: MusicIntensity | null): boolean {
   if (!pending) return false;
-  if (pending === "critical") return true;
+  if (pending === "critical") return step % 2 === 0;
   return step % STEPS_PER_BAR === 0;
 }
 
@@ -87,7 +87,7 @@ function duckPad(audio: AudioGraphContext, g: MusicGraph, time: number): void {
   const t = Math.max(time, audio.currentTime);
   g.padGain.gain.cancelScheduledValues(t);
   g.padGain.gain.setValueAtTime(Math.max(0.001, g.padGain.gain.value), t);
-  g.padGain.gain.linearRampToValueAtTime(g.padBase * 0.58, t + 0.025);
+  g.padGain.gain.linearRampToValueAtTime(g.padBase * 0.7, t + 0.025);
   g.padGain.gain.linearRampToValueAtTime(g.padBase, t + 0.16);
   const wetLevel = Math.max(0.001, g.padReverbGate.gain.value);
   g.padReverbGate.gain.cancelScheduledValues(t);
@@ -100,7 +100,7 @@ function duckBass(audio: AudioGraphContext, g: MusicGraph, time: number): void {
   const t = Math.max(time, audio.currentTime);
   g.bassDuck.gain.cancelScheduledValues(t);
   g.bassDuck.gain.setValueAtTime(Math.max(0.001, g.bassDuck.gain.value), t);
-  g.bassDuck.gain.linearRampToValueAtTime(0.64, t + 0.018);
+  g.bassDuck.gain.linearRampToValueAtTime(0.78, t + 0.018);
   g.bassDuck.gain.linearRampToValueAtTime(1, t + 0.15);
 }
 
@@ -120,6 +120,7 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
   const stemVoices: Array<[MusicStem, MusicVoiceType, number]> = [
     ["bass", p.bassType, Math.min(p.cutoff, 620)],
     ["pulse", p.arpType, Math.min(p.cutoff + 180, 1600)],
+    ["harmony", p.style.padType, Math.min(p.cutoff + 120, 1200)],
     ["counter", p.counterType, p.cutoff],
     ["melody", p.melodyType, p.cutoff + 360],
   ];
@@ -140,7 +141,7 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
     const velocity = event.velocity * layerMultiplier("drums", value);
     if (event.kind === "kick") {
       playKick(audio, g, t, velocity);
-      if (event.accent) {
+      if (event.accent && index % STEPS_PER_BAR === 0) {
         duckPad(audio, g, t);
         duckBass(audio, g, t);
       }

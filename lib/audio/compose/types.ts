@@ -80,7 +80,7 @@ export type MusicSectionName =
   | "escalation"
   | "climax"
   | "turnaround";
-export type MusicStem = "bass" | "pulse" | "melody" | "counter";
+export type MusicStem = "bass" | "pulse" | "harmony" | "melody" | "counter";
 export type MusicDrumKind = "kick" | "snare" | "clap" | "hat" | "openHat" | "tom" | "impact" | "rim" | "shaker";
 
 export type MusicDrumProfile = {
@@ -242,6 +242,7 @@ export type MusicPattern = {
   arp: (number | null)[];
   melody: (number | null)[];
   counter: (number | null)[];
+  harmony: (number | null)[];
   kick: boolean[];
   snare: boolean[];
   hats: boolean[];

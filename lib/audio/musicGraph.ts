@@ -17,7 +17,7 @@ export type { AudioGraphContext, MusicGraph, PatternIndex };
 
 export const SAMPLE_RATE = AUDIO_SAMPLE_RATE;
 export const MASTER_GAIN = 0.082;
-export const PAD_GAIN = 0.1;
+export const PAD_GAIN = 0.09;
 export const DUCK_RATIO = 0.34;
 export const CROSSFADE_S = 0.55;
 export const SCHEDULE_AHEAD_S = 0.22;
@@ -34,11 +34,12 @@ export function masterGain(value: MusicIntensity = "calm", isDucked = false): nu
   return MASTER_GAIN * INTENSITY_MULTIPLIER[value] * (isDucked ? DUCK_RATIO : 1);
 }
 
-export function layerMultiplier(layer: "bass" | "pulse" | "counter" | "melody" | "drums", value: MusicIntensity = "calm"): number {
-  if (value === "critical") return layer === "drums" ? 1.1 : 1.02;
-  if (value === "engaged") return layer === "drums" ? 1.04 : 1;
+export function layerMultiplier(layer: "bass" | "pulse" | "harmony" | "counter" | "melody" | "drums", value: MusicIntensity = "calm"): number {
+  if (value === "critical") return layer === "drums" ? 1.08 : layer === "harmony" ? 0.94 : layer === "counter" ? 0.86 : 1.02;
+  if (value === "engaged") return layer === "drums" ? 1.02 : layer === "harmony" ? 0.82 : layer === "counter" ? 0.72 : 1;
   if (layer === "drums") return 0.88;
-  if (layer === "counter") return 0.7;
+  if (layer === "counter") return 0.62;
+  if (layer === "harmony") return 0.7;
   if (layer === "pulse") return 0.9;
   return 1;
 }
@@ -110,6 +111,7 @@ export function indexPattern(p: MusicPattern): PatternIndex {
   const notes = {
     bass: indexNoteLane(p.notes.bass),
     pulse: indexNoteLane(p.notes.pulse),
+    harmony: indexNoteLane(p.notes.harmony),
     melody: indexNoteLane(p.notes.melody),
     counter: indexNoteLane(p.notes.counter),
   };
@@ -125,12 +127,14 @@ export function indexPattern(p: MusicPattern): PatternIndex {
 export function stemBus(g: MusicGraph, stem: MusicStem): GainNode {
   if (stem === "bass") return g.bassBus;
   if (stem === "pulse") return g.pulseBus;
+  if (stem === "harmony") return g.harmonyBus;
   if (stem === "melody") return g.leadBus;
   return g.counterBus;
 }
 
 export function notePan(stem: MusicStem): number {
   if (stem === "pulse") return -0.34;
+  if (stem === "harmony") return 0.04;
   if (stem === "melody") return 0.3;
   if (stem === "counter") return -0.12;
   return 0;
@@ -160,12 +164,12 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
 
   const bassDuck = createBus(audio, master, 1);
   const bassBus = createBus(audio, bassDuck, 0.94);
-  const rhythmBus = createBus(audio, master, 0.82);
-  const harmonyBus = createBus(audio, master, 0.8);
-  const pulseBus = createBus(audio, master, 0.8);
-  const leadBus = createBus(audio, master, 0.84);
-  const counterBus = createBus(audio, master, 0.5);
-  const fxBus = createBus(audio, master, 0.42);
+  const rhythmBus = createBus(audio, master, 0.76);
+  const harmonyBus = createBus(audio, master, 0.72);
+  const pulseBus = createBus(audio, master, 0.74);
+  const leadBus = createBus(audio, master, 0.8);
+  const counterBus = createBus(audio, master, 0.38);
+  const fxBus = createBus(audio, master, 0.34);
 
   const reverb = audio.createConvolver();
   const reverbFilter = audio.createBiquadFilter();

@@ -8,7 +8,7 @@ export type ScatterKind =
   | "pebble"
   | "pebbleCluster"
   | "rockSlab"
-  | "sandShard"
+  | "mineralFragment"
   | "dryBrush"
   | "mineralFlake"
   | "tuft"
@@ -18,6 +18,9 @@ export type ScatterKind =
   | "reed"
   | "cinder"
   | "iceChip"
+  | "desertTree"
+  | "cactus"
+  | "desertShrub"
   | "landmark";
 
 export type ScatterItem = {
@@ -45,7 +48,10 @@ export const ARID_SCATTER: ReadonlySet<ScatterKind> = new Set([
   "pebble",
   "pebbleCluster",
   "rockSlab",
-  "sandShard",
+  "mineralFragment",
   "debris",
   "cinder",
+  "desertTree",
+  "cactus",
+  "desertShrub",
 ]);

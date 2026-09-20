@@ -31,6 +31,59 @@ describe("generated audio", () => {
     expect(composeMusic(1, "mission")).not.toEqual(composeMusic(2, "mission"));
   });
 
+  it("adds a deterministic harmony layer and keeps active grooves phrase-stable", () => {
+    const pattern = composeMusic(421, "mission", 3);
+    expect(pattern.notes.harmony).toEqual(composeMusic(421, "mission", 3).notes.harmony);
+    expect(pattern.harmony).toHaveLength(MUSIC_STEPS);
+    expect(pattern.notes.harmony.length).toBeGreaterThan(0);
+
+    const sectionCount = (sectionName: string, lane: keyof typeof pattern.notes) => {
+      const section = pattern.sections.find((entry) => entry.name === sectionName)!;
+      return pattern.notes[lane].filter(
+        (note) => note.step >= section.startBar * STEPS_PER_BAR && note.step < section.endBar * STEPS_PER_BAR,
+      ).length;
+    };
+    expect(sectionCount("intro", "harmony")).toBe(0);
+    expect(sectionCount("breakdown", "harmony")).toBe(0);
+    for (const section of ["groove", "hook", "development", "escalation", "climax", "turnaround"]) {
+      expect(sectionCount(section, "harmony")).toBeGreaterThan(0);
+    }
+
+    for (const section of pattern.sections.filter(({ name }) => !["intro", "breakdown"].includes(name))) {
+      const barsWithKick = Array.from({ length: section.endBar - section.startBar }, (_, offset) => {
+        const start = (section.startBar + offset) * STEPS_PER_BAR;
+        return pattern.drums.some((event) => event.kind === "kick" && event.step >= start && event.step < start + STEPS_PER_BAR);
+      }).filter(Boolean).length;
+      expect(barsWithKick).toBeGreaterThanOrEqual(14);
+
+      const kickMask = (bar: number) => pattern.kick.slice(bar * STEPS_PER_BAR, (bar + 1) * STEPS_PER_BAR);
+      let backbone: boolean[] | null = null;
+      for (let offset = 0; offset < section.endBar - section.startBar; offset += 1) {
+        const bar = section.startBar + offset;
+        const phraseBar = offset % 8;
+        const hole = pattern.style.arrangement.holdBass[pattern.sections.indexOf(section)] && offset < 8;
+        const mask = kickMask(bar);
+        if (!mask.some(Boolean)) {
+          if (!hole) expect([2, 6]).toContain(phraseBar);
+          continue;
+        }
+        if (phraseBar === 7 || hole) continue;
+        backbone ??= mask;
+        expect(mask).toEqual(backbone);
+      }
+    }
+
+    for (const event of pattern.drums.filter(({ kind }) => kind === "tom")) {
+      const bar = Math.floor(event.step / STEPS_PER_BAR);
+      const section = pattern.sections.find(({ startBar, endBar }) => bar >= startBar && bar < endBar)!;
+      expect([3, 7]).toContain((bar - section.startBar) % 8);
+    }
+
+    for (const section of pattern.sections) {
+      expect(sectionCount(section.name, "counter")).toBeLessThanOrEqual(48);
+    }
+  });
+
   it("varies the arrangement across missions of the same seed", () => {
     expect(composeMusic(421, "mission", 0)).not.toEqual(composeMusic(421, "mission", 1));
     expect(composeMusic(421, "mission", 0)).not.toEqual(composeMusic(421, "mission", 7));
@@ -296,7 +349,8 @@ describe("generated audio", () => {
     expect(shouldApplyPendingIntensity(0, "engaged")).toBe(true);
     expect(shouldApplyPendingIntensity(1, "engaged")).toBe(false);
     expect(shouldApplyPendingIntensity(STEPS_PER_BAR, "calm")).toBe(true);
-    expect(shouldApplyPendingIntensity(7, "critical")).toBe(true);
+    expect(shouldApplyPendingIntensity(6, "critical")).toBe(true);
+    expect(shouldApplyPendingIntensity(7, "critical")).toBe(false);
     expect(shouldApplyPendingIntensity(3, null)).toBe(false);
   });
 
@@ -329,6 +383,7 @@ describe("generated audio", () => {
         expect(pattern.arp).toHaveLength(MUSIC_STEPS);
         expect(pattern.melody).toHaveLength(MUSIC_STEPS);
         expect(pattern.counter).toHaveLength(MUSIC_STEPS);
+        expect(pattern.harmony).toHaveLength(MUSIC_STEPS);
         expect(pattern.kick).toHaveLength(MUSIC_STEPS);
         expect(pattern.snare).toHaveLength(MUSIC_STEPS);
         expect(pattern.hats).toHaveLength(MUSIC_STEPS);
@@ -455,6 +510,22 @@ describe("generated audio", () => {
             expect(((phraseEnd.midi - pattern.rootMidi) % 12 + 12) % 12).toBe(0);
           }
         }
+      }
+    }
+  });
+
+  it("uses dedicated turnaround harmonic material before resolving each phrase", () => {
+    const midiFromHz = (hz: number) => Math.round(69 + 12 * Math.log2(hz / 440));
+
+    for (const seed of [0, 421, 9999]) {
+      const pattern = composeMusic(seed, "mission", 3);
+      const turnaround = pattern.sections.find((section) => section.name === "turnaround")!;
+      for (let offset = 0; offset < turnaround.endBar - turnaround.startBar; offset += 1) {
+        const degree = offset === 7 || offset === 15
+          ? 0
+          : pattern.theme.progressionD[Math.floor(offset / 2)]!;
+        const expectedPitchClass = (pattern.rootMidi + pattern.theme.scale[degree]!) % 12;
+        expect(midiFromHz(pattern.padRoot[turnaround.startBar + offset]!) % 12).toBe(expectedPitchClass);
       }
     }
   });

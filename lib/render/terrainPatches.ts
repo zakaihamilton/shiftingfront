@@ -1,6 +1,14 @@
 import type { BiomeName } from "../types";
 import type { TerrainFeatureSample } from "../gen/map/features";
-import { fbm, hash2, mixRgb, type BiomeMaterials, type Rgb } from "./terrainMaterials";
+import {
+  fbm,
+  hash2,
+  mixRgb,
+  terrainVisualTuningFor,
+  type BiomeMaterials,
+  type Rgb,
+  type TerrainVisualTuning,
+} from "./terrainMaterials";
 
 function smoothstep(edge0: number, edge1: number, value: number): number {
   const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
@@ -57,11 +65,16 @@ export function tintGroundPatches(
   mapX: number,
   mapY: number,
   salt: number,
+  tuning: TerrainVisualTuning = terrainVisualTuningFor("ash plains"),
 ): Rgb {
-  const macro = fbm(mapX * 0.075, mapY * 0.075, salt + 311);
-  const detail = fbm(mapX * 0.36, mapY * 0.36, salt + 347);
-  const out = mixRgb(color, mats.patchA, 0.04 + macro * 0.13);
-  const fleck = smoothstep(0.46, 0.9, detail) * 0.16;
+  const macro = fbm(mapX * tuning.macroScale, mapY * tuning.macroScale, salt + 311);
+  const detail = fbm(mapX * tuning.detailScale, mapY * tuning.detailScale, salt + 347);
+  const lowRegion = smoothstep(0.08, 0.42, 0.5 - macro) * tuning.macroStrength * 0.2;
+  const highRegion = smoothstep(0.58, 0.92, macro) * tuning.macroStrength * 0.14;
+  let out = mixRgb(color, mats.patchA, 0.045 + macro * tuning.macroStrength * 0.46);
+  out = mixRgb(out, mats.dark, lowRegion);
+  out = mixRgb(out, mats.high, highRegion);
+  const fleck = smoothstep(0.44, 0.9, detail) * (0.08 + tuning.roughness * 0.42);
   return mixRgb(out, mats.patchB, fleck);
 }
 
@@ -78,6 +91,7 @@ export function applyBiomeGroundPattern(
   mats: BiomeMaterials,
   feature?: TerrainFeatureSample,
 ): Rgb {
+  const tuning = terrainVisualTuningFor(biome);
   const warp = patchWarp(mapX, mapY, salt);
   const n = patchNoise(mapX, mapY, salt + 419, 8, warp);
   let out: Rgb;
@@ -150,6 +164,10 @@ export function applyBiomeGroundPattern(
       break;
     }
   }
+  const macro = fbm(mapX * tuning.macroScale, mapY * tuning.macroScale, salt + 557);
+  const broadRelief = (macro - 0.5) * tuning.macroStrength * 0.34;
+  if (broadRelief > 0) out = mixRgb(out, mats.high, broadRelief);
+  else out = mixRgb(out, mats.dark, -broadRelief);
   return applyTerrainFeaturePattern(out, feature, mapX, mapY, salt, mats, warp);
 }
 

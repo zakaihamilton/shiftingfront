@@ -6,6 +6,7 @@ import {
   clearTerrainAtmosphereCache,
   paintTerrainAtmosphere,
 } from "../../lib/render/terrainAtmosphere";
+import { paintTerrainWeather } from "../../lib/render/terrainWeather";
 import { terrainAtmosphereFrame } from "../../lib/render/terrainLighting";
 
 function createContext(width: number, height: number) {
@@ -70,5 +71,13 @@ describe("terrain atmosphere", () => {
     paintTerrainAtmosphere(context.ctx, visible, createCamera(), 1200);
     expect(context.fill.mock.calls.length).toBeGreaterThan(hiddenFills);
     expect((context.ctx.drawImage as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it("disables moving weather when reduced motion is enabled", () => {
+    const state = makeFixture({ width: 12, height: 12, seed: 832, win: { kind: "annihilate" } });
+    const save = vi.fn();
+    const ctx = { canvas: { width: 640, height: 480 }, save } as unknown as CanvasRenderingContext2D;
+    paintTerrainWeather(ctx, state, createCamera(), 1200, true);
+    expect(save).not.toHaveBeenCalled();
   });
 });

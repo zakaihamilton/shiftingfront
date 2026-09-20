@@ -9,17 +9,21 @@ import {
   TILE_WATER,
 } from "../../../types";
 import { tileVariant } from "../../terrainAtlas";
+import { terrainVisualTuningFor } from "../../terrainMaterials";
 import type { ScatterItem, ScatterKind, ScatterWorld } from "./types";
 
 const POOLS: Record<BiomeName, ScatterKind[]> = {
   "jungle wreckage": ["tuft", "tuft", "shrub", "reed", "pebble", "tuft", "pebble", "dryBrush"],
   "salt marshes": ["tuft", "reed", "reed", "shrub", "shrub", "pebble", "dryBrush"],
   "ash plains": ["pebble", "pebble", "tuft", "pebbleCluster", "tuft", "rockSlab"],
-  "crystal flats": ["crystalChip", "crystalChip", "pebble", "pebbleCluster", "mineralFlake", "sandShard"],
+  "crystal flats": ["crystalChip", "crystalChip", "pebble", "pebbleCluster", "mineralFlake", "mineralFragment"],
   "tundra grid": ["iceChip", "iceChip", "pebble", "tuft", "tuft", "mineralFlake"],
   "rust canyons": ["pebble", "debris", "debris", "pebbleCluster", "pebble", "rockSlab"],
   "volcanic shelf": ["pebble", "cinder", "cinder", "debris", "pebbleCluster", "rockSlab"],
-  "glass desert": ["pebble", "pebbleCluster", "debris", "cinder", "rockSlab", "sandShard", "dryBrush"],
+  "glass desert": [
+    "pebble", "pebbleCluster", "debris", "cinder", "rockSlab", "mineralFragment", "mineralFragment", "dryBrush",
+    "desertTree", "cactus", "desertShrub",
+  ],
 };
 
 const FEATURE_POOLS: Partial<Record<TerrainFeatureKind, readonly ScatterKind[]>> = {
@@ -28,16 +32,16 @@ const FEATURE_POOLS: Partial<Record<TerrainFeatureKind, readonly ScatterKind[]>>
   scoriaField: ["cinder", "pebbleCluster", "pebble", "rockSlab"],
   crystalVein: ["crystalChip", "crystalChip", "pebble", "mineralFlake"],
   reflectivePan: ["crystalChip", "pebble", "iceChip", "mineralFlake"],
-  facetRise: ["crystalChip", "pebbleCluster", "pebble", "sandShard", "mineralFlake"],
+  facetRise: ["crystalChip", "pebbleCluster", "pebble", "mineralFragment", "mineralFlake"],
   strataGully: ["pebble", "debris", "pebbleCluster", "rockSlab"],
   mesaShelf: ["pebble", "pebbleCluster", "debris", "rockSlab"],
   scrapWash: ["debris", "debris", "pebble"],
   mudflat: ["reed", "tuft", "pebble"],
   reedBed: ["reed", "reed", "shrub"],
   saltPan: ["pebble", "iceChip", "tuft", "dryBrush"],
-  duneSea: ["pebble", "pebbleCluster", "cinder", "sandShard", "rockSlab"],
-  glassShards: ["sandShard", "crystalChip", "pebble", "debris", "mineralFlake"],
-  dryWash: ["pebble", "pebbleCluster", "debris", "rockSlab", "sandShard"],
+  duneSea: ["cactus", "cactus", "desertShrub", "desertTree", "pebble", "pebbleCluster", "mineralFragment", "rockSlab"],
+  glassShards: ["mineralFragment", "mineralFragment", "crystalChip", "pebble", "debris", "mineralFlake", "cactus", "desertShrub"],
+  dryWash: ["desertTree", "desertShrub", "desertShrub", "pebble", "pebbleCluster", "debris", "rockSlab", "mineralFragment"],
   frostPan: ["iceChip", "iceChip", "pebble"],
   iceRift: ["iceChip", "pebble", "tuft"],
   driftMoraine: ["pebbleCluster", "iceChip", "pebble", "mineralFlake"],
@@ -74,28 +78,54 @@ function scatterChance(biome: BiomeName): number {
   }
 }
 
-function makeItem(pool: readonly ScatterKind[], v: number, slot: number, scaleBoost = 0): ScatterItem {
-  const hashed = mix(v, 31 + slot * 17);
+function makeItem(
+  pool: readonly ScatterKind[],
+  v: number,
+  slot: number,
+  scaleBoost = 0,
+  grouped = false,
+  usedKinds?: ReadonlySet<ScatterKind>,
+): ScatterItem {
+  let hashed = mix(v, 31 + slot * 17);
+  let kind = pool[hashed % pool.length]!;
+  const distinctKinds = new Set<ScatterKind>(["desertTree", "cactus", "desertShrub", "mineralFragment"]);
+  if (grouped && usedKinds && distinctKinds.has(kind)) {
+    for (let attempt = 1; attempt < pool.length; attempt++) {
+      const candidate = pool[(hashed + attempt) % pool.length]!;
+      if (!usedKinds.has(candidate) || !distinctKinds.has(candidate)) {
+        kind = candidate;
+        hashed = mix(v, 31 + (slot + attempt) * 17);
+        break;
+      }
+    }
+  }
   return {
-    kind: pool[hashed % pool.length]!,
-    ox: signed(v, 101 + slot, 9.3) + signed(v, 301 + slot, 2.7),
-    oy: signed(v, 151 + slot, 3.8) + signed(v, 331 + slot, 1.8),
+    kind,
+    ox: signed(v, 101 + slot, grouped ? 6.4 : 9.3) + signed(v, 301 + slot, grouped ? 2.1 : 2.7),
+    oy: signed(v, 151 + slot, grouped ? 2.8 : 3.8) + signed(v, 331 + slot, grouped ? 1.4 : 1.8),
     rotation: signed(v, 361 + slot, 0.26),
-    scale: 0.82 + unit(v, 201 + slot) * 0.7 + scaleBoost,
+    scale: 0.78 + unit(v, 201 + slot) * 0.82 + scaleBoost,
     variant: mix(v, 251 + slot),
   };
 }
 
 function groundItems(biome: BiomeName, v: number, feature: TerrainFeatureSample): ScatterItem[] {
-  const chance = Math.min(68, scatterChance(biome) + Math.round(feature.intensity * 12));
-  const roll = v % 100;
+  const tuning = terrainVisualTuningFor(biome);
+  const chance = Math.min(72, Math.round(scatterChance(biome) * tuning.scatterDensity + feature.intensity * 12));
+  const roll = Math.floor(unit(v, 397) * 100);
   if (roll >= chance) return [];
-  const count = roll < chance * 0.16 ? 3 : roll < chance * 0.5 ? 2 : 1;
+  const grouped = unit(v, 401) < 0.16 + tuning.clusterBias * 0.26;
+  const count = grouped ? 3 : roll < chance * (0.32 + tuning.clusterBias * 0.1) ? 2 : 1;
   const pool = feature.intensity >= 0.24 ? FEATURE_POOLS[feature.kind] ?? POOLS[biome] : POOLS[biome];
   const items: ScatterItem[] = [];
-  for (let i = 0; i < count; i++) items.push(makeItem(pool, v, i, feature.intensity * 0.1));
-  if (feature.intensity >= 0.3 && v % 13 === 0) {
-    const landmark = makeItem(["landmark"], v, 8, Math.min(0.3, feature.intensity * 0.18));
+  const usedKinds = new Set<ScatterKind>();
+  for (let i = 0; i < count; i++) {
+    const item = makeItem(pool, v, i, feature.intensity * 0.1, grouped, usedKinds);
+    items.push(item);
+    usedKinds.add(item.kind);
+  }
+  if (feature.intensity >= 0.3 && unit(v, 409) > 0.9) {
+    const landmark = makeItem(["landmark"], v, 8, Math.min(0.3, feature.intensity * 0.18), grouped);
     if (items.length >= 3) items[items.length - 1] = landmark;
     else items.push(landmark);
   }

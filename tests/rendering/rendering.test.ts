@@ -56,17 +56,21 @@ import {
   waterFxNeedsClip,
 } from "../../lib/render/terrainWeather";
 import {
+  drawCactus,
   drawCinder,
   drawCrystalChip,
+  drawDesertShrub,
+  drawDesertTree,
+  desertFloraPalette,
   drawIceChip,
   drawLandmark,
   drawPebble,
   drawRockSlab,
-  drawSandShard,
+  drawMineralFragment,
 } from "../../lib/render/terrainPaint/scatter";
 import { spriteCacheKey, terrainContentKey } from "../../lib/render/renderer";
 import { minimapCacheKeys, minimapEntityVisible, MINIMAP_OVERLAY_TICK_SHIFT } from "../../lib/render/minimap";
-import { hash2, propMaterialsFor } from "../../lib/render/terrainMaterials";
+import { hash2, propMaterialsFor, terrainVisualTuningFor } from "../../lib/render/terrainMaterials";
 import { hashNoise, valueNoise } from "../../lib/gen/map/noise";
 import { isoDiamondPath, roundedIsoDiamondPath } from "../../lib/render/isoDiamond";
 import { paintShroudMaskTile, shroudCornerRadii } from "../../lib/render/terrainPaint/tile";
@@ -203,7 +207,7 @@ describe("seeded terrain atlas", () => {
     const b = bakeTerrainAtlasData(second);
     const c = bakeTerrainAtlasData(other);
     expect(a.key).toBe(b.key);
-    expect(a.key).toContain("world-atlas-v18-organic-land-material-transitions");
+    expect(a.key).toContain("world-atlas-v19-grounded-material-relief");
     expect(a.data).toEqual(b.data);
     expect(terrainAtlasKey(first)).toBe(a.key);
     expect(c.key).not.toBe(a.key);
@@ -764,6 +768,8 @@ describe("terrain weather and water motion", () => {
     expect(oreSparkle(900, 2, 2, 1).twinkle).toBeLessThanOrEqual(1);
     expect(weatherKindForBiome("tundra grid")).toBe("snow");
     expect(weatherKindForBiome("volcanic shelf")).toBe("ember");
+    expect(weatherParticleAt(832, "glass desert", 4, 1200, 640, 360).trail).toBeGreaterThan(1);
+    expect(weatherParticleAt(832, "glass desert", 4, 1200, 640, 360).rotation).not.toBeNaN();
   });
 
   it("culls water and ore FX to the visible tile range", () => {
@@ -845,6 +851,7 @@ describe("terrain scroll cache key", () => {
     const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" }, seed: 832 });
     const cam = createCamera();
     const a = terrainContentKey(state, cam, 640, 360);
+    expect(a).toContain("world-atlas-v30-rounded-mineral-scatter");
     cam.x += 40;
     cam.y -= 18;
     expect(terrainContentKey(state, cam, 640, 360)).toBe(a);
@@ -1017,6 +1024,22 @@ describe("terrain scatter artifacts", () => {
     }
   });
 
+  it("adds deterministic desert flora without making other biomes arid", () => {
+    const base = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" }, seed: 832 });
+    const desert = { ...base, biome: "glass desert" as BiomeName };
+    const jungle = { ...base, biome: "jungle wreckage" as BiomeName };
+    const desertItems = collectScatter(desert);
+    const jungleItems = collectScatter(jungle);
+    const flora = new Set(["desertTree", "cactus", "desertShrub"]);
+    const desertFlora = desertItems.filter((item) => flora.has(item.kind)).length;
+    expect(desertFlora).toBeGreaterThan(0);
+    expect(desertFlora / desertItems.length).toBeGreaterThan(0.12);
+    expect(desertFlora / desertItems.length).toBeLessThan(0.5);
+    expect(jungleItems.some((item) => flora.has(item.kind))).toBe(false);
+    expect(desertItems.some((item) => item.kind === "mineralFragment")).toBe(true);
+    expect(collectScatter(desert)).toEqual(desertItems);
+  });
+
   it("skips water, concrete, ore, and blocked tiles", () => {
     const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" }, seed: 832 });
     setTile(state, 1, 1, TILE_WATER);
@@ -1078,6 +1101,8 @@ describe("terrain scatter artifacts", () => {
     const tundra = new Set(Array.from({ length: 40 }, (_, v) => blockerPropKind("tundra grid", v)));
     expect(jungle.has("tree")).toBe(true);
     expect(desert.has("sandstone") || desert.has("deadShrub")).toBe(true);
+    expect(desert.has("desertTree")).toBe(true);
+    expect(desert.has("cactus")).toBe(true);
     expect(tundra.has("pine") || tundra.has("snowRock")).toBe(true);
     expect(blockerPropKind("jungle wreckage", 3)).not.toBe(blockerPropKind("glass desert", 3));
   });
@@ -1219,6 +1244,40 @@ describe("biome ground patches", () => {
   });
 });
 
+describe("grounded biome visual tuning", () => {
+  const biomes: BiomeName[] = [
+    "ash plains", "crystal flats", "rust canyons", "salt marshes",
+    "glass desert", "tundra grid", "jungle wreckage", "volcanic shelf",
+  ];
+
+  it("provides deterministic, non-uniform relief settings for every biome", () => {
+    const signatures = new Set<string>();
+    for (const biome of biomes) {
+      const tuning = terrainVisualTuningFor(biome);
+      expect(terrainVisualTuningFor(biome)).toBe(tuning);
+      expect(tuning.macroStrength).toBeGreaterThan(0);
+      expect(tuning.roughness).toBeGreaterThan(0);
+      expect(tuning.scatterDensity).toBeGreaterThan(0);
+      expect(tuning.windX).not.toBeNaN();
+      expect(tuning.windY).not.toBeNaN();
+      signatures.add(`${tuning.macroScale}:${tuning.motion}:${tuning.clusterBias}`);
+    }
+    expect(signatures.size).toBeGreaterThanOrEqual(6);
+  });
+
+  it("keeps props matte while restoring more local contrast than the legacy default", () => {
+    const base = biomeMaterials("glass desert");
+    const legacy = propMaterialsFor(base);
+    const grounded = propMaterialsFor(base, terrainVisualTuningFor("glass desert"));
+    const chroma = (color: { r: number; g: number; b: number }) => (
+      Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b)
+    );
+    expect(chroma(grounded.mid)).toBeGreaterThan(chroma(legacy.mid));
+    expect(chroma(grounded.mid)).toBeLessThanOrEqual(chroma(base.mid));
+    expect(chroma(grounded.ore)).toBeLessThanOrEqual(chroma(base.ore));
+  });
+});
+
 describe("tile sprite blockers", () => {
   function blockedSprite(biome: BiomeName, kind: ReturnType<typeof blockerPropKind>) {
     for (let variant = 0; variant < 64; variant++) {
@@ -1243,7 +1302,7 @@ describe("tile sprite blockers", () => {
       tileSprite("blocked", 1, { biome: "jungle wreckage", variant: 3 }).shapes,
     );
     expect(tileSpriteId("blocked", 1, { biome: "jungle wreckage", variant: 3 }))
-      .toContain("tactical-surface-v14-grounded-extras");
+      .toContain("tactical-surface-v17-rounded-minerals");
   });
 });
 
@@ -1307,12 +1366,35 @@ describe("terrain adornment painting", () => {
     expect(signatures.size).toBeGreaterThanOrEqual(4);
   });
 
+  it("keeps mineral fragments and mineral landmarks low-profile", () => {
+    const mats = biomeMaterials("glass desert");
+    const lowestY = (geometry: string[]): number => Math.min(...geometry.flatMap((entry) => {
+      const [kind, values] = entry.split(":");
+      if (!values) return [];
+      const numbers = values.split(",").map(Number);
+      if (kind === "e") return [numbers[1]! - numbers[3]!];
+      if (kind === "q") return [numbers[1]!, numbers[3]!];
+      return [numbers[1]!];
+    }));
+    const fragment = createPaintMock();
+    drawMineralFragment(fragment.ctx, mats, 1, 1, 832);
+    expect(lowestY(fragment.geometry)).toBeGreaterThan(-7);
+    for (const biome of ["glass desert", "crystal flats", "tundra grid"] as const) {
+      const landmark = createPaintMock();
+      drawLandmark(landmark.ctx, biomeMaterials(biome), biome, 1, 1, 832);
+      expect(lowestY(landmark.geometry), biome).toBeGreaterThan(-9);
+    }
+  });
+
   it("adds deterministic material detail to varied scatter silhouettes", () => {
     const mats = biomeMaterials("glass desert");
     const drawCases = [
       (ctx: CanvasRenderingContext2D, variant: number) => drawPebble(ctx, mats, 1, 1, variant),
       (ctx: CanvasRenderingContext2D, variant: number) => drawRockSlab(ctx, mats, 1, 1, variant),
-      (ctx: CanvasRenderingContext2D, variant: number) => drawSandShard(ctx, mats, 1, 1, variant),
+      (ctx: CanvasRenderingContext2D, variant: number) => drawMineralFragment(ctx, mats, 1, 1, variant),
+      (ctx: CanvasRenderingContext2D, variant: number) => drawDesertTree(ctx, mats, 1, 1, variant),
+      (ctx: CanvasRenderingContext2D, variant: number) => drawCactus(ctx, mats, 1, 1, variant),
+      (ctx: CanvasRenderingContext2D, variant: number) => drawDesertShrub(ctx, mats, 1, 1, variant),
       (ctx: CanvasRenderingContext2D, variant: number) => drawCrystalChip(ctx, mats, 1, 1, variant),
       (ctx: CanvasRenderingContext2D, variant: number) => drawIceChip(ctx, mats, 1, 1, variant),
       (ctx: CanvasRenderingContext2D, variant: number) => drawCinder(ctx, mats, 1, 1, variant),
@@ -1330,11 +1412,52 @@ describe("terrain adornment painting", () => {
 
     const first = createPaintMock();
     const second = createPaintMock();
-    drawSandShard(first.ctx, mats, 1, 1, 832);
-    drawSandShard(second.ctx, mats, 1, 1, 832);
+    drawMineralFragment(first.ctx, mats, 1, 1, 832);
+    drawMineralFragment(second.ctx, mats, 1, 1, 832);
     expect(first.geometry).toEqual(second.geometry);
     expect(first.ops).toEqual(second.ops);
     expect(first.ops.filter((op) => op.startsWith("stroke:")).length).toBeGreaterThan(1);
+  });
+
+  it("keeps desert flora colors varied but deterministic", () => {
+    const mats = biomeMaterials("glass desert");
+    const signatures = new Set<string>();
+    for (let variant = 0; variant < 32; variant++) {
+      const palette = desertFloraPalette(mats, variant);
+      expect(desertFloraPalette(mats, variant)).toEqual(palette);
+      signatures.add(JSON.stringify(palette));
+    }
+    expect(signatures.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps scatter geometry proportional to camera zoom", () => {
+    const mats = biomeMaterials("glass desert");
+    const drawCases = [drawPebble, drawRockSlab, drawMineralFragment];
+
+    for (const draw of drawCases) {
+      const base = createPaintMock();
+      const scaled = createPaintMock();
+      draw(base.ctx, mats, 1, 1, 832);
+      draw(scaled.ctx, mats, 2, 1, 832);
+
+      expect(scaled.geometry).toHaveLength(base.geometry.length);
+      for (let i = 0; i < base.geometry.length; i++) {
+        const baseParts = base.geometry[i]?.split(":");
+        const scaledParts = scaled.geometry[i]?.split(":");
+        expect(scaledParts?.[0]).toBe(baseParts?.[0]);
+        if (!baseParts?.[1] || !scaledParts?.[1]) continue;
+
+        const baseValues = baseParts[1].split(",").map(Number);
+        const scaledValues = scaledParts[1].split(",").map(Number);
+        const coordinateCount = baseParts[0] === "e" ? 4 : baseValues.length;
+        for (let valueIndex = 0; valueIndex < coordinateCount; valueIndex++) {
+          expect(scaledValues[valueIndex]).toBeCloseTo((baseValues[valueIndex] ?? 0) * 2, 1);
+        }
+        if (baseParts[0] === "e") {
+          expect(scaledValues[4]).toBeCloseTo(baseValues[4] ?? 0, 2);
+        }
+      }
+    }
   });
 
   it("paints layered scatter and blocker props deterministically", () => {
@@ -1406,7 +1529,7 @@ describe("terrain adornment painting", () => {
     setTile(state, 3, 2, TILE_RESOURCE, 800);
     const painted = createPaintMock();
     drawOreCrystals(painted.ctx, state, createCamera(), 3, 2, 1, 1);
-    const mats = propMaterialsFor(biomeMaterials(state.biome));
+    const mats = propMaterialsFor(biomeMaterials(state.biome), terrainVisualTuningFor(state.biome));
     const expectedHi = rgbMix(mats.light, { r: 255, g: 246, b: 210 }, 0.42);
     expect(painted.ops).toContain(`fill:${expectedHi}`);
     expect(painted.ops).toContain(`stroke:${expectedHi}`);

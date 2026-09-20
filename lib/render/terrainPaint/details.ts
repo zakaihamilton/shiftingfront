@@ -3,7 +3,7 @@ import type { BiomeName, SimState } from "../../types";
 import type { SceneryWorld } from "../../gen/map";
 import { fogAt } from "../../sim/fog";
 import { biomeMaterials, fogTerrainGain, oreCrystalCluster, tileVariant } from "../terrainAtlas";
-import { propMaterialsFor, type BiomeMaterials } from "../terrainMaterials";
+import { propMaterialsFor, terrainVisualTuningFor, type BiomeMaterials } from "../terrainMaterials";
 import { tileToScreen, type Camera } from "../../iso";
 import {
   blockerPropPrims,
@@ -99,7 +99,7 @@ export function drawBlockerProp(
   ctx.save();
   ctx.globalAlpha *= terrainPropLightGain(state, x, y);
   ctx.translate(sx + ox, sy + TILE_H * z * 0.42 + oy);
-  paintBlocker(ctx, kind, propMaterialsFor(mats), z, v, state.biome);
+  paintBlocker(ctx, kind, propMaterialsFor(mats, terrainVisualTuningFor(state.biome)), z, v, state.biome);
   ctx.restore();
 }
 
@@ -122,7 +122,7 @@ export function drawOreCrystals(
 ): void {
   const cluster = oreCrystalCluster(state, x, y);
   if (!cluster) return;
-  const mats = propMaterialsFor(biomeMaterials(state.biome));
+  const mats = propMaterialsFor(biomeMaterials(state.biome), terrainVisualTuningFor(state.biome));
   const s = tileToScreen(x, y, cam, elev);
   const gemDark = rgbMix(mats.ore, mats.dark, 0.42);
   const gem = rgbMix(mats.ore, mats.light, 0.38);

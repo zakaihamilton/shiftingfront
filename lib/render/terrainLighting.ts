@@ -1,7 +1,7 @@
 import { generateCampaignVisualProfile } from "../gen/visualProfile";
 import { sceneryAt, type SceneryWorld } from "../gen/map";
 import type { BiomeName, CampaignVisualProfile } from "../types";
-import { mixRgb, type Rgb } from "./terrainMaterials";
+import { mixRgb, terrainVisualTuningFor, type Rgb } from "./terrainMaterials";
 
 export type TerrainLightRig = {
   directionX: number;
@@ -24,6 +24,7 @@ export type TerrainAtmosphereFrame = {
 
 const rigCache = new Map<number, TerrainLightRig>();
 const profileRigCache = new Map<string, TerrainLightRig>();
+const biomeRigCache = new Map<string, TerrainLightRig>();
 
 function hash01(value: number): number {
   let x = value | 0;
@@ -88,6 +89,33 @@ export function terrainLightRigFor(
 export function clearTerrainLightCache(): void {
   rigCache.clear();
   profileRigCache.clear();
+  biomeRigCache.clear();
+}
+
+/**
+ * Apply biome-specific contrast to the shared seeded light direction. The
+ * direction and phase remain campaign-stable, while each material family gets
+ * an appropriate amount of relief and contact shadow.
+ */
+export function terrainLightRigForBiome(
+  seed: number,
+  biome: BiomeName,
+  profile?: CampaignVisualProfile,
+): TerrainLightRig {
+  const resolvedProfile = profile ?? generateCampaignVisualProfile(seed);
+  const key = `${seed}:${biome}:${resolvedProfile.family}:${resolvedProfile.terrainTreatment}:${resolvedProfile.terrainAccent}`;
+  const cached = biomeRigCache.get(key);
+  if (cached) return cached;
+  const base = terrainLightRigFor(seed, resolvedProfile);
+  const tuning = terrainVisualTuningFor(biome);
+  const rig: TerrainLightRig = {
+    ...base,
+    ambient: clamp(base.ambient - tuning.shadowDepth * 0.38, 0.78, 0.92),
+    keyStrength: clamp(base.keyStrength + tuning.keyStrength * 0.38, 0.12, 0.22),
+    occlusionStrength: clamp(base.occlusionStrength + tuning.shadowDepth * 0.62, 0.08, 0.17),
+  };
+  biomeRigCache.set(key, rig);
+  return rig;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -131,7 +159,7 @@ export function terrainPropLightFactor(world: SceneryWorld, x: number, y: number
   const east = sceneryAt(world, x + 1, y);
   const south = sceneryAt(world, x, y + 1);
   return terrainLightFactor(
-    terrainLightRigFor(world.seed ?? 0),
+    terrainLightRigForBiome(world.seed ?? 0, world.biome),
     here.elev,
     east.elev,
     south.elev,

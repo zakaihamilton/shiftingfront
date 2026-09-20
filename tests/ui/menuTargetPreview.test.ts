@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   EXCLUDED_SCENARIO_KINDS,
   PREVIEW_CYCLE_MS,
@@ -15,7 +15,9 @@ import {
 import { CINEMA_SHOTS, cinemaShotCamera, PIP_ZOOM, PREVIEW_SHOT_COUNT } from "../../components/shared/ambient/menuBackdropSim/shots";
 import { cinemaGroundWorld } from "../../components/shared/ambient/menuBackdropSim/paint";
 import { stepCinemaScene } from "../../components/shared/ambient/menuBackdropSim/render";
+import { isCinemaSceneReady, prepareCinemaScene } from "../../components/shared/ambient/menuBackdropSim/readiness";
 import { CINEMA_SCENARIO_KINDS, CINEMA_SEED, createCinemaScene, type Shot } from "../../components/shared/ambient/menuBackdropSim/scene";
+import { CINEMA_SCENARIOS } from "../../components/shared/ambient/menuBackdropSim/scenarios";
 import { createCampaign } from "../../lib/gen/campaign";
 import { footprintOf } from "../../lib/catalog";
 import { createMission } from "../../lib/sim/api";
@@ -86,8 +88,36 @@ describe("welcome target cinema shots", () => {
     const cameras = CINEMA_SHOTS.map((_, index) => cinemaShotCamera(scene, index, 768, 512));
     const origins = new Set(cameras.map((cam) => `${cam.x.toFixed(1)},${cam.y.toFixed(1)}`));
     expect(origins.size).toBe(CINEMA_SHOTS.length);
+    expect(cameras.every((cam) => cam.zoom > 0 && cam.zoom <= PIP_ZOOM)).toBe(true);
     expect(cameras.every((cam) => cam.zoom === PIP_ZOOM)).toBe(true);
     expect(PIP_ZOOM).toBe(1.5);
+  });
+
+  it("gives every scenario a distinct deterministic battlefield composition", () => {
+    const signatures = CINEMA_SCENARIO_KINDS.map((kind) => {
+      const scene = createCinemaScene(CINEMA_SEED, 0, kind);
+      const units = scene.state.entities
+        .filter((entity) => entity.class === "unit" && entity.hp > 0)
+        .map((entity) => `${entity.owner}:${entity.kind}:${Math.round(entity.x - scene.combatEpicenter.x)}:${Math.round(entity.y - scene.combatEpicenter.y)}`)
+        .sort()
+        .join(",");
+      const buildings = scene.buildings
+        .map((building) => `${building.owner}:${building.kind}:${Math.round(building.x - scene.combatEpicenter.x)}:${Math.round(building.y - scene.combatEpicenter.y)}`)
+        .sort()
+        .join(",");
+      const focus = `${scene.cameraFocus.x}:${scene.cameraFocus.y}:${scene.cameraFocusPoints.map((point) => `${point.x},${point.y}`).join(";")}`;
+      return `${kind}|${units}|${buildings}|${focus}`;
+    });
+
+    expect(new Set(signatures).size).toBe(CINEMA_SCENARIO_KINDS.length);
+    expect(CINEMA_SCENARIO_KINDS.map((kind) => CINEMA_SCENARIOS[kind].anchor)).toEqual([
+      "enemyBase",
+      "playerBase",
+      "resourceField",
+      "midfield",
+      "playerBase",
+      "midfield",
+    ]);
   });
 
   it("builds different campaigns from different seeds", () => {
@@ -354,6 +384,24 @@ describe("welcome target cinema shots", () => {
     expect(areRasterSourcesReady(sources)).toBe(true);
   });
 
+  it("requires both terrain and tactical raster assets before a gameplay preview is ready", () => {
+    const prepared = prepareCinemaScene(createCinemaScene(CINEMA_SEED, 0));
+    expect(prepared.rasterSources.length).toBeGreaterThan(0);
+
+    const isTerrainReady = vi.fn(() => true);
+    const areRastersReady = vi.fn(() => true);
+    expect(isCinemaSceneReady(prepared, { isTerrainReady, areRastersReady })).toBe(true);
+    expect(isTerrainReady).toHaveBeenCalledWith(prepared.scene.state);
+    expect(areRastersReady).toHaveBeenCalledWith(prepared.rasterSources);
+
+    isTerrainReady.mockReturnValue(false);
+    expect(isCinemaSceneReady(prepared, { isTerrainReady, areRastersReady })).toBe(false);
+
+    isTerrainReady.mockReturnValue(true);
+    areRastersReady.mockReturnValue(false);
+    expect(isCinemaSceneReady(prepared, { isTerrainReady, areRastersReady })).toBe(false);
+  });
+
   it("rotates across distinct tactical scenarios including building attacks and ambushes", () => {
     expect(CINEMA_SCENARIO_KINDS).toEqual([
       "baseAssault",
@@ -396,6 +444,42 @@ describe("welcome target cinema shots", () => {
       (e) => e.class === "unit" && e.attackTarget === playerTurret!.id,
     );
     expect(attackingPlayerTurret).toBe(true);
+  });
+
+  it("keeps each scenario's objective target and unit identity after setup", () => {
+    for (const kind of CINEMA_SCENARIO_KINDS) {
+      const scene = createCinemaScene(CINEMA_SEED, 0, kind);
+      const objective = scene.scenarioTargetId === undefined
+        ? undefined
+        : scene.state.entities.find((entity) => entity.id === scene.scenarioTargetId);
+
+      if (kind === "armorClash") {
+        const combatKinds = new Set(
+          scene.state.entities
+            .filter((entity) => entity.class === "unit" && entity.hp > 0 && entity.kind !== "repairTruck")
+            .map((entity) => entity.kind),
+        );
+        expect(combatKinds).toEqual(new Set(["tank"]));
+        continue;
+      }
+
+      expect(objective).toBeDefined();
+      if (!objective) continue;
+
+      if (kind === "baseAssault" || kind === "turretDefense" || kind === "infantryStorm") {
+        expect(objective.class).toBe("building");
+        const attackers = scene.state.entities.filter((entity) => entity.owner === (kind === "baseAssault" ? 0 : 1) && entity.attackTarget === objective.id);
+        expect(attackers.length).toBeGreaterThan(0);
+      } else if (kind === "harvesterAmbush") {
+        expect(objective.kind).toBe("harvester");
+        expect(scene.state.entities.some((entity) => entity.owner === 0 && entity.attackTarget === objective.id)).toBe(true);
+      } else if (kind === "convoyRaid") {
+        expect(objective.kind).toBe("convoyTruck");
+        expect(scene.convoyRoute?.length).toBe(2);
+        expect(objective.orderMode).toBe("move");
+        expect(scene.state.entities.some((entity) => entity.owner === 0 && entity.attackTarget === objective.id)).toBe(true);
+      }
+    }
   });
 
   it("keeps camera motion smooth with no sudden pixel jumps or cliff elevation flips during combat", () => {

@@ -18,7 +18,7 @@ import { oreVeinAt } from "./terrainOre";
 import { applyBiomeGroundPattern } from "./terrainPatches";
 import {
   terrainEdgeDarkening,
-  terrainLightRigFor,
+  terrainLightRigForBiome,
 } from "./terrainLighting";
 import {
   WATER_SHORE_MAX,
@@ -349,7 +349,7 @@ export type AtlasBakeContext = {
   shoreDist: Uint8Array;
   salt: number;
   mats: ReturnType<typeof materialsFor>;
-  rig: ReturnType<typeof terrainLightRigFor>;
+  rig: ReturnType<typeof terrainLightRigForBiome>;
   pixelFractions: number[];
   edgeFactors: number[];
   organicCorners: ReturnType<typeof bakeOrganicCornerBridges>;
@@ -367,7 +367,7 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
   const shoreDist = bakeWaterShoreDist(sceneryGrid);
   const salt = artSalt(state);
   const mats = materialsFor(state);
-  const rig = terrainLightRigFor(state.seed);
+  const rig = terrainLightRigForBiome(state.seed, state.biome);
   const pixelFractions = Array.from({ length: ATLAS_CELL }, (_, index) => (index + 0.5) / ATLAS_CELL);
   const edgeFactors = Array.from({ length: ATLAS_CELL * ATLAS_CELL }, (_, index) => {
     const lx = index % ATLAS_CELL;

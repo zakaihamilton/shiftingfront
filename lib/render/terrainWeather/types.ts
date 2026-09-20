@@ -6,6 +6,8 @@ export type WeatherParticle = {
   size: number;
   alpha: number;
   color: string;
+  rotation: number;
+  trail: number;
 };
 
 export type WaterCaustic = {

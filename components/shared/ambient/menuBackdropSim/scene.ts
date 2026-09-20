@@ -1,17 +1,20 @@
 import { createCampaign } from "@/lib/gen/campaign";
 import { generateMap } from "@/lib/gen/map";
 import { createMission, tick } from "@/lib/sim/api";
+import { assignMove } from "@/lib/sim/ai/combat";
 import { expandFog } from "@/lib/sim/fog";
 import { isStaticWalkable } from "@/lib/sim/world";
 import { TICKS_PER_SECOND, UNIT_STATS } from "@/lib/catalog";
 import type { AtlasWorld } from "@/lib/render/terrainAtlas";
-import type { BuildingKind, UnitKind } from "@/lib/types";
+import type { BuildingKind, UnitKind, Vec2 } from "@/lib/types";
 import { burstsFromEvents, type FxBurst } from "@/lib/render/fx";
 import {
   CINEMA_SCENARIO_KINDS,
   CINEMA_SEED,
+  CINEMA_SCENARIOS,
   populateScenarioForces,
   type CinemaScenarioKind,
+  type CinemaScenarioAnchor,
 } from "./scenarios";
 import { assignClashTargets } from "./combat";
 
@@ -24,6 +27,7 @@ export {
 const CINEMA_REFERENCE_FPS = 60;
 
 export type Actor = {
+  entityId: number;
   x: number;
   y: number;
   kind: UnitKind;
@@ -34,6 +38,65 @@ export type Actor = {
 };
 
 export type Shot = { ax: number; ay: number; bx: number; by: number; life: number };
+
+function walkableNear(state: ReturnType<typeof createMission>, preferred: { x: number; y: number }): { x: number; y: number } {
+  for (let r = 0; r <= 12; r++) {
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dy = -r; dy <= r; dy++) {
+        if (r > 0 && Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = Math.round(preferred.x + dx);
+        const y = Math.round(preferred.y + dy);
+        if (isStaticWalkable(state, x, y)) return { x, y };
+      }
+    }
+  }
+  return { x: Math.round(preferred.x), y: Math.round(preferred.y) };
+}
+
+function nearestResourceAnchor(
+  state: ReturnType<typeof createMission>,
+  preferred: { x: number; y: number },
+): { x: number; y: number } {
+  let best = preferred;
+  let bestDistance = Infinity;
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      if ((state.resourceAmount[y * state.width + x] ?? 0) <= 0) continue;
+      if (!isStaticWalkable(state, x, y)) continue;
+      const distance = Math.hypot(x - preferred.x, y - preferred.y);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = { x, y };
+      }
+    }
+  }
+  return walkableNear(state, best);
+}
+
+function scenarioAnchor(
+  state: ReturnType<typeof createMission>,
+  anchor: CinemaScenarioAnchor,
+  playerStart: { x: number; y: number },
+  enemyStart: { x: number; y: number },
+): { x: number; y: number } {
+  if (anchor === "playerBase") return walkableNear(state, playerStart);
+  if (anchor === "enemyBase") return walkableNear(state, enemyStart);
+  if (anchor === "resourceField") {
+    const preferred = state.entities.find((entity) => entity.owner === 1 && entity.class === "building" && entity.kind === "refinery");
+    return nearestResourceAnchor(state, preferred ?? enemyStart);
+  }
+  return walkableNear(state, {
+    x: (playerStart.x + enemyStart.x) / 2,
+    y: (playerStart.y + enemyStart.y) / 2,
+  });
+}
+
+function clampRoutePoint(state: ReturnType<typeof createMission>, point: Vec2): Vec2 {
+  return {
+    x: Math.max(1, Math.min(state.width - 2, Math.round(point.x))),
+    y: Math.max(1, Math.min(state.height - 2, Math.round(point.y))),
+  };
+}
 
 export function createCinemaScene(
   seed = CINEMA_SEED,
@@ -54,6 +117,7 @@ export function createCinemaScene(
       ? campaignSeed
       : ((campaignSeed - CINEMA_SEED + mIndex) % CINEMA_SCENARIO_KINDS.length + CINEMA_SCENARIO_KINDS.length) % CINEMA_SCENARIO_KINDS.length;
   const scenarioKind = scenarioOverride ?? CINEMA_SCENARIO_KINDS[scenarioIndex]!;
+  const scenarioDef = CINEMA_SCENARIOS[scenarioKind];
 
   // Reveal the full battlefield for the preview reconnaissance feed
   state.fog = expandFog(state.fog, state.width, state.height);
@@ -73,41 +137,11 @@ export function createCinemaScene(
 
   const p0 = map.playerStart;
   const e0 = map.enemyStart;
-  const defendingOwner = (scenarioKind === "turretDefense" || scenarioKind === "infantryStorm" || scenarioKind === "convoyRaid") ? 0 : 1;
-  const baseCenter = defendingOwner === 0 ? p0 : e0;
+  const anchor = scenarioAnchor(state, scenarioDef.anchor, p0, e0);
 
-  // Search for an open walkable clash zone centered directly at the defending base
-  let clashX = baseCenter.x;
-  let clashY = baseCenter.y;
-  for (let r = 0; r <= 8; r++) {
-    let found = false;
-    for (let dx = -r; dx <= r && !found; dx++) {
-      for (let dy = -r; dy <= r && !found; dy++) {
-        if (isStaticWalkable(state, baseCenter.x + dx, baseCenter.y + dy)) {
-          clashX = baseCenter.x + dx;
-          clashY = baseCenter.y + dy;
-          found = true;
-        }
-      }
-    }
-    if (found) break;
-  }
-
-  // Pre-calculated integer tile positions within widescreen PIP feed:
-  // Defenders hold the base while attackers advance inward.
-  const pSlots = [
-    { x: clashX - 1, y: clashY + 1 }, // (32, 80)
-    { x: clashX - 1, y: clashY },     // (80, 56)
-    { x: clashX,     y: clashY + 1 }, // (80, 104)
-    { x: clashX - 2, y: clashY },     // (32, 32)
-  ];
-
-  const eSlots = [
-    { x: clashX + 1, y: clashY - 1 }, // (224, 80)
-    { x: clashX,     y: clashY - 1 }, // (176, 56)
-    { x: clashX + 1, y: clashY },     // (176, 104)
-    { x: clashX,     y: clashY - 2 }, // (224, 32)
-  ];
+  const clash = walkableNear(state, anchor);
+  const clashX = clash.x;
+  const clashY = clash.y;
 
   // Clear distant base entities from createMission:
   // In the cinema highlight, only the localized clash units and buildings should exist.
@@ -115,26 +149,37 @@ export function createCinemaScene(
   // to flap and shift back and forth between advancing and retreating to a distant base.
   state.entities = [];
 
-  const { pUnits, eUnits } = populateScenarioForces(
+  const { pUnits, eUnits, objectiveTarget } = populateScenarioForces(
     state,
     scenarioKind,
-    pSlots,
-    eSlots,
     clashX,
     clashY,
   );
+  const convoyRoute = scenarioKind === "convoyRaid" && objectiveTarget?.class === "unit"
+    ? [
+        clampRoutePoint(state, { x: objectiveTarget.x + 3, y: objectiveTarget.y + 3 }),
+        clampRoutePoint(state, { x: objectiveTarget.x - 3, y: objectiveTarget.y - 3 }),
+      ]
+    : undefined;
 
   const fx: FxBurst[] = [];
   let fxSequence = 1;
 
-  const reassignTargets = () => assignClashTargets(state, clashX, clashY);
+  const reassignTargets = () => assignClashTargets(
+    state,
+    scenarioKind,
+    objectiveTarget?.id,
+    clashX,
+    clashY,
+    10,
+  );
 
   // Fast-forward ticks to bring combat into full swing
   for (let t = 0; t < 18; t++) {
     const { events } = tick(state, undefined, { evaluateObjectives: false });
     state.fog.fill(2);
     for (const u of [...pUnits, ...eUnits]) {
-      if (u.orderDestination && Math.hypot(u.orderDestination.x - clashX, u.orderDestination.y - clashY) > 4) {
+      if (u.orderDestination && Math.hypot(u.orderDestination.x - clashX, u.orderDestination.y - clashY) > 10) {
         u.path = [];
         u.routePending = false;
         u.orderDestination = undefined;
@@ -161,18 +206,22 @@ export function createCinemaScene(
     u.orderDestination = undefined;
     u.orderMode = undefined;
   }
+  if (convoyRoute && objectiveTarget?.class === "unit") {
+    assignMove(state, objectiveTarget, convoyRoute[0]!);
+  }
   reassignTargets();
   state.fog.fill(2);
 
   const buildings: { x: number; y: number; kind: BuildingKind; owner: 0 | 1 }[] = state.entities
     .filter((e) => e.class === "building" && e.hp > 0)
-    .map((b) => ({ x: b.x, y: b.y, kind: b.kind as BuildingKind, owner: b.owner as 0 | 1 }));
+    .map((b) => ({ id: b.id, x: b.x, y: b.y, kind: b.kind as BuildingKind, owner: b.owner as 0 | 1 }));
 
   // Active combat actors for backward-compatibility and tests
   const combatActors = [...pUnits, ...eUnits];
   const actors: Actor[] = combatActors.map((u, i) => {
     const opp = u.owner === 0 ? eUnits[i % eUnits.length]! : pUnits[i % pUnits.length]!;
     return {
+      entityId: u.id,
       x: u.x,
       y: u.y,
       kind: u.kind as UnitKind,
@@ -187,6 +236,17 @@ export function createCinemaScene(
   });
 
   const combatEpicenter = { x: clashX, y: clashY };
+  const cameraFocus = objectiveTarget
+    ? { x: objectiveTarget.x, y: objectiveTarget.y }
+    : combatEpicenter;
+  const cameraFocusPoints = [
+    actors[1],
+    actors[0],
+    buildings[0],
+    actors[2],
+    actors[3],
+    buildings[1],
+  ].map((focus) => ({ x: focus?.x ?? clashX, y: focus?.y ?? clashY }));
 
   return {
     seed: campaignSeed,
@@ -202,6 +262,18 @@ export function createCinemaScene(
     fx,
     fxSequence,
     combatEpicenter,
+    cameraFocus,
+    cameraFocusPoints,
+    scenarioTargetId: objectiveTarget?.id,
+    convoyRoute,
+    convoyRouteIndex: 0,
+    cameraFramingEntities: state.entities.map((e) => ({
+      class: e.class,
+      kind: e.kind,
+      x: e.x,
+      y: e.y,
+      hp: e.hp,
+    })),
     simulationAccumulatorMs: 0,
     lastStepMs: undefined as number | undefined,
   };

@@ -6,6 +6,7 @@ import {
   cinemaShotCamera,
   createCinemaScene,
   PREVIEW_INITIAL_DELAY_MS,
+  PREVIEW_PLAY_MS,
   PREVIEW_LOCK_COUNT,
   PREVIEW_LOCK_IDS,
   PREVIEW_SHOT_COUNT,
@@ -13,20 +14,20 @@ import {
   previewMissionIndex,
   previewScenarioKind,
   previewSeed,
+  isCinemaSceneReady,
+  prepareCinemaScene,
   renderCinemaFrame,
   resetUnitTransformTracker,
   stepCinemaScene,
-  type CinemaScene,
+  type PreparedCinemaScene,
   type PreviewPhase,
   type Shot,
 } from "@/components/shared/ambient/menuBackdropSim";
-import { preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
 import styles from "./MenuSignalOverlay.module.css";
 
 const REDUCE_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const FEED_WIDTH = 768;
 const FEED_HEIGHT = 512;
-const PREVIEW_ATLAS_ROWS_PER_CHUNK = 32;
 
 function subscribeReduceMotion(onStoreChange: () => void) {
   const media = window.matchMedia?.(REDUCE_MOTION_QUERY);
@@ -77,15 +78,13 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
     resetUnitTransformTracker();
     const initialCycleIndex = previewRef.current.cycleIndex;
     const initialSeed = previewSeed(initialCycleIndex);
-    let scene = createCinemaScene(
+    let prepared = prepareCinemaScene(createCinemaScene(
       initialSeed,
       previewMissionIndex(initialCycleIndex, initialSeed),
       previewScenarioKind(initialCycleIndex),
-    );
-    preloadTerrainAtlas(scene.ground, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
-    if (scene.state) preloadTerrainAtlas(scene.state, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
+    ));
 
-    let nextScene: CinemaScene | null = null;
+    let nextPrepared: PreparedCinemaScene | null = null;
     let cycleIndex = previewRef.current.cycleIndex;
     const shots: Shot[] = [];
     let raf = 0;
@@ -105,44 +104,45 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
       if (next.cycleIndex !== cycleIndex) {
         resetUnitTransformTracker();
         const seed = previewSeed(next.cycleIndex);
-        scene = nextScene ?? createCinemaScene(
+        prepared = nextPrepared ?? prepareCinemaScene(createCinemaScene(
           seed,
           previewMissionIndex(next.cycleIndex, seed),
           previewScenarioKind(next.cycleIndex),
-        );
-        preloadTerrainAtlas(scene.ground, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
-        if (scene.state) preloadTerrainAtlas(scene.state, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
-        nextScene = null;
+        ));
+        nextPrepared = null;
         shots.length = 0;
         cycleIndex = next.cycleIndex;
-      } else if (!next.expanded && nextScene === null) {
+      } else if (
+        !next.expanded
+        && elapsedRef.current >= PREVIEW_INITIAL_DELAY_MS + PREVIEW_PLAY_MS
+        && nextPrepared === null
+      ) {
         const nextSeed = previewSeed(next.cycleIndex + 1);
-        nextScene = createCinemaScene(
+        nextPrepared = prepareCinemaScene(createCinemaScene(
           nextSeed,
           previewMissionIndex(next.cycleIndex + 1, nextSeed),
           previewScenarioKind(next.cycleIndex + 1),
-        );
-        preloadTerrainAtlas(nextScene.ground, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
-        if (nextScene.state) preloadTerrainAtlas(nextScene.state, { rowsPerChunk: PREVIEW_ATLAS_ROWS_PER_CHUNK });
+        ));
       }
 
-      // The terrain renderer has a useful material fallback while the async
-      // atlas is baking, so do not suppress the first preview window waiting
-      // for the high-detail atlas. Otherwise a slow bake can consume the
-      // entire five-second play window and leave the menu with no live feed.
-      const effectivePreview = next;
+      let effectivePreview: PreviewPhase = isCinemaSceneReady(prepared) && next.expanded
+        ? next
+        : { ...next, expanded: false };
 
       if (effectivePreview.expanded) {
-        stepCinemaScene(scene, shots, t, now);
-        const canvas = canvasRefs.current[effectivePreview.lockIndex];
-        const ctx = canvas?.getContext("2d");
-        if (canvas && ctx) {
+        try {
+          stepCinemaScene(prepared.scene, shots, t, now);
+          const canvas = canvasRefs.current[effectivePreview.lockIndex];
+          const ctx = canvas?.getContext("2d");
+          if (!canvas || !ctx) throw new Error("Gameplay preview canvas is unavailable");
           if (canvas.width !== FEED_WIDTH) canvas.width = FEED_WIDTH;
           if (canvas.height !== FEED_HEIGHT) canvas.height = FEED_HEIGHT;
-          renderCinemaFrame(ctx, canvas.width, canvas.height, t, scene, shots, {
-            camera: cinemaShotCamera(scene, effectivePreview.shotIndex, canvas.width, canvas.height),
-            paintAmbient: false,
+          renderCinemaFrame(ctx, canvas.width, canvas.height, t, prepared.scene, shots, {
+            camera: cinemaShotCamera(prepared.scene, effectivePreview.shotIndex, canvas.width, canvas.height),
+            renderMode: "gameplay",
           });
+        } catch {
+          effectivePreview = { ...effectivePreview, expanded: false };
         }
       }
 
@@ -191,6 +191,8 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
               className={styles.lock}
               data-lock={id}
               data-expanded={expanded ? "true" : "false"}
+              data-render-mode={expanded ? "gameplay" : undefined}
+              data-scenario={expanded ? preview.scenarioKind : undefined}
               data-shot={expanded ? String(preview.shotIndex) : undefined}
               data-seed={expanded ? String(previewSeed(preview.cycleIndex)) : undefined}
             >

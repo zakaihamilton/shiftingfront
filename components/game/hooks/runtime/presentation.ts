@@ -29,22 +29,26 @@ export function createPresentationCoordinator({
 }) {
   let appliedIntensity: MusicIntensity = "calm";
   let lastCombatTick = Number.NEGATIVE_INFINITY;
+  let criticalUntilTick = Number.NEGATIVE_INFINITY;
 
   return {
     reset() {
       appliedIntensity = "calm";
       lastCombatTick = Number.NEGATIVE_INFINITY;
+      criticalUntilTick = Number.NEGATIVE_INFINITY;
     },
     onTick(state: SimState, events: SimEvent[], now: number) {
       if (events.some((event) => event.type === "combat")) lastCombatTick = state.tick;
       const terminal = events.some((event) => event.type === "won" || event.type === "lost");
       if (terminal) pauseMusic();
       const alert = firstAlert(events);
+      if (alert?.kind === "warning") criticalUntilTick = Math.max(criticalUntilTick, state.tick + 24);
       const intensity = desiredMusicIntensity(
         state.runtime?.director?.phase,
         state.tick,
         lastCombatTick,
         alert?.kind === "warning",
+        criticalUntilTick,
       );
       if (!terminal && intensity !== appliedIntensity) {
         appliedIntensity = intensity;
