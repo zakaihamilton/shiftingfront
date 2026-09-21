@@ -8,23 +8,68 @@ import { fogAt } from "../../sim/fog";
 import { biomeMaterials, fogTerrainGain, getTerrainAtlas, tileVariant, type AtlasWorld, type TerrainAtlas } from "../terrainAtlas";
 import { SceneryMemo } from "../sceneryMemo";
 import { drawConcreteSlab } from "../terrainPlates";
-import { isoDiamondPath } from "../isoDiamond";
+import { isoDiamondPath, roundedIsoDiamondPath, type IsoDiamondCornerRadii } from "../isoDiamond";
 import { paintShroudOverlay, paintShroudMaskTile, drawAtlasDiamond } from "./tile";
 import { smoothFogGain, drawBlockerProp, drawOreCrystals } from "./details";
 import { drawTerrainScatter } from "./scatter";
 import { SHROUD_FILL, SHROUD_RGB, TERRAIN_COVER } from "./constants";
 import { drawElevationFaces, fillElevationPoly, fillElevationRamp, softElevationRampStops } from "./cliffs";
 import { terrainLightRigForBiome } from "../terrainLighting";
-import { terrainVisualTuningFor } from "../terrainMaterials";
+import { hash2, terrainVisualTuningFor } from "../terrainMaterials";
 
 const sceneryMemo = new SceneryMemo();
+const SKIRT_COVER = 1.14;
+const SKIRT_CORNER_RADIUS_MIN = 0.08;
+const SKIRT_CORNER_RADIUS_RANGE = 0.08;
+const SKIRT_CORNER_SALT = 0x4b1d;
+const SKIRT_BLUR_PX = 5;
+
+let skirtCanvas: HTMLCanvasElement | null = null;
 
 export function clearTerrainPaintCache(): void {
   sceneryMemo.clear();
+  skirtCanvas = null;
 }
 
 function memoScenery(state: AtlasWorld & { tick?: number }, x: number, y: number) {
   return sceneryMemo.sample(state, x, y);
+}
+
+function skirtCornerRadii(
+  state: AtlasWorld,
+  x: number,
+  y: number,
+  tw: number,
+  th: number,
+): IsoDiamondCornerRadii {
+  const scale = Math.min(tw, th);
+  const radiusAt = (cornerX: number, cornerY: number): number => (
+    scale * (SKIRT_CORNER_RADIUS_MIN + hash2(cornerX, cornerY, state.seed + SKIRT_CORNER_SALT) * SKIRT_CORNER_RADIUS_RANGE)
+  );
+  return [
+    radiusAt(x, y),
+    radiusAt(x + 1, y),
+    radiusAt(x + 1, y + 1),
+    radiusAt(x, y + 1),
+  ];
+}
+
+function skirtRenderTarget(ctx: CanvasRenderingContext2D): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  if (typeof document === "undefined" || typeof HTMLCanvasElement === "undefined" || !(ctx.canvas instanceof HTMLCanvasElement)) {
+    return null;
+  }
+  if (!skirtCanvas) skirtCanvas = document.createElement("canvas");
+  if (skirtCanvas.width !== ctx.canvas.width || skirtCanvas.height !== ctx.canvas.height) {
+    skirtCanvas.width = ctx.canvas.width;
+    skirtCanvas.height = ctx.canvas.height;
+  }
+  const target = skirtCanvas.getContext("2d");
+  if (!target) return null;
+  target.setTransform(1, 0, 0, 1, 0, 0);
+  target.globalAlpha = 1;
+  target.filter = "none";
+  target.clearRect(0, 0, skirtCanvas.width, skirtCanvas.height);
+  return { canvas: skirtCanvas, ctx: target };
 }
 
 function wetBankColors(
@@ -106,10 +151,19 @@ function paintCell(
   const tw = TILE_W * z;
   const th = TILE_H * z;
   const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
+  const skirt = !inMap;
   ctx.save();
   ctx.globalAlpha *= skirtAlpha(x, y, state.width, state.height);
   const concrete = inMap && state.surfaces[y * state.width + x] === SURFACE_CONCRETE;
-  const cover = expandIsoDiamond(s.x, s.y, tw, th, concrete ? 1 : water ? WATER_COVER : TERRAIN_COVER);
+  const cover = expandIsoDiamond(s.x, s.y, tw, th, skirt ? SKIRT_COVER : concrete ? 1 : water ? WATER_COVER : TERRAIN_COVER);
+  const cornerRadii = skirt ? skirtCornerRadii(state, x, y, tw, th) : null;
+  const paintSurfacePath = () => {
+    if (cornerRadii) {
+      roundedIsoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h, cornerRadii);
+    } else {
+      isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
+    }
+  };
   const eastSc = memoScenery(state, x + 1, y);
   const southSc = memoScenery(state, x, y + 1);
   const eastS = tileToScreen(x + 1, y, cam, eastSc.elev);
@@ -156,22 +210,22 @@ function paintCell(
   }
 
   ctx.save();
-  isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
+  paintSurfacePath();
   ctx.clip();
   const mats = biomeMaterials(state.biome);
   const base = water ? mats.waterMid : concrete ? mats.concrete : mats.mid;
   ctx.fillStyle = `rgb(${base.r},${base.g},${base.b})`;
-  isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
+  paintSurfacePath();
   ctx.fill();
   if (atlas.canvas) {
-    drawAtlasDiamond(ctx, atlas, x, y, s.x, s.y, tw, th);
+    drawAtlasDiamond(ctx, atlas, x, y, skirt ? cover.x : s.x, skirt ? cover.y : s.y, skirt ? cover.w : tw, skirt ? cover.h : th);
   } else if (concrete) {
     // Keep the specialized slab as a no-atlas fallback; the normal browser
     // path uses the atlas so concrete participates in organic land edges.
     drawConcreteSlab(ctx, s.x, s.y, tw, th, z, tileVariant(state.seed, x, y), 1);
   } else {
     ctx.fillStyle = `rgb(${mats.mid.r},${mats.mid.g},${mats.mid.b})`;
-    isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
+    paintSurfacePath();
     ctx.fill();
   }
   ctx.restore();
@@ -353,14 +407,34 @@ export function paintTerrainSurface(
   const atlas = getTerrainAtlas(state);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  // The decorative skirt sits behind the playable map. In particular, a
-  // low-elevation skirt-water diamond must not paint over the lower edge of
-  // a higher playable tile just because water is rendered in its own pass.
-  visitVisibleTiles(ctx, state, cam, (x, y) => {
-    const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
-    if (inMap || memoScenery(state, x, y).kind !== TILE_WATER) return;
-    paintCell(ctx, state, cam, atlas, x, y, true, gainAt);
-  });
+  const skirtTarget = skirtRenderTarget(ctx);
+  const paintSkirt = (target: CanvasRenderingContext2D) => {
+    // The decorative skirt sits behind the playable map. In particular, a
+    // low-elevation skirt-water diamond must not paint over the lower edge of
+    // a higher playable tile just because water is rendered in its own pass.
+    visitVisibleTiles(target, state, cam, (x, y) => {
+      const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
+      if (inMap || memoScenery(state, x, y).kind !== TILE_WATER) return;
+      paintCell(target, state, cam, atlas, x, y, true, gainAt);
+    });
+    visitVisibleTiles(target, state, cam, (x, y) => {
+      const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
+      if (inMap) return;
+      paintCell(target, state, cam, atlas, x, y, false, gainAt);
+    });
+  };
+
+  if (skirtTarget) {
+    paintSkirt(skirtTarget.ctx);
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.filter = `blur(${SKIRT_BLUR_PX}px)`;
+    ctx.drawImage(skirtTarget.canvas, 0, 0);
+    ctx.restore();
+  } else {
+    paintSkirt(ctx);
+  }
+
   // Paint water before land. Water is level 0, so drawing it after the land
   // pass makes its diamond cover the lower part of neighboring elevated land
   // and cliff faces, including neighbors earlier in isometric depth order.
@@ -370,6 +444,8 @@ export function paintTerrainSurface(
     paintCell(ctx, state, cam, atlas, x, y, true, gainAt);
   });
   visitVisibleTiles(ctx, state, cam, (x, y) => {
+    const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
+    if (!inMap) return;
     paintCell(ctx, state, cam, atlas, x, y, false, gainAt);
   });
   // Low scatter sits with the atlas so the shroud darkens unexplored clutter.

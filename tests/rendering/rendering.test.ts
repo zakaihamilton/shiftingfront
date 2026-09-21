@@ -851,7 +851,7 @@ describe("terrain scroll cache key", () => {
     const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" }, seed: 832 });
     const cam = createCamera();
     const a = terrainContentKey(state, cam, 640, 360);
-    expect(a).toContain("world-atlas-v30-rounded-mineral-scatter");
+    expect(a).toContain("world-atlas-v31-soft-skirt-backdrop");
     cam.x += 40;
     cam.y -= 18;
     expect(terrainContentKey(state, cam, 640, 360)).toBe(a);

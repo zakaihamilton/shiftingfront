@@ -8,7 +8,7 @@ import type { Camera } from "../../iso";
 import { isTerrainAtlasBaked, terrainGrainGeneration } from "../terrainAtlas";
 import { terrainLayoutSignature } from "../terrainAtlasBake";
 
-const TERRAIN_RENDER_REV = "world-atlas-v30-rounded-mineral-scatter";
+const TERRAIN_RENDER_REV = "world-atlas-v31-soft-skirt-backdrop";
 
 const terrainScroll: ScrollLayer = emptyScrollLayer();
 let terrainCanvas: HTMLCanvasElement | null = null;

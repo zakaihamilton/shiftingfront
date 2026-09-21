@@ -13,7 +13,9 @@ import { idx } from "./terrain";
 import { type GeneratedMap } from "./generator";
 
 export const MAP_SKIRT = 14;
-export const MAP_SKIRT_ALPHA = 0.42;
+export const MAP_SKIRT_ALPHA = 0.34;
+const MAP_SKIRT_MIN_ALPHA = 0.08;
+const MAP_SKIRT_FADE_END = 10;
 
 export type ScenerySample = { kind: number; elev: number };
 
@@ -34,7 +36,11 @@ export function outsideDist(x: number, y: number, w: number, h: number): number 
 }
 
 export function skirtAlpha(x: number, y: number, w: number, h: number): number {
-  return outsideDist(x, y, w, h) <= 0 ? 1 : MAP_SKIRT_ALPHA;
+  const dist = outsideDist(x, y, w, h);
+  if (dist <= 0) return 1;
+  const t = Math.max(0, Math.min(1, (dist - 1) / (MAP_SKIRT_FADE_END - 1)));
+  const eased = t * t * (3 - 2 * t);
+  return MAP_SKIRT_MIN_ALPHA + (MAP_SKIRT_ALPHA - MAP_SKIRT_MIN_ALPHA) * (1 - eased);
 }
 
 export function skirtSample(

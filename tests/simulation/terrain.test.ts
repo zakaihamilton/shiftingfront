@@ -194,7 +194,11 @@ describe("map skirt scenery", () => {
     expect(skirtAlpha(0, 0, w, h)).toBe(1);
     expect(skirtAlpha(w - 1, h - 1, w, h)).toBe(1);
     expect(skirtAlpha(-1, 8, w, h)).toBe(MAP_SKIRT_ALPHA);
-    expect(skirtAlpha(w + MAP_SKIRT - 1, 8, w, h)).toBe(MAP_SKIRT_ALPHA);
+    const midSkirtAlpha = skirtAlpha(-4, 8, w, h);
+    expect(midSkirtAlpha).toBeLessThan(skirtAlpha(-1, 8, w, h));
+    expect(midSkirtAlpha).toBe(skirtAlpha(-4, 8, w, h));
+    expect(skirtAlpha(w + MAP_SKIRT - 1, 8, w, h)).toBeLessThan(MAP_SKIRT_ALPHA);
+    expect(skirtAlpha(w + MAP_SKIRT - 1, 8, w, h)).toBeGreaterThan(0);
     expect(MAP_SKIRT_ALPHA).toBeGreaterThan(0);
     expect(MAP_SKIRT_ALPHA).toBeLessThan(1);
   });

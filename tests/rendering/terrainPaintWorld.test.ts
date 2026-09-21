@@ -7,8 +7,9 @@ import { clearTerrainPaintCache, paintTerrainSurface } from "../../lib/render/te
 import { invalidateTerrainAtlas } from "../../lib/render/terrainAtlas";
 
 type DrawCall = unknown[];
+type PathCall = { name: string; args: unknown[] };
 
-function createContext(width: number, height: number, drawCalls: DrawCall[] = []): CanvasRenderingContext2D {
+function createContext(width: number, height: number, drawCalls: DrawCall[] = [], pathCalls: PathCall[] = []): CanvasRenderingContext2D {
   const target = {
     canvas: { width, height },
     globalAlpha: 1,
@@ -22,6 +23,11 @@ function createContext(width: number, height: number, drawCalls: DrawCall[] = []
     }),
     putImageData: vi.fn(),
     drawImage: (...args: unknown[]) => drawCalls.push(args),
+    beginPath: () => pathCalls.push({ name: "beginPath", args: [] }),
+    moveTo: (...args: unknown[]) => pathCalls.push({ name: "moveTo", args }),
+    lineTo: (...args: unknown[]) => pathCalls.push({ name: "lineTo", args }),
+    arcTo: (...args: unknown[]) => pathCalls.push({ name: "arcTo", args }),
+    closePath: () => pathCalls.push({ name: "closePath", args: [] }),
   };
   return new Proxy(target, {
     get(object, property, receiver) {
@@ -84,5 +90,24 @@ describe("live terrain surface renderer", () => {
     expect(elevatedNorthLandDraw).toBeGreaterThanOrEqual(0);
     expect(waterDraw).toBeLessThan(elevatedLandDraw);
     expect(waterDraw).toBeLessThan(elevatedNorthLandDraw);
+  });
+
+  it("softens only the out-of-map terrain geometry", () => {
+    const skirtState = makeFixture({ width: 8, height: 8, seed: 832, win: { kind: "annihilate" } });
+    const skirtPaths: PathCall[] = [];
+    paintTerrainSurface(createContext(640, 480, [], skirtPaths), skirtState, createCamera());
+    expect(skirtPaths.filter((call) => call.name === "arcTo").length).toBeGreaterThan(0);
+
+    clearTerrainPaintCache();
+    invalidateTerrainAtlas();
+    const interiorState = makeFixture({ width: 96, height: 96, seed: 832, win: { kind: "annihilate" } });
+    const interiorPaths: PathCall[] = [];
+    paintTerrainSurface(
+      createContext(640, 480, [], interiorPaths),
+      interiorState,
+      { x: 320, y: -784, zoom: 1 },
+    );
+    expect(interiorPaths.filter((call) => call.name === "arcTo")).toHaveLength(0);
+    expect(interiorPaths.filter((call) => call.name === "lineTo").length).toBeGreaterThan(0);
   });
 });

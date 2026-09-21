@@ -112,7 +112,7 @@
   margin-top: 0.7rem;
   padding-top: 0.7rem;
   border-top: 1px solid var(--chrome-line);
-  background: var(--chrome-surface-deep);
+  background: transparent;
 }
 
 .actions :global(button) {
