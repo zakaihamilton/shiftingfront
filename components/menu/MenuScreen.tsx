@@ -21,6 +21,7 @@ export function MenuScreen() {
       data-high-contrast={controller.settings.highContrast ? "true" : "false"}
       data-reduced-motion={controller.settings.reducedMotion ? "true" : "false"}
       data-colorblind={controller.settings.colorblindMode}
+      data-hud-scale={controller.settings.hudScale ?? "normal"}
       style={{ "--scene-art": `url("${RASTER_ART.menu}")` } as CSSProperties}
     >
       <DocumentTitle title="Shifting Front" />
@@ -89,6 +90,7 @@ export function MenuScreen() {
         onToggleReducedMotion={controller.toggleReducedMotion}
         onToggleHighContrast={controller.toggleHighContrast}
         onCycleColorblind={controller.cycleColorblind}
+        onCycleHudScale={controller.cycleHudScale}
         onUpdateKeyBindings={controller.updateKeyBindings}
         onVolumeChange={controller.updateVolume}
         onBack={controller.goBack}

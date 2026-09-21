@@ -171,7 +171,7 @@
   background: var(--chrome-void);
   color: var(--chrome-text);
   padding: 0 3px;
-  font-size: 0.62rem;
+  font-size: calc(0.72rem * var(--hud-scale, 1));
   font-weight: 800;
   line-height: 1.2;
   text-align: center;
@@ -181,8 +181,7 @@
 .caption {
   display: grid;
   box-sizing: border-box;
-  height: 2.55rem;
-  min-height: 2.55rem;
+  min-height: calc(2.65rem * var(--hud-scale, 1));
   overflow: hidden;
   gap: 2px;
   border-top: 1px solid var(--chrome-inset);
@@ -201,20 +200,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.52rem;
+  font-size: calc(0.70rem * var(--hud-scale, 1));
   letter-spacing: 0.04em;
 }
 
 .caption b {
   color: var(--chrome-gold);
-  font-size: 0.58rem;
+  font-size: calc(0.72rem * var(--hud-scale, 1));
 }
 
 .status {
   overflow: hidden;
   color: var(--chrome-cyan);
   font-family: var(--font-mono);
-  font-size: 0.43rem;
+  font-size: calc(0.64rem * var(--hud-scale, 1));
   font-weight: 700;
   letter-spacing: 0.03em;
   line-height: 1.2;
@@ -231,7 +230,7 @@
   overflow: hidden;
   color: var(--chrome-muted);
   font-family: var(--font-mono);
-  font-size: 0.4rem;
+  font-size: calc(0.62rem * var(--hud-scale, 1));
   letter-spacing: 0.02em;
   line-height: 1.15;
   text-overflow: ellipsis;

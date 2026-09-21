@@ -5,6 +5,7 @@ export const SETTINGS_KEY = "shiftingfront:settings";
 export const SETTINGS_VERSION = 3 as const;
 
 export type ColorblindMode = "none" | "deuteranopia" | "protanopia" | "tritanopia";
+export type HudScale = "compact" | "normal" | "large";
 
 export type KeyBindings = {
   panUp: string;
@@ -47,6 +48,7 @@ export type GameSettings = {
   reducedMotion: boolean;
   highContrast: boolean;
   colorblindMode: ColorblindMode;
+  hudScale: HudScale;
   keyBindings: KeyBindings;
 };
 
@@ -60,6 +62,7 @@ export function defaultSettings(): GameSettings {
     reducedMotion: false,
     highContrast: false,
     colorblindMode: "none",
+    hudScale: "normal",
     keyBindings: defaultKeyBindings(),
   };
 }
@@ -103,6 +106,10 @@ function normalize(value: unknown): GameSettings {
   const colorblindMode = typeof raw.colorblindMode === "string" && (validModes as string[]).includes(raw.colorblindMode)
     ? raw.colorblindMode
     : "none";
+  const validHudScales: HudScale[] = ["compact", "normal", "large"];
+  const hudScale = typeof raw.hudScale === "string" && (validHudScales as string[]).includes(raw.hudScale)
+    ? (raw.hudScale as HudScale)
+    : "normal";
 
   return {
     sfxEnabled: raw.sfxEnabled !== false,
@@ -113,6 +120,7 @@ function normalize(value: unknown): GameSettings {
     reducedMotion: raw.reducedMotion === true,
     highContrast: raw.highContrast === true,
     colorblindMode,
+    hudScale,
     keyBindings: normalizeKeyBindings(raw.keyBindings),
   };
 }
@@ -142,6 +150,7 @@ export function writeSettings(storage: StorageAdapter, settings: GameSettings): 
       reducedMotion: settings.reducedMotion === true,
       highContrast: settings.highContrast === true,
       colorblindMode: settings.colorblindMode || "none",
+      hudScale: settings.hudScale || "normal",
       keyBindings: normalizeKeyBindings(settings.keyBindings),
     },
   }));

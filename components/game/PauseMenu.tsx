@@ -42,6 +42,7 @@ export function PauseMenu({
   onToggleReducedMotion,
   onToggleHighContrast,
   onCycleColorblind,
+  onCycleHudScale,
   onUpdateKeyBindings,
   onVolumeChange,
   telemetryRecordCount,
@@ -75,6 +76,7 @@ export function PauseMenu({
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onCycleColorblind?: () => void;
+  onCycleHudScale?: () => void;
   onUpdateKeyBindings?: (bindings: KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
   telemetryRecordCount?: number;
@@ -137,6 +139,7 @@ export function PauseMenu({
             onToggleReducedMotion={onToggleReducedMotion}
             onToggleHighContrast={onToggleHighContrast}
             onCycleColorblind={onCycleColorblind}
+            onCycleHudScale={onCycleHudScale}
             onUpdateKeyBindings={onUpdateKeyBindings}
             onVolumeChange={onVolumeChange}
             onDiagnostics={onDiagnostics}

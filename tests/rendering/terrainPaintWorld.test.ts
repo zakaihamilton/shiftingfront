@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeFixture } from "../../lib/sim/fixtures";
+import { makeFixture, setHeight, setTile, TILE_WATER } from "../../lib/sim/fixtures";
 import { SURFACE_CONCRETE } from "../../lib/types";
 import { createCamera } from "../../lib/iso";
 import { clearTerrainPaintCache, paintTerrainSurface } from "../../lib/render/terrainPaint/world";
@@ -64,5 +64,25 @@ describe("live terrain surface renderer", () => {
 
     expect(clearDraws).toBeGreaterThan(0);
     expect(concreteDraws).toBe(clearDraws);
+  });
+
+  it("renders water before a neighboring elevated tile", () => {
+    const state = makeFixture({ width: 8, height: 8, seed: 832, win: { kind: "annihilate" } });
+    setTile(state, 3, 3, TILE_WATER);
+    setHeight(state, 3, 3, 0);
+    setHeight(state, 4, 3, 1);
+    setHeight(state, 3, 2, 1);
+    const drawCalls: DrawCall[] = [];
+
+    paintTerrainSurface(createContext(640, 480, drawCalls), state, createCamera());
+
+    const waterDraw = drawCalls.findIndex((call) => call[1] === 17 * 8 - 1 && call[2] === 17 * 8 - 1);
+    const elevatedLandDraw = drawCalls.findIndex((call) => call[1] === 18 * 8 - 1 && call[2] === 17 * 8 - 1);
+    const elevatedNorthLandDraw = drawCalls.findIndex((call) => call[1] === 17 * 8 - 1 && call[2] === 16 * 8 - 1);
+    expect(waterDraw).toBeGreaterThanOrEqual(0);
+    expect(elevatedLandDraw).toBeGreaterThanOrEqual(0);
+    expect(elevatedNorthLandDraw).toBeGreaterThanOrEqual(0);
+    expect(waterDraw).toBeLessThan(elevatedLandDraw);
+    expect(waterDraw).toBeLessThan(elevatedNorthLandDraw);
   });
 });

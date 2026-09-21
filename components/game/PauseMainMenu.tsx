@@ -1,6 +1,5 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
-import { useFullscreen } from "@/lib/ui/fullscreen";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./PauseMenu.module.css";
 
@@ -25,8 +24,6 @@ export function PauseMainMenu({
   onOptions: () => void;
   onMenu: () => void;
 }) {
-  const fullscreen = useFullscreen();
-
   return (
     <>
       <ConsoleLabel>Shifting Front</ConsoleLabel>
@@ -48,15 +45,6 @@ export function PauseMainMenu({
         </div>
         <div className={styles.group}>
           <ConsoleLabel className={styles.groupLabel}>Campaign</ConsoleLabel>
-          {fullscreen.isSupported ? (
-            <ConsoleButton
-              className={styles.action}
-              tooltip={`Toggle browser fullscreen (${fullscreen.shortcut})`}
-              onClick={fullscreen.toggle}
-            >
-              Fullscreen: {fullscreen.isFullscreen ? "On" : "Off"}
-            </ConsoleButton>
-          ) : null}
           <ConsoleButton className={styles.action} tooltip="Audio, display, and data options" shortcut={SHORTCUT.options} onClick={onOptions}>Options</ConsoleButton>
           <ConsoleButton muted className={styles.action} tooltip="Leave the campaign" shortcut={SHORTCUT.menu} onClick={onMenu}>Main Menu</ConsoleButton>
         </div>

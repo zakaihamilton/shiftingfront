@@ -7,6 +7,19 @@
   overflow: hidden;
   background: var(--chrome-void);
   color: var(--chrome-body);
+  --hud-scale: 1;
+}
+
+.shell[data-hud-scale="compact"] {
+  --hud-scale: 0.9;
+}
+
+.shell[data-hud-scale="normal"] {
+  --hud-scale: 1;
+}
+
+.shell[data-hud-scale="large"] {
+  --hud-scale: 1.15;
 }
 
 .shell[data-high-contrast="true"] {

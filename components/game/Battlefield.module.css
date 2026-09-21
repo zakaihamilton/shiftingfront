@@ -92,7 +92,7 @@
 .statusGlyph {
   margin-right: 0.35rem;
   color: var(--chrome-gold);
-  font-size: 0.55rem;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
 }
 
 .level {
@@ -128,7 +128,7 @@
 .profile {
   margin-top: 0.24rem;
   color: var(--chrome-cyan);
-  font-size: 0.58rem;
+  font-size: calc(0.70rem * var(--hud-scale, 1));
   font-weight: 800;
   letter-spacing: 0.16em;
 }
@@ -187,7 +187,7 @@
 .directiveKicker,
 .secondaryHeader {
   color: var(--chrome-gold);
-  font-size: 0.51rem;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
   font-weight: 800;
   letter-spacing: 0.16em;
 }
@@ -205,12 +205,12 @@
   place-items: center;
   border: 1px solid currentColor;
   color: var(--chrome-gold);
-  font-size: 0.58rem;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
 }
 
 .objective > strong {
   color: var(--chrome-text);
-  font-size: 0.7rem;
+  font-size: calc(0.72rem * var(--hud-scale, 1));
   line-height: 1.35;
 }
 
@@ -219,7 +219,7 @@
   align-items: center;
   gap: 0.45rem;
   color: var(--chrome-cyan);
-  font-size: 0.59rem;
+  font-size: calc(0.70rem * var(--hud-scale, 1));
   font-weight: 800;
 }
 
@@ -241,14 +241,14 @@
   justify-content: space-between;
   gap: 0.5rem;
   color: var(--chrome-cyan);
-  font-size: 0.51rem;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
   font-weight: 800;
   letter-spacing: 0.14em;
 }
 
 .doctrineHeader span {
   color: var(--chrome-muted);
-  font-size: 0.45rem;
+  font-size: calc(0.64rem * var(--hud-scale, 1));
   font-weight: 600;
   letter-spacing: 0.08em;
 }
@@ -263,14 +263,14 @@
   display: grid;
   gap: 0.12rem;
   color: var(--chrome-muted);
-  font-size: 0.58rem;
+  font-size: calc(0.72rem * var(--hud-scale, 1));
   line-height: 1.35;
   text-transform: none;
 }
 
 .doctrineItem strong {
   color: var(--chrome-gold);
-  font-size: 0.5rem;
+  font-size: calc(0.66rem * var(--hud-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -372,7 +372,7 @@
   align-items: center;
   gap: 0.28rem;
   color: var(--chrome-muted);
-  font-size: 0.5rem;
+  font-size: calc(0.66rem * var(--hud-scale, 1));
   font-weight: 800;
   letter-spacing: 0.1em;
 }
@@ -394,7 +394,7 @@
   border: 1px solid color-mix(in srgb, var(--chrome-gold) 30%, var(--chrome-inset));
   background: color-mix(in srgb, var(--chrome-void) 82%, transparent);
   color: var(--chrome-gold);
-  font-size: 0.68rem;
+  font-size: calc(0.72rem * var(--hud-scale, 1));
   font-weight: 800;
   letter-spacing: 0.12em;
 }
@@ -403,7 +403,7 @@
   margin-top: 0;
   flex: 0 1 auto;
   padding: 0.16rem 0.3rem;
-  font-size: 0.56rem;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
   letter-spacing: 0.08em;
 }
 
@@ -482,7 +482,7 @@
   gap: 0.35rem;
   align-items: flex-start;
   color: var(--chrome-body);
-  font-size: 0.57rem;
+  font-size: calc(0.70rem * var(--hud-scale, 1));
   line-height: 1.25;
   letter-spacing: 0.03em;
 }
@@ -498,7 +498,7 @@
 .secondaryState {
   margin-left: auto;
   color: var(--chrome-muted);
-  font-size: 0.48rem;
+  font-size: calc(0.65rem * var(--hud-scale, 1));
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -535,7 +535,7 @@
   border: 1px solid var(--chrome-line);
   background: color-mix(in srgb, var(--chrome-void) 74%, transparent);
   color: var(--chrome-body);
-  font-size: 0.56rem;
+  font-size: calc(0.70rem * var(--hud-scale, 1));
   line-height: 1.3;
   letter-spacing: 0.04em;
   text-align: left;
@@ -547,7 +547,7 @@
   cursor: pointer;
   margin-bottom: 0.32rem;
   color: var(--chrome-cyan);
-  font-size: 0.5rem;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
   font-weight: 800;
   letter-spacing: 0.12em;
 }
@@ -585,11 +585,11 @@
   }
 
   .status {
-    font-size: 0.62rem;
+    font-size: calc(0.70rem * var(--hud-scale, 1));
   }
 
   .profile {
-    font-size: 0.52rem;
+    font-size: calc(0.65rem * var(--hud-scale, 1));
   }
 
   .status {
@@ -611,7 +611,7 @@
   .status {
     --status-backdrop-height: 9rem;
     padding: max(0.55rem, env(safe-area-inset-top)) 0.6rem 0.45rem;
-    font-size: 0.56rem;
+    font-size: calc(0.68rem * var(--hud-scale, 1));
   }
 
   .missionMeta {
@@ -671,7 +671,7 @@
   }
 
   .objective > strong {
-    font-size: 0.62rem;
+    font-size: calc(0.70rem * var(--hud-scale, 1));
   }
 
   .secondaryRail {
@@ -680,10 +680,10 @@
 
   .briefingObjectives {
     margin-left: 0;
-    font-size: 0.48rem;
+    font-size: calc(0.65rem * var(--hud-scale, 1));
   }
 
   .briefingLabel {
-    font-size: 0.44rem;
+    font-size: calc(0.62rem * var(--hud-scale, 1));
   }
 }

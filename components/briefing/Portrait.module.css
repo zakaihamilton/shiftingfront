@@ -28,7 +28,7 @@
   flex-shrink: 0;
   margin-bottom: 0.25rem;
   color: var(--chrome-muted);
-  font-size: 0.58rem;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -46,7 +46,7 @@
   margin: 0.35rem 0 0;
   flex-shrink: 0;
   text-align: center;
-  font-size: 10px;
+  font-size: calc(0.72rem * var(--hud-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.16em;
@@ -57,7 +57,7 @@
   margin: 0.25rem 0 0;
   flex-shrink: 0;
   text-align: center;
-  font-size: 10px;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--chrome-muted);
@@ -83,13 +83,13 @@
   }
 
   .meta {
-    font-size: 0.46rem;
+    font-size: calc(0.62rem * var(--hud-scale, 1));
     letter-spacing: 0.06em;
   }
 
   .name {
     margin-top: 0.25rem;
-    font-size: 0.52rem;
+    font-size: calc(0.66rem * var(--hud-scale, 1));
     line-height: 1.05;
     letter-spacing: 0.08em;
     overflow-wrap: break-word;
@@ -97,7 +97,7 @@
 
   .faction {
     margin-top: 0.2rem;
-    font-size: 0.48rem;
+    font-size: calc(0.62rem * var(--hud-scale, 1));
     line-height: 1.05;
     letter-spacing: 0.03em;
     overflow-wrap: break-word;

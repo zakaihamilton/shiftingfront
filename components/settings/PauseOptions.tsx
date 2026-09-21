@@ -13,13 +13,14 @@ import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { AudioSettingsControls } from "./AudioSettingsControls";
 import styles from "./SettingsPanel.module.css";
 
-export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleReducedMotion, onToggleHighContrast, onCycleColorblind, onUpdateKeyBindings, onVolumeChange, onDiagnostics, onBack, onResetAllData, titleId = "pause-title", backTooltip = "Return to the pause menu" }: {
+export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleReducedMotion, onToggleHighContrast, onCycleColorblind, onCycleHudScale, onUpdateKeyBindings, onVolumeChange, onDiagnostics, onBack, onResetAllData, titleId = "pause-title", backTooltip = "Return to the pause menu" }: {
   settings: GameSettings;
   onToggleSound: () => void;
   onToggleMusic: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onCycleColorblind?: () => void;
+  onCycleHudScale?: () => void;
   onUpdateKeyBindings?: (bindings: KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
   onDiagnostics?: () => void;
@@ -50,6 +51,7 @@ export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleR
           {onToggleReducedMotion ? <ConsoleButton className={styles.action} tooltip="Reduce interface animation and motion" onClick={onToggleReducedMotion}>Reduced motion: {settings.reducedMotion ? "On" : "Off"}</ConsoleButton> : null}
           {onToggleHighContrast ? <ConsoleButton className={styles.action} tooltip="Increase interface contrast and status differentiation" onClick={onToggleHighContrast}>High contrast: {settings.highContrast ? "On" : "Off"}</ConsoleButton> : null}
           {onCycleColorblind ? <ConsoleButton className={styles.action} tooltip="Cycle colorblind palette for lasers, health bars, and minimap" onClick={onCycleColorblind}>Colorblind: {settings.colorblindMode === "deuteranopia" ? "Deuteranopia (Red-Green)" : settings.colorblindMode === "protanopia" ? "Protanopia (Red-Weak)" : settings.colorblindMode === "tritanopia" ? "Tritanopia (Blue-Yellow)" : "Off"}</ConsoleButton> : null}
+          {onCycleHudScale ? <ConsoleButton className={styles.action} tooltip="Adjust interface text and HUD scaling for readability" onClick={onCycleHudScale}>Text size: {settings.hudScale === "large" ? "Large (Readable)" : settings.hudScale === "compact" ? "Compact (Retro)" : "Normal"}</ConsoleButton> : null}
           {fullscreen.isSupported ? <ConsoleButton className={styles.action} tooltip={`Toggle browser fullscreen (${fullscreen.shortcut})`} onClick={fullscreen.toggle}>Fullscreen: {fullscreen.isFullscreen ? "On" : "Off"}</ConsoleButton> : null}
         </div>
         {onUpdateKeyBindings ? <ConsoleButton className={styles.action} tooltip="Customize keyboard shortcuts and camera controls" onClick={() => setKeybindsOpen(true)}>Configure Keybinds…</ConsoleButton> : null}

@@ -34,6 +34,7 @@
   --texture-brushed: url("/art/textures/brushed-gunmetal.webp");
   --texture-worn: url("/art/textures/worn-panel.webp");
   --texture-crt: url("/art/textures/crt-glass.webp");
+  --hud-scale: 1;
 }
 
 .html,

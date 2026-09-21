@@ -34,6 +34,7 @@ export function GamePauseSurface({ view, notice, settings, tutorial, setView, se
       onToggleReducedMotion={session.onToggleReducedMotion}
       onToggleHighContrast={session.onToggleHighContrast}
       onCycleColorblind={session.onCycleColorblind}
+      onCycleHudScale={session.onCycleHudScale}
       onUpdateKeyBindings={session.onUpdateKeyBindings}
       onVolumeChange={session.onVolumeChange}
       telemetryRecordCount={session.telemetryEnabled ? session.telemetryRecordCount : undefined}

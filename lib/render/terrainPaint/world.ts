@@ -361,13 +361,16 @@ export function paintTerrainSurface(
     if (inMap || memoScenery(state, x, y).kind !== TILE_WATER) return;
     paintCell(ctx, state, cam, atlas, x, y, true, gainAt);
   });
-  visitVisibleTiles(ctx, state, cam, (x, y) => {
-    paintCell(ctx, state, cam, atlas, x, y, false, gainAt);
-  });
+  // Paint water before land. Water is level 0, so drawing it after the land
+  // pass makes its diamond cover the lower part of neighboring elevated land
+  // and cliff faces, including neighbors earlier in isometric depth order.
   visitVisibleTiles(ctx, state, cam, (x, y) => {
     const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
     if (!inMap) return;
     paintCell(ctx, state, cam, atlas, x, y, true, gainAt);
+  });
+  visitVisibleTiles(ctx, state, cam, (x, y) => {
+    paintCell(ctx, state, cam, atlas, x, y, false, gainAt);
   });
   // Low scatter sits with the atlas so the shroud darkens unexplored clutter.
   visitVisibleTiles(ctx, state, cam, (x, y) => {

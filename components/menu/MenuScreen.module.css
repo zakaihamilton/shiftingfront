@@ -5,6 +5,19 @@
   overflow: hidden;
   color: var(--chrome-body);
   background: var(--chrome-void);
+  --hud-scale: 1;
+}
+
+.screen[data-hud-scale="compact"] {
+  --hud-scale: 0.9;
+}
+
+.screen[data-hud-scale="normal"] {
+  --hud-scale: 1;
+}
+
+.screen[data-hud-scale="large"] {
+  --hud-scale: 1.15;
 }
 
 .screen[data-high-contrast="true"] {
@@ -94,7 +107,7 @@
   min-width: 0;
   min-height: 2.1rem;
   font-family: var(--font-mono);
-  font-size: 0.56rem;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
   font-weight: 700;
   letter-spacing: 0.15em;
   line-height: 1.4;
@@ -119,7 +132,7 @@
   height: 1.45rem;
   border: 1px solid var(--chrome-cyan-dim);
   color: var(--chrome-cyan);
-  font-size: 0.5rem;
+  font-size: calc(0.62rem * var(--hud-scale, 1));
   letter-spacing: 0.06em;
   box-shadow: 0 0 12px color-mix(in srgb, var(--chrome-cyan) 18%, transparent);
 }
@@ -404,7 +417,7 @@
   }
 
   .topbar {
-    font-size: 0.45rem;
+    font-size: calc(0.62rem * var(--hud-scale, 1));
     letter-spacing: 0.1em;
   }
 

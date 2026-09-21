@@ -13,7 +13,7 @@
 
 .label {
   color: var(--chrome-gold-dim);
-  font-size: 0.5rem;
+  font-size: calc(0.68rem * var(--hud-scale, 1));
   font-weight: 800;
   letter-spacing: 0.2em;
   text-transform: uppercase;

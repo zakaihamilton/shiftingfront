@@ -183,6 +183,7 @@ export type PauseSessionModel = {
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onCycleColorblind?: () => void;
+  onCycleHudScale?: () => void;
   onUpdateKeyBindings?: (bindings: KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
   onExportTelemetry?: () => boolean;

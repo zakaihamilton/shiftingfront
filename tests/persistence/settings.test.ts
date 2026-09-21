@@ -95,8 +95,37 @@ describe("audio settings", () => {
       reducedMotion: false,
       highContrast: false,
       colorblindMode: "none",
+      hudScale: "normal",
       keyBindings: defaultKeyBindings(),
     });
+  });
+
+  it("round-trips hudScale through storage", () => {
+    const storage = memoryStorage();
+    writeSettings(storage, {
+      ...defaultSettings(),
+      hudScale: "large",
+    });
+    expect(readSettings(storage).hudScale).toBe("large");
+
+    writeSettings(storage, {
+      ...defaultSettings(),
+      hudScale: "compact",
+    });
+    expect(readSettings(storage).hudScale).toBe("compact");
+  });
+
+  it("normalizes invalid hudScale to normal", () => {
+    const storage = memoryStorage({
+      [SETTINGS_KEY]: JSON.stringify({
+        version: SETTINGS_VERSION,
+        savedAt: 1,
+        settings: {
+          hudScale: "gigantic",
+        },
+      }),
+    });
+    expect(readSettings(storage).hudScale).toBe("normal");
   });
 
   it("round-trips colorblindMode and keyBindings through storage", () => {

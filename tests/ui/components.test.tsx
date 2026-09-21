@@ -650,6 +650,7 @@ describe("PauseMenu", () => {
     expect(screen.getByText("Mission")).toBeVisible();
     expect(screen.getByText("Operation")).toBeVisible();
     expect(screen.getByText("Campaign")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Fullscreen:/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Export Save" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Resume Mission" }));
     expect(onResume).toHaveBeenCalledOnce();
@@ -744,6 +745,7 @@ describe("PauseDiagnostics telemetry controls", () => {
 describe("PauseOptions controls", () => {
   it("cycles colorblind mode and configures custom keybinds", () => {
     const onCycleColorblind = vi.fn();
+    const onCycleHudScale = vi.fn();
     const onUpdateKeyBindings = vi.fn();
 
     render(
@@ -752,6 +754,7 @@ describe("PauseOptions controls", () => {
         onToggleSound={vi.fn()}
         onToggleMusic={vi.fn()}
         onCycleColorblind={onCycleColorblind}
+        onCycleHudScale={onCycleHudScale}
         onUpdateKeyBindings={onUpdateKeyBindings}
         onVolumeChange={vi.fn()}
         onBack={vi.fn()}
@@ -769,6 +772,12 @@ describe("PauseOptions controls", () => {
     expect(colorblindBtn).toBeVisible();
     fireEvent.click(colorblindBtn);
     expect(onCycleColorblind).toHaveBeenCalledOnce();
+
+    // Text size / HUD scale toggle
+    const hudScaleBtn = screen.getByRole("button", { name: /Text size: Normal/ });
+    expect(hudScaleBtn).toBeVisible();
+    fireEvent.click(hudScaleBtn);
+    expect(onCycleHudScale).toHaveBeenCalledOnce();
 
     // Open keybinds modal
     const keybindsBtn = screen.getByRole("button", { name: "Configure Keybinds…" });

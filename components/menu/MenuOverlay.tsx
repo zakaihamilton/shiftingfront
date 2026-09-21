@@ -28,6 +28,7 @@ export function MenuOverlay({
   onToggleReducedMotion,
   onToggleHighContrast,
   onCycleColorblind,
+  onCycleHudScale,
   onUpdateKeyBindings,
   onVolumeChange,
   onBack,
@@ -50,6 +51,7 @@ export function MenuOverlay({
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onCycleColorblind?: () => void;
+  onCycleHudScale?: () => void;
   onUpdateKeyBindings?: (bindings: import("@/lib/persist/settings").KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
   onBack: () => void;
@@ -85,6 +87,7 @@ export function MenuOverlay({
           onToggleReducedMotion={onToggleReducedMotion}
           onToggleHighContrast={onToggleHighContrast}
           onCycleColorblind={onCycleColorblind}
+          onCycleHudScale={onCycleHudScale}
           onUpdateKeyBindings={onUpdateKeyBindings}
           onVolumeChange={onVolumeChange}
           onBack={onBack}

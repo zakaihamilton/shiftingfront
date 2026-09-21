@@ -148,6 +148,7 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
             onToggleReducedMotion: runtime.session.toggleReducedMotion,
             onToggleHighContrast: runtime.session.toggleHighContrast,
             onCycleColorblind: runtime.session.cycleColorblind,
+            onCycleHudScale: runtime.session.cycleHudScale,
             onUpdateKeyBindings: runtime.session.updateKeyBindings,
             onVolumeChange: runtime.session.updateVolume,
             onExportTelemetry: runtime.session.telemetryEnabled ? runtime.session.exportTelemetry : undefined,
