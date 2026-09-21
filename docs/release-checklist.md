@@ -27,7 +27,13 @@ yarn health:performance
 # 6. Markdown documentation
 yarn health:documentation
 
-# 7. Production Next.js build
+# 7. Dependency vulnerability audit
+yarn health:audit
+
+# 8. Visual regression test suite
+yarn test:visual
+
+# 9. Production Next.js build
 yarn build
 ```
 

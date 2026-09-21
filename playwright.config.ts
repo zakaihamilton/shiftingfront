@@ -17,6 +17,12 @@ export default defineConfig({
   workers: 2,
   retries: process.env.CI ? 2 : 0,
   reporter: "line",
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.05,
+      animations: "disabled",
+    },
+  },
   use: {
     baseURL: "http://127.0.0.1:3100",
     headless: true,

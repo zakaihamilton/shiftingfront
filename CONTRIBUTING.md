@@ -44,6 +44,12 @@ yarn health:dead-code
 # Markdown documentation linting
 yarn health:documentation
 
+# Dependency vulnerability audit
+yarn health:audit
+
+# Visual regression tests
+yarn test:visual
+
 # CI also runs yarn health:performance. Simulation p95 stays 25 ms; p99 is
 # 25 ms locally and 40 ms on GitHub-hosted 2-vCPU runners after warmup.
 yarn health:performance
