@@ -154,6 +154,13 @@ async function waitForStableSelection(page: import("@playwright/test").Page) {
   }));
 }
 
+async function collapseMissionDirective(page: import("@playwright/test").Page) {
+  const collapse = page.getByRole("button", { name: "Collapse mission directive" });
+  await expect(collapse).toBeVisible();
+  await collapse.click();
+  await expect(page.getByRole("button", { name: "Expand mission directive" })).toBeVisible();
+}
+
 async function persistedUnitOrder(page: import("@playwright/test").Page, unitId: number) {
   return page.evaluate(({ key, unitId: id }) => {
     window.dispatchEvent(new Event("pagehide"));
@@ -460,6 +467,7 @@ test.describe("selected unit actions", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/play?seed=0421&mission=0");
     await waitForBattlefield(page);
+    await collapseMissionDirective(page);
 
     const state = createMission({ seed: TEST_SEED, missionIndex: 0 });
     const infantryEntity = playerUnits(state).find((entity) => entity.kind === "infantry");
@@ -917,6 +925,7 @@ test.describe("mobile-first layouts", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/play?seed=${String(TEST_SEED).padStart(4, "0")}&mission=0`);
     await waitForBattlefield(page);
+    await collapseMissionDirective(page);
 
     const state = createMission({ seed: TEST_SEED, missionIndex: 0 });
     const infantryEntity = playerUnits(state).find((entity) => entity.kind === "infantry");
