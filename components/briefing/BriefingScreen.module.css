@@ -127,6 +127,11 @@
   justify-self: end;
 }
 
+.skipPlaceholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .tone {
   grid-column: 4;
   grid-row: 1;
@@ -233,6 +238,10 @@
   .portraits {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.45rem;
+  }
+
+  .enemy {
+    align-self: stretch;
   }
 }
 

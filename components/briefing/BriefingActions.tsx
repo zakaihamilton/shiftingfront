@@ -41,7 +41,17 @@ export function BriefingActions({
       >
         Replay
       </ConsoleButton>
-      {!isComplete ? (
+      {isComplete ? (
+        <ConsoleButton
+          className={`${styles.skip} ${styles.skipPlaceholder}`}
+          muted
+          disabled
+          aria-hidden="true"
+          tabIndex={-1}
+        >
+          Skip transmission
+        </ConsoleButton>
+      ) : (
         <ConsoleButton
           className={styles.skip}
           muted
@@ -51,7 +61,7 @@ export function BriefingActions({
         >
           Skip transmission
         </ConsoleButton>
-      ) : null}
+      )}
       <ConsoleButton
         className={styles.launch}
         tooltip={returnToGame ? "Return to the battlefield" : "Launch this mission"}
