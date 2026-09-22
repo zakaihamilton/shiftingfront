@@ -916,6 +916,67 @@ test("toggles music and sound from welcome options", async ({ page }) => {
   await expect(page.getByRole("slider", { name: "Music volume" })).toHaveValue("0.3");
 });
 
+test("scrolls game options menu correctly without cutting off top at reduced vertical resolution", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 480 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "OPTIONS" }).click();
+
+  const heading = page.getByRole("heading", { name: "Game options" });
+  await expect(heading).toBeVisible();
+
+  const headingBox = await heading.boundingBox();
+  expect(headingBox).not.toBeNull();
+  expect(headingBox!.y).toBeGreaterThanOrEqual(10);
+  expect(headingBox!.y).toBeLessThan(480);
+
+  const backButton = page.getByRole("button", { name: "Back" });
+  await backButton.scrollIntoViewIfNeeded();
+  await expect(backButton).toBeVisible();
+  await backButton.click();
+  await expect(heading).toHaveCount(0);
+
+  // Also verify in-game pause options at reduced vertical resolution
+  await page.goto("/tutorial");
+  await page.waitForSelector("canvas");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("pause-menu")).toBeVisible();
+  await page.getByRole("button", { name: "Options" }).click();
+
+  const pauseHeading = page.getByRole("heading", { name: "Game options" });
+  await expect(pauseHeading).toBeVisible();
+  const pauseHeadingBox = await pauseHeading.boundingBox();
+  expect(pauseHeadingBox).not.toBeNull();
+  expect(pauseHeadingBox!.y).toBeGreaterThanOrEqual(5);
+
+  const pauseBackButton = page.getByRole("button", { name: "Back" });
+  await pauseBackButton.scrollIntoViewIfNeeded();
+  await expect(pauseBackButton).toBeVisible();
+  await pauseBackButton.click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("pause-menu")).toHaveCount(0);
+});
+
+test("allows game options menu to expand wider when space is available", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "OPTIONS" }).click();
+
+  const optionsDialog = page.getByRole("dialog", { name: "Game options" });
+  await expect(optionsDialog).toBeVisible();
+  const box = await optionsDialog.boundingBox();
+  expect(box).not.toBeNull();
+  // Expands wider than former 24rem (384px) constraint, reaching up to 38rem (608px)
+  expect(box!.width).toBeGreaterThan(500);
+  expect(box!.width).toBeLessThanOrEqual(615);
+
+  // Conforms smoothly on narrower viewports without horizontal overflow
+  await page.setViewportSize({ width: 400, height: 800 });
+  const narrowBox = await optionsDialog.boundingBox();
+  expect(narrowBox).not.toBeNull();
+  expect(narrowBox!.width).toBeLessThan(400);
+  expect(narrowBox!.x).toBeGreaterThanOrEqual(0);
+});
+
 test("shows briefing portraits before launch", async ({ page }) => {
   await openBriefing(page);
   await expect(page.getByTestId("briefing-portrait").first()).toBeVisible();

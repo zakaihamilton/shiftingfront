@@ -32,9 +32,10 @@
 
 .paneTopline {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.35rem;
 }
 
 .paneMarker {

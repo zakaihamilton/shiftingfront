@@ -1,6 +1,7 @@
 .dialog {
   max-width: 34rem;
   width: 100%;
+  margin-block: auto;
   max-height: 85vh;
   overflow-y: auto;
   overscroll-behavior: contain;
