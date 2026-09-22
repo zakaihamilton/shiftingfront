@@ -3,6 +3,7 @@ import { flowCellTaken, flowDistanceAt, flowFieldForGoals, flowStep, type FlowFi
 import { navigationEdgeKey, navigationEdgeReserved } from "./navigation/grid";
 import { reversesPreviousStep } from "./pathfinding";
 import { tryFindPathDetailed } from "./pathBudget";
+import { entitiesFor } from "./ecs/world";
 
 const FLOW_PATH_PREFIX_LENGTH = 2;
 const MIN_CONGESTION_GROUP_SIZE = 16;
@@ -56,7 +57,7 @@ export function prepareFlowFieldRoutes(
   edgeReservations?.clear();
 
   const groups = new Map<string, Entity[]>();
-  for (const entity of state.entities) {
+  for (const entity of entitiesFor(state)) {
     if (entity.hp <= 0 || entity.class !== "unit" || skipIds?.has(entity.id) || !entity.flowGoal || !entity.orderDestination) continue;
     const goal = entity.flowGoal;
     const key = `${Math.round(goal.x)}:${Math.round(goal.y)}`;
@@ -188,7 +189,7 @@ function prepareSmallGroupRoutes(
   flowFields?: Map<number, FlowField>,
   edgeReservations?: Map<number, number>,
 ): void {
-  for (const entity of state.entities) {
+  for (const entity of entitiesFor(state)) {
     if (entity.hp <= 0 || entity.class !== "unit" || skipIds?.has(entity.id) || !entity.flowGoal || !entity.orderDestination) continue;
     if (entity.path.length > 0 && entity.routePending === false) continue;
     const destination = entity.orderDestination;

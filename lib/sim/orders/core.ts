@@ -10,8 +10,13 @@ import { moveUnits, attackMoveUnits } from "./movement";
 import { attackUnits, supportUnits, setStance, setFormation } from "./combat";
 import { startBuild, cancelBuild, sellBuilding, setRallyPoint, toggleRepair } from "./building";
 import { startProduce, cancelProduce } from "./production";
+import { entitiesFor, withEntityWorldBatch } from "../ecs/world";
 
 export function issue(state: SimState, command: Command): SimEvent[] {
+  return withEntityWorldBatch(state, () => issueInReadBatch(state, command));
+}
+
+function issueInReadBatch(state: SimState, command: Command): SimEvent[] {
   if (state.result !== "playing") return [];
   const tutorialExpectedTargets = state.tutorialStage ? tutorialTargets(state) : undefined;
   let events: SimEvent[];
@@ -90,7 +95,7 @@ function advanceTutorialAfterCommand(state: SimState, command: Command, expected
   // Power Plant. Keep the coach on this lesson while it is being built.
   if (stage === "build") {
     if (tutorialCommandCompletesStage(state, command, expectedTargets) && command.type === "build") {
-      const building = state.entities.find((entity) =>
+      const building = entitiesFor(state).find((entity) =>
         entity.owner === 0 &&
         entity.class === "building" &&
         entity.kind === "power" &&

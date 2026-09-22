@@ -1,6 +1,7 @@
 import { repairCostFor, repairHpPerTick } from "../catalog";
 import { isBuildingEntity, type SimEvent, type SimState } from "../types";
 import { isCombatThreat } from "./combat/grid";
+import { entitiesFor } from "./ecs/world";
 
 export function canRepair(e: { class: string; hp: number; maxHp: number; constructing: number }): boolean {
   return e.class === "building" && e.hp > 0 && e.constructing === 0 && e.hp < e.maxHp;
@@ -9,7 +10,7 @@ export function canRepair(e: { class: string; hp: number; maxHp: number; constru
 const EMPTY_EVENTS: SimEvent[] = [];
 
 function isUnderAttack(state: SimState, buildingId: number, owner: number): boolean {
-  return state.entities.some(
+  return entitiesFor(state).some(
     (attacker) => attacker.hp > 0
       && attacker.owner !== owner
       && attacker.attackTarget === buildingId
@@ -19,7 +20,7 @@ function isUnderAttack(state: SimState, buildingId: number, owner: number): bool
 
 export function tickRepair(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
   const events = eventSink ?? (collectEvents ? [] : undefined);
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     if (!e.repairing) continue;
     if (!isBuildingEntity(e) || e.hp <= 0 || e.constructing > 0) {
       e.repairing = false;

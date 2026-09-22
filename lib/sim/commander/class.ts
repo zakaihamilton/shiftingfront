@@ -13,6 +13,7 @@ import {
   isCombatEntity,
   enemyEntitiesView,
 } from "./queries";
+import { entitiesFor } from "../ecs/world";
 import {
   planBuilding,
   planProduction,
@@ -52,7 +53,7 @@ function pushAssault(commands: Command[], state: SimState, target: Entity, unitI
   const close: number[] = [];
   const far: number[] = [];
   for (const id of unitIds) {
-    const unit = state.entities.find((entity) => entity.id === id);
+    const unit = entitiesFor(state).find((entity) => entity.id === id);
     if (!unit) continue;
     if (distToEntity(unit, target) <= DECAPITATE_FIRE_RANGE) close.push(id);
     else far.push(id);
@@ -122,10 +123,10 @@ export class CompetentCommander {
     const objective = objectiveEntity(state);
     const approachObjective = objective && objective.owner === 1 ? offensiveApproachTarget(state, objective) : objective;
     const extractionCargo = objectiveKind(state) === "extraction"
-      ? (state.runtime?.targetIds ?? []).map((id) => state.entities.find((entity) => entity.id === id && entity.hp > 0)).filter((entity): entity is Entity => !!entity && !entity.neutral && !inObjectiveZone(entity.x, entity.y, state.runtime?.zone))
+      ? (state.runtime?.targetIds ?? []).map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0)).filter((entity): entity is Entity => !!entity && !entity.neutral && !inObjectiveZone(entity.x, entity.y, state.runtime?.zone))
       : [];
     const rescueReturnUnits = objectiveKind(state) === "rescue"
-      ? (state.runtime?.targetIds ?? []).map((id) => state.entities.find((entity) => entity.id === id && entity.hp > 0)).filter((entity): entity is Entity => !!entity && !entity.neutral && !inObjectiveZone(entity.x, entity.y, state.runtime?.zone))
+      ? (state.runtime?.targetIds ?? []).map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0)).filter((entity): entity is Entity => !!entity && !entity.neutral && !inObjectiveZone(entity.x, entity.y, state.runtime?.zone))
       : [];
     const extractionCargoIds = new Set(extractionCargo.map((entity) => entity.id));
     const rescueReturnIds = new Set(rescueReturnUnits.map((entity) => entity.id));

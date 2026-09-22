@@ -8,6 +8,7 @@ import { tileInPlayerVision } from "../fog";
 import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
 import { closestApproach, distToEntity, isWalkable } from "../world";
+import { entitiesFor } from "../ecs/world";
 
 const EXTRACTION_PLAYER_BASE_CLEARANCE = 8;
 const EXTRACTION_ENEMY_BASE_CLEARANCE = 14;
@@ -133,10 +134,10 @@ function extractionPointCandidates(
   map: Pick<GeneratedMap, "playerStart" | "enemyStart" | "width" | "height">,
   reachable: Uint8Array | undefined,
 ): Vec2[] {
-  const playerBuildings = state.entities.filter((entity) =>
+  const playerBuildings = entitiesFor(state).filter((entity) =>
     entity.owner === 0 && entity.class === "building" && entity.hp > 0,
   );
-  const enemyBuildings = state.entities.filter((entity) =>
+  const enemyBuildings = entitiesFor(state).filter((entity) =>
     entity.owner === 1 && entity.class === "building" && entity.hp > 0,
   );
   const candidates: Vec2[] = [];
@@ -337,7 +338,7 @@ export function tickRescueExtraction(state: SimState): void {
   const runtime = state.runtime;
   if (!runtime || (runtime.kind !== "rescue" && runtime.kind !== "extraction")) return;
 
-  const yard = state.entities.find((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
+  const yard = entitiesFor(state).find((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
   if (yard) {
     runtime.zone = { x: yard.x, y: yard.y };
   }
@@ -350,12 +351,12 @@ export function tickRescueExtraction(state: SimState): void {
 
     // Capture this list before contacting targets. A newly contacted target
     // may not contact another stranded unit until the next simulation tick.
-    const rescuers = state.entities.filter(
+    const rescuers = entitiesFor(state).filter(
       (e) => e.owner === 0 && e.class === "unit" && e.hp > 0 && !e.neutral && !runtime.targetIds.includes(e.id),
     );
     for (const id of runtime.targetIds) {
       if (contactedSet.has(id)) continue;
-      const target = state.entities.find((item) => item.id === id && item.hp > 0);
+      const target = entitiesFor(state).find((item) => item.id === id && item.hp > 0);
       if (!target?.neutral) continue;
       target.path = [];
       target.routePending = false;
@@ -372,7 +373,7 @@ export function tickRescueExtraction(state: SimState): void {
     if (runtime.zone) {
       for (const id of contacted) {
         if (rescuedSet.has(id)) continue;
-        const target = state.entities.find((item) => item.id === id && item.hp > 0);
+        const target = entitiesFor(state).find((item) => item.id === id && item.hp > 0);
         if (target && !target.neutral && inObjectiveZone(target.x, target.y, runtime.zone)) {
           rescued.push(id);
           rescuedSet.add(id);
@@ -387,11 +388,11 @@ export function tickRescueExtraction(state: SimState): void {
 
   // Capture this list before contacting targets. A newly rescued target may
   // not rescue another target until the next simulation tick.
-  const rescuers = state.entities.filter(
+  const rescuers = entitiesFor(state).filter(
     (e) => e.owner === 0 && e.class === "unit" && e.hp > 0 && !e.neutral,
   );
   for (const id of runtime.targetIds) {
-    const e = state.entities.find((item) => item.id === id && item.hp > 0);
+    const e = entitiesFor(state).find((item) => item.id === id && item.hp > 0);
     if (!e?.neutral) continue;
     e.path = [];
     e.routePending = false;
@@ -410,7 +411,7 @@ export function tickRescueExtraction(state: SimState): void {
     const extracted = runtime.extractedIds ?? [];
     for (const id of runtime.targetIds) {
       if (extracted.includes(id)) continue;
-      const e = state.entities.find((item) => item.id === id && item.hp > 0);
+      const e = entitiesFor(state).find((item) => item.id === id && item.hp > 0);
       if (!e || e.neutral || !inObjectiveZone(e.x, e.y, runtime.zone)) continue;
       extracted.push(id);
       e.marked = false;

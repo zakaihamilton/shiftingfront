@@ -2,6 +2,7 @@ import { footprintOf, isAirUnit, UNIT_STATS } from "../catalog";
 import { isBuildingEntity, isUnitEntity, type Entity, type SimEvent, type SimState } from "../types";
 import { byId } from "./world";
 import { canTarget, isCombatTarget } from "./combat/grid";
+import { entitiesFor } from "./ecs/world";
 
 type Aircraft = import("../types").UnitEntity & { kind: "strikePlane" };
 
@@ -188,7 +189,7 @@ function moveAircraft(aircraft: Aircraft, destination: { x: number; y: number })
 }
 
 export function tickAircraft(state: SimState, eventSink?: SimEvent[]): void {
-  for (const aircraft of state.entities) {
+  for (const aircraft of entitiesFor(state)) {
     if (!isAircraft(aircraft) || aircraft.hp <= 0) continue;
     aircraft.flightState ??= "airborne";
     if (aircraft.flightState === "servicing") {

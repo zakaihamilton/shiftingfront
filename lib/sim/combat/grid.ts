@@ -1,5 +1,6 @@
 import { BUILDING_STATS, isAirUnit, targetDomainsFor, UNIT_STATS } from "../../catalog";
 import { isBuildingEntity, isUnitEntity, type Entity, type SimState, type WeaponType } from "../../types";
+import { entitiesFor } from "../ecs/world";
 
 export type CombatGrid = {
   state: SimState;
@@ -95,7 +96,7 @@ export function buildGrid(state: SimState): CombatGrid {
   let orderCount = 0;
   // Rebuild from the current entity array. The buffers are intentionally
   // reused because combat runs once per tick and entity positions change.
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     if (e.hp <= 0) continue;
     order[e.id] = orderCount++;
     byId[e.id] = e;

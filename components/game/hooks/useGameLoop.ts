@@ -6,7 +6,7 @@ import type { Command, SimState } from "@/lib/types";
 import type { SaveSession } from "@/lib/persist/save";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { createGameRuntimeFacade } from "./runtime/facade";
-import type { RuntimeLifecycleState, RuntimePersistenceState, RuntimePorts, RuntimeRefs } from "./runtime/types";
+import type { RuntimeKernel, RuntimeLifecycleState, RuntimePersistenceState } from "./runtime/types";
 
 function createFallbackUxTelemetry(): MissionUxTelemetry {
   return {
@@ -86,37 +86,41 @@ export function useGameLoop({
   });
 
   useEffect(() => {
-    const refs: RuntimeRefs = {
-      stateRef,
-      commandQueue: cmdQ,
-      pausedRef,
-      cameraRef: camRef,
-      canvasRef,
-      keys,
-      edgePanHover,
-      panHold,
-      panAvailabilityRef: panAvailRef,
-      fxRef,
-      fxSequence: fxSeq,
-      screenShakeRef,
-      terminalSaveRef,
-      campaignRecordedRef,
-      lifecycleRef,
-      persistenceRef,
-      uxRef,
-      suppressImplicitSavesRef,
+    const kernel: RuntimeKernel = {
+      refs: {
+        simulation: {
+          stateRef,
+          commandQueue: cmdQ,
+          pausedRef,
+          lifecycleRef,
+          persistenceRef,
+          uxRef,
+          terminalSaveRef,
+          campaignRecordedRef,
+          suppressImplicitSavesRef,
+        },
+        interaction: {
+          cameraRef: camRef,
+          keys,
+          edgePanHover,
+          panHold,
+          panAvailabilityRef: panAvailRef,
+        },
+        rendering: {
+          canvasRef,
+          fxRef,
+          fxSequence: fxSeq,
+          screenShakeRef,
+        },
+      },
+      ports: {
+        simulation: { setState },
+        frame: { setPanAvailability: setPanAvail, applyEdgePan, redraw },
+        presentation: { onAlert, onCommandNotice: onCommandNotice ?? (() => undefined) },
+        persistence: { saveSession, persistCampaign },
+      },
     };
-    const ports: RuntimePorts = {
-      setState,
-      setPanAvailability: setPanAvail,
-      applyEdgePan,
-      redraw,
-      onAlert,
-      onCommandNotice: onCommandNotice ?? (() => undefined),
-      saveSession,
-      persistCampaign,
-    };
-    const runtime = createGameRuntimeFacade(refs, ports);
+    const runtime = createGameRuntimeFacade(kernel);
     runtime.start();
     return () => runtime.stop();
   }, [

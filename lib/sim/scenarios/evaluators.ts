@@ -1,9 +1,10 @@
 import type { Entity, SimState } from "../../types";
 import type { ScenarioProgress } from "./contract";
 import { formatMissionClockFromTicks } from "../../gen/pacing";
+import { entitiesFor } from "../ecs/world";
 
 export function isEntityAlive(state: SimState, id: number): boolean {
-  return state.entities.some((entity) => entity.id === id && entity.hp > 0);
+  return entitiesFor(state).some((entity) => entity.id === id && entity.hp > 0);
 }
 
 export type EliminationOptions = {
@@ -46,7 +47,7 @@ export function evaluateElimination(state: SimState, options: EliminationOptions
   }
 
   if (options.filter) {
-    const living = state.entities.filter((e) => e.hp > 0 && options.filter!(e));
+    const living = entitiesFor(state).filter((e) => e.hp > 0 && options.filter!(e));
     const isComplete = living.length === 0;
     return {
       isComplete,
@@ -96,7 +97,7 @@ export function evaluateExtractionEscort(state: SimState): ExtractionEscortResul
       } else {
         const required = state.win.targetCount ?? runtime.required ?? runtime.targetIds.length;
         const remaining = runtime.targetIds.filter((id) =>
-          state.entities.some((entity) => entity.id === id && entity.hp > 0 && entity.neutral === true),
+          entitiesFor(state).some((entity) => entity.id === id && entity.hp > 0 && entity.neutral === true),
         ).length;
         isTargetLost = runtime.rescued + remaining < required;
       }
@@ -129,7 +130,7 @@ export type ZoneHoldResult = {
  */
 export function evaluateZoneHold(state: SimState): ZoneHoldResult {
   const t = state.win.ticks;
-  const playerCy = state.entities.some((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
+  const playerCy = entitiesFor(state).some((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
   if (t === undefined) {
     return {
       isComplete: false,

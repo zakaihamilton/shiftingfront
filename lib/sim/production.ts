@@ -3,6 +3,7 @@ import { isBuildingEntity, type BuildingKind, type Entity, type SimEvent, type S
 import { frontTileNear, invalidatePowerCache, openTileNear, powerFor, trySpawnUnit } from "./world";
 import { assignMoveDestination } from "./orders/movement";
 import { runwayServicePoint } from "./aircraft";
+import { entitiesFor } from "./ecs/world";
 
 const playerPowerOk = new WeakMap<SimState, boolean>();
 
@@ -34,7 +35,7 @@ function productionRates(state: SimState): Map<number, number> {
   buffers.rates.clear();
   productionBuffers.set(state, buffers);
   const { ready, busyIds, rates } = buffers;
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     if (e.hp <= 0 || e.class !== "building" || e.constructing > 0) continue;
     if (!isUnitProducer(e.kind)) continue;
     const key = producerKey(e.owner, e.kind);
@@ -81,7 +82,7 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
   const events = eventSink ?? (collectEvents ? [] : undefined);
   const lowPower = [powerFor(state, 0) < 0, powerFor(state, 1) < 0];
   const rates = productionRates(state);
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     if (e.hp <= 0) continue;
     if (!e.queue) e.queue = [];
     if (isBuildingEntity(e) && e.kind === "refinery" && e.constructing <= 0 && e.refineryHarvesterPending) {

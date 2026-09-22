@@ -20,6 +20,7 @@ import {
   runSimulationSystems,
   type SimulationTickOptions,
 } from "./pipeline";
+import { withEntityWorldBatch, worldFor } from "./ecs/world";
 
 export { issue, inspect };
 export { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS, scenarioAffordances, type ScenarioAffordances } from "./scenarios";
@@ -73,6 +74,16 @@ export function createMissionFromData(opts: {
     })) as SimState["factions"],
     missionName: mission.name,
   });
+  return withEntityWorldBatch(state, () => initializeMissionState(state, map, mission, rng, difficulty));
+}
+
+function initializeMissionState(
+  state: SimState,
+  map: GeneratedMap,
+  mission: ReadonlyMissionDef,
+  rng: ReturnType<typeof createRng>,
+  difficulty: ReturnType<typeof missionDifficulty>,
+): SimState {
   state.missionKind = mission.win.kind;
   state.aiState = "economy";
 
@@ -147,7 +158,7 @@ function dirPoint(
     spawnBuildingAt(state, 0, "barracks", pBarracks.x, pBarracks.y);
   }
 
-  for (const building of state.entities.filter((entity) => entity.owner === 0 && entity.class === "building" && entity.hp > 0 && entity.constructing === 0)) {
+  for (const building of worldFor(state).all().filter((entity) => entity.owner === 0 && entity.class === "building" && entity.hp > 0 && entity.constructing === 0)) {
     state.buildingsCompleted[0] += 1;
     state.buildingsCompletedByKind[building.kind] = (state.buildingsCompletedByKind[building.kind] ?? 0) + 1;
   }
@@ -233,18 +244,20 @@ export function tick(
   commands?: Command[],
   options: TickOptions = {},
 ): { state: SimState; events: SimEvent[]; commandRejections: number } {
-  resetPathBudget(state);
-  const collectEvents = options.collectEvents !== false;
-  const events = collectEvents ? [] : EMPTY_EVENTS;
-  const commandEvents = applyQueuedCommands(state, commands);
-  const commandRejections = commandEvents.reduce(
-    (count, event) => count + (event.type === "commandRejected" ? 1 : 0),
-    0,
-  );
-  if (collectEvents) events.push(...commandEvents);
-  if (state.result !== "playing") return { state, events, commandRejections };
-  runSimulationSystems(createSimulationTickContext(state, collectEvents ? events : undefined, options));
-  return { state, events, commandRejections };
+  return withEntityWorldBatch(state, () => {
+    resetPathBudget(state);
+    const collectEvents = options.collectEvents !== false;
+    const events = collectEvents ? [] : EMPTY_EVENTS;
+    const commandEvents = applyQueuedCommands(state, commands);
+    const commandRejections = commandEvents.reduce(
+      (count, event) => count + (event.type === "commandRejected" ? 1 : 0),
+      0,
+    );
+    if (collectEvents) events.push(...commandEvents);
+    if (state.result !== "playing") return { state, events, commandRejections };
+    runSimulationSystems(createSimulationTickContext(state, collectEvents ? events : undefined, options));
+    return { state, events, commandRejections };
+  });
 }
 
 export function createCampaignAndMission(seed: number, missionIndex: number) {

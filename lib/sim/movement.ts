@@ -9,6 +9,7 @@ import { navigationEdgeKey, navigationEdgeReserved } from "./navigation/grid";
 import { invalidateUnitAtCache, unitOccupancyFor } from "./world";
 import type { FlowField } from "./flowField";
 import { tickAircraft } from "./aircraft";
+import { entitiesFor } from "./ecs/world";
 
 type MovementBuffers = {
   occupancy: Uint8Array;
@@ -71,7 +72,7 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
   const { occupancy, atTile, reserved, movers, previousCells, movementIntents, flowOrder, plannedVacates, flowFields, edgeReservations } = buffersFor(state);
   resetPreviousCellsForNewOrders(state, previousCells, movementIntents);
   prepareFlowFieldRoutes(state, occupancy, reserved, previousCells, undefined, flowOrder, plannedVacates, flowFields, edgeReservations);
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     // Convoys are neutral so combat targeting ignores them, but they still
     // need the normal background repath when a bounded search returned only
     // a partial route. Other neutral scenario actors have no movement orders.
@@ -117,12 +118,12 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
     e.routePending = routePendingFor(result.status);
     e.idle = result.status === "unreachable";
   }
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     if (e.hp <= 0 || e.class !== "unit" || isAirUnit(e.kind)) continue;
     atTile.set(cellOf(state, e.x, e.y), e);
   }
 
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     if (e.hp <= 0 || !isUnitEntity(e) || isAirUnit(e.kind)) continue;
     movers.push(e);
   }
@@ -352,7 +353,7 @@ function resetPreviousCellsForNewOrders(
   previousCells: Map<number, number>,
   movementIntents: Map<number, string>,
 ): void {
-  for (const entity of state.entities) {
+  for (const entity of entitiesFor(state)) {
     if (entity.class !== "unit") continue;
     const destination = entity.orderDestination;
     const flowGoal = entity.flowGoal;

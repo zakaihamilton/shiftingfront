@@ -21,6 +21,7 @@ import { extractionPoints, rescuePoint, rescuePoints, tickRescueExtraction } fro
 import { inRescueFlank } from "../../gen/map/generator/rescuePlacement";
 import type { ScenarioDefinition, ScenarioSetupContext, ScenarioSetupResult } from "./contract";
 import { evaluateElimination, evaluateExtractionEscort, evaluateSabotage } from "./evaluators";
+import { entitiesFor } from "../ecs/world";
 
 export { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS };
 export { scenarioAffordances, type ScenarioAffordances } from "./affordances";
@@ -39,7 +40,7 @@ function setupDestroyMarkedScenario({ state, map, mission, rng, reachable }: Sce
     ? map.markedSpots
     : [enemyApproachPoint(map, 10, -2), enemyApproachPoint(map, 10, 2)];
   const count = mission.win.targetCount ?? 1;
-  const alliedBase = state.entities.filter((entity): entity is Extract<Entity, { class: "building" }> =>
+  const alliedBase = entitiesFor(state).filter((entity): entity is Extract<Entity, { class: "building" }> =>
     entity.owner === 0 && entity.class === "building" && entity.hp > 0,
   );
   for (let i = 0; i < count; i++) {
@@ -110,7 +111,7 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
       const depth = 12;
       const spacing = 4;
       const spot = map.markedSpots[i] ?? enemyApproachPoint(map, depth + i * spacing, i % 2 === 0 ? -2 : 2);
-      const alliedBase = state.entities.filter((entity): entity is Extract<Entity, { class: "building" }> =>
+      const alliedBase = entitiesFor(state).filter((entity): entity is Extract<Entity, { class: "building" }> =>
         entity.owner === 0 && entity.class === "building" && entity.hp > 0,
       );
       const objective = spawnBuildingAt(
@@ -171,7 +172,7 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
 
   if (kind === "extraction") {
     for (const [index, id] of targetIds.entries()) {
-      const target = state.entities.find((entity) => entity.id === id);
+      const target = entitiesFor(state).find((entity) => entity.id === id);
       if (target) spawnScenarioPatrols(index, target, { x: target.x, y: target.y });
     }
   }
@@ -320,7 +321,7 @@ export function tickScenario(state: SimState, eventSink?: SimEvent[], collectEve
     if (zone) {
       let rescued = 0;
       for (const id of runtime.targetIds) {
-        const e = state.entities.find((item) => item.id === id && item.hp > 0);
+        const e = entitiesFor(state).find((item) => item.id === id && item.hp > 0);
         if (e && inObjectiveZone(e.x, e.y, zone)) {
           rescued += 1;
           // Convoys are neutral units, so they do not receive a normal move
@@ -378,13 +379,13 @@ export function tickScenario(state: SimState, eventSink?: SimEvent[], collectEve
     }
   }
 
-  const yard = state.entities.find((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
+  const yard = entitiesFor(state).find((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
   const preserve = runtime.secondary.find((objective) => objective.kind === "preserveYard");
   if (preserve) preserve.completed = !!yard;
   const timed = runtime.secondary.find((objective) => objective.kind === "completeBefore");
   if (timed && timed.target !== undefined) timed.completed = state.tick < timed.target;
   const keepUnits = runtime.secondary.find((objective) => objective.kind === "keepUnits");
-  if (keepUnits) keepUnits.completed = state.entities.some((entity) =>
+  if (keepUnits) keepUnits.completed = entitiesFor(state).some((entity) =>
     entity.owner === 0 && isUnitEntity(entity) && entity.hp > 0 && !entity.neutral
       && UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind),
   );
