@@ -80,7 +80,7 @@
 
 .headerLabel {
   color: var(--chrome-cyan);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.26em;
 }
 
@@ -276,7 +276,7 @@
 .objectiveLabel {
   margin: 0;
   color: var(--chrome-muted);
-  font-size: 0.67rem;
+  font-size: var(--text-xs);
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -285,7 +285,7 @@
 .cardStatus,
 .objectiveRowState {
   color: var(--chrome-cyan);
-  font-size: 0.64rem;
+  font-size: var(--text-xs);
   font-weight: 900;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -333,7 +333,7 @@
 
 .listHeader {
   color: var(--chrome-muted);
-  font-size: 0.64rem;
+  font-size: var(--text-xs);
   font-weight: 800;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -373,7 +373,7 @@
   place-items: center;
   border: 1px solid currentColor;
   color: var(--chrome-gold);
-  font-size: 0.64rem;
+  font-size: var(--text-xs);
   font-weight: 900;
 }
 
@@ -426,7 +426,7 @@
   padding-top: 0.15rem;
   cursor: pointer;
   color: var(--chrome-body);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: 800;
   list-style-position: inside;
   text-transform: uppercase;
@@ -444,7 +444,7 @@
 .disclosureValue {
   overflow: hidden;
   color: var(--chrome-cyan);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -468,7 +468,7 @@
 
 .sectionHint {
   color: var(--chrome-muted);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -498,7 +498,7 @@
 .forceCard dt {
   overflow: hidden;
   color: var(--chrome-muted);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
@@ -531,7 +531,7 @@
   gap: 0.38rem;
   margin: 0;
   color: var(--chrome-gold);
-  font-size: 0.74rem;
+  font-size: var(--text-sm);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -568,7 +568,7 @@
 
 .forceCard small {
   color: var(--chrome-muted);
-  font-size: 0.6rem;
+  font-size: var(--text-xs);
   font-weight: 700;
 }
 
@@ -618,7 +618,7 @@
   }
 
   .headerLabel {
-    font-size: 0.64rem;
+    font-size: var(--text-xs);
   }
 
   .title {
@@ -627,7 +627,7 @@
 
   .mission {
     margin-top: 0.3rem;
-    font-size: 0.64rem;
+    font-size: var(--text-xs);
   }
 
   /* The resultGrid is the only scroll region on touch layouts. */
@@ -664,7 +664,7 @@
   }
 
   .disclosureBody {
-    font-size: 0.72rem;
+    font-size: var(--text-xs);
   }
 
   .metrics {
@@ -697,7 +697,7 @@
 
   .mission {
     margin-top: 0.25rem;
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
   }
 
   .resultGrid {
@@ -738,7 +738,7 @@
 
   .objectiveProgress {
     margin-top: 0.18rem;
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
   }
 
   .objectiveRow {
@@ -746,15 +746,15 @@
   }
 
   .objectiveRowLabel {
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
   }
 
   .disclosure summary {
-    font-size: 0.66rem;
+    font-size: var(--text-xs);
   }
 
   .disclosureBody {
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
   }
 
   .disclosure summary {

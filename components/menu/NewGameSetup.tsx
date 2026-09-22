@@ -40,7 +40,7 @@ export function NewGameSetup({
   onLaunch: () => void;
   onBack: () => void;
 }) {
-  const { countdown, week } = useWeeklyCountdown();
+  const { countdown } = useWeeklyCountdown();
   const isSynchronized = code === weeklySeed();
   const factionLine = preview
     ? `${preview.factions[0].name} vs ${preview.factions[1].name}`
@@ -58,7 +58,13 @@ export function NewGameSetup({
       <div className={styles.codePane} data-testid="campaign-code-pane">
         <div className={styles.paneTopline}>
           <ConsoleLabel>{isSynchronized ? "Weekly" : "Custom"}</ConsoleLabel>
-          <span className={styles.paneMarker}>{isSynchronized ? `Week ${week} · ${countdown}` : "4 digits"}</span>
+          <span
+            className={styles.paneMarker}
+            data-testid="campaign-expiry"
+            title={isSynchronized ? "Time until current campaign expires" : undefined}
+          >
+            {isSynchronized ? `Current campaign expires in ${countdown}` : "4 digits"}
+          </span>
         </div>
         <h2 id="new-game-title" className={styles.title}>New campaign</h2>
         <p className={styles.copy}>Enter four digits. Set the front.</p>

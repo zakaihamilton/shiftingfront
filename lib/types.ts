@@ -326,6 +326,28 @@ export type MissionDef = {
   profile?: MissionProfile;
 };
 
+export type MapSpawnTopology =
+  | "corner-nw-se"
+  | "corner-se-nw"
+  | "corner-sw-ne"
+  | "corner-ne-sw"
+  | "edge-w-e"
+  | "edge-e-w"
+  | "edge-n-s"
+  | "edge-s-n"
+  | "center-player"
+  | "center-enemy";
+
+export type LandmarkKind =
+  | "crater"
+  | "canyon"
+  | "spireRidge"
+  | "delta"
+  | "caldera"
+  | "crevasse"
+  | "ruinClearing"
+  | "basaltShelf";
+
 /** Recursive readonly view for generated data shared by the simulation and UI. */
 export type DeepReadonly<T> = T extends (...args: never[]) => unknown
   ? T

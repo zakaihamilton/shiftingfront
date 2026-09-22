@@ -4,18 +4,17 @@
   z-index: 20;
   box-sizing: border-box;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: safe center;
   background:
     linear-gradient(90deg, rgba(3, 7, 12, 0.82) 0%, rgba(3, 7, 12, 0.56) 58%, rgba(3, 7, 12, 0.4) 100%);
   backdrop-filter: blur(6px) saturate(0.86);
-  padding: clamp(0.75rem, 3vw, 3rem);
+  padding: clamp(0.75rem, 2.5vh, 2rem) clamp(0.75rem, 3vw, 3rem);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
 .overlay[data-view="newGame"] {
-  align-items: flex-start;
   background:
     linear-gradient(90deg, rgba(3, 7, 12, 0.7) 0%, rgba(3, 7, 12, 0.38) 58%, rgba(3, 7, 12, 0.22) 100%);
   backdrop-filter: blur(3px) saturate(0.92);
@@ -23,19 +22,18 @@
 
 .deployStage {
   width: min(100%, 76rem);
-}
-
-.overlay[data-view="newGame"] .deployStage {
   margin-block: auto;
 }
 
 @media (max-width: 639px) {
   .overlay {
-    align-items: flex-start;
     padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.75rem, env(safe-area-inset-bottom));
   }
+}
 
-  .deployStage {
-    margin-block: auto;
+@media (max-height: 700px) {
+  .overlay {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 }

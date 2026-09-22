@@ -30,7 +30,7 @@
 .count {
   color: var(--chrome-cyan);
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
 
@@ -43,7 +43,7 @@
 
 .filters :global(button) {
   padding: 0.3rem 0.4rem;
-  font-size: 0.52rem;
+  font-size: var(--text-xs);
 }
 
 @media (max-width: 799px) {

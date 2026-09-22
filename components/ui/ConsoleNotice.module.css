@@ -54,7 +54,7 @@
   box-shadow: inset 1px 1px var(--chrome-bevel), inset -2px -2px var(--chrome-steel-lo), 0 5px 16px rgba(0, 0, 0, 0.3), 2px 2px var(--chrome-void);
   color: var(--chrome-text);
   font-family: var(--font-ui);
-  font-size: 0.7rem;
+  font-size: var(--text-sm);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-decoration: none;

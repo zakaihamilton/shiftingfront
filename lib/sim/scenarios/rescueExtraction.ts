@@ -163,19 +163,25 @@ function nearestCandidate(
   width: number,
   height: number,
   enforceSeparation: boolean,
+  minimumSeparation: number = EXTRACTION_TARGET_SEPARATION,
+  minSpanSeparation: number = 0,
 ): Vec2 | undefined {
   let best: Vec2 | undefined;
   let bestDistance = Infinity;
   for (const candidate of candidates) {
     if (selected.some((point) => point.x === candidate.x && point.y === candidate.y)) continue;
     if (region && !extractionRegionContains(region, candidate, width, height)) continue;
-    if (enforceSeparation && minDistanceToPoints(candidate, selected) < EXTRACTION_TARGET_SEPARATION) continue;
+    if (enforceSeparation && minDistanceToPoints(candidate, selected) < minimumSeparation) continue;
+    if (minSpanSeparation > 0 && selected.length > 0) {
+      const maxDist = Math.max(...selected.map((point) => pointDistance(candidate, point)));
+      if (maxDist < minSpanSeparation) continue;
+    }
     const distance = region
       ? Math.hypot(
         candidate.x - region.center.x * (width - 1),
         candidate.y - region.center.y * (height - 1),
-      )
-      : -minDistanceToPoints(candidate, [...basePoints, ...selected]);
+      ) - (selected.length ? minDistanceToPoints(candidate, selected) * 0.45 : 0)
+      : -minDistanceToPoints(candidate, selected.length ? selected : basePoints);
     if (distance < bestDistance) {
       bestDistance = distance;
       best = candidate;
@@ -201,9 +207,17 @@ export function extractionPoints(
   const selected: Vec2[] = [];
   const usedRegions = new Set<number>();
   const basePoints = [map.playerStart, map.enemyStart];
+  const requiredMaxSeparation = Math.ceil(map.width * 0.26);
 
   for (const regionIndex of order.slice(0, count)) {
     let chosenRegion = regionIndex;
+    const currentMaxSpan = selected.length >= 2
+      ? Math.max(...selected.flatMap((p, i) => selected.slice(i + 1).map((q) => pointDistance(p, q))))
+      : 0;
+    const minSpanSeparation = (selected.length > 0 && currentMaxSpan < requiredMaxSeparation && (selected.length >= count - 1 || count === 2))
+      ? requiredMaxSeparation
+      : 0;
+
     let point = nearestCandidate(
       candidates,
       usedRegions.has(regionIndex) ? undefined : EXTRACTION_REGIONS[regionIndex],
@@ -212,6 +226,8 @@ export function extractionPoints(
       map.width,
       map.height,
       true,
+      EXTRACTION_TARGET_SEPARATION,
+      minSpanSeparation,
     );
     if (!point) {
       for (const alternativeIndex of order) {
@@ -224,6 +240,54 @@ export function extractionPoints(
           map.width,
           map.height,
           true,
+          EXTRACTION_TARGET_SEPARATION,
+          minSpanSeparation,
+        );
+        if (point) {
+          chosenRegion = alternativeIndex;
+          break;
+        }
+      }
+    }
+    if (!point && minSpanSeparation > 0) {
+      point = nearestCandidate(
+        candidates,
+        undefined,
+        selected,
+        basePoints,
+        map.width,
+        map.height,
+        true,
+        EXTRACTION_TARGET_SEPARATION,
+        minSpanSeparation,
+      );
+    }
+    if (!point) {
+      point = nearestCandidate(
+        candidates,
+        usedRegions.has(regionIndex) ? undefined : EXTRACTION_REGIONS[regionIndex],
+        selected,
+        basePoints,
+        map.width,
+        map.height,
+        true,
+        EXTRACTION_TARGET_SEPARATION,
+        0,
+      );
+    }
+    if (!point) {
+      for (const alternativeIndex of order) {
+        if (usedRegions.has(alternativeIndex) || alternativeIndex === regionIndex) continue;
+        point = nearestCandidate(
+          candidates,
+          EXTRACTION_REGIONS[alternativeIndex],
+          selected,
+          basePoints,
+          map.width,
+          map.height,
+          true,
+          EXTRACTION_TARGET_SEPARATION,
+          0,
         );
         if (point) {
           chosenRegion = alternativeIndex;
@@ -232,7 +296,7 @@ export function extractionPoints(
       }
     }
     point = point
-      ?? nearestCandidate(candidates, undefined, selected, basePoints, map.width, map.height, true)
+      ?? nearestCandidate(candidates, undefined, selected, basePoints, map.width, map.height, true, EXTRACTION_TARGET_SEPARATION, 0)
       ?? nearestCandidate(candidates, undefined, selected, basePoints, map.width, map.height, false);
     if (!point) break;
     selected.push(point);

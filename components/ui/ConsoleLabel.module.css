@@ -2,9 +2,9 @@
   display: block;
   color: var(--chrome-muted);
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   text-shadow: 1px 1px var(--chrome-void);
 }

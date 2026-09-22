@@ -11,7 +11,7 @@
   color: var(--chrome-text);
   padding: 0.7rem 1rem;
   font-family: var(--font-ui);
-  font-size: 0.7rem;
+  font-size: var(--text-sm);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;

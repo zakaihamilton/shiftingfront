@@ -75,7 +75,7 @@
 .preview {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.025em;
   line-height: 1.35;

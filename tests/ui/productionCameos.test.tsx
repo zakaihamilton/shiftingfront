@@ -50,6 +50,27 @@ describe("production cameo availability", () => {
     expect(tank).toHaveAttribute("aria-keyshortcuts", "Alt+4");
   });
 
+  it("reserves the training detail row before a unit is queued", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    render(
+      <ProductionCameos
+        state={state}
+        palette={state.factions[0].palette}
+        profile={generateVisualProfile(state.seed, 0)}
+        power={0}
+        availableProducer={() => undefined}
+        onQueueUnit={vi.fn()}
+        onCancelUnit={vi.fn()}
+      />,
+    );
+
+    const infantry = screen.getByRole("button", { name: /Infantry, 75 credits/ });
+    const detail = infantry.querySelector('[class*="detail"]');
+
+    expect(detail).toBeInTheDocument();
+    expect(detail?.textContent).toBe("\u00a0");
+  });
+
   it("shows Option labels for cameo shortcuts on Mac", () => {
     const originalPlatform = navigator.platform;
     Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });

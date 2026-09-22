@@ -59,13 +59,14 @@ function renderInput(
   const applyEdgePan = vi.fn();
   const clearTools = vi.fn();
   const repairRef = overrides.repairRef ?? { current: overrides.repairMode ?? false };
+  const commandQueue = { current: [] as Command[] };
   const { result, rerender } = renderHook(
     (props: { repairMode: boolean }) => useGameInput({
       stateRef: useRef(state),
       camRef: useRef(createCamera()),
       selectedRef: useRef(overrides.selected ?? new Set<number>()),
       commitSelection,
-      cmdQRef: useRef<Command[]>([]),
+      cmdQRef: commandQueue,
       placeRef: useRef<BuildingKind | null>(overrides.placeKind ?? null),
       setPlaceKind: vi.fn(),
       repairRef,
@@ -84,7 +85,7 @@ function renderInput(
     }),
     { initialProps: { repairMode: overrides.repairMode ?? false } },
   );
-  return { result, canvas, commitSelection, applyEdgePan, clearTools, repairRef, rerender, state };
+  return { result, canvas, commandQueue, commitSelection, applyEdgePan, clearTools, repairRef, rerender, state };
 }
 
 describe("desktop marquee pointer lifecycle", () => {
@@ -197,6 +198,7 @@ describe("touch gesture lifecycle", () => {
       act(() => result.current.beginTouch(touch(), { x: 100, y: 100 }));
       act(() => vi.advanceTimersByTime(500));
       expect(issueContextOrder).toHaveBeenCalledOnce();
+      expect(issueContextOrder).toHaveBeenCalledWith(state, { x: 100, y: 100 }, true);
       expect(result.current.endTouch(touch({ buttons: 0 }))).toBe(true);
     } finally {
       vi.useRealTimers();
@@ -260,6 +262,26 @@ describe("touch gesture lifecycle", () => {
 });
 
 describe("command markers", () => {
+  it("uses attack-move for a mobile ground tap with a selected unit", () => {
+    const canvas = testCanvas();
+    const selected = new Set<number>();
+    let unitId = 0;
+    const { result, commandQueue } = renderInput(canvas, {
+      setup: (state) => {
+        unitId = addUnit(state, 0, "infantry", 2, 2).id;
+        selected.add(unitId);
+      },
+      selected,
+    });
+
+    act(() => {
+      result.current.onUp(pointerEvent(canvas, { pointerType: "touch", buttons: 0 }));
+    });
+
+    expect(commandQueue.current).toHaveLength(1);
+    expect(commandQueue.current[0]).toMatchObject({ type: "attackMove", unitIds: [unitId] });
+  });
+
   it("does not leave a marker after an invalid building placement", () => {
     const canvas = testCanvas();
     const { result, state } = renderInput(canvas, { placeKind: "power" });
@@ -296,7 +318,7 @@ describe("command markers", () => {
     });
     vi.mocked(voiceBarkForBeep).mockClear();
     act(() => {
-      armed.current.onUp(pointerEvent(canvas, { button: 2, buttons: 0 }));
+      armed.current.onUp(pointerEvent(canvas, { button: 2, buttons: 0, ctrlKey: true }));
     });
     expect(armed.current.commandMarkerRef.current?.kind).toBe("attack");
     expect(voiceBarkForBeep).toHaveBeenCalledOnce();

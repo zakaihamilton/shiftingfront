@@ -14,6 +14,7 @@ import { MenuOverlay } from "../../components/menu/MenuOverlay";
 import { MenuMainPanel } from "../../components/menu/MenuMainPanel";
 import { NewGameSetup } from "../../components/menu/NewGameSetup";
 import { SeedEntry } from "../../components/menu/SeedEntry";
+import { weeklySeed } from "../../components/menu/menuLaunch";
 import { PauseMenu } from "../../components/game/PauseMenu";
 import { PauseDiagnostics } from "../../components/game/PauseDiagnostics";
 import { PauseOptions } from "../../components/settings/PauseOptions";
@@ -401,6 +402,30 @@ describe("MenuOverlay", () => {
 });
 
 describe("NewGameSetup", () => {
+  it("describes when the current weekly campaign expires", () => {
+    render(
+      <NewGameSetup
+        code={weeklySeed()}
+        error=""
+        previewLine="Campaign"
+        preview={null}
+        copied={false}
+        inputRef={createRef<HTMLInputElement>()}
+        onChange={vi.fn()}
+        onRandomize={vi.fn()}
+        onThisWeek={vi.fn()}
+        onCopyLink={vi.fn()}
+        onLaunch={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    const expiry = screen.getByTestId("campaign-expiry");
+    expect(expiry).toHaveTextContent(/^Current campaign expires in /);
+    expect(expiry).not.toHaveTextContent(/^Week /);
+    expect(expiry).toHaveAttribute("title", "Time until current campaign expires");
+  });
+
   it("does not expose an operations map action", () => {
     render(
       <NewGameSetup
@@ -597,6 +622,9 @@ describe("MenuMainPanel dashboard", () => {
     expect(screen.getByRole("navigation", { name: "Main menu" })).toHaveTextContent("LOAD MISSION");
     expect(screen.getByRole("navigation", { name: "Main menu" })).not.toHaveTextContent("Campaign archive");
     expect(screen.queryByRole("button", { name: "IMPORT SAVE" })).toBeNull();
+    expect(screen.getByTestId("weekly-countdown")).toHaveTextContent(/^Current campaign expires in /);
+    expect(screen.getByTestId("weekly-countdown")).not.toHaveTextContent(/^WEEK /);
+    expect(screen.getByTestId("weekly-countdown")).toHaveAttribute("title", "Time until current campaign expires");
 
     fireEvent.click(screen.getByRole("button", { name: "NEW GAME" }));
     fireEvent.click(screen.getByRole("button", { name: "TUTORIAL" }));

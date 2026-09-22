@@ -16,14 +16,14 @@ export function MenuMainPanel({
   onLoadMission: () => void;
   onOptions: () => void;
 }) {
-  const { countdown, week } = useWeeklyCountdown();
+  const { countdown } = useWeeklyCountdown();
 
   return (
     <MetalPanel as="nav" className={styles.panel} data-testid="menu-dashboard" aria-label="Main menu">
       <div className={styles.panelHeader}>
         <ConsoleLabel>Deploy</ConsoleLabel>
-        <span className={styles.status} data-testid="weekly-countdown" title="Time until next synchronized weekly campaign">
-          WEEK {week} · {countdown}
+        <span className={styles.status} data-testid="weekly-countdown" title="Time until current campaign expires">
+          Current campaign expires in {countdown}
         </span>
       </div>
 

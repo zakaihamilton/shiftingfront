@@ -1,6 +1,7 @@
 .dialog {
   width: 100%;
-  max-width: 24rem;
+  max-width: min(100%, 38rem);
+  margin-block: auto;
   padding: 1.5rem;
   border-top: 2px solid var(--chrome-cyan-dim);
 }

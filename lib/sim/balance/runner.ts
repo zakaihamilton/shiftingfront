@@ -8,7 +8,7 @@ import { CompetentCommander } from "../commander";
 import { ArchetypeCommander, isArchetypeStrategy } from "../commander/archetypes";
 import { powerBreakdown } from "../world";
 import { hqThreatened } from "../director";
-import { TILE_BLOCKED, TILE_WATER, type BalanceStrategy, type Campaign, type Command, type MissionDirectorPhase, type ReadonlyMissionDef, type SimState, type UnitKind } from "../../types";
+import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER, type BalanceStrategy, type Campaign, type Command, type MissionDirectorPhase, type ReadonlyMissionDef, type SimState, type UnitKind, type Vec2 } from "../../types";
 import { missionFamilyFor } from "../../gen/profile";
 import { scenarioAffordances, type ScenarioAffordances } from "../scenarios";
 import { walkDistances } from "../../gen/map/generator/affordances";
@@ -49,6 +49,24 @@ export function validMap(map: GeneratedMap): boolean {
     Number.isFinite(map.affordances.routeSeparation);
 }
 
+function findNearestResource(state: SimState, origin: Vec2): Vec2 | undefined {
+  let best: Vec2 | undefined;
+  let bestDist = Infinity;
+  for (let y = 0; y < state.height; y += 1) {
+    for (let x = 0; x < state.width; x += 1) {
+      const idx = y * state.width + x;
+      if (state.tiles[idx] === TILE_RESOURCE && (state.resourceAmount[idx] ?? 0) > 0) {
+        const d = Math.hypot(x - origin.x, y - origin.y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = { x, y };
+        }
+      }
+    }
+  }
+  return best;
+}
+
 function baselineCommands(state: SimState, map: GeneratedMap): Command[] | undefined {
   if (state.tick % 60 !== 0) return undefined;
   const units = state.entities.filter((entity) => entity.owner === 0 && entity.class === "unit" && entity.hp > 0 && !entity.neutral);
@@ -56,7 +74,11 @@ function baselineCommands(state: SimState, map: GeneratedMap): Command[] | undef
   const harvesters = units.filter((entity) => entity.kind === "harvester").map((entity) => entity.id);
   const commands: Command[] = [];
   if (combat.length) commands.push({ type: "attackMove", unitIds: combat, x: map.enemyStart.x, y: map.enemyStart.y });
-  if (harvesters.length) commands.push({ type: "harvest", unitIds: harvesters, x: map.playerStart.x + 4, y: map.playerStart.y + 4 });
+  if (harvesters.length) {
+    const resource = findNearestResource(state, map.playerStart);
+    const target = resource ?? map.playerStart;
+    commands.push({ type: "harvest", unitIds: harvesters, x: target.x, y: target.y });
+  }
   return commands;
 }
 

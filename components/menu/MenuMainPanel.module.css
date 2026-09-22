@@ -22,7 +22,7 @@
   flex-shrink: 0;
   color: var(--chrome-cyan);
   font-family: var(--font-mono);
-  font-size: 0.5rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-align: right;
@@ -39,6 +39,9 @@
 .primaryAction {
   width: 100%;
   text-align: left;
+  font-size: var(--text-base);
+  font-weight: 800;
+  letter-spacing: 0.14em;
   color: var(--chrome-text);
   background:
     linear-gradient(105deg, color-mix(in srgb, var(--chrome-cyan) 24%, transparent), transparent 32%),
@@ -48,9 +51,10 @@
 
 .utilityAction {
   width: 100%;
-  padding: 0.6rem 0.75rem;
+  padding: 0.65rem 0.85rem;
   text-align: left;
-  font-size: 0.62rem;
+  font-size: var(--text-sm);
+  letter-spacing: 0.12em;
 }
 
 .loadAction {

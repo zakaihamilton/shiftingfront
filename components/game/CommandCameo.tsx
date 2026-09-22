@@ -85,7 +85,7 @@ export function CommandCameo({
           <span className={cx(styles.status, disabledReason && styles.blocked)}>
             {disabledReason ?? (busy ? cameo.phase === "waiting" ? `Queue ${cameo.queued}` : `${Math.round(cameo.ratio * 100)}% ready` : "Ready")}
           </span>
-          {detail ? <span className={styles.detail}>{detail}</span> : null}
+          <span className={styles.detail}>{detail ?? "\u00a0"}</span>
         </span>
       </button>
       {cancellable && onContextMenu ? (

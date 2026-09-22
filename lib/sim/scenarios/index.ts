@@ -19,10 +19,12 @@ import { enemyApproachPoint, objectiveBuildingFilter, reachableScenarioCells, re
 import { convoyStartPoint, convoyZonePoint, tickEscort } from "./escort";
 import { extractionPoints, rescuePoint, rescuePoints, tickRescueExtraction } from "./rescueExtraction";
 import { inRescueFlank } from "../../gen/map/generator/rescuePlacement";
-import type { ScenarioDefinition, ScenarioProgress, ScenarioSetupContext, ScenarioSetupResult } from "./contract";
+import type { ScenarioDefinition, ScenarioSetupContext, ScenarioSetupResult } from "./contract";
+import { evaluateElimination, evaluateExtractionEscort, evaluateSabotage } from "./evaluators";
 
 export { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS };
 export { scenarioAffordances, type ScenarioAffordances } from "./affordances";
+export { evaluateElimination, evaluateExtractionEscort, evaluateZoneHold, evaluateSabotage, isEntityAlive } from "./evaluators";
 export type { ScenarioDefinition, ScenarioProgress, ScenarioSetupContext, ScenarioSetupResult } from "./contract";
 
 export const DEADLINE_SCENARIO_KINDS: readonly MissionKind[] = ["escort", "sabotage", "rescue", "extraction"];
@@ -183,88 +185,6 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
   };
 }
 
-function entityAlive(state: SimState, id: number): boolean {
-  return state.entities.some((entity) => entity.id === id && entity.hp > 0);
-}
-
-function targetLostForScenario(state: SimState): boolean {
-  const runtime = state.runtime;
-  if (!runtime) return false;
-  if (runtime.kind === "escort") return runtime.targetIds.some((id) => !entityAlive(state, id));
-  if (runtime.kind === "extraction") {
-    const extracted = new Set(runtime.extractedIds ?? []);
-    return runtime.targetIds.some((id) => !extracted.has(id) && !entityAlive(state, id));
-  }
-  if (runtime.kind === "rescue") {
-    // New rescue runs track the two distinct phases explicitly. A target that
-    // has been contacted is no longer safe just because it is player-owned:
-    // it must survive until it reaches the HQ zone. Keep the old counter-based
-    // fallback so saves created before this field existed remain playable.
-    if (runtime.contactedIds !== undefined || runtime.rescuedIds !== undefined) {
-      const rescued = new Set(runtime.rescuedIds ?? []);
-      return runtime.targetIds.some((id) => !rescued.has(id) && !entityAlive(state, id));
-    }
-    const required = state.win.targetCount ?? runtime.required ?? runtime.targetIds.length;
-    const remaining = runtime.targetIds.filter((id) =>
-      state.entities.some((entity) => entity.id === id && entity.hp > 0 && entity.neutral === true),
-    ).length;
-    return runtime.rescued + remaining < required;
-  }
-  return false;
-}
-
-function targetProgress(state: SimState, label: string, fallbackToCount = true): ScenarioProgress {
-  const ids = state.win.targetIds ?? state.runtime?.targetIds ?? [];
-  const current = ids.filter((id) => !entityAlive(state, id)).length;
-  const target = fallbackToCount ? ids.length || state.win.targetCount || 1 : ids.length;
-  return { current, target, label: `${label} ${current} / ${target}` };
-}
-
-function progressForScenario(state: SimState): ScenarioProgress | undefined {
-  switch (state.win.kind) {
-    case "destroyMarked":
-      return targetProgress(state, "Targets", false);
-    case "sabotage":
-      return targetProgress(state, "Systems");
-    case "escort":
-    case "rescue":
-    case "extraction": {
-      const runtime = state.runtime;
-      const current = runtime?.rescued ?? 0;
-      const target = state.win.targetCount ?? runtime?.required ?? 1;
-      const label = state.win.kind === "escort"
-        ? `Convoy ${current} / ${target}`
-        : state.win.kind === "rescue"
-          ? runtime?.contactedIds !== undefined || runtime?.rescuedIds !== undefined
-            ? `Contacted ${runtime?.contactedIds?.length ?? 0} · Returned ${current} / ${target}`
-            : `Rescued ${current} / ${target}`
-          : `Extracted ${current} / ${target}`;
-      return { current, target, label };
-    }
-    default:
-      return undefined;
-  }
-}
-
-function completeForScenario(state: SimState): boolean | undefined {
-  switch (state.win.kind) {
-    case "destroyMarked":
-    case "sabotage": {
-      const ids = state.win.targetIds ?? [];
-      return ids.length > 0 && ids.every((id) => !entityAlive(state, id));
-    }
-    case "escort":
-    case "extraction":
-      return (state.runtime?.rescued ?? 0) >= (state.win.targetCount ?? state.runtime?.required ?? Infinity);
-    case "rescue":
-      return state.runtime?.rescuedIds !== undefined
-        ? state.runtime.rescuedIds.length >= (state.win.targetCount ?? state.runtime.required ?? Infinity)
-        : (state.runtime?.rescued ?? 0) >= (state.win.targetCount ?? state.runtime?.required ?? Infinity);
-    default:
-      return undefined;
-  }
-}
-
 function deadlineForScenario(state: SimState): number | undefined {
   if (!state.runtime || !DEADLINE_SCENARIO_KINDS.includes(state.runtime.kind)) return undefined;
   return state.runtime.deadline ?? state.win.ticks;
@@ -290,8 +210,14 @@ const scenarioDefinitions: Record<MissionKind, ScenarioDefinition> = {
   destroyMarked: {
     ...classicDefinition("destroyMarked", "Destroy marked", "Targets"),
     setup: setupDestroyMarkedScenario,
-    progress: progressForScenario,
-    isComplete: completeForScenario,
+    progress: (state) => evaluateElimination(state, {
+      targetIds: state.win.targetIds ?? state.runtime?.targetIds ?? [],
+      label: "Targets",
+      fallbackToCount: false,
+    }).progress,
+    isComplete: (state) => evaluateElimination(state, {
+      targetIds: state.win.targetIds ?? [],
+    }).isComplete,
   },
   razeAll: classicDefinition("razeAll", "Raze all", "Buildings"),
   decapitate: classicDefinition("decapitate", "Decapitate", "Command HQ"),
@@ -301,35 +227,35 @@ const scenarioDefinitions: Record<MissionKind, ScenarioDefinition> = {
     ...classicDefinition("escort", "Escort", "Convoy"),
     setup: setupTimedScenario,
     tick: tickEscort,
-    progress: progressForScenario,
-    isComplete: completeForScenario,
-    targetLost: targetLostForScenario,
+    progress: (state) => evaluateExtractionEscort(state).progress,
+    isComplete: (state) => evaluateExtractionEscort(state).isComplete,
+    targetLost: (state) => evaluateExtractionEscort(state).isTargetLost,
     deadline: deadlineForScenario,
   },
   sabotage: {
     ...classicDefinition("sabotage", "Sabotage", "Systems"),
     setup: setupTimedScenario,
-    progress: progressForScenario,
-    isComplete: completeForScenario,
-    targetLost: targetLostForScenario,
+    progress: (state) => evaluateSabotage(state).progress,
+    isComplete: (state) => evaluateSabotage(state).isComplete,
+    targetLost: (state) => evaluateSabotage(state).isTargetLost,
     deadline: deadlineForScenario,
   },
   rescue: {
     ...classicDefinition("rescue", "Rescue", "Units"),
     setup: setupTimedScenario,
     tick: tickRescueExtraction,
-    progress: progressForScenario,
-    isComplete: completeForScenario,
-    targetLost: targetLostForScenario,
+    progress: (state) => evaluateExtractionEscort(state).progress,
+    isComplete: (state) => evaluateExtractionEscort(state).isComplete,
+    targetLost: (state) => evaluateExtractionEscort(state).isTargetLost,
     deadline: deadlineForScenario,
   },
   extraction: {
     ...classicDefinition("extraction", "Extraction", "Assets"),
     setup: setupTimedScenario,
     tick: tickRescueExtraction,
-    progress: progressForScenario,
-    isComplete: completeForScenario,
-    targetLost: targetLostForScenario,
+    progress: (state) => evaluateExtractionEscort(state).progress,
+    isComplete: (state) => evaluateExtractionEscort(state).isComplete,
+    targetLost: (state) => evaluateExtractionEscort(state).isTargetLost,
     deadline: deadlineForScenario,
   },
 };
