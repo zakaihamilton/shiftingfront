@@ -102,7 +102,10 @@ export type MissionRuntime = {
   director?: MissionDirectorState;
 };
 
-export const RESCUE_CONTACT_RADIUS = 2.5;
+// Contact is resolved around the target's occupied tile. A radius below four
+// leaves units that cannot enter the target cell visibly adjacent but unable to
+// trigger rescue/extraction, especially at map edges or in a formation.
+export const RESCUE_CONTACT_RADIUS = 3.5;
 export const OBJECTIVE_ZONE_RADIUS = 6;
 
 export function inObjectiveZone(

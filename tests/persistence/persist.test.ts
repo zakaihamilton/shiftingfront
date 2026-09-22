@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { deserializeState, listSaves, listUnreadableSaves, memoryStorage, readSave, removeSave, saveKey, SAVE_CONTENT_VERSION, SAVE_VERSION, serializeState, writeSave } from "../../lib/persist/save";
+import { rngFromState } from "../../lib/seed/rng";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { createMission, tick } from "../../lib/sim/api";
 
@@ -50,6 +51,15 @@ describe("persist", () => {
 
     expect(state.rngState).toBeLessThan(0);
     expect(deserializeState(serializeState(state)).rngState).toBe(state.rngState);
+  });
+
+  it("preserves a zero RNG state when restoring", () => {
+    const first = rngFromState(0);
+    const second = rngFromState(0);
+
+    expect(first.state).toBe(0);
+    expect(first.next()).toBe(second.next());
+    expect(first.state).toBe(second.state);
   });
 
   it("writes a versioned envelope and rejects malformed or mismatched saves", () => {

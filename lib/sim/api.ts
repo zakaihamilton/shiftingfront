@@ -64,7 +64,7 @@ export function createMissionFromData(opts: {
       ...mission.win,
       targetIds: mission.win.targetIds ? [...mission.win.targetIds] : undefined,
     },
-    rngState: mixSeed(opts.seed, `sim:${opts.missionIndex}`) || 1,
+    rngState: mixSeed(opts.seed, `sim:${opts.missionIndex}`),
     // Campaigns are cached and frozen. Simulation state is mutable, so keep a
     // separate faction graph at this boundary.
     factions: campaign.factions.map((faction) => ({
@@ -130,7 +130,7 @@ function dirPoint(
     const pAntiArmor = dirPoint(p, pVecs.forward, pVecs.lateral, 4, -1, state.width, state.height);
     spawnUnit(state, 0, "antiArmor", pAntiArmor.x, pAntiArmor.y);
   }
-  if (mission.index >= 4 || offensiveMission) {
+  if (mission.index >= 4 || offensiveMission || mission.win.kind === "holdTheLine") {
     const pTank = dirPoint(p, pVecs.forward, pVecs.lateral, 5, 0, state.width, state.height);
     spawnUnit(state, 0, "tank", pTank.x, pTank.y);
   }
@@ -205,7 +205,10 @@ function dirPoint(
 
   if (mission.win.kind === "holdTheLine") {
     const holdLineKinds: UnitKind[] = ["infantry", "antiArmor", "tank", "infantry", "antiArmor", "tank", "infantry", "antiArmor"];
-    for (let i = 0; i < difficulty.holdLineReinforcements; i++) {
+    // The hold objective already receives periodic pressure waves. Keep one
+    // opening reinforcement slot available for the player's defensive setup.
+    const openingHoldReinforcements = Math.max(0, difficulty.holdLineReinforcements - 1);
+    for (let i = 0; i < openingHoldReinforcements; i++) {
       const kind = holdLineKinds[i]!;
       const pos = dirPoint(e, eVecs.forward, eVecs.lateral, 3 + (i % 2), -3 + (i % 3) * 2, state.width, state.height);
       spawnUnit(state, 1, kind, pos.x, pos.y);

@@ -49,5 +49,11 @@ export function damageMultiplier(weapon: import("../../types").WeaponType, armor
 export function heightMultiplier(state: SimState, from: Entity, to: Entity): number {
   const source = state.heights[Math.round(from.y) * state.width + Math.round(from.x)] ?? 1;
   const target = state.heights[Math.round(to.y) * state.width + Math.round(to.x)] ?? 1;
-  return source > target ? 1.12 : source < target ? 0.9 : 1;
+  return source > target ? 1.15 : source < target ? 0.88 : 1;
+}
+
+export function heightRangeBonus(state: SimState, from: Entity, to: Entity): number {
+  const source = state.heights[Math.round(from.y) * state.width + Math.round(from.x)] ?? 1;
+  const target = state.heights[Math.round(to.y) * state.width + Math.round(to.x)] ?? 1;
+  return source > target ? 1 : 0;
 }

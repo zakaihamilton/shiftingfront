@@ -8,6 +8,8 @@ import { tryBuildAntiAir, tryBuildForwardInfrastructure, tryBuildPower, tryBuild
 import { assignAttack, assignAssault, assignMove, sendHome } from "./combat";
 import { contestedResourcePoint, distance, queueUnit, shouldAutoRepair, shouldRetreat } from "./helpers";
 import { enemyKnownPlayerEntities, nearestKnownPlayer } from "./visibility";
+import { buildInfluenceMap } from "./influence";
+import { isActiveScout, updateScouts } from "./scouting";
 import { isCombatTarget } from "../combat/grid";
 import { homeGuardCount, isTimedRecovery } from "../policy";
 
@@ -108,6 +110,7 @@ export function tickAi(state: SimState): void {
   let hasHarvester = false;
   let playerTanks = 0;
   let playerInfantry = 0;
+  let playerAntiArmor = 0;
   let woundedHumans = false;
   let woundedVehicles = false;
   let medicCount = 0;
@@ -115,6 +118,7 @@ export function tickAi(state: SimState): void {
   for (const entity of knownPlayers) {
     if (entity.kind === "tank") playerTanks += 1;
     if (entity.kind === "infantry") playerInfantry += 1;
+    if (entity.kind === "antiArmor") playerAntiArmor += 1;
   }
   for (const entity of active) {
     if (entity.owner === 1 && entity.class === "building") enemyBuildings.push(entity);
@@ -136,6 +140,10 @@ export function tickAi(state: SimState): void {
   }
 
   const difficulty = missionDifficulty(state.missionIndex);
+  const generatedHoldLine = state.win.kind === "holdTheLine" && state.runtime?.director !== undefined;
+  const holdLineAssaultEvery = generatedHoldLine
+    ? difficulty.enemyAssaultEvery * 8
+    : difficulty.enemyAssaultEvery;
   const profile = state.runtime?.director
     ? resolveMissionProfile(state.seed, state.missionIndex, state.win.kind)
     : undefined;
@@ -147,12 +155,13 @@ export function tickAi(state: SimState): void {
   );
   const openingOffensive = state.win.kind === "decapitate" && state.missionIndex < 2;
   const timedProductionScale = state.runtime?.kind === "extraction" ? 2.5 : 2;
+  const holdLineProductionScale = generatedHoldLine ? 8 : 1;
   const productionEvery = timedScenario
     ? Math.round(difficulty.enemyProductionEvery * timedProductionScale)
     : openingOffensive ? Math.round(difficulty.enemyProductionEvery * 4)
       : objectiveContract
         ? Math.max(1, Math.round(difficulty.enemyProductionEvery * objectiveContract.productionScale))
-        : difficulty.enemyProductionEvery;
+        : Math.round(difficulty.enemyProductionEvery * holdLineProductionScale);
   // Objective closeout windows need finite pressure: once the finale begins,
   // stop adding fresh enemy units or structures while keeping existing
   // defenses active. Otherwise the player can chase a moving target to timeout.
@@ -173,7 +182,12 @@ export function tickAi(state: SimState): void {
     const desiredRunways = state.missionIndex >= 4 ? 2 : 1;
     const aircraftCap = state.missionIndex >= 4 ? 2 : 1;
     const hasRefinery = enemyBuildings.some((e) => e.kind === "refinery");
-    const want: UnitKind = playerTanks > playerInfantry ? "antiArmor" : rng.chance(0.4) ? "tank" : "infantry";
+    const want: UnitKind =
+      playerTanks > playerInfantry && playerTanks > playerAntiArmor
+        ? "antiArmor"
+        : playerAntiArmor > playerTanks
+          ? "infantry"
+          : rng.chance(0.4) ? "tank" : "infantry";
     const producer = want === "infantry" || want === "antiArmor" ? barracks : factory;
     const supportWant =
       woundedHumans && medicCount === 0 && isUnitAvailable("medic", state.missionIndex) ? "medic"
@@ -218,7 +232,7 @@ export function tickAi(state: SimState): void {
     }
   }
 
-  if (state.win.kind === "holdTheLine" && state.tick > 0 && state.tick % difficulty.enemyAssaultEvery === 0) {
+  if (state.win.kind === "holdTheLine" && state.tick > 0 && state.tick % holdLineAssaultEvery === 0) {
     const fp = footprintOf("constructionYard");
     const spot = { x: yard.x - 1, y: yard.y + fp.h };
     const spawned = trySpawnUnit(state, 1, rng.chance(0.45) ? "tank" : "infantry", spot.x, spot.y);
@@ -231,7 +245,7 @@ export function tickAi(state: SimState): void {
 
   const playerYard = knownPlayers.find((entity) => entity.kind === "constructionYard");
   const pressureScale = timedScenario ? 2 : state.win.kind === "decapitate" && state.missionIndex < 2 ? 4 : 1;
-  const waveEvery = Math.max(240, Math.round((difficulty.enemyAssaultEvery
+  const waveEvery = Math.max(240, Math.round((holdLineAssaultEvery
     + (profileContract?.assaultEveryOffset ?? 0)
     + (objectiveContract?.assaultDelay ?? 0)) * pressureScale));
   for (const b of enemyBuildings) {
@@ -296,12 +310,22 @@ export function tickAi(state: SimState): void {
       // Combat acquires targets before the director runs. Do not replace an
       // active attack with a return-to-base route on the same tick.
       if (u.attackTarget !== undefined) continue;
+      if (isActiveScout(state, u.id) && !playerYard) continue;
       if (distToEntity(u, yard) <= YARD_DEFENSE_RANGE) continue;
       sendHome(state, u, yard);
     }
     guardScenarioObjectives(state, units);
     if (!state.runtime || (state.runtime.kind !== "sabotage" && state.runtime.kind !== "destroyMarked")) {
       guardResourceLane(state, units, yard, knownPlayers);
+    }
+    // Escort has a hard completion deadline and its combat reserve must stay
+    // with the convoy. Other mission types can afford the pre-contact patrol.
+    if (state.runtime?.kind !== "escort") {
+      const influence = buildInfluenceMap(state, knownPlayers);
+      const scoutTasks = updateScouts(state, units, influence, !!playerYard, yard);
+      for (const { unit, target } of scoutTasks) {
+        assignMove(state, unit, target);
+      }
     }
   }
   state.rngState = rng.state;

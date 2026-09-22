@@ -7,6 +7,7 @@ import { contestedResourcePoint } from "./helpers";
 import { homeGuardCount } from "../policy";
 import { nearestKnownPlayer } from "./visibility";
 import { launchAircraft } from "../aircraft";
+import { buildInfluenceMap, findWeakestFlank } from "./influence";
 
 function sameTile(a: { x: number; y: number } | undefined, b: { x: number; y: number }): boolean {
   return !!a && Math.round(a.x) === Math.round(b.x) && Math.round(a.y) === Math.round(b.y);
@@ -140,9 +141,21 @@ export function assignAssault(
   const harvester = laneHarvester && resourcePoint && distToEntity(resourcePoint, laneHarvester) <= 12
     ? laneHarvester
     : nearestKnownPlayer(state, yard, (e) => e.owner === 0 && e.kind === "harvester" && e.hp > 0, knownPlayers);
+  const influence = buildInfluenceMap(state, knownPlayers);
+  const flank = findWeakestFlank(state, influence, playerYard);
   raiders.forEach((u, index) => {
     if (!retarget && u.attackTarget !== undefined && byId(state, u.attackTarget)) return;
     const objectiveTarget = scenarioAssaultTarget(state, u);
+    if (!objectiveTarget && flank && index % 3 === 0 && distToEntity(u, playerYard) > 16) {
+      assignMove(state, u, flank);
+      // A locally walkable flank can still be in a disconnected region. If
+      // the bounded route search proves it unreachable, attack directly
+      // instead of leaving this raider permanently stranded at the flank.
+      if (u.routePending === false && u.path.length === 0 && Math.hypot(u.x - flank.x, u.y - flank.y) > 0.001) {
+        assignAttack(state, u, harvester ?? playerYard);
+      }
+      return;
+    }
     const target = objectiveTarget ?? (harvester && index % 2 === 1 ? playerYard : harvester ?? playerYard);
     assignAttack(state, u, target);
   });

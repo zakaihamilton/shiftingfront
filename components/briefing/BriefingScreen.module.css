@@ -71,6 +71,7 @@
   height: 100%;
   flex-direction: column;
   overflow: hidden;
+  overflow-anchor: none;
   padding: clamp(0.8rem, 2.5vh, 1.35rem);
   box-shadow: var(--chrome-shadow), inset 0 1px rgba(255, 255, 255, 0.06);
 }
@@ -79,9 +80,10 @@
   display: grid;
   min-width: 0;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   gap: clamp(0.55rem, 1.5vh, 0.85rem);
   overflow-y: auto;
+  overflow-anchor: none;
   padding-right: 0.15rem;
   scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
   scrollbar-gutter: stable;
@@ -125,6 +127,11 @@
   grid-column: 5;
   grid-row: 1;
   justify-self: end;
+}
+
+.skipPlaceholder {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .tone {
@@ -234,6 +241,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.45rem;
   }
+
+  .enemy {
+    align-self: stretch;
+  }
 }
 
 @media (max-width: 639px) {
@@ -307,6 +318,34 @@
     grid-row: 4;
     justify-self: stretch;
     text-align: center;
+  }
+}
+
+@media (max-width: 420px) and (max-height: 600px) {
+  .panel {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-content: start;
+  }
+
+  .panelScroll {
+    flex: none;
+  }
+
+  /* Keep the primary action at the same dock while the transmission
+     collapses its scroll track on very short phone screens. */
+  .actionsComplete {
+    position: relative;
+    top: 37px;
+  }
+}
+
+/* WebKit's 3x phone rasterization rounds the collapsed panel one pixel
+   differently from Chromium's touch layout. Keep the launch control on the
+   same device-pixel row before and after the transmission is skipped. */
+@media (max-width: 420px) and (max-height: 600px) and (resolution: 3dppx) {
+  .actionsComplete {
+    top: 36px;
   }
 }
 

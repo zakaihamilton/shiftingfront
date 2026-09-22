@@ -58,7 +58,9 @@ function mulberryStep(state: number): { value: number; state: number } {
 }
 
 export function createRng(seed: number, label = ""): Rng {
-  let s = mixSeed(seed, label) || 1;
+  // Zero is a valid mulberry32 state. Keep it intact so a generated or
+  // restored zero state remains deterministic across save/load boundaries.
+  let s = mixSeed(seed, label);
   const rng: Rng = {
     get state() {
       return s;
@@ -102,6 +104,6 @@ export function createRng(seed: number, label = ""): Rng {
 
 export function rngFromState(state: number): Rng {
   const rng = createRng(1, "restore");
-  rng.state = state || 1;
+  rng.state = state;
   return rng;
 }

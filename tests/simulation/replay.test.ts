@@ -54,7 +54,7 @@ describe("simulation replay", () => {
   it("reports terminal loss, scheduled rejection, and the emitted events", () => {
     const result = runReplay({
       seed: 0,
-      missionIndex: 5,
+      missionIndex: 0,
       maxTicks: 5_000,
       orders: [{
         tick: 0,
