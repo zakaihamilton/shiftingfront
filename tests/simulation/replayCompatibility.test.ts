@@ -11,7 +11,7 @@ const BASELINES = [
   { kind: "extraction", seed: 0, missionIndex: 1, digest: "6c7e4705b9a21ab937a717fdc0fcc056848508f4d2df29b0174e6114045f6837" },
   { kind: "forceQuota", seed: 0, missionIndex: 4, digest: "a9e40960afda47a47da1473ea3cc36825d759ff1a16b8207d53ae52a217b4187" },
   { kind: "harvestQuota", seed: 7, missionIndex: 3, digest: "cd132c6b4ceb6c711071a41211dd1e271a1f8aecb00d5a9ca1497a323f86ecd0" },
-  { kind: "holdTheLine", seed: 0, missionIndex: 5, digest: "931229d0bd84d834a417e12410fcc239a1cd27850ebdc7bafab9bf0f8c06f16b" },
+  { kind: "holdTheLine", seed: 0, missionIndex: 5, digest: "803dcd355feca9f89ec5b5f59cee7b5acc9d9f1576afd5ba2a62e676e9c89273" },
   { kind: "razeAll", seed: 3, missionIndex: 2, digest: "d46cb892bdfbe497d17ee947d68bdcf1adabf59df0ea4179fb00fa493ddb4766" },
   // Rescue corridors now join the map route-repair pass used by extraction.
   { kind: "rescue", seed: 0, missionIndex: 0, digest: "03f680fad20feeb5d7f9533ef94089fe6c064bc99aa5f4b2e22bf871cb55a552" },

@@ -145,8 +145,14 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
   const turretCount = completedOrBuilding(state, "turret");
   const antiAirCount = completedOrBuilding(state, "antiAirTurret");
   const timedRecovery = isTimedRecovery(objectiveKind(state));
-  const turretTarget = timedRecovery ? 1 : 1 + Math.min(2, Math.ceil(state.missionIndex / 2));
+  const defensiveObjective = objectiveKind(state) === "rescue" || objectiveKind(state) === "holdTheLine";
+  const turretTarget = timedRecovery ? 1 : defensiveObjective ? 3 : 1 + Math.min(2, Math.ceil(state.missionIndex / 2));
   if (threat && turretCount < turretTarget && !pending) {
+    const turret = buildCommand(state, "turret", yard);
+    if (turret) return turret;
+  }
+
+  if (defensiveObjective && power.surplus >= 15 && turretCount < turretTarget && !pending) {
     const turret = buildCommand(state, "turret", yard);
     if (turret) return turret;
   }
@@ -158,13 +164,12 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
 
   const needsFactory = objectiveKind(state) === "forceQuota" && state.win.role === "tank"
     ? true
-    : !timedRecovery && (state.missionIndex >= 1 || objectiveKind(state) === "harvestQuota" || OFFENSIVE_KINDS.has(objectiveKind(state)));
+    : !timedRecovery && !defensiveObjective && (state.missionIndex >= 1 || objectiveKind(state) === "harvestQuota" || OFFENSIVE_KINDS.has(objectiveKind(state)));
   if (needsFactory && !playerBuildingsView(state, "factory").length && !pending) {
     const factory = buildCommand(state, "factory", yard);
     if (factory) return factory;
   }
 
-  const defensiveObjective = objectiveKind(state) === "rescue" || objectiveKind(state) === "holdTheLine";
   const defensiveTurretNeeded = power.surplus >= 15 && (
     threat !== undefined ||
     state.missionIndex >= 1 ||
@@ -191,7 +196,7 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
     if (objectiveBuild) return objectiveBuild;
   }
 
-  if (!timedRecovery && !playerBuildingsView(state, "factory").length && state.tick < 1800 && !pending) {
+  if (!timedRecovery && !defensiveObjective && !playerBuildingsView(state, "factory").length && state.tick < 1800 && !pending) {
     const factory = buildCommand(state, "factory", yard);
     if (factory) return factory;
   }

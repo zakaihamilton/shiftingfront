@@ -23,7 +23,7 @@ export function BriefingActions({
   backLabel: string;
 }) {
   return (
-    <div className={styles.actions} data-testid="briefing-actions">
+    <div className={`${styles.actions} ${isComplete ? styles.actionsComplete : ""}`} data-testid="briefing-actions">
       {!returnToGame ? (
         <ConsoleButton
           muted

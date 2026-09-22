@@ -140,6 +140,10 @@ export function tickAi(state: SimState): void {
   }
 
   const difficulty = missionDifficulty(state.missionIndex);
+  const generatedHoldLine = state.win.kind === "holdTheLine" && state.runtime?.director !== undefined;
+  const holdLineAssaultEvery = generatedHoldLine
+    ? difficulty.enemyAssaultEvery * 8
+    : difficulty.enemyAssaultEvery;
   const profile = state.runtime?.director
     ? resolveMissionProfile(state.seed, state.missionIndex, state.win.kind)
     : undefined;
@@ -151,12 +155,13 @@ export function tickAi(state: SimState): void {
   );
   const openingOffensive = state.win.kind === "decapitate" && state.missionIndex < 2;
   const timedProductionScale = state.runtime?.kind === "extraction" ? 2.5 : 2;
+  const holdLineProductionScale = generatedHoldLine ? 8 : 1;
   const productionEvery = timedScenario
     ? Math.round(difficulty.enemyProductionEvery * timedProductionScale)
     : openingOffensive ? Math.round(difficulty.enemyProductionEvery * 4)
       : objectiveContract
         ? Math.max(1, Math.round(difficulty.enemyProductionEvery * objectiveContract.productionScale))
-        : difficulty.enemyProductionEvery;
+        : Math.round(difficulty.enemyProductionEvery * holdLineProductionScale);
   // Objective closeout windows need finite pressure: once the finale begins,
   // stop adding fresh enemy units or structures while keeping existing
   // defenses active. Otherwise the player can chase a moving target to timeout.
@@ -227,7 +232,7 @@ export function tickAi(state: SimState): void {
     }
   }
 
-  if (state.win.kind === "holdTheLine" && state.tick > 0 && state.tick % difficulty.enemyAssaultEvery === 0) {
+  if (state.win.kind === "holdTheLine" && state.tick > 0 && state.tick % holdLineAssaultEvery === 0) {
     const fp = footprintOf("constructionYard");
     const spot = { x: yard.x - 1, y: yard.y + fp.h };
     const spawned = trySpawnUnit(state, 1, rng.chance(0.45) ? "tank" : "infantry", spot.x, spot.y);
@@ -240,7 +245,7 @@ export function tickAi(state: SimState): void {
 
   const playerYard = knownPlayers.find((entity) => entity.kind === "constructionYard");
   const pressureScale = timedScenario ? 2 : state.win.kind === "decapitate" && state.missionIndex < 2 ? 4 : 1;
-  const waveEvery = Math.max(240, Math.round((difficulty.enemyAssaultEvery
+  const waveEvery = Math.max(240, Math.round((holdLineAssaultEvery
     + (profileContract?.assaultEveryOffset ?? 0)
     + (objectiveContract?.assaultDelay ?? 0)) * pressureScale));
   for (const b of enemyBuildings) {

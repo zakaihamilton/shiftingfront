@@ -34,6 +34,7 @@ const COMMANDER_REPAIR_CREDIT_RESERVE = 0;
 const COMMANDER_YARD_REPAIR_THRESHOLD = 0.92;
 const COMMANDER_STRUCTURE_REPAIR_THRESHOLD = 0.6;
 const COMMANDER_FINAL_PUSH_RATIO = 0.72;
+const DECAP_ASSAULT_RECOVERY_RATIO = 0.4;
 
 function finalPushActive(state: SimState): boolean {
   const director = state.runtime?.director;
@@ -188,12 +189,27 @@ export class CompetentCommander {
       const assaultForce = offensiveObjective || scenarioObjective
         ? objectiveCombat.filter((entity) => !defenderIds.has(entity.id))
         : combat;
+      const recoveringAssault = offensiveObjective && objectiveKind(state) === "decapitate" && !finalPush
+        ? assaultForce.filter((entity) => entity.hp / Math.max(1, entity.maxHp) < DECAP_ASSAULT_RECOVERY_RATIO)
+        : [];
+      const readyAssaultForce = recoveringAssault.length
+        ? assaultForce.filter((entity) => !recoveringAssault.includes(entity))
+        : assaultForce;
+      if (recoveringAssault.length) {
+        combatCommands.push({
+          type: "move",
+          unitIds: recoveringAssault.map((entity) => entity.id),
+          x: yard.x,
+          y: yard.y,
+          formation: "line",
+        });
+      }
 
       if (emergency && emergencyThreat) {
         combatCommands.push({ type: "attack", unitIds: combat.map((entity) => entity.id), targetId: emergencyThreat.id });
       } else if (offensiveObjective && objective) {
         if (threat) {
-          const keepAssaultUnderThreat = assaultCommitted && defenders.length > 0 && assaultForce.length > 0 && (
+          const keepAssaultUnderThreat = assaultCommitted && defenders.length > 0 && readyAssaultForce.length > 0 && (
             finalPush || (objectiveKind(state) === "decapitate" && !yardRaid(state, yard))
           );
           if (keepAssaultUnderThreat) {
@@ -202,7 +218,7 @@ export class CompetentCommander {
             combatCommands.push({ type: "attack", unitIds: defenders.map((entity) => entity.id), targetId: threat.id });
             for (let index = 0; index < assaultTargets.length; index++) {
               const target = assaultTargets[index]!;
-              const unitIds = assaultForce.filter((_, unitIndex) => unitIndex % assaultTargets.length === index).map((entity) => entity.id);
+              const unitIds = readyAssaultForce.filter((_, unitIndex) => unitIndex % assaultTargets.length === index).map((entity) => entity.id);
               if (unitIds.length) {
                 pushAssault(combatCommands, state, target, unitIds, objectiveKind(state));
               }
@@ -210,13 +226,13 @@ export class CompetentCommander {
           } else {
             combatCommands.push({ type: "attack", unitIds: combat.map((entity) => entity.id), targetId: threat.id });
           }
-        } else if (assaultCommitted && assaultForce.length) {
+        } else if (assaultCommitted && readyAssaultForce.length) {
           if (defenders.length) {
             combatCommands.push({ type: "move", unitIds: defenders.map((entity) => entity.id), x: yard.x, y: yard.y, formation: "line" });
           }
           for (let index = 0; index < assaultTargets.length; index++) {
             const target = assaultTargets[index]!;
-            const unitIds = assaultForce.filter((_, unitIndex) => unitIndex % assaultTargets.length === index).map((entity) => entity.id);
+            const unitIds = readyAssaultForce.filter((_, unitIndex) => unitIndex % assaultTargets.length === index).map((entity) => entity.id);
             if (unitIds.length) {
               pushAssault(combatCommands, state, target, unitIds, objectiveKind(state));
             }
@@ -259,12 +275,21 @@ export class CompetentCommander {
         } else {
           // Keep the rescue guard assigned to local defense instead of sending it with the rescue force.
           const rescueDefense = objectiveKind(state) === "rescue" && scenarioObjective;
+          const holdDefense = objectiveKind(state) === "holdTheLine";
           if (rescueDefense && defenders.length) {
             combatCommands.push({ type: "attack", unitIds: defenders.map((entity) => entity.id), targetId: threat.id });
           }
-          const responseForce = rescueDefense ? assaultForce : combat;
-          if (responseForce.length) {
-            combatCommands.push({ type: "attack", unitIds: responseForce.map((entity) => entity.id), targetId: threat.id });
+          if (holdDefense && defenders.length) {
+            combatCommands.push({ type: "attack", unitIds: defenders.map((entity) => entity.id), targetId: threat.id });
+            const reserve = combat.filter((entity) => !defenderIds.has(entity.id));
+            if (reserve.length) {
+              combatCommands.push({ type: "move", unitIds: reserve.map((entity) => entity.id), x: yard.x, y: yard.y, formation: "line" });
+            }
+          } else {
+            const responseForce = rescueDefense ? assaultForce : combat;
+            if (responseForce.length) {
+              combatCommands.push({ type: "attack", unitIds: responseForce.map((entity) => entity.id), targetId: threat.id });
+            }
           }
         }
       } else {
