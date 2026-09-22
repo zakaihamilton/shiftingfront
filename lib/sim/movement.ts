@@ -23,6 +23,10 @@ type MovementBuffers = {
   edgeReservations: Map<number, number>;
 };
 
+// Large formations already have flow-field coordination; preserve their
+// established tie-break so local passing does not split the formation.
+const INDIVIDUAL_PASSING_GROUP_LIMIT = 16;
+
 const movementBuffers = new WeakMap<SimState, MovementBuffers>();
 
 function buffersFor(state: SimState): MovementBuffers {
@@ -210,6 +214,7 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
         e.owner === 0 ? previousCells.get(e.id) : undefined,
         progressDistance,
         edgeReservations,
+        movers.length < INDIVIDUAL_PASSING_GROUP_LIMIT,
       )) {
         e.blockedTicks = 0;
       } else if (blocker && blocker.id !== e.id && giveWay(

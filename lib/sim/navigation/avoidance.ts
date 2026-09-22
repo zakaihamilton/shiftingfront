@@ -55,6 +55,7 @@ export function trySidestep(
   previousCell?: number,
   progressDistance?: (x: number, y: number) => number,
   edgeReservations?: Map<number, number>,
+  preferRightHand = true,
 ): boolean {
   if (!e.path.length) return false;
   const cx = Math.round(e.x);
@@ -65,7 +66,9 @@ export function trySidestep(
   const navigation = staticNavigationFor(state);
   const currentProgress = progressDistance?.(cx, cy) ?? Number.POSITIVE_INFINITY;
   const waypoint = e.path[0];
-  let best: { x: number; y: number; d: number; progress: number; rank: number } | undefined;
+  const headingX = (blockedX - cx) || (dest.x - cx) || 1;
+  const headingY = (blockedY - cy) || (dest.y - cy) || 0;
+  let best: { x: number; y: number; d: number; progress: number; rank: number; bias: number } | undefined;
   for (const d of PATH_DIRS) {
     const nx = cx + d.x;
     const ny = cy + d.y;
@@ -88,13 +91,20 @@ export function trySidestep(
       ? progress < currentProgress - 1e-9 ? 0 : progress <= currentProgress + 1e-9 ? 1 : 2
       : dist < stayD - 1e-9 ? 0 : dist <= stayD + 1e-9 ? 1 : 2;
     if (rank >= 2 && !allowFarther) continue;
+    // In screen coordinates, cross product < 0 is the candidate on the unit's
+    // right. Prefer that side when all other avoidance scores tie.
+    const lateralCross = d.x * headingY - d.y * headingX;
+    const bias = preferRightHand
+      ? lateralCross < 0 ? 1 : lateralCross > 0 ? -1 : 0
+      : lateralCross > 0 ? 1 : lateralCross < 0 ? -1 : 0;
     if (
       !best ||
       rank < best.rank ||
       (rank === best.rank && progressDistance && progress < best.progress - 1e-9) ||
-      (rank === best.rank && (!progressDistance || Math.abs(progress - best.progress) <= 1e-9) && dist < best.d)
+      (rank === best.rank && (!progressDistance || Math.abs(progress - best.progress) <= 1e-9) && dist < best.d - 1e-9) ||
+      (rank === best.rank && (!progressDistance || Math.abs(progress - best.progress) <= 1e-9) && Math.abs(dist - best.d) <= 1e-9 && bias > best.bias)
     ) {
-      best = { x: nx, y: ny, d: dist, progress, rank };
+      best = { x: nx, y: ny, d: dist, progress, rank, bias };
     }
   }
   if (!best) return false;
@@ -152,6 +162,7 @@ export function stepBlockerAside(
   const navigation = staticNavigationFor(state);
   const dest = destinationOf(blocker);
   const stayD = dest ? Math.hypot(cx - dest.x, cy - dest.y) : 0;
+  let best: { x: number; y: number; dist: number } | undefined;
   for (const d of PATH_DIRS) {
     const nx = cx + d.x;
     const ny = cy + d.y;
@@ -159,13 +170,29 @@ export function stepBlockerAside(
     if (navigationEdgeReserved(edgeReservations, state.width, state.height, cx, cy, nx, ny, blocker.id)) continue;
     if (!tileFree(state, occupancy, reserved, blocker, nx, ny)) continue;
     if (!navigationStepAllowed(navigation, cx, cy, nx, ny)) continue;
-    if (dest && !allowFarther && Math.hypot(nx - dest.x, ny - dest.y) > stayD + 1e-9) continue;
-    const first = blocker.path[0];
-    edgeReservations?.set(navigationEdgeKey(state.width, state.height, cx, cy, nx, ny), blocker.id);
-    if (first && Math.round(first.x) === nx && Math.round(first.y) === ny) return true;
-    if (blocker.path.length) blocker.path.unshift({ x: nx, y: ny });
-    else blocker.path = [{ x: nx, y: ny }];
-    return true;
+    const dDist = dest ? Math.hypot(nx - dest.x, ny - dest.y) : 0;
+    if (dest && !allowFarther && dDist > stayD + 1e-9) continue;
+    if (!best || dDist < best.dist) {
+      best = { x: nx, y: ny, dist: dDist };
+    }
   }
-  return false;
+  if (!best) return false;
+  const first = blocker.path[0];
+  edgeReservations?.set(navigationEdgeKey(state.width, state.height, cx, cy, best.x, best.y), blocker.id);
+  if (first && Math.round(first.x) === best.x && Math.round(first.y) === best.y) return true;
+  if (blocker.path.length) blocker.path.unshift({ x: best.x, y: best.y });
+  else blocker.path = [{ x: best.x, y: best.y }];
+  return true;
+}
+
+export function corridorWalkableWidth(state: SimState, x: number, y: number): number {
+  let count = 0;
+  for (const d of PATH_DIRS) {
+    const nx = x + d.x;
+    const ny = y + d.y;
+    if (inBounds(state, nx, ny) && isStaticWalkable(state, nx, ny)) {
+      count++;
+    }
+  }
+  return count;
 }

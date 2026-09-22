@@ -8,6 +8,8 @@ import { tryBuildAntiAir, tryBuildForwardInfrastructure, tryBuildPower, tryBuild
 import { assignAttack, assignAssault, assignMove, sendHome } from "./combat";
 import { contestedResourcePoint, distance, queueUnit, shouldAutoRepair, shouldRetreat } from "./helpers";
 import { enemyKnownPlayerEntities, nearestKnownPlayer } from "./visibility";
+import { buildInfluenceMap } from "./influence";
+import { isActiveScout, updateScouts } from "./scouting";
 import { isCombatTarget } from "../combat/grid";
 import { homeGuardCount, isTimedRecovery } from "../policy";
 
@@ -108,6 +110,7 @@ export function tickAi(state: SimState): void {
   let hasHarvester = false;
   let playerTanks = 0;
   let playerInfantry = 0;
+  let playerAntiArmor = 0;
   let woundedHumans = false;
   let woundedVehicles = false;
   let medicCount = 0;
@@ -115,6 +118,7 @@ export function tickAi(state: SimState): void {
   for (const entity of knownPlayers) {
     if (entity.kind === "tank") playerTanks += 1;
     if (entity.kind === "infantry") playerInfantry += 1;
+    if (entity.kind === "antiArmor") playerAntiArmor += 1;
   }
   for (const entity of active) {
     if (entity.owner === 1 && entity.class === "building") enemyBuildings.push(entity);
@@ -173,7 +177,12 @@ export function tickAi(state: SimState): void {
     const desiredRunways = state.missionIndex >= 4 ? 2 : 1;
     const aircraftCap = state.missionIndex >= 4 ? 2 : 1;
     const hasRefinery = enemyBuildings.some((e) => e.kind === "refinery");
-    const want: UnitKind = playerTanks > playerInfantry ? "antiArmor" : rng.chance(0.4) ? "tank" : "infantry";
+    const want: UnitKind =
+      playerTanks > playerInfantry && playerTanks > playerAntiArmor
+        ? "antiArmor"
+        : playerAntiArmor > playerTanks
+          ? "infantry"
+          : rng.chance(0.4) ? "tank" : "infantry";
     const producer = want === "infantry" || want === "antiArmor" ? barracks : factory;
     const supportWant =
       woundedHumans && medicCount === 0 && isUnitAvailable("medic", state.missionIndex) ? "medic"
@@ -296,12 +305,22 @@ export function tickAi(state: SimState): void {
       // Combat acquires targets before the director runs. Do not replace an
       // active attack with a return-to-base route on the same tick.
       if (u.attackTarget !== undefined) continue;
+      if (isActiveScout(state, u.id) && !playerYard) continue;
       if (distToEntity(u, yard) <= YARD_DEFENSE_RANGE) continue;
       sendHome(state, u, yard);
     }
     guardScenarioObjectives(state, units);
     if (!state.runtime || (state.runtime.kind !== "sabotage" && state.runtime.kind !== "destroyMarked")) {
       guardResourceLane(state, units, yard, knownPlayers);
+    }
+    // Escort has a hard completion deadline and its combat reserve must stay
+    // with the convoy. Other mission types can afford the pre-contact patrol.
+    if (state.runtime?.kind !== "escort") {
+      const influence = buildInfluenceMap(state, knownPlayers);
+      const scoutTasks = updateScouts(state, units, influence, !!playerYard, yard);
+      for (const { unit, target } of scoutTasks) {
+        assignMove(state, unit, target);
+      }
     }
   }
   state.rngState = rng.state;
