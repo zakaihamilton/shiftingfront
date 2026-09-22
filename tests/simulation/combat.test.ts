@@ -420,6 +420,20 @@ describe("combat damage model", () => {
     expect(highHp - highFoe.hp).toBeGreaterThan(lowHp - lowFoe.hp);
   });
 
+  it("uses the high-ground range bonus for defensive target acquisition", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    const attacker = addUnit(s, 0, "infantry", 4, 4);
+    attacker.stance = "defensive";
+    setHeight(s, 4, 4, 2);
+    const target = addUnit(s, 1, "infantry", 7, 4);
+    const hp = target.hp;
+
+    tickCombat(s);
+
+    expect(attacker.attackTarget).toBe(target.id);
+    expect(target.hp).toBeLessThan(hp);
+  });
+
   it("flanks an ordered target when a height ridge blocks the firing line", () => {
     const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
     const attacker = addUnit(s, 0, "tank", 4, 4);

@@ -116,16 +116,17 @@ export function closestEnemy(
   e: Entity,
   maxDist: number,
   threatsOnly: boolean,
+  includeHeightRange = false,
 ): Entity | undefined {
-  const reach = maxDist + 3;
+  const reach = maxDist + (includeHeightRange ? 1 : 0) + 3;
   const x0 = Math.max(0, Math.floor((e.x - reach) / CELL));
   const y0 = Math.max(0, Math.floor((e.y - reach) / CELL));
   const x1 = Math.min(grid.cols - 1, Math.floor((e.x + reach) / CELL));
   const y1 = Math.min(grid.rows - 1, Math.floor((e.y + reach) / CELL));
+  const sourceHeight = grid.state.heights[Math.round(e.y) * grid.state.width + Math.round(e.x)] ?? 1;
   let best: Entity | undefined;
   let bestD2 = Infinity;
   let bestOrder = Infinity;
-  const maxDist2 = maxDist * maxDist;
   for (let cy = y0; cy <= y1; cy++) {
     for (let cx = x0; cx <= x1; cx++) {
       const bucket = grid.cells[cy * grid.cols + cx];
@@ -139,7 +140,9 @@ export function closestEnemy(
         const dx = e.x - o.x;
         const dy = e.y - o.y;
         const d2 = dx * dx + dy * dy;
-        if (d2 > maxDist2) continue;
+        const targetHeight = grid.state.heights[Math.round(o.y) * grid.state.width + Math.round(o.x)] ?? 1;
+        const targetMaxDist = maxDist + (includeHeightRange && sourceHeight > targetHeight ? 1 : 0);
+        if (d2 > targetMaxDist * targetMaxDist) continue;
         const rank = grid.order[o.id] ?? Infinity;
         if (d2 < bestD2 || (d2 === bestD2 && rank < bestOrder)) {
           bestD2 = d2;
@@ -162,4 +165,24 @@ export function acquire(grid: CombatGrid, e: Entity, threatsOnly = false): Entit
 
 export function acquirePreferred(grid: CombatGrid, e: Entity): Entity | undefined {
   return acquire(grid, e, true) ?? acquire(grid, e, false);
+}
+
+export function candidatesInSplash(grid: CombatGrid, x: number, y: number, radius: number): Entity[] {
+  const reach = radius + 1;
+  const x0 = Math.max(0, Math.floor((x - reach) / CELL));
+  const y0 = Math.max(0, Math.floor((y - reach) / CELL));
+  const x1 = Math.min(grid.cols - 1, Math.floor((x + reach) / CELL));
+  const y1 = Math.min(grid.rows - 1, Math.floor((y + reach) / CELL));
+  const result: Entity[] = [];
+  for (let cy = y0; cy <= y1; cy++) {
+    for (let cx = x0; cx <= x1; cx++) {
+      const bucket = grid.cells[cy * grid.cols + cx];
+      if (bucket) {
+        for (const candidate of bucket) {
+          result.push(candidate);
+        }
+      }
+    }
+  }
+  return result;
 }

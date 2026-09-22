@@ -499,10 +499,17 @@ test.describe("desktop marquee selection", () => {
   test("keeps units selected across an edge-scrolled drag", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     const state = createMission({ seed: TEST_SEED, missionIndex: 0 });
-    setHeight(state, 12, 12, 0);
-    setHeight(state, 24, 0, 0);
-    const anchorUnit = addUnit(state, 0, "infantry", 12, 12);
-    addUnit(state, 0, "tank", 24, 0);
+    const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+    if (!yard) throw new Error("Mission has no construction yard");
+    // The map generator now rotates each base around its dynamic spawn point.
+    // Keep the fixture beside the current player base so the drag begins in
+    // the camera's initial view while retaining a second unit to the right.
+    const anchorX = Math.max(4, yard.x - 3);
+    const anchorY = yard.y;
+    setHeight(state, anchorX, anchorY, 0);
+    setHeight(state, anchorX + 2, anchorY, 0);
+    const anchorUnit = addUnit(state, 0, "infantry", anchorX, anchorY);
+    addUnit(state, 0, "tank", anchorX + 2, anchorY);
     const save = JSON.stringify({
       version: SAVE_VERSION,
       contentVersion: SAVE_CONTENT_VERSION,

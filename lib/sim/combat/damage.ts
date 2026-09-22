@@ -2,8 +2,8 @@ import type { Entity, SimEvent, SimState } from "../../types";
 import { isUnitEntity } from "../../types";
 import { isAirUnit } from "../../catalog";
 import { closestApproach, invalidateLivingCache } from "../world";
-import { canTarget, isCombatTarget, statsFor } from "./grid";
-import { armorFor, damageMultiplier, heightMultiplier } from "./targeting";
+import { canTarget, candidatesInSplash, isCombatTarget, statsFor, type CombatGrid } from "./grid";
+import { armorFor, damageMultiplier, heightMultiplier, lineOfSight } from "./targeting";
 import type { Rng } from "../../seed/rng";
 import { type PendingAlerts, notePlayerAlert } from "./alerts";
 import { tryFindPathDetailed } from "../pathBudget";
@@ -18,6 +18,7 @@ export function strike(
   rng: Rng,
   events?: SimEvent[],
   pending?: PendingAlerts,
+  grid?: CombatGrid,
 ): void {
   if (e.cooldown > 0) return;
   if (isUnitEntity(e) && isAirUnit(e.kind)) {
@@ -33,12 +34,19 @@ export function strike(
     target.suppression = Math.min(100, (target.suppression ?? 0) + stats.suppression);
   }
   if (stats.splashRadius > 0) {
-    for (const splash of entitiesFor(state)) {
+    const candidates = grid
+      ? candidatesInSplash(grid, target.x, target.y, stats.splashRadius)
+      : entitiesFor(state);
+    for (const splash of candidates) {
       if (splash.hp <= 0) continue;
       if (splash.id === target.id || splash.owner === e.owner || splash.neutral || !isCombatTarget(state, splash) || !canTarget(e, splash)) continue;
-      if (Math.hypot(splash.x - target.x, splash.y - target.y) > stats.splashRadius) continue;
-      splash.hp -= damage * 0.35;
-      if (splash.class === "unit") splash.suppression = Math.min(100, (splash.suppression ?? 0) + Math.round(stats.suppression * 0.35));
+      const dist = Math.hypot(splash.x - target.x, splash.y - target.y);
+      if (dist > stats.splashRadius) continue;
+      if (!lineOfSight(state, target, splash)) continue;
+      const falloff = Math.max(0.2, 1 - (dist / stats.splashRadius) * 0.7);
+      const splashDamage = damage * 0.35 * falloff;
+      splash.hp -= splashDamage;
+      if (splash.class === "unit") splash.suppression = Math.min(100, (splash.suppression ?? 0) + Math.round(stats.suppression * 0.35 * falloff));
       if (splash.hp <= 0) {
         splash.hp = 0;
         invalidateLivingCache(state);

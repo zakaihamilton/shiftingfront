@@ -30,7 +30,7 @@ export function makeFixture(opts: FixtureOpts): SimState {
     fog: makeFog(width, height, 2),
     credits: [5000, 2000],
     win: { ...opts.win },
-    rngState: mixSeed(opts.seed ?? 0, "fixture") || 1,
+    rngState: mixSeed(opts.seed ?? 0, "fixture"),
     factions: [
       {
         id: 0,
