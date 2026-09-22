@@ -67,7 +67,7 @@
   background: color-mix(in srgb, currentColor 10%, rgba(7, 13, 20, 0.76));
   color: var(--chrome-cyan);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   font-weight: 800;
   letter-spacing: 0.1em;
   line-height: 1.1;

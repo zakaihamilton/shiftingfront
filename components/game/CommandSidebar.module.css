@@ -85,7 +85,7 @@
 
 .faction {
   margin: 0.25rem 0 0;
-  font-size: calc(0.72rem * var(--hud-scale, 1));
+  font-size: var(--text-xs);
   letter-spacing: 0.2em;
   color: var(--chrome-muted);
 }
@@ -147,14 +147,14 @@
 
 .touchStatus strong {
   color: var(--chrome-text);
-  font-size: calc(0.72rem * var(--hud-scale, 1));
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .touchStatus span {
   color: var(--chrome-muted);
-  font-size: calc(0.68rem * var(--hud-scale, 1));
+  font-size: var(--text-2xs);
   letter-spacing: 0.03em;
 }
 
@@ -170,7 +170,7 @@
   min-width: 0;
   min-height: 44px;
   padding: 0.35rem 0.25rem;
-  font-size: calc(0.72rem * var(--hud-scale, 1));
+  font-size: var(--text-xs);
   letter-spacing: 0.04em;
 }
 
@@ -299,12 +299,12 @@
   }
 
   .title {
-    font-size: 0.72rem;
+    font-size: var(--text-sm);
   }
 
   .faction {
     margin-top: 0.15rem;
-    font-size: 0.5rem;
+    font-size: var(--text-xs);
   }
 
   .radarSlot {
@@ -348,11 +348,11 @@
   }
 
   .touchStatus strong {
-    font-size: 0.58rem;
+    font-size: var(--text-xs);
   }
 
   .touchStatus span {
-    font-size: 0.5rem;
+    font-size: var(--text-xs);
   }
 
   .touchActions {

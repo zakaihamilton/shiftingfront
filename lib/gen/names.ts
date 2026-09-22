@@ -60,6 +60,47 @@ const RANK = ["Commander", "Marshal", "Director", "Captain", "Overseer", "Warden
 const ADVISOR = ["Strategist", "Attaché", "Quartermaster", "Analyst", "Herald"];
 const ENEMY_TITLE = ["Warlord", "Prefect", "Autarch", "General", "Executor"];
 
+export type FactionArchetype = "directorate" | "concord" | "legion" | "syndicate";
+
+export function factionArchetype(name: string): FactionArchetype {
+  if (/Directorate|Mandate|Order/i.test(name)) return "directorate";
+  if (/Concord|Coalition|Union|Pact|Republic/i.test(name)) return "concord";
+  if (/Syndicate|Circle/i.test(name)) return "syndicate";
+  return "legion";
+}
+
+export const FACTION_DOCTRINES: Record<FactionArchetype, {
+  doctrine: string;
+  motto: string;
+  dialectTerms: readonly string[];
+  rationale: (op: string) => string;
+}> = {
+  directorate: {
+    doctrine: "Centralized Administrative Hegemony",
+    motto: "Order through absolute compliance",
+    dialectTerms: ["protocol", "authorization", "compliance", "standard directive", "logistics priority"],
+    rationale: (op) => `Authorized by Central Command: ${op} to enforce administrative compliance.`,
+  },
+  concord: {
+    doctrine: "Mutual Defense & Collective Sovereignty",
+    motto: "Divided we fall, united we endure",
+    dialectTerms: ["coalition", "mutual defense", "collective security", "solidarity", "assembly resolution"],
+    rationale: (op) => `Sanctioned by the Council: ${op} to safeguard our coalition border.`,
+  },
+  syndicate: {
+    doctrine: "High-Margin Contract Enforcement",
+    motto: "Every asset has its price",
+    dialectTerms: ["contract clause", "asset risk", "margin liability", "audit", "liquidation protocol"],
+    rationale: (op) => `Contract stipulation: execute ${op} to secure high-value equity.`,
+  },
+  legion: {
+    doctrine: "Frontline Breakthrough Supremacy",
+    motto: "Victory written in steel",
+    dialectTerms: ["vanguard", "iron discipline", "breachhead", "hammer strike", "assault wedge"],
+    rationale: (op) => `Tactical necessity: smash forward and execute ${op}.`,
+  },
+};
+
 const MISSION_TITLES: Record<MissionKind, string[]> = {
   harvestQuota: ["The Harvest", "Claim the Fields", "Strip the Veins", "Take the Ore"],
   forceQuota: ["Build Forces", "Train Up", "Get Numbers", "Combat Ready"],

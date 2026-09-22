@@ -16,7 +16,7 @@ export function useTouchGestures({
   stateRef: MutableRefObject<SimState>;
   selectionModeRef: MutableRefObject<boolean>;
   boxRef: MutableRefObject<SelectionBox | null>;
-  issueContextOrder: (s: SimState, p: { x: number; y: number }) => void;
+  issueContextOrder: (s: SimState, p: { x: number; y: number }, attackMove?: boolean) => void;
   setSelectionMode?: (active: boolean) => void;
 }) {
   const touchPoints = useRef(new Map<number, { x: number; y: number }>());
@@ -58,7 +58,7 @@ export function useTouchGestures({
       const held = longPress.current;
       if (held && held.pointerId === e.pointerId && !held.fired && !touchSelection.current && !selectionModeRef.current) {
         held.fired = true;
-        issueContextOrder(stateRef.current, { x: held.x, y: held.y });
+        issueContextOrder(stateRef.current, { x: held.x, y: held.y }, true);
       }
     }, 480);
     longPress.current = { pointerId: e.pointerId, timer, x: p.x, y: p.y, fired: false };

@@ -52,7 +52,7 @@
   display: grid;
   gap: 0.3rem;
   color: var(--chrome-body);
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -80,7 +80,7 @@
 
 .notice {
   margin-top: 1rem;
-  font-size: 0.75rem;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.025em;
   color: var(--chrome-cyan);
@@ -88,7 +88,7 @@
 
 .hint {
   margin-top: 1rem;
-  font-size: 0.625rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.025em;
   color: var(--chrome-muted);
@@ -97,7 +97,7 @@
 .slotCopy {
   margin: 0.75rem 0 0;
   color: var(--chrome-body);
-  font-size: 0.75rem;
+  font-size: var(--text-sm);
   line-height: 1.45;
 }
 
@@ -106,7 +106,7 @@
   gap: 0.35rem;
   margin-top: 1rem;
   color: var(--chrome-muted);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -177,7 +177,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem;
   align-items: baseline;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -194,7 +194,7 @@
 
 .controlRow kbd {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
 }
 
 @media (max-width: 600px) {

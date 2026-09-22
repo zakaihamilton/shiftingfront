@@ -6,6 +6,14 @@
   color: var(--chrome-body);
   background: var(--chrome-void);
   --hud-scale: 1;
+  /* Recompute semantic text tokens here so the local HUD scale is honored. */
+  --text-2xs: calc(0.75rem * var(--hud-scale, 1));
+  --text-xs: calc(0.8125rem * var(--hud-scale, 1));
+  --text-sm: calc(0.875rem * var(--hud-scale, 1));
+  --text-base: calc(1rem * var(--hud-scale, 1));
+  --text-md: calc(1.125rem * var(--hud-scale, 1));
+  --text-lg: calc(1.25rem * var(--hud-scale, 1));
+  --text-xl: calc(1.5rem * var(--hud-scale, 1));
 }
 
 .screen[data-hud-scale="compact"] {
@@ -105,11 +113,11 @@
   align-items: center;
   justify-content: space-between;
   min-width: 0;
-  min-height: 2.1rem;
+  min-height: 2.35rem;
   font-family: var(--font-mono);
-  font-size: calc(0.68rem * var(--hud-scale, 1));
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   line-height: 1.4;
   text-transform: uppercase;
   text-shadow: 0 1px var(--chrome-void);
@@ -128,11 +136,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 1.65rem;
+  height: 1.65rem;
   border: 1px solid var(--chrome-cyan-dim);
   color: var(--chrome-cyan);
-  font-size: calc(0.62rem * var(--hud-scale, 1));
+  font-size: var(--text-xs);
   letter-spacing: 0.06em;
   box-shadow: 0 0 12px color-mix(in srgb, var(--chrome-cyan) 18%, transparent);
 }
@@ -243,7 +251,7 @@
   margin: 0;
   text-align: inherit;
   font-family: var(--font-ui);
-  font-size: clamp(0.82rem, 1.5vw, 1.05rem);
+  font-size: clamp(0.95rem, 1.8vw, 1.15rem);
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -417,7 +425,7 @@
   }
 
   .topbar {
-    font-size: calc(0.62rem * var(--hud-scale, 1));
+    font-size: var(--text-xs);
     letter-spacing: 0.1em;
   }
 
@@ -470,11 +478,11 @@
   align-items: center;
   justify-content: center;
   gap: 0.65rem;
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
   font-family: var(--font-ibm-plex-mono), monospace;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.05em;
-  color: var(--chrome-steel-dim, #6d8498);
+  color: var(--chrome-muted);
 }
 
 .footerLink {

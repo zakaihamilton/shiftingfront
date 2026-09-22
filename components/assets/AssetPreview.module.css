@@ -39,7 +39,7 @@
 
 .meta {
   margin-top: 0.5rem;
-  font-size: 10px;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--chrome-muted);

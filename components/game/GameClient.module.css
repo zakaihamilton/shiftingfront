@@ -8,6 +8,14 @@
   background: var(--chrome-void);
   color: var(--chrome-body);
   --hud-scale: 1;
+  /* Recompute semantic text tokens here so the local HUD scale is honored. */
+  --text-2xs: calc(0.75rem * var(--hud-scale, 1));
+  --text-xs: calc(0.8125rem * var(--hud-scale, 1));
+  --text-sm: calc(0.875rem * var(--hud-scale, 1));
+  --text-base: calc(1rem * var(--hud-scale, 1));
+  --text-md: calc(1.125rem * var(--hud-scale, 1));
+  --text-lg: calc(1.25rem * var(--hud-scale, 1));
+  --text-xl: calc(1.5rem * var(--hud-scale, 1));
 }
 
 .shell[data-hud-scale="compact"] {

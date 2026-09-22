@@ -2,8 +2,9 @@ import type { Command, SimEvent, SimState } from "../types";
 
 export const TICK_MS = 1000 / 12;
 export const MAX_TICKS_PER_FRAME = 3;
-/** A temporary catch-up burst lets the sim recover from a short rendering hitch. */
 export const MAX_CATCH_UP_TICKS_PER_FRAME = 12;
+/** Prevents an inactive tab or freeze from accumulating an unbounded catch-up backlog. */
+export const MAX_ACCUMULATOR_CAP_MS = TICK_MS * MAX_CATCH_UP_TICKS_PER_FRAME * 4;
 
 export function frameTickBudget(
   acc: number,
@@ -75,7 +76,7 @@ export function startLoop({
       return;
     }
     const frameMs = Math.max(0, now - last);
-    acc += frameMs;
+    acc = Math.min(acc + frameMs, MAX_ACCUMULATOR_CAP_MS);
     last = now;
     const budget = frameTickBudget(acc);
     acc = budget.acc;

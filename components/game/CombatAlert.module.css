@@ -16,7 +16,7 @@
   background: color-mix(in srgb, var(--chrome-void) 88%, transparent);
   box-shadow: 0 0 18px rgba(0, 0, 0, 0.55), inset 0 0 0 1px var(--chrome-inset);
   color: var(--chrome-alert);
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-align: center;
@@ -79,6 +79,6 @@
 @media (max-width: 799px) {
   .banner {
     top: 2.6rem;
-    font-size: 0.64rem;
+    font-size: var(--text-xs);
   }
 }

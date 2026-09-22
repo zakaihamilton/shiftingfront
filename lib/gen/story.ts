@@ -1,6 +1,6 @@
 import { labelFor } from "../catalog";
 import type { BriefingLine, BuildingKind, Campaign, MissionKind, MissionProfile, ReadonlyMissionDef, ReadonlyWinCategory, UnitKind } from "../types";
-import { biomeLabel, characterLabel } from "./names";
+import { biomeLabel, characterLabel, factionArchetype, type FactionArchetype } from "./names";
 import { missionTimeLimitLabel } from "./objectives";
 import { formatMissionMinutesFromTicks } from "./pacing";
 import { profileContractFor, resolveMissionProfile } from "./profile";
@@ -75,6 +75,10 @@ type BriefingContext = {
   mission: Pick<ReadonlyMissionDef, "win" | "index">;
   profile: MissionProfile;
   place: string;
+  usArchetype: FactionArchetype;
+  themArchetype: FactionArchetype;
+  usName: string;
+  themName: string;
 };
 
 type OptionalBriefingBeat = BriefingLine & { order: number };
@@ -219,9 +223,46 @@ function pickBriefingVariant(context: BriefingContext, label: string, size: numb
 
 function optionalMissionSignal(context: BriefingContext, speaker: BriefingLine["speaker"]): string {
   const objective = objectivePhrase(context.mission.win);
-  if (speaker === "advisor") return `That leaves one priority: ${objective}.`;
-  if (speaker === "commander") return `The current order remains to ${objective}.`;
-  return `You still intend to ${objective}, of course.`;
+  if (speaker === "advisor") {
+    switch (context.usArchetype) {
+      case "directorate":
+        return `Compliance protocol demands our primary focus: ${objective}.`;
+      case "concord":
+        return `The coalition assembly charges us with one duty: ${objective}.`;
+      case "syndicate":
+        return `The high-yield contract clause specifies: ${objective}.`;
+      case "legion":
+        return `Our frontline order is unambiguous: ${objective}.`;
+      default:
+        return `That leaves one priority: ${objective}.`;
+    }
+  }
+  if (speaker === "commander") {
+    switch (context.usArchetype) {
+      case "directorate":
+        return `Standard directive is clear: we will ${objective}.`;
+      case "concord":
+        return `Our mutual pact holds: we must ${objective}.`;
+      case "syndicate":
+        return `The operational ledger is set: we ${objective}.`;
+      case "legion":
+        return `Sound the advance: we ${objective}.`;
+      default:
+        return `The current order remains to ${objective}.`;
+    }
+  }
+  switch (context.themArchetype) {
+    case "directorate":
+      return `Your unauthorized attempt to ${objective} is marked for termination.`;
+    case "concord":
+      return `Our collective front will never permit you to ${objective}.`;
+    case "syndicate":
+      return `Your projected failure to ${objective} is already priced in.`;
+    case "legion":
+      return `You will break against our vanguard before you ever ${objective}.`;
+    default:
+      return `You still intend to ${objective}, of course.`;
+  }
 }
 
 function optionalBriefingBeats(context: BriefingContext): OptionalBriefingBeat[] {
@@ -392,23 +433,75 @@ function variantIndex(key: string, mod: number): number {
   return (hash >>> 0) % mod;
 }
 
-const ADVISOR_LEADS = [
-  "Recon is in.",
-  "Signal intercepts just confirmed it.",
-  "Survey teams finished their sweep.",
-  "Long-range scans cleared an hour ago.",
-  "Here is the tactical picture.",
-  "Forward observers checked in early.",
-];
+const ADVISOR_LEADS: Record<FactionArchetype, readonly string[]> = {
+  directorate: [
+    "Bureau telemetry and orbital recon are logged.",
+    "Direct transmission from Directorate Intelligence.",
+    "Signal intercepts verified under protocol alpha.",
+    "Tactical audit cleared an hour ago.",
+    "Central monitoring confirms enemy movements.",
+    "Recon logs are processed and verified.",
+  ],
+  concord: [
+    "Allied scout detachments just returned.",
+    "Border watch reports are confirmed.",
+    "Coalition liaison verified the telemetry.",
+    "Signals from the forward sentries cleared.",
+    "The mutual defense network flagged this sector.",
+    "Forward observers checked in early.",
+  ],
+  syndicate: [
+    "Contract surveyors logged the terrain metrics.",
+    "Asset surveillance just filed its return.",
+    "Market monitors and recon probes confirm it.",
+    "Risk assessment models are finalized.",
+    "Recon telemetry cleared on private frequencies.",
+    "Long-range scans cleared an hour ago.",
+  ],
+  legion: [
+    "Forward vanguard clocked the perimeter.",
+    "Frontline scouts made first visual.",
+    "Outriders just rode back from the wire.",
+    "Combat telemetry is locked in.",
+    "Signal intercepts just confirmed it.",
+    "Recon is in from the forward screen.",
+  ],
+};
 
-const COMMANDER_ACKS = [
-  (analyst: string) => `${analyst} has the measure of it.`,
-  (analyst: string) => `I share ${analyst}'s read.`,
-  (analyst: string) => `${analyst} sees what I see.`,
-  (analyst: string) => `Confirmed — and ${analyst} understates it.`,
-  (analyst: string) => `${analyst} is right on every count.`,
-  (analyst: string) => `That matches ${analyst}'s assessment.`,
-];
+const COMMANDER_ACKS: Record<FactionArchetype, readonly ((analyst: string) => string)[]> = {
+  directorate: [
+    (analyst: string) => `Directives acknowledged from ${analyst}. Protocol confirmed.`,
+    (analyst: string) => `${analyst}'s intelligence matches Directorate priority metrics.`,
+    (analyst: string) => `Command acknowledges ${analyst}'s telemetry.`,
+    (analyst: string) => `Confirmed — ${analyst} has the operational measure of it.`,
+    (analyst: string) => `Protocol approved: ${analyst} is right on every count.`,
+    (analyst: string) => `That matches ${analyst}'s tactical audit.`,
+  ],
+  concord: [
+    (analyst: string) => `The coalition concurs with ${analyst}'s assessment.`,
+    (analyst: string) => `Our allies stand behind ${analyst}'s tactical read.`,
+    (analyst: string) => `${analyst} speaks for the council's resolve.`,
+    (analyst: string) => `Confirmed — ${analyst} sees the defensive reality clearly.`,
+    (analyst: string) => `The alliance endorses ${analyst}'s counsel without hesitation.`,
+    (analyst: string) => `That matches ${analyst}'s strategic assessment.`,
+  ],
+  syndicate: [
+    (analyst: string) => `${analyst}'s audit accounts for all operational liabilities.`,
+    (analyst: string) => `The risk-adjusted assessment from ${analyst} is approved.`,
+    (analyst: string) => `Contract parameters verified by ${analyst}.`,
+    (analyst: string) => `Confirmed — ${analyst} evaluates the assets accurately.`,
+    (analyst: string) => `${analyst} prices the tactical risks precisely.`,
+    (analyst: string) => `That matches ${analyst}'s balance sheet.`,
+  ],
+  legion: [
+    (analyst: string) => `${analyst} calls the front plain and true.`,
+    (analyst: string) => `Iron and blood: ${analyst} marks where we strike.`,
+    (analyst: string) => `No wasted words from ${analyst}. We push.`,
+    (analyst: string) => `Confirmed — ${analyst} knows where the fighting will be thickest.`,
+    (analyst: string) => `${analyst} is right on every count.`,
+    (analyst: string) => `That matches ${analyst}'s frontline report.`,
+  ],
+};
 
 export function generateBriefing(
   campaign: Pick<Campaign, "world" | "factions" | "characters"> & { seedNumber?: number },
@@ -423,15 +516,23 @@ export function generateBriefing(
   const foe = characterLabel(enemyLeader);
   const win = mission.win;
   const profile = resolveMissionProfile(campaign.seedNumber ?? 0, mission.index, win.kind, mission.profile);
+  const usArchetype = factionArchetype(us.name);
+  const themArchetype = factionArchetype(them.name);
   const context: BriefingContext = {
     seed: campaign.seedNumber ?? 0,
     mission,
     profile,
     place,
+    usArchetype,
+    themArchetype,
+    usName: us.name,
+    themName: them.name,
   };
   const pick = (label: string, mod: number) => pickBriefingVariant(context, label, mod);
-  const lead = ADVISOR_LEADS[pick("advisor-lead", ADVISOR_LEADS.length)]!;
-  const ack = COMMANDER_ACKS[pick("commander-ack", COMMANDER_ACKS.length)]!(analyst);
+  const leads = ADVISOR_LEADS[usArchetype];
+  const acks = COMMANDER_ACKS[usArchetype];
+  const lead = leads[pick("advisor-lead", leads.length)]!;
+  const ack = acks[pick("commander-ack", acks.length)]!(analyst);
 
   const report = (() => {
     switch (win.kind) {

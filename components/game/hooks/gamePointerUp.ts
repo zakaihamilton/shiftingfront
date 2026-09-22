@@ -220,7 +220,7 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
 
   const hit = pickSelectableEntity(state, p.x, p.y, tx, ty, cam);
   if (pointerType === "touch" && selectedIds.length > 0 && !hit) {
-    const commands = contextOrders(state, selectedIds, undefined, tx, ty);
+    const commands = contextOrders(state, selectedIds, undefined, tx, ty, true);
     return {
       clearBox: true,
       commands,

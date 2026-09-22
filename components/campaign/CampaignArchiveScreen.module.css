@@ -54,9 +54,9 @@
   align-items: center;
   min-width: 0;
   font-family: var(--font-mono);
-  font-size: 0.56rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   line-height: 1.4;
   text-transform: uppercase;
   text-shadow: 0 1px var(--chrome-void);
@@ -64,7 +64,7 @@
 
 .topbar {
   justify-content: space-between;
-  min-height: 2.1rem;
+  min-height: 2.35rem;
   border-block: 1px solid color-mix(in srgb, var(--chrome-cyan) 20%, transparent);
   color: var(--chrome-body);
 }
@@ -81,11 +81,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 1.65rem;
+  height: 1.65rem;
   border: 1px solid var(--chrome-cyan-dim);
   color: var(--chrome-cyan);
-  font-size: 0.5rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.06em;
   box-shadow: 0 0 12px color-mix(in srgb, var(--chrome-cyan) 18%, transparent);
 }
@@ -233,7 +233,7 @@
 .archiveStatus {
   color: var(--chrome-cyan);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-align: right;
@@ -255,9 +255,9 @@
 }
 
 .importButton {
-  padding: 0.5rem 0.65rem;
+  padding: 0.55rem 0.75rem;
   color: var(--chrome-text);
-  font-size: 0.58rem;
+  font-size: var(--text-sm);
   text-align: left;
 }
 
@@ -270,7 +270,7 @@
   margin: 0.85rem 0 0;
   padding: 0.7rem 0.8rem;
   border-inline-start: 2px solid currentColor;
-  font-size: 0.68rem;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 
@@ -332,7 +332,7 @@
 
   .topbar,
   .footer {
-    font-size: 0.45rem;
+    font-size: var(--text-xs);
     letter-spacing: 0.1em;
   }
 
@@ -361,12 +361,12 @@
   }
 
   .subtitle {
-    font-size: 0.65rem;
+    font-size: var(--text-sm);
     letter-spacing: 0.17em;
   }
 
   .copy {
-    font-size: 0.64rem;
+    font-size: var(--text-sm);
   }
 
   .archiveHeader {
