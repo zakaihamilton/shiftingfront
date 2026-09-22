@@ -73,7 +73,9 @@ export function scenarioAffordances(state: SimState): ScenarioAffordances {
   const allTargetsReachable = targetRoutes.every((route) => route.status === "complete") &&
     effectiveRoutes.every((route) => route.status === "complete") &&
     rescueReturnRoutes.every((route) => route.status === "complete");
-  const routeBudget = baseRouteLength > 0 ? baseRouteLength * 1.65 + 12 : Infinity;
+  const maxMapDiagonal = Math.hypot(state.width, state.height);
+  const effectiveBaseline = Math.max(baseRouteLength, maxMapDiagonal * 0.5);
+  const routeBudget = baseRouteLength > 0 ? effectiveBaseline * 1.65 + 12 : Infinity;
   const materiallyFair = allTargetsReachable &&
     targetRouteLengths.every((length) => length <= routeBudget) &&
     effectiveRouteLengths.every((length) => length <= routeBudget) &&

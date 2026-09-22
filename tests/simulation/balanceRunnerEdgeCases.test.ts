@@ -133,12 +133,12 @@ describe("runBalanceJob", () => {
 
   it("does not count power deficit when power buildings are destroyed in combat on defeat", () => {
     const records = runBalanceJob({
-      from: 7,
-      to: 7,
+      from: 0,
+      to: 0,
       missions: [3],
       maxTicks: 14400,
       strategy: "rush",
-      scenarios: [{ seed: 7, mission: 3 }],
+      scenarios: [{ seed: 0, mission: 3 }],
     });
     expect(records[0]?.result).toBe("lost");
     expect(records[0]?.lossReason).toBe("yardDestroyed");

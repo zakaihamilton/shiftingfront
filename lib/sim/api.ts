@@ -1,6 +1,6 @@
 import { STARTING_CREDITS } from "../catalog";
 import { createRng, mixSeed } from "../seed/rng";
-import type { ReadonlyCampaign, ReadonlyMissionDef, SimEvent, SimState, UnitKind } from "../types";
+import type { ReadonlyCampaign, ReadonlyMissionDef, SimEvent, SimState, UnitKind, Vec2 } from "../types";
 import { createCampaign } from "../gen/campaign";
 import { generateMap, type GeneratedMap } from "../gen/map";
 import { makeFog, tickFog } from "./fog";
@@ -76,30 +76,75 @@ export function createMissionFromData(opts: {
   state.missionKind = mission.win.kind;
   state.aiState = "economy";
 
+function baseOrientationVectors(from: Vec2, to: Vec2): { forward: Vec2; lateral: Vec2 } {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const fx = Math.round(dx / len);
+  const fy = Math.round(dy / len);
+  const forwardX = fx !== 0 || fy !== 0 ? fx : 1;
+  const forwardY = fx !== 0 || fy !== 0 ? fy : 1;
+  return {
+    forward: { x: forwardX, y: forwardY },
+    lateral: { x: -forwardY, y: forwardX },
+  };
+}
+
+function dirPoint(
+  anchor: Vec2,
+  forward: Vec2,
+  lateral: Vec2,
+  fDist: number,
+  lDist: number,
+  width: number,
+  height: number,
+): Vec2 {
+  return {
+    x: Math.max(3, Math.min(width - 4, Math.round(anchor.x + forward.x * fDist + lateral.x * lDist))),
+    y: Math.max(3, Math.min(height - 4, Math.round(anchor.y + forward.y * fDist + lateral.y * lDist))),
+  };
+}
+
   const p = map.playerStart;
   const e = map.enemyStart;
+  const pVecs = baseOrientationVectors(p, e);
+  const eVecs = baseOrientationVectors(e, p);
   const offensiveMission = ["sabotage", "destroyMarked", "razeAll", "decapitate", "annihilate"].includes(mission.win.kind);
+
+  // Player base layout
   spawnBuildingAt(state, 0, "constructionYard", p.x, p.y);
-  spawnBuildingAt(state, 0, "power", p.x + 3, p.y);
-  spawnBuildingAt(state, 0, "refinery", p.x, p.y + 3);
-  spawnUnit(state, 0, "harvester", p.x + 3, p.y + 3);
-  spawnUnit(state, 0, "infantry", p.x + 5, p.y + 2);
+  const pPower = dirPoint(p, pVecs.forward, pVecs.lateral, -2, 2, state.width, state.height);
+  spawnBuildingAt(state, 0, "power", pPower.x, pPower.y);
+  const pRefinery = dirPoint(p, pVecs.forward, pVecs.lateral, 0, 3, state.width, state.height);
+  spawnBuildingAt(state, 0, "refinery", pRefinery.x, pRefinery.y);
+  const pHarvester = dirPoint(p, pVecs.forward, pVecs.lateral, 0, 4, state.width, state.height);
+  spawnUnit(state, 0, "harvester", pHarvester.x, pHarvester.y);
+  const pInfantry = dirPoint(p, pVecs.forward, pVecs.lateral, 3, 1, state.width, state.height);
+  spawnUnit(state, 0, "infantry", pInfantry.x, pInfantry.y);
+
   if (mission.index >= 1 || offensiveMission) {
-    spawnBuildingAt(state, 0, "turret", p.x + 5, p.y);
-    spawnBuildingAt(state, 0, "barracks", p.x + 3, p.y - 3);
-    spawnUnit(state, 0, "antiArmor", p.x + 5, p.y + 4);
+    const pTurret = dirPoint(p, pVecs.forward, pVecs.lateral, 4, 0, state.width, state.height);
+    spawnBuildingAt(state, 0, "turret", pTurret.x, pTurret.y);
+    const pBarracks = dirPoint(p, pVecs.forward, pVecs.lateral, 2, -2, state.width, state.height);
+    spawnBuildingAt(state, 0, "barracks", pBarracks.x, pBarracks.y);
+    const pAntiArmor = dirPoint(p, pVecs.forward, pVecs.lateral, 4, -1, state.width, state.height);
+    spawnUnit(state, 0, "antiArmor", pAntiArmor.x, pAntiArmor.y);
   }
   if (mission.index >= 4 || offensiveMission) {
-    spawnUnit(state, 0, "tank", p.x + 6, p.y + 4);
+    const pTank = dirPoint(p, pVecs.forward, pVecs.lateral, 5, 0, state.width, state.height);
+    spawnUnit(state, 0, "tank", pTank.x, pTank.y);
   }
   for (let turretIndex = 0; turretIndex < difficulty.offensiveStartingTurrets && offensiveMission; turretIndex += 1) {
-    spawnBuildingAt(state, 0, "turret", p.x - 3 - turretIndex * 2, p.y);
+    const pExtraTurret = dirPoint(p, pVecs.forward, pVecs.lateral, 3, 2 + turretIndex * 2, state.width, state.height);
+    spawnBuildingAt(state, 0, "turret", pExtraTurret.x, pExtraTurret.y);
   }
   if (mission.index >= 3 || offensiveMission) {
-    spawnBuildingAt(state, 0, "factory", p.x, p.y - 5);
+    const pFactory = dirPoint(p, pVecs.forward, pVecs.lateral, -3, -2, state.width, state.height);
+    spawnBuildingAt(state, 0, "factory", pFactory.x, pFactory.y);
   }
   if (mission.index === 0 && !offensiveMission) {
-    spawnBuildingAt(state, 0, "barracks", p.x + 3, p.y - 3);
+    const pBarracks = dirPoint(p, pVecs.forward, pVecs.lateral, 2, -2, state.width, state.height);
+    spawnBuildingAt(state, 0, "barracks", pBarracks.x, pBarracks.y);
   }
 
   for (const building of state.entities.filter((entity) => entity.owner === 0 && entity.class === "building" && entity.hp > 0 && entity.constructing === 0)) {
@@ -107,31 +152,43 @@ export function createMissionFromData(opts: {
     state.buildingsCompletedByKind[building.kind] = (state.buildingsCompletedByKind[building.kind] ?? 0) + 1;
   }
 
+  // Enemy base layout
   spawnBuildingAt(state, 1, "constructionYard", e.x, e.y);
-  spawnBuildingAt(state, 1, "power", e.x - 3, e.y);
-  spawnBuildingAt(state, 1, "refinery", e.x - 2, e.y - 3);
-  spawnBuildingAt(state, 1, "barracks", e.x - 5, e.y - 3);
+  const ePower = dirPoint(e, eVecs.forward, eVecs.lateral, -2, 2, state.width, state.height);
+  spawnBuildingAt(state, 1, "power", ePower.x, ePower.y);
+  const eRefinery = dirPoint(e, eVecs.forward, eVecs.lateral, 0, 3, state.width, state.height);
+  spawnBuildingAt(state, 1, "refinery", eRefinery.x, eRefinery.y);
+  const eBarracks = dirPoint(e, eVecs.forward, eVecs.lateral, 2, -2, state.width, state.height);
+  spawnBuildingAt(state, 1, "barracks", eBarracks.x, eBarracks.y);
   if (difficulty.startingTurret) {
-    spawnBuildingAt(state, 1, "turret", e.x - 5, e.y);
+    const eTurret = dirPoint(e, eVecs.forward, eVecs.lateral, 4, 0, state.width, state.height);
+    spawnBuildingAt(state, 1, "turret", eTurret.x, eTurret.y);
   }
-  spawnUnit(state, 1, "harvester", e.x + 1, e.y - 3);
-  spawnUnit(state, 1, "infantry", e.x - 1, e.y + 2);
+  const eHarvester = dirPoint(e, eVecs.forward, eVecs.lateral, 0, 4, state.width, state.height);
+  spawnUnit(state, 1, "harvester", eHarvester.x, eHarvester.y);
+  const eInfantry = dirPoint(e, eVecs.forward, eVecs.lateral, 3, 1, state.width, state.height);
+  spawnUnit(state, 1, "infantry", eInfantry.x, eInfantry.y);
   if (difficulty.startingTank) {
-    spawnUnit(state, 1, "tank", e.x - 4, e.y + 1);
+    const eTank = dirPoint(e, eVecs.forward, eVecs.lateral, 4, -1, state.width, state.height);
+    spawnUnit(state, 1, "tank", eTank.x, eTank.y);
   }
 
   const openingGuardKinds: UnitKind[] = ["infantry", "antiArmor", "tank"];
   for (let i = 0; i < difficulty.startingGuards; i++) {
-    spawnUnit(state, 1, openingGuardKinds[i % openingGuardKinds.length]!, e.x - 2 - (i % 3), e.y + 3 + Math.floor(i / 3));
+    const guardPos = dirPoint(e, eVecs.forward, eVecs.lateral, 3 + Math.floor(i / 3), -2 + (i % 3) * 2, state.width, state.height);
+    spawnUnit(state, 1, openingGuardKinds[i % openingGuardKinds.length]!, guardPos.x, guardPos.y);
   }
 
   const extraGuards = Math.floor(mission.index / 2);
   for (let i = 0; i < extraGuards; i++) {
-    spawnUnit(state, 1, i % 2 === 0 ? "infantry" : "antiArmor", e.x - 6 - (i % 2), e.y + 1 + i);
+    const extraGuardPos = dirPoint(e, eVecs.forward, eVecs.lateral, 4 + Math.floor(i / 2), i % 2 === 0 ? 2 : -2, state.width, state.height);
+    spawnUnit(state, 1, i % 2 === 0 ? "infantry" : "antiArmor", extraGuardPos.x, extraGuardPos.y);
   }
   if (mission.index >= 3) {
-    spawnBuildingAt(state, 1, "factory", e.x, e.y - 6);
-    spawnBuildingAt(state, 1, "turret", e.x + 3, e.y - 3);
+    const eFactory = dirPoint(e, eVecs.forward, eVecs.lateral, -3, -2, state.width, state.height);
+    spawnBuildingAt(state, 1, "factory", eFactory.x, eFactory.y);
+    const eSecondTurret = dirPoint(e, eVecs.forward, eVecs.lateral, 4, -3, state.width, state.height);
+    spawnBuildingAt(state, 1, "turret", eSecondTurret.x, eSecondTurret.y);
   }
 
   const assault =
@@ -140,15 +197,27 @@ export function createMissionFromData(opts: {
     mission.win.kind === "annihilate" ||
     mission.win.kind === "destroyMarked";
   if (assault && difficulty.assaultSupport && (objectiveContractFor(mission.win.kind)?.startingSupport ?? true)) {
-    spawnBuildingAt(state, 1, "turret", e.x + 2, e.y);
-    spawnUnit(state, 1, "tank", e.x - 2, e.y + 2);
+    const assaultTurret = dirPoint(e, eVecs.forward, eVecs.lateral, 3, 2, state.width, state.height);
+    spawnBuildingAt(state, 1, "turret", assaultTurret.x, assaultTurret.y);
+    const assaultTank = dirPoint(e, eVecs.forward, eVecs.lateral, 4, 1, state.width, state.height);
+    spawnUnit(state, 1, "tank", assaultTank.x, assaultTank.y);
   }
 
   if (mission.win.kind === "holdTheLine") {
     const holdLineKinds: UnitKind[] = ["infantry", "antiArmor", "tank", "infantry", "antiArmor", "tank", "infantry", "antiArmor"];
     for (let i = 0; i < difficulty.holdLineReinforcements; i++) {
       const kind = holdLineKinds[i]!;
-      spawnUnit(state, 1, kind, e.x - 6 - (i % 2), e.y - (i % 3));
+      const pos = dirPoint(e, eVecs.forward, eVecs.lateral, 3 + (i % 2), -3 + (i % 3) * 2, state.width, state.height);
+      spawnUnit(state, 1, kind, pos.x, pos.y);
+    }
+  }
+
+  // Center-Hold perimeter outposts
+  if (map.enemyOutposts && map.enemyOutposts.length > 0) {
+    for (const outpost of map.enemyOutposts) {
+      spawnBuildingAt(state, 1, "turret", outpost.x, outpost.y);
+      spawnUnit(state, 1, "infantry", outpost.x + 1, outpost.y);
+      spawnUnit(state, 1, "antiArmor", outpost.x - 1, outpost.y);
     }
   }
 

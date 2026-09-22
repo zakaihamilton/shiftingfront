@@ -36,17 +36,21 @@ describe("mission profiles", () => {
     }
   });
 
-  it("varies the enemy base corner while keeping the player in the opposite upper-left campaign", () => {
-    const corners = new Set<string>();
+  it("varies player and enemy spawn positions and topologies across campaigns", () => {
+    const topologies = new Set<string>();
+    const playerQuadrants = new Set<string>();
+    const enemyQuadrants = new Set<string>();
     for (let seed = 0; seed < 40; seed++) {
       const campaign = createCampaign(seed);
       const mission = campaign.missions[0]!;
       const map = generateMap(seed, mission);
-      corners.add(`${map.enemyStart.x > map.width / 2 ? "right" : "left"}-${map.enemyStart.y > map.height / 2 ? "bottom" : "top"}`);
-      expect(map.playerStart.x).toBeLessThan(map.width / 2);
-      expect(map.playerStart.y).toBeLessThan(map.height / 2);
+      if (map.spawnTopology) topologies.add(map.spawnTopology);
+      playerQuadrants.add(`${map.playerStart.x > map.width / 2 ? "right" : "left"}-${map.playerStart.y > map.height / 2 ? "bottom" : "top"}`);
+      enemyQuadrants.add(`${map.enemyStart.x > map.width / 2 ? "right" : "left"}-${map.enemyStart.y > map.height / 2 ? "bottom" : "top"}`);
     }
-    expect(corners).toEqual(new Set(["right-bottom", "left-bottom", "right-top"]));
+    expect(topologies.size).toBeGreaterThanOrEqual(8);
+    expect(playerQuadrants).toEqual(new Set(["left-top", "right-bottom", "left-bottom", "right-top"]));
+    expect(enemyQuadrants).toEqual(new Set(["left-top", "right-bottom", "left-bottom", "right-top"]));
   });
 
   it("resolves legacy missions without profile data identically", () => {

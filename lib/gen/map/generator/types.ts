@@ -1,4 +1,4 @@
-import type { BiomeName, MissionProfileVariant, SurfaceKind, Vec2 } from "../../../types";
+import type { BiomeName, LandmarkKind, MapSpawnTopology, MissionProfileVariant, SurfaceKind, Vec2 } from "../../../types";
 
 export type MapAffordances = {
   routeLengths: number[];
@@ -23,9 +23,12 @@ export type GeneratedMap = {
   resourceAmount: number[];
   playerStart: Vec2;
   enemyStart: Vec2;
+  enemyOutposts?: Vec2[];
   markedSpots: Vec2[];
   profileVariant: MissionProfileVariant;
   affordances: MapAffordances;
+  spawnTopology?: MapSpawnTopology;
+  landmark?: LandmarkKind;
 };
 
 export type MapCorner = "bottomRight" | "bottomLeft" | "topRight";

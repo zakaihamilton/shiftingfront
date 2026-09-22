@@ -7,7 +7,7 @@ import { buildingAt, groundHeight, INITIAL_BUILDING_EDGE_MARGIN } from "../../li
 import { makeFixture } from "../../lib/sim/fixtures";
 import { BUILDING_STATS, footprintOf } from "../../lib/catalog";
 import type { BuildingKind } from "../../lib/types";
-import { TILE_BLOCKED, TILE_WATER } from "../../lib/types";
+import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../lib/types";
 import { cameraViewQuad, createCamera, TILE_H, tileToScreen } from "../../lib/iso";
 import {
   cameraPanBounds,
@@ -66,6 +66,8 @@ describe("terrain height", () => {
         expect(a).toEqual(b);
         expect(routeExists(a)).toBe(true);
         expect(a.surfaces.filter((surface) => surface === 1).length).toBeGreaterThan(mission.mapSize * 2);
+        expect(a.affordances.alternateRouteLength).toBeLessThanOrEqual(a.affordances.baselineRouteLength * 1.8);
+        expect(a.resourceAmount.every((amount, index) => amount === 0 || a.tiles[index] === TILE_RESOURCE)).toBe(true);
         const total = a.resourceAmount.reduce((sum, amount) => sum + amount, 0);
         const required = Math.max(
           14_000 + mission.index * 3_000,
