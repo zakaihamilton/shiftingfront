@@ -227,6 +227,8 @@
 }
 
 .detail {
+  display: block;
+  min-height: 1.15em;
   overflow: hidden;
   color: var(--chrome-muted);
   font-family: var(--font-mono);
