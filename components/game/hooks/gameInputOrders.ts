@@ -114,7 +114,7 @@ export function contextOrders(s: SimState, ids: number[], target: SimState["enti
     if (commands.length) return commands;
   }
   if (target && target.owner === 1) return [{ type: "attack", unitIds: ids, targetId: target.id }];
-  return groundOrders(s, ids, x, y, attackMove || target === undefined);
+  return groundOrders(s, ids, x, y, attackMove);
 }
 
 export function mobileCommandOrders(

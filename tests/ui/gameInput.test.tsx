@@ -296,7 +296,7 @@ describe("command markers", () => {
     });
     vi.mocked(voiceBarkForBeep).mockClear();
     act(() => {
-      armed.current.onUp(pointerEvent(canvas, { button: 2, buttons: 0 }));
+      armed.current.onUp(pointerEvent(canvas, { button: 2, buttons: 0, ctrlKey: true }));
     });
     expect(armed.current.commandMarkerRef.current?.kind).toBe("attack");
     expect(voiceBarkForBeep).toHaveBeenCalledOnce();
