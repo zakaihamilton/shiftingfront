@@ -35,6 +35,15 @@ const COMMANDER_YARD_REPAIR_THRESHOLD = 0.92;
 const COMMANDER_STRUCTURE_REPAIR_THRESHOLD = 0.6;
 const COMMANDER_FINAL_PUSH_RATIO = 0.72;
 const DECAP_ASSAULT_RECOVERY_RATIO = 0.4;
+const SCENARIO_CONTACT_FORCE_LIMIT = 8;
+
+function scenarioContactForce(units: Entity[], target: Entity | undefined): Entity[] {
+  if (!target || units.length <= SCENARIO_CONTACT_FORCE_LIMIT) return units;
+  return units
+    .slice()
+    .sort((a, b) => distToEntity(a, target) - distToEntity(b, target) || a.id - b.id)
+    .slice(0, SCENARIO_CONTACT_FORCE_LIMIT);
+}
 
 function finalPushActive(state: SimState): boolean {
   const director = state.runtime?.director;
@@ -119,7 +128,6 @@ export class CompetentCommander {
       : undefined;
     const yardThreat = defensiveThreat(state, yard);
     const threat = yardThreat ?? scenarioThreat(state) ?? emergencyThreat;
-    const yardRaidActive = yardThreat !== undefined && yardRaid(state, yard);
     const objective = objectiveEntity(state);
     const approachObjective = objective && objective.owner === 1 ? offensiveApproachTarget(state, objective) : objective;
     const extractionCargo = objectiveKind(state) === "extraction"
@@ -144,8 +152,15 @@ export class CompetentCommander {
     ) && (objectiveKind(state) !== "escort" || state.runtime?.convoyStartTick === undefined);
 
     const returningScenarioUnits = [...extractionCargo, ...rescueReturnUnits];
-    if (returningScenarioUnits.length) {
-      commands.push({ type: "move", unitIds: returningScenarioUnits.map((entity) => entity.id), x: yard.x, y: yard.y, formation: "line" });
+    const unitsNeedingReturnOrder = returningScenarioUnits.filter((entity) => {
+      const destination = entity.orderDestination;
+      return entity.orderMode !== "move" || !destination || Math.hypot(destination.x - yard.x, destination.y - yard.y) > 8;
+    });
+    if (unitsNeedingReturnOrder.length) {
+      // A contacted unit already has a return route from the scenario system.
+      // Reissuing a formation order every commander cadence resets that route
+      // and can strand the unit in a congested corridor indefinitely.
+      commands.push({ type: "move", unitIds: unitsNeedingReturnOrder.map((entity) => entity.id), x: yard.x, y: yard.y, formation: "line" });
     }
 
     if (combat.length) {
@@ -242,35 +257,32 @@ export class CompetentCommander {
         }
       } else if (threat) {
         if (["escort", "rescue", "extraction"].includes(objectiveKind(state)) && objectiveCombat.length) {
-          if (yardRaidActive && isTimedRecovery(objectiveKind(state))) {
-            combatCommands.push({ type: "attack", unitIds: combat.map((entity) => entity.id), targetId: threat.id });
-          } else {
-            if (defenders.length) {
-              combatCommands.push({ type: "attack", unitIds: defenders.map((entity) => entity.id), targetId: threat.id });
-            }
-            const responseForce = assaultForce;
-            const pendingNeutral = objective?.neutral === true;
-            const escortTarget = objectiveKind(state) === "extraction"
-              ? extractionEscortTarget ?? objective
-              : objective;
-            if (responseForce.length && pendingNeutral && objective && objectiveKind(state) !== "escort") {
-              // Yard raids are the home guard's job. Pulling the contact team
-              // home every time a scout reaches the HQ is what blows rescue and
-              // extraction deadlines.
-              combatCommands.push({
-                type: objectiveKind(state) === "extraction" ? "attackMove" : "move",
-                unitIds: responseForce.map((entity) => entity.id),
-                x: objective.x,
-                y: objective.y,
-                formation: "line",
-              });
-            } else if (responseForce.length && escortTarget) {
-              // A threatened scenario target takes priority over escort travel.
-              // The force will receive its route to the target again once the
-              // threat clears, while direct attack keeps the response force
-              // from walking past the attacker.
-              combatCommands.push({ type: "attack", unitIds: responseForce.map((entity) => entity.id), targetId: threat.id });
-            }
+          if (defenders.length) {
+            combatCommands.push({ type: "attack", unitIds: defenders.map((entity) => entity.id), targetId: threat.id });
+          }
+          const responseForce = assaultForce;
+          const pendingNeutral = objective?.neutral === true;
+          const escortTarget = objectiveKind(state) === "extraction"
+            ? extractionEscortTarget ?? objective
+            : objective;
+          if (responseForce.length && pendingNeutral && objective && objectiveKind(state) !== "escort") {
+            // Yard raids are the home guard's job. Keep the contact team on
+            // the objective; pulling it home for every nearby attacker is
+            // what causes rescue and extraction deadlines to expire.
+            const contactForce = scenarioContactForce(responseForce, objective);
+            combatCommands.push({
+              type: objectiveKind(state) === "extraction" ? "attackMove" : "move",
+              unitIds: contactForce.map((entity) => entity.id),
+              x: objective.x,
+              y: objective.y,
+              formation: "line",
+            });
+          } else if (responseForce.length && escortTarget) {
+            // A threatened scenario target takes priority over escort travel.
+            // The force will receive its route to the target again once the
+            // threat clears, while direct attack keeps the response force
+            // from walking past the attacker.
+            combatCommands.push({ type: "attack", unitIds: responseForce.map((entity) => entity.id), targetId: threat.id });
           }
         } else {
           // Keep the rescue guard assigned to local defense instead of sending it with the rescue force.
@@ -309,15 +321,29 @@ export class CompetentCommander {
           // independent progress instead of serializing every target behind
           // the slowest return trip.
           const nextScenarioTarget = rescueContactTarget ?? recoveryTarget;
-          const needsScenarioEscort = nextScenarioTarget !== undefined && force.some((entity) => distToEntity(entity, nextScenarioTarget) > 6);
+          const remainingNeutralTargets = state.runtime?.targetIds.filter((id) => state.entities.some((entity) => entity.id === id && entity.hp > 0 && entity.neutral)).length ?? 0;
+          const contactForce = objectiveKind(state) === "extraction" && (state.runtime?.targetIds.length ?? 0) > 2 && remainingNeutralTargets <= 1
+            ? force
+            : scenarioContactForce(force, nextScenarioTarget);
+          const needsScenarioEscort = nextScenarioTarget !== undefined && contactForce.some((entity) => distToEntity(entity, nextScenarioTarget) > 6);
           const recoveryDestination = needsScenarioEscort ? nextScenarioTarget : yard;
-          combatCommands.push({ type: "attackMove", unitIds: force.map((entity) => entity.id), x: recoveryDestination.x, y: recoveryDestination.y, formation: "line" });
+          combatCommands.push({ type: "attackMove", unitIds: contactForce.map((entity) => entity.id), x: recoveryDestination.x, y: recoveryDestination.y, formation: "line" });
         } else if (force.length && objective && (objective.neutral || objective.class === "unit" && objective.owner === 0)) {
           const escortDestination = { x: objective.x, y: objective.y };
           if (objectiveKind(state) === "escort") {
-            combatCommands.push({ type: "attackMove", unitIds: force.map((entity) => entity.id), x: escortDestination.x, y: escortDestination.y, formation: "wedge" });
+            // Before the convoy starts, a small contact team prevents the
+            // staging tile from becoming a traffic jam. Once it moves, keep
+            // the full force available to screen it from attackers.
+            const escortForce = state.runtime?.convoyStartTick === undefined
+              ? scenarioContactForce(force, objective)
+              : force;
+            combatCommands.push({ type: "attackMove", unitIds: escortForce.map((entity) => entity.id), x: escortDestination.x, y: escortDestination.y, formation: "wedge" });
           } else {
-            combatCommands.push({ type: "move", unitIds: force.map((entity) => entity.id), x: objective.x, y: objective.y, formation: "line" });
+            const remainingNeutralTargets = state.runtime?.targetIds.filter((id) => state.entities.some((entity) => entity.id === id && entity.hp > 0 && entity.neutral)).length ?? 0;
+            const contactForce = objectiveKind(state) === "extraction" && (state.runtime?.targetIds.length ?? 0) > 2 && remainingNeutralTargets <= 1
+              ? force
+              : scenarioContactForce(force, objective);
+            combatCommands.push({ type: "move", unitIds: contactForce.map((entity) => entity.id), x: objective.x, y: objective.y, formation: "line" });
           }
         } else if (force.length && ["harvestQuota", "forceQuota", "structureQuota", "holdTheLine"].includes(objectiveKind(state))) {
           combatCommands.push({ type: "move", unitIds: force.map((entity) => entity.id), x: yard.x, y: yard.y, formation: "line" });

@@ -217,6 +217,18 @@ export function planProduction(state: SimState): Command[] {
     const queuedCount = queuedCombat.reduce((sum, kind) => sum + queuedUnitCount(state, kind), 0);
     if (combatCount + queuedCount >= 32) return commands;
   }
+  if (isTimedRecovery(objectiveKind(state))) {
+    const combatCount = playerUnitsView(
+      state,
+      (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
+    ).length;
+    const queuedCombat = ["infantry", "antiArmor", "tank"] as const;
+    const queuedCount = queuedCombat.reduce((sum, kind) => sum + queuedUnitCount(state, kind), 0);
+    // Recovery missions need a contact team, not an unlimited stream of
+    // reinforcements. Once the force is large enough, additional units clog
+    // the route and can prevent the final target from ever being contacted.
+    if (combatCount + queuedCount >= 28) return commands;
+  }
   const role = state.win.role && isUnitAvailable(state.win.role, state.missionIndex)
     && (state.unitsProducedByRole[state.win.role] ?? 0) + queuedUnitCount(state, state.win.role) < (state.win.target ?? Infinity)
     ? state.win.role

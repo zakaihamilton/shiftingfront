@@ -64,7 +64,7 @@ export function createMissionFromData(opts: {
       ...mission.win,
       targetIds: mission.win.targetIds ? [...mission.win.targetIds] : undefined,
     },
-    rngState: mixSeed(opts.seed, `sim:${opts.missionIndex}`) || 1,
+    rngState: mixSeed(opts.seed, `sim:${opts.missionIndex}`),
     // Campaigns are cached and frozen. Simulation state is mutable, so keep a
     // separate faction graph at this boundary.
     factions: campaign.factions.map((faction) => ({
