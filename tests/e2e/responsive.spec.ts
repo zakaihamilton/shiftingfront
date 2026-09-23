@@ -645,68 +645,73 @@ test.describe("mobile-first layouts", () => {
       { width: 390, height: 844 },
       { width: 730, height: 909 },
     ]) {
-      await page.setViewportSize(viewport);
-      await page.goto("/play?seed=0421&mission=0&fresh=1");
-      await waitForBattlefield(page);
+      const viewportPage = await page.context().newPage();
+      try {
+        await viewportPage.setViewportSize(viewport);
+        await viewportPage.goto("/play?seed=0421&mission=0&fresh=1");
+        await waitForBattlefield(viewportPage);
 
-      const launcher = page.getByTestId("mobile-command-toggle");
-      await expect(launcher).toBeVisible();
-      if (testInfo.project.name === "desktop") await launcher.click();
-      else await launcher.tap();
+        const launcher = viewportPage.getByTestId("mobile-command-toggle");
+        await expect(launcher).toBeVisible();
+        if (testInfo.project.name === "desktop") await launcher.click();
+        else await launcher.tap();
 
-      const sidebar = page.getByTestId("command-sidebar");
-      await expect(sidebar).toBeVisible();
-      await waitForCommandSidebarToSettle(sidebar, viewport.width);
-      const layout = await sidebar.evaluate((element) => {
-        const bounds = (node: Element) => {
-          const rect = node.getBoundingClientRect();
-          return { right: rect.right, width: rect.width, height: rect.height };
-        };
-        const cards = Array.from(element.querySelectorAll("[data-testid='build-progress'] button[aria-label*='credits']"));
-        const tabs = element.querySelector("[role='toolbar']");
-        return {
-          sidebar: bounds(element),
-          tabs: tabs ? Array.from(tabs.children).map(bounds) : [],
-          cards: cards.map((card) => ({
-            card: bounds(card),
-            art: card.firstElementChild ? bounds(card.firstElementChild) : null,
-            canvas: (() => {
-              const canvas = card.querySelector("canvas");
-              if (!(canvas instanceof HTMLCanvasElement)) return null;
-              const rect = canvas.getBoundingClientRect();
-              return {
-                backingWidth: canvas.width,
-                backingHeight: canvas.height,
-                cssWidth: rect.width,
-                cssHeight: rect.height,
-                imageRendering: getComputedStyle(canvas).imageRendering,
-              };
-            })(),
-          })),
-          documentWidth: document.documentElement.scrollWidth,
-        };
-      });
+        const sidebar = viewportPage.getByTestId("command-sidebar");
+        await expect(sidebar).toBeVisible();
+        await waitForCommandSidebarToSettle(sidebar, viewport.width);
+        const layout = await sidebar.evaluate((element) => {
+          const bounds = (node: Element) => {
+            const rect = node.getBoundingClientRect();
+            return { right: rect.right, width: rect.width, height: rect.height };
+          };
+          const cards = Array.from(element.querySelectorAll("[data-testid='build-progress'] button[aria-label*='credits']"));
+          const tabs = element.querySelector("[role='toolbar']");
+          return {
+            sidebar: bounds(element),
+            tabs: tabs ? Array.from(tabs.children).map(bounds) : [],
+            cards: cards.map((card) => ({
+              card: bounds(card),
+              art: card.firstElementChild ? bounds(card.firstElementChild) : null,
+              canvas: (() => {
+                const canvas = card.querySelector("canvas");
+                if (!(canvas instanceof HTMLCanvasElement)) return null;
+                const rect = canvas.getBoundingClientRect();
+                return {
+                  backingWidth: canvas.width,
+                  backingHeight: canvas.height,
+                  cssWidth: rect.width,
+                  cssHeight: rect.height,
+                  imageRendering: getComputedStyle(canvas).imageRendering,
+                };
+              })(),
+            })),
+            documentWidth: document.documentElement.scrollWidth,
+          };
+        });
 
-      expect(layout.sidebar.width).toBeLessThanOrEqual(viewport.width);
-      expect(layout.sidebar.width).toBeGreaterThan(0);
-      expect(layout.sidebar.right).toBeLessThanOrEqual(viewport.width);
-      expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width);
-      expect(layout.cards).toHaveLength(PLACEABLE.length);
+        expect(layout.sidebar.width).toBeLessThanOrEqual(viewport.width);
+        expect(layout.sidebar.width).toBeGreaterThan(0);
+        expect(layout.sidebar.right).toBeLessThanOrEqual(viewport.width);
+        expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width);
+        expect(layout.cards).toHaveLength(PLACEABLE.length);
 
-      const cardWidths = layout.cards.map(({ card }) => card.width);
-      expect(Math.max(...cardWidths) - Math.min(...cardWidths)).toBeLessThanOrEqual(1);
-      for (const { art, canvas } of layout.cards) {
-        expect(art).not.toBeNull();
-        expect(art!.width / art!.height).toBeCloseTo(80 / 56, 2);
-        expect(canvas).not.toBeNull();
-        expect(canvas!.backingWidth).toBeGreaterThanOrEqual(canvas!.cssWidth);
-        expect(canvas!.backingHeight).toBeGreaterThanOrEqual(canvas!.cssHeight);
-        expect(canvas!.imageRendering).toBe("auto");
+        const cardWidths = layout.cards.map(({ card }) => card.width);
+        expect(Math.max(...cardWidths) - Math.min(...cardWidths)).toBeLessThanOrEqual(1);
+        for (const { art, canvas } of layout.cards) {
+          expect(art).not.toBeNull();
+          expect(art!.width / art!.height).toBeCloseTo(80 / 56, 2);
+          expect(canvas).not.toBeNull();
+          expect(canvas!.backingWidth).toBeGreaterThanOrEqual(canvas!.cssWidth);
+          expect(canvas!.backingHeight).toBeGreaterThanOrEqual(canvas!.cssHeight);
+          expect(canvas!.imageRendering).toBe("auto");
+        }
+
+        const tabWidths = layout.tabs.map(({ width }) => width);
+        expect(tabWidths).toHaveLength(5);
+        expect(Math.max(...tabWidths) - Math.min(...tabWidths)).toBeLessThanOrEqual(1);
+      } finally {
+        await viewportPage.close();
       }
-
-      const tabWidths = layout.tabs.map(({ width }) => width);
-      expect(tabWidths).toHaveLength(5);
-      expect(Math.max(...tabWidths) - Math.min(...tabWidths)).toBeLessThanOrEqual(1);
     }
   });
 
