@@ -12,6 +12,7 @@ export function PauseMainMenu({
   onRestart,
   onControls,
   onOptions,
+  onFieldGuide,
   onMenu,
 }: {
   onResume: () => void;
@@ -22,6 +23,7 @@ export function PauseMainMenu({
   onRestart: () => void;
   onControls: () => void;
   onOptions: () => void;
+  onFieldGuide: () => void;
   onMenu: () => void;
 }) {
   return (
@@ -46,6 +48,7 @@ export function PauseMainMenu({
         <div className={styles.group}>
           <ConsoleLabel className={styles.groupLabel}>Campaign</ConsoleLabel>
           <ConsoleButton className={styles.action} tooltip="Audio, display, and data options" shortcut={SHORTCUT.options} onClick={onOptions}>Options</ConsoleButton>
+          <ConsoleButton className={styles.action} tooltip="Review scenario procedures and biome rules" onClick={onFieldGuide}>Field Guide</ConsoleButton>
           <ConsoleButton muted className={styles.action} tooltip="Leave the campaign" shortcut={SHORTCUT.menu} onClick={onMenu}>Main Menu</ConsoleButton>
         </div>
       </div>

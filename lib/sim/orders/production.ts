@@ -1,7 +1,7 @@
 import { BUILDING_DEFINITIONS, MAX_PRODUCTION_QUEUE, UNIT_STATS, isUnitAvailable, productionQueueSize } from "../../catalog";
 import { type BuildingKind, type Entity, type SimEvent, type SimState, type UnitKind } from "../../types";
 import { byId, powerFor } from "../world";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export function startProduce(state: SimState, fromId: number, unit: UnitKind): SimEvent[] {
   if (!isUnitAvailable(unit, state.missionIndex)) return [{ type: "commandRejected", reason: "unit unavailable" }];

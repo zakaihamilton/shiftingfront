@@ -4,7 +4,7 @@ import { byId, canPlaceBuilding, inBounds, invalidateEntityCaches, invalidateNav
 import { canRepair } from "../repair";
 import { canSell } from "../sell";
 import { refundQueuedUnits } from "../productionRefund";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export { refundQueuedUnits };
 

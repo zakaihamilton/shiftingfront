@@ -50,7 +50,7 @@ const OBJECTIVE_CONTRACTS: Partial<Record<MissionKind, MissionObjectiveContract>
     pressureAlert: "Enemy command is exposed — expect a counterattack.",
     repairPolicy: "none",
     assaultDelay: 840,
-    productionScale: 1.45,
+    productionScale: 1.8,
     startingSupport: false,
   },
   razeAll: {

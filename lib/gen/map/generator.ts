@@ -10,7 +10,7 @@ import {
   type Vec2,
 } from "../../types";
 import { biomeTuning } from "./config";
-import { terrainFeatureAt, type TerrainFeatureSample } from "./features";
+import { terrainFeatureSamplerFor, type TerrainFeatureSample } from "./features";
 import { resolveMissionProfile } from "../profile";
 import { fbm, warpedFbm, mixSalt } from "./noise";
 import {
@@ -52,6 +52,7 @@ export function generateMap(
   const salt = mixSalt(rng);
   const terrainFeatures = new Array<TerrainFeatureSample>(width * height);
   const terrainWorld = { seed, missionIndex: mission.index, biome, width, height };
+  const featureAt = terrainFeatureSamplerFor(terrainWorld);
 
   // 1. Dynamic Spawns & Frontlines (Corners, Cardinals, Center-vs-Edge)
   const topology = pickSpawnTopology(seed, mission.index);
@@ -70,7 +71,7 @@ export function generateMap(
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = idx(x, y, width);
-      const feature = terrainFeatureAt(terrainWorld, x, y);
+      const feature = featureAt(x, y);
       terrainFeatures[i] = feature;
       if (protectedStart(x, y)) {
         tiles[i] = TILE_CLEAR;
@@ -91,7 +92,7 @@ export function generateMap(
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = idx(x, y, width);
-      const feature = terrainFeatures[i] ?? terrainFeatureAt(terrainWorld, x, y);
+      const feature = terrainFeatures[i] ?? featureAt(x, y);
       const shore = warpedFbm(x * 0.72, y * 0.72, salt);
       if (tiles[i] === TILE_WATER) {
         heights[i] = 0;

@@ -1,7 +1,7 @@
 import type { Entity, SimState } from "../../types";
 import type { ScenarioProgress } from "./contract";
 import { formatMissionClockFromTicks } from "../../gen/pacing";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export function isEntityAlive(state: SimState, id: number): boolean {
   return entitiesFor(state).some((entity) => entity.id === id && entity.hp > 0);

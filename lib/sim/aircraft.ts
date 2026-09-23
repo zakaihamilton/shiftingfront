@@ -2,7 +2,7 @@ import { footprintOf, isAirUnit, UNIT_STATS } from "../catalog";
 import { isBuildingEntity, isUnitEntity, type Entity, type SimEvent, type SimState } from "../types";
 import { byId } from "./world";
 import { canTarget, isCombatTarget } from "./combat/grid";
-import { entitiesFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
 
 type Aircraft = import("../types").UnitEntity & { kind: "strikePlane" };
 

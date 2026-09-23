@@ -13,7 +13,7 @@ import {
   isCombatEntity,
   enemyEntitiesView,
 } from "./queries";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 import {
   planBuilding,
   planProduction,

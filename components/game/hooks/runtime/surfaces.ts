@@ -151,6 +151,7 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
             onCycleHudScale: runtime.session.cycleHudScale,
             onUpdateKeyBindings: runtime.session.updateKeyBindings,
             onVolumeChange: runtime.session.updateVolume,
+            onMarkFieldGuideTopicSeen: runtime.session.markFieldGuideTopicSeen,
             onExportTelemetry: runtime.session.telemetryEnabled ? runtime.session.exportTelemetry : undefined,
             onClearTelemetry: runtime.session.telemetryEnabled ? runtime.session.clearTelemetry : undefined,
           },

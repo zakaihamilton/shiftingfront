@@ -12,7 +12,7 @@ import {
   isCombatEntity,
   objectiveKind,
 } from "./queries";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export function objectiveEntity(state: SimState): Entity | undefined {
   const kind = objectiveKind(state);

@@ -25,7 +25,7 @@ describe("simulation replay", () => {
     const first = runReplay({ seed: 421, missionIndex: 0, maxTicks: 120 });
     const second = runReplay({ seed: 421, missionIndex: 0, maxTicks: 120 });
     second.state.fog = second.state.fog.map(() => 2);
-    second.state.entities.reverse();
+    second.state.entities = [...second.state.entities].reverse();
 
     expect(first.fingerprint).toBe(simulationFingerprint(second.state));
     expect(first.fingerprint).toBe(runReplay({ seed: 421, missionIndex: 0, maxTicks: 120 }).fingerprint);

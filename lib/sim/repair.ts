@@ -1,7 +1,7 @@
 import { repairCostFor, repairHpPerTick } from "../catalog";
 import { isBuildingEntity, type SimEvent, type SimState } from "../types";
 import { isCombatThreat } from "./combat/grid";
-import { entitiesFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
 
 export function canRepair(e: { class: string; hp: number; maxHp: number; constructing: number }): boolean {
   return e.class === "building" && e.hp > 0 && e.constructing === 0 && e.hp < e.maxHp;

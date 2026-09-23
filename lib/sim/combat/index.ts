@@ -7,6 +7,7 @@ import { strike, chase } from "./damage";
 import { createPendingAlerts, flushPlayerAlerts } from "./alerts";
 import type { SimEvent, SimState } from "../../types";
 import { tryFindPath } from "../pathBudget";
+import { directFireRangeBonusAt } from "../terrainRules";
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
@@ -20,6 +21,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     if (state.tutorialStage !== undefined && e.owner === 1) continue;
     if (e.class === "unit") e.suppression = Math.max(0, (e.suppression ?? 0) - 1);
     const st = statsFor(e);
+    const weaponRange = st.range + (st.weapon === "airStrike" ? 0 : directFireRangeBonusAt(state, e));
     if (st.damage <= 0 || e.neutral) continue;
     if (e.class === "unit" && (e.flightState === "servicing" || e.landingRunwayId !== undefined)) continue;
     if (e.constructing > 0) continue;
@@ -36,7 +38,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
         e.attackTarget = undefined;
       } else {
         const d = distToEntity(e, assigned);
-        const effectiveRange = st.range + heightRangeBonus(state, e, assigned);
+        const effectiveRange = weaponRange + heightRangeBonus(state, e, assigned);
         if (d <= effectiveRange) {
           e.path = [];
           e.routePending = false;
@@ -54,7 +56,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
           }
         } else {
           const intercept = e.owner === 1 && !isCombatThreat(state, assigned)
-            ? closestEnemy(grid, e, st.range, true)
+            ? closestEnemy(grid, e, weaponRange, true)
             : undefined;
           if (intercept && ((e.class === "unit" && isAirUnit(e.kind)) || (intercept.class === "unit" && isAirUnit(intercept.kind)) || lineOfSight(state, e, intercept))) {
             e.attackTarget = intercept.id;
@@ -75,7 +77,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
       // never replace the route with a combat chase. Empty paths with a flow
       // goal or pending route are still in transit: marking them idle or
       // chasing would strand the original destination.
-      const opportunity = closestEnemy(grid, e, st.range, false);
+      const opportunity = closestEnemy(grid, e, weaponRange, false);
       if (opportunity && ((e.class === "unit" && isAirUnit(e.kind)) || (opportunity.class === "unit" && isAirUnit(opportunity.kind)) || lineOfSight(state, e, opportunity))) strike(state, e, opportunity, st, rng, events, pending, grid);
       continue;
     }
@@ -85,11 +87,11 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     const stance = e.class === "unit" ? (e.stance ?? "aggressive") : "aggressive";
     const hold = stance === "hold";
     const defend = stance === "defensive";
-    const inRangeThreat = hold ? undefined : closestEnemy(grid, e, st.range, true, defend);
+    const inRangeThreat = hold ? undefined : closestEnemy(grid, e, weaponRange, true, defend);
     let target = inRangeThreat ?? (hold ? undefined : e.attackTarget !== undefined ? grid.byId[e.attackTarget] : undefined);
     if (target && target.hp <= 0) target = undefined;
     if (target && !isCombatThreat(state, target)) {
-      const threat = hold || defend ? closestEnemy(grid, e, st.range, true, defend) : acquire(grid, e, true);
+      const threat = hold || defend ? closestEnemy(grid, e, weaponRange, true, defend) : acquire(grid, e, true);
       if (threat) {
         target = threat;
         e.path = [];
@@ -104,7 +106,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     }
 
     const d = distToEntity(e, target);
-    const effectiveRange = st.range + heightRangeBonus(state, e, target);
+    const effectiveRange = weaponRange + heightRangeBonus(state, e, target);
     if (d <= effectiveRange && ((e.class === "unit" && isAirUnit(e.kind)) || (target.class === "unit" && isAirUnit(target.kind)) || lineOfSight(state, e, target))) {
       e.path = [];
       e.routePending = false;

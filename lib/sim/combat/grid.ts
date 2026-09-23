@@ -1,6 +1,7 @@
 import { BUILDING_STATS, isAirUnit, targetDomainsFor, UNIT_STATS } from "../../catalog";
 import { isBuildingEntity, isUnitEntity, type Entity, type SimState, type WeaponType } from "../../types";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
+import { directFireRangeBonusAt, groundUnitSightAt } from "../terrainRules";
 
 export type CombatGrid = {
   state: SimState;
@@ -156,9 +157,10 @@ export function closestEnemy(
 }
 
 export function acquire(grid: CombatGrid, e: Entity, threatsOnly = false): Entity | undefined {
-  const { range } = statsFor(e);
+  const stats = statsFor(e);
+  const range = stats.range + (stats.weapon === "airStrike" ? 0 : directFireRangeBonusAt(grid.state, e));
   const sight = isUnitEntity(e)
-    ? UNIT_STATS[e.kind].sight
+    ? groundUnitSightAt(grid.state, e, UNIT_STATS[e.kind].sight)
     : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;
   return closestEnemy(grid, e, Math.max(range + 4, sight), threatsOnly);
 }

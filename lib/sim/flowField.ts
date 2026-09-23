@@ -8,6 +8,7 @@ import {
   reversesPreviousStep,
 } from "./navigation/grid";
 import { MinHeap } from "./navigation/heap";
+import { vehicleMovementCostsFor, type NavigationMobility } from "./terrainRules";
 
 const UNREACHABLE = -1;
 const UNREACHABLE_SORT = 1_000_000_000;
@@ -74,11 +75,11 @@ function rememberField(fields: Map<string, FlowField>, key: string, field: FlowF
   }
 }
 
-export function flowFieldFor(state: SimState, requestedGoal: Vec2): FlowField {
+export function flowFieldFor(state: SimState, requestedGoal: Vec2, mobility: NavigationMobility = "foot"): FlowField {
   const revision = state.navigationRevision ?? 0;
   const goal = { x: Math.round(requestedGoal.x), y: Math.round(requestedGoal.y) };
   const navigation = staticNavigationFor(state);
-  const key = `${navigation.geometryKey}:${goal.x}:${goal.y}`;
+  const key = `${navigation.geometryKey}:${mobility === "vehicle" ? `${navigation.featureKey}:vehicle` : "foot"}:${goal.x}:${goal.y}`;
   const fields = fieldsFor(state);
   const cached = cachedField(fields, key);
   if (cached) return cached;
@@ -88,7 +89,7 @@ export function flowFieldFor(state: SimState, requestedGoal: Vec2): FlowField {
     rememberField(fields, key, shared);
     return shared;
   }
-  const field = buildFlowField(state, goal, revision);
+  const field = buildFlowField(state, goal, revision, mobility);
   rememberField(fields, key, field);
   sharedFields.set(key, field);
   while (sharedFields.size > SHARED_FLOW_FIELD_LIMIT) {
@@ -104,7 +105,7 @@ export function flowFieldFor(state: SimState, requestedGoal: Vec2): FlowField {
  * can therefore fan out across its arrival area instead of funneling through
  * the single cell that was clicked.
  */
-export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2[]): FlowField {
+export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2[], mobility: NavigationMobility = "foot"): FlowField {
   const revision = state.navigationRevision ?? 0;
   const goals = requestedGoals
     .map((goal) => ({ x: Math.round(goal.x), y: Math.round(goal.y) }))
@@ -113,7 +114,7 @@ export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2
     .filter((goal, index, all) => index === 0 || goal.x !== all[index - 1]!.x || goal.y !== all[index - 1]!.y);
   const goal = goals[0] ?? { x: 0, y: 0 };
   const navigation = staticNavigationFor(state);
-  const key = `${navigation.geometryKey}:${goals.length === 1
+  const key = `${navigation.geometryKey}:${mobility === "vehicle" ? `${navigation.featureKey}:vehicle` : "foot"}:${goals.length === 1
     ? `${goal.x}:${goal.y}`
     : `goals:${goals.map((candidate) => `${candidate.x},${candidate.y}`).sort().join(";")}`}`;
   const fields = fieldsFor(state);
@@ -125,7 +126,7 @@ export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2
     rememberField(fields, key, shared);
     return shared;
   }
-  const field = buildMultiGoalFlowField(state, goals.length > 0 ? goals : [goal], revision);
+  const field = buildMultiGoalFlowField(state, goals.length > 0 ? goals : [goal], revision, mobility);
   rememberField(fields, key, field);
   sharedFields.set(key, field);
   while (sharedFields.size > SHARED_FLOW_FIELD_LIMIT) {
@@ -316,7 +317,7 @@ function flowTerrainStepOk(state: SimState, x0: number, y0: number, x1: number, 
   return navigationStepAllowed(staticNavigationFor(state), x0, y0, x1, y1);
 }
 
-function buildFlowField(state: SimState, requestedGoal: Vec2, revision: number): FlowField {
+function buildFlowField(state: SimState, requestedGoal: Vec2, revision: number, mobility: NavigationMobility): FlowField {
   const width = state.width;
   const height = state.height;
   const navigation = staticNavigationFor(state);
@@ -327,10 +328,10 @@ function buildFlowField(state: SimState, requestedGoal: Vec2, revision: number):
     distance.fill(UNREACHABLE);
     return { goal: requestedGoal, revision, width, height, distance };
   }
-  return buildWeightedFlowField(state, [origin], revision);
+  return buildWeightedFlowField(state, [origin], revision, mobility);
 }
 
-function buildMultiGoalFlowField(state: SimState, requestedGoals: readonly Vec2[], revision: number): FlowField {
+function buildMultiGoalFlowField(state: SimState, requestedGoals: readonly Vec2[], revision: number, mobility: NavigationMobility): FlowField {
   const width = state.width;
   const height = state.height;
   const navigation = staticNavigationFor(state);
@@ -341,15 +342,16 @@ function buildMultiGoalFlowField(state: SimState, requestedGoals: readonly Vec2[
     distance.fill(UNREACHABLE);
     return { goal: requestedGoals[0] ?? { x: 0, y: 0 }, revision, width, height, distance };
   }
-  return buildWeightedFlowField(state, origins, revision);
+  return buildWeightedFlowField(state, origins, revision, mobility);
 }
 
-function buildWeightedFlowField(state: SimState, origins: readonly Vec2[], revision: number): FlowField {
+function buildWeightedFlowField(state: SimState, origins: readonly Vec2[], revision: number, mobility: NavigationMobility): FlowField {
   const width = state.width;
   const height = state.height;
   const distance = new Float64Array(width * height);
   distance.fill(UNREACHABLE);
   const navigation = staticNavigationFor(state);
+  const vehicleMovementCosts = mobility === "vehicle" ? vehicleMovementCostsFor(state) : undefined;
   const open = new MinHeap();
   let sequence = 0;
   for (const origin of origins) {
@@ -370,7 +372,10 @@ function buildWeightedFlowField(state: SimState, origins: readonly Vec2[], revis
       const nextY = currentY + direction.y;
       if (!navigationStepAllowed(navigation, currentX, currentY, nextX, nextY)) continue;
       const nextKey = nextY * width + nextX;
-      const nextDistance = open.g + navigationStepCost(currentX, currentY, nextX, nextY);
+      // Flow search runs from the goal backward, so the forward-route
+      // destination for this reversed edge is the current cell.
+      const movementCost = mobility === "vehicle" ? vehicleMovementCosts?.[currentKey] ?? 1 : 1;
+      const nextDistance = open.g + navigationStepCost(currentX, currentY, nextX, nextY, movementCost);
       if (distance[nextKey] >= 0 && nextDistance >= distance[nextKey]! - 1e-9) continue;
       distance[nextKey] = nextDistance;
       open.push(nextX, nextY, nextDistance, nextDistance, sequence++);

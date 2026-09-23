@@ -15,7 +15,9 @@ export {
 } from "./map/scenery";
 export { hashNoise, valueNoise, fbm, warpedFbm, mixSalt } from "./map/noise";
 export {
+  ACTIVE_TERRAIN_RULE_INTENSITY,
   terrainFeatureAt,
+  terrainFeatureSamplerFor,
   type TerrainFeatureKind,
   type TerrainFeatureSample,
   type TerrainFeatureWorld,

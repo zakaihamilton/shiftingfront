@@ -1,6 +1,7 @@
 import { BUILDING_STATS, UNIT_STATS } from "../../catalog";
 import { isBuildingEntity, isUnitEntity, type AiContact, type Entity, type SimState } from "../../types";
 import { byId, distToEntity, livingView } from "../world";
+import { groundUnitSightAt } from "../terrainRules";
 
 /** Contacts remain available to the director for fifteen seconds after detection. */
 export const AI_CONTACT_TTL_TICKS = 180;
@@ -9,14 +10,14 @@ function contactsFor(state: SimState): Record<string, AiContact> {
   return state.aiContacts ?? (state.aiContacts = {});
 }
 
-function sightOf(entity: Entity): number {
+function sightOf(state: SimState, entity: Entity): number {
   return isUnitEntity(entity)
-    ? UNIT_STATS[entity.kind].sight
+    ? groundUnitSightAt(state, entity, UNIT_STATS[entity.kind].sight)
     : isBuildingEntity(entity) ? BUILDING_STATS[entity.kind].sight : 0;
 }
 
-function canDetect(source: Entity, target: Entity): boolean {
-  return distToEntity({ x: source.x, y: source.y }, target) <= sightOf(source);
+function canDetect(state: SimState, source: Entity, target: Entity): boolean {
+  return distToEntity({ x: source.x, y: source.y }, target) <= sightOf(state, source);
 }
 
 function isStrategicContact(state: SimState, target: Entity): boolean {
@@ -27,7 +28,7 @@ function isStrategicContact(state: SimState, target: Entity): boolean {
 }
 
 function isCurrentlyKnown(state: SimState, target: Entity, sensors: Entity[]): boolean {
-  return isStrategicContact(state, target) || sensors.some((sensor) => canDetect(sensor, target));
+  return isStrategicContact(state, target) || sensors.some((sensor) => canDetect(state, sensor, target));
 }
 
 function pruneContacts(state: SimState): void {

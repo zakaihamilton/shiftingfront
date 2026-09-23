@@ -1,18 +1,31 @@
 import { BUILDING_STATS, footprintOf, isAirUnit } from "../../catalog";
 import { isBuildingEntity, type Entity, type SimState, type TileKind, type Vec2 } from "../../types";
-import { worldFor } from "../ecs/world";
 
-type LivingCache = { tick: number; entities: SimState["entities"]; structureVersion: object; value: Entity[] };
+type LivingCache = { tick: number; entities: SimState["entities"]; value: Entity[] };
 const livingCache = new WeakMap<SimState, LivingCache>();
-type EntityIndexCache = { entities: SimState["entities"]; structureVersion: object; value: Map<number, Entity> };
-const entityIndexCache = new WeakMap<SimState, EntityIndexCache>();
-type UnitAtCache = { tick: number; entities: SimState["entities"]; structureVersion: object; value: Array<Entity | undefined> };
+type UnitAtCache = { tick: number; entities: SimState["entities"]; value: Array<Entity | undefined> };
 const unitAtCache = new WeakMap<SimState, UnitAtCache>();
-type UnitOccupancyCache = { tick: number; entities: SimState["entities"]; structureVersion: object; value: Uint8Array };
+type UnitOccupancyCache = { tick: number; entities: SimState["entities"]; value: Uint8Array };
 const unitOccupancyCache = new WeakMap<SimState, UnitOccupancyCache>();
 type PowerTotals = { produced: number; used: number; surplus: number };
-type PowerCache = { tick: number; entities: SimState["entities"]; structureVersion: object; value: [PowerTotals, PowerTotals] };
+type PowerCache = { tick: number; entities: SimState["entities"]; value: [PowerTotals, PowerTotals] };
 const powerCache = new WeakMap<SimState, PowerCache>();
+type EntityIndexCache = { entities: SimState["entities"]; value: Map<number, Entity> };
+const entityIndexCache = new WeakMap<SimState, EntityIndexCache>();
+
+function entityIndexFor(state: SimState): Map<number, Entity> {
+  const entities = state.entities;
+  const cached = entityIndexCache.get(state);
+  if (cached?.entities === entities) return cached.value;
+
+  const index = new Map<number, Entity>();
+  for (const entity of entities) {
+    // Preserve the first match if an invalid state contains duplicate IDs.
+    if (!index.has(entity.id)) index.set(entity.id, entity);
+  }
+  entityIndexCache.set(state, { entities, value: index });
+  return index;
+}
 
 export function at(state: SimState, x: number, y: number): number {
   return y * state.width + x;
@@ -61,14 +74,13 @@ export function occupies(e: Entity, x: number, y: number): boolean {
 
 export function unitAt(state: SimState, x: number, y: number): Entity | undefined {
   if (!inBounds(state, x, y)) return undefined;
-  const world = worldFor(state);
   let cached = unitAtCache.get(state);
-  if (!cached || cached.tick !== state.tick || cached.entities !== state.entities || cached.structureVersion !== world.structuralVersion) {
+  if (!cached || cached.tick !== state.tick || cached.entities !== state.entities) {
     const value = cached?.value.length === state.width * state.height
       ? cached.value
       : new Array<Entity | undefined>(state.width * state.height);
     value.fill(undefined);
-    for (const entity of world.all()) {
+    for (const entity of state.entities) {
       if (entity.hp <= 0 || entity.class !== "unit" || isAirUnit(entity.kind)) continue;
       const ex = Math.round(entity.x);
       const ey = Math.round(entity.y);
@@ -76,7 +88,7 @@ export function unitAt(state: SimState, x: number, y: number): Entity | undefine
       const key = ey * state.width + ex;
       if (!value[key]) value[key] = entity;
     }
-    cached = { tick: state.tick, entities: state.entities, structureVersion: world.structuralVersion, value };
+    cached = { tick: state.tick, entities: state.entities, value };
     unitAtCache.set(state, cached);
   }
   return cached.value[y * state.width + x];
@@ -88,38 +100,36 @@ export function unitOccupied(state: SimState, x: number, y: number): boolean {
 }
 
 export function unitOccupancyFor(state: SimState): Uint8Array {
-  const world = worldFor(state);
   let cached = unitOccupancyCache.get(state);
-  if (!cached || cached.tick !== state.tick || cached.entities !== state.entities || cached.structureVersion !== world.structuralVersion) {
+  if (!cached || cached.tick !== state.tick || cached.entities !== state.entities) {
     const value = cached?.value.length === state.width * state.height ? cached.value : new Uint8Array(state.width * state.height);
     value.fill(0);
-    for (const entity of world.all()) {
+    for (const entity of state.entities) {
       if (entity.hp <= 0 || entity.class !== "unit" || isAirUnit(entity.kind)) continue;
       const ex = Math.round(entity.x);
       const ey = Math.round(entity.y);
       if (inBounds(state, ex, ey)) value[ey * state.width + ex] = 1;
     }
-    cached = { tick: state.tick, entities: state.entities, structureVersion: world.structuralVersion, value };
+    cached = { tick: state.tick, entities: state.entities, value };
     unitOccupancyCache.set(state, cached);
   }
   return cached.value;
 }
 
 export function buildingAt(state: SimState, x: number, y: number): Entity | undefined {
-  return worldFor(state).buildings().find((e) => occupies(e, x, y));
+  return state.entities.find((entity) => isBuildingEntity(entity) && occupies(entity, x, y));
 }
 
 /** Internal per-tick living view. Callers must not mutate the returned array. */
 export function livingView(state: SimState): Entity[] {
-  const world = worldFor(state);
   const cached = livingCache.get(state);
-  if (cached?.tick === state.tick && cached.entities === state.entities && cached.structureVersion === world.structuralVersion) return cached.value;
+  if (cached?.tick === state.tick && cached.entities === state.entities) return cached.value;
   const value = cached?.value ?? [];
   value.length = 0;
-  for (const entity of world.all()) {
+  for (const entity of state.entities) {
     if (entity.hp > 0) value.push(entity);
   }
-  livingCache.set(state, { tick: state.tick, entities: state.entities, structureVersion: world.structuralVersion, value });
+  livingCache.set(state, { tick: state.tick, entities: state.entities, value });
   return value;
 }
 
@@ -158,9 +168,8 @@ export function invalidatePowerCache(state: SimState): void {
 
 /** Compute both factions' power totals once for the current simulation tick. */
 export function powerBreakdownFor(state: SimState, owner: 0 | 1): PowerTotals {
-  const world = worldFor(state);
   const cached = powerCache.get(state);
-  if (cached?.tick === state.tick && cached.entities === state.entities && cached.structureVersion === world.structuralVersion) return cached.value[owner];
+  if (cached?.tick === state.tick && cached.entities === state.entities) return cached.value[owner];
 
   const value: [PowerTotals, PowerTotals] = [
     { produced: 0, used: 0, surplus: 0 },
@@ -175,20 +184,12 @@ export function powerBreakdownFor(state: SimState, owner: 0 | 1): PowerTotals {
   }
   value[0]!.surplus = value[0]!.produced - value[0]!.used;
   value[1]!.surplus = value[1]!.produced - value[1]!.used;
-  powerCache.set(state, { tick: state.tick, entities: state.entities, structureVersion: world.structuralVersion, value });
+  powerCache.set(state, { tick: state.tick, entities: state.entities, value });
   return value[owner];
 }
 
 export function byId(state: SimState, id: number): Entity | undefined {
-  const world = worldFor(state);
-  let cached = entityIndexCache.get(state);
-  if (!cached || cached.entities !== state.entities || cached.structureVersion !== world.structuralVersion) {
-    const value = new Map<number, Entity>();
-    for (const entity of world.all()) value.set(entity.id, entity);
-    cached = { entities: state.entities, structureVersion: world.structuralVersion, value };
-    entityIndexCache.set(state, cached);
-  }
-  const entity = cached.value.get(id);
+  const entity = entityIndexFor(state).get(id);
   return entity && entity.hp > 0 ? entity : undefined;
 }
 

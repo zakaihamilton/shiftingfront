@@ -5,6 +5,7 @@ import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBu
 import { byId, closestApproach } from "../world";
 import { assignSupportTarget, canSupportEntity } from "../support";
 import { launchAircraft } from "../aircraft";
+import { directFireRangeBonusAt } from "../terrainRules";
 
 export function attackUnits(state: SimState, ids: number[], targetId: number): SimEvent[] {
   const target = byId(state, targetId);
@@ -24,7 +25,7 @@ export function attackUnits(state: SimState, ids: number[], targetId: number): S
     e.routePending = false;
     e.landingRunwayId = undefined;
     e.idle = false;
-    const range = UNIT_STATS[e.kind].range;
+    const range = UNIT_STATS[e.kind].range + directFireRangeBonusAt(state, e);
     const dest = target.class === "building" ? closestApproach(state, e, target) : target;
     if (Math.hypot(e.x - dest.x, e.y - dest.y) > range) {
       if (isAirUnit(e.kind)) {

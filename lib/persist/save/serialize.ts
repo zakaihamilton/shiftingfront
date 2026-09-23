@@ -4,7 +4,6 @@ import type { SimState, SurfaceKind, UnitKind } from "../../types";
 import { generateWorld } from "../../gen/world";
 import { expandFog, fogGridHeight, fogGridWidth } from "../../sim/fog";
 import { compactDestroyedEntities, compactedState } from "../../sim/world/lifecycle";
-import { rebuildWorld } from "../../sim/ecs/world";
 import { isAirUnit, isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
 import {
   SAVE_CONTENT_VERSION,
@@ -33,7 +32,6 @@ export type SaveEnvelope = {
 export function decodeSavedState(value: unknown): SimState {
   const state = normalizeState(value);
   if (!isStateShape(state)) throw new Error("Invalid save state");
-  rebuildWorld(state, false);
   return state;
 }
 

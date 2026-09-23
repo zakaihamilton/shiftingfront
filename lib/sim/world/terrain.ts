@@ -2,7 +2,7 @@ import { footprintOf, isAirUnit } from "../../catalog";
 import { isBuildingEntity, type SimState } from "../../types";
 import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../types";
 import { heightAt, inBounds, tileAt, unitOccupied } from "./queries";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export type TerrainAccess = {
   traversable: boolean;
@@ -15,6 +15,11 @@ export type TerrainAccess = {
  * occupancy stays separate because it changes every tick.
  */
 export type StaticNavigation = {
+  seed: number;
+  missionIndex: number;
+  biome: SimState["biome"];
+  /** Seed inputs for mobility-specific terrain caches. */
+  featureKey: string;
   revision: number;
   width: number;
   height: number;
@@ -61,6 +66,7 @@ export function staticNavigationFor(state: SimState): StaticNavigation {
   const cached = navigationCache.get(state);
   if (
     cached &&
+    cached.seed === state.seed && cached.missionIndex === state.missionIndex && cached.biome === state.biome &&
     cached.revision === revision &&
     cached.width === state.width &&
     cached.height === state.height &&
@@ -92,6 +98,10 @@ export function staticNavigationFor(state: SimState): StaticNavigation {
   }
 
   const navigation: StaticNavigation = {
+    seed: state.seed,
+    missionIndex: state.missionIndex,
+    biome: state.biome,
+    featureKey: `${state.seed}:${state.missionIndex}:${state.biome}:${state.width}x${state.height}`,
     revision,
     width: state.width,
     height: state.height,

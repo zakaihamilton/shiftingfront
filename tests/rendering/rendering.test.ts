@@ -207,7 +207,7 @@ describe("seeded terrain atlas", () => {
     const b = bakeTerrainAtlasData(second);
     const c = bakeTerrainAtlasData(other);
     expect(a.key).toBe(b.key);
-    expect(a.key).toContain("world-atlas-v19-grounded-material-relief");
+    expect(a.key).toContain("world-atlas-v20-tactical-feature-regions");
     expect(a.data).toEqual(b.data);
     expect(terrainAtlasKey(first)).toBe(a.key);
     expect(c.key).not.toBe(a.key);

@@ -6,7 +6,7 @@ import { formatHoldClock, inspect, objectiveProgress, evaluateObjectives, second
 import { createCampaign } from "../../lib/gen/campaign";
 import { generateWinCategory, missionDurationMinutesFor, missionTimeLimitClock, missionTimeLimitLabel, missionTimeLimitTicks, secondaryObjectivesForMissionSeed } from "../../lib/gen/objectives";
 import { formatMissionClock, formatMissionClockFromTicks, MAX_OPERATION_TICKS, minutesToTicks } from "../../lib/gen/pacing";
-import { missionObjectives } from "../../lib/gen/story";
+import { missionObjectives, objectiveHeadline } from "../../lib/gen/story";
 import { tickScenario } from "../../lib/sim/scenarios";
 
 describe("win categories", () => {
@@ -418,7 +418,7 @@ describe("mission briefing dialogue", () => {
       expect(joined.length).toBeLessThanOrEqual(1600);
       expect(new Set(mission.briefing.map((line) => line.text)).size).toBe(mission.briefing.length);
       expect(joined).not.toContain(mission.name);
-      expect(joined.toLowerCase()).toContain("command hq");
+      expect(joined.toLowerCase()).not.toContain(objectiveHeadline(mission.win).toLowerCase());
     }
   });
 
@@ -433,33 +433,12 @@ describe("mission briefing dialogue", () => {
     expect(lineCounts).toEqual(new Set([3, 4, 5]));
   });
 
-  it("keeps objective facts and profile hooks in the generated transmission", () => {
+  it("keeps canonical objectives out of dialogue while retaining profile hooks", () => {
     for (let seed = 0; seed < 40; seed++) {
       const campaign = createCampaign(seed);
       for (const mission of campaign.missions) {
         const text = mission.briefing.map((line) => line.text).join(" ");
-        switch (mission.win.kind) {
-          case "harvestQuota":
-          case "forceQuota":
-          case "structureQuota":
-            expect(text).toContain(String(mission.win.target));
-            break;
-          case "destroyMarked":
-            expect(text).toContain(String(mission.win.targetCount ?? 1));
-            break;
-          case "holdTheLine":
-            expect(text).toContain(`${Math.ceil((mission.win.ticks ?? 0) / TICKS_PER_SECOND / 60)} min`);
-            break;
-          case "escort":
-          case "sabotage":
-          case "rescue":
-          case "extraction":
-            expect(text).toContain(String(mission.win.targetCount ?? 1));
-            expect(text).toMatch(/within \d+ min/);
-            break;
-          default:
-            break;
-        }
+        expect(text.toLowerCase()).not.toContain(objectiveHeadline(mission.win).toLowerCase());
         const variant = mission.profile!.variant;
         const hook = variant === "resourceRace" ? /ore|harvest/i
           : variant === "forwardIndustry" ? /industry|refinery|power/i
@@ -486,7 +465,7 @@ describe("mission briefing dialogue", () => {
       for (const mission of campaign.missions) {
         const joined = mission.briefing.map((line) => line.text).join(" ");
         for (const label of labels) expect(joined).toContain(label);
-        expect(joined.toLowerCase()).toContain("command hq");
+        expect(joined.toLowerCase()).not.toContain(objectiveHeadline(mission.win).toLowerCase());
         expect(joined).not.toMatch(/under strength|levy|form up|right of it/i);
         for (const line of mission.briefing) {
           expect(line.text).toMatch(/[.!?]$/);

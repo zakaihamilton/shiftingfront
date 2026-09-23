@@ -8,7 +8,8 @@ import type { Rng } from "../../seed/rng";
 import { type PendingAlerts, notePlayerAlert } from "./alerts";
 import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
+import { incomingDamageMultiplier } from "../terrainRules";
 
 export function strike(
   state: SimState,
@@ -27,7 +28,8 @@ export function strike(
   }
   if (pending) notePlayerAlert(e, target, pending);
   const jitter = 0.85 + rng.next() * 0.3;
-  const damage = stats.damage * jitter * damageMultiplier(stats.weapon, armorFor(target)) * heightMultiplier(state, e, target);
+  const baseDamage = stats.damage * jitter * damageMultiplier(stats.weapon, armorFor(target)) * heightMultiplier(state, e, target);
+  const damage = baseDamage * incomingDamageMultiplier(state, target);
   target.hp -= damage;
   e.cooldown = stats.cooldown;
   if (target.class === "unit") {
@@ -44,7 +46,7 @@ export function strike(
       if (dist > stats.splashRadius) continue;
       if (!lineOfSight(state, target, splash)) continue;
       const falloff = Math.max(0.2, 1 - (dist / stats.splashRadius) * 0.7);
-      const splashDamage = damage * 0.35 * falloff;
+      const splashDamage = baseDamage * 0.35 * falloff * incomingDamageMultiplier(state, splash);
       splash.hp -= splashDamage;
       if (splash.class === "unit") splash.suppression = Math.min(100, (splash.suppression ?? 0) + Math.round(stats.suppression * 0.35 * falloff));
       if (splash.hp <= 0) {

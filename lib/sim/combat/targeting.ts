@@ -2,6 +2,7 @@ import { BUILDING_STATS } from "../../catalog";
 import type { Entity, SimState } from "../../types";
 import { isStaticWalkable, distToEntity } from "../world";
 import { statsFor } from "./grid";
+import { downhillDamageMultiplier } from "../terrainRules";
 
 export function armorFor(e: Entity): import("../../types").ArmorType {
   return e.armor ?? (e.class === "building" ? BUILDING_STATS[e.kind as import("../../types").BuildingKind].armor : statsFor(e).weapon === "smallArms" ? "light" : "heavy");
@@ -49,7 +50,7 @@ export function damageMultiplier(weapon: import("../../types").WeaponType, armor
 export function heightMultiplier(state: SimState, from: Entity, to: Entity): number {
   const source = state.heights[Math.round(from.y) * state.width + Math.round(from.x)] ?? 1;
   const target = state.heights[Math.round(to.y) * state.width + Math.round(to.x)] ?? 1;
-  return source > target ? 1.15 : source < target ? 0.88 : 1;
+  return source > target ? downhillDamageMultiplier(state, from) : source < target ? 0.88 : 1;
 }
 
 export function heightRangeBonus(state: SimState, from: Entity, to: Entity): number {

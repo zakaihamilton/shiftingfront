@@ -5,7 +5,7 @@ import { tryFindPathDetailed } from "../pathBudget";
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { distToEntity, isStaticWalkable } from "../world";
 import { reachableScenarioPoint } from "./reachability";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export function convoyStartPoint(
   map: Pick<GeneratedMap, "playerStart" | "width" | "height">,

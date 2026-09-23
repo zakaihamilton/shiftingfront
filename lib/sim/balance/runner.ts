@@ -15,7 +15,7 @@ import { walkDistances } from "../../gen/map/generator/affordances";
 import { COMMANDER_CADENCE } from "../commander/queries";
 import { balanceFailureReason } from "./evaluation";
 import { BalanceTimeBudgetExceeded, type BalanceRecordWithScenario, type BalanceRunJob, type BalanceSweepJob } from "./types";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export function assertWithinDeadline(deadlineAt: number | undefined): void {
   if (deadlineAt !== undefined && performance.now() >= deadlineAt) {

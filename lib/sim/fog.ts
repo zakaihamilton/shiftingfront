@@ -2,6 +2,7 @@ import { BUILDING_STATS, UNIT_STATS, footprintOf } from "../catalog";
 import { MAP_SKIRT } from "../gen/map";
 import { isBuildingEntity, isHiddenObjectiveAsset, isUnitEntity, type SimState } from "../types";
 import { livingView } from "./world";
+import { groundUnitSightAt } from "./terrainRules";
 
 export function fogGridWidth(mapW: number): number {
   return mapW + 2 * MAP_SKIRT;
@@ -56,7 +57,7 @@ export function tileInPlayerVision(state: SimState, x: number, y: number): boole
   for (const e of livingView(state)) {
     if (e.owner !== 0 || isHiddenObjectiveAsset(e)) continue;
     const sight = isUnitEntity(e)
-      ? UNIT_STATS[e.kind].sight
+      ? groundUnitSightAt(state, e, UNIT_STATS[e.kind].sight)
       : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;
     let cx = e.x;
     let cy = e.y;
@@ -82,7 +83,7 @@ export function tickFog(state: SimState): void {
     // contacted.
     if (e.owner !== 0 || isHiddenObjectiveAsset(e)) continue;
     const sight = isUnitEntity(e)
-      ? UNIT_STATS[e.kind].sight
+      ? groundUnitSightAt(state, e, UNIT_STATS[e.kind].sight)
       : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;
     const r = Math.ceil(sight);
     let cx = e.x;

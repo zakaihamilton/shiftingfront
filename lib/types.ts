@@ -168,7 +168,7 @@ export type Facing = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type Vec2 = { x: number; y: number };
 
 export type Entity = {
-  id: number;
+  readonly id: number;
   owner: Owner;
   class: EntityClass;
   kind: UnitKind | BuildingKind;

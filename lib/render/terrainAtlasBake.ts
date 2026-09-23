@@ -1,4 +1,4 @@
-import { MAP_SKIRT, sceneryAt, terrainFeatureAt, type TerrainFeatureSample } from "../gen/map";
+import { ACTIVE_TERRAIN_RULE_INTENSITY, MAP_SKIRT, sceneryAt, terrainFeatureSamplerFor, type TerrainFeatureSample } from "../gen/map";
 import { SURFACE_CONCRETE, SURFACE_ROAD, TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../types";
 import {
   ATLAS_CELL,
@@ -344,6 +344,7 @@ export type AtlasBakeContext = {
   colors: Float32Array;
   classes: Uint8Array;
   features: Array<TerrainFeatureSample>;
+  ruleRegions: Uint8Array;
   waterCells: Uint8Array;
   sceneryGrid: AtlasSceneryGrid;
   shoreDist: Uint8Array;
@@ -362,6 +363,7 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
   const colors = new Float32Array(cols * rows * 3);
   const classes = new Uint8Array(cols * rows);
   const features = new Array<TerrainFeatureSample>(cols * rows);
+  const ruleRegions = new Uint8Array(cols * rows);
   const waterCells = new Uint8Array(cols * rows);
   const sceneryGrid = bakeAtlasSceneryGrid(state, cols, rows);
   const shoreDist = bakeWaterShoreDist(sceneryGrid);
@@ -374,12 +376,13 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
     const ly = Math.floor(index / ATLAS_CELL);
     return terrainEdgeDarkening(rig, lx / ATLAS_CELL, ly / ATLAS_CELL);
   });
+  const featureAt = terrainFeatureSamplerFor(state);
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const gx = col - MAP_SKIRT;
       const gy = row - MAP_SKIRT;
       const kind = atlasKindAt(sceneryGrid, col, row);
-      const feature = terrainFeatureAt(state, gx, gy);
+      const feature = featureAt(gx, gy);
       const scenery = atlasSceneryAt(sceneryGrid, col, row);
       const color = kind === TILE_WATER ? { r: 0, g: 0, b: 0 } : cellColor(state, gx, gy, {
         scenery,
@@ -394,7 +397,9 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
       colors[i] = color.r;
       colors[i + 1] = color.g;
       colors[i + 2] = color.b;
-      features[row * cols + col] = feature;
+      const cellIndex = row * cols + col;
+      features[cellIndex] = feature;
+      ruleRegions[cellIndex] = feature.intensity >= ACTIVE_TERRAIN_RULE_INTENSITY ? 1 : 0;
       waterCells[row * cols + col] = kind === TILE_WATER ? 1 : 0;
       const surface = surfaceAt(state, gx, gy);
       classes[row * cols + col] = kind === TILE_WATER
@@ -422,6 +427,7 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
     colors,
     classes,
     features,
+    ruleRegions,
     waterCells,
     sceneryGrid,
     shoreDist,
@@ -657,6 +663,12 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
       const n02 = same === WATER_CELL_CLASS ? readShoreCell(shoreDist, cols, rows, col - 1, row + 1, cellDist) : 0;
       const n12 = same === WATER_CELL_CLASS ? readShoreCell(shoreDist, cols, rows, col, row + 1, cellDist) : 0;
       const n22 = same === WATER_CELL_CLASS ? readShoreCell(shoreDist, cols, rows, col + 1, row + 1, cellDist) : 0;
+      const ruleIndex = row * cols + col;
+      const activeRuleRegion = ctx.ruleRegions[ruleIndex] === 1;
+      const westRuleRegion = col > 0 && ctx.ruleRegions[ruleIndex - 1] === 1;
+      const eastRuleRegion = col + 1 < cols && ctx.ruleRegions[ruleIndex + 1] === 1;
+      const northRuleRegion = row > 0 && ctx.ruleRegions[ruleIndex - cols] === 1;
+      const southRuleRegion = row + 1 < rows && ctx.ruleRegions[ruleIndex + cols] === 1;
       for (let ly = 0; ly < ATLAS_CELL; ly++) {
         const fy = ly / ATLAS_CELL;
         const pixelFy = pixelFractions[ly]!;
@@ -864,6 +876,18 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
             r += (targetR - r) * materialEdgeStrength;
             g += (targetG - g) * materialEdgeStrength;
             b += (targetB - b) * materialEdgeStrength;
+          }
+          if (same !== WATER_CELL_CLASS) {
+            const ruleEdge = (lx === 0 && activeRuleRegion !== westRuleRegion)
+              || (lx === ATLAS_CELL - 1 && activeRuleRegion !== eastRuleRegion)
+              || (ly === 0 && activeRuleRegion !== northRuleRegion)
+              || (ly === ATLAS_CELL - 1 && activeRuleRegion !== southRuleRegion);
+            if (ruleEdge) {
+              const edge = 0.48;
+              r += (236 - r) * edge;
+              g += (208 - g) * edge;
+              b += (137 - b) * edge;
+            }
           }
           const px = col * ATLAS_CELL + lx;
           const grainScale = same === CONCRETE_CELL_CLASS ? 5 : same === WATER_CELL_CLASS ? 3 : same === GROUND_CELL_CLASS ? 11 : 13;
