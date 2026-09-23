@@ -180,9 +180,9 @@ export function trySpawnUnit(
   const e = makeUnit(state, owner, kind, x, y);
   e.x = site.x;
   e.y = site.y;
-  worldFor(state).add(e);
+  const added = worldFor(state).add(e);
   invalidateEntityCaches(state);
-  return e;
+  return added;
 }
 
 export function spawnBuilding(
@@ -195,9 +195,9 @@ export function spawnBuilding(
   marked = false,
 ): Entity {
   const e = makeBuilding(state, owner, kind, x, y, constructing, marked);
-  worldFor(state).add(e);
+  const added = worldFor(state).add(e);
   invalidateEntityCaches(state);
-  return e;
+  return added;
 }
 
 export function spawnBuildingAt(

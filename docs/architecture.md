@@ -52,11 +52,11 @@ The runtime loop receives a grouped `RuntimeKernel`. The kernel keeps the fixed-
 
 ## Seed and generated content
 
-`createCampaign(seed)` derives forked RNG streams for the world and its single campaign biome, factions, characters, story, mission objectives, and map inputs. Every mission uses that campaign biome while retaining its own objective, profile, and map layout. `createMission({ seed, missionIndex })` turns the generated campaign and map into a mutable `SimState`.
+`createCampaign(seed)` derives forked RNG streams for the world and its single campaign biome, factions, characters, story, mission objectives, and map inputs. Seeds are integers from `0000` through `9999`; generation and persistence entry points reject values outside that range so distinct inputs cannot collapse onto the same displayed or storage key. Every mission uses the campaign biome while retaining its own objective, profile, and map layout. `createMission({ seed, missionIndex })` turns the generated campaign and map into a mutable `SimState`.
 
 Generated content is not saved. A save contains the current simulation state, including units, buildings, fog, queues, RNG state, objective runtime, and navigation revision. Regenerating from the same seed remains the source of truth for static campaign data.
 
-Mutable entities are crossing into an internal ECS boundary in `lib/sim/ecs`. `EntityWorld` owns stable structural membership and typed component views for identity, transforms, vitals, movement, production, economy, combat, support, aircraft, and scenario state. The existing flat `SimState.entities` array remains the compatibility projection used by serialization, replay fingerprints, rendering, and legacy fixtures. Component views are synchronized at public simulation boundaries so there is one mutable source of truth during the migration.
+`lib/sim/ecs` owns mutable entity state. `EntityWorld` stores plain typed records for identity, transforms, vitals, movement, production, economy, combat, support, aircraft, and scenario data, and owns structural membership. `SimState.entities` remains a flat compatibility projection for serialization, replay fingerprints, rendering, and existing callers. Its entity objects are live adapters: direct field reads and writes, optional-field deletion, and component-record writes all reach the same component data. Save hydration rebuilds the stores from the flat save shape; field order and optional-field presence remain compatible with the legacy JSON representation.
 
 ## Runtime state flow
 

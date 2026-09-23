@@ -4,6 +4,14 @@ import { memoryStorage } from "../../lib/persist/save";
 import { makeFixture } from "../../lib/sim/fixtures";
 
 describe("campaign progress", () => {
+  it("rejects invalid campaign seeds instead of aliasing progress keys", () => {
+    for (const seed of [-1, 10000, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => campaignKey(seed)).toThrow(RangeError);
+      expect(() => freshCampaignProgress(seed)).toThrow(RangeError);
+      expect(writeCampaignProgress(memoryStorage(), { ...freshCampaignProgress(0), seed })).toBe(false);
+    }
+  });
+
   it("persists per-seed progress and unlocks only the next mission", () => {
     const storage = memoryStorage();
     const progress = freshCampaignProgress(42);

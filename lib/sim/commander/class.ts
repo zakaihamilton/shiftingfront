@@ -322,7 +322,7 @@ export class CompetentCommander {
           // independent progress instead of serializing every target behind
           // the slowest return trip.
           const nextScenarioTarget = rescueContactTarget ?? recoveryTarget;
-          const remainingNeutralTargets = state.runtime?.targetIds.filter((id) => state.entities.some((entity) => entity.id === id && entity.hp > 0 && entity.neutral)).length ?? 0;
+          const remainingNeutralTargets = state.runtime?.targetIds.filter((id) => entitiesFor(state).some((entity) => entity.id === id && entity.hp > 0 && entity.neutral)).length ?? 0;
           const contactForce = objectiveKind(state) === "extraction" && (state.runtime?.targetIds.length ?? 0) > 2 && remainingNeutralTargets <= 1
             ? force
             : scenarioContactForce(force, nextScenarioTarget);
@@ -340,7 +340,7 @@ export class CompetentCommander {
               : force;
             combatCommands.push({ type: "attackMove", unitIds: escortForce.map((entity) => entity.id), x: escortDestination.x, y: escortDestination.y, formation: "wedge" });
           } else {
-            const remainingNeutralTargets = state.runtime?.targetIds.filter((id) => state.entities.some((entity) => entity.id === id && entity.hp > 0 && entity.neutral)).length ?? 0;
+            const remainingNeutralTargets = state.runtime?.targetIds.filter((id) => entitiesFor(state).some((entity) => entity.id === id && entity.hp > 0 && entity.neutral)).length ?? 0;
             const contactForce = objectiveKind(state) === "extraction" && (state.runtime?.targetIds.length ?? 0) > 2 && remainingNeutralTargets <= 1
               ? force
               : scenarioContactForce(force, objective);

@@ -1,5 +1,5 @@
 import { STARTING_CREDITS } from "../catalog";
-import { createRng, mixSeed } from "../seed/rng";
+import { assertValidSeed, createRng, mixSeed } from "../seed/rng";
 import type { ReadonlyCampaign, ReadonlyMissionDef, SimEvent, SimState, UnitKind, Vec2 } from "../types";
 import { createCampaign } from "../gen/campaign";
 import { generateMap, type GeneratedMap } from "../gen/map";
@@ -30,6 +30,7 @@ export type TickOptions = SimulationTickOptions;
 const EMPTY_EVENTS: SimEvent[] = [];
 
 export function createMission(opts: { seed: number; missionIndex: number }): SimState {
+  assertValidSeed(opts.seed);
   const campaign = createCampaign(opts.seed);
   const mission = campaign.missions[opts.missionIndex];
   if (!mission) throw new Error(`No mission ${opts.missionIndex}`);
@@ -45,6 +46,7 @@ export function createMissionFromData(opts: {
   mission: ReadonlyMissionDef;
   map: GeneratedMap;
 }): SimState {
+  assertValidSeed(opts.seed);
   const { campaign, mission, map } = opts;
   const rng = createRng(opts.seed, `mission-spawn:${opts.missionIndex}`);
   const difficulty = missionDifficulty(mission.index);

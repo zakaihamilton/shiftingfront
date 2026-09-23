@@ -15,13 +15,9 @@ import type {
 } from "../../types";
 
 /**
- * The mutable simulation world is intentionally kept behind this boundary.
- *
- * The flat Entity object remains the compatibility projection used by saves,
- * replay fingerprints, and existing rendering callers. Component records are
- * typed views over that projection for now; systems can migrate to these
- * stores without introducing a second source of truth or changing the wire
- * format.
+ * Component maps own mutable simulation data. The flat Entity values exposed
+ * on SimState are live compatibility facades for saves, replays, rendering,
+ * and callers that still read or write entity fields directly.
  */
 
 export type IdentityComponent = {
@@ -103,6 +99,7 @@ export type ScenarioComponent = {
 export type EntityWorldInvariant =
   | "duplicate-id"
   | "missing-entity"
+  | "missing-component"
   | "identity-mismatch"
   | "projection-order-mismatch";
 
@@ -112,6 +109,151 @@ export type EntityWorldInvariantFailure = {
 };
 
 type ComponentMap<T> = Map<number, T>;
+
+type EntityComponentBundle = {
+  identity: IdentityComponent;
+  transform: TransformComponent;
+  vital: VitalComponent;
+  motion: MotionComponent;
+  production: ProductionComponent;
+  economy: EconomyComponent;
+  combat: CombatComponent;
+  support: SupportComponent;
+  aircraft: AircraftComponent;
+  scenario: ScenarioComponent;
+};
+
+type ComponentGroup = keyof EntityComponentBundle;
+
+const ENTITY_COMPONENT_FIELDS = {
+  identity: ["id", "owner", "class", "kind", "neutral", "scenarioRole"],
+  transform: ["x", "y", "facing"],
+  vital: ["hp", "maxHp"],
+  motion: ["path", "idle", "orderMode", "orderDestination", "flowGoal", "blockedTicks", "routePending", "formation"],
+  production: ["constructing", "producing", "queue", "rallyPoint", "refineryHarvesterPending"],
+  economy: ["carry", "gatherX", "gatherY", "moveToHarvest"],
+  combat: ["cooldown", "attackTarget", "marked", "stance", "suppression", "armor", "weapon"],
+  support: ["supportTargetId", "supportMode", "repairing"],
+  aircraft: ["ammo", "maxAmmo", "assignedRunwayId", "flightState", "serviceTicks", "landingRunwayId", "assignedPlaneId"],
+  scenario: ["scenarioGuardTargetId"],
+} as const satisfies Record<ComponentGroup, readonly (keyof Entity)[]>;
+
+const ENTITY_FIELD_LOCATION = Object.fromEntries(
+  Object.entries(ENTITY_COMPONENT_FIELDS).flatMap(([group, fields]) =>
+    fields.map((field) => [field, { group: group as ComponentGroup, field }]),
+  ),
+) as Record<keyof Entity, { group: ComponentGroup; field: string }>;
+
+const ENTITY_FIELD_ORDER = Object.values(ENTITY_COMPONENT_FIELDS).flat() as (keyof Entity)[];
+
+function cloneFieldValue(field: keyof Entity, value: unknown): unknown {
+  if (field === "path" && Array.isArray(value)) return value.map((point) => ({ ...point }));
+  if (field === "queue" && Array.isArray(value)) return [...value];
+  if ((field === "producing" || field === "orderDestination" || field === "flowGoal" || field === "rallyPoint") && value && typeof value === "object") {
+    return { ...value };
+  }
+  return value;
+}
+
+function componentRecord(entity: Entity, fields: readonly (keyof Entity)[]): Record<string, unknown> {
+  const record: Record<string, unknown> = {};
+  for (const field of fields) record[field] = cloneFieldValue(field, entity[field]);
+  return record;
+}
+
+function createEntityComponents(entity: Entity): EntityComponentBundle {
+  return Object.fromEntries(
+    Object.entries(ENTITY_COMPONENT_FIELDS).map(([group, fields]) => [group, componentRecord(entity, fields)]),
+  ) as EntityComponentBundle;
+}
+
+function componentRecordFor(components: EntityComponentBundle, field: keyof Entity): Record<string, unknown> {
+  const location = ENTITY_FIELD_LOCATION[field];
+  return components[location.group] as unknown as Record<string, unknown>;
+}
+
+function createEntityFacade(entity: Entity, components: EntityComponentBundle): Entity {
+  const prototype = Object.create(Object.prototype) as object;
+  const facade = Object.create(prototype) as Entity;
+  for (const field of ENTITY_FIELD_ORDER) {
+    const record = componentRecordFor(components, field);
+    Object.defineProperty(prototype, field, {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return undefined;
+      },
+      set(value: unknown) {
+        if (field === "id" && value !== record.id) {
+          throw new TypeError("Entity ids are immutable; replace the entity through EntityWorld");
+        }
+        record[field] = value;
+        defineEntityField(this as Entity, components, field);
+      },
+    });
+  }
+  for (const property of Reflect.ownKeys(entity)) {
+    if (typeof property === "string" && Object.hasOwn(ENTITY_FIELD_LOCATION, property)) {
+      const field = property as keyof Entity;
+      const record = componentRecordFor(components, field);
+      Object.defineProperty(facade, field, {
+        configurable: field !== "id",
+        enumerable: true,
+        get: () => record[field],
+        set: field === "id" ? undefined : (value: unknown) => { record[field] = value; },
+      });
+      continue;
+    }
+    const descriptor = Reflect.getOwnPropertyDescriptor(entity, property);
+    if (descriptor) {
+      Object.defineProperty(facade, property, {
+        configurable: true,
+        enumerable: descriptor.enumerable,
+        writable: true,
+        value: Reflect.get(entity, property),
+      });
+    }
+  }
+  return facade;
+}
+
+function defineEntityField(entity: Entity, components: EntityComponentBundle, field: keyof Entity): void {
+  if (Object.hasOwn(entity, field)) return;
+  const record = componentRecordFor(components, field);
+  Object.defineProperty(entity, field, {
+    configurable: field !== "id",
+    enumerable: true,
+    get: () => record[field],
+    set: (value: unknown) => { record[field] = value; },
+  });
+}
+
+function bindEntityComponentRecords(components: EntityComponentBundle, entity: Entity): void {
+  for (const [group, fields] of Object.entries(ENTITY_COMPONENT_FIELDS) as [ComponentGroup, readonly (keyof Entity)[]][]) {
+    const record = components[group] as unknown as Record<string, unknown>;
+    Object.assign(components, {
+      [group]: new Proxy(record, {
+        get(target, property, receiver) {
+          if (typeof property === "string" && fields.includes(property as keyof Entity)) {
+            const field = property as keyof Entity;
+            if (field !== "id" && !Object.hasOwn(entity, field)) return undefined;
+          }
+          return Reflect.get(target, property, receiver);
+        },
+        set(target, property, value, receiver) {
+          if (typeof property === "string" && fields.includes(property as keyof Entity)) {
+            const field = property as keyof Entity;
+            if (field === "id" && value !== Reflect.get(target, property, receiver)) {
+              throw new TypeError("Entity ids are immutable; replace the entity through EntityWorld");
+            }
+            defineEntityField(entity, components, field);
+          }
+          return Reflect.set(target, property, value, target);
+        },
+      }),
+    });
+  }
+}
 
 class ReadonlyMapView<K, V> implements ReadonlyMap<K, V> {
   constructor(private readonly source: Map<K, V>) {}
@@ -153,26 +295,7 @@ function freezeEntities(entities: Entity[]): readonly Entity[] {
   return Object.freeze(entities);
 }
 
-function view<T extends object>(entity: Entity, keys: readonly (keyof Entity)[]): T {
-  const component = {} as T;
-  for (const key of keys) {
-    Object.defineProperty(component, key, {
-      enumerable: true,
-      configurable: false,
-      get: () => entity[key],
-      set: (value: unknown) => {
-        (entity as unknown as Record<string, unknown>)[key as string] = value;
-      },
-    });
-  }
-  return component;
-}
-
-/**
- * Stable, typed access to entity component views. The world owns structural
- * membership and component maps, while the compatibility entity projection
- * remains the storage backing individual field access during migration.
- */
+/** Stable typed component stores with a legacy-shaped entity projection. */
 export class EntityWorld {
   private readonly identityStore: ComponentMap<IdentityComponent> = new Map();
   private readonly transformStore: ComponentMap<TransformComponent> = new Map();
@@ -209,6 +332,8 @@ export class EntityWorld {
 
   private order: number[] = [];
   private entitiesById = new Map<number, Entity>();
+  private componentsById = new Map<number, EntityComponentBundle>();
+  private duplicateIds = new Set<number>();
   private projection: SimState["entities"];
   private projectionSnapshot: Entity[] = [];
   private orderedEntities: readonly Entity[] = freezeEntities([]);
@@ -251,11 +376,13 @@ export class EntityWorld {
   }
 
   private rebuild(invalidateNavigation = false): void {
+    const incoming = [...this.state.entities];
     this.clear();
+    for (const entity of incoming) this.register(entity);
+    this.orderedEntities = freezeEntities(this.order.map((id) => this.entitiesById.get(id)!).filter(Boolean));
+    this.state.entities = [...this.orderedEntities];
     this.projection = this.state.entities;
     this.projectionSnapshot = [...this.state.entities];
-    for (const entity of this.state.entities) this.register(entity);
-    this.orderedEntities = freezeEntities(this.order.map((id) => this.entitiesById.get(id)!).filter(Boolean));
     this.structureVersion = {};
     if (invalidateNavigation) {
       this.state.navigationRevision = (this.state.navigationRevision ?? 0) + 1;
@@ -265,6 +392,8 @@ export class EntityWorld {
   private clear(): void {
     this.order = [];
     this.entitiesById.clear();
+    this.componentsById.clear();
+    this.duplicateIds.clear();
     this.identityStore.clear();
     this.transformStore.clear();
     this.vitalStore.clear();
@@ -278,35 +407,45 @@ export class EntityWorld {
     this.orderedEntities = freezeEntities([]);
   }
 
-  private register(entity: Entity): void {
-    if (this.entitiesById.has(entity.id)) return;
-    this.order.push(entity.id);
-    this.entitiesById.set(entity.id, entity);
-    this.identityStore.set(entity.id, view<IdentityComponent>(entity, ["id", "owner", "class", "kind", "neutral", "scenarioRole"]));
-    this.transformStore.set(entity.id, view<TransformComponent>(entity, ["x", "y", "facing"]));
-    this.vitalStore.set(entity.id, view<VitalComponent>(entity, ["hp", "maxHp"]));
-    this.motionStore.set(entity.id, view<MotionComponent>(entity, ["path", "idle", "orderMode", "orderDestination", "flowGoal", "blockedTicks", "routePending", "formation"]));
-    this.productionStore.set(entity.id, view<ProductionComponent>(entity, ["constructing", "producing", "queue", "rallyPoint", "refineryHarvesterPending"]));
-    this.economyStore.set(entity.id, view<EconomyComponent>(entity, ["carry", "gatherX", "gatherY", "moveToHarvest"]));
-    this.combatStore.set(entity.id, view<CombatComponent>(entity, ["cooldown", "attackTarget", "marked", "stance", "suppression", "armor", "weapon"]));
-    this.supportStore.set(entity.id, view<SupportComponent>(entity, ["supportTargetId", "supportMode", "repairing"]));
-    this.aircraftStore.set(entity.id, view<AircraftComponent>(entity, ["ammo", "maxAmmo", "assignedRunwayId", "flightState", "serviceTicks", "landingRunwayId", "assignedPlaneId"]));
-    this.scenarioStore.set(entity.id, view<ScenarioComponent>(entity, ["scenarioGuardTargetId"]));
+  private register(entity: Entity): Entity | undefined {
+    if (this.entitiesById.has(entity.id)) {
+      this.duplicateIds.add(entity.id);
+      return undefined;
+    }
+    const components = createEntityComponents(entity);
+    const facade = createEntityFacade(entity, components);
+    bindEntityComponentRecords(components, facade);
+    const id = components.identity.id;
+    this.order.push(id);
+    this.entitiesById.set(id, facade);
+    this.componentsById.set(id, components);
+    this.identityStore.set(id, components.identity);
+    this.transformStore.set(id, components.transform);
+    this.vitalStore.set(id, components.vital);
+    this.motionStore.set(id, components.motion);
+    this.productionStore.set(id, components.production);
+    this.economyStore.set(id, components.economy);
+    this.combatStore.set(id, components.combat);
+    this.supportStore.set(id, components.support);
+    this.aircraftStore.set(id, components.aircraft);
+    this.scenarioStore.set(id, components.scenario);
+    return facade;
   }
 
   add(entity: Entity): Entity {
     this.syncProjection(false);
     if (this.entitiesById.has(entity.id)) throw new Error(`Entity ${entity.id} already exists`);
-    this.state.entities.push(entity);
+    const facade = this.register(entity);
+    if (!facade) throw new Error(`Entity ${entity.id} already exists`);
+    this.orderedEntities = freezeEntities([...this.orderedEntities, facade]);
+    this.state.entities = [...this.orderedEntities];
     this.projection = this.state.entities;
-    this.projectionSnapshot.push(entity);
-    this.register(entity);
-    this.orderedEntities = freezeEntities([...this.orderedEntities, entity]);
+    this.projectionSnapshot = [...this.state.entities];
     this.structureVersion = {};
-    if (entity.class === "building") {
+    if (facade.class === "building") {
       this.state.navigationRevision = (this.state.navigationRevision ?? 0) + 1;
     }
-    return entity;
+    return facade;
   }
 
   /**
@@ -318,15 +457,48 @@ export class EntityWorld {
     this.syncProjection(false);
     const entity = this.entitiesById.get(id);
     if (!entity) return undefined;
-    const removedIds = new Set([id]);
-    for (const candidate of this.state.entities) {
-      if (candidate.id !== id) clearEntityReferences(candidate, removedIds);
-    }
-    if (entity.class === "building") this.state.navigationRevision = (this.state.navigationRevision ?? 0) + 1;
-    this.state.entities = this.state.entities.filter((candidate) => candidate.id !== id);
-    this.projection = this.state.entities;
-    this.rebuild();
+    this.removeMany([id]);
     return entity;
+  }
+
+  /** Remove several entities in one structural update and clear their references. */
+  removeMany(ids: Iterable<number>, navigationHandledIds: ReadonlySet<number> = new Set()): Entity[] {
+    this.syncProjection(false);
+    const removedIds = new Set([...ids].filter((id) => this.entitiesById.has(id)));
+    if (removedIds.size === 0) return [];
+
+    const removed = [...removedIds].map((id) => this.entitiesById.get(id)!);
+    for (const entity of removed) {
+      if (entity.class === "building" && !navigationHandledIds.has(entity.id)) {
+        this.state.navigationRevision = (this.state.navigationRevision ?? 0) + 1;
+      }
+    }
+    for (const candidate of this.orderedEntities) {
+      if (!removedIds.has(candidate.id)) clearEntityReferences(candidate, removedIds);
+    }
+
+    for (const id of removedIds) {
+      this.entitiesById.delete(id);
+      this.componentsById.delete(id);
+      this.identityStore.delete(id);
+      this.transformStore.delete(id);
+      this.vitalStore.delete(id);
+      this.motionStore.delete(id);
+      this.productionStore.delete(id);
+      this.economyStore.delete(id);
+      this.combatStore.delete(id);
+      this.supportStore.delete(id);
+      this.aircraftStore.delete(id);
+      this.scenarioStore.delete(id);
+      this.duplicateIds.delete(id);
+    }
+    this.order = this.order.filter((id) => !removedIds.has(id));
+    this.orderedEntities = freezeEntities(this.order.map((entityId) => this.entitiesById.get(entityId)!).filter(Boolean));
+    this.state.entities = [...this.orderedEntities];
+    this.projection = this.state.entities;
+    this.projectionSnapshot = [...this.state.entities];
+    this.structureVersion = {};
+    return removed;
   }
 
   get(id: number): Entity | undefined {
@@ -363,12 +535,13 @@ export class EntityWorld {
     this.syncProjection(true);
     const failures: EntityWorldInvariantFailure[] = [];
     const seen = new Set<number>();
+    for (const id of this.duplicateIds) failures.push({ invariant: "duplicate-id", id });
     for (const entity of this.state.entities) {
       if (seen.has(entity.id)) failures.push({ invariant: "duplicate-id", id: entity.id });
       seen.add(entity.id);
-      const stored = this.entitiesById.get(entity.id);
-      if (!stored) failures.push({ invariant: "missing-entity", id: entity.id });
-      else if (stored.class !== entity.class || stored.kind !== entity.kind || stored.owner !== entity.owner) {
+      const components = this.componentsById.get(entity.id);
+      if (!components) failures.push({ invariant: "missing-entity", id: entity.id });
+      else if (components.identity.id !== entity.id || components.identity.class !== entity.class || components.identity.kind !== entity.kind || components.identity.owner !== entity.owner) {
         failures.push({ invariant: "identity-mismatch", id: entity.id });
       }
     }
@@ -376,6 +549,13 @@ export class EntityWorld {
       this.order.length !== this.state.entities.length ||
       this.order.some((id, index) => id !== this.state.entities[index]?.id)
     ) failures.push({ invariant: "projection-order-mismatch" });
+    const stores = [
+      this.identityStore, this.transformStore, this.vitalStore, this.motionStore, this.productionStore,
+      this.economyStore, this.combatStore, this.supportStore, this.aircraftStore, this.scenarioStore,
+    ];
+    if (stores.some((store) => store.size !== this.order.length || this.order.some((id) => !store.has(id)))) {
+      failures.push({ invariant: "missing-component" });
+    }
     return failures;
   }
 }

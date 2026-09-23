@@ -3,6 +3,14 @@ export const SEED_MAX = 9999;
 export const MISSION_MIN = 0;
 export const MISSION_MAX = 5;
 
+/** Reject values that cannot identify one of the game's four-digit campaigns. */
+export function assertValidSeed(seed: number): number {
+  if (!Number.isInteger(seed) || seed < SEED_MIN || seed > SEED_MAX) {
+    throw new RangeError(`Seed must be an integer from ${SEED_MIN} to ${SEED_MAX}`);
+  }
+  return seed;
+}
+
 export function formatSeed(seed: number): string {
   return Math.max(SEED_MIN, Math.min(SEED_MAX, seed | 0))
     .toString()

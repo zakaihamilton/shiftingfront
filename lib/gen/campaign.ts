@@ -1,4 +1,4 @@
-import { createRng, formatSeed } from "../seed/rng";
+import { assertValidSeed, createRng, formatSeed } from "../seed/rng";
 import type { Campaign, MissionDef, ReadonlyCampaign } from "../types";
 import { generateCharacters } from "./characters";
 import { generateFactions } from "./factions";
@@ -23,6 +23,7 @@ function deepFreeze<T>(value: T): T {
  * same seed during a session; regeneration is pure waste.
  */
 export function createCampaign(seed: number): ReadonlyCampaign {
+  assertValidSeed(seed);
   const cached = campaignCache.get(seed);
   if (cached) return cached;
   const world = generateWorld(seed);

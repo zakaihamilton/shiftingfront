@@ -1,9 +1,10 @@
-import { formatSeed } from "../../seed/rng";
+import { assertValidSeed, formatSeed } from "../../seed/rng";
 import { SURFACE_NONE } from "../../types";
 import type { SimState, SurfaceKind, UnitKind } from "../../types";
 import { generateWorld } from "../../gen/world";
 import { expandFog, fogGridHeight, fogGridWidth } from "../../sim/fog";
 import { compactDestroyedEntities, compactedState } from "../../sim/world/lifecycle";
+import { rebuildWorld } from "../../sim/ecs/world";
 import { isAirUnit, isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
 import {
   SAVE_CONTENT_VERSION,
@@ -32,6 +33,7 @@ export type SaveEnvelope = {
 export function decodeSavedState(value: unknown): SimState {
   const state = normalizeState(value);
   if (!isStateShape(state)) throw new Error("Invalid save state");
+  rebuildWorld(state, false);
   return state;
 }
 
@@ -57,7 +59,7 @@ export function decodeSave(raw: string): { state: SimState; savedAt: number } {
 }
 
 export function saveKey(seed: number): string {
-  return `${SAVE_PREFIX}${formatSeed(seed)}`;
+  return `${SAVE_PREFIX}${formatSeed(assertValidSeed(seed))}`;
 }
 
 export type SaveMeta = {
@@ -71,6 +73,7 @@ export type SaveMeta = {
 };
 
 export function encodeSavedState(state: SimState): unknown {
+  assertValidSeed(state.seed);
   const compacted = compactedState(state);
   return {
     ...compacted,
@@ -99,6 +102,11 @@ function normalizeState(value: unknown): SimState {
     throw new Error("Invalid save state");
   }
   const s = value as unknown as SimState;
+  try {
+    assertValidSeed(s.seed);
+  } catch {
+    throw new Error("Invalid save state");
+  }
   if (!Number.isInteger(s.navigationRevision) || s.navigationRevision < 0) s.navigationRevision = 0;
   const tileCount = s.width * s.height;
   const canDecode = (raw: unknown, allowEmpty = false): boolean =>

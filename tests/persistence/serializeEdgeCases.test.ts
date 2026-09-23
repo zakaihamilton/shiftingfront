@@ -15,6 +15,12 @@ function baseState(seed = 1000) {
 }
 
 describe("serializeState / deserializeState", () => {
+  it("rejects invalid seeds at both write and read boundaries", () => {
+    const invalidSeedState = { ...baseState(), seed: 10000 };
+    expect(() => serializeState(invalidSeedState)).toThrow(RangeError);
+    expect(() => decodeSavedState({ ...invalidSeedState, biome: undefined })).toThrow("Invalid save state");
+  });
+
   it("round-trips a state through JSON", () => {
     const state = baseState();
     const raw = serializeState(state);
@@ -60,6 +66,12 @@ describe("saveKey", () => {
   it("formats keys with 4-digit zero padding", () => {
     expect(saveKey(42)).toBe(`${SAVE_PREFIX}0042`);
     expect(saveKey(1000)).toBe(`${SAVE_PREFIX}1000`);
+  });
+
+  it("rejects invalid seeds instead of aliasing an existing campaign key", () => {
+    for (const seed of [-1, 10000, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => saveKey(seed)).toThrow(RangeError);
+    }
   });
 });
 

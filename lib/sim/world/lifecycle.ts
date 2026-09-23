@@ -1,29 +1,25 @@
 import type { SimState } from "../../types";
 import { refundQueuedUnits } from "../productionRefund";
 import { ensureDeadBuildingInvalidation } from "./terrain";
-import { clearEntityReferences, rebuildWorld } from "../ecs/world";
+import { worldFor } from "../ecs/world";
 
 export function compactDestroyedEntities(state: SimState): number {
+  const world = worldFor(state);
+  const entities = world.all();
   let removedIds: Set<number> | undefined;
-  for (const entity of state.entities) {
+  for (const entity of entities) {
     if (entity.hp > 0) continue;
     (removedIds ??= new Set<number>()).add(entity.id);
   }
   if (!removedIds) return 0;
 
-  for (const entity of state.entities) {
+  for (const entity of entities) {
     if (entity.hp > 0) continue;
     refundQueuedUnits(state, entity);
     if (entity.class === "building") ensureDeadBuildingInvalidation(state, entity.id);
   }
 
-  for (const entity of state.entities) {
-    if (entity.hp <= 0) continue;
-    clearEntityReferences(entity, removedIds);
-  }
-  state.entities = state.entities.filter((entity) => entity.hp > 0);
-  // Dead buildings already advanced the navigation revision above.
-  rebuildWorld(state, false);
+  world.removeMany(removedIds, removedIds);
   return removedIds.size;
 }
 

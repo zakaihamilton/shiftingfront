@@ -1,17 +1,18 @@
 import { missionMedals, missionScore } from "../sim/debrief";
 import type { CampaignProgress, SimState } from "../types";
 import { safeSetItem, type StorageAdapter } from "./save";
-import { formatSeed } from "../seed/rng";
+import { assertValidSeed, formatSeed } from "../seed/rng";
 import { isRecord, readPersistedEnvelope } from "./utils";
 
 export const CAMPAIGN_PROGRESS_VERSION = 1 as const;
 export const CAMPAIGN_PREFIX = "shiftingfront:campaign:";
 
 export function campaignKey(seed: number): string {
-  return `${CAMPAIGN_PREFIX}${formatSeed(seed)}`;
+  return `${CAMPAIGN_PREFIX}${formatSeed(assertValidSeed(seed))}`;
 }
 
 export function freshCampaignProgress(seed: number): CampaignProgress {
+  assertValidSeed(seed);
   return {
     version: CAMPAIGN_PROGRESS_VERSION,
     seed,
@@ -67,6 +68,11 @@ export function readCampaignProgress(storage: StorageAdapter, seed: number): Cam
 }
 
 export function writeCampaignProgress(storage: StorageAdapter, progress: CampaignProgress): boolean {
+  try {
+    assertValidSeed(progress.seed);
+  } catch {
+    return false;
+  }
   return safeSetItem(storage, campaignKey(progress.seed), JSON.stringify({
     version: CAMPAIGN_PROGRESS_VERSION,
     savedAt: Date.now(),
