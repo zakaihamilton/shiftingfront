@@ -1,5 +1,5 @@
 import { BUILDING_STATS, isAirUnit, targetDomainsFor, UNIT_STATS } from "../../catalog";
-import { isBuildingEntity, isUnitEntity, type Entity, type SimState, type WeaponType } from "../../types";
+import { isBuildingEntity, isUnitEntity, type BuildingKind, type Entity, type SimState, type UnitKind, type WeaponType } from "../../types";
 import { entitiesFor } from "../entities";
 import { directFireRangeBonusAt, groundUnitSightAt } from "../terrainRules";
 
@@ -26,6 +26,8 @@ type CombatStats = {
   targetDomains: readonly import("../../types").CombatTargetDomain[];
 };
 const NON_COMBAT_BUILDING_STATS: CombatStats = { damage: 0, range: 0, cooldown: 0, weapon: "smallArms", splashRadius: 0, suppression: 0, targetDomains: ["ground"] };
+const unitCombatStats = new Map<UnitKind, CombatStats>();
+const buildingCombatStats = new Map<BuildingKind, CombatStats>();
 
 export function isCombatTarget(state: SimState, e: Entity): boolean {
   // Once a stranded rescue unit has been contacted, it is an evacuee rather
@@ -52,13 +54,19 @@ export function canTarget(attacker: Entity, target: Entity): boolean {
 
 export function statsFor(e: Entity): CombatStats {
   if (isUnitEntity(e)) {
+    const cached = unitCombatStats.get(e.kind);
+    if (cached) return cached;
     const stats = UNIT_STATS[e.kind];
-    return { ...stats, targetDomains: targetDomainsFor(e.kind) };
+    const combatStats = { ...stats, targetDomains: targetDomainsFor(e.kind) };
+    unitCombatStats.set(e.kind, combatStats);
+    return combatStats;
   }
   if (!isBuildingEntity(e)) return NON_COMBAT_BUILDING_STATS;
+  const cached = buildingCombatStats.get(e.kind);
+  if (cached) return cached;
   const combat = BUILDING_STATS[e.kind].combat;
   if (combat) {
-    return {
+    const combatStats = {
       damage: combat.damage,
       range: combat.range,
       cooldown: combat.cooldown,
@@ -67,7 +75,10 @@ export function statsFor(e: Entity): CombatStats {
       suppression: combat.suppression,
       targetDomains: combat.targetDomains,
     };
+    buildingCombatStats.set(e.kind, combatStats);
+    return combatStats;
   }
+  buildingCombatStats.set(e.kind, NON_COMBAT_BUILDING_STATS);
   return NON_COMBAT_BUILDING_STATS;
 }
 

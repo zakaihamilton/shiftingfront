@@ -1,5 +1,6 @@
 import type { Command, InspectReport, SimEvent, SimState } from "../types";
-import { createMission, inspect, tick } from "./api";
+import { createMission, inspect } from "./api";
+import { createScenarioRunner } from "./scenarioRunner";
 
 export type TimedOrder = {
   tick: number;
@@ -100,12 +101,18 @@ export function runReplay(options: ReplayOptions): ReplayResult {
   const events: SimEvent[] = [];
   let commandRejections = 0;
   const maxTicks = Math.max(0, Math.floor(options.maxTicks));
-  for (let i = 0; i < maxTicks && state.result === "playing"; i += 1) {
-    const commands = ordersByTick.get(state.tick);
-    const result = tick(state, commands?.length ? commands : undefined);
-    events.push(...result.events);
-    commandRejections += result.commandRejections;
-  }
+  const runner = createScenarioRunner(state);
+  runner.run({
+    maxTicks,
+    commandsForTick: (currentState) => {
+      const commands = ordersByTick.get(currentState.tick);
+      return commands?.length ? commands : undefined;
+    },
+    onTick: (_currentState, result) => {
+      events.push(...result.events);
+      commandRejections += result.commandRejections;
+    },
+  });
 
   return {
     state,

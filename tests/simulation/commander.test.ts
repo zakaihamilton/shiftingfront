@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createCampaign } from "../../lib/gen/campaign";
 import { BUILDING_STATS } from "../../lib/catalog";
 import { createMission, inspect, tick } from "../../lib/sim/api";
+import { createScenarioRunner } from "../../lib/sim/scenarioRunner";
 import { CompetentCommander } from "../../lib/sim/commander";
 import { assaultReady, defensiveThreat, yardRaid } from "../../lib/sim/commander/combat";
 import { planBuilding, planProduction } from "../../lib/sim/commander/production";
@@ -203,7 +204,7 @@ describe("competent commander", () => {
     state.runtime = { kind: "sabotage", phase: "active", targetIds: [marked.id], rescued: 0, required: 1, secondary: [] };
     const commander = new CompetentCommander();
 
-    for (let i = 0; i < 1200 && state.result === "playing"; i++) tick(state, commander.plan(state));
+    createScenarioRunner(state).run({ maxTicks: 1200, commandsForTick: () => commander.plan(state) });
 
     expect(attackers.some((attacker) => attacker.hp > 0)).toBe(true);
     expect(state.result).toBe("won");

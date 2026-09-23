@@ -3,7 +3,6 @@ import { inBounds, staticNavigationFor, type StaticNavigation } from "./world";
 import {
   navigationEdgeReserved,
   navigationStepAllowed,
-  navigationStepCost,
   PATH_DIRS,
   reversesPreviousStep,
 } from "./navigation/grid";
@@ -43,8 +42,10 @@ export type FlowField = {
 const fieldsByState = new WeakMap<SimState, Map<string, FlowField>>();
 const componentIdsByNavigation = new WeakMap<StaticNavigation, Int32Array>();
 const sharedFields = new Map<string, FlowField>();
-const SHARED_FLOW_FIELD_LIMIT = 512;
+const flowHeapPool: MinHeap[] = [];
+const SHARED_FLOW_FIELD_LIMIT = 1024;
 const STATE_FLOW_FIELD_LIMIT = 128;
+const FLOW_HEAP_POOL_LIMIT = 4;
 
 function fieldsFor(state: SimState): Map<string, FlowField> {
   let fields = fieldsByState.get(state);
@@ -351,35 +352,55 @@ function buildWeightedFlowField(state: SimState, origins: readonly Vec2[], revis
   const distance = new Float64Array(width * height);
   distance.fill(UNREACHABLE);
   const navigation = staticNavigationFor(state);
+  const walkable = navigation.walkable;
+  const heights = navigation.heights;
   const vehicleMovementCosts = mobility === "vehicle" ? vehicleMovementCostsFor(state) : undefined;
-  const open = new MinHeap();
+  const open = flowHeapPool.pop() ?? new MinHeap();
   let sequence = 0;
-  for (const origin of origins) {
-    const key = origin.y * width + origin.x;
-    if (distance[key] === 0) continue;
-    distance[key] = 0;
-    open.push(origin.x, origin.y, 0, 0, sequence++);
-  }
-
-  while (open.length > 0) {
-    open.pop();
-    const currentX = Math.round(open.x);
-    const currentY = Math.round(open.y);
-    const currentKey = currentY * width + currentX;
-    if (open.g > distance[currentKey]! + 1e-9) continue;
-    for (const direction of PATH_DIRS) {
-      const nextX = currentX + direction.x;
-      const nextY = currentY + direction.y;
-      if (!navigationStepAllowed(navigation, currentX, currentY, nextX, nextY)) continue;
-      const nextKey = nextY * width + nextX;
-      // Flow search runs from the goal backward, so the forward-route
-      // destination for this reversed edge is the current cell.
-      const movementCost = mobility === "vehicle" ? vehicleMovementCosts?.[currentKey] ?? 1 : 1;
-      const nextDistance = open.g + navigationStepCost(currentX, currentY, nextX, nextY, movementCost);
-      if (distance[nextKey] >= 0 && nextDistance >= distance[nextKey]! - 1e-9) continue;
-      distance[nextKey] = nextDistance;
-      open.push(nextX, nextY, nextDistance, nextDistance, sequence++);
+  try {
+    for (const origin of origins) {
+      const key = origin.y * width + origin.x;
+      if (distance[key] === 0) continue;
+      distance[key] = 0;
+      open.push(origin.x, origin.y, 0, 0, sequence++);
     }
+
+    while (open.length > 0) {
+      open.pop();
+      const currentX = Math.round(open.x);
+      const currentY = Math.round(open.y);
+      const currentKey = currentY * width + currentX;
+      const currentHeight = heights[currentKey] ?? 0;
+      if (open.g > distance[currentKey]! + 1e-9) continue;
+      for (const direction of PATH_DIRS) {
+        const nextX = currentX + direction.x;
+        const nextY = currentY + direction.y;
+        if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height) continue;
+        const nextKey = nextY * width + nextX;
+        if (walkable[currentKey] !== 1 || walkable[nextKey] !== 1) continue;
+        const dx = Math.abs(nextX - currentX);
+        const dy = Math.abs(nextY - currentY);
+        if (Math.max(dx, dy) !== 1) continue;
+        const nextHeight = heights[nextKey] ?? 0;
+        if (Math.abs(nextHeight - currentHeight) > 1) continue;
+        if (dx === 1 && dy === 1) {
+          const horizontalKey = currentY * width + nextX;
+          const verticalKey = nextY * width + currentX;
+          if (walkable[horizontalKey] !== 1 || Math.abs((heights[horizontalKey] ?? 0) - currentHeight) > 1) continue;
+          if (walkable[verticalKey] !== 1 || Math.abs((heights[verticalKey] ?? 0) - currentHeight) > 1) continue;
+        }
+        // Flow search runs from the goal backward, so the forward-route
+        // destination for this reversed edge is the current cell.
+        const movementCost = mobility === "vehicle" ? vehicleMovementCosts?.[currentKey] ?? 1 : 1;
+        const nextDistance = open.g + (dx === 1 && dy === 1 ? Math.SQRT2 : 1) * movementCost;
+        if (distance[nextKey] >= 0 && nextDistance >= distance[nextKey]! - 1e-9) continue;
+        distance[nextKey] = nextDistance;
+        open.push(nextX, nextY, nextDistance, nextDistance, sequence++);
+      }
+    }
+  } finally {
+    open.clear();
+    if (flowHeapPool.length < FLOW_HEAP_POOL_LIMIT) flowHeapPool.push(open);
   }
 
   return { goal: origins[0]!, revision, width, height, distance };

@@ -1,6 +1,6 @@
 import { startLoop, type LoopHandle } from "@/lib/game/loop";
 import { TICKS_PER_SECOND } from "@/lib/catalog";
-import { tick } from "@/lib/sim/api";
+import { createScenarioRunner } from "@/lib/sim/scenarioRunner";
 import { entitiesFor } from "@/lib/sim/entities";
 import type { SimEvent, SimState } from "@/lib/types";
 import { canonicalCommandRejectionReason, type MissionUxTelemetry } from "@/lib/persist/telemetry";
@@ -35,6 +35,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
   let loop: LoopHandle | null = null;
   let started = false;
   const lifecycle = simRefs.lifecycleRef.current;
+  let scenarioRunner = createScenarioRunner(simRefs.stateRef.current);
 
   const persistence = createPersistenceCoordinator({
     stateRef: simRefs.stateRef,
@@ -103,7 +104,10 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
           simRefs.stateRef.current = state;
         },
         drainCommands: controller.drainCommands,
-        step: tick,
+        step: (state, commands) => {
+          if (scenarioRunner.state !== state) scenarioRunner = createScenarioRunner(state);
+          return scenarioRunner.step(commands);
+        },
         isPaused: () => simRefs.pausedRef.current,
         onTick: controller.onTick,
         onFrame: controller.onFrame,

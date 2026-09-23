@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createMission, tick } from "../../../lib/sim/api";
+import { createMission } from "../../../lib/sim/api";
 import { ArchetypeCommander } from "../../../lib/sim/commander/archetypes";
 import { stratifiedBalanceScenarios } from "../../../lib/sim/balance";
 import { simulationFingerprint } from "../../../lib/sim/replay";
+import { createScenarioRunner } from "../../../lib/sim/scenarioRunner";
 
 describe("headless balance mission kinds", () => {
   it("match reference transitions for every mission kind and strategy", () => {
@@ -15,14 +16,16 @@ describe("headless balance mission kinds", () => {
         const headless = structuredClone(reference);
         const referenceCommander = new ArchetypeCommander(strategy);
         const headlessCommander = new ArchetypeCommander(strategy);
+        const referenceRunner = createScenarioRunner(reference);
+        const headlessRunner = createScenarioRunner(headless, { collectEvents: false, updateFog: false });
 
         for (let i = 0; i < 180 && reference.result === "playing"; i += 1) {
           const referenceCommands = referenceCommander.plan(reference);
           const headlessCommands = headlessCommander.plan(headless);
           expect(headlessCommands).toEqual(referenceCommands);
 
-          const referenceTick = tick(reference, referenceCommands);
-          const headlessTick = tick(headless, headlessCommands, { collectEvents: false, updateFog: false });
+          const referenceTick = referenceRunner.step(referenceCommands);
+          const headlessTick = headlessRunner.step(headlessCommands);
           expect(headlessTick.commandRejections).toBe(referenceTick.commandRejections);
           expect(simulationFingerprint(headless)).toBe(simulationFingerprint(reference));
         }

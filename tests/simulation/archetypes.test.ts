@@ -3,6 +3,8 @@ import { createMission, inspect, tick } from "../../lib/sim/api";
 import { ARCHETYPE_STRATEGIES, ArchetypeCommander } from "../../lib/sim/commander/archetypes";
 import { hasNonFiniteState } from "../../lib/sim/balance";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { createScenarioRunner } from "../../lib/sim/scenarioRunner";
+import { simulationFingerprint } from "../../lib/sim/replay";
 import type { Command, Entity, MissionKind, SimState } from "../../lib/types";
 
 describe("player archetype commanders", () => {
@@ -11,12 +13,14 @@ describe("player archetype commanders", () => {
     const commander = new ArchetypeCommander(strategy);
     let commandCount = 0;
     let rejections = 0;
-    for (let i = 0; i < 480 && state.result === "playing"; i++) {
-      const commands = commander.plan(state);
-      commandCount += commands.length;
-      const result = tick(state, commands);
-      rejections += result.events.filter((event) => event.type === "commandRejected").length;
-    }
+    createScenarioRunner(state).run({
+      maxTicks: 480,
+      commandsForTick: () => commander.plan(state),
+      onCommands: (_state, commands) => { commandCount += commands?.length ?? 0; },
+      onTick: (_state, result) => {
+        rejections += result.events.filter((event) => event.type === "commandRejected").length;
+      },
+    });
     expect(commandCount).toBeGreaterThan(0);
     expect(rejections).toBe(0);
   });
@@ -26,8 +30,8 @@ describe("player archetype commanders", () => {
     const vehicles = createMission({ seed: 0, missionIndex: 0 });
     const infantryCommander = new ArchetypeCommander("infantry");
     const vehiclesCommander = new ArchetypeCommander("vehicles");
-    for (let i = 0; i < 1_200 && infantry.result === "playing"; i++) tick(infantry, infantryCommander.plan(infantry));
-    for (let i = 0; i < 1_200 && vehicles.result === "playing"; i++) tick(vehicles, vehiclesCommander.plan(vehicles));
+    createScenarioRunner(infantry).run({ maxTicks: 1_200, commandsForTick: () => infantryCommander.plan(infantry) });
+    createScenarioRunner(vehicles).run({ maxTicks: 1_200, commandsForTick: () => vehiclesCommander.plan(vehicles) });
     expect(infantry.unitsProducedByRole.infantry + infantry.unitsProducedByRole.antiArmor)
       .toBeGreaterThan(vehicles.unitsProducedByRole.tank);
     expect(vehicles.unitsProducedByRole.tank).toBeGreaterThan(infantry.unitsProducedByRole.tank);
@@ -36,7 +40,7 @@ describe("player archetype commanders", () => {
   it("makes greed establish harvest capacity before barracks production", () => {
     const state = createMission({ seed: 0, missionIndex: 0 });
     const commander = new ArchetypeCommander("greed");
-    for (let i = 0; i < 1_200 && state.result === "playing"; i++) tick(state, commander.plan(state));
+    createScenarioRunner(state).run({ maxTicks: 1_200, commandsForTick: () => commander.plan(state) });
     expect(state.unitsProducedByRole.harvester).toBeGreaterThan(0);
   });
 
@@ -127,13 +131,22 @@ describe("player archetype commanders", () => {
       const b = createMission({ seed: 421, missionIndex: 0 });
       const commanderA = new ArchetypeCommander(strategy);
       const commanderB = new ArchetypeCommander(strategy);
-      for (let i = 0; i < 720 && a.result === "playing"; i++) {
-        const commandsA = commanderA.plan(a);
-        const commandsB = commanderB.plan(b);
-        expect(commandsA).toEqual(commandsB);
-        tick(a, commandsA, { collectEvents: false, updateFog: false });
-        tick(b, commandsB, { collectEvents: false, updateFog: false });
-      }
+      const runnerA = createScenarioRunner(a, { collectEvents: false, updateFog: false });
+      const runnerB = createScenarioRunner(b, { collectEvents: false, updateFog: false });
+      let commandsForB: Command[] = [];
+      runnerA.run({
+        maxTicks: 720,
+        commandsForTick: () => {
+          const commandsA = commanderA.plan(a);
+          commandsForB = commanderB.plan(b);
+          expect(commandsA).toEqual(commandsForB);
+          return commandsA;
+        },
+        onTick: () => {
+          runnerB.step(commandsForB);
+          expect(simulationFingerprint(a)).toBe(simulationFingerprint(b));
+        },
+      });
       expect(inspect(a)).toEqual(inspect(b));
     }
   });

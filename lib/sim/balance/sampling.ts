@@ -1,12 +1,12 @@
-import { cpus } from "node:os";
+import { availableParallelism } from "node:os";
 import { createCampaign } from "../../gen/campaign";
 import { formatSeed } from "../../seed/rng";
 import { resolveMissionProfile } from "../../gen/profile";
 import type { BalanceRunOptions, BalanceScenario, PlaytestManifestEntry } from "./types";
 
 export function defaultBalanceJobs(scenarioCount: number): number {
-  const available = Math.max(1, cpus().length || 1);
-  return Math.max(1, Math.min(available, 8, scenarioCount || 1));
+  const available = Math.max(1, availableParallelism());
+  return Math.max(1, Math.min(available, 10, scenarioCount || 1));
 }
 
 export function balanceScenarios(options: BalanceRunOptions): Array<{ seed: number; mission: number }> {

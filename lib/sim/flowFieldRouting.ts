@@ -67,6 +67,11 @@ export function prepareFlowFieldRoutes(
     groups.set(key, members);
   }
 
+  if (groups.size === 0) {
+    congestedGroups.clear();
+    return;
+  }
+
   // Keep the large-group mode alive while the leading units are peeling into
   // their final cells. Without this small tail groups would switch back to a
   // single-goal field and recreate the funnel they just escaped.

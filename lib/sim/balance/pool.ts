@@ -11,6 +11,11 @@ import type {
 } from "./types";
 import type { BalanceRecord } from "./evaluation";
 
+export type BalanceSweepWorkItem = {
+  scenarios: BalanceScenario[];
+  strategies: BalanceSweepJob["strategies"];
+};
+
 export function sortBalanceRecords(records: BalanceRecordWithScenario[]): BalanceRecordWithScenario[] {
   return [...records].sort((a, b) => Number(a.seed) - Number(b.seed)
     || a.mission - b.mission
@@ -59,9 +64,27 @@ export function groupScenariosBySeed(scenarios: BalanceScenario[]): BalanceScena
   return [...groupedBySeed.values()];
 }
 
+/** Keep each seed's missions together so workers reuse generated scenario data. */
+export function scenarioWorkItems(
+  scenarios: readonly BalanceScenario[],
+  strategies: BalanceSweepJob["strategies"],
+): BalanceSweepWorkItem[] {
+  const bySeed = new Map<number, BalanceScenario[]>();
+  for (const scenario of scenarios) {
+    const group = bySeed.get(scenario.seed) ?? [];
+    group.push(scenario);
+    bySeed.set(scenario.seed, group);
+  }
+  const seedGroups = [...bySeed.values()];
+  return strategies.flatMap((strategy) => seedGroups.map((group) => ({
+    scenarios: group,
+    strategies: [strategy],
+  })));
+}
+
 export function runSweepWorkerPool(
   options: Omit<BalanceSweepJob, "scenarios">,
-  seedGroups: BalanceScenario[][],
+  workItems: BalanceSweepWorkItem[],
   workerCount: number,
   onRecord: (record: BalanceRecordWithScenario) => void,
 ): Promise<BalanceRecordWithScenario[]> {
@@ -80,13 +103,13 @@ export function runSweepWorkerPool(
     };
 
     const dispatch = (entry: { worker: Worker; closing: boolean }) => {
-      const scenarios = seedGroups[nextGroup++];
-      if (!scenarios) {
+      const workItem = workItems[nextGroup++];
+      if (!workItem) {
         entry.closing = true;
         entry.worker.postMessage({ type: "close" });
         return;
       }
-      entry.worker.postMessage({ type: "run", scenarios });
+      entry.worker.postMessage({ type: "run", scenarios: workItem.scenarios, strategies: workItem.strategies });
     };
 
     for (let index = 0; index < workerCount; index++) {
@@ -145,9 +168,9 @@ export async function runBalanceSweepScenarios(
   },
 ): Promise<BalanceRecordWithScenario[]> {
   const scenarios = options.scenarioList ?? balanceScenarios(options);
-  const seedGroups = groupScenariosBySeed(scenarios);
+  const workItems = scenarioWorkItems(scenarios, options.strategies);
   const requestedJobs = options.jobs ?? defaultBalanceJobs(scenarios.length);
-  const jobs = Math.max(1, Math.min(Math.floor(requestedJobs) || 1, seedGroups.length || 1));
+  const jobs = Math.max(1, Math.min(Math.floor(requestedJobs) || 1, workItems.length || 1));
   let completed = 0;
   const report = (record: BalanceRecordWithScenario) => {
     assertWithinDeadline(options.deadlineAt);
@@ -162,10 +185,10 @@ export async function runBalanceSweepScenarios(
     deadlineAt: options.deadlineAt,
     strategies: options.strategies,
   };
-  if (jobs === 1 || seedGroups.length < 2) {
+  if (jobs === 1 || workItems.length < 2) {
     return sortBalanceRecords(runBalanceSweepJob({ ...jobOptions, scenarios }, report));
   }
-  const records = await runSweepWorkerPool(jobOptions, seedGroups, jobs, report);
+  const records = await runSweepWorkerPool(jobOptions, workItems, jobs, report);
   return sortBalanceRecords(records);
 }
 

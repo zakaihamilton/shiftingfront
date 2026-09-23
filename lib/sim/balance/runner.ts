@@ -3,7 +3,8 @@ import { createCampaign } from "../../gen/campaign";
 import { generateMap, type GeneratedMap } from "../../gen/map";
 import { MAX_MISSION_TICKS, MAX_OPERATION_TICKS } from "../../gen/pacing";
 import { formatSeed } from "../../seed/rng";
-import { createMissionFromData, tick } from "../api";
+import { createMissionFromData } from "../api";
+import { createScenarioRunner } from "../scenarioRunner";
 import { CompetentCommander } from "../commander";
 import { ArchetypeCommander, isArchetypeStrategy } from "../commander/archetypes";
 import { powerBreakdown } from "../world";
@@ -129,71 +130,76 @@ function runScenario(
   const diagnosticStride = 6;
   const openingCutoff = Math.max(1, Math.floor(missionHorizon * 0.25));
   const collectTelemetry = strategy === "competent";
-  for (let i = 0; i < tickLimit && state.result === "playing"; i++) {
-    assertWithinDeadline(deadlineAt);
-    const commands = commander
-      ? state.tick % COMMANDER_CADENCE === 0 ? commander.plan(state) : undefined
-      : baselineCommands(state, map);
-    for (const command of commands ?? []) {
-      if ((command.type === "attack" || command.type === "attackMove") && firstCombatTick === undefined) firstCombatTick = state.tick;
-      if (command.type === "repair") repairCommands += 1;
-    }
-    commandsIssued += commands?.length ?? 0;
-    const result = tick(state, commands, { collectEvents: collectTelemetry, updateFog: false });
-    for (const event of collectTelemetry ? result.events : []) {
-      if (event.type === "support" && event.owner === 0) {
-        supportActions += 1;
-        healedHp += event.amount;
+  const scenarioRunner = createScenarioRunner(state, { collectEvents: collectTelemetry, updateFog: false });
+  scenarioRunner.run({
+    maxTicks: tickLimit,
+    beforeTick: () => assertWithinDeadline(deadlineAt),
+    commandsForTick: (currentState) => commander
+      ? currentState.tick % COMMANDER_CADENCE === 0 ? commander.plan(currentState) : undefined
+      : baselineCommands(currentState, map),
+    onCommands: (currentState, commands) => {
+      for (const command of commands ?? []) {
+        if ((command.type === "attack" || command.type === "attackMove") && firstCombatTick === undefined) firstCombatTick = currentState.tick;
+        if (command.type === "repair") repairCommands += 1;
       }
-      if (event.type === "repair" && event.owner === 0) {
-        repairedHp += event.amount;
-        repairCredits += event.cost;
+      commandsIssued += commands?.length ?? 0;
+    },
+    onTick: (currentState, result) => {
+      for (const event of collectTelemetry ? result.events : []) {
+        if (event.type === "support" && event.owner === 0) {
+          supportActions += 1;
+          healedHp += event.amount;
+        }
+        if (event.type === "repair" && event.owner === 0) {
+          repairedHp += event.amount;
+          repairCredits += event.cost;
+        }
+        if (event.type === "objectiveMilestone" && event.kind === "rescue") {
+          if (event.milestone === "firstContact" && rescueFirstContactTick === undefined) rescueFirstContactTick = currentState.tick;
+          if (event.milestone === "allContacted" && rescueAllContactedTick === undefined) rescueAllContactedTick = currentState.tick;
+          if (event.milestone === "firstReturned" && rescueFirstReturnedTick === undefined) rescueFirstReturnedTick = currentState.tick;
+        }
       }
-      if (event.type === "objectiveMilestone" && event.kind === "rescue") {
-        if (event.milestone === "firstContact" && rescueFirstContactTick === undefined) rescueFirstContactTick = state.tick;
-        if (event.milestone === "allContacted" && rescueAllContactedTick === undefined) rescueAllContactedTick = state.tick;
-        if (event.milestone === "firstReturned" && rescueFirstReturnedTick === undefined) rescueFirstReturnedTick = state.tick;
+      rescuePhaseAtEnd = currentState.runtime?.kind === "rescue" ? currentState.runtime.phase : rescuePhaseAtEnd;
+      commandRejections += result.commandRejections;
+      const shouldSampleDiagnostics = currentState.tick % diagnosticStride === 0 || currentState.result !== "playing";
+      if (shouldSampleDiagnostics) {
+        const playerYard = entitiesFor(currentState).find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
+        const hqThreatenedNow = hqThreatened(currentState);
+        if (firstHqThreatTick === undefined && hqThreatenedNow) firstHqThreatTick = currentState.tick;
+        if (hqThreatenedNow) hqThreatTicks += diagnosticStride;
+        if (currentState.aiState === "assault" && previousAiState !== "assault") assaultTransitions += 1;
+        previousAiState = currentState.aiState;
+        if (firstPressureTick === undefined && currentState.runtime?.director?.phase !== undefined && currentState.runtime.director.phase !== "opening") {
+          firstPressureTick = currentState.tick;
+          if (playerYard) hqHealthAtPressure = playerYard.hp / Math.max(1, playerYard.maxHp);
+        }
       }
-    }
-    rescuePhaseAtEnd = state.runtime?.kind === "rescue" ? state.runtime.phase : rescuePhaseAtEnd;
-    commandRejections += result.commandRejections;
-    const shouldSampleDiagnostics = state.tick % diagnosticStride === 0 || state.result !== "playing";
-    if (shouldSampleDiagnostics) {
-      const playerYard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
-      const hqThreatenedNow = hqThreatened(state);
-      if (firstHqThreatTick === undefined && hqThreatenedNow) firstHqThreatTick = state.tick;
-      if (hqThreatenedNow) hqThreatTicks += diagnosticStride;
-      if (state.aiState === "assault" && previousAiState !== "assault") assaultTransitions += 1;
-      previousAiState = state.aiState;
-      if (firstPressureTick === undefined && state.runtime?.director?.phase !== undefined && state.runtime.director.phase !== "opening") {
-        firstPressureTick = state.tick;
-        if (playerYard) hqHealthAtPressure = playerYard.hp / Math.max(1, playerYard.maxHp);
+      const phase = currentState.runtime?.director?.phase;
+      if (phase) {
+        durationByPhase[phase] += 1;
+        if (phase === "finale" && firstFinaleTick === undefined) {
+          firstFinaleTick = currentState.tick;
+          const playerYard = entitiesFor(currentState).find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
+          if (playerYard) hqHealthAtFinale = playerYard.hp / Math.max(1, playerYard.maxHp);
+        }
       }
-    }
-    const phase = state.runtime?.director?.phase;
-    if (phase) {
-      durationByPhase[phase] += 1;
-      if (phase === "finale" && firstFinaleTick === undefined) {
-        firstFinaleTick = state.tick;
-        const playerYard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
-        if (playerYard) hqHealthAtFinale = playerYard.hp / Math.max(1, playerYard.maxHp);
+      if (primaryCompletedTick === undefined && result.state.result === "won") {
+        primaryCompletedTick = currentState.tick;
+        completionPhase = phase;
       }
-    }
-    if (primaryCompletedTick === undefined && result.state.result === "won") {
-      primaryCompletedTick = state.tick;
-      completionPhase = phase;
-    }
-    if (openingCredits === undefined && state.tick >= openingCutoff) {
-      openingCredits = state.credits[0];
-      openingUnitsProducedByRole = { ...state.unitsProducedByRole };
-    }
-    // Unlike the presentation diagnostics above, power health is an
-    // acceptance invariant. Sample it every tick so a short deficit cannot
-    // disappear between diagnostic samples or on the terminal tick.
-    if (state.losses.buildings[0] === 0) {
-      powerDeficit ||= powerBreakdown(state, 0).surplus < 0;
-    }
-  }
+      if (openingCredits === undefined && currentState.tick >= openingCutoff) {
+        openingCredits = currentState.credits[0];
+        openingUnitsProducedByRole = { ...currentState.unitsProducedByRole };
+      }
+      // Unlike the presentation diagnostics above, power health is an
+      // acceptance invariant. Sample it every tick so a short deficit cannot
+      // disappear between diagnostic samples or on the terminal tick.
+      if (currentState.losses.buildings[0] === 0) {
+        powerDeficit ||= powerBreakdown(currentState, 0).surplus < 0;
+      }
+    },
+  });
   return {
     powerDeficit,
     commandsIssued,
@@ -243,6 +249,36 @@ export type SharedScenarioData = {
   mapValid: boolean;
   affordances?: ScenarioAffordances;
 };
+
+export type BalanceSweepCache = {
+  campaigns: Map<number, Campaign>;
+  maps: Map<string, GeneratedMap>;
+  sharedScenarios: Map<string, SharedScenarioData>;
+};
+
+const MAX_CACHED_CAMPAIGNS_PER_WORKER = 8;
+const MAX_CACHED_MAPS_PER_WORKER = 32;
+
+export function createBalanceSweepCache(): BalanceSweepCache {
+  return { campaigns: new Map(), maps: new Map(), sharedScenarios: new Map() };
+}
+
+function cachedValue<K, V>(cache: Map<K, V>, key: K, maxSize: number, create: () => V): V {
+  const existing = cache.get(key);
+  if (existing !== undefined) {
+    cache.delete(key);
+    cache.set(key, existing);
+    return existing;
+  }
+  const value = create();
+  cache.set(key, value);
+  while (cache.size > maxSize) {
+    const oldest = cache.keys().next().value as K | undefined;
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
+  return value;
+}
 
 export function cloneMapForSimulation(map: GeneratedMap): GeneratedMap {
   return {
@@ -372,21 +408,23 @@ export function runBalanceJob(job: BalanceRunJob, onRecord?: (record: BalanceRec
 export function runBalanceSweepJob(
   job: BalanceSweepJob,
   onRecord?: (record: BalanceRecordWithScenario) => void,
+  cache: BalanceSweepCache = createBalanceSweepCache(),
 ): BalanceRecordWithScenario[] {
   const maxTicks = job.maxTicks ?? MAX_OPERATION_TICKS;
-  const campaigns = new Map<number, Campaign>();
-  const maps = new Map<string, GeneratedMap>();
   const records: BalanceRecordWithScenario[] = [];
   for (const { seed, mission } of job.scenarios) {
     assertWithinDeadline(job.deadlineAt);
-    const campaign = campaigns.get(seed) ?? createCampaign(seed);
-    campaigns.set(seed, campaign);
+    const campaign = cachedValue(cache.campaigns, seed, MAX_CACHED_CAMPAIGNS_PER_WORKER, () => createCampaign(seed));
     const definition = campaign.missions[mission];
     if (!definition) throw new Error(`No mission ${mission}`);
     const mapKey = `${seed}:${mission}`;
-    const map = maps.get(mapKey) ?? generateMap(seed, definition);
-    maps.set(mapKey, map);
-    const sharedScenario: SharedScenarioData = { mapValid: validMap(map) };
+    const map = cachedValue(cache.maps, mapKey, MAX_CACHED_MAPS_PER_WORKER, () => generateMap(seed, definition));
+    const sharedScenario = cachedValue(
+      cache.sharedScenarios,
+      mapKey,
+      MAX_CACHED_MAPS_PER_WORKER,
+      () => ({ mapValid: validMap(map) }),
+    );
     for (const strategy of job.strategies) {
       const record = runOne(
         seed,

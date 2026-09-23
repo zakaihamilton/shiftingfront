@@ -1,6 +1,7 @@
 import { createCampaign } from "@/lib/gen/campaign";
 import { generateMap } from "@/lib/gen/map";
-import { createMission, tick } from "@/lib/sim/api";
+import { createMission } from "@/lib/sim/api";
+import { createScenarioRunner } from "@/lib/sim/scenarioRunner";
 import { assignMove } from "@/lib/sim/ai/combat";
 import { expandFog } from "@/lib/sim/fog";
 import { isStaticWalkable } from "@/lib/sim/world";
@@ -175,8 +176,9 @@ export function createCinemaScene(
   );
 
   // Fast-forward ticks to bring combat into full swing
+  const scenarioRunner = createScenarioRunner(state, { evaluateObjectives: false });
   for (let t = 0; t < 18; t++) {
-    const { events } = tick(state, undefined, { evaluateObjectives: false });
+    const { events } = scenarioRunner.step();
     state.fog.fill(2);
     for (const u of [...pUnits, ...eUnits]) {
       if (u.orderDestination && Math.hypot(u.orderDestination.x - clashX, u.orderDestination.y - clashY) > 10) {
