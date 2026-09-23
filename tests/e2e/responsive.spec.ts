@@ -463,7 +463,12 @@ test.describe("mission briefing responsive layout", () => {
 });
 
 test.describe("selected unit actions", () => {
-  test("refreshes stance and formation after clicking selected actions", async ({ page }) => {
+  test("refreshes stance and formation after using selected actions", async ({ page }, testInfo) => {
+    const activate = async (control: import("@playwright/test").Locator) => {
+      if (testInfo.project.name === "desktop") await control.click();
+      else await control.tap();
+    };
+
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/play?seed=0421&mission=0");
     await waitForBattlefield(page);
@@ -476,21 +481,25 @@ test.describe("selected unit actions", () => {
     await page.mouse.click(infantry.x, infantry.y);
 
     await waitForStableSelection(page);
-    await page.getByTestId("mobile-command-toggle").click();
+    const launcher = page.getByTestId("mobile-command-toggle");
+    await expect(launcher).toHaveAttribute("aria-expanded", "false");
+    await activate(launcher);
+    await expect(launcher).toHaveAttribute("aria-expanded", "true");
     const sidebar = page.getByTestId("command-sidebar");
-    await sidebar.getByRole("tab", { name: "Selected" }).click();
+    await activate(sidebar.getByRole("tab", { name: "Selected" }));
+    await expect(sidebar).toHaveAttribute("data-mobile-open", "true");
     await expect(sidebar.getByTestId("selected-kind")).toBeVisible();
 
     const unitOrders = sidebar;
     const hold = unitOrders.getByTestId("selected-action-stance-hold");
     await expect(hold).toHaveAttribute("aria-pressed", "false");
-    await hold.click();
+    await activate(hold);
     await expect(hold).toHaveAttribute("aria-pressed", "true");
     await expect(sidebar.getByText("Stance Hold", { exact: true })).toBeVisible();
 
     const wedge = unitOrders.getByTestId("selected-action-formation-wedge");
     await expect(wedge).toHaveAttribute("aria-pressed", "false");
-    await wedge.click();
+    await activate(wedge);
     await expect(wedge).toHaveAttribute("aria-pressed", "true");
   });
 });
@@ -630,7 +639,7 @@ test.describe("mobile-first layouts", () => {
     await expect(panel).not.toBeVisible();
   });
 
-  test("caps the portrait command sidebar and keeps its items proportional", async ({ page }) => {
+  test("caps the portrait command sidebar and keeps its items proportional", async ({ page }, testInfo) => {
     for (const viewport of [
       { width: 320, height: 568 },
       { width: 390, height: 844 },
@@ -638,10 +647,12 @@ test.describe("mobile-first layouts", () => {
     ]) {
       await page.setViewportSize(viewport);
       await page.goto("/play?seed=0421&mission=0&fresh=1");
+      await waitForBattlefield(page);
 
       const launcher = page.getByTestId("mobile-command-toggle");
       await expect(launcher).toBeVisible();
-      await launcher.click();
+      if (testInfo.project.name === "desktop") await launcher.click();
+      else await launcher.tap();
 
       const sidebar = page.getByTestId("command-sidebar");
       await expect(sidebar).toBeVisible();
