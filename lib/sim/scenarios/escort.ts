@@ -5,6 +5,7 @@ import { tryFindPathDetailed } from "../pathBudget";
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { distToEntity, isStaticWalkable } from "../world";
 import { reachableScenarioPoint } from "./reachability";
+import { entitiesFor } from "../ecs/world";
 
 export function convoyStartPoint(
   map: Pick<GeneratedMap, "playerStart" | "width" | "height">,
@@ -45,7 +46,7 @@ export function convoyZonePoint(
 }
 
 export function convoyDestination(state: SimState, zone: Vec2, index: number): Vec2 {
-  const enemyBase = state.entities.filter((entity) => entity.owner === 1 && entity.class === "building" && entity.hp > 0);
+  const enemyBase = entitiesFor(state).filter((entity) => entity.owner === 1 && entity.class === "building" && entity.hp > 0);
   const candidates: Array<{ point: Vec2; zoneDistance: number; baseDistance: number }> = [];
   for (let y = zone.y - OBJECTIVE_ZONE_RADIUS; y <= zone.y + OBJECTIVE_ZONE_RADIUS; y++) {
     for (let x = zone.x - OBJECTIVE_ZONE_RADIUS; x <= zone.x + OBJECTIVE_ZONE_RADIUS; x++) {
@@ -60,7 +61,7 @@ export function convoyDestination(state: SimState, zone: Vec2, index: number): V
   }
   candidates.sort((a, b) => b.baseDistance - a.baseDistance || b.zoneDistance - a.zoneDistance || a.point.y - b.point.y || a.point.x - b.point.x);
   const convoyId = state.runtime?.kind === "escort" ? state.runtime.targetIds[index] : undefined;
-  const convoy = convoyId === undefined ? undefined : state.entities.find((entity) => entity.id === convoyId && entity.hp > 0);
+  const convoy = convoyId === undefined ? undefined : entitiesFor(state).find((entity) => entity.id === convoyId && entity.hp > 0);
   if (convoy && candidates.length) {
     // Keep the stable perimeter ordering, but skip a candidate that is not
     // reachable from this convoy's staging cell. This closes a rare generated
@@ -80,7 +81,7 @@ export function tickEscort(state: SimState): void {
 
   if (runtime.convoyStartTick !== undefined && state.tick >= runtime.convoyStartTick) {
     for (const [index, id] of runtime.targetIds.entries()) {
-      const convoy = state.entities.find((entity) => entity.id === id && entity.hp > 0);
+      const convoy = entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0);
       if (convoy?.scenarioRole === "convoy" && convoy.neutral) {
         const destination = convoyDestination(state, runtime.zone!, index);
         convoy.orderDestination = destination;

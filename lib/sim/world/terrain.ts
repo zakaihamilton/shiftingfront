@@ -2,6 +2,7 @@ import { footprintOf, isAirUnit } from "../../catalog";
 import { isBuildingEntity, type SimState } from "../../types";
 import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../types";
 import { heightAt, inBounds, tileAt, unitOccupied } from "./queries";
+import { entitiesFor } from "../ecs/world";
 
 export type TerrainAccess = {
   traversable: boolean;
@@ -55,6 +56,7 @@ export function ensureDeadBuildingInvalidation(state: SimState, buildingId: numb
 }
 
 export function staticNavigationFor(state: SimState): StaticNavigation {
+  const entities = entitiesFor(state);
   const revision = state.navigationRevision ?? 0;
   const cached = navigationCache.get(state);
   if (
@@ -79,7 +81,7 @@ export function staticNavigationFor(state: SimState): StaticNavigation {
     walkable[index] = canTraverse ? 1 : 0;
   }
 
-  for (const entity of state.entities) {
+  for (const entity of entities) {
     if (entity.hp <= 0 || !isBuildingEntity(entity)) continue;
     const footprint = footprintOf(entity.kind);
     for (let y = entity.y; y < entity.y + footprint.h; y++) {
@@ -132,7 +134,7 @@ export function makeUnitOccupancy(state: SimState, ignoreId?: number): Uint8Arra
 /** Fill a caller-owned occupancy buffer so movement can reuse it every tick. */
 export function fillUnitOccupancy(state: SimState, occupancy: Uint8Array, ignoreId?: number): Uint8Array {
   occupancy.fill(0);
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     if (e.hp <= 0 || e.class !== "unit" || isAirUnit(e.kind) || e.id === ignoreId) continue;
     const x = Math.round(e.x);
     const y = Math.round(e.y);

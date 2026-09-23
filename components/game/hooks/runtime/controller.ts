@@ -1,12 +1,13 @@
 import { startLoop, type LoopHandle } from "@/lib/game/loop";
 import { TICKS_PER_SECOND } from "@/lib/catalog";
 import { tick } from "@/lib/sim/api";
+import { entitiesFor } from "@/lib/sim/ecs";
 import type { SimEvent, SimState } from "@/lib/types";
 import { canonicalCommandRejectionReason, type MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { createFrameCoordinator } from "./frame";
 import { createPersistenceCoordinator } from "./persistence";
 import { createPresentationCoordinator } from "./presentation";
-import type { RuntimeController, RuntimePorts, RuntimeRefs } from "./types";
+import type { RuntimeController, RuntimeKernel, RuntimePorts, RuntimeRefs } from "./types";
 
 const AUTOSAVE_INTERVAL_TICKS = 30 * TICKS_PER_SECOND;
 
@@ -23,7 +24,18 @@ function createRuntimeUxTelemetry(): MissionUxTelemetry {
   };
 }
 
-export function createRuntimeController(refs: RuntimeRefs, ports: RuntimePorts): RuntimeController {
+export function createRuntimeController(kernel: RuntimeKernel): RuntimeController {
+  const refs: RuntimeRefs = {
+    ...kernel.refs.simulation,
+    ...kernel.refs.interaction,
+    ...kernel.refs.rendering,
+  };
+  const ports: RuntimePorts = {
+    ...kernel.ports.simulation,
+    ...kernel.ports.frame,
+    ...kernel.ports.presentation,
+    ...kernel.ports.persistence,
+  };
   let loop: LoopHandle | null = null;
   let started = false;
   const lifecycle = refs.lifecycleRef.current;
@@ -130,12 +142,13 @@ export function createRuntimeController(refs: RuntimeRefs, ports: RuntimePorts):
       const directorPhase = state.runtime?.director?.phase;
       if (lifecycle.counters.firstPressureTick === undefined && directorPhase !== undefined && directorPhase !== "opening") {
         lifecycle.counters.firstPressureTick = state.tick;
-        const yard = state.entities.find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
+        const yard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
         if (yard) lifecycle.counters.hqHealthAtPressure = yard.hp / Math.max(1, yard.maxHp);
       }
       if (lifecycle.counters.firstHqThreatTick === undefined) {
-        const yard = state.entities.find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
-        if (yard && state.entities.some((entity) => entity.owner === 1 && entity.attackTarget === yard.id)) {
+        const entities = entitiesFor(state);
+        const yard = entities.find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
+        if (yard && entities.some((entity) => entity.owner === 1 && entity.attackTarget === yard.id)) {
           lifecycle.counters.firstHqThreatTick = state.tick;
         }
       }
@@ -158,7 +171,7 @@ export function createRuntimeController(refs: RuntimeRefs, ports: RuntimePorts):
       frame.onFrame(state, now, paused, frameMs);
       if (state.result !== "playing" && !lifecycle.terminalPresented) {
         lifecycle.terminalPresented = true;
-        const yard = state.entities.find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
+        const yard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
         lifecycle.counters.hqHealthAtEnd = yard ? yard.hp / Math.max(1, yard.maxHp) : 0;
         persistence.onTerminal(state, now, lifecycle.counters);
         ports.setState({ ...state, entities: [...state.entities] });

@@ -1,7 +1,7 @@
 import type { MutableRefObject } from "react";
 import type { Command, SimState } from "@/lib/types";
 import { createRuntimeController } from "./controller";
-import type { RuntimePorts, RuntimeRefs } from "./types";
+import type { RuntimeKernel } from "./types";
 
 /**
  * The narrow command boundary shared by UI adapters and the fixed-step runtime.
@@ -35,12 +35,12 @@ export type GameRuntimeFacade = RuntimeCommandPort & {
  * Owns the browser runtime lifecycle while keeping the existing controller as
  * the implementation detail used by the fixed-step loop.
  */
-export function createGameRuntimeFacade(refs: RuntimeRefs, ports: RuntimePorts): GameRuntimeFacade {
-  const controller = createRuntimeController(refs, ports);
-  const commandPort = createRuntimeCommandPort(refs.commandQueue);
+export function createGameRuntimeFacade(kernel: RuntimeKernel): GameRuntimeFacade {
+  const controller = createRuntimeController(kernel);
+  const commandPort = createRuntimeCommandPort(kernel.refs.simulation.commandQueue);
   return {
     ...commandPort,
-    stateRef: refs.stateRef,
+    stateRef: kernel.refs.simulation.stateRef,
     start: controller.start,
     stop: controller.stop,
   };

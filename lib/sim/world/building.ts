@@ -2,6 +2,7 @@ import { footprintOf } from "../../catalog";
 import { isBuildingEntity, type BuildingEntity, type BuildingKind, type Owner, type SimState, type Vec2 } from "../../types";
 import { heightAt, inBounds } from "./queries";
 import { isWalkable, terrainAccess } from "./terrain";
+import { entitiesFor } from "../ecs/world";
 
 export function footprintFlat(state: SimState, x: number, y: number, w: number, h: number): boolean {
   const h0 = heightAt(state, x, y);
@@ -48,7 +49,7 @@ function hasBuildingClearance(
   const right = x + w + clearance;
   const bottom = y + h + clearance;
 
-  for (const building of state.entities) {
+  for (const building of entitiesFor(state)) {
     if (building.hp <= 0 || !isBuildingEntity(building)) continue;
     const fp = footprintOf(building.kind);
     const separated =
@@ -70,7 +71,7 @@ function buildingNetworkDistance(
   h: number,
 ): number {
   let nearest = Infinity;
-  for (const building of state.entities) {
+  for (const building of entitiesFor(state)) {
     if (building.hp <= 0 || !isBuildingEntity(building) || building.owner !== owner) continue;
     const fp = footprintOf(building.kind);
     const dx = Math.max(building.x - (x + w), x - (building.x + fp.w), 0);

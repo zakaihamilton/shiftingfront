@@ -51,6 +51,29 @@ export type RuntimePorts = {
   persistCampaign: boolean;
 };
 
+/**
+ * Runtime wiring grouped by responsibility. The flat RuntimeRefs/RuntimePorts
+ * types remain as the controller's compatibility shape while callers migrate
+ * to this narrower kernel boundary.
+ */
+export type RuntimeKernelRefs = {
+  simulation: Pick<RuntimeRefs, "stateRef" | "commandQueue" | "pausedRef" | "lifecycleRef" | "persistenceRef" | "uxRef" | "terminalSaveRef" | "campaignRecordedRef" | "suppressImplicitSavesRef">;
+  interaction: Pick<RuntimeRefs, "cameraRef" | "keys" | "edgePanHover" | "panHold" | "panAvailabilityRef">;
+  rendering: Pick<RuntimeRefs, "canvasRef" | "fxRef" | "fxSequence" | "screenShakeRef">;
+};
+
+export type RuntimeKernelPorts = {
+  simulation: Pick<RuntimePorts, "setState">;
+  frame: Pick<RuntimePorts, "setPanAvailability" | "applyEdgePan" | "redraw">;
+  presentation: Pick<RuntimePorts, "onAlert" | "onCommandNotice">;
+  persistence: Pick<RuntimePorts, "saveSession" | "persistCampaign">;
+};
+
+export type RuntimeKernel = {
+  refs: RuntimeKernelRefs;
+  ports: RuntimeKernelPorts;
+};
+
 export type RuntimeCounters = {
   commandsIssued: number;
   commandRejections: number;

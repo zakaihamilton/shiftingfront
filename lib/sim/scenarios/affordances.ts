@@ -1,6 +1,7 @@
 import type { SimState } from "../../types";
 import { findPathDetailed } from "../pathfinding";
 import { convoyDestination } from "./escort";
+import { entitiesFor } from "../ecs/world";
 
 export type ScenarioAffordances = {
   /** First-target aliases retained for existing callers and reports. */
@@ -22,19 +23,19 @@ export type ScenarioAffordances = {
 
 /** Measures the generated scenario without adding metadata to persisted state. */
 export function scenarioAffordances(state: SimState): ScenarioAffordances {
-  const playerYard = state.entities.find(
+  const playerYard = entitiesFor(state).find(
     (entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard" && entity.hp > 0,
   );
-  const enemyYard = state.entities.find(
+  const enemyYard = entitiesFor(state).find(
     (entity) => entity.owner === 1 && entity.class === "building" && entity.kind === "constructionYard" && entity.hp > 0,
   );
   const targetIds = state.runtime?.targetIds ?? [];
   const targets = targetIds.length
-    ? targetIds.map((id) => state.entities.find((entity) => entity.id === id))
+    ? targetIds.map((id) => entitiesFor(state).find((entity) => entity.id === id))
     : state.win.kind === "razeAll"
-      ? state.entities.filter((entity) => entity.owner === 1 && entity.class === "building" && entity.hp > 0)
+      ? entitiesFor(state).filter((entity) => entity.owner === 1 && entity.class === "building" && entity.hp > 0)
       : state.win.kind === "annihilate"
-        ? state.entities.filter((entity) => entity.owner === 1 && entity.hp > 0)
+        ? entitiesFor(state).filter((entity) => entity.owner === 1 && entity.hp > 0)
         : [enemyYard];
   if (!playerYard || targets.length === 0 || targets.some((target) => !target)) {
     return {

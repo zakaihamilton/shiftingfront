@@ -1,6 +1,7 @@
 import { BUILDING_DEFINITIONS, MAX_PRODUCTION_QUEUE, UNIT_STATS, isUnitAvailable, productionQueueSize } from "../../catalog";
 import { type BuildingKind, type Entity, type SimEvent, type SimState, type UnitKind } from "../../types";
 import { byId, powerFor } from "../world";
+import { entitiesFor } from "../ecs/world";
 
 export function startProduce(state: SimState, fromId: number, unit: UnitKind): SimEvent[] {
   if (!isUnitAvailable(unit, state.missionIndex)) return [{ type: "commandRejected", reason: "unit unavailable" }];
@@ -29,7 +30,7 @@ export function startProduce(state: SimState, fromId: number, unit: UnitKind): S
 export function cancelProduce(state: SimState, unit: UnitKind): SimEvent[] {
   let queued: { entity: Entity; index: number } | undefined;
   let producing: Entity | undefined;
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     if (e.hp <= 0 || e.owner !== 0 || e.class !== "building" || e.constructing > 0) continue;
     if (!e.queue) e.queue = [];
     for (let i = e.queue.length - 1; i >= 0; i--) {

@@ -5,6 +5,7 @@ import type { Entity, SimEvent, SimState } from "../types";
 import { tryFindPathDetailed } from "./pathBudget";
 import { routePendingFor } from "./pathfinding";
 import { at, closestApproach, dist, distToEntity, inBounds, livingView, nearest, tileAt } from "./world";
+import { entitiesFor } from "./ecs/world";
 
 export const HARVEST_RANGE = 1.5;
 
@@ -189,7 +190,7 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
     const currentTileY = Math.round(e.y);
     const lateEconomicScenario = state.missionIndex >= 4 && (state.win.kind === "harvestQuota" || state.win.kind === "extraction");
     const refineryPreference = lateEconomicScenario
-      ? state.entities.find(
+      ? entitiesFor(state).find(
         (entity) => entity.owner === e.owner && entity.class === "building" && entity.kind === "refinery" && entity.constructing === 0,
       )
       : undefined;

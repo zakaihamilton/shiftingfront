@@ -3,6 +3,7 @@ import { footprintOf } from "../../catalog";
 import type { BuildingEntity, BuildingKind, SimState, Vec2 } from "../../types";
 import { PATH_DIRS, diagonalCornerBlocked } from "../pathfinding";
 import { canClimb, inBounds, isStaticWalkable, isWalkable } from "../world";
+import { entitiesFor } from "../ecs/world";
 
 /** Keep enemy objective structures well away from the allied starting base. */
 export const OBJECTIVE_ALLIED_BASE_CLEARANCE = 18;
@@ -24,7 +25,7 @@ export function enemyApproachPoint(
 }
 
 export function reachableScenarioCells(state: SimState): Uint8Array | undefined {
-  const origin = state.entities.find((entity) => entity.owner === 0 && entity.class === "unit" && !entity.neutral);
+  const origin = entitiesFor(state).find((entity) => entity.owner === 0 && entity.class === "unit" && !entity.neutral);
   if (!origin) return undefined;
 
   const seen = new Uint8Array(state.width * state.height);
@@ -96,7 +97,7 @@ export function objectiveBuildingFilter(
   state: SimState,
   kind: BuildingKind,
   seen: Uint8Array | undefined,
-  baseBuildings: ReadonlyArray<BuildingEntity> = state.entities.filter(
+  baseBuildings: ReadonlyArray<BuildingEntity> = entitiesFor(state).filter(
     (entity): entity is BuildingEntity =>
       entity.owner === 0 && entity.class === "building" && entity.hp > 0 && entity.kind !== "objective",
   ),

@@ -8,6 +8,7 @@ import type { Rng } from "../../seed/rng";
 import { type PendingAlerts, notePlayerAlert } from "./alerts";
 import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
+import { entitiesFor } from "../ecs/world";
 
 export function strike(
   state: SimState,
@@ -35,7 +36,7 @@ export function strike(
   if (stats.splashRadius > 0) {
     const candidates = grid
       ? candidatesInSplash(grid, target.x, target.y, stats.splashRadius)
-      : state.entities;
+      : entitiesFor(state);
     for (const splash of candidates) {
       if (splash.hp <= 0) continue;
       if (splash.id === target.id || splash.owner === e.owner || splash.neutral || !isCombatTarget(state, splash) || !canTarget(e, splash)) continue;

@@ -2,6 +2,7 @@ import { createCampaign } from "../gen/campaign";
 import { generateMap } from "../gen/map";
 import type { ReadonlyMissionDef, SimState } from "../types";
 import { createMissionFromData } from "./api";
+import { entitiesFor } from "./ecs/world";
 
 export const TUTORIAL_SEED = 0;
 export {
@@ -38,7 +39,7 @@ export function createTutorialMission(): SimState {
   });
   state.tutorialStage = "select";
   if (state.runtime) delete state.runtime.director;
-  for (const entity of state.entities) {
+  for (const entity of entitiesFor(state)) {
     if (entity.owner !== 1 || entity.hp <= 0) continue;
     entity.stance = "hold";
     entity.idle = true;

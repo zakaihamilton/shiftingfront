@@ -12,13 +12,14 @@ import {
   isCombatEntity,
   objectiveKind,
 } from "./queries";
+import { entitiesFor } from "../ecs/world";
 
 export function objectiveEntity(state: SimState): Entity | undefined {
   const kind = objectiveKind(state);
   const targetIds = state.win.targetIds ?? state.runtime?.targetIds ?? [];
   if (kind === "escort" || kind === "rescue" || kind === "extraction") {
     const targets = targetIds
-      .map((id) => state.entities.find((entity) => entity.id === id && entity.hp > 0))
+      .map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0))
       .filter((entity): entity is Entity => !!entity);
     if (kind === "extraction") {
       return targets.find((entity) => entity.neutral) ?? targets.find((entity) => !inObjectiveZone(entity.x, entity.y, state.runtime?.zone));
@@ -27,7 +28,7 @@ export function objectiveEntity(state: SimState): Entity | undefined {
   }
   if (kind === "sabotage" || kind === "destroyMarked") {
     return targetIds
-      .map((id) => state.entities.find((entity) => entity.id === id && entity.hp > 0))
+      .map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0))
       .find((entity): entity is Entity => !!entity);
   }
   if (kind === "decapitate") return enemyEntitiesView(state).find((entity) => entity.kind === "constructionYard");
@@ -58,7 +59,7 @@ export function parallelOffensiveTargets(state: SimState): Entity[] {
   if (objectiveKind(state) !== "sabotage" && objectiveKind(state) !== "destroyMarked") return [];
   const targetIds = state.win.targetIds ?? state.runtime?.targetIds ?? [];
   return targetIds
-    .map((id) => state.entities.find((entity) => entity.id === id && entity.hp > 0 && entity.owner === 1))
+    .map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0 && entity.owner === 1))
     .filter((entity): entity is Entity => !!entity);
 }
 
@@ -83,7 +84,7 @@ export function scenarioThreat(state: SimState): Entity | undefined {
   const kind = objectiveKind(state);
   if (kind !== "escort" && kind !== "rescue" && kind !== "extraction") return undefined;
   const scenarioTargets = (state.runtime?.targetIds ?? [])
-    .map((id) => state.entities.find((entity) => entity.id === id && entity.hp > 0))
+    .map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0))
     .filter((entity): entity is Entity => !!entity && (kind === "escort" || !entity.neutral));
   if (!scenarioTargets.length) return undefined;
   return enemyEntitiesView(state)

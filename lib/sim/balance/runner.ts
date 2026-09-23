@@ -15,6 +15,7 @@ import { walkDistances } from "../../gen/map/generator/affordances";
 import { COMMANDER_CADENCE } from "../commander/queries";
 import { balanceFailureReason } from "./evaluation";
 import { BalanceTimeBudgetExceeded, type BalanceRecordWithScenario, type BalanceRunJob, type BalanceSweepJob } from "./types";
+import { entitiesFor } from "../ecs/world";
 
 export function assertWithinDeadline(deadlineAt: number | undefined): void {
   if (deadlineAt !== undefined && performance.now() >= deadlineAt) {
@@ -69,7 +70,7 @@ function findNearestResource(state: SimState, origin: Vec2): Vec2 | undefined {
 
 function baselineCommands(state: SimState, map: GeneratedMap): Command[] | undefined {
   if (state.tick % 60 !== 0) return undefined;
-  const units = state.entities.filter((entity) => entity.owner === 0 && entity.class === "unit" && entity.hp > 0 && !entity.neutral);
+  const units = entitiesFor(state).filter((entity) => entity.owner === 0 && entity.class === "unit" && entity.hp > 0 && !entity.neutral);
   const combat = units.filter((entity) => entity.kind !== "harvester").map((entity) => entity.id);
   const harvesters = units.filter((entity) => entity.kind === "harvester").map((entity) => entity.id);
   const commands: Command[] = [];
@@ -158,7 +159,7 @@ function runScenario(
     commandRejections += result.commandRejections;
     const shouldSampleDiagnostics = state.tick % diagnosticStride === 0 || state.result !== "playing";
     if (shouldSampleDiagnostics) {
-      const playerYard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
+      const playerYard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
       const hqThreatenedNow = hqThreatened(state);
       if (firstHqThreatTick === undefined && hqThreatenedNow) firstHqThreatTick = state.tick;
       if (hqThreatenedNow) hqThreatTicks += diagnosticStride;
@@ -174,7 +175,7 @@ function runScenario(
       durationByPhase[phase] += 1;
       if (phase === "finale" && firstFinaleTick === undefined) {
         firstFinaleTick = state.tick;
-        const playerYard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
+        const playerYard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
         if (playerYard) hqHealthAtFinale = playerYard.hp / Math.max(1, playerYard.maxHp);
       }
     }
@@ -205,7 +206,7 @@ function runScenario(
     firstFinaleTick,
     hqHealthAtFinale,
     hqHealthAtEnd: (() => {
-      const playerYard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+      const playerYard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
       return playerYard ? playerYard.hp / Math.max(1, playerYard.maxHp) : 0;
     })(),
     assaultTransitions,

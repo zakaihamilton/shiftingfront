@@ -1,6 +1,7 @@
-import type { Entity, SimState } from "../../types";
+import type { SimState } from "../../types";
 import { refundQueuedUnits } from "../productionRefund";
 import { ensureDeadBuildingInvalidation } from "./terrain";
+import { clearEntityReferences, rebuildWorld } from "../ecs/world";
 
 export function compactDestroyedEntities(state: SimState): number {
   let removedIds: Set<number> | undefined;
@@ -18,9 +19,11 @@ export function compactDestroyedEntities(state: SimState): number {
 
   for (const entity of state.entities) {
     if (entity.hp <= 0) continue;
-    clearDeadReferences(entity, removedIds);
+    clearEntityReferences(entity, removedIds);
   }
   state.entities = state.entities.filter((entity) => entity.hp > 0);
+  // Dead buildings already advanced the navigation revision above.
+  rebuildWorld(state, false);
   return removedIds.size;
 }
 
@@ -36,29 +39,4 @@ export function compactedState(state: SimState): SimState {
   };
   compactDestroyedEntities(copy);
   return copy;
-}
-
-function clearDeadReferences(entity: Entity, removedIds: Set<number>): void {
-  if (entity.attackTarget !== undefined && removedIds.has(entity.attackTarget)) {
-    entity.attackTarget = undefined;
-  }
-  if (entity.supportTargetId !== undefined && removedIds.has(entity.supportTargetId)) {
-    entity.supportTargetId = undefined;
-    if (entity.supportMode === "assigned") entity.supportMode = "auto";
-  }
-  if (entity.assignedRunwayId !== undefined && removedIds.has(entity.assignedRunwayId)) {
-    entity.assignedRunwayId = undefined;
-    entity.landingRunwayId = undefined;
-    if (entity.flightState === "servicing") {
-      entity.flightState = "airborne";
-      entity.serviceTicks = undefined;
-      entity.idle = true;
-    }
-  }
-  if (entity.landingRunwayId !== undefined && removedIds.has(entity.landingRunwayId)) {
-    entity.landingRunwayId = undefined;
-  }
-  if (entity.assignedPlaneId !== undefined && removedIds.has(entity.assignedPlaneId)) {
-    entity.assignedPlaneId = undefined;
-  }
 }

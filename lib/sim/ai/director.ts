@@ -141,9 +141,11 @@ export function tickAi(state: SimState): void {
 
   const difficulty = missionDifficulty(state.missionIndex);
   const generatedHoldLine = state.win.kind === "holdTheLine" && state.runtime?.director !== undefined;
-  const holdLineAssaultEvery = generatedHoldLine
-    ? difficulty.enemyAssaultEvery * 8
-    : difficulty.enemyAssaultEvery;
+  // A rush that abandons the yard still has to survive the timer. Scale 8
+  // made those runs unwinnable for the defender and let every rush hold.
+  // Scale 3 keeps a defended yard standing while an empty one can fall.
+  const holdLinePressureScale = generatedHoldLine ? 3 : 1;
+  const holdLineAssaultEvery = difficulty.enemyAssaultEvery * holdLinePressureScale;
   const profile = state.runtime?.director
     ? resolveMissionProfile(state.seed, state.missionIndex, state.win.kind)
     : undefined;
@@ -155,7 +157,7 @@ export function tickAi(state: SimState): void {
   );
   const openingOffensive = state.win.kind === "decapitate" && state.missionIndex < 2;
   const timedProductionScale = state.runtime?.kind === "extraction" ? 2.5 : 2;
-  const holdLineProductionScale = generatedHoldLine ? 8 : 1;
+  const holdLineProductionScale = holdLinePressureScale;
   const productionEvery = timedScenario
     ? Math.round(difficulty.enemyProductionEvery * timedProductionScale)
     : openingOffensive ? Math.round(difficulty.enemyProductionEvery * 4)

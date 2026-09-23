@@ -3,6 +3,7 @@ import { isUnitEntity, type MissionDirectorPhase, type MissionRuntime, type SimE
 import { missionDifficulty } from "./difficulty";
 import { powerBreakdown, trySpawnUnit } from "./world";
 import { objectiveContractFor, profileContractFor, resolveMissionProfile } from "../gen/profile";
+import { entitiesFor } from "./ecs/world";
 
 const CLASSIC_DIRECTOR_DURATION = 3600;
 const CLASSIC_DURATION_STEP = 480;
@@ -70,11 +71,11 @@ function phaseAt(state: SimState, director: NonNullable<MissionRuntime["director
 }
 
 export function hqThreatened(state: SimState): boolean {
-  const yard = state.entities.find(
+  const yard = entitiesFor(state).find(
     (entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard" && entity.hp > 0,
   );
   if (!yard) return false;
-  return state.entities.some((entity) =>
+  return entitiesFor(state).some((entity) =>
     entity.owner === 1 && isUnitEntity(entity) && entity.hp > 0 && (
       entity.attackTarget === yard.id || Math.hypot(entity.x - yard.x, entity.y - yard.y) <= HQ_THREAT_RADIUS
     ),
@@ -91,7 +92,7 @@ function reinforcementKinds(state: SimState, phase: MissionDirectorPhase): UnitK
 }
 
 function spawnReinforcements(state: SimState, phase: MissionDirectorPhase, recovering: boolean): number {
-  const yard = state.entities.find(
+  const yard = entitiesFor(state).find(
     (entity) => entity.owner === 1 && entity.class === "building" && entity.kind === "constructionYard" && entity.hp > 0,
   );
   if (!yard) return 0;
@@ -111,10 +112,10 @@ function spawnReinforcements(state: SimState, phase: MissionDirectorPhase, recov
 }
 
 function playerNeedsRecovery(state: SimState): boolean {
-  const yard = state.entities.find(
+  const yard = entitiesFor(state).find(
     (entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard" && entity.hp > 0,
   );
-  const combatForce = state.entities.some(
+  const combatForce = entitiesFor(state).some(
     (entity) => entity.owner === 0 && entity.class === "unit" && entity.hp > 0 && !entity.neutral &&
       entity.kind !== "harvester" && entity.kind !== "medic" && entity.kind !== "repairTruck",
   );

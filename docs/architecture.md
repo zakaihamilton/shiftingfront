@@ -35,6 +35,11 @@ runtime controllers
   ├─ surface adapter        — pure runtime-to-screen prop mapping
   └─ TacticalScreen         — presentational shell for play-field and overlays
 
+runtime kernel
+  ├─ grouped refs            — simulation, interaction, and rendering state
+  ├─ grouped ports           — frame, presentation, persistence, and UI writes
+  └─ RuntimeCommandPort      — the only queue boundary for browser intent
+
 lib/gen + lib/sim
   └─ DOM-free deterministic game domain used by the UI, tests, and CLIs
 ```
@@ -43,11 +48,15 @@ The `lib/gen` and `lib/sim` layers must not import React, browser globals, or Ca
 
 The gameplay runtime is the browser-side composition boundary. `useGameRuntime` assembles typed refs and ports, while the runtime controllers own lifecycle effects. `createGameRuntimeSurfaces` is a pure adapter from that runtime contract to screen props, and `TacticalScreen` only composes those presentational surfaces. New gameplay behavior should not be added to a controller: extend the domain model and public command/event API first, then connect the behavior through the UI adapter.
 
+The runtime loop receives a grouped `RuntimeKernel`. The kernel keeps the fixed-step controller independent from React hook composition: simulation state and command refs are grouped separately from camera/input refs, rendering refs, and persistence/presentation ports. The flat controller wiring remains an internal compatibility adapter while runtime callers migrate to the grouped contract.
+
 ## Seed and generated content
 
 `createCampaign(seed)` derives forked RNG streams for the world and its single campaign biome, factions, characters, story, mission objectives, and map inputs. Every mission uses that campaign biome while retaining its own objective, profile, and map layout. `createMission({ seed, missionIndex })` turns the generated campaign and map into a mutable `SimState`.
 
 Generated content is not saved. A save contains the current simulation state, including units, buildings, fog, queues, RNG state, objective runtime, and navigation revision. Regenerating from the same seed remains the source of truth for static campaign data.
+
+Mutable entities are crossing into an internal ECS boundary in `lib/sim/ecs`. `EntityWorld` owns stable structural membership and typed component views for identity, transforms, vitals, movement, production, economy, combat, support, aircraft, and scenario state. The existing flat `SimState.entities` array remains the compatibility projection used by serialization, replay fingerprints, rendering, and legacy fixtures. Component views are synchronized at public simulation boundaries so there is one mutable source of truth during the migration.
 
 ## Runtime state flow
 

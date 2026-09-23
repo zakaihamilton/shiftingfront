@@ -4,16 +4,17 @@ import { byId, canPlaceBuilding, inBounds, invalidateEntityCaches, invalidateNav
 import { canRepair } from "../repair";
 import { canSell } from "../sell";
 import { refundQueuedUnits } from "../productionRefund";
+import { entitiesFor } from "../ecs/world";
 
 export { refundQueuedUnits };
 
 export function startBuild(state: SimState, kind: BuildingKind, x: number, y: number): SimEvent[] {
   if (kind === "constructionYard" || kind === "objective") return [{ type: "commandRejected", reason: "invalid building" }];
-  if (buildingLimitReached(state.entities, 0, kind)) return [{ type: "commandRejected", reason: "building limit reached" }];
+  if (buildingLimitReached(entitiesFor(state), 0, kind)) return [{ type: "commandRejected", reason: "building limit reached" }];
   const tx = Math.round(x);
   const ty = Math.round(y);
   if (!canPlaceBuilding(state, kind, tx, ty)) return [{ type: "commandRejected", reason: "invalid placement" }];
-  const yard = state.entities.find(
+  const yard = entitiesFor(state).find(
     (e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0 && e.constructing === 0,
   );
   if (!yard) return [{ type: "commandRejected", reason: "construction yard unavailable" }];
@@ -27,7 +28,7 @@ export function startBuild(state: SimState, kind: BuildingKind, x: number, y: nu
 export function cancelBuild(state: SimState, kind: BuildingKind): SimEvent[] {
   if (kind === "constructionYard" || kind === "objective") return [];
   let target: Entity | undefined;
-  for (const e of state.entities) {
+  for (const e of entitiesFor(state)) {
     if (e.hp <= 0 || e.owner !== 0 || e.class !== "building") continue;
     if (e.kind !== kind || e.constructing <= 0) continue;
     target = e;
