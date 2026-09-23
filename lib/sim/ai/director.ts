@@ -105,7 +105,7 @@ export function tickAi(state: SimState): void {
   // used views in one pass instead of repeatedly filtering the same entity
   // list during production, repair, and assault decisions.
   const active = livingView(state);
-  const knownPlayers = enemyKnownPlayerEntities(state);
+  const knownPlayers = enemyKnownPlayerEntities(state, active);
   const { enemyBuildings, enemyUnits, enemyAircraft } = buffersFor(state);
   let hasHarvester = false;
   let playerTanks = 0;

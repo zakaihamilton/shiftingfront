@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createMission } from "../../../lib/sim/api";
 import { ArchetypeCommander } from "../../../lib/sim/commander/archetypes";
 import { stratifiedBalanceScenarios } from "../../../lib/sim/balance";
 import { simulationFingerprint } from "../../../lib/sim/replay";
 import { createScenarioRunner } from "../../../lib/sim/scenarioRunner";
+import { missionFactory } from "./helpers";
 
 describe("headless balance mission kinds", () => {
   it("match reference transitions for every mission kind and strategy", () => {
@@ -11,8 +11,9 @@ describe("headless balance mission kinds", () => {
 
     for (const { seed, mission } of scenarios) {
       const strategies = ["rush", "turtle", "greed", "infantry", "vehicles"] as const;
+      const createScenario = missionFactory(seed, mission);
       for (const strategy of strategies) {
-        const reference = createMission({ seed, missionIndex: mission });
+        const reference = createScenario();
         const headless = structuredClone(reference);
         const referenceCommander = new ArchetypeCommander(strategy);
         const headlessCommander = new ArchetypeCommander(strategy);

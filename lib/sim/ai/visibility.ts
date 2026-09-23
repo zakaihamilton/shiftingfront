@@ -61,21 +61,28 @@ export function updateAiContacts(state: SimState): void {
 }
 
 /** Return player entities that the enemy may currently react to. */
-export function enemyKnownPlayerEntities(state: SimState): Entity[] {
-  updateAiContacts(state);
+export function enemyKnownPlayerEntities(state: SimState, activeEntities: readonly Entity[] = livingView(state)): Entity[] {
   const contacts = contactsFor(state);
   const visible = new Set<number>();
-  const sensors = livingView(state).filter((entity) => entity.owner === 1);
-  const players = livingView(state).filter((entity) => entity.owner === 0);
+  const sensors = activeEntities.filter((entity) => entity.owner === 1);
+  const players = activeEntities.filter((entity) => entity.owner === 0);
   const result: Entity[] = [];
 
   for (const target of players) {
-    if (isCurrentlyKnown(state, target, sensors)) {
-      visible.add(target.id);
-      result.push(target);
-    }
+    if (!isCurrentlyKnown(state, target, sensors)) continue;
+    visible.add(target.id);
+    contacts[String(target.id)] = {
+      id: target.id,
+      class: target.class,
+      kind: target.kind,
+      x: target.x,
+      y: target.y,
+      lastSeenTick: state.tick,
+    };
+    result.push(target);
   }
 
+  pruneContacts(state);
   for (const contact of Object.values(contacts)) {
     if (visible.has(contact.id) || state.tick - contact.lastSeenTick > AI_CONTACT_TTL_TICKS) continue;
     result.push({

@@ -1,7 +1,7 @@
 import { footprintOf } from "../../catalog";
 import { isBuildingEntity, type Entity, type SimState, type Vec2 } from "../../types";
 import { inBounds, makeUnitOccupancy, staticNavigationFor } from "../world";
-import { inBoundsNavigation, navigationStepAllowed, navigationStepCost, PATH_DIRS, PATH_MAX_NODES } from "./grid";
+import { inBoundsNavigation, navigationStepCost, PATH_DIRS, PATH_MAX_NODES } from "./grid";
 import { MinHeap } from "./heap";
 import { navigationMobilityFor, vehicleMovementCostsFor, type NavigationMobility } from "../terrainRules";
 
@@ -166,6 +166,8 @@ export function findPathDetailed(
   const source = from as Entity;
   const sourceFootprint = isBuildingEntity(source) ? footprintOf(source.kind) : undefined;
   const navigation = staticNavigationFor(state);
+  const walkable = navigation.walkable;
+  const heights = navigation.heights;
   const mobility = opts?.mobility ?? navigationMobilityFor(source);
   const vehicleMovementCosts = mobility === "vehicle" ? vehicleMovementCostsFor(state) : undefined;
   const cacheKey = !avoidUnits
@@ -256,12 +258,21 @@ export function findPathDetailed(
       });
     }
 
+    if (cx < 0 || cy < 0 || cx >= w || cy >= state.height || walkable[currentKey] !== 1) continue;
+    const currentHeight = heights[currentKey] ?? 0;
     for (const dir of PATH_DIRS) {
       const nx = cx + dir.x;
       const ny = cy + dir.y;
-      if (!inBoundsNavigation(navigation, nx, ny)) continue;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= state.height) continue;
       const neighborKey = ny * w + nx;
-      if (!navigationStepAllowed(navigation, cx, cy, nx, ny)) continue;
+      if (walkable[neighborKey] !== 1) continue;
+      if (Math.abs((heights[neighborKey] ?? 0) - currentHeight) > 1) continue;
+      if (dir.x !== 0 && dir.y !== 0) {
+        const horizontalKey = cy * w + nx;
+        const verticalKey = ny * w + cx;
+        if (walkable[horizontalKey] !== 1 || Math.abs((heights[horizontalKey] ?? 0) - currentHeight) > 1) continue;
+        if (walkable[verticalKey] !== 1 || Math.abs((heights[verticalKey] ?? 0) - currentHeight) > 1) continue;
+      }
       if (unitBlocked(nx, ny)) continue;
 
       const movementCost = mobility === "vehicle" ? vehicleMovementCosts?.[neighborKey] ?? 1 : 1;
