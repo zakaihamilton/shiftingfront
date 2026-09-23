@@ -74,7 +74,7 @@
   display: inline-block;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--chrome-steel-hi);
+  color: var(--chrome-muted);
   margin-top: 0.25rem;
 }
 

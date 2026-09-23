@@ -108,7 +108,7 @@
 .level::before {
   position: absolute;
   left: 0;
-  color: var(--chrome-steel-hi);
+  color: var(--chrome-muted);
   content: "/";
 }
 
