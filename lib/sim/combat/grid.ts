@@ -16,7 +16,7 @@ export type CombatGrid = {
 
 const CELL = 8;
 const gridBuffers = new WeakMap<SimState, CombatGrid>();
-type CombatStats = {
+type CombatStats = Readonly<{
   damage: number;
   range: number;
   cooldown: number;
@@ -24,8 +24,16 @@ type CombatStats = {
   splashRadius: number;
   suppression: number;
   targetDomains: readonly import("../../types").CombatTargetDomain[];
-};
-const NON_COMBAT_BUILDING_STATS: CombatStats = { damage: 0, range: 0, cooldown: 0, weapon: "smallArms", splashRadius: 0, suppression: 0, targetDomains: ["ground"] };
+}>;
+const NON_COMBAT_BUILDING_STATS: CombatStats = Object.freeze({
+  damage: 0,
+  range: 0,
+  cooldown: 0,
+  weapon: "smallArms",
+  splashRadius: 0,
+  suppression: 0,
+  targetDomains: Object.freeze(["ground"] as const),
+});
 const unitCombatStats = new Map<UnitKind, CombatStats>();
 const buildingCombatStats = new Map<BuildingKind, CombatStats>();
 
@@ -52,12 +60,15 @@ export function canTarget(attacker: Entity, target: Entity): boolean {
   return statsFor(attacker).targetDomains.includes(combatDomainOf(target));
 }
 
-export function statsFor(e: Entity): CombatStats {
+export function statsFor(e: Entity): Readonly<CombatStats> {
   if (isUnitEntity(e)) {
     const cached = unitCombatStats.get(e.kind);
     if (cached) return cached;
     const stats = UNIT_STATS[e.kind];
-    const combatStats = { ...stats, targetDomains: targetDomainsFor(e.kind) };
+    const combatStats: CombatStats = Object.freeze({
+      ...stats,
+      targetDomains: Object.freeze([...targetDomainsFor(e.kind)]),
+    });
     unitCombatStats.set(e.kind, combatStats);
     return combatStats;
   }
@@ -66,15 +77,15 @@ export function statsFor(e: Entity): CombatStats {
   if (cached) return cached;
   const combat = BUILDING_STATS[e.kind].combat;
   if (combat) {
-    const combatStats = {
+    const combatStats: CombatStats = Object.freeze({
       damage: combat.damage,
       range: combat.range,
       cooldown: combat.cooldown,
       weapon: BUILDING_STATS[e.kind].weapon ?? "cannon",
       splashRadius: combat.splashRadius,
       suppression: combat.suppression,
-      targetDomains: combat.targetDomains,
-    };
+      targetDomains: Object.freeze([...combat.targetDomains]),
+    });
     buildingCombatStats.set(e.kind, combatStats);
     return combatStats;
   }
