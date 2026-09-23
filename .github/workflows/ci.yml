@@ -247,3 +247,45 @@ jobs:
       - run: yarn test:e2e --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         env:
           CI: true
+
+  visual-snapshots:
+    name: Update Linux visual snapshots
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.2
+          cache: yarn
+          package-manager-cache: false
+      - name: Cache node_modules
+        uses: actions/cache@v6
+        id: yarn-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}
+      - if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('yarn.lock') }}
+      - name: Install Playwright browsers with deps
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: yarn playwright install --with-deps chromium
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: yarn playwright install-deps chromium
+      - name: Write Linux visual snapshots
+        run: yarn playwright test tests/e2e/visual.spec.ts --project=desktop --update-snapshots
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-visual-snapshots
+          path: tests/e2e/visual.spec.ts-snapshots/*-linux.png
+          if-no-files-found: error
+          retention-days: 1

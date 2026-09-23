@@ -1,8 +1,11 @@
 .screen {
   position: relative;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   height: 100dvh;
-  min-height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
   overflow: hidden;
   padding: clamp(0.75rem, 2.5vh, 1.25rem) 1rem;
   color: var(--chrome-body);
@@ -19,7 +22,8 @@
   grid-template-rows: auto minmax(0, 1fr);
   gap: clamp(0.6rem, 1.8vh, 1rem) 1.25rem;
   width: 100%;
-  height: 100%;
+  flex: 1 1 auto;
+  height: auto;
   min-height: 0;
   max-width: 78rem;
   margin: 0 auto;
@@ -65,11 +69,14 @@
 .panel {
   position: relative;
   box-sizing: border-box;
-  display: flex;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-self: stretch;
+  align-content: stretch;
   min-width: 0;
   min-height: 0;
   height: 100%;
-  flex-direction: column;
+  max-height: 100%;
   overflow: hidden;
   overflow-anchor: none;
   padding: clamp(0.8rem, 2.5vh, 1.35rem);
@@ -80,7 +87,6 @@
   display: grid;
   min-width: 0;
   min-height: 0;
-  flex: 1 1 0;
   gap: clamp(0.55rem, 1.5vh, 0.85rem);
   overflow-y: auto;
   overflow-anchor: none;
@@ -322,30 +328,17 @@
 }
 
 @media (max-width: 420px) and (max-height: 600px) {
-  .panel {
-    display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
-    align-content: start;
-  }
-
-  .panelScroll {
-    flex: none;
-  }
-
-  /* Keep the primary action at the same dock while the transmission
-     collapses its scroll track on very short phone screens. */
-  .actionsComplete {
-    position: relative;
-    top: 37px;
-  }
-}
-
-/* WebKit's 3x phone rasterization rounds the collapsed panel one pixel
-   differently from Chromium's touch layout. Keep the launch control on the
-   same device-pixel row before and after the transmission is skipped. */
-@media (max-width: 420px) and (max-height: 600px) and (resolution: 3dppx) {
-  .actionsComplete {
-    top: 36px;
+  /* The action stack is taller than the leftover panel. Pin it to the
+     viewport so focusing Skip cannot scroll the panel and shift Launch. */
+  .actions {
+    position: fixed;
+    z-index: 3;
+    right: 0.4rem;
+    bottom: max(0.4rem, env(safe-area-inset-bottom));
+    left: 0.4rem;
+    margin-top: 0;
+    background:
+      linear-gradient(var(--chrome-steel), var(--chrome-steel-lo));
   }
 }
 
