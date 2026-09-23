@@ -34,8 +34,11 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
   const [settingsReady, setSettingsReady] = useState(false);
   const [guideDismissed, setGuideDismissed] = useState(false);
   useEffect(() => {
-    setSettings(readSettings(cachedLocalStorage()));
-    setSettingsReady(true);
+    const frame = requestAnimationFrame(() => {
+      setSettings(readSettings(cachedLocalStorage()));
+      setSettingsReady(true);
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
   const progress = useCampaignProgress(seed);
   const def = campaign.missions[mission];
