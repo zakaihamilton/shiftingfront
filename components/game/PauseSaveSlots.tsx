@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { DialogPortal } from "@/components/ui/DialogPortal";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
@@ -130,23 +131,25 @@ export function PauseSaveSlots({
         </ConsoleButton>
       </div>
       {pendingOverwrite ? (
-        <div className={styles.confirmOverlay}>
-          <MetalPanel
-            ref={overwriteDialogRef}
-            tabIndex={-1}
-            className={styles.confirmDialog}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="overwrite-slot-title"
-          >
-            <ConsoleLabel as="h2" id="overwrite-slot-title">Overwrite save slot?</ConsoleLabel>
-            <p className={styles.slotCopy}>Replace {pendingOverwrite.name}? The previous snapshot cannot be recovered.</p>
-            <div className={styles.slotConfirmActions}>
-              <ConsoleButton muted onClick={() => setPendingOverwrite(null)}>Cancel</ConsoleButton>
-              <ConsoleButton onClick={() => save(pendingOverwrite.id)}>Overwrite</ConsoleButton>
-            </div>
-          </MetalPanel>
-        </div>
+        <DialogPortal>
+          <div className={styles.confirmOverlay}>
+            <MetalPanel
+              ref={overwriteDialogRef}
+              tabIndex={-1}
+              className={styles.confirmDialog}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="overwrite-slot-title"
+            >
+              <ConsoleLabel as="h2" id="overwrite-slot-title">Overwrite save slot?</ConsoleLabel>
+              <p className={styles.slotCopy}>Replace {pendingOverwrite.name}? The previous snapshot cannot be recovered.</p>
+              <div className={styles.slotConfirmActions}>
+                <ConsoleButton muted onClick={() => setPendingOverwrite(null)}>Cancel</ConsoleButton>
+                <ConsoleButton onClick={() => save(pendingOverwrite.id)}>Overwrite</ConsoleButton>
+              </div>
+            </MetalPanel>
+          </div>
+        </DialogPortal>
       ) : null}
     </>
   );

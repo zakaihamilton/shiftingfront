@@ -45,6 +45,7 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
   const playField: PlayFieldSurfaceModel = {
     hostRef: runtime.hostRef,
     canvasRef: runtime.canvasRef,
+    tooltipCanvasRef: runtime.tooltipCanvasRef,
     panAvail: runtime.panAvail,
     hotPan: runtime.hotPan,
     campaign: runtime.campaign,

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DialogPortal } from "@/components/ui/DialogPortal";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { KeybindingsModal } from "./KeybindingsModal";
@@ -65,7 +66,20 @@ export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleR
       </div>
       <AudioSettingsControls settings={settings} onChange={onVolumeChange} />
       {keybindsOpen && onUpdateKeyBindings ? <KeybindingsModal bindings={settings.keyBindings} onSave={onUpdateKeyBindings} onClose={() => setKeybindsOpen(false)} /> : null}
-      {confirmResetOpen ? <div className={styles.confirmOverlay}><MetalPanel ref={resetDialogRef} tabIndex={-1} className={styles.confirmDialog} role="dialog" aria-modal="true" aria-labelledby="reset-data-title"><ConsoleLabel as="h2" id="reset-data-title">Reset All Game Data?</ConsoleLabel><p className={styles.slotCopy} style={{ marginTop: "0.5rem" }}>This will permanently erase all local campaign progress, named save slots, autosaves, and custom settings. This action cannot be undone.</p><div className={styles.slotConfirmActions}><ConsoleButton muted onClick={() => setConfirmResetOpen(false)}>Cancel</ConsoleButton><ConsoleButton onClick={handleResetAllData}>Confirm Reset</ConsoleButton></div></MetalPanel></div> : null}
+      {confirmResetOpen ? (
+        <DialogPortal>
+          <div className={styles.confirmOverlay}>
+            <MetalPanel ref={resetDialogRef} tabIndex={-1} className={styles.confirmDialog} role="dialog" aria-modal="true" aria-labelledby="reset-data-title">
+              <ConsoleLabel as="h2" id="reset-data-title">Reset All Game Data?</ConsoleLabel>
+              <p className={styles.slotCopy} style={{ marginTop: "0.5rem" }}>This will permanently erase all local campaign progress, named save slots, autosaves, and custom settings. This action cannot be undone.</p>
+              <div className={styles.slotConfirmActions}>
+                <ConsoleButton muted onClick={() => setConfirmResetOpen(false)}>Cancel</ConsoleButton>
+                <ConsoleButton onClick={handleResetAllData}>Confirm Reset</ConsoleButton>
+              </div>
+            </MetalPanel>
+          </div>
+        </DialogPortal>
+      ) : null}
     </>
   );
 }

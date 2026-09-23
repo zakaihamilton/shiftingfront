@@ -14,6 +14,7 @@ import type { BuildingKind, SimEvent } from "../../lib/types";
 
 const renderGameFrame = vi.hoisted(() => vi.fn(() => ({
   worldCtx: null,
+  tooltipCtx: null,
   miniCtx: null,
   secondaryMiniCtx: null,
   fx: [],
@@ -68,6 +69,7 @@ describe("useGameRenderer", () => {
       const stateRef = useRef(state);
       const hostRef = useRef<HTMLDivElement | null>(null);
       const canvasRef = useRef<HTMLCanvasElement | null>(null);
+      const tooltipCanvasRef = useRef<HTMLCanvasElement | null>(null);
       const miniRef = useRef<HTMLCanvasElement | null>(null);
       const mobileMiniRef = useRef<HTMLCanvasElement | null>(null);
       const camRef = useRef(createCamera());
@@ -82,6 +84,7 @@ describe("useGameRenderer", () => {
         stateRef,
         hostRef,
         canvasRef,
+        tooltipCanvasRef,
         miniRef,
         mobileMiniRef,
         camRef,

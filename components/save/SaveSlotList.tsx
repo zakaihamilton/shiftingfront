@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DialogPortal } from "@/components/ui/DialogPortal";
 import { StatusBadge } from "@/components/ui/Dossier";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
@@ -112,16 +113,18 @@ export function SaveSlotList({
       </div>
 
       {pendingDelete ? (
-        <div className={styles.confirmOverlay}>
-          <MetalPanel ref={deleteDialogRef} tabIndex={-1} className={styles.confirmDialog} role="dialog" aria-modal="true" aria-labelledby="delete-save-title">
-            <ConsoleLabel as="h2" id="delete-save-title">{pendingDelete.kind === "slot" ? "Delete save slot?" : "Delete autosave?"}</ConsoleLabel>
-            <p className={styles.confirmCopy}>{pendingDelete.kind === "slot" ? `Delete ${pendingDelete.name}? This save slot cannot be recovered.` : `Delete the autosave for ${pendingDelete.campaignName}? This saved campaign cannot be recovered.`}</p>
-            <div className={styles.confirmActions}>
-              <ConsoleButton muted onClick={() => setPendingDelete(null)}>Cancel</ConsoleButton>
-              <ConsoleButton className={styles.confirmDelete} onClick={() => { onDelete?.(pendingDelete); setPendingDelete(null); }}>{pendingDelete.kind === "slot" ? "Delete save slot" : "Delete autosave"}</ConsoleButton>
-            </div>
-          </MetalPanel>
-        </div>
+        <DialogPortal>
+          <div className={styles.confirmOverlay}>
+            <MetalPanel ref={deleteDialogRef} tabIndex={-1} className={styles.confirmDialog} role="dialog" aria-modal="true" aria-labelledby="delete-save-title">
+              <ConsoleLabel as="h2" id="delete-save-title">{pendingDelete.kind === "slot" ? "Delete save slot?" : "Delete autosave?"}</ConsoleLabel>
+              <p className={styles.confirmCopy}>{pendingDelete.kind === "slot" ? `Delete ${pendingDelete.name}? This save slot cannot be recovered.` : `Delete the autosave for ${pendingDelete.campaignName}? This saved campaign cannot be recovered.`}</p>
+              <div className={styles.confirmActions}>
+                <ConsoleButton muted onClick={() => setPendingDelete(null)}>Cancel</ConsoleButton>
+                <ConsoleButton className={styles.confirmDelete} onClick={() => { onDelete?.(pendingDelete); setPendingDelete(null); }}>{pendingDelete.kind === "slot" ? "Delete save slot" : "Delete autosave"}</ConsoleButton>
+              </div>
+            </MetalPanel>
+          </div>
+        </DialogPortal>
       ) : null}
     </>
   );

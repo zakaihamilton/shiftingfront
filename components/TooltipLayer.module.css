@@ -1,6 +1,6 @@
 .tooltip {
   position: fixed;
-  z-index: 80;
+  z-index: 100;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;

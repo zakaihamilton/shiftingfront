@@ -12,6 +12,7 @@ import styles from "./Battlefield.module.css";
 export function Battlefield({
   hostRef,
   canvasRef,
+  tooltipCanvasRef,
   width,
   height,
   panAvail,
@@ -43,6 +44,7 @@ export function Battlefield({
 }: {
   hostRef: Ref<HTMLDivElement>;
   canvasRef: Ref<HTMLCanvasElement>;
+  tooltipCanvasRef: Ref<HTMLCanvasElement>;
   width: number;
   height: number;
   panAvail: PanAvailability;
@@ -91,6 +93,7 @@ export function Battlefield({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       />
+      <canvas ref={tooltipCanvasRef} className={styles.tooltipCanvas} aria-hidden="true" />
       <ScrollArrow dir="left" available={panAvail.left} hot={hotPan === "left"} />
       <ScrollArrow dir="right" available={panAvail.right} hot={hotPan === "right"} />
       <ScrollArrow dir="up" available={panAvail.up} hot={hotPan === "up"} />

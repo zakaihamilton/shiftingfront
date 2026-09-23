@@ -136,6 +136,7 @@ export type CanvasPointerHandlers = {
 export type PlayFieldSurfaceModel = {
   hostRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  tooltipCanvasRef: RefObject<HTMLCanvasElement | null>;
   panAvail: PanAvailability;
   hotPan: PanDir | null;
   campaign: Campaign;
@@ -270,6 +271,7 @@ export interface GameRuntime {
   paused: boolean;
   hostRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  tooltipCanvasRef: RefObject<HTMLCanvasElement | null>;
   miniRef: RefObject<HTMLCanvasElement | null>;
   panAvail: PanAvailability;
   hotPan: PanDir | null;

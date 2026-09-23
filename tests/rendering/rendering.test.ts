@@ -207,7 +207,7 @@ describe("seeded terrain atlas", () => {
     const b = bakeTerrainAtlasData(second);
     const c = bakeTerrainAtlasData(other);
     expect(a.key).toBe(b.key);
-    expect(a.key).toContain("world-atlas-v20-tactical-feature-regions");
+    expect(a.key).toContain("world-atlas-v21-no-feature-boundaries");
     expect(a.data).toEqual(b.data);
     expect(terrainAtlasKey(first)).toBe(a.key);
     expect(c.key).not.toBe(a.key);
@@ -851,7 +851,7 @@ describe("terrain scroll cache key", () => {
     const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" }, seed: 832 });
     const cam = createCamera();
     const a = terrainContentKey(state, cam, 640, 360);
-    expect(a).toContain("world-atlas-v31-soft-skirt-backdrop");
+    expect(a).toContain("world-atlas-v32-no-feature-boundaries");
     cam.x += 40;
     cam.y -= 18;
     expect(terrainContentKey(state, cam, 640, 360)).toBe(a);

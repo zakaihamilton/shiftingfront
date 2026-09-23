@@ -23,6 +23,7 @@ export function renderWorld(
   selected: Set<number>,
   hoverTile: { x: number; y: number } | null,
   extras: RenderExtras = {},
+  tooltipCtx: CanvasRenderingContext2D = ctx,
 ): WorldPhaseTimings | null {
   const profile = isPerfHudEnabled();
   const timings: WorldPhaseTimings = { terrain: 0, fx: 0, entities: 0, combat: 0 };
@@ -77,7 +78,7 @@ export function renderWorld(
   drawSelectBox(ctx, extras.selectBox);
   drawCommandMarker(ctx, state, cam, extras.commandMarker, timeMs, extras.reducedMotion);
 
-  renderHoverPhase(ctx, state, cam, hoverTile, w, h, extras);
+  renderHoverPhase(ctx, state, cam, hoverTile, w, h, extras, tooltipCtx);
   lap("combat");
   return profile ? timings : null;
 }

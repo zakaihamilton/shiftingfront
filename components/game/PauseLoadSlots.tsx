@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { DialogPortal } from "@/components/ui/DialogPortal";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
@@ -100,32 +101,34 @@ export function PauseLoadSlots({
         </ConsoleButton>
       </div>
       {pending ? (
-        <div className={styles.confirmOverlay}>
-          <MetalPanel
-            ref={confirmRef}
-            tabIndex={-1}
-            className={styles.confirmDialog}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="load-slot-title"
-          >
-            <ConsoleLabel as="h2" id="load-slot-title">Load mission?</ConsoleLabel>
-            <p className={styles.slotCopy}>
-              Load {pending.kind === "slot" ? pending.name : "the autosave for this campaign"}? Unsaved progress will be lost.
-            </p>
-            <div className={styles.slotConfirmActions}>
-              <ConsoleButton muted onClick={() => setPending(null)}>Cancel</ConsoleButton>
-              <ConsoleButton
-                onClick={() => {
-                  onLoad(pending);
-                  setPending(null);
-                }}
-              >
-                Load mission
-              </ConsoleButton>
-            </div>
-          </MetalPanel>
-        </div>
+        <DialogPortal>
+          <div className={styles.confirmOverlay}>
+            <MetalPanel
+              ref={confirmRef}
+              tabIndex={-1}
+              className={styles.confirmDialog}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="load-slot-title"
+            >
+              <ConsoleLabel as="h2" id="load-slot-title">Load mission?</ConsoleLabel>
+              <p className={styles.slotCopy}>
+                Load {pending.kind === "slot" ? pending.name : "the autosave for this campaign"}? Unsaved progress will be lost.
+              </p>
+              <div className={styles.slotConfirmActions}>
+                <ConsoleButton muted onClick={() => setPending(null)}>Cancel</ConsoleButton>
+                <ConsoleButton
+                  onClick={() => {
+                    onLoad(pending);
+                    setPending(null);
+                  }}
+                >
+                  Load mission
+                </ConsoleButton>
+              </div>
+            </MetalPanel>
+          </div>
+        </DialogPortal>
       ) : null}
     </>
   );

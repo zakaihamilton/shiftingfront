@@ -25,6 +25,7 @@ export function renderHoverPhase(
   w: number,
   h: number,
   extras: RenderExtras,
+  tooltipCtx: CanvasRenderingContext2D = ctx,
 ): void {
   drawTutorialTargets(ctx, state, cam, extras.clockMs ?? 0, extras.reducedMotion ?? false);
 
@@ -88,15 +89,15 @@ export function renderHoverPhase(
         const buildingCy = ent.y + (fp.h - 1) / 2;
         const s = tileToScreen(buildingCx, buildingCy, cam, elev);
         unitH = 55;
-        drawTooltip(ctx, s.x, s.y - unitH * cam.zoom, tooltipLines(state, ent, extras), w, h, true);
+        drawTooltip(tooltipCtx, s.x, s.y - unitH * cam.zoom, tooltipLines(state, ent, extras), w, h, true);
       } else {
         unitH = ent.kind === "infantry" ? 44 : ent.kind === "antiArmor" ? 48 : 56;
         const s = tileToScreen(cx, cy, cam, elev);
-        drawTooltip(ctx, s.x, s.y - unitH * cam.zoom, tooltipLines(state, ent, extras), w, h, true);
+        drawTooltip(tooltipCtx, s.x, s.y - unitH * cam.zoom, tooltipLines(state, ent, extras), w, h, true);
       }
     } else if (hoverTile) {
       const s = tileToScreen(hoverTile.x, hoverTile.y, cam, heightAt(state, hoverTile.x, hoverTile.y));
-      drawTooltip(ctx, s.x, s.y - 18 * cam.zoom, tileTooltipLines(state, hoverTile.x, hoverTile.y), w, h, true);
+      drawTooltip(tooltipCtx, s.x, s.y - 18 * cam.zoom, tileTooltipLines(state, hoverTile.x, hoverTile.y), w, h, true);
     }
   }
 }

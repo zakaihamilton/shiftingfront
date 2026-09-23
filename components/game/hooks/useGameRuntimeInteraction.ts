@@ -21,6 +21,7 @@ export function useGameRuntimeInteraction({
   setState,
   hostRef,
   canvasRef,
+  tooltipCanvasRef,
   miniRef,
   mobileMiniRef,
   audioSettings,
@@ -37,6 +38,7 @@ export function useGameRuntimeInteraction({
   setState: (state: SimState) => void;
   hostRef: React.RefObject<HTMLDivElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  tooltipCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   miniRef: React.RefObject<HTMLCanvasElement | null>;
   mobileMiniRef: React.RefObject<HTMLCanvasElement | null>;
   audioSettings: Pick<GameSettings, "reducedMotion" | "colorblindMode">;
@@ -91,7 +93,7 @@ export function useGameRuntimeInteraction({
   const { hoverRef, cursorRef, boxRef, commandMarkerRef, resetInput, onDown, onEnter, onMove, onLeave, onUp, onCancel } = input;
 
   const renderer = useGameRenderer({
-    stateRef, hostRef, canvasRef, miniRef, mobileMiniRef, camRef, selected, hoverRef, cursorRef, boxRef, commandMarkerRef,
+    stateRef, hostRef, canvasRef, tooltipCanvasRef, miniRef, mobileMiniRef, camRef, selected, hoverRef, cursorRef, boxRef, commandMarkerRef,
     place, repair, sell, reducedMotionOverride: audioSettings.reducedMotion, colorblindMode: audioSettings.colorblindMode,
   });
 

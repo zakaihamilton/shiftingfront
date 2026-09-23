@@ -11,8 +11,10 @@ type Point = { x: number; y: number };
 export type RenderFrameOptions = {
   state: SimState;
   canvas: HTMLCanvasElement;
+  tooltipCanvas?: HTMLCanvasElement | null;
   host: HTMLElement;
   worldCtx: CanvasRenderingContext2D | null;
+  tooltipCtx?: CanvasRenderingContext2D | null;
   miniCanvas: HTMLCanvasElement | null;
   miniCtx: CanvasRenderingContext2D | null;
   secondaryMiniCanvas: HTMLCanvasElement | null;
@@ -35,6 +37,7 @@ export type RenderFrameOptions = {
 
 export type RenderFrameResult = {
   worldCtx: CanvasRenderingContext2D | null;
+  tooltipCtx: CanvasRenderingContext2D | null;
   miniCtx: CanvasRenderingContext2D | null;
   secondaryMiniCtx: CanvasRenderingContext2D | null;
   fx: FxBurst[];
@@ -65,6 +68,11 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     canvas.width = dimensions.width;
     canvas.height = dimensions.height;
   }
+  const tooltipCanvas = options.tooltipCanvas;
+  if (tooltipCanvas && (tooltipCanvas.width !== dimensions.width || tooltipCanvas.height !== dimensions.height)) {
+    tooltipCanvas.width = dimensions.width;
+    tooltipCanvas.height = dimensions.height;
+  }
 
   let worldCtx = options.worldCtx;
   if (!worldCtx || worldCtx.canvas !== canvas) {
@@ -73,10 +81,20 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
   if (!worldCtx) {
     return {
       worldCtx: null,
+      tooltipCtx: options.tooltipCtx ?? null,
       miniCtx: options.miniCtx,
       secondaryMiniCtx: options.secondaryMiniCtx,
       fx: options.fx,
     };
+  }
+
+  let tooltipCtx: CanvasRenderingContext2D | null = worldCtx;
+  if (tooltipCanvas) {
+    const cachedTooltipCtx = options.tooltipCtx;
+    tooltipCtx = cachedTooltipCtx?.canvas === tooltipCanvas
+      ? cachedTooltipCtx
+      : tooltipCanvas.getContext("2d");
+    tooltipCtx?.clearRect(0, 0, tooltipCanvas.width, tooltipCanvas.height);
   }
 
   extras.cursor = cursor;
@@ -92,7 +110,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
   extras.colorblindMode = options.colorblindMode;
 
   const perfStarted = isPerfHudEnabled() ? performance.now() : 0;
-  const worldTimings = renderWorld(worldCtx, state, cam, selected, hover, extras);
+  const worldTimings = renderWorld(worldCtx, state, cam, selected, hover, extras, tooltipCtx ?? worldCtx);
   let miniCtx = options.miniCtx;
   let secondaryMiniCtx = options.secondaryMiniCtx;
   let minimapMs = 0;
@@ -123,5 +141,5 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     canvas.dataset.perfFrameMs = (performance.now() - perfStarted).toFixed(2);
   }
 
-  return { worldCtx, miniCtx, secondaryMiniCtx, fx };
+  return { worldCtx, tooltipCtx, miniCtx, secondaryMiniCtx, fx };
 }

@@ -13,6 +13,7 @@ export type GamePlayFieldProps = PlayFieldSurfaceModel;
 export function GamePlayField({
   hostRef,
   canvasRef,
+  tooltipCanvasRef,
   panAvail,
   hotPan,
   campaign,
@@ -29,6 +30,7 @@ export function GamePlayField({
     <Battlefield
       hostRef={hostRef}
       canvasRef={canvasRef}
+      tooltipCanvasRef={tooltipCanvasRef}
       width={MIN_RENDER_WIDTH}
       height={MIN_RENDER_HEIGHT}
       panAvail={panAvail}
