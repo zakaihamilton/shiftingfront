@@ -150,8 +150,10 @@ function dirPoint(
   if (mission.win.kind === "annihilate") {
     const pAssaultTank = dirPoint(p, pVecs.forward, pVecs.lateral, 6, 2, state.width, state.height);
     spawnUnit(state, 0, "tank", pAssaultTank.x, pAssaultTank.y);
+    const pAssaultAntiArmor = dirPoint(p, pVecs.forward, pVecs.lateral, 6, -2, state.width, state.height);
+    spawnUnit(state, 0, "antiArmor", pAssaultAntiArmor.x, pAssaultAntiArmor.y);
   }
-  if (mission.win.kind === "decapitate") {
+  if (mission.win.kind === "decapitate" || mission.win.kind === "annihilate") {
     const pAssaultMedic = dirPoint(p, pVecs.forward, pVecs.lateral, 3, 3, state.width, state.height);
     spawnUnit(state, 0, "medic", pAssaultMedic.x, pAssaultMedic.y);
   }

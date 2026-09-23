@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { runReplay } from "../../lib/sim/replay";
 
 const BASELINES = [
-  { kind: "annihilate", seed: 1, missionIndex: 2, digest: "8cf58d376440352b75351031b6468c922714f925e676ea772e2d77211ca8bd11" },
+  // Annihilate's assault squad and objective prioritization changed intentionally.
+  { kind: "annihilate", seed: 1, missionIndex: 2, digest: "75e89c3833b761cc20caba6cd7a934b5628dad914607c6d125103b4db95208c1" },
   { kind: "decapitate", seed: 1, missionIndex: 4, digest: "61c48db78145d765c4f1162db113d61495897e05fbea2ab615ec6ddf2f115e93" },
   { kind: "destroyMarked", seed: 0, missionIndex: 3, digest: "ab028ca727baebeae1b132fe34a2c3d114d6b626c9491041a733e3fda0b7ffd3" },
   // Escort includes the expanded completion buffer and convoy unblocking path.

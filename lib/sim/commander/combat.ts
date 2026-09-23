@@ -35,8 +35,12 @@ export function objectiveEntity(state: SimState): Entity | undefined {
   if (kind === "razeAll") return enemyEntitiesView(state).find((entity) => entity.class === "building");
   if (kind === "annihilate") {
     const enemies = enemyEntitiesView(state);
-    return enemies.find((entity) => entity.class === "unit" && !isAirUnit(entity.kind))
+    // Shut down enemy unit production before chasing the force it generates.
+    return enemies.find((entity) => entity.class === "building" && (entity.kind === "barracks" || entity.kind === "factory"))
+      ?? enemies.find((entity) => isCombatEntity(entity) && !isAirUnit(entity.kind))
       ?? enemies.find((entity) => entity.class === "building")
+      ?? enemies.find((entity) => entity.class === "unit" && !isAirUnit(entity.kind))
+      ?? enemies.find(isCombatEntity)
       ?? enemies[0];
   }
   return undefined;

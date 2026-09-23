@@ -66,8 +66,8 @@ const OBJECTIVE_CONTRACTS: Partial<Record<MissionKind, MissionObjectiveContract>
     pressureAlert: "Final enemy resistance is forming around the last hostiles.",
     repairPolicy: "none",
     assaultDelay: 600,
-    productionScale: 1.4,
-    startingSupport: true,
+    productionScale: 1.8,
+    startingSupport: false,
   },
 };
 
