@@ -225,7 +225,6 @@
     right: 0;
     pointer-events: auto;
     visibility: visible;
-    animation: sidebarIn 0.22s ease;
   }
 
   .sidebar[data-mobile-open="false"] {
@@ -233,7 +232,6 @@
     right: auto;
     pointer-events: none;
     visibility: hidden;
-    animation: none;
   }
 
   .sidebar > *:not(.rail):not(.build) {
@@ -270,11 +268,6 @@
     border: 1px solid var(--chrome-cyan-dim);
     background: color-mix(in srgb, var(--chrome-cyan) 7%, var(--chrome-steel-lo));
   }
-}
-
-@keyframes sidebarIn {
-  from { transform: translateX(100%); }
-  to { transform: none; }
 }
 
 @media (min-width: 800px) and (max-width: 1023px) and (orientation: portrait) {
