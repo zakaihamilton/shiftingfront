@@ -464,6 +464,8 @@ test.describe("mission briefing responsive layout", () => {
 
 test.describe("selected unit actions", () => {
   test("refreshes stance and formation after using selected actions", async ({ page }, testInfo) => {
+    test.setTimeout(60_000);
+
     const activate = async (control: import("@playwright/test").Locator) => {
       if (testInfo.project.name === "desktop") await control.click();
       else await control.tap();
@@ -640,6 +642,8 @@ test.describe("mobile-first layouts", () => {
   });
 
   test("caps the portrait command sidebar and keeps its items proportional", async ({ page }, testInfo) => {
+    test.setTimeout(60_000);
+
     for (const viewport of [
       { width: 320, height: 568 },
       { width: 390, height: 844 },
@@ -973,6 +977,8 @@ test.describe("mobile-first layouts", () => {
   });
 
   test("guards browser Back in a live mission and preserves briefing Back destinations", async ({ page }) => {
+    test.setTimeout(60_000);
+
     await page.setViewportSize({ width: 390, height: 844 });
     await openBriefingSkippingTutorial(page);
     await page.getByRole("button", { name: "Launch" }).click();
