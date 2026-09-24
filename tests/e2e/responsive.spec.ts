@@ -606,6 +606,25 @@ test.describe("mobile-first layouts", () => {
         expect(sidebarBounds!.x + sidebarBounds!.width).toBeLessThanOrEqual(viewport.width);
       }
       await expect(page.getByTestId("mobile-touch-controls")).toHaveCount(0);
+
+      // Invariant: On initial load on mobile, the HUD overlay must not occlude more than 20% of the battlefield
+      const hud = page.getByTestId("battlefield-status");
+      const hudBounds = await hud.boundingBox();
+      if (hudBounds) {
+        const coverageRatio = (hudBounds.width * hudBounds.height) / (viewport.width * viewport.height);
+        expect(coverageRatio).toBeLessThan(0.20);
+      }
+
+      // Invariant: Operation metadata and mission directive headers must never collide or overlap
+      const operation = page.locator("[class*='operationBar']");
+      const directiveStack = page.locator("[class*='objectiveStack']");
+      const opBounds = await operation.boundingBox();
+      const dirBounds = await directiveStack.boundingBox();
+      if (opBounds && dirBounds) {
+        const horizontalOverlap = opBounds.x < dirBounds.x + dirBounds.width && opBounds.x + opBounds.width > dirBounds.x;
+        const verticalOverlap = opBounds.y < dirBounds.y + dirBounds.height && opBounds.y + opBounds.height > dirBounds.y;
+        expect(horizontalOverlap && verticalOverlap).toBe(false);
+      }
     });
   }
 
