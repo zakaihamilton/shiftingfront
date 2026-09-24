@@ -254,3 +254,14 @@
   text-transform: none;
   white-space: nowrap;
 }
+
+@media (max-width: 799px) and (orientation: landscape), (max-width: 1023px) and (orientation: portrait) {
+  .caption span {
+    font-size: var(--text-2xs);
+    letter-spacing: 0.02em;
+  }
+
+  .caption b {
+    font-size: var(--text-2xs);
+  }
+}

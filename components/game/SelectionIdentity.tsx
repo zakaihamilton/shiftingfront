@@ -3,6 +3,7 @@ import { cx } from "@/lib/ui/cx";
 import type { Entity, FactionVisualProfile, Palette, Stance } from "@/lib/types";
 import { SUPPORT_MODE_LABEL, stanceLabel } from "@/lib/ui/copy";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
+import { triggerHaptic } from "@/lib/ui/haptics";
 import { SpritePreview } from "./SpritePreview";
 import styles from "./SelectionPanel.module.css";
 
@@ -11,11 +12,13 @@ export function SelectionIdentity({
   palette,
   profile,
   stance,
+  onCenter,
 }: {
   selected: Entity;
   palette: Palette;
   profile: FactionVisualProfile;
   stance: Stance;
+  onCenter?: () => void;
 }) {
   const currentOrder = selected.class === "unit"
     ? selected.repairing
@@ -37,10 +40,23 @@ export function SelectionIdentity({
       </div>
       <div>
         <strong
-          className={styles.name}
+          className={cx(styles.name, onCenter && styles.centerable)}
           data-testid="selected-kind"
-          data-tooltip={`${labelFor(selected.kind)}${isUnitKind(selected.kind) ? ` · ${UNIT_STATS[selected.kind].armor} armor · ${UNIT_STATS[selected.kind].weapon} weapon` : ""}`}
+          data-tooltip={`${labelFor(selected.kind)}${isUnitKind(selected.kind) ? ` · ${UNIT_STATS[selected.kind].armor} armor · ${UNIT_STATS[selected.kind].weapon} weapon` : ""}${onCenter ? " · Click to center camera" : ""}`}
           data-shortcut={SHORTCUT.center}
+          role={onCenter ? "button" : undefined}
+          tabIndex={onCenter ? 0 : undefined}
+          onClick={onCenter ? () => {
+            triggerHaptic("tap");
+            onCenter();
+          } : undefined}
+          onKeyDown={onCenter ? (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              triggerHaptic("tap");
+              onCenter();
+            }
+          } : undefined}
         >
           {labelFor(selected.kind)}
         </strong>

@@ -43,6 +43,18 @@
   white-space: nowrap;
 }
 
+.centerable {
+  cursor: pointer;
+  transition: color 0.14s ease;
+}
+
+.centerable:hover,
+.centerable:focus-visible {
+  color: var(--chrome-focus);
+  text-decoration: underline;
+  outline: none;
+}
+
 .portrait {
   position: relative;
   display: flex;

@@ -6,7 +6,7 @@ import { AudioRoot } from "@/components/audio/AudioRoot";
 import { TooltipLayer } from "@/components/TooltipLayer";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
-import { APP_DESCRIPTION, APP_NAME, APP_THEME_COLOR, SITE_URL, shouldLoadVercelAnalytics } from "@/lib/site";
+import { APP_DESCRIPTION, APP_NAME, APP_THEME_COLOR, APP_VIEWPORT, SITE_URL, shouldLoadVercelAnalytics } from "@/lib/site";
 import styles from "./layout.module.css";
 
 const barlowCondensed = localFont({
@@ -104,10 +104,7 @@ const jsonLd = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: APP_THEME_COLOR,
-  colorScheme: "dark",
-};
+export const viewport: Viewport = APP_VIEWPORT;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { APP_VIEWPORT } from "../../lib/site";
 import { BattlefieldHud, isMobileDirectiveViewport } from "../../components/game/BattlefieldHud";
 import { CommandCameo } from "../../components/game/CommandCameo";
+import { SelectionIdentity } from "../../components/game/SelectionIdentity";
 import { resolvePointerUp } from "../../components/game/hooks/gamePointerUp";
 import { selectionProjectionPoint } from "../../components/game/hooks/selectionBox";
 import { createCamera, tileToScreen } from "../../lib/iso";
@@ -215,6 +217,46 @@ describe("UX & Ergonomics Invariants", () => {
       } finally {
         window.matchMedia = originalMatchMedia;
       }
+    });
+
+    it("enables camera center affordance on SelectionIdentity with keyboard and touch support", () => {
+      const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+      const unit = addUnit(state, 0, "tank", 5, 5);
+      const onCenter = vi.fn();
+
+      render(
+        <SelectionIdentity
+          selected={unit}
+          palette={palette}
+          profile={profile}
+          stance="aggressive"
+          onCenter={onCenter}
+        />,
+      );
+
+      const nameButton = screen.getByRole("button", { name: "Tank" });
+      expect(nameButton).toHaveAttribute("tabindex", "0");
+      expect(nameButton).toHaveAttribute("data-shortcut", "Space");
+
+      // Clicking centers camera
+      fireEvent.click(nameButton);
+      expect(onCenter).toHaveBeenCalledTimes(1);
+
+      // Pressing Enter centers camera
+      fireEvent.keyDown(nameButton, { key: "Enter" });
+      expect(onCenter).toHaveBeenCalledTimes(2);
+
+      // Pressing Space centers camera
+      fireEvent.keyDown(nameButton, { key: " " });
+      expect(onCenter).toHaveBeenCalledTimes(3);
+    });
+
+    it("enforces PWA edge-to-edge coverage and browser zoom prevention invariants in layout viewport", () => {
+      expect(APP_VIEWPORT.width).toBe("device-width");
+      expect(APP_VIEWPORT.initialScale).toBe(1);
+      expect(APP_VIEWPORT.maximumScale).toBe(1);
+      expect(APP_VIEWPORT.userScalable).toBe(false);
+      expect(APP_VIEWPORT.viewportFit).toBe("cover");
     });
   });
 });

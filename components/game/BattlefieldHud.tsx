@@ -4,6 +4,7 @@ import type { MissionObjective } from "@/lib/gen/story";
 import { deadlineUrgency, type ObjectiveCardModel } from "@/lib/ui/missionPresentation";
 import type { DoctrineHint } from "@/lib/ui/doctrine";
 import { useFullscreen } from "@/lib/ui/fullscreen";
+import { triggerHaptic } from "@/lib/ui/haptics";
 import styles from "./Battlefield.module.css";
 
 export function isMobileDirectiveViewport(): boolean {
@@ -103,6 +104,7 @@ export function BattlefieldHud({
     ?? primaryCard?.label
     ?? objective;
   const toggleDirective = () => {
+    triggerHaptic("tap");
     setDirectiveExpanded((expanded) => !expanded);
     onObjectivePanelToggle?.();
   };
@@ -143,7 +145,10 @@ export function BattlefieldHud({
                 className={styles.directiveToggle}
                 aria-label={fullscreen.isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
                 data-tooltip={fullscreen.isFullscreen ? `Exit fullscreen (${fullscreen.shortcut})` : `Enter fullscreen (${fullscreen.shortcut})`}
-                onClick={fullscreen.toggle}
+                onClick={() => {
+                  triggerHaptic("tap");
+                  fullscreen.toggle();
+                }}
               >
                 <span className={styles.directiveToggleIcon} aria-hidden="true">
                   {fullscreen.isFullscreen ? "🗗" : "⛶"}

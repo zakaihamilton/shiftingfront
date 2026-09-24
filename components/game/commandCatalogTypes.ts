@@ -10,6 +10,7 @@ export type CommandCatalogActions = {
   onStop: () => void;
   onStance: (stance: Stance) => void;
   onFormation: (formation: Formation) => void;
+  onCenter?: () => void;
   selectionCount?: number;
 };
 
