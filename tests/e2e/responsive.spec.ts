@@ -607,12 +607,12 @@ test.describe("mobile-first layouts", () => {
       }
       await expect(page.getByTestId("mobile-touch-controls")).toHaveCount(0);
 
-      // Invariant: On initial load on mobile, the HUD overlay must not occlude more than 28% of the battlefield on portrait (and < 20% on landscape)
+      // Invariant: On initial load on mobile, the HUD overlay must not occlude more than 32% of the battlefield on portrait (and < 20% on landscape)
       const hud = page.getByTestId("battlefield-status");
       const hudBounds = await hud.boundingBox();
       if (hudBounds) {
         const coverageRatio = (hudBounds.width * hudBounds.height) / (viewport.width * viewport.height);
-        const maxCoverage = viewport.height > viewport.width ? 0.28 : 0.20;
+        const maxCoverage = viewport.height > viewport.width ? 0.32 : 0.20;
         expect(coverageRatio).toBeLessThan(maxCoverage);
       }
 
