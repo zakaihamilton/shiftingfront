@@ -1,5 +1,12 @@
 // Shifting Front Service Worker — Offline PWA Cache (Complete Runtime Precache)
 const CACHE_NAME = "shiftingfront-v5";
+const requestedDeploymentId = new URL(self.location.href).searchParams.get("dpl");
+const DEPLOYMENT_ID = requestedDeploymentId && /^[a-zA-Z0-9_-]{1,80}$/.test(requestedDeploymentId)
+  ? requestedDeploymentId
+  : null;
+const ACTIVE_CACHE_NAME = DEPLOYMENT_ID
+  ? `shiftingfront-${DEPLOYMENT_ID}`
+  : CACHE_NAME;
 
 const CORE_PRECACHE = [
   "/",
@@ -254,7 +261,7 @@ async function precacheUrl(cache, url, { required, discover }) {
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
-      .open(CACHE_NAME)
+      .open(ACTIVE_CACHE_NAME)
       .then(async (cache) => {
         await Promise.all(
           CORE_PRECACHE.map((url) => precacheUrl(cache, url, { required: true, discover: true })),
@@ -277,7 +284,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key !== CACHE_NAME)
+            .filter((key) => key.startsWith("shiftingfront-") && key !== ACTIVE_CACHE_NAME)
             .map((key) => caches.delete(key)),
         ),
       )
@@ -308,17 +315,22 @@ self.addEventListener("fetch", (event) => {
         .then((response) => {
           if (response.status === 200) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            caches.open(ACTIVE_CACHE_NAME)
+              .then((cache) => cache.put(request, clone))
+              .catch(() => {
+                // Keep serving the network response when the page cannot be cached.
+              });
           }
           return response;
         })
         .catch(async () => {
           // Check exact request first, then fallback ignoring search query parameters (e.g. ?seed=0421&mission=0)
-          const cached = await caches.match(request, { ignoreSearch: true });
+          const cache = await caches.open(ACTIVE_CACHE_NAME);
+          const cached = await cache.match(request, { ignoreSearch: true });
           if (cached) return cached;
-          const cachedPath = await caches.match(url.pathname);
+          const cachedPath = await cache.match(url.pathname);
           if (cachedPath) return cachedPath;
-          const fallback = await caches.match("/");
+          const fallback = await cache.match("/");
           return (
             fallback ||
             new Response(
@@ -349,14 +361,17 @@ self.addEventListener("fetch", (event) => {
 
   if (isStaticAsset) {
     event.respondWith(
-      caches.match(request).then(async (cached) => {
+      caches.open(ACTIVE_CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(request);
         if (cached) return cached;
-        const cachedPath = await caches.match(url.pathname);
+        const cachedPath = await cache.match(url.pathname);
         if (cachedPath) return cachedPath;
         return fetch(request).then((response) => {
           if (response.status === 200) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            cache.put(request, clone).catch(() => {
+              // Keep serving the network response when an asset cannot be cached.
+            });
           }
           return response;
         });
@@ -365,19 +380,27 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 3. Other requests (runtime data/API): Stale-while-revalidate
+  // 3. Route data can contain client module references. Fetch it from this
+  // deployment first so stale Flight/RSC payloads cannot target a newer
+  // webpack runtime; keep the response as an offline fallback for this build.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request)
-        .then((response) => {
-          if (response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+    (async () => {
+      const cache = await caches.open(ACTIVE_CACHE_NAME);
+      try {
+        const response = await fetch(request);
+        if (response.status === 200) {
+          try {
+            await cache.put(request, response.clone());
+          } catch {
+            // A cache write failure must not affect the successful request.
           }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || fetchPromise;
-    }),
+        }
+        return response;
+      } catch {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        throw new Error("Offline and no cached response is available.");
+      }
+    })(),
   );
 });
