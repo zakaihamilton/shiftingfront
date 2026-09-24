@@ -59,6 +59,7 @@ jobs:
           retention-days: 14
 
   health:
+    name: CI health
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
