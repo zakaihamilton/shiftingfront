@@ -6,7 +6,7 @@ import { AudioRoot } from "@/components/audio/AudioRoot";
 import { TooltipLayer } from "@/components/TooltipLayer";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
-import { APP_DESCRIPTION, APP_NAME, APP_THEME_COLOR, APP_VIEWPORT, SITE_URL, shouldLoadVercelAnalytics } from "@/lib/site";
+import { APP_DESCRIPTION, APP_NAME, APP_VIEWPORT, SITE_URL, shouldLoadVercelAnalytics } from "@/lib/site";
 import styles from "./layout.module.css";
 
 const barlowCondensed = localFont({
