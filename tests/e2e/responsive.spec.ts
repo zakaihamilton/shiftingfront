@@ -607,13 +607,10 @@ test.describe("mobile-first layouts", () => {
       }
       await expect(page.getByTestId("mobile-touch-controls")).toHaveCount(0);
 
-      // Invariant: On initial load on mobile, the HUD overlay must not occlude more than 32% of the battlefield on portrait (and < 20% on landscape)
-      const hud = page.getByTestId("battlefield-status");
-      const hudBounds = await hud.boundingBox();
-      if (hudBounds) {
-        const coverageRatio = (hudBounds.width * hudBounds.height) / (viewport.width * viewport.height);
-        const maxCoverage = viewport.height > viewport.width ? 0.32 : 0.20;
-        expect(coverageRatio).toBeLessThan(maxCoverage);
+      // Invariant: On mobile viewports, the mission directive body must start collapsed to maximize battlefield visibility
+      const directiveBody = page.locator("#mission-directive-body");
+      if (viewport.width < 1024 || viewport.height <= 600) {
+        await expect(directiveBody).toBeHidden();
       }
 
       // Invariant: Operation metadata and mission directive headers must never collide or overlap
