@@ -27,7 +27,7 @@ export function createCampaign(seed: number): ReadonlyCampaign {
   const cached = campaignCache.get(seed);
   if (cached) return cached;
   const world = generateWorld(seed);
-  const factions = generateFactions(seed);
+  const factions = generateFactions(seed, world.biome);
   const characters = generateCharacters(seed);
   const kinds = pickMissionKinds(seed);
   const missions: MissionDef[] = kinds.map((kind, index) => {

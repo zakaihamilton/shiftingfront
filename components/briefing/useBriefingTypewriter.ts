@@ -11,6 +11,7 @@ export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete
   const [shown, setShown] = useState(0);
   const [playId, setPlayId] = useState(0);
   const storyRef = useRef<HTMLDivElement>(null);
+  const autoFollowStoryRef = useRef(true);
   const shownRef = useRef(0);
   const completedRef = useRef(false);
   const [reducedMotion, setReducedMotion] = useState(() => (
@@ -31,14 +32,22 @@ export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete
   const replayTransmission = useCallback(() => {
     shownRef.current = 0;
     completedRef.current = false;
+    autoFollowStoryRef.current = true;
     setShown(0);
     setPlayId((n) => n + 1);
   }, []);
 
   const skipToEnd = useCallback(() => {
     shownRef.current = totalChars;
+    autoFollowStoryRef.current = true;
     setShown(totalChars);
   }, [totalChars]);
+
+  const onStoryScroll = useCallback(() => {
+    const el = storyRef.current;
+    if (!el) return;
+    autoFollowStoryRef.current = el.scrollHeight - el.clientHeight - el.scrollTop <= 8;
+  }, []);
 
   useEffect(() => {
     shownRef.current = displayShown;
@@ -96,7 +105,7 @@ export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete
 
   useLayoutEffect(() => {
     const el = storyRef.current;
-    if (!el) return;
+    if (!el || !autoFollowStoryRef.current) return;
     el.scrollTop = el.scrollHeight;
   }, [displayShown]);
 
@@ -111,6 +120,7 @@ export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete
     playId,
     totalChars,
     storyRef,
+    onStoryScroll,
     visibleLines,
     revealedLines,
     activeLineIndex,

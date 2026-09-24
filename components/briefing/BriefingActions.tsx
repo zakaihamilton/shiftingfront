@@ -1,10 +1,8 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
-import type { Campaign } from "@/lib/types";
 import styles from "./BriefingScreen.module.css";
 
 export function BriefingActions({
-  campaign,
   returnToGame,
   onReplay,
   onSkip = () => undefined,
@@ -13,7 +11,6 @@ export function BriefingActions({
   onBack,
   backLabel,
 }: {
-  campaign: Campaign;
   returnToGame: boolean;
   onReplay: () => void;
   onSkip?: () => void;
@@ -70,9 +67,6 @@ export function BriefingActions({
       >
         {returnToGame ? "Return to mission" : "Launch"}
       </ConsoleButton>
-      <p className={styles.tone}>
-        {campaign.world.tone} · {campaign.world.conflict}
-      </p>
     </div>
   );
 }

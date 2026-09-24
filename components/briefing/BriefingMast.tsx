@@ -19,7 +19,7 @@ export function BriefingMast({
   return (
     <header className={styles.mast}>
       <div>
-        <ConsoleLabel data-testid="seed">
+        <ConsoleLabel className={styles.seed} data-testid="seed">
           Shifting Front · Seed {formatSeed(seed)} · Mission {mission + 1}/{campaign.missions.length}
         </ConsoleLabel>
         <div className={styles.progressStrip} aria-label={`Operation progress: mission ${mission + 1} of ${campaign.missions.length}`}>

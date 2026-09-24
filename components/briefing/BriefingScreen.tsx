@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { ConsoleNotice } from "@/components/ui/ConsoleNotice";
@@ -14,7 +14,6 @@ import type { BriefingLine } from "@/lib/types";
 import { BriefingActions } from "./BriefingActions";
 import { BriefingMast } from "./BriefingMast";
 import { BriefingObjectives } from "./BriefingObjectives";
-import { BriefingAllyPortraits, BriefingEnemyPortrait } from "./BriefingPortraits";
 import { BriefingStory } from "./BriefingStory";
 import styles from "./BriefingScreen.module.css";
 import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
@@ -22,31 +21,11 @@ import { useBriefingController } from "./useBriefingController";
 import { useBriefingTypewriter } from "./useBriefingTypewriter";
 import type { NavigationOrigin } from "@/lib/navigation/routes";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
-import { cachedLocalStorage } from "@/lib/persist/save";
-import { defaultSettings, readSettings, writeSettings } from "@/lib/persist/settings";
-import { fieldGuideEntry, firstEncounterTopics, type FieldGuideTopic } from "@/lib/fieldGuide";
-import { BriefingFieldConditions } from "./BriefingFieldConditions";
-import { BriefingFieldGuideCard } from "./BriefingFieldGuideCard";
 
 export function BriefingScreen({ seed, mission, returnToGame = false, origin = "menu" }: { seed: number; mission: number; returnToGame?: boolean; origin?: NavigationOrigin }) {
   const campaign = useMemo(() => createCampaign(seed), [seed]);
-  const [settings, setSettings] = useState(defaultSettings);
-  const [settingsReady, setSettingsReady] = useState(false);
-  const [guideDismissed, setGuideDismissed] = useState(false);
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      setSettings(readSettings(cachedLocalStorage()));
-      setSettingsReady(true);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, []);
   const progress = useCampaignProgress(seed);
   const def = campaign.missions[mission];
-  const encounterTopics = useMemo(() => def ? firstEncounterTopics(def.win.kind, def.biome) : [], [def]);
-  const unseenTopics = settingsReady
-    ? encounterTopics.filter((topic) => !settings.seenFieldGuideTopics.includes(topic))
-    : [];
-  const guideEntries = unseenTopics.map(fieldGuideEntry);
   const lines: readonly BriefingLine[] = useMemo(() => def?.briefing ?? [], [def]);
   const typewriter = useBriefingTypewriter(lines);
   const controller = useBriefingController({
@@ -71,15 +50,6 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
         : origin === "result"
           ? "Back to result"
           : "Back to menu";
-
-  const dismissFieldGuide = () => {
-    const seen = new Set<FieldGuideTopic>(settings.seenFieldGuideTopics);
-    for (const topic of unseenTopics) seen.add(topic);
-    const next = { ...settings, seenFieldGuideTopics: [...seen] };
-    setSettings(next);
-    writeSettings(cachedLocalStorage(), next);
-    setGuideDismissed(true);
-  };
 
   if (!def) {
     return (
@@ -114,8 +84,6 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
           <BriefingMast seed={seed} mission={mission} campaign={campaign} def={def} />
         </div>
 
-        <BriefingAllyPortraits campaign={campaign} liveRole={liveRole} />
-
         <MetalPanel className={styles.panel}>
           <div className={styles.panelScroll}>
             <section className={styles.comms}>
@@ -126,15 +94,13 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
                 lines={typewriter.visibleLines}
                 talking={typewriter.isTalking}
                 speakerRole={liveRole}
-                compact={guideEntries.length > 0}
+                complete={typewriter.isComplete}
+                onStoryScroll={typewriter.onStoryScroll}
               />
             </section>
-            <BriefingFieldConditions biome={def.biome} />
-            {!guideDismissed ? <BriefingFieldGuideCard entries={guideEntries} onDismiss={dismissFieldGuide} compact /> : null}
             <BriefingObjectives objectives={objectives} />
           </div>
           <BriefingActions
-            campaign={campaign}
             returnToGame={returnToGame}
             onReplay={typewriter.replayTransmission}
             onSkip={controller.skip}
@@ -145,7 +111,6 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
           />
         </MetalPanel>
 
-        <BriefingEnemyPortrait campaign={campaign} liveRole={liveRole} />
       </div>
     </div>
   );

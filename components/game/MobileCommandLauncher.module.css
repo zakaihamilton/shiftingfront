@@ -16,12 +16,14 @@
 
   .launcher {
     position: absolute;
-    z-index: 50;
-    top: max(0.65rem, env(safe-area-inset-top));
-    right: max(0.65rem, env(safe-area-inset-right));
+    z-index: 40;
+    top: auto;
+    right: auto;
+    bottom: max(0.65rem, env(safe-area-inset-bottom));
+    left: 50%;
     width: 3rem;
     display: block;
-    transform: none;
+    transform: translateX(-50%);
   }
 
   .handle {
@@ -42,6 +44,10 @@
       linear-gradient(105deg, rgba(255,255,255,0.1), transparent 34%),
       linear-gradient(color-mix(in srgb, var(--chrome-steel-hi) 76%, transparent), color-mix(in srgb, var(--chrome-steel-lo) 96%, transparent));
     box-shadow: inset 1px 1px var(--chrome-bevel), inset -2px -2px var(--chrome-inset), 0 8px 20px rgba(0,0,0,0.42), 2px 2px var(--chrome-void);
+  }
+
+  .launcher .button {
+    border-radius: 50%;
   }
 
   .button:hover:not(:disabled) {

@@ -39,33 +39,6 @@
   width: 100%;
 }
 
-.portraits,
-.enemy {
-  min-width: 0;
-  min-height: 0;
-}
-
-.portraits > *,
-.enemy > * {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.portraits {
-  display: grid;
-  align-content: start;
-  align-items: start;
-  gap: 0.75rem;
-  overflow-y: auto;
-  scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
-}
-
-.enemy {
-  align-self: start;
-  overflow: hidden;
-}
-
 .panel {
   position: relative;
   box-sizing: border-box;
@@ -85,6 +58,7 @@
 
 .panelScroll {
   display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
   gap: clamp(0.55rem, 1.5vh, 0.85rem);
@@ -100,7 +74,9 @@
 }
 
 .comms {
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: clamp(0.65rem, 1.8vh, 0.9rem);
   border: 1px solid var(--chrome-inset);
   border-top: 2px solid var(--chrome-cyan-dim);
@@ -113,7 +89,7 @@
 
 .actions {
   display: grid;
-  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto auto minmax(0, 1fr);
   flex-shrink: 0;
   align-items: center;
   gap: 0.55rem 0.7rem;
@@ -130,7 +106,7 @@
 }
 
 .launch {
-  grid-column: 5;
+  grid-column: 4;
   grid-row: 1;
   justify-self: end;
 }
@@ -138,28 +114,6 @@
 .skipPlaceholder {
   visibility: hidden;
   pointer-events: none;
-}
-
-.tone {
-  grid-column: 4;
-  grid-row: 1;
-  justify-self: end;
-  min-width: 0;
-  margin: 0;
-  color: var(--chrome-muted);
-  font-size: var(--text-xs);
-  letter-spacing: 0.13em;
-  line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-@media (min-width: 640px) {
-  .portraits {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 @media (min-width: 768px) {
@@ -171,28 +125,18 @@
 
 @media (min-width: 1024px) {
   .inner {
-    grid-template-columns: 168px minmax(0, 1fr) 168px;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "mast mast mast"
-      "portraits panel enemy";
-    column-gap: 1.5rem;
+      "mast"
+      "panel";
   }
 
   .mast {
     grid-area: mast;
   }
 
-  .portraits {
-    grid-area: portraits;
-    grid-template-columns: 1fr;
-  }
-
   .panel {
     grid-area: panel;
-  }
-
-  .enemy {
-    grid-area: enemy;
   }
 }
 
@@ -205,11 +149,10 @@
   }
 
   .inner {
-    grid-template-columns: minmax(4.75rem, 5.75rem) minmax(0, 1fr) minmax(4.75rem, 5.75rem);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "mast mast mast"
-      "portraits panel enemy";
-    column-gap: 0.55rem;
+      "mast"
+      "panel";
     row-gap: 0.6rem;
   }
 
@@ -222,34 +165,15 @@
     padding: 0.7rem;
   }
 
-  .portraits {
-    grid-area: portraits;
-    grid-template-columns: 1fr;
-    gap: 0.45rem;
-  }
-
-  .enemy {
-    grid-area: enemy;
-  }
 }
 
 @media (max-width: 1023px) and (orientation: portrait) {
   .inner {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
-      "mast mast mast"
-      "portraits portraits enemy"
-      "panel panel panel";
-  }
-
-  .portraits {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.45rem;
-  }
-
-  .enemy {
-    align-self: stretch;
+      "mast"
+      "panel";
   }
 }
 
@@ -269,7 +193,7 @@
   .actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(3, 52px) auto;
+    grid-template-rows: repeat(3, 52px);
     gap: 0.45rem;
   }
 
@@ -284,14 +208,6 @@
     grid-row: 3;
   }
 
-  .actions .tone {
-    grid-column: 1 / -1;
-    grid-row: 4;
-    justify-self: stretch;
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-  }
 }
 
 @media (max-width: 420px) {
@@ -310,7 +226,7 @@
   }
 
   .actions {
-    grid-template-rows: 64px 52px 52px auto;
+    grid-template-rows: 64px 52px 52px;
     margin-top: 0.55rem;
     padding-top: 0.55rem;
   }
@@ -319,12 +235,6 @@
     width: 100%;
   }
 
-  .tone {
-    grid-column: 1 / -1;
-    grid-row: 4;
-    justify-self: stretch;
-    text-align: center;
-  }
 }
 
 @media (max-width: 420px) and (max-height: 600px) {

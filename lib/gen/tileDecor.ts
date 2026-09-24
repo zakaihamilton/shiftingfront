@@ -29,14 +29,14 @@ export function paintBiomeLandmark(
     }
   } else if (biome === "ash plains") {
     if (feature === 0) {
-      shapes.push(ell(cx - 23, cy - 8, 46, 17, "#292f2d", "#171b19"));
-      shapes.push(ell(cx - 12, cy - 4, 24, 8, "#111614"));
+      shapes.push(ell(cx - 23, cy - 8, 46, 17, "#282b2e", "#16181a"));
+      shapes.push(ell(cx - 12, cy - 4, 24, 8, "#101214"));
     } else if (feature === 1) {
-      shapes.push(line(cx - 24, cy + 5, cx + 22, cy - 5, "#242a27", 5));
-      shapes.push(line(cx - 18, cy + 3, cx + 18, cy - 4, "#7b8179", 1));
+      shapes.push(line(cx - 24, cy + 5, cx + 22, cy - 5, "#24262a", 5));
+      shapes.push(line(cx - 18, cy + 3, cx + 18, cy - 4, "#7a7e84", 1));
     } else {
-      shapes.push(poly(irregularIso(cx, cy, 42, 16, 3), "#657069", "#202623", 1));
-      shapes.push(line(cx - 12, cy + 4, cx + 9, cy - 5, "#313835", 2));
+      shapes.push(poly(irregularIso(cx, cy, 42, 16, 3), "#62666c", "#1f2226", 1));
+      shapes.push(line(cx - 12, cy + 4, cx + 9, cy - 5, "#303338", 2));
     }
   } else if (biome === "crystal flats") {
     for (let i = 0; i < 3 + feature; i++) {
@@ -48,8 +48,8 @@ export function paintBiomeLandmark(
     shapes.push(line(cx - 20, cy + 3, cx + 19, cy - 4 + feature * 3, feature === 2 ? "#d38345" : "#8f4c2d", 2));
     if (feature === 1) shapes.push(poly([cx - 10, cy + 3, cx - 2, cy - 9, cx + 12, cy + 1], "#885334", "#2c1b14", 1));
   } else if (biome === "salt marshes") {
-    shapes.push(ell(cx - 23, cy - 8, 46, 16, feature === 0 ? "#243f37" : "#586044", "#1a3029"));
-    for (let i = 0; i < 4 + feature; i++) shapes.push(line(cx - 17 + i * 7, cy + 4, cx - 16 + i * 7, cy - 8 - (i % 2) * 3, "#879064", 1));
+    shapes.push(ell(cx - 23, cy - 8, 46, 16, feature === 0 ? "#1e2e2a" : "#3e4842", "#14201c"));
+    for (let i = 0; i < 4 + feature; i++) shapes.push(line(cx - 17 + i * 7, cy + 4, cx - 16 + i * 7, cy - 8 - (i % 2) * 3, "#7a887a", 1));
   } else if (biome === "glass desert") {
     shapes.push(poly([cx - 24, cy + 4, cx - 8, cy - 10 - feature, cx + 24, cy + 2, cx + 6, cy + 9], feature === 1 ? "#292f31" : "#75664f", "#b9aa8b", 1));
     shapes.push(line(cx - 7, cy - 9, cx + 14, cy, "#e3d4b2", 1));

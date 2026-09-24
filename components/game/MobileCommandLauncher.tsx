@@ -80,6 +80,8 @@ export function MobileCommandLauncher({
           aria-expanded={open}
           aria-controls="command-sidebar"
           aria-label={open ? "Close commands" : "Open commands"}
+          tooltip={open ? "Hide command sidebar" : "Show command sidebar"}
+          tooltipPos="above"
           data-testid="mobile-command-toggle"
           onClick={onToggleClick}
         >

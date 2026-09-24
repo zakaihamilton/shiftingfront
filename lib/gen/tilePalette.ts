@@ -29,10 +29,10 @@ export function mixHex(a: string, b: string, amount: number): string {
 }
 
 const TERRAIN: Record<BiomeName, [string, string, string, string]> = {
-  "ash plains": ["#586b5c", "#303d36", "#8b9e83", "#202b28"],
+  "ash plains": ["#505458", "#2a2d30", "#8c9096", "#1c1e22"],
   "crystal flats": ["#4f7772", "#2d4d4d", "#9ac8ba", "#1e3739"],
   "rust canyons": ["#89553b", "#4c2a25", "#ba8051", "#2a1b1b"],
-  "salt marshes": ["#4f7059", "#2c4439", "#849d72", "#1e2e29"],
+  "salt marshes": ["#445650", "#24322e", "#7b948a", "#1a2522"],
   "glass desert": ["#a0855b", "#5b4934", "#d0b783", "#3a2a21"],
   "tundra grid": ["#5f7f83", "#334c56", "#a8c9c6", "#1d3038"],
   "jungle wreckage": ["#3d6544", "#203c29", "#67945b", "#13251b"],

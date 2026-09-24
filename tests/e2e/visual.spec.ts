@@ -39,6 +39,11 @@ test.describe("visual regression", () => {
     await expect(briefingScreen).toBeVisible();
     await expect(page.getByTestId("mission-objectives")).toBeVisible();
     await expect(page.getByTestId("briefing-dialogue")).toBeVisible();
+    await expect(page.getByTestId("field-guide-first-encounter")).toHaveCount(0);
+    await page.getByRole("button", { name: "Skip transmission" }).click();
+    const dialogue = page.getByTestId("briefing-dialogue");
+    await expect(dialogue).toHaveAttribute("data-complete", "true");
+    await dialogue.evaluate((element) => { element.scrollTop = 0; });
 
     await expect(briefingScreen).toHaveScreenshot("briefing-seed-0421-m0.png", {
       maxDiffPixelRatio: 0.05,
