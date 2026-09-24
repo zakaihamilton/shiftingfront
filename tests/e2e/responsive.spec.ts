@@ -155,10 +155,13 @@ async function waitForStableSelection(page: import("@playwright/test").Page) {
 }
 
 async function collapseMissionDirective(page: import("@playwright/test").Page) {
+  const expand = page.getByRole("button", { name: "Expand mission directive" });
+  if (await expand.isVisible()) return;
   const collapse = page.getByRole("button", { name: "Collapse mission directive" });
-  await expect(collapse).toBeVisible();
-  await collapse.click();
-  await expect(page.getByRole("button", { name: "Expand mission directive" })).toBeVisible();
+  if (await collapse.isVisible()) {
+    await collapse.click();
+    await expect(expand).toBeVisible();
+  }
 }
 
 async function persistedUnitOrder(page: import("@playwright/test").Page, unitId: number) {
@@ -725,6 +728,22 @@ test.describe("mobile-first layouts", () => {
 
     await expect(page.getByTestId("mobile-pause")).toHaveCount(0);
     await expect(page.getByTestId("mobile-command-launcher")).toBeVisible();
+  });
+
+  test("collapses the mission directive by default on mobile viewports", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/play?seed=0421&mission=0");
+    await waitForBattlefield(page);
+    await expect(page.getByRole("button", { name: "Expand mission directive" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Collapse mission directive" })).toHaveCount(0);
+  });
+
+  test("collapses the mission directive by default in mobile landscape", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.goto("/play?seed=0421&mission=0");
+    await waitForBattlefield(page);
+    await expect(page.getByRole("button", { name: "Expand mission directive" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Collapse mission directive" })).toHaveCount(0);
   });
 
   test("starts the mobile mission directive directly below the operation header", async ({ page }) => {

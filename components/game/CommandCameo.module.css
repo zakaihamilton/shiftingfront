@@ -16,27 +16,42 @@
   right: 0.18rem;
   display: inline-flex;
   width: 1.35rem;
-  min-width: 1.35rem;
   height: 1.35rem;
+  min-width: 1.35rem;
   min-height: 1.35rem;
+  max-width: 1.35rem;
+  max-height: 1.35rem;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
   align-items: center;
   justify-content: center;
   padding: 0;
-  border-color: var(--chrome-alert);
+  border-radius: var(--chrome-radius-xs, 2px);
+  border: 1px solid var(--chrome-alert);
   background: color-mix(in srgb, var(--chrome-void) 88%, transparent);
   color: var(--chrome-alert);
+  font-family: var(--font-ui, sans-serif);
   font-size: 0.9rem;
+  font-weight: 700;
   line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .cancelIcon {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
   line-height: 1;
 }
 
-.cancel:hover {
+.cancel:hover,
+.cancel:focus-visible {
   background: var(--chrome-alert);
   color: var(--chrome-void);
+  outline: none;
 }
 
 .card {

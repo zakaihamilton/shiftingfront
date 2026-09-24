@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { isUnitKind, labelFor, UNIT_STATS, type CameoStatus } from "@/lib/catalog";
 import { cx } from "@/lib/ui/cx";
 import type { BuildingKind, FactionVisualProfile, Palette, UnitKind } from "@/lib/types";
@@ -89,7 +88,8 @@ export function CommandCameo({
         </span>
       </button>
       {cancellable && onContextMenu ? (
-        <ConsoleButton
+        <button
+          type="button"
           className={styles.cancel}
           aria-label={`Cancel ${labelFor(kind)}`}
           data-testid={`cameo-cancel-${kind}`}
@@ -99,7 +99,7 @@ export function CommandCameo({
           }}
         >
           <span className={styles.cancelIcon} aria-hidden="true">×</span>
-        </ConsoleButton>
+        </button>
       ) : null}
     </span>
   );

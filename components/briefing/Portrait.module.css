@@ -73,7 +73,8 @@
 
   .name,
   .faction {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 }
 

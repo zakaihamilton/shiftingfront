@@ -11,6 +11,7 @@ import { setHeight } from "../../lib/sim/fixtures";
 import { computeUnitDynamicTransform, resetUnitTransformTracker, updateUnitHistory } from "../../lib/render/gl/unitTransformTracker";
 import { selectionProjectionPoint } from "../../components/game/hooks/selectionBox";
 import { pointerTile, selectVisibleUnitsOfKind, selectionIdsInBox } from "../../components/game/hooks/gameInputOrders";
+import { resolvePointerUp } from "../../components/game/hooks/gamePointerUp";
 
 describe("harvester selection", () => {
   it("selects a harvester from a click on its sprite body", () => {
@@ -279,5 +280,73 @@ describe("same-type on-screen selection", () => {
     expect(tooltipLines(s, hovered!, {})).toContain("Stranded");
     expect(selectVisibleUnitsOfKind(s, cam, { width: 800, height: 600 }, regular)).toEqual([regular.id]);
     expect(otherStranded.id).not.toBe(regular.id);
+  });
+
+  it("excludes harvesters in touch marquee selection when combat units are present, matching desktop", () => {
+    const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    const h = addUnit(s, 0, "harvester", 5, 5);
+    const u = addUnit(s, 0, "infantry", 5, 6);
+    const cam = createCamera();
+    const hPos = tileToScreen(h.x, h.y, cam, 0);
+    const uPos = tileToScreen(u.x, u.y, cam, 0);
+    const box = {
+      x0: Math.min(hPos.x, uPos.x) - 20,
+      y0: Math.min(hPos.y, uPos.y) - 20,
+      x1: Math.max(hPos.x, uPos.x) + 20,
+      y1: Math.max(hPos.y, uPos.y) + 20,
+      anchor: selectionProjectionPoint({ x: Math.min(hPos.x, uPos.x) - 20, y: Math.min(hPos.y, uPos.y) - 20 }, cam),
+    };
+    const res = resolvePointerUp({
+      pointerType: "touch",
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      p: { x: box.x1, y: box.y1 },
+      state: s,
+      cam,
+      selectedIds: [],
+      box,
+      selectionMode: true,
+      mobileCommand: null,
+      placeKind: null,
+      repairMode: false,
+      sellMode: false,
+    });
+    expect(res.select).toEqual([u.id]);
+    expect(res.endSelectionMode).toBe(true);
+  });
+
+  it("keeps harvesters in touch marquee selection when only harvesters are selected", () => {
+    const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    const h1 = addUnit(s, 0, "harvester", 5, 5);
+    const h2 = addUnit(s, 0, "harvester", 5, 6);
+    const cam = createCamera();
+    const h1Pos = tileToScreen(h1.x, h1.y, cam, 0);
+    const h2Pos = tileToScreen(h2.x, h2.y, cam, 0);
+    const box = {
+      x0: Math.min(h1Pos.x, h2Pos.x) - 20,
+      y0: Math.min(h1Pos.y, h2Pos.y) - 20,
+      x1: Math.max(h1Pos.x, h2Pos.x) + 20,
+      y1: Math.max(h1Pos.y, h2Pos.y) + 20,
+      anchor: selectionProjectionPoint({ x: Math.min(h1Pos.x, h2Pos.x) - 20, y: Math.min(h1Pos.y, h2Pos.y) - 20 }, cam),
+    };
+    const res = resolvePointerUp({
+      pointerType: "touch",
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      p: { x: box.x1, y: box.y1 },
+      state: s,
+      cam,
+      selectedIds: [],
+      box,
+      selectionMode: true,
+      mobileCommand: null,
+      placeKind: null,
+      repairMode: false,
+      sellMode: false,
+    });
+    expect(res.select).toEqual([h1.id, h2.id]);
+    expect(res.endSelectionMode).toBe(true);
   });
 });

@@ -32,6 +32,7 @@ export function Battlefield({
   timeRemainingTicks,
   timeLimitTicks,
   onObjectivePanelToggle,
+  defaultDirectiveExpanded,
   showHud = true,
   biome,
   children,
@@ -64,6 +65,7 @@ export function Battlefield({
   timeRemainingTicks?: number;
   timeLimitTicks?: number;
   onObjectivePanelToggle?: () => void;
+  defaultDirectiveExpanded?: boolean;
   showHud?: boolean;
   biome: BiomeName;
   children?: ReactNode;
@@ -115,6 +117,7 @@ export function Battlefield({
           timeRemainingTicks={timeRemainingTicks}
           timeLimitTicks={timeLimitTicks}
           onObjectivePanelToggle={onObjectivePanelToggle}
+          defaultExpanded={defaultDirectiveExpanded}
         />
       ) : null}
       {children}
