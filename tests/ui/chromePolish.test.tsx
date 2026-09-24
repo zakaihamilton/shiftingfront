@@ -158,6 +158,43 @@ describe("product chrome", () => {
     expect(screen.getByTestId("time-remaining")).toHaveAttribute("data-placement", "body");
   });
 
+  it("defaults to collapsed on mobile viewports", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width: 1023px") || query.includes("max-height: 600px"),
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia;
+
+    try {
+      render(
+        <BattlefieldHud
+          seed={421}
+          levelNumber={1}
+          levelCount={6}
+          missionName="Recovery Zone"
+          objective="Return the convoy"
+          timeRemaining="Time remaining 08:00"
+          timeRemainingTicks={8 * 60 * 12}
+          timeLimitTicks={10 * 60 * 12}
+          objectiveCards={[{ id: "primary", label: "Return the convoy", current: 0, target: 1, status: "active", primary: true }]}
+        />,
+      );
+
+      const expand = screen.getByRole("button", { name: "Expand mission directive" });
+      expect(expand).toHaveAttribute("aria-expanded", "false");
+      expect(expand).toHaveAttribute("data-tooltip", "Expand mission directive");
+      expect(document.getElementById("mission-directive-body")).toHaveAttribute("hidden");
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
   it("keeps command tabs accessible without rendering shortcut badges", () => {
     render(
       <CommandTabs

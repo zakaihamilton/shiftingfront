@@ -155,10 +155,13 @@ async function waitForStableSelection(page: import("@playwright/test").Page) {
 }
 
 async function collapseMissionDirective(page: import("@playwright/test").Page) {
+  const expand = page.getByRole("button", { name: "Expand mission directive" });
+  if (await expand.isVisible()) return;
   const collapse = page.getByRole("button", { name: "Collapse mission directive" });
-  await expect(collapse).toBeVisible();
-  await collapse.click();
-  await expect(page.getByRole("button", { name: "Expand mission directive" })).toBeVisible();
+  if (await collapse.isVisible()) {
+    await collapse.click();
+    await expect(expand).toBeVisible();
+  }
 }
 
 async function persistedUnitOrder(page: import("@playwright/test").Page, unitId: number) {
@@ -603,6 +606,23 @@ test.describe("mobile-first layouts", () => {
         expect(sidebarBounds!.x + sidebarBounds!.width).toBeLessThanOrEqual(viewport.width);
       }
       await expect(page.getByTestId("mobile-touch-controls")).toHaveCount(0);
+
+      // Invariant: On mobile viewports, the mission directive body must start collapsed to maximize battlefield visibility
+      const directiveBody = page.locator("#mission-directive-body");
+      if (viewport.width < 1024 || viewport.height <= 600) {
+        await expect(directiveBody).toBeHidden();
+      }
+
+      // Invariant: Operation metadata and mission directive headers must never collide or overlap
+      const operation = page.locator("[class*='operationBar']");
+      const directiveStack = page.locator("[class*='objectiveStack']");
+      const opBounds = await operation.boundingBox();
+      const dirBounds = await directiveStack.boundingBox();
+      if (opBounds && dirBounds) {
+        const horizontalOverlap = opBounds.x < dirBounds.x + dirBounds.width && opBounds.x + opBounds.width > dirBounds.x;
+        const verticalOverlap = opBounds.y < dirBounds.y + dirBounds.height && opBounds.y + opBounds.height > dirBounds.y;
+        expect(horizontalOverlap && verticalOverlap).toBe(false);
+      }
     });
   }
 
@@ -725,6 +745,22 @@ test.describe("mobile-first layouts", () => {
 
     await expect(page.getByTestId("mobile-pause")).toHaveCount(0);
     await expect(page.getByTestId("mobile-command-launcher")).toBeVisible();
+  });
+
+  test("collapses the mission directive by default on mobile viewports", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/play?seed=0421&mission=0");
+    await waitForBattlefield(page);
+    await expect(page.getByRole("button", { name: "Expand mission directive" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Collapse mission directive" })).toHaveCount(0);
+  });
+
+  test("collapses the mission directive by default in mobile landscape", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.goto("/play?seed=0421&mission=0");
+    await waitForBattlefield(page);
+    await expect(page.getByRole("button", { name: "Expand mission directive" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Collapse mission directive" })).toHaveCount(0);
   });
 
   test("starts the mobile mission directive directly below the operation header", async ({ page }) => {

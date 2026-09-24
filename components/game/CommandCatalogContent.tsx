@@ -20,6 +20,7 @@ export function CommandCatalogContent({
   onStop,
   onStance,
   onFormation,
+  onCenter,
   selectedClassName,
 }: CommandCatalogContentProps) {
   if (activeTab === "construction") {
@@ -59,6 +60,7 @@ export function CommandCatalogContent({
       onStop={onStop}
       onStance={onStance}
       onFormation={onFormation}
+      onCenter={onCenter}
     />
   );
 }

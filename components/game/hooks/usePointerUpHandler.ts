@@ -8,6 +8,7 @@ import type { SelectionBox } from "./selectionBox";
 import type { PointerUpEffect } from "./gamePointerUp";
 import { createRuntimeCommandPort, type RuntimeCommandPort } from "./runtime/facade";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
+import { triggerHaptic } from "@/lib/ui/haptics";
 
 export function usePointerUpHandler({
   stateRef,
@@ -64,6 +65,11 @@ export function usePointerUpHandler({
     if (effect.commands?.length) {
       resolvedCommandPort.enqueueMany(effect.commands);
       markUnitCommand(stateRef.current, canvasPointerPos(event), effect.commands);
+      if (effect.commands.some((command) => command.type === "build")) {
+        triggerHaptic("deploy");
+      } else {
+        triggerHaptic("order");
+      }
       if (uxRef && effect.commands.some((command) => command.type === "build") && uxRef.current.firstBuildTick === undefined) {
         uxRef.current.firstBuildTick = stateRef.current.tick;
       }
@@ -73,11 +79,19 @@ export function usePointerUpHandler({
     }
     if (effect.commandNotice) {
       const isBuildPlacement = effect.commands?.some((command) => command.type === "build") ?? false;
-      if (effect.commandNotice.kind === "error" && !isBuildPlacement) markInvalidCommand(stateRef.current, canvasPointerPos(event));
+      if (effect.commandNotice.kind === "error" && !isBuildPlacement) {
+        markInvalidCommand(stateRef.current, canvasPointerPos(event));
+        triggerHaptic("alert");
+      }
       if (effect.commandNotice.kind === "error" && !effect.commands?.length) onCommandRejection?.(effect.commandNotice.text);
       onCommandNotice?.(effect.commandNotice.text, effect.commandNotice.kind);
     }
-    if (effect.select) commitSelection(effect.select);
+    if (effect.select) {
+      commitSelection(effect.select);
+      if (effect.select.length > 0) {
+        triggerHaptic("selection");
+      }
+    }
     if (effect.endSelectionMode) setSelectionMode(false);
     if (effect.clearMobileCommand) {
       mobileCommandRef.current = null;

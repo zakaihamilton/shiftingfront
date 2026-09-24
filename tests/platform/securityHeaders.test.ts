@@ -13,4 +13,13 @@ describe("security headers", () => {
     expect(source).toContain("object-src 'none'");
     expect(source).toContain("frame-ancestors 'self' https://*.itch.io https://itch.io https://*.newgrounds.com https://*.crazygames.com");
   });
+
+  it("permits fullscreen, autoplay, clipboard-write, and screen-wake-lock in Permissions-Policy", () => {
+    const source = readFileSync(resolve(process.cwd(), "next.config.ts"), "utf-8");
+    expect(source).toContain('key: "Permissions-Policy"');
+    expect(source).toContain("fullscreen=*");
+    expect(source).toContain("autoplay=*");
+    expect(source).toContain("clipboard-write=*");
+    expect(source).toContain("screen-wake-lock=*");
+  });
 });

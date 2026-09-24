@@ -213,4 +213,25 @@ describe("SpritePreview", () => {
     expect(screen.getByRole("button", { name: /Power Plant, 300 credits/ }).querySelector("canvas")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Infantry, 100 credits/ }).querySelector("canvas")).toBeTruthy();
   });
+
+  it("renders a square cancel button on busy queued cameos", () => {
+    const onContextMenu = vi.fn();
+    render(
+      <CommandCameo
+        kind="turret"
+        palette={palette}
+        profile={profile}
+        cost={275}
+        cameo={{ ratio: 0.58, queued: 2, phase: "progress" }}
+        onClick={vi.fn()}
+        onContextMenu={onContextMenu}
+      />,
+    );
+
+    const cancel = screen.getByRole("button", { name: "Cancel Gun Turret" });
+    expect(cancel).toBeInTheDocument();
+    expect(cancel).toHaveAttribute("data-testid", "cameo-cancel-turret");
+    expect(cancel.className).toContain("cancel");
+    expect(cancel.querySelector("[aria-hidden='true']")).toHaveTextContent("×");
+  });
 });

@@ -205,7 +205,7 @@
   }
 
   .inner {
-    grid-template-columns: 3.5rem minmax(0, 1fr) 3.5rem;
+    grid-template-columns: minmax(4.75rem, 5.75rem) minmax(0, 1fr) minmax(4.75rem, 5.75rem);
     grid-template-areas:
       "mast mast mast"
       "portraits panel enemy";

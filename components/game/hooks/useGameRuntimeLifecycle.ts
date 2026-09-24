@@ -14,6 +14,7 @@ import { useGameSession } from "./useGameSession";
 import type { GameRuntimeFeedback } from "./useGameRuntimeFeedback";
 import type { GameRuntimeInteraction } from "./useGameRuntimeInteraction";
 import type { RuntimeCommandPort } from "./runtime/facade";
+import { useWakeLock } from "@/lib/ui/wakeLock";
 
 export function useGameRuntimeLifecycle({
   seed, tutorial, state, stateRef, setState, saveSession, commitSelection, commandPort, cmdQ,
@@ -81,6 +82,8 @@ export function useGameRuntimeLifecycle({
   useEffect(() => {
     if (tutorial || paused || state.result !== "playing") resetTransientMobileUi();
   }, [paused, resetTransientMobileUi, state.result, tutorial]);
+
+  useWakeLock(!paused && state.result === "playing");
 
   const { keys } = useGameKeyboard({
     stateRef,

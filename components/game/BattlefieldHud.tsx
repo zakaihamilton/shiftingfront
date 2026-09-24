@@ -4,7 +4,15 @@ import type { MissionObjective } from "@/lib/gen/story";
 import { deadlineUrgency, type ObjectiveCardModel } from "@/lib/ui/missionPresentation";
 import type { DoctrineHint } from "@/lib/ui/doctrine";
 import { useFullscreen } from "@/lib/ui/fullscreen";
+import { triggerHaptic } from "@/lib/ui/haptics";
 import styles from "./Battlefield.module.css";
+
+export function isMobileDirectiveViewport(): boolean {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia(
+    "(max-width: 1023px) and (orientation: portrait), (max-height: 600px), (max-width: 799px), (pointer: coarse) and (max-width: 1024px)",
+  ).matches;
+}
 
 export function BattlefieldHud({
   seed,
@@ -22,6 +30,7 @@ export function BattlefieldHud({
   timeRemainingTicks,
   timeLimitTicks,
   onObjectivePanelToggle,
+  defaultExpanded,
 }: {
   seed: number;
   levelNumber: number;
@@ -38,9 +47,13 @@ export function BattlefieldHud({
   timeRemainingTicks?: number;
   timeLimitTicks?: number;
   onObjectivePanelToggle?: () => void;
+  defaultExpanded?: boolean;
 }) {
   const fullscreen = useFullscreen();
-  const [directiveExpanded, setDirectiveExpanded] = useState(true);
+  const [directiveExpanded, setDirectiveExpanded] = useState(() => {
+    if (defaultExpanded !== undefined) return defaultExpanded;
+    return !isMobileDirectiveViewport();
+  });
   const [seenDoctrine] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -91,6 +104,7 @@ export function BattlefieldHud({
     ?? primaryCard?.label
     ?? objective;
   const toggleDirective = () => {
+    triggerHaptic("tap");
     setDirectiveExpanded((expanded) => !expanded);
     onObjectivePanelToggle?.();
   };
@@ -131,7 +145,10 @@ export function BattlefieldHud({
                 className={styles.directiveToggle}
                 aria-label={fullscreen.isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
                 data-tooltip={fullscreen.isFullscreen ? `Exit fullscreen (${fullscreen.shortcut})` : `Enter fullscreen (${fullscreen.shortcut})`}
-                onClick={fullscreen.toggle}
+                onClick={() => {
+                  triggerHaptic("tap");
+                  fullscreen.toggle();
+                }}
               >
                 <span className={styles.directiveToggleIcon} aria-hidden="true">
                   {fullscreen.isFullscreen ? "🗗" : "⛶"}
