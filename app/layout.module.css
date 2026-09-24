@@ -5,8 +5,10 @@
   --font-mono: var(--font-ibm-plex-mono, ui-monospace), ui-monospace, monospace;
   --chrome-void: #05080e;
   --chrome-bg: #070b12;
+  --chrome-steel-deep: #0b1117;
   --chrome-steel-lo: #121820;
   --chrome-steel: #243040;
+  --chrome-steel-mid: #273746;
   --chrome-steel-hi: #3a4d5e;
   --chrome-bevel: #6a8498;
   --chrome-inset: #080c12;
@@ -27,8 +29,9 @@
   --chrome-focus: #b9fbff;
   --chrome-success: #9ee7bd;
   --chrome-warning: #ffcf72;
-  --chrome-radius: 8px;
+  --chrome-radius-xs: 2px;
   --chrome-radius-sm: 4px;
+  --chrome-radius: 8px;
   --chrome-radius-lg: 12px;
   --chrome-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
   --texture-brushed: url("/art/textures/brushed-gunmetal.webp");
