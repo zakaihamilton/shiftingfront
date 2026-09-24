@@ -32,6 +32,7 @@ export default defineConfig({
         "lib/gen/campaign.ts",
         "lib/gen/objectives.ts",
         "lib/gen/story.ts",
+        "lib/gen/story/**/*.ts",
         "lib/persist/**/*.ts",
         "lib/seed/**/*.ts",
         "lib/sim/**/*.ts",
