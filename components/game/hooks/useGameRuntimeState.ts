@@ -31,6 +31,7 @@ export function useGameRuntimeState({
   const stateRef = useRef<SimState>(state);
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const tooltipCanvasRef = useRef<HTMLCanvasElement>(null);
   const miniRef = useRef<HTMLCanvasElement>(null);
   const mobileMiniRef = useRef<HTMLCanvasElement>(null);
 
@@ -49,6 +50,7 @@ export function useGameRuntimeState({
     stateRef,
     hostRef,
     canvasRef,
+    tooltipCanvasRef,
     miniRef,
     mobileMiniRef,
   };

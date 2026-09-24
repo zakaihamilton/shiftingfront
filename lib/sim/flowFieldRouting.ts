@@ -3,7 +3,8 @@ import { flowCellTaken, flowDistanceAt, flowFieldForGoals, flowStep, type FlowFi
 import { navigationEdgeKey, navigationEdgeReserved } from "./navigation/grid";
 import { reversesPreviousStep } from "./pathfinding";
 import { tryFindPathDetailed } from "./pathBudget";
-import { entitiesFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
+import { navigationMobilityFor } from "./terrainRules";
 
 const FLOW_PATH_PREFIX_LENGTH = 2;
 const MIN_CONGESTION_GROUP_SIZE = 16;
@@ -60,10 +61,15 @@ export function prepareFlowFieldRoutes(
   for (const entity of entitiesFor(state)) {
     if (entity.hp <= 0 || entity.class !== "unit" || skipIds?.has(entity.id) || !entity.flowGoal || !entity.orderDestination) continue;
     const goal = entity.flowGoal;
-    const key = `${Math.round(goal.x)}:${Math.round(goal.y)}`;
+    const key = `${Math.round(goal.x)}:${Math.round(goal.y)}:${navigationMobilityFor(entity)}`;
     const members = groups.get(key) ?? [];
     members.push(entity);
     groups.set(key, members);
+  }
+
+  if (groups.size === 0) {
+    congestedGroups.clear();
+    return;
   }
 
   // Keep the large-group mode alive while the leading units are peeling into
@@ -95,12 +101,13 @@ export function prepareFlowFieldRoutes(
   let order = 0;
   for (const members of groups.values()) {
     const goal = members[0]!.flowGoal!;
-    const groupKey = `${Math.round(goal.x)}:${Math.round(goal.y)}`;
+    const mobility = navigationMobilityFor(members[0]!);
+    const groupKey = `${Math.round(goal.x)}:${Math.round(goal.y)}:${mobility}`;
     const goals = members.map((entity) => ({ ...entity.orderDestination! }));
     const congested = congestedGroups.get(groupKey);
     const fieldGoals = congested?.arrivalGoals ?? goals;
     const key = `${state.navigationRevision ?? 0}:${groupKey}:${goalSetKey(fieldGoals)}`;
-    const approachField = fields.get(key) ?? flowFieldForGoals(state, fieldGoals);
+    const approachField = fields.get(key) ?? flowFieldForGoals(state, fieldGoals, mobility);
     fields.set(key, approachField);
     const arrivalField = congested ? approachField : undefined;
     const arrivalSwitchDistance = congested?.formed
@@ -210,20 +217,16 @@ function prepareSmallGroupRoutes(
     followers.push(entity);
   }
 
-  for (let i = 0; i < followers.length; i++) {
-    const entity = followers[i]!;
-    const goals = followers.map((follower) => ({ ...follower.orderDestination! }));
+  for (const entity of followers) {
+    const mobility = navigationMobilityFor(entity);
+    const sameMobilityFollowers = followers.filter((follower) => navigationMobilityFor(follower) === mobility);
+    const goals = sameMobilityFollowers.map((follower) => ({ ...follower.orderDestination! }));
     const goal = entity.flowGoal!;
-    const key = `${state.navigationRevision ?? 0}:${Math.round(goal.x)}:${Math.round(goal.y)}:${goalSetKey(goals)}`;
-    const field = fields.get(key) ?? flowFieldForGoals(state, goals);
+    const key = `${state.navigationRevision ?? 0}:${mobility}:${Math.round(goal.x)}:${Math.round(goal.y)}:${goalSetKey(goals)}`;
+    const field = fields.get(key) ?? flowFieldForGoals(state, goals, mobility);
     fields.set(key, field);
-    const entry = ranked[i] ?? { entity, field, dist: 0 };
-    entry.entity = entity;
-    entry.field = field;
-    entry.dist = flowDistanceAt(field, entity.x, entity.y);
-    ranked[i] = entry;
+    ranked.push({ entity, field, dist: flowDistanceAt(field, entity.x, entity.y) });
   }
-  ranked.length = followers.length;
   ranked.sort((a, b) => a.dist - b.dist || a.entity.id - b.entity.id);
   for (const { entity, field } of ranked) {
     assignFlowPrefix(state, occupancy, reserved, previousCells, entity, field, undefined, flowFields, edgeReservations);

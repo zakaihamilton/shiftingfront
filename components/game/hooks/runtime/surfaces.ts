@@ -45,6 +45,7 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
   const playField: PlayFieldSurfaceModel = {
     hostRef: runtime.hostRef,
     canvasRef: runtime.canvasRef,
+    tooltipCanvasRef: runtime.tooltipCanvasRef,
     panAvail: runtime.panAvail,
     hotPan: runtime.hotPan,
     campaign: runtime.campaign,
@@ -151,6 +152,7 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
             onCycleHudScale: runtime.session.cycleHudScale,
             onUpdateKeyBindings: runtime.session.updateKeyBindings,
             onVolumeChange: runtime.session.updateVolume,
+            onMarkFieldGuideTopicSeen: runtime.session.markFieldGuideTopicSeen,
             onExportTelemetry: runtime.session.telemetryEnabled ? runtime.session.exportTelemetry : undefined,
             onClearTelemetry: runtime.session.telemetryEnabled ? runtime.session.clearTelemetry : undefined,
           },

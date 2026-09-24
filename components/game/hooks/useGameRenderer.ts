@@ -27,6 +27,7 @@ export function useGameRenderer({
   stateRef,
   hostRef,
   canvasRef,
+  tooltipCanvasRef,
   miniRef,
   mobileMiniRef,
   camRef,
@@ -44,6 +45,7 @@ export function useGameRenderer({
   stateRef: RefObject<SimState | null>;
   hostRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  tooltipCanvasRef: RefObject<HTMLCanvasElement | null>;
   miniRef: RefObject<HTMLCanvasElement | null>;
   mobileMiniRef: RefObject<HTMLCanvasElement | null>;
   camRef: MutableRefObject<Camera>;
@@ -67,6 +69,7 @@ export function useGameRenderer({
     sellMode: false,
   });
   const worldCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const tooltipCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const miniCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const mobileMiniCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const fxRef = useRef<FxBurst[]>([]);
@@ -90,8 +93,10 @@ export function useGameRenderer({
     const frame = renderGameFrame({
       state: s,
       canvas,
+      tooltipCanvas: tooltipCanvasRef.current,
       host,
       worldCtx: worldCtxRef.current,
+      tooltipCtx: tooltipCtxRef.current,
       miniCanvas: miniRef.current,
       miniCtx: miniCtxRef.current,
       secondaryMiniCanvas: mobileMiniRef.current,
@@ -112,10 +117,11 @@ export function useGameRenderer({
       colorblindMode,
     });
     worldCtxRef.current = frame.worldCtx;
+    tooltipCtxRef.current = frame.tooltipCtx;
     miniCtxRef.current = frame.miniCtx;
     mobileMiniCtxRef.current = frame.secondaryMiniCtx;
     fxRef.current = frame.fx;
-  }, [boxRef, camRef, canvasRef, colorblindMode, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, place, reducedMotion, repair, selected, sell, stateRef]);
+  }, [boxRef, camRef, canvasRef, colorblindMode, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, place, reducedMotion, repair, selected, sell, stateRef, tooltipCanvasRef]);
 
   return { extrasRef, fxRef, fxSeq, screenShakeRef, redraw };
 }

@@ -3,7 +3,7 @@ import { isBuildingEntity, type BuildingKind, type Entity, type Owner, type SimS
 import { livingView, invalidateEntityCaches, distToEntity, powerBreakdownFor } from "./queries";
 import { isWalkable, canClimb } from "./terrain";
 import { DEFAULT_BUILDING_CLEARANCE, findBuildSite, INITIAL_BUILDING_EDGE_MARGIN } from "./building";
-import { worldFor } from "../ecs/world";
+import { addEntity } from "../entities";
 
 export function closestApproach(state: SimState, from: Vec2, e: Entity): Vec2 {
   if (!isBuildingEntity(e)) return { x: e.x, y: e.y };
@@ -180,7 +180,7 @@ export function trySpawnUnit(
   const e = makeUnit(state, owner, kind, x, y);
   e.x = site.x;
   e.y = site.y;
-  const added = worldFor(state).add(e);
+  const added = addEntity(state, e);
   invalidateEntityCaches(state);
   return added;
 }
@@ -195,7 +195,7 @@ export function spawnBuilding(
   marked = false,
 ): Entity {
   const e = makeBuilding(state, owner, kind, x, y, constructing, marked);
-  const added = worldFor(state).add(e);
+  const added = addEntity(state, e);
   invalidateEntityCaches(state);
   return added;
 }

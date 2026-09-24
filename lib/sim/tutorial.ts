@@ -2,7 +2,7 @@ import { createCampaign } from "../gen/campaign";
 import { generateMap } from "../gen/map";
 import type { ReadonlyMissionDef, SimState } from "../types";
 import { createMissionFromData } from "./api";
-import { entitiesFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
 
 export const TUTORIAL_SEED = 0;
 export {

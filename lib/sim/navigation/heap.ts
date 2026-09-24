@@ -20,15 +20,26 @@ export class MinHeap {
   }
 
   push(x: number, y: number, g: number, f: number, seq: number): void {
-    const index = this.size;
+    let index = this.size;
     this.ensureCapacity(index + 1);
+    while (index > 0) {
+      const parent = (index - 1) >> 1;
+      const parentF = this.fs[parent]!;
+      const parentSeq = this.seqs[parent]!;
+      if (parentF < f || (parentF === f && parentSeq <= seq)) break;
+      this.xs[index] = this.xs[parent]!;
+      this.ys[index] = this.ys[parent]!;
+      this.gs[index] = this.gs[parent]!;
+      this.fs[index] = parentF;
+      this.seqs[index] = parentSeq;
+      index = parent;
+    }
     this.xs[index] = x;
     this.ys[index] = y;
     this.gs[index] = g;
     this.fs[index] = f;
     this.seqs[index] = seq;
-    this.size = index + 1;
-    this.up(index);
+    this.size += 1;
   }
 
   pop(): boolean {
@@ -40,66 +51,41 @@ export class MinHeap {
     this.f = this.fs[0]!;
     this.seq = this.seqs[0]!;
     const last = n - 1;
-    if (last > 0) {
-      this.xs[0] = this.xs[last]!;
-      this.ys[0] = this.ys[last]!;
-      this.gs[0] = this.gs[last]!;
-      this.fs[0] = this.fs[last]!;
-      this.seqs[0] = this.seqs[last]!;
-    }
     this.size = last;
-    if (last > 0) this.down(0);
+    if (last === 0) return true;
+
+    const lastX = this.xs[last]!;
+    const lastY = this.ys[last]!;
+    const lastG = this.gs[last]!;
+    const lastF = this.fs[last]!;
+    const lastSeq = this.seqs[last]!;
+    let index = 0;
+    while (true) {
+      const left = index * 2 + 1;
+      if (left >= last) break;
+      const right = left + 1;
+      let child = left;
+      if (right < last) {
+        const leftF = this.fs[left]!;
+        const rightF = this.fs[right]!;
+        if (rightF < leftF || (rightF === leftF && this.seqs[right]! < this.seqs[left]!)) child = right;
+      }
+      const childF = this.fs[child]!;
+      const childSeq = this.seqs[child]!;
+      if (childF > lastF || (childF === lastF && childSeq >= lastSeq)) break;
+      this.xs[index] = this.xs[child]!;
+      this.ys[index] = this.ys[child]!;
+      this.gs[index] = this.gs[child]!;
+      this.fs[index] = childF;
+      this.seqs[index] = childSeq;
+      index = child;
+    }
+    this.xs[index] = lastX;
+    this.ys[index] = lastY;
+    this.gs[index] = lastG;
+    this.fs[index] = lastF;
+    this.seqs[index] = lastSeq;
     return true;
-  }
-
-  private less(i: number, j: number): boolean {
-    const a = this.fs[i]!;
-    const b = this.fs[j]!;
-    if (a !== b) return a < b;
-    return this.seqs[i]! < this.seqs[j]!;
-  }
-
-  private swap(i: number, j: number): void {
-    let value = this.xs[i]!;
-    this.xs[i] = this.xs[j]!;
-    this.xs[j] = value;
-    value = this.ys[i]!;
-    this.ys[i] = this.ys[j]!;
-    this.ys[j] = value;
-    value = this.gs[i]!;
-    this.gs[i] = this.gs[j]!;
-    this.gs[j] = value;
-    value = this.fs[i]!;
-    this.fs[i] = this.fs[j]!;
-    this.fs[j] = value;
-    value = this.seqs[i]!;
-    this.seqs[i] = this.seqs[j]!;
-    this.seqs[j] = value;
-  }
-
-  private up(index: number): void {
-    let i = index;
-    while (i > 0) {
-      const p = (i - 1) >> 1;
-      if (!this.less(i, p)) break;
-      this.swap(i, p);
-      i = p;
-    }
-  }
-
-  private down(index: number): void {
-    const n = this.size;
-    let i = index;
-    for (;;) {
-      const l = i * 2 + 1;
-      const r = l + 1;
-      let best = i;
-      if (l < n && this.less(l, best)) best = l;
-      if (r < n && this.less(r, best)) best = r;
-      if (best === i) break;
-      this.swap(i, best);
-      i = best;
-    }
   }
 
   private ensureCapacity(required: number): void {

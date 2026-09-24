@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { runReplay } from "../../lib/sim/replay";
 
 const BASELINES = [
-  { kind: "annihilate", seed: 1, missionIndex: 2, digest: "1ef8c04c5a65b4d6bbe4b8248adb93430be0f9842d25b5a7769f2fa376bac9ad" },
-  { kind: "decapitate", seed: 1, missionIndex: 4, digest: "7ca51da72e2852fdc74cfcf4a37e3d9279846074d6986eacf6577c48b50cd6ed" },
+  // Annihilate's assault squad and objective prioritization changed intentionally.
+  { kind: "annihilate", seed: 1, missionIndex: 2, digest: "75e89c3833b761cc20caba6cd7a934b5628dad914607c6d125103b4db95208c1" },
+  { kind: "decapitate", seed: 1, missionIndex: 4, digest: "61c48db78145d765c4f1162db113d61495897e05fbea2ab615ec6ddf2f115e93" },
   { kind: "destroyMarked", seed: 0, missionIndex: 3, digest: "ab028ca727baebeae1b132fe34a2c3d114d6b626c9491041a733e3fda0b7ffd3" },
   // Escort includes the expanded completion buffer and convoy unblocking path.
   { kind: "escort", seed: 0, missionIndex: 2, digest: "6fddfaa6e9bb28019dc08e0c2101cdd46b0db293cd85cbf0b4083fd9c373ec69" },
@@ -12,7 +13,7 @@ const BASELINES = [
   { kind: "forceQuota", seed: 0, missionIndex: 4, digest: "a9e40960afda47a47da1473ea3cc36825d759ff1a16b8207d53ae52a217b4187" },
   { kind: "harvestQuota", seed: 7, missionIndex: 3, digest: "cd132c6b4ceb6c711071a41211dd1e271a1f8aecb00d5a9ca1497a323f86ecd0" },
   { kind: "holdTheLine", seed: 0, missionIndex: 5, digest: "803dcd355feca9f89ec5b5f59cee7b5acc9d9f1576afd5ba2a62e676e9c89273" },
-  { kind: "razeAll", seed: 3, missionIndex: 2, digest: "d46cb892bdfbe497d17ee947d68bdcf1adabf59df0ea4179fb00fa493ddb4766" },
+  { kind: "razeAll", seed: 3, missionIndex: 2, digest: "d9ee3e213beaa9d6fe029b6572c82fdf0b97c824e64e50c379493624c9043508" },
   // Rescue corridors now join the map route-repair pass used by extraction.
   { kind: "rescue", seed: 0, missionIndex: 0, digest: "03f680fad20feeb5d7f9533ef94089fe6c064bc99aa5f4b2e22bf871cb55a552" },
   { kind: "sabotage", seed: 1, missionIndex: 0, digest: "ccec4a430c53a1fb35b05f63089621c92d51a6e1b19e979fccee4ea720b6d028" },

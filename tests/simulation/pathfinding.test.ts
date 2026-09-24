@@ -16,6 +16,7 @@ import { expectUniqueUnitCells } from "./helpers";
 
 const IS_COVERAGE = Boolean(process.env.NODE_V8_COVERAGE || process.env.VITEST_COVERAGE);
 const LARGE_GROUP_TIMEOUT = 120_000;
+const PATHFINDING_TICK_OPTIONS = { evaluateObjectives: false, collectEvents: false, updateFog: false } as const;
 
 describe("pathfinding", () => {
   it("returns a bounded partial result for a long search", () => {
@@ -73,7 +74,7 @@ describe("pathfinding", () => {
     expect(new Set(destinations.map((destination) => `${destination.x},${destination.y}`)).size).toBe(units.length);
     expect(destinations.every((destination) => isStaticWalkable(s, destination.x, destination.y))).toBe(true);
     for (let i = 0; i < 600; i++) {
-      tick(s, undefined, { evaluateObjectives: false });
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
     }
     expect(units.every((unit) => {
@@ -393,7 +394,7 @@ describe("pathfinding", () => {
     const previous = units.map((unit) => ({ x: Math.round(unit.x), y: Math.round(unit.y) }));
     let crossedRamp = false;
     for (let tickIndex = 0; tickIndex < 1_800; tickIndex++) {
-      tick(s, undefined, { evaluateObjectives: false });
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
       for (let index = 0; index < units.length; index++) {
         const unit = units[index]!;
@@ -433,7 +434,7 @@ describe("pathfinding", () => {
     })).toBe(true);
 
     for (let tickIndex = 0; tickIndex < 1_200; tickIndex++) {
-      tick(s, undefined, { evaluateObjectives: false });
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
     }
 
@@ -479,7 +480,7 @@ describe("pathfinding", () => {
     }
     issue(s, { type: "move", unitIds: [mover.id], x: 9, y: 4 });
     expect(mover.path.length).toBeGreaterThan(0);
-    for (let i = 0; i < 900; i++) tick(s);
+    for (let i = 0; i < 900; i++) tick(s, undefined, PATHFINDING_TICK_OPTIONS);
     expect(Math.round(mover.x)).toBe(9);
     expect(Math.round(mover.y)).toBe(4);
   });
@@ -496,7 +497,7 @@ describe("pathfinding", () => {
     const loner = addUnit(s, 0, "infantry", 3, 4);
     issue(s, { type: "move", unitIds: pack.map((unit) => unit.id), x: 7, y: 12 });
     issue(s, { type: "move", unitIds: [loner.id], x: 16, y: 5 });
-    for (let i = 0; i < 900; i++) tick(s);
+    for (let i = 0; i < 900; i++) tick(s, undefined, PATHFINDING_TICK_OPTIONS);
     expect(Math.round(loner.x)).toBe(16);
     expect(Math.round(loner.y)).toBe(5);
   });
@@ -525,7 +526,7 @@ describe("pathfinding", () => {
     issue(s, { type: "move", unitIds: [a.id], x: 10, y: 3 });
     issue(s, { type: "move", unitIds: [b.id], x: 3, y: 3 });
     for (let i = 0; i < 900; i++) {
-      tick(s);
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
     }
     expect(Math.round(a.x)).toBeLessThan(Math.round(b.x));
@@ -545,7 +546,7 @@ describe("pathfinding", () => {
     let previousA = { x: a.x, y: a.y };
     let previousB = { x: b.x, y: b.y };
     for (let i = 0; i < 100; i++) {
-      tick(s);
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
       expect(Math.hypot(a.x - previousA.x, a.y - previousA.y)).toBeLessThanOrEqual(UNIT_STATS.infantry.speed + 1e-6);
       expect(Math.hypot(b.x - previousB.x, b.y - previousB.y)).toBeLessThanOrEqual(UNIT_STATS.infantry.speed + 1e-6);
@@ -714,7 +715,7 @@ describe("pathfinding", () => {
     issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 16, y: 9, formation: "line" });
 
     for (let i = 0; i < 500; i++) {
-      tick(s);
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
     }
 
@@ -736,7 +737,7 @@ describe("pathfinding", () => {
     }
     issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 20, y: 8 });
     for (let i = 0; i < 800; i++) {
-      tick(s);
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
     }
     expect(new Set(units.map((unit) => `${Math.round(unit.x)},${Math.round(unit.y)}`)).size).toBe(units.length);
@@ -771,7 +772,7 @@ describe("pathfinding", () => {
     const startingDistance = averageDistance();
 
     for (let tickIndex = 0; tickIndex < 2_000; tickIndex++) {
-      tick(s, undefined, { evaluateObjectives: false });
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
       expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
       for (const unit of units) {
@@ -817,7 +818,7 @@ describe("pathfinding", () => {
     const startingDistance = averageDistance();
 
     for (let tickIndex = 0; tickIndex < 3_000; tickIndex++) {
-      tick(s, undefined, { evaluateObjectives: false });
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
       expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
       for (const unit of units) {
@@ -853,7 +854,7 @@ describe("pathfinding", () => {
     expect(new Set(units.map((unit) => `${unit.orderDestination!.x},${unit.orderDestination!.y}`)).size).toBe(units.length);
     expect(units.every((unit) => isStaticWalkable(s, unit.orderDestination!.x, unit.orderDestination!.y))).toBe(true);
     for (let i = 0; i < 4_000; i++) {
-      tick(s, undefined, { evaluateObjectives: false });
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
       expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
     }
@@ -874,7 +875,7 @@ describe("pathfinding", () => {
     expect(new Set(destinations.map((destination) => `${destination.x},${destination.y}`)).size).toBe(units.length);
 
     for (let i = 0; i < 3_500; i++) {
-      tick(s, undefined, { evaluateObjectives: false });
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
       expectUniqueUnitCells(s);
       expect(backgroundPathSearches(s)).toBeLessThanOrEqual(PATH_BUDGET_PER_TICK);
     }

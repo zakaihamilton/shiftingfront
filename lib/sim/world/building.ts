@@ -2,7 +2,7 @@ import { footprintOf } from "../../catalog";
 import { isBuildingEntity, type BuildingEntity, type BuildingKind, type Owner, type SimState, type Vec2 } from "../../types";
 import { heightAt, inBounds } from "./queries";
 import { isWalkable, terrainAccess } from "./terrain";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export function footprintFlat(state: SimState, x: number, y: number, w: number, h: number): boolean {
   const h0 = heightAt(state, x, y);

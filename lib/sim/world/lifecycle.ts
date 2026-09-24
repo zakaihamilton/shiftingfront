@@ -1,11 +1,10 @@
 import type { SimState } from "../../types";
 import { refundQueuedUnits } from "../productionRefund";
 import { ensureDeadBuildingInvalidation } from "./terrain";
-import { worldFor } from "../ecs/world";
+import { removeEntities } from "../entities";
 
 export function compactDestroyedEntities(state: SimState): number {
-  const world = worldFor(state);
-  const entities = world.all();
+  const entities = state.entities;
   let removedIds: Set<number> | undefined;
   for (const entity of entities) {
     if (entity.hp > 0) continue;
@@ -19,7 +18,7 @@ export function compactDestroyedEntities(state: SimState): number {
     if (entity.class === "building") ensureDeadBuildingInvalidation(state, entity.id);
   }
 
-  world.removeMany(removedIds, removedIds);
+  removeEntities(state, removedIds, removedIds);
   return removedIds.size;
 }
 

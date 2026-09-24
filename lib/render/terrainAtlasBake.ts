@@ -1,4 +1,4 @@
-import { MAP_SKIRT, sceneryAt, terrainFeatureAt, type TerrainFeatureSample } from "../gen/map";
+import { MAP_SKIRT, sceneryAt, terrainFeatureSamplerFor, type TerrainFeatureSample } from "../gen/map";
 import { SURFACE_CONCRETE, SURFACE_ROAD, TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../types";
 import {
   ATLAS_CELL,
@@ -374,12 +374,13 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
     const ly = Math.floor(index / ATLAS_CELL);
     return terrainEdgeDarkening(rig, lx / ATLAS_CELL, ly / ATLAS_CELL);
   });
+  const featureAt = terrainFeatureSamplerFor(state);
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const gx = col - MAP_SKIRT;
       const gy = row - MAP_SKIRT;
       const kind = atlasKindAt(sceneryGrid, col, row);
-      const feature = terrainFeatureAt(state, gx, gy);
+      const feature = featureAt(gx, gy);
       const scenery = atlasSceneryAt(sceneryGrid, col, row);
       const color = kind === TILE_WATER ? { r: 0, g: 0, b: 0 } : cellColor(state, gx, gy, {
         scenery,
@@ -394,7 +395,8 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
       colors[i] = color.r;
       colors[i + 1] = color.g;
       colors[i + 2] = color.b;
-      features[row * cols + col] = feature;
+      const cellIndex = row * cols + col;
+      features[cellIndex] = feature;
       waterCells[row * cols + col] = kind === TILE_WATER ? 1 : 0;
       const surface = surfaceAt(state, gx, gy);
       classes[row * cols + col] = kind === TILE_WATER

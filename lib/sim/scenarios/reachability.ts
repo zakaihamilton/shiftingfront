@@ -3,7 +3,7 @@ import { footprintOf } from "../../catalog";
 import type { BuildingEntity, BuildingKind, SimState, Vec2 } from "../../types";
 import { PATH_DIRS, diagonalCornerBlocked } from "../pathfinding";
 import { canClimb, inBounds, isStaticWalkable, isWalkable } from "../world";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 /** Keep enemy objective structures well away from the allied starting base. */
 export const OBJECTIVE_ALLIED_BASE_CLEARANCE = 18;

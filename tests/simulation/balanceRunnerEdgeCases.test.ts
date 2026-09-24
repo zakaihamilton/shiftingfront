@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { defaultBalanceJobs, balanceScenarios, runBalanceJob, sortBalanceRecords, stableBalanceRecords, stratifiedBalanceScenarios } from "../../lib/sim/balance";
+import { defaultBalanceJobs, balanceScenarios, runBalanceJob, scenarioWorkItems, sortBalanceRecords, stableBalanceRecords, stratifiedBalanceScenarios } from "../../lib/sim/balance";
 
 describe("defaultBalanceJobs", () => {
   it("returns at least 1", () => {
     expect(defaultBalanceJobs(0)).toBeGreaterThanOrEqual(1);
   });
 
-  it("returns a value between 1 and min(cpus, 8, scenarioCount)", () => {
+  it("returns a value between 1 and min(available CPUs, 10, scenarioCount)", () => {
     const result = defaultBalanceJobs(100);
     expect(result).toBeGreaterThanOrEqual(1);
-    expect(result).toBeLessThanOrEqual(8);
+    expect(result).toBeLessThanOrEqual(10);
   });
 });
 
@@ -150,6 +150,23 @@ describe("stratifiedBalanceScenarios", () => {
   it("collects the requested minimum for every generated mission kind", () => {
     const scenarios = stratifiedBalanceScenarios(0, 39, 8);
     expect(scenarios).toHaveLength(96);
+  });
+});
+
+describe("scenarioWorkItems", () => {
+  it("groups each seed's missions into stable strategy tasks", () => {
+    const scenarios = [
+      { seed: 1, mission: 0 },
+      { seed: 1, mission: 2 },
+      { seed: 3, mission: 4 },
+    ];
+
+    expect(scenarioWorkItems(scenarios, ["rush", "vehicles"])).toEqual([
+      { scenarios: [scenarios[0], scenarios[1]], strategies: ["rush"] },
+      { scenarios: [scenarios[2]], strategies: ["rush"] },
+      { scenarios: [scenarios[0], scenarios[1]], strategies: ["vehicles"] },
+      { scenarios: [scenarios[2]], strategies: ["vehicles"] },
+    ]);
   });
 });
 

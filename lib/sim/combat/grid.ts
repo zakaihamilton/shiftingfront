@@ -1,6 +1,7 @@
 import { BUILDING_STATS, isAirUnit, targetDomainsFor, UNIT_STATS } from "../../catalog";
-import { isBuildingEntity, isUnitEntity, type Entity, type SimState, type WeaponType } from "../../types";
-import { entitiesFor } from "../ecs/world";
+import { isBuildingEntity, isUnitEntity, type BuildingKind, type Entity, type SimState, type UnitKind, type WeaponType } from "../../types";
+import { entitiesFor } from "../entities";
+import { directFireRangeBonusAt, groundUnitSightAt } from "../terrainRules";
 
 export type CombatGrid = {
   state: SimState;
@@ -15,7 +16,7 @@ export type CombatGrid = {
 
 const CELL = 8;
 const gridBuffers = new WeakMap<SimState, CombatGrid>();
-type CombatStats = {
+type CombatStats = Readonly<{
   damage: number;
   range: number;
   cooldown: number;
@@ -23,8 +24,18 @@ type CombatStats = {
   splashRadius: number;
   suppression: number;
   targetDomains: readonly import("../../types").CombatTargetDomain[];
-};
-const NON_COMBAT_BUILDING_STATS: CombatStats = { damage: 0, range: 0, cooldown: 0, weapon: "smallArms", splashRadius: 0, suppression: 0, targetDomains: ["ground"] };
+}>;
+const NON_COMBAT_BUILDING_STATS: CombatStats = Object.freeze({
+  damage: 0,
+  range: 0,
+  cooldown: 0,
+  weapon: "smallArms",
+  splashRadius: 0,
+  suppression: 0,
+  targetDomains: Object.freeze(["ground"] as const),
+});
+const unitCombatStats = new Map<UnitKind, CombatStats>();
+const buildingCombatStats = new Map<BuildingKind, CombatStats>();
 
 export function isCombatTarget(state: SimState, e: Entity): boolean {
   // Once a stranded rescue unit has been contacted, it is an evacuee rather
@@ -49,24 +60,36 @@ export function canTarget(attacker: Entity, target: Entity): boolean {
   return statsFor(attacker).targetDomains.includes(combatDomainOf(target));
 }
 
-export function statsFor(e: Entity): CombatStats {
+export function statsFor(e: Entity): Readonly<CombatStats> {
   if (isUnitEntity(e)) {
+    const cached = unitCombatStats.get(e.kind);
+    if (cached) return cached;
     const stats = UNIT_STATS[e.kind];
-    return { ...stats, targetDomains: targetDomainsFor(e.kind) };
+    const combatStats: CombatStats = Object.freeze({
+      ...stats,
+      targetDomains: Object.freeze([...targetDomainsFor(e.kind)]),
+    });
+    unitCombatStats.set(e.kind, combatStats);
+    return combatStats;
   }
   if (!isBuildingEntity(e)) return NON_COMBAT_BUILDING_STATS;
+  const cached = buildingCombatStats.get(e.kind);
+  if (cached) return cached;
   const combat = BUILDING_STATS[e.kind].combat;
   if (combat) {
-    return {
+    const combatStats: CombatStats = Object.freeze({
       damage: combat.damage,
       range: combat.range,
       cooldown: combat.cooldown,
       weapon: BUILDING_STATS[e.kind].weapon ?? "cannon",
       splashRadius: combat.splashRadius,
       suppression: combat.suppression,
-      targetDomains: combat.targetDomains,
-    };
+      targetDomains: Object.freeze([...combat.targetDomains]),
+    });
+    buildingCombatStats.set(e.kind, combatStats);
+    return combatStats;
   }
+  buildingCombatStats.set(e.kind, NON_COMBAT_BUILDING_STATS);
   return NON_COMBAT_BUILDING_STATS;
 }
 
@@ -156,9 +179,10 @@ export function closestEnemy(
 }
 
 export function acquire(grid: CombatGrid, e: Entity, threatsOnly = false): Entity | undefined {
-  const { range } = statsFor(e);
+  const stats = statsFor(e);
+  const range = stats.range + (stats.weapon === "airStrike" ? 0 : directFireRangeBonusAt(grid.state, e));
   const sight = isUnitEntity(e)
-    ? UNIT_STATS[e.kind].sight
+    ? groundUnitSightAt(grid.state, e, UNIT_STATS[e.kind].sight)
     : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;
   return closestEnemy(grid, e, Math.max(range + 4, sight), threatsOnly);
 }

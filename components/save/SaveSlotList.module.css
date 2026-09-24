@@ -26,7 +26,7 @@
 .operations { align-self: stretch; padding: 0.5rem 0.65rem; border-radius: var(--chrome-radius-sm); border-color: color-mix(in srgb, var(--chrome-cyan) 28%, var(--chrome-line)); background: rgba(12, 35, 43, 0.42); box-shadow: inset 1px 1px rgba(255, 255, 255, 0.02); color: var(--chrome-cyan); font-size: var(--text-sm); }
 .export { align-self: stretch; padding: 0.5rem 0.65rem; border-radius: var(--chrome-radius-sm); border-color: color-mix(in srgb, var(--chrome-gold) 30%, var(--chrome-line)); background: rgba(52, 42, 16, 0.34); box-shadow: inset 1px 1px rgba(255, 255, 255, 0.02); color: var(--chrome-gold); font-size: var(--text-sm); }
 .deleteIcon { display: block; width: 1.15rem; height: 1.15rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.confirmOverlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(0, 0, 0, 0.78); backdrop-filter: blur(3px); }
+.confirmOverlay { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(0, 0, 0, 0.78); backdrop-filter: blur(3px); }
 .confirmDialog { width: min(100%, 28rem); padding: 1.5rem; }
 .confirmCopy { margin: 0.75rem 0 0; color: var(--chrome-body); font-size: 0.8rem; line-height: 1.45; }
 .confirmActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem; }

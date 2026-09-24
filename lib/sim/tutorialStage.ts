@@ -15,7 +15,7 @@ import {
   openTileNear,
   trySpawnUnit,
 } from "./world";
-import { entitiesFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
 
 export type TutorialWorldTarget =
   | { kind: "entity"; entityId: number; label: string; x?: number; y?: number; entityClass?: Entity["class"] }

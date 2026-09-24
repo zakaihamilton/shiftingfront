@@ -33,7 +33,7 @@ function denseLateGameState(): SimState {
       clamp(yard.y - 7 + row, state.height),
     );
     unit.idle = true;
-    state.entities.push(unit);
+    state.entities = [...state.entities, unit];
   }
 
   for (let i = 0; i < 32; i++) {
@@ -44,7 +44,7 @@ function denseLateGameState(): SimState {
       clamp(yard.x - 7 + (i % 8) * 2, state.width),
       clamp(yard.y - 5 + Math.floor(i / 8) * 2, state.height),
     );
-    state.entities.push(building);
+    state.entities = [...state.entities, building];
   }
   return state;
 }

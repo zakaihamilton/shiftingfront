@@ -72,7 +72,7 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
       marked: false,
       idle: true,
     };
-    state.entities.push(target);
+    state.entities = [...state.entities, target];
     unit.attackTarget = target.id;
 
     updateUnitHistory(state, 1000);

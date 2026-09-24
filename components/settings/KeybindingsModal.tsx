@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DialogPortal } from "@/components/ui/DialogPortal";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
+import { useModalFocus } from "@/components/ui/useModalFocus";
 import { defaultKeyBindings, type KeyBindings } from "@/lib/persist/settings";
 import { displayKey } from "@/lib/ui/shortcuts";
 import styles from "./KeybindingsModal.module.css";
@@ -17,6 +19,7 @@ const ACTION_LABELS: { key: keyof KeyBindings; label: string }[] = [
 export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyBindings; onSave: (bindings: KeyBindings) => void; onClose: () => void }) {
   const [currentBindings, setCurrentBindings] = useState<KeyBindings>(bindings);
   const [activeRebind, setActiveRebind] = useState<keyof KeyBindings | null>(null);
+  const dialogRef = useModalFocus(true, undefined, "dialog");
 
   useEffect(() => {
     if (!activeRebind) return;
@@ -42,19 +45,21 @@ export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyB
   };
 
   return (
-    <div className={styles.modalBackdrop} onClick={onClose}>
-      <MetalPanel className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="keybinds-title" onClick={(event) => event.stopPropagation()}>
-        <ConsoleLabel>Field Configuration</ConsoleLabel>
-        <h2 id="keybinds-title" className={styles.title}>Keybindings</h2>
-        <p className={styles.subtitle}>Click a command, then press any key to reassign it. Press Escape to cancel.</p>
-        <div className={styles.list}>
-          {ACTION_LABELS.map(({ key, label }) => {
-            const isListening = activeRebind === key;
-            return <div className={styles.row} key={key}><span className={styles.label}>{label}</span><button type="button" className={`${styles.keyButton} ${isListening ? styles.listening : ""}`} onClick={() => setActiveRebind(isListening ? null : key)} title={`Rebind ${label}`}>{isListening ? "Press key…" : displayKey(currentBindings[key])}</button></div>;
-          })}
-        </div>
-        <div className={styles.actions}><ConsoleButton muted tooltip="Reset all shortcuts to defaults" onClick={handleResetDefaults}>Reset Defaults</ConsoleButton><ConsoleButton className={styles.action} tooltip="Save and return to options" onClick={onClose}>Done</ConsoleButton></div>
-      </MetalPanel>
-    </div>
+    <DialogPortal>
+      <div className={styles.modalBackdrop} onClick={onClose}>
+        <MetalPanel ref={dialogRef} tabIndex={-1} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="keybinds-title" onClick={(event) => event.stopPropagation()}>
+          <ConsoleLabel>Field Configuration</ConsoleLabel>
+          <h2 id="keybinds-title" className={styles.title}>Keybindings</h2>
+          <p className={styles.subtitle}>Click a command, then press any key to reassign it. Press Escape to cancel.</p>
+          <div className={styles.list}>
+            {ACTION_LABELS.map(({ key, label }) => {
+              const isListening = activeRebind === key;
+              return <div className={styles.row} key={key}><span className={styles.label}>{label}</span><button type="button" className={`${styles.keyButton} ${isListening ? styles.listening : ""}`} onClick={() => setActiveRebind(isListening ? null : key)} title={`Rebind ${label}`}>{isListening ? "Press key…" : displayKey(currentBindings[key])}</button></div>;
+            })}
+          </div>
+          <div className={styles.actions}><ConsoleButton muted tooltip="Reset all shortcuts to defaults" onClick={handleResetDefaults}>Reset Defaults</ConsoleButton><ConsoleButton className={styles.action} tooltip="Save and return to options" onClick={onClose}>Done</ConsoleButton></div>
+        </MetalPanel>
+      </div>
+    </DialogPortal>
   );
 }

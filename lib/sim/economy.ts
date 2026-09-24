@@ -5,7 +5,7 @@ import type { Entity, SimEvent, SimState } from "../types";
 import { tryFindPathDetailed } from "./pathBudget";
 import { routePendingFor } from "./pathfinding";
 import { at, closestApproach, dist, distToEntity, inBounds, livingView, nearest, tileAt } from "./world";
-import { entitiesFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
 
 export const HARVEST_RANGE = 1.5;
 

@@ -109,7 +109,7 @@ export function useGameSession({
   browserBackGuardEnabled?: boolean;
   onBrowserBackLeave?: () => void;
 }) {
-  const { toggleSound, toggleMusic, toggleReducedMotion, toggleHighContrast, cycleColorblind, cycleHudScale, updateKeyBindings, updateVolume } = useAudioPreferences(settings, setSettings);
+  const { toggleSound, toggleMusic, toggleReducedMotion, toggleHighContrast, cycleColorblind, cycleHudScale, updateKeyBindings, updateVolume, markFieldGuideTopicSeen } = useAudioPreferences(settings, setSettings);
   const [, setTelemetryRevision] = useState(0);
   const telemetryRecordCount = tutorial ? 0 : readTelemetry(cachedLocalStorage()).length;
   const [canLeaveWithoutSave, setCanLeaveWithoutSave] = useState(false);
@@ -260,6 +260,7 @@ export function useGameSession({
     cycleHudScale,
     updateKeyBindings,
     updateVolume,
+    markFieldGuideTopicSeen,
     exitTutorial: routes.exitTutorial,
     backTutorial: routes.backTutorial,
     resultPrimary: routes.resultPrimary,

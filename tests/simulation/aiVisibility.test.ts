@@ -17,6 +17,7 @@ describe("enemy visibility and contact memory", () => {
 
   it("records a visible contact and retains it until the contact expires", () => {
     const state = makeFixture({ width: 24, height: 24, win: { kind: "annihilate" } });
+    state.biome = "crystal flats";
     addBuilding(state, 1, "constructionYard", 2, 2);
     const sensor = addUnit(state, 1, "infantry", 14, 14);
     const harvester = addUnit(state, 0, "harvester", 18, 18);

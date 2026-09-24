@@ -1,8 +1,9 @@
 import { footprintOf } from "../../catalog";
 import { isBuildingEntity, type Entity, type SimState, type Vec2 } from "../../types";
 import { inBounds, makeUnitOccupancy, staticNavigationFor } from "../world";
-import { inBoundsNavigation, navigationStepAllowed, navigationStepCost, PATH_DIRS, PATH_MAX_NODES } from "./grid";
+import { inBoundsNavigation, navigationStepCost, PATH_DIRS, PATH_MAX_NODES } from "./grid";
 import { MinHeap } from "./heap";
+import { navigationMobilityFor, vehicleMovementCostsFor, type NavigationMobility } from "../terrainRules";
 
 export type PathSearchStatus = "complete" | "partial" | "unreachable";
 
@@ -16,6 +17,7 @@ export type FindPathOptions = {
   avoidUnits?: boolean;
   ignoreId?: number;
   occupancy?: Uint8Array;
+  mobility?: NavigationMobility;
 };
 
 type SearchBuffers = {
@@ -120,7 +122,7 @@ function cacheStaticResult(
 ): PathSearchResult {
   if (!key) return result;
   const navigation = staticNavigationFor(state);
-  const sharedKey = `${navigation.geometryKey}:${key}`;
+  const sharedKey = pathCacheKey(navigation, key);
   if (sharedStaticPaths.size >= SHARED_STATIC_PATH_LIMIT) {
     const oldestKey = sharedStaticPaths.keys().next().value;
     if (oldestKey) sharedStaticPaths.delete(oldestKey);
@@ -133,6 +135,12 @@ function cacheStaticResult(
   }
   cache.paths.set(key, { path: result.path.slice(), status: result.status });
   return result;
+}
+
+function pathCacheKey(navigation: ReturnType<typeof staticNavigationFor>, key: string): string {
+  return key.startsWith("vehicle:")
+    ? `${navigation.geometryKey}:${navigation.featureKey}:${key}`
+    : `${navigation.geometryKey}:${key}`;
 }
 
 export function findPathDetailed(
@@ -158,11 +166,15 @@ export function findPathDetailed(
   const source = from as Entity;
   const sourceFootprint = isBuildingEntity(source) ? footprintOf(source.kind) : undefined;
   const navigation = staticNavigationFor(state);
+  const walkable = navigation.walkable;
+  const heights = navigation.heights;
+  const mobility = opts?.mobility ?? navigationMobilityFor(source);
+  const vehicleMovementCosts = mobility === "vehicle" ? vehicleMovementCostsFor(state) : undefined;
   const cacheKey = !avoidUnits
-    ? `${sx},${sy}:${gx},${gy}:${maxNodes}:${sourceFootprint?.w ?? 0},${sourceFootprint?.h ?? 0}:${targetFootprint?.w ?? 0},${targetFootprint?.h ?? 0}`
+    ? `${mobility}:${sx},${sy}:${gx},${gy}:${maxNodes}:${sourceFootprint?.w ?? 0},${sourceFootprint?.h ?? 0}:${targetFootprint?.w ?? 0},${targetFootprint?.h ?? 0}`
     : undefined;
   if (cacheKey) {
-    const sharedKey = `${navigation.geometryKey}:${cacheKey}`;
+    const sharedKey = pathCacheKey(navigation, cacheKey);
     const shared = sharedStaticPaths.get(sharedKey);
     if (shared) {
       sharedStaticPaths.delete(sharedKey);
@@ -246,20 +258,30 @@ export function findPathDetailed(
       });
     }
 
+    if (cx < 0 || cy < 0 || cx >= w || cy >= state.height || walkable[currentKey] !== 1) continue;
+    const currentHeight = heights[currentKey] ?? 0;
     for (const dir of PATH_DIRS) {
       const nx = cx + dir.x;
       const ny = cy + dir.y;
-      if (!inBoundsNavigation(navigation, nx, ny)) continue;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= state.height) continue;
       const neighborKey = ny * w + nx;
-      if (!navigationStepAllowed(navigation, cx, cy, nx, ny)) continue;
+      if (walkable[neighborKey] !== 1) continue;
+      if (Math.abs((heights[neighborKey] ?? 0) - currentHeight) > 1) continue;
+      if (dir.x !== 0 && dir.y !== 0) {
+        const horizontalKey = cy * w + nx;
+        const verticalKey = ny * w + cx;
+        if (walkable[horizontalKey] !== 1 || Math.abs((heights[horizontalKey] ?? 0) - currentHeight) > 1) continue;
+        if (walkable[verticalKey] !== 1 || Math.abs((heights[verticalKey] ?? 0) - currentHeight) > 1) continue;
+      }
       if (unitBlocked(nx, ny)) continue;
 
-      const tentG = gScore[currentKey]! + navigationStepCost(cx, cy, nx, ny);
+      const movementCost = mobility === "vehicle" ? vehicleMovementCosts?.[neighborKey] ?? 1 : 1;
+      const tentG = gScore[currentKey]! + navigationStepCost(cx, cy, nx, ny, movementCost);
       if (stamps[neighborKey] !== generation || tentG < gScore[neighborKey]!) {
         parent[neighborKey] = currentKey;
         gScore[neighborKey] = tentG;
         stamps[neighborKey] = generation;
-        open.push(nx, ny, tentG, tentG + heuristic(nx, ny, gx, gy), pushSeq++);
+        open.push(nx, ny, tentG, tentG + heuristic(nx, ny, gx, gy) * (mobility === "vehicle" ? 0.85 : 1), pushSeq++);
       }
     }
   }

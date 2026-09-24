@@ -3,11 +3,11 @@ import { inBounds, staticNavigationFor, type StaticNavigation } from "./world";
 import {
   navigationEdgeReserved,
   navigationStepAllowed,
-  navigationStepCost,
   PATH_DIRS,
   reversesPreviousStep,
 } from "./navigation/grid";
 import { MinHeap } from "./navigation/heap";
+import { vehicleMovementCostsFor, type NavigationMobility } from "./terrainRules";
 
 const UNREACHABLE = -1;
 const UNREACHABLE_SORT = 1_000_000_000;
@@ -42,8 +42,10 @@ export type FlowField = {
 const fieldsByState = new WeakMap<SimState, Map<string, FlowField>>();
 const componentIdsByNavigation = new WeakMap<StaticNavigation, Int32Array>();
 const sharedFields = new Map<string, FlowField>();
-const SHARED_FLOW_FIELD_LIMIT = 512;
+const flowHeapPool: MinHeap[] = [];
+const SHARED_FLOW_FIELD_LIMIT = 1024;
 const STATE_FLOW_FIELD_LIMIT = 128;
+const FLOW_HEAP_POOL_LIMIT = 4;
 
 function fieldsFor(state: SimState): Map<string, FlowField> {
   let fields = fieldsByState.get(state);
@@ -74,11 +76,11 @@ function rememberField(fields: Map<string, FlowField>, key: string, field: FlowF
   }
 }
 
-export function flowFieldFor(state: SimState, requestedGoal: Vec2): FlowField {
+export function flowFieldFor(state: SimState, requestedGoal: Vec2, mobility: NavigationMobility = "foot"): FlowField {
   const revision = state.navigationRevision ?? 0;
   const goal = { x: Math.round(requestedGoal.x), y: Math.round(requestedGoal.y) };
   const navigation = staticNavigationFor(state);
-  const key = `${navigation.geometryKey}:${goal.x}:${goal.y}`;
+  const key = `${navigation.geometryKey}:${mobility === "vehicle" ? `${navigation.featureKey}:vehicle` : "foot"}:${goal.x}:${goal.y}`;
   const fields = fieldsFor(state);
   const cached = cachedField(fields, key);
   if (cached) return cached;
@@ -88,7 +90,7 @@ export function flowFieldFor(state: SimState, requestedGoal: Vec2): FlowField {
     rememberField(fields, key, shared);
     return shared;
   }
-  const field = buildFlowField(state, goal, revision);
+  const field = buildFlowField(state, goal, revision, mobility);
   rememberField(fields, key, field);
   sharedFields.set(key, field);
   while (sharedFields.size > SHARED_FLOW_FIELD_LIMIT) {
@@ -104,7 +106,7 @@ export function flowFieldFor(state: SimState, requestedGoal: Vec2): FlowField {
  * can therefore fan out across its arrival area instead of funneling through
  * the single cell that was clicked.
  */
-export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2[]): FlowField {
+export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2[], mobility: NavigationMobility = "foot"): FlowField {
   const revision = state.navigationRevision ?? 0;
   const goals = requestedGoals
     .map((goal) => ({ x: Math.round(goal.x), y: Math.round(goal.y) }))
@@ -113,7 +115,7 @@ export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2
     .filter((goal, index, all) => index === 0 || goal.x !== all[index - 1]!.x || goal.y !== all[index - 1]!.y);
   const goal = goals[0] ?? { x: 0, y: 0 };
   const navigation = staticNavigationFor(state);
-  const key = `${navigation.geometryKey}:${goals.length === 1
+  const key = `${navigation.geometryKey}:${mobility === "vehicle" ? `${navigation.featureKey}:vehicle` : "foot"}:${goals.length === 1
     ? `${goal.x}:${goal.y}`
     : `goals:${goals.map((candidate) => `${candidate.x},${candidate.y}`).sort().join(";")}`}`;
   const fields = fieldsFor(state);
@@ -125,7 +127,7 @@ export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2
     rememberField(fields, key, shared);
     return shared;
   }
-  const field = buildMultiGoalFlowField(state, goals.length > 0 ? goals : [goal], revision);
+  const field = buildMultiGoalFlowField(state, goals.length > 0 ? goals : [goal], revision, mobility);
   rememberField(fields, key, field);
   sharedFields.set(key, field);
   while (sharedFields.size > SHARED_FLOW_FIELD_LIMIT) {
@@ -316,7 +318,7 @@ function flowTerrainStepOk(state: SimState, x0: number, y0: number, x1: number, 
   return navigationStepAllowed(staticNavigationFor(state), x0, y0, x1, y1);
 }
 
-function buildFlowField(state: SimState, requestedGoal: Vec2, revision: number): FlowField {
+function buildFlowField(state: SimState, requestedGoal: Vec2, revision: number, mobility: NavigationMobility): FlowField {
   const width = state.width;
   const height = state.height;
   const navigation = staticNavigationFor(state);
@@ -327,10 +329,10 @@ function buildFlowField(state: SimState, requestedGoal: Vec2, revision: number):
     distance.fill(UNREACHABLE);
     return { goal: requestedGoal, revision, width, height, distance };
   }
-  return buildWeightedFlowField(state, [origin], revision);
+  return buildWeightedFlowField(state, [origin], revision, mobility);
 }
 
-function buildMultiGoalFlowField(state: SimState, requestedGoals: readonly Vec2[], revision: number): FlowField {
+function buildMultiGoalFlowField(state: SimState, requestedGoals: readonly Vec2[], revision: number, mobility: NavigationMobility): FlowField {
   const width = state.width;
   const height = state.height;
   const navigation = staticNavigationFor(state);
@@ -341,40 +343,64 @@ function buildMultiGoalFlowField(state: SimState, requestedGoals: readonly Vec2[
     distance.fill(UNREACHABLE);
     return { goal: requestedGoals[0] ?? { x: 0, y: 0 }, revision, width, height, distance };
   }
-  return buildWeightedFlowField(state, origins, revision);
+  return buildWeightedFlowField(state, origins, revision, mobility);
 }
 
-function buildWeightedFlowField(state: SimState, origins: readonly Vec2[], revision: number): FlowField {
+function buildWeightedFlowField(state: SimState, origins: readonly Vec2[], revision: number, mobility: NavigationMobility): FlowField {
   const width = state.width;
   const height = state.height;
   const distance = new Float64Array(width * height);
   distance.fill(UNREACHABLE);
   const navigation = staticNavigationFor(state);
-  const open = new MinHeap();
+  const walkable = navigation.walkable;
+  const heights = navigation.heights;
+  const vehicleMovementCosts = mobility === "vehicle" ? vehicleMovementCostsFor(state) : undefined;
+  const open = flowHeapPool.pop() ?? new MinHeap();
   let sequence = 0;
-  for (const origin of origins) {
-    const key = origin.y * width + origin.x;
-    if (distance[key] === 0) continue;
-    distance[key] = 0;
-    open.push(origin.x, origin.y, 0, 0, sequence++);
-  }
-
-  while (open.length > 0) {
-    open.pop();
-    const currentX = Math.round(open.x);
-    const currentY = Math.round(open.y);
-    const currentKey = currentY * width + currentX;
-    if (open.g > distance[currentKey]! + 1e-9) continue;
-    for (const direction of PATH_DIRS) {
-      const nextX = currentX + direction.x;
-      const nextY = currentY + direction.y;
-      if (!navigationStepAllowed(navigation, currentX, currentY, nextX, nextY)) continue;
-      const nextKey = nextY * width + nextX;
-      const nextDistance = open.g + navigationStepCost(currentX, currentY, nextX, nextY);
-      if (distance[nextKey] >= 0 && nextDistance >= distance[nextKey]! - 1e-9) continue;
-      distance[nextKey] = nextDistance;
-      open.push(nextX, nextY, nextDistance, nextDistance, sequence++);
+  try {
+    for (const origin of origins) {
+      const key = origin.y * width + origin.x;
+      if (distance[key] === 0) continue;
+      distance[key] = 0;
+      open.push(origin.x, origin.y, 0, 0, sequence++);
     }
+
+    while (open.length > 0) {
+      open.pop();
+      const currentX = Math.round(open.x);
+      const currentY = Math.round(open.y);
+      const currentKey = currentY * width + currentX;
+      const currentHeight = heights[currentKey] ?? 0;
+      if (open.g > distance[currentKey]! + 1e-9) continue;
+      for (const direction of PATH_DIRS) {
+        const nextX = currentX + direction.x;
+        const nextY = currentY + direction.y;
+        if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height) continue;
+        const nextKey = nextY * width + nextX;
+        if (walkable[currentKey] !== 1 || walkable[nextKey] !== 1) continue;
+        const dx = Math.abs(nextX - currentX);
+        const dy = Math.abs(nextY - currentY);
+        if (Math.max(dx, dy) !== 1) continue;
+        const nextHeight = heights[nextKey] ?? 0;
+        if (Math.abs(nextHeight - currentHeight) > 1) continue;
+        if (dx === 1 && dy === 1) {
+          const horizontalKey = currentY * width + nextX;
+          const verticalKey = nextY * width + currentX;
+          if (walkable[horizontalKey] !== 1 || Math.abs((heights[horizontalKey] ?? 0) - currentHeight) > 1) continue;
+          if (walkable[verticalKey] !== 1 || Math.abs((heights[verticalKey] ?? 0) - currentHeight) > 1) continue;
+        }
+        // Flow search runs from the goal backward, so the forward-route
+        // destination for this reversed edge is the current cell.
+        const movementCost = mobility === "vehicle" ? vehicleMovementCosts?.[currentKey] ?? 1 : 1;
+        const nextDistance = open.g + (dx === 1 && dy === 1 ? Math.SQRT2 : 1) * movementCost;
+        if (distance[nextKey] >= 0 && nextDistance >= distance[nextKey]! - 1e-9) continue;
+        distance[nextKey] = nextDistance;
+        open.push(nextX, nextY, nextDistance, nextDistance, sequence++);
+      }
+    }
+  } finally {
+    open.clear();
+    if (flowHeapPool.length < FLOW_HEAP_POOL_LIMIT) flowHeapPool.push(open);
   }
 
   return { goal: origins[0]!, revision, width, height, distance };

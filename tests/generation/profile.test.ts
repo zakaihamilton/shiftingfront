@@ -103,11 +103,11 @@ describe("mission profiles", () => {
       targetLabel: "the enemy Command HQ",
       repairPolicy: "none",
       assaultDelay: 840,
-      productionScale: 1.45,
+      productionScale: 1.8,
       startingSupport: false,
     });
     expect(objectiveContractFor("razeAll")).toMatchObject({ assaultDelay: 960, productionScale: 1.7, startingSupport: true });
-    expect(objectiveContractFor("annihilate")).toMatchObject({ assaultDelay: 600, productionScale: 1.4, startingSupport: true });
+    expect(objectiveContractFor("annihilate")).toMatchObject({ assaultDelay: 600, productionScale: 1.8, startingSupport: false });
     expect(objectiveContractFor("harvestQuota")).toBeUndefined();
   });
 

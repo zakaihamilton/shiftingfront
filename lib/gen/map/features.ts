@@ -2,6 +2,9 @@ import { mixSeed } from "../../seed/rng";
 import type { BiomeName } from "../../types";
 import { warpedFbm } from "./noise";
 
+/** A feature region affects gameplay once its seeded intensity reaches this. */
+export const ACTIVE_TERRAIN_RULE_INTENSITY = 0.55;
+
 /**
  * Large-scale terrain themes are deliberately visual vocabulary, not new tile
  * rules. Their small generation biases only shape the existing water, height,
@@ -133,25 +136,31 @@ function featurePair(world: TerrainFeatureWorld): {
  * Return a coherent, map-scale feature sample. This is intentionally pure so
  * map generation, the playable edge, and the renderer all agree on it.
  */
-export function terrainFeatureAt(world: TerrainFeatureWorld, x: number, y: number): TerrainFeatureSample {
+export function terrainFeatureSamplerFor(world: TerrainFeatureWorld): (x: number, y: number) => TerrainFeatureSample {
   const { first, second, salt } = featurePair(world);
   const scale = Math.max(40, Math.max(world.width, world.height));
-  const px = x / scale;
-  const py = y / scale;
-  const primaryField = warpedFbm(px * 11.5, py * 11.5, salt + 31);
-  const secondaryField = warpedFbm(px * 8.25 + 17, py * 8.25 - 11, salt + 79);
-  const detail = warpedFbm(px * 36 + 5, py * 36 - 3, salt + 149);
-  const primary = smoothstep(0.5, 0.71, primaryField);
-  const secondary = smoothstep(0.53, 0.74, secondaryField) * (0.92 - primary * 0.48);
-  const usePrimary = primary >= secondary;
-  const active = usePrimary ? first : second;
-  const intensity = usePrimary ? primary : secondary;
-  return {
-    kind: active.kind,
-    intensity,
-    wetness: active.wetness * intensity,
-    elevation: active.elevation * intensity,
-    blockers: active.blockers * intensity,
-    detail,
+  return (x, y) => {
+    const px = x / scale;
+    const py = y / scale;
+    const primaryField = warpedFbm(px * 11.5, py * 11.5, salt + 31);
+    const secondaryField = warpedFbm(px * 8.25 + 17, py * 8.25 - 11, salt + 79);
+    const detail = warpedFbm(px * 36 + 5, py * 36 - 3, salt + 149);
+    const primary = smoothstep(0.5, 0.71, primaryField);
+    const secondary = smoothstep(0.53, 0.74, secondaryField) * (0.92 - primary * 0.48);
+    const usePrimary = primary >= secondary;
+    const active = usePrimary ? first : second;
+    const intensity = usePrimary ? primary : secondary;
+    return {
+      kind: active.kind,
+      intensity,
+      wetness: active.wetness * intensity,
+      elevation: active.elevation * intensity,
+      blockers: active.blockers * intensity,
+      detail,
+    };
   };
+}
+
+export function terrainFeatureAt(world: TerrainFeatureWorld, x: number, y: number): TerrainFeatureSample {
+  return terrainFeatureSamplerFor(world)(x, y);
 }

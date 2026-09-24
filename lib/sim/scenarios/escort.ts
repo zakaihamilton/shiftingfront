@@ -5,7 +5,7 @@ import { tryFindPathDetailed } from "../pathBudget";
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { distToEntity, isStaticWalkable } from "../world";
 import { reachableScenarioPoint } from "./reachability";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export function convoyStartPoint(
   map: Pick<GeneratedMap, "playerStart" | "width" | "height">,
@@ -48,6 +48,10 @@ export function convoyZonePoint(
 export function convoyDestination(state: SimState, zone: Vec2, index: number): Vec2 {
   const enemyBase = entitiesFor(state).filter((entity) => entity.owner === 1 && entity.class === "building" && entity.hp > 0);
   const candidates: Array<{ point: Vec2; zoneDistance: number; baseDistance: number }> = [];
+  const convoyId = state.runtime?.kind === "escort" ? state.runtime.targetIds[index] : undefined;
+  const earlierDestinations = (state.runtime?.kind === "escort" ? state.runtime.targetIds.slice(0, index) : [])
+    .map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0)?.orderDestination)
+    .filter((point): point is Vec2 => point !== undefined);
   for (let y = zone.y - OBJECTIVE_ZONE_RADIUS; y <= zone.y + OBJECTIVE_ZONE_RADIUS; y++) {
     for (let x = zone.x - OBJECTIVE_ZONE_RADIUS; x <= zone.x + OBJECTIVE_ZONE_RADIUS; x++) {
       const zoneDistance = Math.hypot(x - zone.x, y - zone.y);
@@ -60,7 +64,6 @@ export function convoyDestination(state: SimState, zone: Vec2, index: number): V
     }
   }
   candidates.sort((a, b) => b.baseDistance - a.baseDistance || b.zoneDistance - a.zoneDistance || a.point.y - b.point.y || a.point.x - b.point.x);
-  const convoyId = state.runtime?.kind === "escort" ? state.runtime.targetIds[index] : undefined;
   const convoy = convoyId === undefined ? undefined : entitiesFor(state).find((entity) => entity.id === convoyId && entity.hp > 0);
   if (convoy && candidates.length) {
     // Keep the stable perimeter ordering, but skip a candidate that is not
@@ -69,6 +72,10 @@ export function convoyDestination(state: SimState, zone: Vec2, index: number): V
     // otherwise valid escort route.
     for (let offset = 0; offset < candidates.length; offset++) {
       const candidate = candidates[(index + offset) % candidates.length]!;
+      // Keep each truck's destination clear of earlier convoys. Closely
+      // spaced perimeter points can make adjacent vehicles block one another
+      // just outside the extraction radius.
+      if (earlierDestinations.some((point) => Math.hypot(point.x - candidate.point.x, point.y - candidate.point.y) < 2.5)) continue;
       if (findPathDetailed(state, convoy, candidate.point).status === "complete") return candidate.point;
     }
   }

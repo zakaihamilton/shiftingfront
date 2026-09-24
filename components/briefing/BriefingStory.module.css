@@ -17,6 +17,10 @@
   scrollbar-gutter: stable;
 }
 
+.compact {
+  height: clamp(5.25rem, 12vh, 6.5rem);
+}
+
 .empty {
   min-height: 4rem;
   margin: 0;

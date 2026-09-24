@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { factionArchetype, FACTION_DOCTRINES } from "../../lib/gen/names";
 import { createCampaign } from "../../lib/gen/campaign";
+import { generateBriefing, objectiveHeadline } from "../../lib/gen/story";
 
 describe("faction narrative and dialect enrichment", () => {
   it("classifies faction archetypes correctly", () => {
@@ -39,6 +40,20 @@ describe("faction narrative and dialect enrichment", () => {
         for (const line of mission.briefing) {
           expect(line.text).toMatch(/[.!?]$/);
         }
+      }
+    }
+  });
+
+  it("keeps seeded briefings stable and reserves canonical objective text for the objective panel", () => {
+    for (let seed = 0; seed < 24; seed++) {
+      const campaign = createCampaign(seed);
+      for (const mission of campaign.missions) {
+        const generated = generateBriefing(campaign, mission);
+        expect(generated).toEqual(mission.briefing);
+        expect(generated.length).toBeGreaterThanOrEqual(3);
+        expect(generated.length).toBeLessThanOrEqual(5);
+        const canonicalObjective = objectiveHeadline(mission.win).toLowerCase();
+        expect(generated.some((line) => line.text.toLowerCase().includes(canonicalObjective))).toBe(false);
       }
     }
   });

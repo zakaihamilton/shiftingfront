@@ -33,6 +33,8 @@ export function useModalFocus(
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Tab") return;
+      const modalDialogs = document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]');
+      if (modalDialogs.length && modalDialogs[modalDialogs.length - 1] !== node) return;
       const cycle = focusableElements(node);
       if (cycle.length === 0) {
         event.preventDefault();

@@ -312,6 +312,7 @@ describe("enemy AI", () => {
 
   it("assigns an idle raider between assault waves", () => {
     const s = makeFixture({ width: 24, height: 24, win: { kind: "destroyMarked", targetCount: 1 } });
+    s.biome = "crystal flats";
     addBuilding(s, 1, "constructionYard", 2, 2);
     addBuilding(s, 0, "constructionYard", 18, 18);
     const guard = addUnit(s, 1, "infantry", 5, 2);

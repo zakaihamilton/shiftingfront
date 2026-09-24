@@ -40,8 +40,8 @@ export function inBoundsNavigation(navigation: ReturnType<typeof staticNavigatio
 }
 
 /** Cost used by A* and reverse flow fields for one terrain step. */
-export function navigationStepCost(x0: number, y0: number, x1: number, y1: number): number {
-  return x0 !== x1 && y0 !== y1 ? Math.SQRT2 : 1;
+export function navigationStepCost(x0: number, y0: number, x1: number, y1: number, destinationCost = 1): number {
+  return (x0 !== x1 && y0 !== y1 ? Math.SQRT2 : 1) * destinationCost;
 }
 
 /** Stable key for a directed grid edge in a per-tick reservation table. */

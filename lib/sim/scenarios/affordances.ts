@@ -1,7 +1,7 @@
 import type { SimState } from "../../types";
 import { findPathDetailed } from "../pathfinding";
 import { convoyDestination } from "./escort";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export type ScenarioAffordances = {
   /** First-target aliases retained for existing callers and reports. */

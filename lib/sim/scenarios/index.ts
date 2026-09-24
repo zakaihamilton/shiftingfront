@@ -21,7 +21,7 @@ import { extractionPoints, rescuePoint, rescuePoints, tickRescueExtraction } fro
 import { inRescueFlank } from "../../gen/map/generator/rescuePlacement";
 import type { ScenarioDefinition, ScenarioSetupContext, ScenarioSetupResult } from "./contract";
 import { evaluateElimination, evaluateExtractionEscort, evaluateSabotage } from "./evaluators";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS };
 export { scenarioAffordances, type ScenarioAffordances } from "./affordances";

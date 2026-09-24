@@ -7,6 +7,7 @@ import type { PanAvailability, PanDir } from "@/lib/render/camera";
 import type { ScreenShakeState } from "@/lib/render/screenShake";
 import type { Campaign, Entity, FactionVisualProfile, Palette, BuildingKind, Command, Formation, SimEvent, SimState, Stance, UnitKind } from "@/lib/types";
 import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
+import type { FieldGuideTopic } from "@/lib/fieldGuide";
 import type { ArchiveEntry, SlotMeta } from "@/lib/persist/save";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { CommandTab, PauseView } from "@/lib/ui/shortcuts";
@@ -18,19 +19,10 @@ import type { CombatAlertKind } from "../useCombatAlert";
 import type { CommandNoticeState } from "../useGameChrome";
 import type { MinimapPing } from "../../MinimapFrame";
 
-export type RuntimeRefs = {
+export type SimulationRuntimeRefs = {
   stateRef: MutableRefObject<SimState>;
   commandQueue: MutableRefObject<Command[]>;
   pausedRef: MutableRefObject<boolean>;
-  cameraRef: MutableRefObject<Camera>;
-  canvasRef: MutableRefObject<HTMLCanvasElement | null>;
-  keys: MutableRefObject<Record<string, boolean>>;
-  edgePanHover: MutableRefObject<{ dir: PanDir; startedAt: number } | null>;
-  panHold: MutableRefObject<PanDir | null>;
-  panAvailabilityRef: MutableRefObject<PanAvailability>;
-  fxRef: MutableRefObject<FxBurst[]>;
-  fxSequence: MutableRefObject<number>;
-  screenShakeRef?: MutableRefObject<ScreenShakeState>;
   terminalSaveRef: MutableRefObject<boolean>;
   campaignRecordedRef: MutableRefObject<boolean>;
   lifecycleRef: MutableRefObject<RuntimeLifecycleState>;
@@ -40,33 +32,52 @@ export type RuntimeRefs = {
   suppressImplicitSavesRef?: MutableRefObject<() => void>;
 };
 
-export type RuntimePorts = {
+export type InteractionRuntimeRefs = {
+  cameraRef: MutableRefObject<Camera>;
+  keys: MutableRefObject<Record<string, boolean>>;
+  edgePanHover: MutableRefObject<{ dir: PanDir; startedAt: number } | null>;
+  panHold: MutableRefObject<PanDir | null>;
+  panAvailabilityRef: MutableRefObject<PanAvailability>;
+};
+
+export type RenderingRuntimeRefs = {
+  canvasRef: MutableRefObject<HTMLCanvasElement | null>;
+  fxRef: MutableRefObject<FxBurst[]>;
+  fxSequence: MutableRefObject<number>;
+  screenShakeRef?: MutableRefObject<ScreenShakeState>;
+};
+
+export type SimulationRuntimePorts = {
   setState: (state: SimState) => void;
+};
+
+export type FrameRuntimePorts = {
   setPanAvailability: (availability: PanAvailability) => void;
   applyEdgePan: (direction: PanDir | null) => void;
   redraw: (nowMs?: number, subTickAlpha?: number) => void;
+};
+
+export type PresentationRuntimePorts = {
   onAlert: (text: string, kind?: "warning" | "objective" | "contact" | "system") => void;
   onCommandNotice: (text: string, kind?: "success" | "info" | "warning" | "error") => void;
+};
+
+export type PersistenceRuntimePorts = {
   saveSession: SaveSession;
   persistCampaign: boolean;
 };
 
-/**
- * Runtime wiring grouped by responsibility. The flat RuntimeRefs/RuntimePorts
- * types remain as the controller's compatibility shape while callers migrate
- * to this narrower kernel boundary.
- */
 export type RuntimeKernelRefs = {
-  simulation: Pick<RuntimeRefs, "stateRef" | "commandQueue" | "pausedRef" | "lifecycleRef" | "persistenceRef" | "uxRef" | "terminalSaveRef" | "campaignRecordedRef" | "suppressImplicitSavesRef">;
-  interaction: Pick<RuntimeRefs, "cameraRef" | "keys" | "edgePanHover" | "panHold" | "panAvailabilityRef">;
-  rendering: Pick<RuntimeRefs, "canvasRef" | "fxRef" | "fxSequence" | "screenShakeRef">;
+  simulation: SimulationRuntimeRefs;
+  interaction: InteractionRuntimeRefs;
+  rendering: RenderingRuntimeRefs;
 };
 
 export type RuntimeKernelPorts = {
-  simulation: Pick<RuntimePorts, "setState">;
-  frame: Pick<RuntimePorts, "setPanAvailability" | "applyEdgePan" | "redraw">;
-  presentation: Pick<RuntimePorts, "onAlert" | "onCommandNotice">;
-  persistence: Pick<RuntimePorts, "saveSession" | "persistCampaign">;
+  simulation: SimulationRuntimePorts;
+  frame: FrameRuntimePorts;
+  presentation: PresentationRuntimePorts;
+  persistence: PersistenceRuntimePorts;
 };
 
 export type RuntimeKernel = {
@@ -125,6 +136,7 @@ export type CanvasPointerHandlers = {
 export type PlayFieldSurfaceModel = {
   hostRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  tooltipCanvasRef: RefObject<HTMLCanvasElement | null>;
   panAvail: PanAvailability;
   hotPan: PanDir | null;
   campaign: Campaign;
@@ -209,6 +221,7 @@ export type PauseSessionModel = {
   onCycleHudScale?: () => void;
   onUpdateKeyBindings?: (bindings: KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
+  onMarkFieldGuideTopicSeen?: (topic: FieldGuideTopic) => void;
   onExportTelemetry?: () => boolean;
   onClearTelemetry?: () => boolean;
 };
@@ -258,6 +271,7 @@ export interface GameRuntime {
   paused: boolean;
   hostRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  tooltipCanvasRef: RefObject<HTMLCanvasElement | null>;
   miniRef: RefObject<HTMLCanvasElement | null>;
   panAvail: PanAvailability;
   hotPan: PanDir | null;

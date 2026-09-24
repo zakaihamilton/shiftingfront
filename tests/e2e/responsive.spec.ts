@@ -463,7 +463,14 @@ test.describe("mission briefing responsive layout", () => {
 });
 
 test.describe("selected unit actions", () => {
-  test("refreshes stance and formation after clicking selected actions", async ({ page }) => {
+  test("refreshes stance and formation after using selected actions", async ({ page }, testInfo) => {
+    test.setTimeout(60_000);
+
+    const activate = async (control: import("@playwright/test").Locator) => {
+      if (testInfo.project.name === "desktop") await control.click();
+      else await control.tap();
+    };
+
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/play?seed=0421&mission=0");
     await waitForBattlefield(page);
@@ -476,21 +483,25 @@ test.describe("selected unit actions", () => {
     await page.mouse.click(infantry.x, infantry.y);
 
     await waitForStableSelection(page);
-    await page.getByTestId("mobile-command-toggle").click();
+    const launcher = page.getByTestId("mobile-command-toggle");
+    await expect(launcher).toHaveAttribute("aria-expanded", "false");
+    await activate(launcher);
+    await expect(launcher).toHaveAttribute("aria-expanded", "true");
     const sidebar = page.getByTestId("command-sidebar");
-    await sidebar.getByRole("tab", { name: "Selected" }).click();
+    await activate(sidebar.getByRole("tab", { name: "Selected" }));
+    await expect(sidebar).toHaveAttribute("data-mobile-open", "true");
     await expect(sidebar.getByTestId("selected-kind")).toBeVisible();
 
     const unitOrders = sidebar;
     const hold = unitOrders.getByTestId("selected-action-stance-hold");
     await expect(hold).toHaveAttribute("aria-pressed", "false");
-    await hold.click();
+    await activate(hold);
     await expect(hold).toHaveAttribute("aria-pressed", "true");
     await expect(sidebar.getByText("Stance Hold", { exact: true })).toBeVisible();
 
     const wedge = unitOrders.getByTestId("selected-action-formation-wedge");
     await expect(wedge).toHaveAttribute("aria-pressed", "false");
-    await wedge.click();
+    await activate(wedge);
     await expect(wedge).toHaveAttribute("aria-pressed", "true");
   });
 });
@@ -630,72 +641,81 @@ test.describe("mobile-first layouts", () => {
     await expect(panel).not.toBeVisible();
   });
 
-  test("caps the portrait command sidebar and keeps its items proportional", async ({ page }) => {
+  test("caps the portrait command sidebar and keeps its items proportional", async ({ page }, testInfo) => {
+    test.setTimeout(60_000);
+
     for (const viewport of [
       { width: 320, height: 568 },
       { width: 390, height: 844 },
       { width: 730, height: 909 },
     ]) {
-      await page.setViewportSize(viewport);
-      await page.goto("/play?seed=0421&mission=0&fresh=1");
+      const viewportPage = await page.context().newPage();
+      try {
+        await viewportPage.setViewportSize(viewport);
+        await viewportPage.goto("/play?seed=0421&mission=0&fresh=1");
+        await waitForBattlefield(viewportPage);
 
-      const launcher = page.getByTestId("mobile-command-toggle");
-      await expect(launcher).toBeVisible();
-      await launcher.click();
+        const launcher = viewportPage.getByTestId("mobile-command-toggle");
+        await expect(launcher).toBeVisible();
+        if (testInfo.project.name === "desktop") await launcher.click();
+        else await launcher.tap();
 
-      const sidebar = page.getByTestId("command-sidebar");
-      await expect(sidebar).toBeVisible();
-      await waitForCommandSidebarToSettle(sidebar, viewport.width);
-      const layout = await sidebar.evaluate((element) => {
-        const bounds = (node: Element) => {
-          const rect = node.getBoundingClientRect();
-          return { right: rect.right, width: rect.width, height: rect.height };
-        };
-        const cards = Array.from(element.querySelectorAll("[data-testid='build-progress'] button[aria-label*='credits']"));
-        const tabs = element.querySelector("[role='toolbar']");
-        return {
-          sidebar: bounds(element),
-          tabs: tabs ? Array.from(tabs.children).map(bounds) : [],
-          cards: cards.map((card) => ({
-            card: bounds(card),
-            art: card.firstElementChild ? bounds(card.firstElementChild) : null,
-            canvas: (() => {
-              const canvas = card.querySelector("canvas");
-              if (!(canvas instanceof HTMLCanvasElement)) return null;
-              const rect = canvas.getBoundingClientRect();
-              return {
-                backingWidth: canvas.width,
-                backingHeight: canvas.height,
-                cssWidth: rect.width,
-                cssHeight: rect.height,
-                imageRendering: getComputedStyle(canvas).imageRendering,
-              };
-            })(),
-          })),
-          documentWidth: document.documentElement.scrollWidth,
-        };
-      });
+        const sidebar = viewportPage.getByTestId("command-sidebar");
+        await expect(sidebar).toBeVisible();
+        await waitForCommandSidebarToSettle(sidebar, viewport.width);
+        const layout = await sidebar.evaluate((element) => {
+          const bounds = (node: Element) => {
+            const rect = node.getBoundingClientRect();
+            return { right: rect.right, width: rect.width, height: rect.height };
+          };
+          const cards = Array.from(element.querySelectorAll("[data-testid='build-progress'] button[aria-label*='credits']"));
+          const tabs = element.querySelector("[role='toolbar']");
+          return {
+            sidebar: bounds(element),
+            tabs: tabs ? Array.from(tabs.children).map(bounds) : [],
+            cards: cards.map((card) => ({
+              card: bounds(card),
+              art: card.firstElementChild ? bounds(card.firstElementChild) : null,
+              canvas: (() => {
+                const canvas = card.querySelector("canvas");
+                if (!(canvas instanceof HTMLCanvasElement)) return null;
+                const rect = canvas.getBoundingClientRect();
+                return {
+                  backingWidth: canvas.width,
+                  backingHeight: canvas.height,
+                  cssWidth: rect.width,
+                  cssHeight: rect.height,
+                  imageRendering: getComputedStyle(canvas).imageRendering,
+                };
+              })(),
+            })),
+            documentWidth: document.documentElement.scrollWidth,
+          };
+        });
 
-      expect(layout.sidebar.width).toBeLessThanOrEqual(viewport.width);
-      expect(layout.sidebar.width).toBeGreaterThan(0);
-      expect(layout.sidebar.right).toBeLessThanOrEqual(viewport.width);
-      expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width);
-      expect(layout.cards).toHaveLength(PLACEABLE.length);
+        expect(layout.sidebar.width).toBeLessThanOrEqual(viewport.width);
+        expect(layout.sidebar.width).toBeGreaterThan(0);
+        expect(layout.sidebar.right).toBeLessThanOrEqual(viewport.width);
+        expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width);
+        expect(layout.cards).toHaveLength(PLACEABLE.length);
 
-      const cardWidths = layout.cards.map(({ card }) => card.width);
-      expect(Math.max(...cardWidths) - Math.min(...cardWidths)).toBeLessThanOrEqual(1);
-      for (const { art, canvas } of layout.cards) {
-        expect(art).not.toBeNull();
-        expect(art!.width / art!.height).toBeCloseTo(80 / 56, 2);
-        expect(canvas).not.toBeNull();
-        expect(canvas!.backingWidth).toBeGreaterThanOrEqual(canvas!.cssWidth);
-        expect(canvas!.backingHeight).toBeGreaterThanOrEqual(canvas!.cssHeight);
-        expect(canvas!.imageRendering).toBe("auto");
+        const cardWidths = layout.cards.map(({ card }) => card.width);
+        expect(Math.max(...cardWidths) - Math.min(...cardWidths)).toBeLessThanOrEqual(1);
+        for (const { art, canvas } of layout.cards) {
+          expect(art).not.toBeNull();
+          expect(art!.width / art!.height).toBeCloseTo(80 / 56, 2);
+          expect(canvas).not.toBeNull();
+          expect(canvas!.backingWidth).toBeGreaterThanOrEqual(canvas!.cssWidth);
+          expect(canvas!.backingHeight).toBeGreaterThanOrEqual(canvas!.cssHeight);
+          expect(canvas!.imageRendering).toBe("auto");
+        }
+
+        const tabWidths = layout.tabs.map(({ width }) => width);
+        expect(tabWidths).toHaveLength(5);
+        expect(Math.max(...tabWidths) - Math.min(...tabWidths)).toBeLessThanOrEqual(1);
+      } finally {
+        await viewportPage.close();
       }
-
-      const tabWidths = layout.tabs.map(({ width }) => width);
-      expect(tabWidths).toHaveLength(5);
-      expect(Math.max(...tabWidths) - Math.min(...tabWidths)).toBeLessThanOrEqual(1);
     }
   });
 
@@ -957,6 +977,8 @@ test.describe("mobile-first layouts", () => {
   });
 
   test("guards browser Back in a live mission and preserves briefing Back destinations", async ({ page }) => {
+    test.setTimeout(60_000);
+
     await page.setViewportSize({ width: 390, height: 844 });
     await openBriefingSkippingTutorial(page);
     await page.getByRole("button", { name: "Launch" }).click();

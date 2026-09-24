@@ -10,7 +10,7 @@
 .volumeRange { width: 100%; accent-color: var(--chrome-cyan); }
 .group { display: grid; gap: 0.5rem; padding-top: 0.65rem; border-top: 1px solid var(--chrome-inset); }
 .groupLabel { margin: 0; }
-.confirmOverlay { position: absolute; inset: 0; z-index: 2; display: flex; align-items: flex-start; justify-content: safe center; padding: 1rem; background: rgba(0, 0, 0, 0.72); overflow-y: auto; }
+.confirmOverlay { position: fixed; inset: 0; z-index: 120; display: flex; align-items: flex-start; justify-content: safe center; padding: 1rem; background: rgba(0, 0, 0, 0.72); overflow-y: auto; }
 .confirmDialog { width: min(100%, 24rem); margin-block: auto; padding: 1.25rem; }
 .slotCopy { margin: 0.75rem 0 0; color: var(--chrome-body); font-size: 0.75rem; line-height: 1.45; }
 .slotConfirmActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }

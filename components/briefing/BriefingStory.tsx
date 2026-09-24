@@ -26,15 +26,17 @@ export function BriefingStory({
   lines,
   talking,
   speakerRole,
+  compact = false,
 }: {
   storyRef: Ref<HTMLDivElement>;
   campaign: Campaign;
   lines: RevealedLine[];
   talking: boolean;
   speakerRole: CharacterRole | undefined;
+  compact?: boolean;
 }) {
   return (
-    <div ref={storyRef} className={styles.story} data-testid="briefing-dialogue">
+    <div ref={storyRef} className={`${styles.story}${compact ? ` ${styles.compact}` : ""}`} data-testid="briefing-dialogue">
       {lines.length === 0 ? (
         <p className={styles.empty}>
           Awaiting channel lock

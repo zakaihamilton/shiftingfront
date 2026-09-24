@@ -203,8 +203,9 @@ jobs:
 
   e2e:
     name: E2E (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    # Shard 3 combines WebKit touch tests with desktop visual tests; serialize it to avoid input timing races.
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.shardIndex == 3 && 25 || 15 }}
     strategy:
       fail-fast: false
       matrix:
@@ -244,6 +245,6 @@ jobs:
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: yarn playwright install-deps chromium webkit
-      - run: yarn test:e2e --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+      - run: yarn test:e2e --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --workers=${{ matrix.shardIndex == 3 && 1 || 2 }}
         env:
           CI: true

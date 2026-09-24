@@ -21,7 +21,7 @@ export type KeyEventLike = {
   shiftKey?: boolean;
 };
 
-export type PauseView = "main" | "options" | "diagnostics" | "controls" | "save" | "load";
+export type PauseView = "main" | "options" | "diagnostics" | "controls" | "save" | "load" | "fieldGuide";
 export type CommandTab = "construction" | "production" | "selected";
 
 export type GameCommand =
@@ -188,7 +188,7 @@ export function gameCommandFromKey(
       if (isEscape(e)) return { type: "options" };
       return null;
     }
-    if (ctx.pauseView === "controls" || ctx.pauseView === "save" || ctx.pauseView === "load") {
+    if (ctx.pauseView === "controls" || ctx.pauseView === "save" || ctx.pauseView === "load" || ctx.pauseView === "fieldGuide") {
       if (isEscape(e) || (ctx.pauseView === "controls" && isF1(e))) return { type: "pauseBack" };
       return null;
     }

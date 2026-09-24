@@ -20,7 +20,7 @@ import {
   runSimulationSystems,
   type SimulationTickOptions,
 } from "./pipeline";
-import { withEntityWorldBatch, worldFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
 
 export { issue, inspect };
 export { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS, scenarioAffordances, type ScenarioAffordances } from "./scenarios";
@@ -76,7 +76,7 @@ export function createMissionFromData(opts: {
     })) as SimState["factions"],
     missionName: mission.name,
   });
-  return withEntityWorldBatch(state, () => initializeMissionState(state, map, mission, rng, difficulty));
+  return initializeMissionState(state, map, mission, rng, difficulty);
 }
 
 function initializeMissionState(
@@ -147,6 +147,16 @@ function dirPoint(
     const pTank = dirPoint(p, pVecs.forward, pVecs.lateral, 5, 0, state.width, state.height);
     spawnUnit(state, 0, "tank", pTank.x, pTank.y);
   }
+  if (mission.win.kind === "annihilate") {
+    const pAssaultTank = dirPoint(p, pVecs.forward, pVecs.lateral, 6, 2, state.width, state.height);
+    spawnUnit(state, 0, "tank", pAssaultTank.x, pAssaultTank.y);
+    const pAssaultAntiArmor = dirPoint(p, pVecs.forward, pVecs.lateral, 6, -2, state.width, state.height);
+    spawnUnit(state, 0, "antiArmor", pAssaultAntiArmor.x, pAssaultAntiArmor.y);
+  }
+  if (mission.win.kind === "decapitate" || mission.win.kind === "annihilate") {
+    const pAssaultMedic = dirPoint(p, pVecs.forward, pVecs.lateral, 3, 3, state.width, state.height);
+    spawnUnit(state, 0, "medic", pAssaultMedic.x, pAssaultMedic.y);
+  }
   for (let turretIndex = 0; turretIndex < difficulty.offensiveStartingTurrets && offensiveMission; turretIndex += 1) {
     const pExtraTurret = dirPoint(p, pVecs.forward, pVecs.lateral, 3, 2 + turretIndex * 2, state.width, state.height);
     spawnBuildingAt(state, 0, "turret", pExtraTurret.x, pExtraTurret.y);
@@ -160,7 +170,7 @@ function dirPoint(
     spawnBuildingAt(state, 0, "barracks", pBarracks.x, pBarracks.y);
   }
 
-  for (const building of worldFor(state).all().filter((entity) => entity.owner === 0 && entity.class === "building" && entity.hp > 0 && entity.constructing === 0)) {
+  for (const building of entitiesFor(state).filter((entity) => entity.owner === 0 && entity.class === "building" && entity.hp > 0 && entity.constructing === 0)) {
     state.buildingsCompleted[0] += 1;
     state.buildingsCompletedByKind[building.kind] = (state.buildingsCompletedByKind[building.kind] ?? 0) + 1;
   }
@@ -249,20 +259,18 @@ export function tick(
   commands?: Command[],
   options: TickOptions = {},
 ): { state: SimState; events: SimEvent[]; commandRejections: number } {
-  return withEntityWorldBatch(state, () => {
-    resetPathBudget(state);
-    const collectEvents = options.collectEvents !== false;
-    const events = collectEvents ? [] : EMPTY_EVENTS;
-    const commandEvents = applyQueuedCommands(state, commands);
-    const commandRejections = commandEvents.reduce(
-      (count, event) => count + (event.type === "commandRejected" ? 1 : 0),
-      0,
-    );
-    if (collectEvents) events.push(...commandEvents);
-    if (state.result !== "playing") return { state, events, commandRejections };
-    runSimulationSystems(createSimulationTickContext(state, collectEvents ? events : undefined, options));
-    return { state, events, commandRejections };
-  });
+  resetPathBudget(state);
+  const collectEvents = options.collectEvents !== false;
+  const events = collectEvents ? [] : EMPTY_EVENTS;
+  const commandEvents = applyQueuedCommands(state, commands);
+  const commandRejections = commandEvents.reduce(
+    (count, event) => count + (event.type === "commandRejected" ? 1 : 0),
+    0,
+  );
+  if (collectEvents) events.push(...commandEvents);
+  if (state.result !== "playing") return { state, events, commandRejections };
+  runSimulationSystems(createSimulationTickContext(state, collectEvents ? events : undefined, options));
+  return { state, events, commandRejections };
 }
 
 export function createCampaignAndMission(seed: number, missionIndex: number) {

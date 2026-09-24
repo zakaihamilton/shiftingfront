@@ -9,7 +9,8 @@ import { navigationEdgeKey, navigationEdgeReserved } from "./navigation/grid";
 import { invalidateUnitAtCache, unitOccupancyFor } from "./world";
 import type { FlowField } from "./flowField";
 import { tickAircraft } from "./aircraft";
-import { entitiesFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
+import { navigationMobilityFor, terrainMovementCostAt } from "./terrainRules";
 
 type MovementBuffers = {
   occupancy: Uint8Array;
@@ -141,9 +142,10 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
   });
 
   for (const e of movers) {
-    const speed = UNIT_STATS[e.kind].speed * (1 - Math.min(0.4, (e.suppression ?? 0) / 250));
     const current = cellOf(state, e.x, e.y);
     const next = e.path[0];
+    const movementCost = next ? terrainMovementCostAt(state, navigationMobilityFor(e), next.x, next.y) : 1;
+    const speed = UNIT_STATS[e.kind].speed / movementCost * (1 - Math.min(0.4, (e.suppression ?? 0) / 250));
     const distance = next ? Math.hypot(next.x - e.x, next.y - e.y) : 0;
     const nx = next ? Math.round(next.x) : Math.round(e.x);
     const ny = next ? Math.round(next.y) : Math.round(e.y);

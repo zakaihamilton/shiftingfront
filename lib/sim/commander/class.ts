@@ -13,7 +13,7 @@ import {
   isCombatEntity,
   enemyEntitiesView,
 } from "./queries";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 import {
   planBuilding,
   planProduction,
@@ -192,7 +192,7 @@ export class CompetentCommander {
         ? Math.min(scenarioDefenderLimit, Math.max(0, objectiveCombat.length - 1))
         : offensiveObjective
           ? Math.min(
-            finalPush ? (threat ? 1 : 0) : state.missionIndex < 2 ? 0 : 2,
+            finalPush ? (threat ? 1 : 0) : (objectiveKind(state) === "annihilate" || state.missionIndex < 2 ? 0 : 2),
             Math.max(0, objectiveCombat.length - 1),
           )
           : defenderLimit;

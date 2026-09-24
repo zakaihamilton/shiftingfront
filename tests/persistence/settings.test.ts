@@ -146,6 +146,31 @@ describe("audio settings", () => {
     });
   });
 
+  it("persists reviewed Field Guide topics in settings version 4", () => {
+    const storage = memoryStorage();
+    const guideTopics = ["scenario:escort", "biome:ash plains"] as const;
+    writeSettings(storage, { ...defaultSettings(), seenFieldGuideTopics: [...guideTopics] });
+    expect(readSettings(storage).seenFieldGuideTopics).toEqual(guideTopics);
+    expect(JSON.parse(storage.getItem(SETTINGS_KEY)!).version).toBe(4);
+  });
+
+  it("accepts settings versions 1 through 4 and normalizes guide topic IDs", () => {
+    const storage = memoryStorage();
+    for (const version of [1, 2, 3, 4]) {
+      storage.setItem(SETTINGS_KEY, JSON.stringify({
+        version,
+        savedAt: 1,
+        settings: {
+          sfxEnabled: false,
+          seenFieldGuideTopics: ["scenario:rescue", "scenario:rescue", "not-a-topic"],
+        },
+      }));
+      const loaded = readSettings(storage);
+      expect(loaded.sfxEnabled).toBe(false);
+      expect(loaded.seenFieldGuideTopics).toEqual(["scenario:rescue"]);
+    }
+  });
+
   it("normalizes invalid colorblindMode and partial keyBindings", () => {
     const storage = memoryStorage({
       [SETTINGS_KEY]: JSON.stringify({

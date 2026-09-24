@@ -3,7 +3,7 @@ import { isBuildingEntity, type BuildingKind, type Entity, type SimEvent, type S
 import { frontTileNear, invalidatePowerCache, openTileNear, powerFor, trySpawnUnit } from "./world";
 import { assignMoveDestination } from "./orders/movement";
 import { runwayServicePoint } from "./aircraft";
-import { entitiesFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
 
 const playerPowerOk = new WeakMap<SimState, boolean>();
 

@@ -52,6 +52,8 @@ const missionArg = arg("mission", "all");
 const maxTicks = Number(arg("ticks", String(MAX_OPERATION_TICKS)));
 const strategyArg = arg("strategy", "competent");
 const details = arg("details", "false") === "true";
+const profile = arg("profile", "false") === "true";
+const profileCount = Math.max(1, Math.floor(Number(arg("profile-count", "20")) || 20));
 const shouldCheck = arg("check", "false") === "true";
 const stratified = arg("stratified", "false") === "true";
 const shardArg = arg("shard", "");
@@ -198,6 +200,20 @@ async function main() {
   const scenarioTimes = records.map((record) => record.scenarioMs);
   const slowestIndex = scenarioTimes.reduce((best, value, index) => value > (scenarioTimes[best] ?? -1) ? index : best, 0);
   const slowest = records[slowestIndex];
+  const slowestScenarios = profile
+    ? [...records]
+      .sort((a, b) => b.scenarioMs - a.scenarioMs)
+      .slice(0, profileCount)
+      .map((record) => ({
+        seed: record.seed,
+        mission: record.mission,
+        strategy: record.strategy,
+        kind: record.kind,
+        ticks: record.duration,
+        result: record.result,
+        scenarioMs: Number(record.scenarioMs.toFixed(2)),
+      }))
+    : undefined;
   console.log(JSON.stringify({
     strategy: strategyArg,
     strategies,
@@ -236,6 +252,7 @@ async function main() {
   byMission: summary.byMission,
   byStrategy: summary.byStrategy,
   failures: failedScenarios,
+  ...(slowestScenarios ? { slowestScenarios } : {}),
   ...(acceptance ? { acceptance: { ...acceptance, thresholds } } : {}),
   ...(details ? { records: stableBalanceRecords(records) } : {}),
   }, null, 2));

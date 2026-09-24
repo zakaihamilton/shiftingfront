@@ -10,13 +10,9 @@ import { moveUnits, attackMoveUnits } from "./movement";
 import { attackUnits, supportUnits, setStance, setFormation } from "./combat";
 import { startBuild, cancelBuild, sellBuilding, setRallyPoint, toggleRepair } from "./building";
 import { startProduce, cancelProduce } from "./production";
-import { entitiesFor, withEntityWorldBatch } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 export function issue(state: SimState, command: Command): SimEvent[] {
-  return withEntityWorldBatch(state, () => issueInReadBatch(state, command));
-}
-
-function issueInReadBatch(state: SimState, command: Command): SimEvent[] {
   if (state.result !== "playing") return [];
   const tutorialExpectedTargets = state.tutorialStage ? tutorialTargets(state) : undefined;
   let events: SimEvent[];

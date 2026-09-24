@@ -1,8 +1,9 @@
 import { safeSetItem, type StorageAdapter } from "./save";
 import { isRecord, readPersistedEnvelope } from "./utils";
+import { FIELD_GUIDE_TOPICS, isFieldGuideTopic, type FieldGuideTopic } from "../fieldGuide";
 
 export const SETTINGS_KEY = "shiftingfront:settings";
-export const SETTINGS_VERSION = 3 as const;
+export const SETTINGS_VERSION = 4 as const;
 
 export type ColorblindMode = "none" | "deuteranopia" | "protanopia" | "tritanopia";
 export type HudScale = "compact" | "normal" | "large";
@@ -50,6 +51,7 @@ export type GameSettings = {
   colorblindMode: ColorblindMode;
   hudScale: HudScale;
   keyBindings: KeyBindings;
+  seenFieldGuideTopics: FieldGuideTopic[];
 };
 
 export function defaultSettings(): GameSettings {
@@ -64,6 +66,7 @@ export function defaultSettings(): GameSettings {
     colorblindMode: "none",
     hudScale: "normal",
     keyBindings: defaultKeyBindings(),
+    seenFieldGuideTopics: [],
   };
 }
 
@@ -122,6 +125,9 @@ function normalize(value: unknown): GameSettings {
     colorblindMode,
     hudScale,
     keyBindings: normalizeKeyBindings(raw.keyBindings),
+    seenFieldGuideTopics: Array.isArray(raw.seenFieldGuideTopics)
+      ? [...new Set(raw.seenFieldGuideTopics.filter(isFieldGuideTopic))]
+      : [],
   };
 }
 
@@ -130,7 +136,7 @@ export function readSettings(storage: StorageAdapter): GameSettings {
     storage,
     SETTINGS_KEY,
     (parsed) => {
-      if (!isRecord(parsed) || (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== SETTINGS_VERSION)) return null;
+      if (!isRecord(parsed) || (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== SETTINGS_VERSION)) return null;
       return normalize(parsed.settings);
     },
     defaultSettings(),
@@ -152,6 +158,7 @@ export function writeSettings(storage: StorageAdapter, settings: GameSettings): 
       colorblindMode: settings.colorblindMode || "none",
       hudScale: settings.hudScale || "normal",
       keyBindings: normalizeKeyBindings(settings.keyBindings),
+      seenFieldGuideTopics: FIELD_GUIDE_TOPICS.filter((topic) => settings.seenFieldGuideTopics?.includes(topic)),
     },
   }));
 }

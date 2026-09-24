@@ -8,7 +8,7 @@ import { tileInPlayerVision } from "../fog";
 import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
 import { closestApproach, distToEntity, isWalkable } from "../world";
-import { entitiesFor } from "../ecs/world";
+import { entitiesFor } from "../entities";
 
 const EXTRACTION_PLAYER_BASE_CLEARANCE = 8;
 const EXTRACTION_ENEMY_BASE_CLEARANCE = 14;

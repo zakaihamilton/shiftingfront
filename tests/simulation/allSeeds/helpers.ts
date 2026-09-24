@@ -1,10 +1,10 @@
 import { footprintOf, NEW_MISSION_KINDS } from "../../../lib/catalog";
 import { createCampaign } from "../../../lib/gen/campaign";
 import { generateMap, mapSizeForMission } from "../../../lib/gen/map";
-import { createMission } from "../../../lib/sim/api";
+import { createMissionFromData } from "../../../lib/sim/api";
 import { inRescueFlank } from "../../../lib/gen/map/generator/rescuePlacement";
-import { canClimb, distToEntity, footprintFlat, inBounds, isStaticWalkable, terrainAccess } from "../../../lib/sim/world";
-import { diagonalCornerBlocked, PATH_DIRS } from "../../../lib/sim/pathfinding";
+import { distToEntity, footprintFlat, inBounds, isStaticWalkable, staticNavigationFor, terrainAccess } from "../../../lib/sim/world";
+import { PATH_DIRS } from "../../../lib/sim/pathfinding";
 import type { Entity, MissionKind, SimState, Vec2 } from "../../../lib/types";
 
 export const SEED_COUNT = 10_000;
@@ -18,13 +18,12 @@ export const REPRESENTATIVE_SEEDS = Array.from(
 export const SCENARIO_KINDS = new Set<MissionKind>(["escort", "sabotage", "rescue", "extraction"]);
 
 function reachableCells(state: SimState, from: Vec2): Uint8Array {
-  const startX = Math.round(from.x);
-  const startY = Math.round(from.y);
+  const navigation = staticNavigationFor(state);
   const seen = new Uint8Array(state.width * state.height);
   const queue = new Int32Array(state.width * state.height);
   let head = 0;
   let tail = 0;
-  const startKey = startY * state.width + startX;
+  const startKey = Math.round(from.y) * state.width + Math.round(from.x);
   seen[startKey] = 1;
   queue[tail++] = startKey;
 
@@ -32,14 +31,20 @@ function reachableCells(state: SimState, from: Vec2): Uint8Array {
     const currentKey = queue[head++]!;
     const currentX = currentKey % state.width;
     const currentY = Math.floor(currentKey / state.width);
+    const currentHeight = navigation.heights[currentKey] ?? 0;
     for (const dir of PATH_DIRS) {
       const nextX = currentX + dir.x;
       const nextY = currentY + dir.y;
       if (!inBounds(state, nextX, nextY)) continue;
       const index = nextY * state.width + nextX;
-      if (seen[index] || !isStaticWalkable(state, nextX, nextY)) continue;
-      if (!canClimb(state, currentX, currentY, nextX, nextY)) continue;
-      if (diagonalCornerBlocked(state, currentX, currentY, nextX, nextY)) continue;
+      if (seen[index] || navigation.walkable[index] !== 1) continue;
+      if (Math.abs((navigation.heights[index] ?? 0) - currentHeight) > 1) continue;
+      if (dir.x !== 0 && dir.y !== 0) {
+        const horizontalKey = currentY * state.width + nextX;
+        const verticalKey = nextY * state.width + currentX;
+        if (navigation.walkable[horizontalKey] !== 1 || Math.abs((navigation.heights[horizontalKey] ?? 0) - currentHeight) > 1) continue;
+        if (navigation.walkable[verticalKey] !== 1 || Math.abs((navigation.heights[verticalKey] ?? 0) - currentHeight) > 1) continue;
+      }
       seen[index] = 1;
       queue[tail++] = index;
     }
@@ -147,8 +152,8 @@ export function assertScenarioTargets(start: number, end: number): void {
     const campaign = createCampaign(seed);
     for (const mission of campaign.missions) {
       if (!SCENARIO_KINDS.has(mission.win.kind)) continue;
-      const state = createMission({ seed, missionIndex: mission.index });
-      const rescueMap = mission.win.kind === "rescue" ? generateMap(seed, mission) : undefined;
+      const map = generateMap(seed, mission);
+      const state = createMissionFromData({ seed, missionIndex: mission.index, campaign, mission, map });
       const targetIds = state.runtime?.targetIds ?? [];
       const expected = mission.win.targetCount ?? 0;
       if (targetIds.length !== expected || state.runtime?.required !== expected) {
@@ -180,7 +185,7 @@ export function assertScenarioTargets(start: number, end: number): void {
         if (!reachableTarget(state, reachableFromPlayer, target)) {
           throw new Error(`Seed ${seed} mission ${mission.index} placed unreachable target ${id}`);
         }
-        if (mission.win.kind === "rescue" && rescueMap && !inRescueFlank(rescueMap, target.x, target.y)) {
+        if (mission.win.kind === "rescue" && !inRescueFlank(map, target.x, target.y)) {
           throw new Error(`Seed ${seed} mission ${mission.index} staged rescue target ${id} outside mirrored flank`);
         }
       }

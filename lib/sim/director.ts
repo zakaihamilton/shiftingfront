@@ -3,7 +3,7 @@ import { isUnitEntity, type MissionDirectorPhase, type MissionRuntime, type SimE
 import { missionDifficulty } from "./difficulty";
 import { powerBreakdown, trySpawnUnit } from "./world";
 import { objectiveContractFor, profileContractFor, resolveMissionProfile } from "../gen/profile";
-import { entitiesFor } from "./ecs/world";
+import { entitiesFor } from "./entities";
 
 const CLASSIC_DIRECTOR_DURATION = 3600;
 const CLASSIC_DURATION_STEP = 480;

@@ -1,13 +1,13 @@
 import { startLoop, type LoopHandle } from "@/lib/game/loop";
 import { TICKS_PER_SECOND } from "@/lib/catalog";
-import { tick } from "@/lib/sim/api";
-import { entitiesFor } from "@/lib/sim/ecs";
+import { createScenarioRunner } from "@/lib/sim/scenarioRunner";
+import { entitiesFor } from "@/lib/sim/entities";
 import type { SimEvent, SimState } from "@/lib/types";
 import { canonicalCommandRejectionReason, type MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { createFrameCoordinator } from "./frame";
 import { createPersistenceCoordinator } from "./persistence";
 import { createPresentationCoordinator } from "./presentation";
-import type { RuntimeController, RuntimeKernel, RuntimePorts, RuntimeRefs } from "./types";
+import type { RuntimeController, RuntimeKernel } from "./types";
 
 const AUTOSAVE_INTERVAL_TICKS = 30 * TICKS_PER_SECOND;
 
@@ -25,61 +25,58 @@ function createRuntimeUxTelemetry(): MissionUxTelemetry {
 }
 
 export function createRuntimeController(kernel: RuntimeKernel): RuntimeController {
-  const refs: RuntimeRefs = {
-    ...kernel.refs.simulation,
-    ...kernel.refs.interaction,
-    ...kernel.refs.rendering,
-  };
-  const ports: RuntimePorts = {
-    ...kernel.ports.simulation,
-    ...kernel.ports.frame,
-    ...kernel.ports.presentation,
-    ...kernel.ports.persistence,
-  };
+  const { simulation: simRefs, interaction: interactionRefs, rendering: renderRefs } = kernel.refs;
+  const {
+    simulation: simPorts,
+    frame: framePorts,
+    presentation: presentationPorts,
+    persistence: persistencePorts,
+  } = kernel.ports;
   let loop: LoopHandle | null = null;
   let started = false;
-  const lifecycle = refs.lifecycleRef.current;
+  const lifecycle = simRefs.lifecycleRef.current;
+  let scenarioRunner = createScenarioRunner(simRefs.stateRef.current);
 
   const persistence = createPersistenceCoordinator({
-    stateRef: refs.stateRef,
-    terminalSaveRef: refs.terminalSaveRef,
-    campaignRecordedRef: refs.campaignRecordedRef,
-    saveSession: ports.saveSession,
-    persistCampaign: ports.persistCampaign,
-    onAlert: ports.onAlert,
-    persistenceRef: refs.persistenceRef,
-    suppressImplicitSavesRef: refs.suppressImplicitSavesRef,
+    stateRef: simRefs.stateRef,
+    terminalSaveRef: simRefs.terminalSaveRef,
+    campaignRecordedRef: simRefs.campaignRecordedRef,
+    saveSession: persistencePorts.saveSession,
+    persistCampaign: persistencePorts.persistCampaign,
+    onAlert: presentationPorts.onAlert,
+    persistenceRef: simRefs.persistenceRef,
+    suppressImplicitSavesRef: simRefs.suppressImplicitSavesRef,
   });
   const presentation = createPresentationCoordinator({
-    cameraRef: refs.cameraRef,
-    canvasRef: refs.canvasRef,
-    fxRef: refs.fxRef,
-    fxSequence: refs.fxSequence,
-    screenShakeRef: refs.screenShakeRef,
-    onAlert: ports.onAlert,
-    onCommandNotice: ports.onCommandNotice,
+    cameraRef: interactionRefs.cameraRef,
+    canvasRef: renderRefs.canvasRef,
+    fxRef: renderRefs.fxRef,
+    fxSequence: renderRefs.fxSequence,
+    screenShakeRef: renderRefs.screenShakeRef,
+    onAlert: presentationPorts.onAlert,
+    onCommandNotice: presentationPorts.onCommandNotice,
   });
   const frame = createFrameCoordinator({
-    cameraRef: refs.cameraRef,
-    canvasRef: refs.canvasRef,
-    keys: refs.keys,
-    edgePanHover: refs.edgePanHover,
-    panHold: refs.panHold,
-    panAvailabilityRef: refs.panAvailabilityRef,
-    setPanAvailability: ports.setPanAvailability,
-    applyEdgePan: ports.applyEdgePan,
+    cameraRef: interactionRefs.cameraRef,
+    canvasRef: renderRefs.canvasRef,
+    keys: interactionRefs.keys,
+    edgePanHover: interactionRefs.edgePanHover,
+    panHold: interactionRefs.panHold,
+    panAvailabilityRef: interactionRefs.panAvailabilityRef,
+    setPanAvailability: framePorts.setPanAvailability,
+    applyEdgePan: framePorts.applyEdgePan,
   });
 
   const syncSession = (state: SimState) => {
     if (lifecycle.sessionState === state) return;
     const isInitialSession = lifecycle.sessionState === null;
     lifecycle.sessionState = state;
-    lifecycle.terminalPresented = refs.terminalSaveRef.current;
+    lifecycle.terminalPresented = simRefs.terminalSaveRef.current;
     lifecycle.commandApplied = false;
     lifecycle.counters.commandsIssued = 0;
     lifecycle.counters.commandRejections = 0;
-    const briefingSkipped = isInitialSession && refs.uxRef.current.briefingSkipped;
-    lifecycle.counters.ux = refs.uxRef.current = {
+    const briefingSkipped = isInitialSession && simRefs.uxRef.current.briefingSkipped;
+    lifecycle.counters.ux = simRefs.uxRef.current = {
       ...createRuntimeUxTelemetry(),
       briefingSkipped,
     };
@@ -99,16 +96,19 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
     start() {
       if (started) return;
       started = true;
-      syncSession(refs.stateRef.current);
+      syncSession(simRefs.stateRef.current);
       persistence.start();
       loop = startLoop({
-        getState: () => refs.stateRef.current,
+        getState: () => simRefs.stateRef.current,
         setState: (state) => {
-          refs.stateRef.current = state;
+          simRefs.stateRef.current = state;
         },
         drainCommands: controller.drainCommands,
-        step: tick,
-        isPaused: () => refs.pausedRef.current,
+        step: (state, commands) => {
+          if (scenarioRunner.state !== state) scenarioRunner = createScenarioRunner(state);
+          return scenarioRunner.step(commands);
+        },
+        isPaused: () => simRefs.pausedRef.current,
         onTick: controller.onTick,
         onFrame: controller.onFrame,
       });
@@ -121,8 +121,8 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
       loop = null;
     },
     drainCommands() {
-      syncSession(refs.stateRef.current);
-      const commands = refs.commandQueue.current.splice(0, refs.commandQueue.current.length);
+      syncSession(simRefs.stateRef.current);
+      const commands = simRefs.commandQueue.current.splice(0, simRefs.commandQueue.current.length);
       lifecycle.commandApplied = commands.length > 0;
       lifecycle.counters.commandsIssued += commands.length;
       return commands;
@@ -162,7 +162,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
       if (state.tick % AUTOSAVE_INTERVAL_TICKS === 0) persistence.scheduleAutosave();
       if (lifecycle.commandApplied || state.tick % 6 === 0) {
         lifecycle.commandApplied = false;
-        ports.setState({ ...state, entities: [...state.entities] });
+        simPorts.setState({ ...state, entities: [...state.entities] });
       }
       presentation.onTick(state, events, now);
     },
@@ -174,10 +174,10 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
         const yard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
         lifecycle.counters.hqHealthAtEnd = yard ? yard.hp / Math.max(1, yard.maxHp) : 0;
         persistence.onTerminal(state, now, lifecycle.counters);
-        ports.setState({ ...state, entities: [...state.entities] });
+        simPorts.setState({ ...state, entities: [...state.entities] });
       }
       persistence.onTickFrame(state, now);
-      ports.redraw(now, subTickAlpha);
+      framePorts.redraw(now, subTickAlpha);
     },
   };
 

@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { issue, tick } from "../../lib/sim/api";
+import { issue } from "../../lib/sim/api";
 import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
 import { inspect } from "../../lib/sim/objectives";
 import { canPlaceBuilding } from "../../lib/sim/world";
+import { createScenarioRunner } from "../../lib/sim/scenarioRunner";
 import type { SimState } from "../../lib/types";
 
 const TICK_CAP = 400;
 
 function playUntilWon(state: SimState): void {
-  for (let i = 0; i < TICK_CAP && inspect(state).result !== "won"; i++) tick(state);
+  createScenarioRunner(state).run({ maxTicks: TICK_CAP });
   expect(inspect(state).result).toBe("won");
 }
 
@@ -21,13 +22,14 @@ describe("scripted mission loops", () => {
     setTile(s, 7, 4, TILE_RESOURCE, 1000);
 
     expect(issue(s, { type: "harvest", unitIds: [harvester.id], x: 7, y: 4 })).toEqual([]);
-    for (let i = 0; i < 125; i++) tick(s);
+    const runner = createScenarioRunner(s);
+    runner.run({ maxTicks: 125 });
     expect(harvester.carry).toBe(250);
 
-    for (let i = 0; i < 125; i++) tick(s);
+    runner.run({ maxTicks: 125 });
     expect(harvester.carry).toBe(500);
 
-    for (let i = 0; i < 400; i++) tick(s);
+    runner.run({ maxTicks: 400 });
     expect(harvester.carry).toBe(0);
     expect(s.credits[0]).toBeGreaterThan(5000);
   });
@@ -86,7 +88,8 @@ describe("scripted mission loops", () => {
     expect(issue(s, { type: "produce", fromId: factory.id, unit: "tank" })).toEqual([]);
     expect(factory.producing?.kind).toBe("tank");
 
-    for (let i = 0; i < 180; i++) tick(s);
+    const runner = createScenarioRunner(s);
+    runner.run({ maxTicks: 180 });
 
     expect(turret?.constructing).toBe(0);
     const tank = s.entities.find((entity) => entity.owner === 0 && entity.kind === "tank" && entity.hp > 0);
@@ -94,7 +97,7 @@ describe("scripted mission loops", () => {
     expect(s.unitsProduced[0]).toBeGreaterThan(0);
 
     expect(issue(s, { type: "attack", unitIds: [tank!.id], targetId: target.id })).toEqual([]);
-    for (let i = 0; i < 500 && s.result === "playing"; i++) tick(s);
+    runner.run({ maxTicks: 500 });
 
     expect(s.result).toBe("won");
     expect(target.hp).toBe(0);
