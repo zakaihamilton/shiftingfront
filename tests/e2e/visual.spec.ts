@@ -54,12 +54,15 @@ test.describe("visual regression", () => {
     await page.goto("/play?seed=0421&mission=0");
     const canvas = await waitForBattlefieldCanvas(page);
 
-    // Pause the simulation to ensure rendering is completely frozen for snapshotting
+    // Pause the simulation to ensure rendering is completely frozen for snapshotting.
     await page.keyboard.press("Escape");
-    await expect(page.getByTestId("pause-menu")).toBeVisible();
-    // Resume to remove pause overlay before capturing the canvas
-    await page.keyboard.press("Escape");
-    await expect(page.getByTestId("pause-menu")).not.toBeVisible();
+    const pauseMenu = page.getByTestId("pause-menu");
+    await expect(pauseMenu).toBeVisible();
+    // Keep the game paused and hide only the overlay so the battlefield stays still.
+    await pauseMenu.evaluate((element) => {
+      (element as HTMLElement).style.visibility = "hidden";
+    });
+    await expect(pauseMenu).toBeHidden();
 
     await expect(canvas).toHaveScreenshot("battlefield-seed-0421-m0.png", {
       maxDiffPixelRatio: 0.05,
