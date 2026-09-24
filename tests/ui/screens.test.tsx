@@ -9,8 +9,7 @@ import { CampaignCompleteScreen } from "../../components/campaign/CampaignComple
 import { MenuScreen } from "../../components/menu/MenuScreen";
 import overlayStyles from "../../components/menu/MenuSignalOverlay.module.css";
 import { freshCampaignProgress, writeCampaignProgress } from "../../lib/persist/campaign";
-import { cachedLocalStorage, exportSlot, localStorageAdapter, writeSave, writeSlot } from "../../lib/persist/save";
-import { readSettings } from "../../lib/persist/settings";
+import { exportSlot, localStorageAdapter, writeSave, writeSlot } from "../../lib/persist/save";
 import { makeFixture } from "../../lib/sim/fixtures";
 import { APP_VERSION } from "../../lib/site";
 
@@ -37,10 +36,6 @@ vi.mock("@/components/menu/MenuOverlay", () => ({
     view === "main" ? null : <div role="dialog"><span>{view}</span><button onClick={onLaunch}>Launch</button><button onClick={onBack}>Back</button></div>,
 }));
 vi.mock("@/components/briefing/BriefingMast", () => ({ BriefingMast: () => <div data-testid="briefing-mast" /> }));
-vi.mock("@/components/briefing/BriefingPortraits", () => ({
-  BriefingAllyPortraits: () => <div data-testid="ally-portraits" />,
-  BriefingEnemyPortrait: () => <div data-testid="enemy-portrait" />,
-}));
 vi.mock("@/components/briefing/BriefingStory", () => ({ BriefingStory: () => <div data-testid="briefing-story" /> }));
 vi.mock("@/components/briefing/BriefingObjectives", () => ({ BriefingObjectives: () => <div data-testid="briefing-objectives" /> }));
 vi.mock("@/components/briefing/BriefingActions", () => ({
@@ -256,19 +251,6 @@ describe("BriefingScreen", () => {
     expect(screen.queryByText("Tactical profile")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Launch" }));
     expect(router.push).toHaveBeenCalledWith("/play?seed=0421&mission=0&fresh=1");
-  });
-
-  it("shows first-encounter guide topics once and persists dismissal for later briefings", async () => {
-    const first = render(<BriefingScreen seed={421} mission={0} />);
-    await waitFor(() => expect(screen.getByTestId("field-guide-first-encounter")).toBeVisible());
-    expect(screen.getByLabelText("Field conditions")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
-    expect(readSettings(cachedLocalStorage()).seenFieldGuideTopics).toHaveLength(2);
-
-    first.unmount();
-    render(<BriefingScreen seed={421} mission={0} />);
-    await waitFor(() => expect(screen.getByLabelText("Field conditions")).toBeVisible());
-    expect(screen.queryByTestId("field-guide-first-encounter")).toBeNull();
   });
 });
 

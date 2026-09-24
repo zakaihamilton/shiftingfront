@@ -143,6 +143,8 @@ describe("MobileCommandLauncher", () => {
     );
 
     expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("aria-label", "Open commands");
+    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("data-tooltip", "Show command sidebar");
+    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("data-tooltip-pos", "above");
     expect(screen.getByTestId("mobile-command-icon").querySelectorAll("path")).toHaveLength(3);
     expect(screen.queryByTestId("mobile-command-scrim")).toBeNull();
     fireEvent.click(screen.getByTestId("mobile-command-toggle"));
@@ -150,6 +152,7 @@ describe("MobileCommandLauncher", () => {
 
     rerender(<MobileCommandLauncher open onToggle={onToggle} buttonRef={buttonRef} />);
     expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("aria-label", "Close commands");
+    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("data-tooltip", "Hide command sidebar");
     fireEvent.click(screen.getByTestId("mobile-command-scrim"));
     expect(onToggle).toHaveBeenCalledTimes(2);
   });
@@ -228,7 +231,6 @@ describe("BriefingActions", () => {
   it("shows Escape on the briefing back action", () => {
     render(
       <BriefingActions
-        campaign={createCampaign(421)}
         returnToGame={false}
         onReplay={vi.fn()}
         onLaunch={vi.fn()}
@@ -246,7 +248,6 @@ describe("BriefingActions", () => {
   it("removes the duplicate back button when returning to a mission", () => {
     render(
       <BriefingActions
-        campaign={createCampaign(421)}
         returnToGame
         onReplay={vi.fn()}
         onLaunch={vi.fn()}
@@ -540,10 +541,17 @@ describe("NewGameSetup", () => {
   });
 
   it("keeps a compact faction line when names are short", () => {
-    const campaign = createCampaign(201);
+    const generatedCampaign = createCampaign(73);
+    const campaign = {
+      ...generatedCampaign,
+      factions: [
+        { ...generatedCampaign.factions[0], name: "Allies" },
+        { ...generatedCampaign.factions[1], name: "Rivals" },
+      ] as const,
+    };
     render(
       <NewGameSetup
-        code="0201"
+        code="0073"
         error=""
         previewLine="Campaign"
         preview={campaign}

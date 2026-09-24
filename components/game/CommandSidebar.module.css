@@ -208,18 +208,6 @@
     pointer-events: none;
   }
 
-  .sidebar::before {
-    position: absolute;
-    top: 0.4rem;
-    left: 0.35rem;
-    width: 3px;
-    height: 3rem;
-    border-radius: 99px;
-    background: var(--chrome-bevel);
-    box-shadow: 0 0 0 1px var(--chrome-inset);
-    content: "";
-  }
-
   .sidebar[data-mobile-open="true"] {
     left: auto;
     right: 0;

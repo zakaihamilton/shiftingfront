@@ -123,7 +123,7 @@ describe("product chrome", () => {
     expect(screen.getByTestId("secondary-objectives")).toHaveTextContent("Keep a combat unit alive");
   });
 
-  it("allows the mission directive to collapse without losing its accessible control", () => {
+  it("starts the mission directive collapsed and keeps its accessible control", () => {
     render(
       <BattlefieldHud
         seed={421}
@@ -138,13 +138,6 @@ describe("product chrome", () => {
       />,
     );
 
-    const toggle = screen.getByRole("button", { name: "Collapse mission directive" });
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(toggle).toHaveAttribute("data-tooltip", "Collapse mission directive");
-    expect(screen.getByTestId("objective")).toBeVisible();
-    expect(screen.getByTestId("time-remaining")).toHaveAttribute("data-placement", "body");
-
-    fireEvent.click(toggle);
     const expand = screen.getByRole("button", { name: "Expand mission directive" });
     expect(expand).toHaveAttribute("aria-expanded", "false");
     expect(expand).toHaveAttribute("data-tooltip", "Expand mission directive");
@@ -154,8 +147,14 @@ describe("product chrome", () => {
     expect(screen.getByTestId("time-remaining").parentElement).toHaveAttribute("data-directive-expanded", "false");
 
     fireEvent.click(expand);
+    const collapse = screen.getByRole("button", { name: "Collapse mission directive" });
+    expect(collapse).toHaveAttribute("aria-expanded", "true");
+    expect(collapse).toHaveAttribute("data-tooltip", "Collapse mission directive");
     expect(screen.getByTestId("objective")).toBeVisible();
     expect(screen.getByTestId("time-remaining")).toHaveAttribute("data-placement", "body");
+
+    fireEvent.click(collapse);
+    expect(document.getElementById("mission-directive-body")).toHaveAttribute("hidden");
   });
 
   it("defaults to collapsed on mobile viewports", () => {

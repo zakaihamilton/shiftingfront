@@ -388,51 +388,45 @@ test.describe("mission briefing responsive layout", () => {
       await page.goto("/briefing?seed=0421&mission=0");
       const screen = page.getByTestId("briefing-screen");
       await expect(screen).toBeVisible();
+      await expect(screen.getByTestId("briefing-line").first()).toBeVisible();
 
       const layout = await screen.evaluate((element) => {
         const inner = element.firstElementChild;
         if (!inner) throw new Error("Briefing layout wrapper is missing");
-        const [mast, allies, panel, enemy] = Array.from(inner.children);
+        const [mast, panel] = Array.from(inner.children);
         const rect = (node: Element | undefined) => {
           const bounds = node?.getBoundingClientRect();
           return bounds ? { x: bounds.x, y: bounds.y, right: bounds.right, bottom: bounds.bottom, width: bounds.width } : null;
         };
-        const cards = Array.from(element.querySelectorAll('[data-testid="briefing-portrait"]'))
-          .map((canvas) => rect(canvas.parentElement ?? undefined)?.width ?? 0);
-        const allyRect = rect(allies);
+        const lines = Array.from(element.querySelectorAll('[data-testid="briefing-line"]'));
+        const portraits = Array.from(element.querySelectorAll('[data-testid="briefing-portrait"]'));
+        const story = element.querySelector('[data-testid="briefing-dialogue"]');
+        const storyOverflows = story ? story.scrollWidth > story.clientWidth : true;
+        const mastRect = rect(mast);
         const panelRect = rect(panel);
-        const enemyRect = rect(enemy);
         return {
           bodyOverflow: document.documentElement.scrollWidth > window.innerWidth,
-          mast: rect(mast),
-          allies: allyRect,
+          storyOverflows,
+          innerChildCount: inner.children.length,
+          mast: mastRect,
           panel: panelRect,
-          enemy: enemyRect,
-          desktopOrder: Boolean(
-            allyRect && panelRect && enemyRect
-              && allyRect.x < panelRect.x
-              && panelRect.x < enemyRect.x
-              && Math.abs(allyRect.y - panelRect.y) <= 1
-              && Math.abs(panelRect.y - enemyRect.y) <= 1,
-          ),
-          mobilePortraitOrder: Boolean(
-            allyRect && panelRect && enemyRect
-              && allyRect.y < panelRect.y
-              && Math.abs(allyRect.y - enemyRect.y) <= 1
-              && Math.abs(allyRect.bottom - enemyRect.bottom) <= 1,
-          ),
-          cards,
+          panelBelowMast: Boolean(mastRect && panelRect && panelRect.y >= mastRect.bottom),
+          panelMatchesMastWidth: Boolean(mastRect && panelRect && Math.abs(mastRect.width - panelRect.width) <= 1),
+          lineCount: lines.length,
+          portraitCount: portraits.length,
+          everyLineHasPortrait: lines.length > 0 && lines.every((line) => line.querySelector('[data-testid="briefing-portrait"]')),
+          portraitsBelongToDialogue: portraits.every((portrait) => portrait.closest('[data-testid="briefing-line"]')),
         };
       });
 
       expect(layout.bodyOverflow).toBe(false);
-      if (viewport.width < viewport.height && viewport.width < 1024) {
-        expect(layout.mobilePortraitOrder).toBe(true);
-      } else {
-        expect(layout.desktopOrder).toBe(true);
-      }
-      expect(layout.cards).toHaveLength(3);
-      expect(Math.max(...layout.cards) - Math.min(...layout.cards)).toBeLessThanOrEqual(1);
+      expect(layout.storyOverflows).toBe(false);
+      expect(layout.innerChildCount).toBe(2);
+      expect(layout.panelBelowMast).toBe(true);
+      expect(layout.panelMatchesMastWidth).toBe(true);
+      expect(layout.portraitCount).toBe(layout.lineCount);
+      expect(layout.everyLineHasPortrait).toBe(true);
+      expect(layout.portraitsBelongToDialogue).toBe(true);
     });
   }
 
@@ -592,7 +586,7 @@ test.describe("mobile-first layouts", () => {
         const launcherButton = launcher.getByTestId("mobile-command-toggle");
         const launcherButtonBounds = await launcherButton.boundingBox();
         expect(launcherButtonBounds).not.toBeNull();
-        expect(launcherButtonBounds!.x + launcherButtonBounds!.width).toBeLessThanOrEqual(viewport.width - 8);
+        expect(Math.abs(launcherButtonBounds!.x + launcherButtonBounds!.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(1);
         await expect(launcher.locator("span")).toBeHidden();
         const sidebar = page.getByTestId("command-sidebar");
         await expect(sidebar).not.toBeVisible();
@@ -763,7 +757,7 @@ test.describe("mobile-first layouts", () => {
     await expect(page.getByRole("button", { name: "Collapse mission directive" })).toHaveCount(0);
   });
 
-  test("starts the mobile mission directive directly below the operation header", async ({ page }) => {
+  test("places the mobile directive to the right of seed and operation metadata", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/play?seed=0421&mission=0");
     await waitForBattlefield(page);
@@ -772,19 +766,28 @@ test.describe("mobile-first layouts", () => {
       const operation = element.querySelector("[class*='operationBar']");
       const directive = element.querySelector("[class*='objectiveStack']");
       if (!operation || !directive) throw new Error("Mission directive layout is missing");
+      const statusBounds = element.getBoundingClientRect();
       const operationBounds = operation.getBoundingClientRect();
       const directiveBounds = directive.getBoundingClientRect();
-      const style = window.getComputedStyle(directive);
+      const metadata = operation.querySelector("[class*='missionMeta']");
+      const seed = metadata?.querySelector("[class*='seed']");
+      const levelText = metadata?.querySelector("[class*='level'] span");
+      if (!seed || !levelText) throw new Error("Mobile operation metadata is missing");
+      const style = window.getComputedStyle(element);
       return {
-        gap: directiveBounds.top - operationBounds.bottom,
-        marginTop: style.marginTop,
-        paddingTop: style.paddingTop,
+        directiveTop: directiveBounds.top - statusBounds.top,
+        statusPaddingTop: Number.parseFloat(style.paddingTop),
+        metadataLineOffset: levelText.getBoundingClientRect().top - seed.getBoundingClientRect().top,
+        operationTop: operationBounds.top - statusBounds.top,
+        operationRight: operationBounds.right,
+        directiveLeft: directiveBounds.left,
       };
     });
 
-    expect(spacing.gap).toBeLessThanOrEqual(1);
-    expect(spacing.marginTop).toBe("0px");
-    expect(spacing.paddingTop).toBe("0px");
+    expect(Math.abs(spacing.directiveTop - spacing.statusPaddingTop)).toBeLessThanOrEqual(1);
+    expect(Math.abs(spacing.metadataLineOffset)).toBeLessThanOrEqual(1);
+    expect(Math.abs(spacing.operationTop - spacing.statusPaddingTop)).toBeLessThanOrEqual(1);
+    expect(spacing.operationRight).toBeLessThanOrEqual(spacing.directiveLeft);
   });
 
   test("opens the command sidebar for a selected base", async ({ page }) => {

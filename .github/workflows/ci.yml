@@ -249,3 +249,11 @@ jobs:
       - run: yarn test:e2e --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --workers=${{ matrix.shardIndex == 3 && 1 || 2 }}
         env:
           CI: true
+      - name: Upload E2E failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure-${{ github.run_id }}-shard-${{ matrix.shardIndex }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

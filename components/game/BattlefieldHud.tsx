@@ -52,7 +52,7 @@ export function BattlefieldHud({
   const fullscreen = useFullscreen();
   const [directiveExpanded, setDirectiveExpanded] = useState(() => {
     if (defaultExpanded !== undefined) return defaultExpanded;
-    return !isMobileDirectiveViewport();
+    return false;
   });
   const [seenDoctrine] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();

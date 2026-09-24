@@ -95,3 +95,9 @@
   border-color: var(--chrome-bevel);
   outline: none;
 }
+
+@media (max-width: 1023px) and (orientation: portrait) {
+  .hint {
+    bottom: max(4.8rem, calc(env(safe-area-inset-bottom) + 4.4rem));
+  }
+}

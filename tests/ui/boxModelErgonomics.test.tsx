@@ -61,9 +61,10 @@ describe("Box Model, Padding, and Ergonomics Invariants", () => {
     const launcherCss = readFileSync(resolve(process.cwd(), "components/game/MobileCommandLauncher.module.css"), "utf-8");
     const hintCss = readFileSync(resolve(process.cwd(), "components/game/MobileOrientationHint.module.css"), "utf-8");
 
-    // MobileCommandLauncher must respect top and right safe areas (e.g. notch / dynamic island)
-    expect(launcherCss).toContain("env(safe-area-inset-top)");
-    expect(launcherCss).toContain("env(safe-area-inset-right)");
+    // MobileCommandLauncher stays bottom-centered above the home indicator
+    expect(launcherCss).toContain("env(safe-area-inset-bottom)");
+    expect(launcherCss).toContain("left: 50%");
+    expect(launcherCss).toContain("translateX(-50%)");
 
     // MobileOrientationHint must respect bottom safe area (home indicator bar)
     expect(hintCss).toContain("env(safe-area-inset-bottom)");

@@ -303,6 +303,8 @@
 }
 
 .objectiveStack {
+  /* Keep hover movement here from reaching the canvas edge-pan handler. */
+  pointer-events: auto;
   min-width: 0;
   margin-left: auto;
   width: min(100%, 24rem);
@@ -321,7 +323,7 @@
 }
 
 .objectiveStack[data-directive-expanded="false"] .directiveHeader {
-  margin-bottom: 0;
+  margin-bottom: 0.25rem;
 }
 
 .directiveActions {
@@ -623,28 +625,38 @@
 @media (max-width: 1023px) and (orientation: portrait) {
   .status {
     --status-backdrop-height: 9rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    align-items: start;
+    gap: 0.35rem;
     padding: max(0.55rem, env(safe-area-inset-top)) 0.6rem 0.45rem;
     font-size: var(--text-2xs);
   }
 
   .missionMeta {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.45rem;
-  }
-
-  .status {
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
   }
 
   .objectiveStack {
+    grid-row: 1;
+    grid-column: 2;
     width: auto;
     max-width: none;
     margin-left: 0;
     margin-top: 0;
     padding-top: 0;
-    border-top: 1px solid color-mix(in srgb, var(--chrome-cyan) 20%, transparent);
+    border-top: 0;
+    justify-self: stretch;
     text-align: left;
+  }
+
+  .directiveHeader {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.35rem;
   }
 
   .objective {
@@ -653,19 +665,24 @@
 
   .seed,
   .level {
-    letter-spacing: 0.14em;
+    font-size: clamp(calc(var(--text-2xs) * 0.75), 2.4vw, calc(var(--text-2xs) * 0.87));
+    letter-spacing: 0.02em;
   }
 
   .level {
-    width: max-content;
+    width: auto;
     padding-left: 0;
+  }
+
+  .operationBar {
+    grid-row: 1;
+    grid-column: 1;
+    min-width: 0;
   }
 
   .level::before {
     display: none;
   }
-
-  .objectiveStack { width: auto; max-width: none; }
 
   .operationBar {
     padding: 0.25rem 0.4rem 0.3rem;

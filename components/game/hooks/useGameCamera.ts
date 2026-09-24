@@ -145,19 +145,18 @@ export function useGameCamera({
 
   useEffect(() => {
     const s = stateRef.current;
-    const resize = () => {
-      const c = canvasRef.current;
-      const host = hostRef.current;
-      if (!c || !host) return;
-      const dimensions = renderDimensions(host);
-      c.width = dimensions.width;
-      c.height = dimensions.height;
-    };
-    resize();
-    const observer = new ResizeObserver(resize);
-    if (hostRef.current) observer.observe(hostRef.current);
+    const canvas = canvasRef.current;
+    const host = hostRef.current;
+    if (!canvas || !host) return;
+    const dimensions = renderDimensions(host);
+    if (canvas.width !== dimensions.width || canvas.height !== dimensions.height) {
+      canvas.width = dimensions.width;
+      canvas.height = dimensions.height;
+    }
+
+    // Keep subsequent backing-store resizes inside renderGameFrame, where the
+    // new size is repainted before the browser can display the cleared canvas.
     if (s) resetCamera(s);
-    return () => observer.disconnect();
   }, [canvasRef, hostRef, resetCamera, stateRef]);
 
   return {

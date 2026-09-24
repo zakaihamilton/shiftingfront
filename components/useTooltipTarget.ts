@@ -20,6 +20,7 @@ export function useTooltipTarget() {
     const hoverRef = { current: null as HTMLElement | null };
     const forcedRef = { current: null as HTMLElement | null };
     const keyboardDismissedRef = { current: false };
+    const pointerFocusSuppressedRef = { current: false };
     const forcedEl = () => document.querySelector("[data-tooltip-open]") as HTMLElement | null;
 
     const paint = () => {
@@ -53,6 +54,7 @@ export function useTooltipTarget() {
     const onOver = (e: PointerEvent) => {
       const el = tooltipTarget(e.target);
       if (!el) return;
+      pointerFocusSuppressedRef.current = false;
       keyboardDismissedRef.current = false;
       hoverRef.current = el;
       paint();
@@ -68,6 +70,7 @@ export function useTooltipTarget() {
     };
 
     const onPointerDown = () => {
+      pointerFocusSuppressedRef.current = true;
       keyboardDismissedRef.current = true;
       hoverRef.current = null;
       forcedRef.current = null;
@@ -75,6 +78,7 @@ export function useTooltipTarget() {
     };
 
     const onFocus = (e: FocusEvent) => {
+      if (pointerFocusSuppressedRef.current) return;
       const el = tooltipTarget(e.target);
       if (!el) return;
       keyboardDismissedRef.current = false;
@@ -84,6 +88,7 @@ export function useTooltipTarget() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (["Alt", "Control", "Meta", "Shift"].includes(e.key)) return;
+      pointerFocusSuppressedRef.current = false;
       keyboardDismissedRef.current = true;
       hoverRef.current = null;
       forcedRef.current = null;

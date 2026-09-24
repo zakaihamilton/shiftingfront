@@ -148,10 +148,10 @@
   min-height: 1.75rem;
   align-items: center;
   justify-content: center;
-  padding: 0.28rem 0.35rem;
-  font-size: var(--text-xs);
+  padding: 0.28rem 0.15rem;
+  font-size: min(var(--text-xs), 0.6875rem);
   line-height: 1.1;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
   text-align: center;
   white-space: nowrap;
 }

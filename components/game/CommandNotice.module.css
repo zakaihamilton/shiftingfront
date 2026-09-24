@@ -55,10 +55,10 @@
   stroke-width: 1.35;
 }
 
-@media (max-width: 799px) {
+@media (max-width: 1023px) and (orientation: portrait) {
   .notice {
     right: 0.65rem;
-    bottom: max(5.4rem, calc(env(safe-area-inset-bottom) + 4.6rem));
+    bottom: max(9rem, calc(env(safe-area-inset-bottom) + 8.6rem));
     left: 0.65rem;
     max-width: none;
     justify-content: center;
