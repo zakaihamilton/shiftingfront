@@ -635,7 +635,7 @@
 
   .missionMeta {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: nowrap;
     gap: 0.25rem;
   }

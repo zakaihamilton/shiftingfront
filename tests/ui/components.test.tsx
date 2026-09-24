@@ -541,7 +541,14 @@ describe("NewGameSetup", () => {
   });
 
   it("keeps a compact faction line when names are short", () => {
-    const campaign = createCampaign(73);
+    const generatedCampaign = createCampaign(73);
+    const campaign = {
+      ...generatedCampaign,
+      factions: [
+        { ...generatedCampaign.factions[0], name: "Allies" },
+        { ...generatedCampaign.factions[1], name: "Rivals" },
+      ] as const,
+    };
     render(
       <NewGameSetup
         code="0073"
