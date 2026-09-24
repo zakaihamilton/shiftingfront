@@ -51,7 +51,7 @@ function parseArg(name: string, fallback: string): string {
   return fallback;
 }
 
-const levelArg = parseArg("level", "critical").toLowerCase() as Severity;
+const levelArg = parseArg("level", "high").toLowerCase() as Severity;
 if (!(levelArg in SEVERITY_RANK)) {
   console.error(`Invalid --level: "${levelArg}". Supported levels: ${Object.keys(SEVERITY_RANK).join(", ")}`);
   process.exit(1);
@@ -60,17 +60,18 @@ if (!(levelArg in SEVERITY_RANK)) {
 const groupsArg = parseArg("groups", "dependencies");
 const asJson = process.argv.includes("--json");
 
-function runAudit(): { stdout: string; exitCode: number } {
+function runAudit(): { stdout: string; stderr: string; exitCode: number | null; error?: Error } {
   const args = ["audit", "--json", `--groups=${groupsArg}`];
   const result = spawnSync("yarn", args, {
     encoding: "utf8",
     maxBuffer: 20 * 1024 * 1024,
-    shell: true,
   });
 
   return {
     stdout: result.stdout || "",
-    exitCode: result.status ?? 0,
+    stderr: result.stderr || "",
+    exitCode: result.status,
+    error: result.error,
   };
 }
 
@@ -115,14 +116,22 @@ export function evaluateAuditOutput(stdout: string, threshold: Severity) {
 }
 
 function main() {
-  const { stdout } = runAudit();
+  const audit = runAudit();
+  const { stdout } = audit;
 
-  if (!stdout.trim()) {
-    console.warn("Yarn audit produced no output (network unavailable or package manager offline).");
-    process.exit(0);
+  if (audit.error || audit.exitCode === null || !stdout.trim()) {
+    console.error("Yarn audit could not complete; treating the dependency check as failed.");
+    if (audit.error) console.error(audit.error.message);
+    if (audit.stderr.trim()) console.error(audit.stderr.trim());
+    process.exit(1);
   }
 
   const result = evaluateAuditOutput(stdout, levelArg);
+  if (!result.summary) {
+    console.error("Yarn audit output did not include a summary; treating the dependency check as failed.");
+    if (audit.stderr.trim()) console.error(audit.stderr.trim());
+    process.exit(1);
+  }
 
   if (asJson) {
     console.log(JSON.stringify(result, null, 2));

@@ -32,10 +32,15 @@ export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleR
 }) {
   const [keybindsOpen, setKeybindsOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [resetError, setResetError] = useState("");
   const resetDialogRef = useModalFocus(confirmResetOpen, "reset-data-dialog", "dialog");
   const fullscreen = useFullscreen();
   const handleResetAllData = () => {
-    clearAllGameData(cachedLocalStorage());
+    if (!clearAllGameData(cachedLocalStorage())) {
+      setResetError("Some data could not be cleared. Check browser storage permissions and try again.");
+      return;
+    }
+    setResetError("");
     setConfirmResetOpen(false);
     if (onResetAllData) onResetAllData();
     else if (typeof window !== "undefined") window.location.replace("/");
@@ -59,7 +64,7 @@ export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleR
         {onDiagnostics ? <ConsoleButton className={styles.action} tooltip="View stored mission telemetry and diagnostic tools" onClick={onDiagnostics}>Diagnostics</ConsoleButton> : null}
         <div className={styles.group}>
           <ConsoleLabel className={styles.groupLabel}>Data &amp; Support</ConsoleLabel>
-          <ConsoleButton muted className={styles.action} tooltip="Permanently clear all campaigns, saves, and settings" onClick={() => setConfirmResetOpen(true)}>Reset All Game Data…</ConsoleButton>
+          <ConsoleButton muted className={styles.action} tooltip="Permanently clear all campaigns, saves, and settings" onClick={() => { setResetError(""); setConfirmResetOpen(true); }}>Reset All Game Data…</ConsoleButton>
           <a href={feedbackIssueUrl()} target="_blank" rel="noopener noreferrer" className={styles.action} style={{ textAlign: "center", textDecoration: "none" }}>Report an Issue / Feedback ↗</a>
         </div>
         <ConsoleButton muted className={styles.action} tooltip={backTooltip} shortcut={SHORTCUT.back} onClick={onBack}>Back</ConsoleButton>
@@ -72,8 +77,9 @@ export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleR
             <MetalPanel ref={resetDialogRef} tabIndex={-1} className={styles.confirmDialog} role="dialog" aria-modal="true" aria-labelledby="reset-data-title">
               <ConsoleLabel as="h2" id="reset-data-title">Reset All Game Data?</ConsoleLabel>
               <p className={styles.slotCopy} style={{ marginTop: "0.5rem" }}>This will permanently erase all local campaign progress, named save slots, autosaves, and custom settings. This action cannot be undone.</p>
+              {resetError ? <p className={styles.slotCopy} role="alert">{resetError}</p> : null}
               <div className={styles.slotConfirmActions}>
-                <ConsoleButton muted onClick={() => setConfirmResetOpen(false)}>Cancel</ConsoleButton>
+                <ConsoleButton muted onClick={() => { setResetError(""); setConfirmResetOpen(false); }}>Cancel</ConsoleButton>
                 <ConsoleButton onClick={handleResetAllData}>Confirm Reset</ConsoleButton>
               </div>
             </MetalPanel>

@@ -54,7 +54,7 @@
     "health:performance": "tsx scripts/perf.ts",
     "health:balance": "tsx scripts/balance.ts --from 0 --to 39 --check true --progress false",
     "health:balance:archetypes": "tsx scripts/balance.ts --from 0 --to 39 --strategy archetypes --check true --max-elapsed-ms 295000 --progress false",
-    "health:audit": "tsx scripts/audit.ts --level critical",
+    "health:audit": "tsx scripts/audit.ts",
     "playtest:manifest": "tsx scripts/playtestManifest.ts",
     "ci:timed-tests": "vitest run --exclude tests/simulation/allSeeds --exclude tests/simulation/terrain.test.ts --exclude tests/simulation/commander.test.ts --exclude tests/simulation/commanderGenerated.test.ts --reporter=dot --reporter=json --outputFile=artifacts/test-timing.json",
     "ci:timed-performance": "tsx scripts/perf.ts > artifacts/performance-timing.json",
@@ -92,5 +92,8 @@
     "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^4.1.10"
+  },
+  "resolutions": {
+    "sharp": "0.35.4"
   }
 }

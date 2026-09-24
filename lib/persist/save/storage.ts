@@ -44,16 +44,34 @@ export function safeKeys(storage: StorageAdapter): string[] {
 
 export function clearAllGameData(storage: StorageAdapter): boolean {
   try {
-    const keys = safeKeys(storage);
-    for (const key of keys) {
-      if (key.startsWith("shiftingfront:") || key.startsWith("shifting-front:")) {
-        safeRemoveItem(storage, key);
+    const gameKeys = storage.keys().filter((key) =>
+      key.startsWith("shiftingfront:") || key.startsWith("shifting-front:"),
+    );
+    for (const key of gameKeys) {
+      try {
+        storage.removeItem(key);
+      } catch {
+        return false;
       }
     }
-    return true;
+    return !storage.keys().some((key) =>
+      key.startsWith("shiftingfront:") || key.startsWith("shifting-front:"),
+    );
   } catch {
     return false;
   }
+}
+
+function unavailableStorageAdapter(): StorageAdapter {
+  const unavailable = () => {
+    throw new Error("Browser storage is unavailable");
+  };
+  return {
+    getItem: () => unavailable(),
+    setItem: () => unavailable(),
+    removeItem: () => unavailable(),
+    keys: () => unavailable(),
+  };
 }
 
 export function memoryStorage(initial: Record<string, string> = {}): StorageAdapter {
@@ -71,22 +89,34 @@ export function memoryStorage(initial: Record<string, string> = {}): StorageAdap
 }
 
 export function localStorageAdapter(): StorageAdapter {
+  let area: Storage;
+  try {
+    area = window.localStorage;
+  } catch {
+    return unavailableStorageAdapter();
+  }
   return {
-    area: window.localStorage,
-    getItem: (k) => window.localStorage.getItem(k),
-    setItem: (k, v) => window.localStorage.setItem(k, v),
-    removeItem: (k) => window.localStorage.removeItem(k),
-    keys: () => Object.keys(window.localStorage),
+    area,
+    getItem: (k) => area.getItem(k),
+    setItem: (k, v) => area.setItem(k, v),
+    removeItem: (k) => area.removeItem(k),
+    keys: () => Object.keys(area),
   };
 }
 
 export function sessionStorageAdapter(): StorageAdapter {
+  let area: Storage;
+  try {
+    area = window.sessionStorage;
+  } catch {
+    return unavailableStorageAdapter();
+  }
   return {
-    area: window.sessionStorage,
-    getItem: (k) => window.sessionStorage.getItem(k),
-    setItem: (k, v) => window.sessionStorage.setItem(k, v),
-    removeItem: (k) => window.sessionStorage.removeItem(k),
-    keys: () => Object.keys(window.sessionStorage),
+    area,
+    getItem: (k) => area.getItem(k),
+    setItem: (k, v) => area.setItem(k, v),
+    removeItem: (k) => area.removeItem(k),
+    keys: () => Object.keys(area),
   };
 }
 
