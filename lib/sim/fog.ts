@@ -1,7 +1,7 @@
-import { BUILDING_STATS, UNIT_STATS, footprintOf } from "../catalog";
+import { BUILDING_STATS, isDefensiveTurret, POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER, UNIT_STATS, footprintOf } from "../catalog";
 import { MAP_SKIRT } from "../gen/map";
 import { isBuildingEntity, isHiddenObjectiveAsset, isUnitEntity, type SimState } from "../types";
-import { livingView } from "./world";
+import { livingView, powerFor } from "./world";
 import { groundUnitSightAt } from "./terrainRules";
 
 export function fogGridWidth(mapW: number): number {
@@ -56,9 +56,13 @@ export function fogAt(state: { width: number; height: number; fog: number[] }, x
 export function tileInPlayerVision(state: SimState, x: number, y: number): boolean {
   for (const e of livingView(state)) {
     if (e.owner !== 0 || isHiddenObjectiveAsset(e)) continue;
+    const isTurret = isBuildingEntity(e) && isDefensiveTurret(e.kind);
+    const lowPower = isTurret && powerFor(state, e.owner) < 0;
     const sight = isUnitEntity(e)
       ? groundUnitSightAt(state, e, UNIT_STATS[e.kind].sight)
-      : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;
+      : isBuildingEntity(e)
+        ? (lowPower ? Math.max(3, Math.round(BUILDING_STATS[e.kind].sight * POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER)) : BUILDING_STATS[e.kind].sight)
+        : 0;
     let cx = e.x;
     let cy = e.y;
     if (isBuildingEntity(e)) {
@@ -82,9 +86,13 @@ export function tickFog(state: SimState): void {
     // bookkeeping, but they are not player-controlled vision sources until
     // contacted.
     if (e.owner !== 0 || isHiddenObjectiveAsset(e)) continue;
+    const isTurret = isBuildingEntity(e) && isDefensiveTurret(e.kind);
+    const lowPower = isTurret && powerFor(state, e.owner) < 0;
     const sight = isUnitEntity(e)
       ? groundUnitSightAt(state, e, UNIT_STATS[e.kind].sight)
-      : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;
+      : isBuildingEntity(e)
+        ? (lowPower ? Math.max(3, Math.round(BUILDING_STATS[e.kind].sight * POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER)) : BUILDING_STATS[e.kind].sight)
+        : 0;
     const r = Math.ceil(sight);
     let cx = e.x;
     let cy = e.y;

@@ -378,7 +378,7 @@ export function renderEntityPhase(
       );
     }
 
-    if (bAnim) drawBuildingFx(ctx, e, s, z, bAnim);
+    if (bAnim) drawBuildingFx(ctx, e, s, z, bAnim, state);
     if ((e.kind === "turret" || e.kind === "antiAirTurret") && e.class === "building") {
       const targetEntity = e.attackTarget !== undefined ? entityById.get(e.attackTarget) : undefined;
       drawTurretCannon(ctx, e, s, z, state, cam, timeMs, targetEntity, extras.colorblindMode);

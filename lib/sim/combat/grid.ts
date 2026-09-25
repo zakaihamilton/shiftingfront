@@ -1,7 +1,8 @@
-import { BUILDING_STATS, isAirUnit, targetDomainsFor, UNIT_STATS } from "../../catalog";
+import { BUILDING_STATS, isAirUnit, isDefensiveTurret, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER, POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER, targetDomainsFor, UNIT_STATS } from "../../catalog";
 import { isBuildingEntity, isUnitEntity, type BuildingKind, type Entity, type SimState, type UnitKind, type WeaponType } from "../../types";
 import { entitiesFor } from "../entities";
 import { directFireRangeBonusAt, groundUnitSightAt } from "../terrainRules";
+import { powerFor } from "../world";
 
 export type CombatGrid = {
   state: SimState;
@@ -180,10 +181,16 @@ export function closestEnemy(
 
 export function acquire(grid: CombatGrid, e: Entity, threatsOnly = false): Entity | undefined {
   const stats = statsFor(e);
-  const range = stats.range + (stats.weapon === "airStrike" ? 0 : directFireRangeBonusAt(grid.state, e));
+  const isTurret = isBuildingEntity(e) && isDefensiveTurret(e.kind);
+  const lowPower = isTurret && powerFor(grid.state, e.owner) < 0;
+  const rangeMult = lowPower ? POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER : 1;
+  const sightMult = lowPower ? POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER : 1;
+  const range = (stats.range * rangeMult) + (stats.weapon === "airStrike" ? 0 : directFireRangeBonusAt(grid.state, e));
   const sight = isUnitEntity(e)
     ? groundUnitSightAt(grid.state, e, UNIT_STATS[e.kind].sight)
-    : isBuildingEntity(e) ? BUILDING_STATS[e.kind].sight : 0;
+    : isBuildingEntity(e)
+      ? (lowPower ? Math.max(3, Math.round(BUILDING_STATS[e.kind].sight * sightMult)) : BUILDING_STATS[e.kind].sight)
+      : 0;
   return closestEnemy(grid, e, Math.max(range + 4, sight), threatsOnly);
 }
 

@@ -1,4 +1,4 @@
-import { BUILDING_DEFINITIONS, BUILDING_STATS, MAX_PRODUCTION_QUEUE, TICKS_PER_SECOND, UNIT_STATS, labelFor } from "@/lib/catalog";
+import { BUILDING_DEFINITIONS, BUILDING_STATS, MAX_PRODUCTION_QUEUE, TICKS_PER_SECOND, UNIT_STATS, isDefensiveTurret, labelFor } from "@/lib/catalog";
 import { ProgressMeter } from "@/components/ui/ProgressMeter";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { cx } from "@/lib/ui/cx";
@@ -13,6 +13,7 @@ export function SelectionPanel({
   palette,
   profile,
   className,
+  power,
   onStop,
   onStance,
   onFormation,
@@ -23,6 +24,7 @@ export function SelectionPanel({
   palette: Palette;
   profile: FactionVisualProfile;
   className?: string;
+  power?: number;
   onStop?: () => void;
   onStance?: (stance: Stance) => void;
   onFormation?: (formation: Formation) => void;
@@ -60,6 +62,11 @@ export function SelectionPanel({
               ratio={1 - selected.constructing / (BUILDING_STATS[selected.kind].buildTicks || 1)}
               detail={`${Math.ceil(selected.constructing / TICKS_PER_SECOND)}s`}
             />
+          ) : null}
+          {isBuildingEntity(selected) && isDefensiveTurret(selected.kind) && power !== undefined && power < 0 ? (
+            <div className={styles.powerWarning} data-testid="turret-power-shortage" role="status">
+              ⚡ Low Power: 50% Fire Rate · -25% Range
+            </div>
           ) : null}
           {selected.producing ? (
             <ProgressMeter
