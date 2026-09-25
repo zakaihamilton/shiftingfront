@@ -14,10 +14,11 @@ import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { AudioSettingsControls } from "./AudioSettingsControls";
 import styles from "./SettingsPanel.module.css";
 
-export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleReducedMotion, onToggleHighContrast, onCycleColorblind, onCycleHudScale, onUpdateKeyBindings, onVolumeChange, onDiagnostics, onBack, onResetAllData, titleId = "pause-title", backTooltip = "Return to the pause menu" }: {
+export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleVoice, onToggleReducedMotion, onToggleHighContrast, onCycleColorblind, onCycleHudScale, onUpdateKeyBindings, onVolumeChange, onDiagnostics, onBack, onResetAllData, titleId = "pause-title", backTooltip = "Return to the pause menu" }: {
   settings: GameSettings;
   onToggleSound: () => void;
   onToggleMusic: () => void;
+  onToggleVoice?: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onCycleColorblind?: () => void;
@@ -54,6 +55,7 @@ export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleR
         <div className={styles.toggleGrid}>
           <ConsoleButton className={styles.action} tooltip="Turn music on or off" shortcut={SHORTCUT.music} onClick={onToggleMusic}>Music: {settings.musicEnabled ? "On" : "Off"}</ConsoleButton>
           <ConsoleButton className={styles.action} tooltip="Turn sound effects on or off" shortcut={SHORTCUT.mute} onClick={onToggleSound}>Sound effects: {settings.sfxEnabled ? "On" : "Off"}</ConsoleButton>
+          {onToggleVoice ? <ConsoleButton className={styles.action} tooltip="Turn tactical military radio voice barks on or off" shortcut={SHORTCUT.voice} onClick={onToggleVoice}>Tactical voice: {settings.voiceEnabled ? "On" : "Off"}</ConsoleButton> : null}
           {onToggleReducedMotion ? <ConsoleButton className={styles.action} tooltip="Reduce interface animation and motion" onClick={onToggleReducedMotion}>Reduced motion: {settings.reducedMotion ? "On" : "Off"}</ConsoleButton> : null}
           {onToggleHighContrast ? <ConsoleButton className={styles.action} tooltip="Increase interface contrast and status differentiation" onClick={onToggleHighContrast}>High contrast: {settings.highContrast ? "On" : "Off"}</ConsoleButton> : null}
           {onCycleColorblind ? <ConsoleButton className={styles.action} tooltip="Cycle colorblind palette for lasers, health bars, and minimap" onClick={onCycleColorblind}>Colorblind: {settings.colorblindMode === "deuteranopia" ? "Deuteranopia (Red-Green)" : settings.colorblindMode === "protanopia" ? "Protanopia (Red-Weak)" : settings.colorblindMode === "tritanopia" ? "Tritanopia (Blue-Yellow)" : "Off"}</ConsoleButton> : null}

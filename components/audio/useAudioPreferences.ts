@@ -1,6 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { setMusicEnabled as applyMusicEnabled } from "@/lib/audio/music";
 import { setSfxEnabled as applySfxEnabled } from "@/lib/audio/synth";
+import { setVoiceEnabled as applyVoiceEnabled, setVoiceVolume as applyVoiceVolume } from "@/lib/audio/voice";
 import { setAudioLevels, type AudioVolumeKey } from "@/lib/audio/mixer";
 import { cachedLocalStorage } from "@/lib/persist/save";
 import { writeSettings, type ColorblindMode, type GameSettings, type HudScale, type KeyBindings } from "@/lib/persist/settings";
@@ -24,10 +25,20 @@ export function useAudioPreferences(
     writeSettings(cachedLocalStorage(), next);
   }, [setSettings, settings]);
 
+  const toggleVoice = useCallback(() => {
+    const next = { ...settings, voiceEnabled: !settings.voiceEnabled };
+    setSettings(next);
+    applyVoiceEnabled(next.voiceEnabled);
+    writeSettings(cachedLocalStorage(), next);
+  }, [setSettings, settings]);
+
   const updateVolume = useCallback((key: AudioVolumeKey, value: number) => {
     const next = { ...settings, [key]: value };
     setSettings(next);
     setAudioLevels(next);
+    if (key === "voiceVolume") {
+      applyVoiceVolume(value);
+    }
     writeSettings(cachedLocalStorage(), next);
   }, [setSettings, settings]);
 
@@ -77,6 +88,7 @@ export function useAudioPreferences(
   return {
     toggleSound,
     toggleMusic,
+    toggleVoice,
     toggleReducedMotion,
     toggleHighContrast,
     cycleColorblind,

@@ -19,7 +19,7 @@ export function useMenuController() {
   const [settings, setSettings] = useState<GameSettings>(() => defaultSettings());
   const inputRef = useRef<HTMLInputElement>(null);
   const copyTimer = useRef(0);
-  const { toggleSound, toggleMusic, toggleReducedMotion, toggleHighContrast, cycleColorblind, cycleHudScale, updateKeyBindings, updateVolume } = useAudioPreferences(settings, setSettings);
+  const { toggleSound, toggleMusic, toggleVoice, toggleReducedMotion, toggleHighContrast, cycleColorblind, cycleHudScale, updateKeyBindings, updateVolume } = useAudioPreferences(settings, setSettings);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -116,13 +116,14 @@ export function useMenuController() {
       else if (command.type === "options") openOptions();
       else if (command.type === "toggleSound") toggleSound();
       else if (command.type === "toggleMusic") toggleMusic();
+      else if (command.type === "toggleVoice") toggleVoice();
       else if (command.type === "deploy") launch();
       else if (command.type === "randomize") randomize();
       else if (command.type === "back") setView("main");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [view, openNewGame, openTutorial, openLoadMission, openOptions, toggleSound, toggleMusic, launch, randomize]);
+  }, [view, openNewGame, openTutorial, openLoadMission, openOptions, toggleSound, toggleMusic, toggleVoice, launch, randomize]);
 
   return {
     code,
@@ -146,6 +147,7 @@ export function useMenuController() {
     launch,
     toggleSound,
     toggleMusic,
+    toggleVoice,
     toggleReducedMotion,
     toggleHighContrast,
     cycleColorblind,

@@ -6,6 +6,7 @@ const CONTROLS: { key: AudioVolumeKey; label: string }[] = [
   { key: "masterVolume", label: "Master" },
   { key: "musicVolume", label: "Music" },
   { key: "sfxVolume", label: "Effects" },
+  { key: "voiceVolume", label: "Voice" },
 ];
 
 export function AudioSettingsControls({ settings, onChange }: { settings: GameSettings; onChange: (key: AudioVolumeKey, value: number) => void }) {

@@ -850,6 +850,46 @@ describe("PauseOptions controls", () => {
     expect(screen.queryByRole("dialog", { name: "Keybindings" })).toBeNull();
   });
 
+  it("supports tactical voice toggle and voice volume slider", () => {
+    const onToggleVoice = vi.fn();
+    const onVolumeChange = vi.fn();
+    const { rerender } = render(
+      <PauseOptions
+        settings={defaultSettings()}
+        onToggleSound={vi.fn()}
+        onToggleMusic={vi.fn()}
+        onToggleVoice={onToggleVoice}
+        onVolumeChange={onVolumeChange}
+        onBack={vi.fn()}
+      />,
+    );
+
+    const voiceBtn = screen.getByRole("button", { name: /Tactical voice: On/ });
+    expect(voiceBtn).toBeVisible();
+    expect(voiceBtn).toHaveAttribute("data-shortcut", "V");
+    fireEvent.click(voiceBtn);
+    expect(onToggleVoice).toHaveBeenCalledOnce();
+
+    const voiceSlider = screen.getByRole("slider", { name: /Voice/ });
+    expect(voiceSlider).toBeVisible();
+    expect(voiceSlider).toHaveValue("0.8");
+    expect(screen.getByText("80%")).toBeVisible();
+    fireEvent.change(voiceSlider, { target: { value: "0.45" } });
+    expect(onVolumeChange).toHaveBeenCalledWith("voiceVolume", 0.45);
+
+    rerender(
+      <PauseOptions
+        settings={{ ...defaultSettings(), voiceEnabled: false }}
+        onToggleSound={vi.fn()}
+        onToggleMusic={vi.fn()}
+        onToggleVoice={onToggleVoice}
+        onVolumeChange={onVolumeChange}
+        onBack={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Tactical voice: Off/ })).toBeVisible();
+  });
+
   it("opens the structured bug form for player feedback", () => {
     render(
       <PauseOptions

@@ -8,6 +8,7 @@ export function MenuOptions({
   settings,
   onToggleSound,
   onToggleMusic,
+  onToggleVoice,
   onToggleReducedMotion,
   onToggleHighContrast,
   onCycleColorblind,
@@ -19,6 +20,7 @@ export function MenuOptions({
   settings: GameSettings;
   onToggleSound: () => void;
   onToggleMusic: () => void;
+  onToggleVoice?: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onCycleColorblind?: () => void;
@@ -39,6 +41,7 @@ export function MenuOptions({
         settings={settings}
         onToggleSound={onToggleSound}
         onToggleMusic={onToggleMusic}
+        onToggleVoice={onToggleVoice}
         onToggleReducedMotion={onToggleReducedMotion}
         onToggleHighContrast={onToggleHighContrast}
         onCycleColorblind={onCycleColorblind}
@@ -48,7 +51,7 @@ export function MenuOptions({
         onBack={onBack}
         backTooltip="Return to the main menu"
       />
-      <p className={settingsStyles.hint}>U toggles music · M toggles sound · Escape returns</p>
+      <p className={settingsStyles.hint}>U toggles music · M toggles sound · V toggles voice · Escape returns</p>
     </MetalPanel>
   );
 }

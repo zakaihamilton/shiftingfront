@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from "vitest";
+import { setAudioLevels } from "../../lib/audio/mixer";
 import {
+  getVoiceVolume,
   isVoiceEnabled,
   playVoiceBark,
   resetVoiceCooldown,
   setVoiceEnabled,
+  setVoiceVolume,
   voiceBarkForBeep,
 } from "../../lib/audio/voice";
 
@@ -15,6 +18,17 @@ describe("voice bark system", () => {
     setVoiceEnabled(false);
     expect(isVoiceEnabled()).toBe(false);
     setVoiceEnabled(true);
+  });
+
+  it("manages and clamps voice volume correctly", () => {
+    expect(getVoiceVolume()).toBe(0.8);
+    setVoiceVolume(0.5);
+    expect(getVoiceVolume()).toBe(0.5);
+    setVoiceVolume(-0.2);
+    expect(getVoiceVolume()).toBe(0);
+    setVoiceVolume(1.8);
+    expect(getVoiceVolume()).toBe(1);
+    setVoiceVolume(0.8);
   });
 
   it("handles voiceBarkForBeep without throwing in headless environments", () => {
@@ -61,9 +75,37 @@ describe("voice bark system", () => {
     }
 
     resetVoiceCooldown();
+    setAudioLevels({ masterVolume: 0.5 });
+    setVoiceVolume(0.6);
     playVoiceBark("select", true);
     expect(cancelMock).toHaveBeenCalled();
     expect(speakMock).toHaveBeenCalled();
+    const lastCall = speakMock.mock.calls[0]?.[0];
+    expect(lastCall.volume).toBeCloseTo(0.3, 5);
+
+    // Suppressed when disabled
+    speakMock.mockClear();
+    resetVoiceCooldown();
+    setVoiceEnabled(false);
+    playVoiceBark("select", true);
+    expect(speakMock).not.toHaveBeenCalled();
+    setVoiceEnabled(true);
+
+    // Suppressed when voice volume is 0
+    speakMock.mockClear();
+    resetVoiceCooldown();
+    setVoiceVolume(0);
+    playVoiceBark("select", true);
+    expect(speakMock).not.toHaveBeenCalled();
+    setVoiceVolume(0.8);
+
+    // Suppressed when master volume is 0
+    speakMock.mockClear();
+    resetVoiceCooldown();
+    setAudioLevels({ masterVolume: 0 });
+    playVoiceBark("select", true);
+    expect(speakMock).not.toHaveBeenCalled();
+    setAudioLevels({ masterVolume: 1 });
 
     vi.unstubAllGlobals();
   });

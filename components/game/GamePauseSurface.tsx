@@ -31,6 +31,7 @@ export function GamePauseSurface({ view, notice, settings, tutorial, setView, se
       onLeaveWithoutSave={session.onLeaveWithoutSave}
       onToggleSound={session.onToggleSound}
       onToggleMusic={session.onToggleMusic}
+      onToggleVoice={session.onToggleVoice}
       onToggleReducedMotion={session.onToggleReducedMotion}
       onToggleHighContrast={session.onToggleHighContrast}
       onCycleColorblind={session.onCycleColorblind}
