@@ -146,6 +146,7 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
             onLeaveWithoutSave: runtime.session.canLeaveWithoutSave ? runtime.session.leaveWithoutSave : undefined,
             onToggleSound: runtime.session.toggleSound,
             onToggleMusic: runtime.session.toggleMusic,
+            onToggleVoice: runtime.session.toggleVoice,
             onToggleReducedMotion: runtime.session.toggleReducedMotion,
             onToggleHighContrast: runtime.session.toggleHighContrast,
             onCycleColorblind: runtime.session.cycleColorblind,

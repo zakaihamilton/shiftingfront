@@ -74,15 +74,52 @@ const BARK_PHRASES: Record<VoiceBarkType, string[]> = {
 };
 
 let voiceEnabled = true;
+let voiceVolume = 0.8;
 let lastBarkTime = 0;
 const MIN_BARK_INTERVAL_MS = 2200;
 
 export function setVoiceEnabled(value: boolean): void {
   voiceEnabled = value;
+  if (!value) cancelVoiceSpeech();
 }
 
 export function isVoiceEnabled(): boolean {
   return voiceEnabled;
+}
+
+function getMixerLevels(): mixerModule.AudioLevels | undefined {
+  try {
+    return typeof mixerModule.getAudioLevels === "function" ? mixerModule.getAudioLevels() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function setMixerVoiceLevel(vol: number): void {
+  try {
+    if (typeof mixerModule.setAudioLevels === "function") {
+      mixerModule.setAudioLevels({ voiceVolume: vol });
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export function setVoiceVolume(value: number): void {
+  voiceVolume = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0.8));
+  setMixerVoiceLevel(voiceVolume);
+}
+
+export function getVoiceVolume(): number {
+  const levels = getMixerLevels();
+  return levels?.voiceVolume ?? voiceVolume;
+}
+
+export function getEffectiveVoiceVolume(): number {
+  const levels = getMixerLevels();
+  const masterVol = levels?.masterVolume ?? 1;
+  const vVol = levels?.voiceVolume ?? voiceVolume;
+  return Math.max(0, Math.min(1, vVol * masterVol));
 }
 
 export function resetVoiceCooldown(): void {
@@ -96,11 +133,17 @@ function playRadioSquelch(): void {
   const dest = getSfxBus();
   if (!audio || !dest) return;
 
+  // The SFX bus applies master volume downstream, so only scale the voice
+  // level here. Applying getEffectiveVoiceVolume() would apply master twice.
+  const voiceVol = getVoiceVolume();
+  if (voiceVol <= 0) return;
+  const gainScale = voiceVol / 0.8;
+
   // Initial RF burst click
   noise(audio, dest, {
     frequency: 3200,
     duration: 0.035,
-    gain: 0.05,
+    gain: 0.05 * gainScale,
     pan: 0,
     type: "bandpass",
     q: 2.0,
@@ -111,7 +154,7 @@ function playRadioSquelch(): void {
     endFrequency: 2400,
     duration: 0.03,
     type: "sine",
-    gain: 0.03,
+    gain: 0.03 * gainScale,
     pan: 0,
     cutoff: 3500,
     delay: 0.015,
@@ -123,7 +166,9 @@ function playRadioSquelch(): void {
  * Safely throttled and gracefully no-ops in headless/test environments.
  */
 export function playVoiceBark(type: VoiceBarkType, force = false): void {
-  if (!voiceEnabled || !checkSfxEnabled() || !isVoiceForeground()) return;
+  if (!voiceEnabled || !isVoiceForeground()) return;
+  const effectiveVol = getEffectiveVoiceVolume();
+  if (effectiveVol <= 0) return;
 
   const now = typeof performance !== "undefined" ? performance.now() : Date.now();
   if (!force && now - lastBarkTime < MIN_BARK_INTERVAL_MS) return;
@@ -149,7 +194,7 @@ export function playVoiceBark(type: VoiceBarkType, force = false): void {
       const utterance = new UtteranceClass(text);
       utterance.rate = 1.18;
       utterance.pitch = 0.92;
-      utterance.volume = 0.82;
+      utterance.volume = effectiveVol;
       utterance.lang = "en-US";
 
       const voices = synth.getVoices?.() ?? [];

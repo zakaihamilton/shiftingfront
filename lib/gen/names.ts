@@ -13,17 +13,50 @@ const LAST_NAMES = [
   "Cross", "Frost", "Drake", "Shaw", "Pike", "Vance", "Holt", "Rook",
   "Steele", "Ashford", "Crowe", "Graves",
 ];
-const FACTION_ADJ = [
-  "Ashen", "Iron", "Solar", "Northern", "Crimson", "United", "Free",
+export const NEUTRAL_FACTION_ADJ = [
+  "Iron", "Solar", "Northern", "Crimson", "United", "Free",
   "Eastern", "Western", "Outer", "Steel", "Amber",
+] as const;
+
+export const BIOME_FACTION_ADJ: Record<BiomeName, readonly string[]> = {
+  "ash plains": ["Ashen", "Cinder", "Soot"],
+  "crystal flats": ["Crystal", "Prism", "Shard"],
+  "rust canyons": ["Rust", "Iron", "Red"],
+  "salt marshes": ["Tidal", "Marsh", "Brine"],
+  "glass desert": ["Dune", "Glass", "Solar"],
+  "tundra grid": ["Frost", "Polar", "Glacier"],
+  "jungle wreckage": ["Verdant", "Canopy", "Wild"],
+  "volcanic shelf": ["Magma", "Basalt", "Ashen"],
+};
+
+const FACTION_ADJ = [
+  ...NEUTRAL_FACTION_ADJ,
+  "Ashen",
 ];
+
 const FACTION_END = [
   "Directorate", "Concord", "Legion", "Syndicate", "Mandate", "Pact",
   "Circle", "Union", "Order", "Front", "Republic", "Coalition",
 ];
+
+export const NEUTRAL_PLACE_ADJ = [
+  "Iron", "Dust", "Red", "Black", "Amber", "Copper", "Stone",
+] as const;
+
+export const BIOME_PLACE_ADJ: Record<BiomeName, readonly string[]> = {
+  "ash plains": ["Ash", "Soot", "Cinder", "Char", "Basalt"],
+  "crystal flats": ["Crystal", "Prism", "Shard", "Quartz", "Glass"],
+  "rust canyons": ["Rust", "Iron", "Red", "Ochre", "Copper"],
+  "salt marshes": ["Salt", "Silt", "Brine", "Marsh", "Tidal"],
+  "glass desert": ["Glass", "Dune", "Silica", "Scorched", "Barren"],
+  "tundra grid": ["Frost", "Rime", "Glacier", "Ice", "Boreal"],
+  "jungle wreckage": ["Verdant", "Canopy", "Overgrowth", "Wild", "Tangled"],
+  "volcanic shelf": ["Volcanic", "Magma", "Basalt", "Crag", "Smolder"],
+};
+
 const PLACE_ADJ = [
-  "Ash", "Iron", "Dust", "Frost", "Red", "Black", "Glass", "Salt",
-  "Rust", "Amber", "Copper", "Stone",
+  ...NEUTRAL_PLACE_ADJ,
+  "Ash", "Frost", "Glass", "Salt", "Rust",
 ];
 const PLACE = [
   "Rift", "Expanse", "Wastes", "Basin", "Reach", "Marches", "Spires",
@@ -59,6 +92,11 @@ export const BIOME_LABELS: Record<BiomeName, string> = {
 const RANK = ["Commander", "Marshal", "Director", "Captain", "Overseer", "Warden"];
 const ADVISOR = ["Strategist", "Attaché", "Quartermaster", "Analyst", "Herald"];
 const ENEMY_TITLE = ["Warlord", "Prefect", "Autarch", "General", "Executor"];
+
+function uniqueAdjectives(neutral: readonly string[], biome?: BiomeName): string[] {
+  const specific = biome ? BIOME_FACTION_ADJ[biome] : undefined;
+  return [...new Set(specific ? [...neutral, ...specific] : neutral)];
+}
 
 export type FactionArchetype = "directorate" | "concord" | "legion" | "syndicate";
 
@@ -134,18 +172,23 @@ export function characterLabel(who: { title: string; name: string }): string {
   return `${who.title} ${who.name}`;
 }
 
-export function genFactionName(rng: Rng): string {
-  return `${rng.pick(FACTION_ADJ)} ${rng.pick(FACTION_END)}`;
+export function genFactionName(rng: Rng, biome?: BiomeName): string {
+  const adjectives = biome ? uniqueAdjectives(NEUTRAL_FACTION_ADJ, biome) : FACTION_ADJ;
+  return `${rng.pick(adjectives)} ${rng.pick(FACTION_END)}`;
 }
 
-export function genFactionPair(rng: Rng): [string, string] {
-  const adj = rng.shuffle(FACTION_ADJ);
+export function genFactionPair(rng: Rng, biome?: BiomeName): [string, string] {
+  const adjectives = biome ? uniqueAdjectives(NEUTRAL_FACTION_ADJ, biome) : FACTION_ADJ;
+  const adj = rng.shuffle(adjectives);
   const end = rng.shuffle(FACTION_END);
   return [`${adj[0]} ${end[0]}`, `${adj[1]} ${end[1]}`];
 }
 
-export function genPlace(rng: Rng): string {
-  return `${rng.pick(PLACE_ADJ)} ${rng.pick(PLACE)}`;
+export function genPlace(rng: Rng, biome?: BiomeName): string {
+  const adjectives = biome && BIOME_PLACE_ADJ[biome]
+    ? [...new Set([...NEUTRAL_PLACE_ADJ, ...BIOME_PLACE_ADJ[biome]])]
+    : PLACE_ADJ;
+  return `${rng.pick(adjectives)} ${rng.pick(PLACE)}`;
 }
 
 export function genTone(rng: Rng): string {

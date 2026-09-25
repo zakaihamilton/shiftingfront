@@ -23,7 +23,7 @@ export function phaseLabel(runtime?: MissionRuntime): string | undefined {
   if (!runtime) return undefined;
   if (runtime.phase === "extraction") return "Extraction phase";
   if (runtime.phase === "complete") return "Operation complete";
-  return "Operation active";
+  return undefined;
 }
 
 export function deadlineUrgency(timeRemainingTicks?: number): DeadlineUrgency {

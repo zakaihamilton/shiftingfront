@@ -1,6 +1,11 @@
-import { createRng, type Rng } from "../seed/rng";
-import type { Faction, Palette } from "../types";
+import { createRng, rngFromState, type Rng } from "../seed/rng";
+import type { BiomeName, Faction, Palette } from "../types";
 import { genFactionPair } from "./names";
+
+// Keep faction palettes on a stable stream, regardless of adjective pool size.
+// This reserves the prior biome-aware naming budget: 13 adjective-shuffle and
+// 11 faction-title-shuffle draws after the two hue draws.
+const PALETTE_STREAM_RESERVED_DRAWS = 24;
 
 function hsl(h: number, s: number, l: number): string {
   return `hsl(${h} ${s}% ${l}%)`;
@@ -18,14 +23,19 @@ function paletteFromHue(h: number, rng: Rng): Palette {
   };
 }
 
-export function generateFactions(seed: number): [Faction, Faction] {
+export function generateFactions(seed: number, biome?: BiomeName): [Faction, Faction] {
   const rng = createRng(seed, "factions");
   const h1 = rng.int(360);
   let h2 = (h1 + 120 + rng.int(80)) % 360;
   if (Math.abs(h1 - h2) < 40) h2 = (h1 + 180) % 360;
-  const [nameA, nameB] = genFactionPair(rng);
-  const a = rng.fork("0");
-  const b = rng.fork("1");
+
+  const nameRng = rngFromState(rng.state);
+  const [nameA, nameB] = genFactionPair(nameRng, biome);
+
+  const paletteRng = rngFromState(rng.state);
+  for (let i = 0; i < PALETTE_STREAM_RESERVED_DRAWS; i++) paletteRng.next();
+  const a = paletteRng.fork("0");
+  const b = paletteRng.fork("1");
   return [
     {
       id: 0,

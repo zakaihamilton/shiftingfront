@@ -681,7 +681,7 @@
   }
 }
 
-@media (min-width: 901px) and (max-height: 650px) {
+@media (min-width: 701px) and (max-height: 650px) {
   .panel {
     gap: 0.52rem;
     padding-block: 0.85rem;
@@ -783,7 +783,7 @@
   }
 }
 
-@media (min-width: 901px) and (max-height: 650px) {
+@media (min-width: 701px) and (max-height: 650px) {
   .resultGrid {
     overflow-y: auto;
     padding-right: 0.2rem;

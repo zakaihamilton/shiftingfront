@@ -216,8 +216,11 @@ export function biomeAtmosphereColor(biome: BiomeName, rig: TerrainLightRig): Rg
   if (biome === "tundra grid" || biome === "crystal flats") {
     return mixRgb(rig.atmosphereColor, { r: 143, g: 201, b: 212 }, 0.24);
   }
-  if (biome === "jungle wreckage" || biome === "salt marshes") {
+  if (biome === "jungle wreckage") {
     return mixRgb(rig.atmosphereColor, { r: 92, g: 151, b: 111 }, 0.22);
+  }
+  if (biome === "salt marshes") {
+    return mixRgb(rig.atmosphereColor, { r: 96, g: 132, b: 160 }, 0.24);
   }
   return rig.atmosphereColor;
 }

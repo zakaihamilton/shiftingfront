@@ -38,6 +38,7 @@ export function CommandSidebar({
   onStop,
   onStance,
   onFormation,
+  onCenter,
   mobilePanelOpen,
   selectionCount = 0,
 }: CommandBuildControls & {
@@ -116,6 +117,7 @@ export function CommandSidebar({
         onStop={onStop}
         onStance={onStance}
         onFormation={onFormation}
+        onCenter={onCenter}
       />
     </aside>
   );

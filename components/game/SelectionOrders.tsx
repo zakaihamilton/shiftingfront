@@ -2,6 +2,7 @@ import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { FORMATION_OPTIONS, STANCE_OPTIONS } from "@/lib/ui/orders";
 import type { Formation, Stance } from "@/lib/types";
+import { triggerHaptic } from "@/lib/ui/haptics";
 import styles from "./SelectionPanel.module.css";
 
 export function SelectionOrders({
@@ -25,7 +26,10 @@ export function SelectionOrders({
         tooltip="Stop selected units"
         shortcut={SHORTCUT.stop}
         aria-keyshortcuts="x"
-        onClick={onStop}
+        onClick={() => {
+          triggerHaptic("tap");
+          onStop();
+        }}
       >
         Stop
       </ConsoleButton>
@@ -37,7 +41,10 @@ export function SelectionOrders({
             data-testid={`selected-action-stance-${item.id}`}
             aria-pressed={stance === item.id}
             muted={stance !== item.id}
-            onClick={() => onStance(item.id)}
+            onClick={() => {
+              triggerHaptic("tap");
+              onStance(item.id);
+            }}
           >
             {item.label}
           </ConsoleButton>
@@ -51,7 +58,10 @@ export function SelectionOrders({
             data-testid={`selected-action-formation-${item.id}`}
             aria-pressed={formation === item.id}
             muted={formation !== item.id}
-            onClick={() => onFormation(item.id)}
+            onClick={() => {
+              triggerHaptic("tap");
+              onFormation(item.id);
+            }}
           >
             {item.label}
           </ConsoleButton>

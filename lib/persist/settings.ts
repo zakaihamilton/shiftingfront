@@ -43,9 +43,11 @@ export function defaultKeyBindings(): KeyBindings {
 export type GameSettings = {
   sfxEnabled: boolean;
   musicEnabled: boolean;
+  voiceEnabled: boolean;
   masterVolume: number;
   musicVolume: number;
   sfxVolume: number;
+  voiceVolume: number;
   reducedMotion: boolean;
   highContrast: boolean;
   colorblindMode: ColorblindMode;
@@ -58,9 +60,11 @@ export function defaultSettings(): GameSettings {
   return {
     sfxEnabled: true,
     musicEnabled: true,
+    voiceEnabled: true,
     masterVolume: 1,
     musicVolume: 0.5,
     sfxVolume: 0.25,
+    voiceVolume: 0.8,
     reducedMotion: false,
     highContrast: false,
     colorblindMode: "none",
@@ -117,9 +121,11 @@ function normalize(value: unknown): GameSettings {
   return {
     sfxEnabled: raw.sfxEnabled !== false,
     musicEnabled: raw.musicEnabled !== false,
+    voiceEnabled: raw.voiceEnabled !== false,
     masterVolume: clampVolume(raw.masterVolume, base.masterVolume),
     musicVolume: clampVolume(raw.musicVolume, base.musicVolume),
     sfxVolume: clampVolume(raw.sfxVolume, base.sfxVolume),
+    voiceVolume: clampVolume(raw.voiceVolume, base.voiceVolume),
     reducedMotion: raw.reducedMotion === true,
     highContrast: raw.highContrast === true,
     colorblindMode,
@@ -150,9 +156,11 @@ export function writeSettings(storage: StorageAdapter, settings: GameSettings): 
     settings: {
       sfxEnabled: settings.sfxEnabled === true,
       musicEnabled: settings.musicEnabled === true,
+      voiceEnabled: settings.voiceEnabled !== false,
       masterVolume: clampVolume(settings.masterVolume, defaultSettings().masterVolume),
       musicVolume: clampVolume(settings.musicVolume, defaultSettings().musicVolume),
       sfxVolume: clampVolume(settings.sfxVolume, defaultSettings().sfxVolume),
+      voiceVolume: clampVolume(settings.voiceVolume, defaultSettings().voiceVolume),
       reducedMotion: settings.reducedMotion === true,
       highContrast: settings.highContrast === true,
       colorblindMode: settings.colorblindMode || "none",
