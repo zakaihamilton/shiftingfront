@@ -18,6 +18,10 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   /* config options here */
+  experimental: {
+    // Next uses the TypeScript 6 API alias; `yarn typecheck` runs the TypeScript 7 CLI.
+    useTypeScriptCli: false,
+  },
   reactCompiler: true,
   async headers() {
     return [
