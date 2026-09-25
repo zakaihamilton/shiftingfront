@@ -26,7 +26,7 @@
     "@csstools/css-tokenizer" "^4.0.1"
     lru-cache "^11.5.3"
 
-"@asamuzakjp/dom-selector@^9.1.2":
+"@asamuzakjp/dom-selector@^9.2.1":
   version "9.2.1"
   resolved "https://registry.yarnpkg.com/@asamuzakjp/dom-selector/-/dom-selector-9.2.1.tgz#a4514f8a28caa0890c56c9a7105773235670af8c"
   integrity sha512-NT4s3yZLjovPpliRpTvdsdzyPjqRqiCZj9MxnarBihbaY5MbAG7DWAJcrLlhmC7xKTNCXsTELcqB8YsqpLnUFQ==
@@ -499,7 +499,7 @@
     "@eslint/core" "^0.17.0"
     levn "^0.4.1"
 
-"@exodus/bytes@^1.11.0", "@exodus/bytes@^1.15.1", "@exodus/bytes@^1.6.0":
+"@exodus/bytes@^1.11.0", "@exodus/bytes@^1.15.1":
   version "1.15.1"
   resolved "https://registry.yarnpkg.com/@exodus/bytes/-/bytes-1.15.1.tgz#b13bc464ca162c17abf0837fb3a11aeab79e45d1"
   integrity sha512-S6mL0yNB/Abt9Ei4tq8gDhcczc4S3+vQ4ra7vxnAf+YHC02srtqxKKZghx2Dq6p0e66THKwR6r8N6P95wEty7Q==
@@ -3068,12 +3068,12 @@ hosted-git-info@^2.1.4:
   resolved "https://registry.yarnpkg.com/hosted-git-info/-/hosted-git-info-2.8.9.tgz#dffc0bf9a21c02209090f2aa69429e1414daf3f9"
   integrity sha512-mxIDAb9Lsm6DoOJ7xH+5+X4y1LU/4Hi50L9C5sIswK3JzULS4bwk1FvjdBgvYR4bzT4tuUQiC15FE2f5HbLvYw==
 
-html-encoding-sniffer@^6.0.0:
-  version "6.0.0"
-  resolved "https://registry.yarnpkg.com/html-encoding-sniffer/-/html-encoding-sniffer-6.0.0.tgz#f8d9390b3b348b50d4f61c16dd2ef5c05980a882"
-  integrity sha512-CV9TW3Y3f8/wT0BRFc1/KAVQ3TUHiXmaAb6VW9vtiMFf7SLoMd1PdAc4W3KFOFETBJUb90KatHqlsZMWV+R9Gg==
+html-encoding-sniffer@^7.0.0:
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/html-encoding-sniffer/-/html-encoding-sniffer-7.0.0.tgz#cf995009e50fa6f90d74906ab5137f8ee9b7c9d8"
+  integrity sha512-UikN5yr7xsCDAq87Or5or0PAlD3HJJOKVzM05az588WnpDJ4Ux7a2A53Qi6gofGg2/EtvF/H4hCi/TXfCW4Y6w==
   dependencies:
-    "@exodus/bytes" "^1.6.0"
+    "@exodus/bytes" "^1.15.1"
 
 ignore@^5.2.0:
   version "5.3.2"
@@ -3454,81 +3454,81 @@ js-yaml@^4.3.2:
   dependencies:
     argparse "^2.0.1"
 
-jscpd-darwin-arm64@5.3.0:
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/jscpd-darwin-arm64/-/jscpd-darwin-arm64-5.3.0.tgz#a2b015f8c70f9eefd7ccbbdb8e78f73c26492c3b"
-  integrity sha512-kH4O+vgWtWbaE42+KejOmDZW9nB4WqsbX+NxAQPwVxZg1TQTM2bhDhYdQo+MHpN+vf4HpQ+dOCsARBn2ri+ing==
+jscpd-darwin-arm64@5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/jscpd-darwin-arm64/-/jscpd-darwin-arm64-5.3.1.tgz#f8d4cc55072c5da6e0190b6f5ca41a3ad5c65093"
+  integrity sha512-t2gKgDw8b1tXv8UZW4p5dSFODSSmTVMtlVUIyCab/R8L+EFc/NPvlC0NUvv8P03zU4QENHJwSaQUAoULcGnaLA==
 
-jscpd-darwin-x64@5.3.0:
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/jscpd-darwin-x64/-/jscpd-darwin-x64-5.3.0.tgz#4ac76251f5ee109f20ffc48722897b68ff789ad9"
-  integrity sha512-IMobUmmZcrxKbziuni93ljtIMtAyPY4lFPNcopgTOFwO3vlHeYZV1r0sY8eP0APvW5BSFW2nBA/WG5+EezYpYw==
+jscpd-darwin-x64@5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/jscpd-darwin-x64/-/jscpd-darwin-x64-5.3.1.tgz#16adbf310d0a6a69f389207a1ad6cbea255f0587"
+  integrity sha512-2/xqNtHoLF2wBzA0g6ynxSuEk758yWEtt1vgEhoOYsDe0gQZLaGdszW0KK05T+30Xst12dkFJzVtgBfMkn5jtg==
 
-jscpd-linux-arm64-gnu@5.3.0:
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/jscpd-linux-arm64-gnu/-/jscpd-linux-arm64-gnu-5.3.0.tgz#f00fcc7fe2c26edd475f942f715f2cc95a049111"
-  integrity sha512-VdN3g485lHqGxysAuij0KkDh4HSczUOJ8d8rXdCBSYBBqIrSMkVtfy7iug7GUhGkLZ7qukTkgvZs0P7mEMH8Yw==
+jscpd-linux-arm64-gnu@5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/jscpd-linux-arm64-gnu/-/jscpd-linux-arm64-gnu-5.3.1.tgz#6ad7db661d7a20b3d6156e933c316891a7a6dd74"
+  integrity sha512-Nw14CJAbCICjaDYYBmi38gZ8ayuM5E9eLj3xXZQ9swQD7PORY0hHT3CsME0LzGQdeMfzHVJWQUAiar9Bq86BIQ==
 
-jscpd-linux-arm64-musl@5.3.0:
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/jscpd-linux-arm64-musl/-/jscpd-linux-arm64-musl-5.3.0.tgz#674f3bc0857f8104d08cb1f40756ef2c07923f7a"
-  integrity sha512-96JQfVFcSBjoUwqFeEQQ4c2wHHT4kE+LqZtEayc6ko3Ouu1nLJvCnBA5DSOU0HuIvGAVq8A2CmkWJ6I1XCCt/A==
+jscpd-linux-arm64-musl@5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/jscpd-linux-arm64-musl/-/jscpd-linux-arm64-musl-5.3.1.tgz#718e7d4a69551d8eba50a54e8c78d3e64bed679f"
+  integrity sha512-KkHFfEE/8pQfPWT/T4uQCL3xtJqo5Q4OMVnRf5hRPhYuriifAefN90q8/rhevAICgg/UkAVZ78hYMOp/WcgivA==
 
-jscpd-linux-x64-gnu@5.3.0:
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/jscpd-linux-x64-gnu/-/jscpd-linux-x64-gnu-5.3.0.tgz#a06767d6fa993d64f9a317d02acb1b45f915a39e"
-  integrity sha512-teMMfXFE1iAJ2rgqxRUOxX6U7glr//8WKZhEH0sRIN6QwstjKmzKlEPEf1UU2rH7JyYlsIGAYcjrWzmJ7wDLcA==
+jscpd-linux-x64-gnu@5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/jscpd-linux-x64-gnu/-/jscpd-linux-x64-gnu-5.3.1.tgz#014d91b99af98b0d801e579596a98978dc7dde6e"
+  integrity sha512-YG7V1k+ejE3UaQG0voZscCqZg7X1bwRDgxZlRcllEySHtWHiUl2UR4arHR0PdF6uBUGw0rfjOKkKZu0AYQoimw==
 
-jscpd-linux-x64-musl@5.3.0:
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/jscpd-linux-x64-musl/-/jscpd-linux-x64-musl-5.3.0.tgz#abf6aaeeec53da2a92020a95a83e27f5f80d7129"
-  integrity sha512-mVsivu/awa17BwOZbnkGo/H8P1IedckXswuT5ZwYXkgpVD//ken4HjjcUO8+fwxu3cRbk0qycdLfP/B1VAtAMA==
+jscpd-linux-x64-musl@5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/jscpd-linux-x64-musl/-/jscpd-linux-x64-musl-5.3.1.tgz#ffda15e07f0527fa6f34a9aecf531817db8aa42f"
+  integrity sha512-Wnz0SJB8rZC3UbRYFKSDR0qXJEYMz5hUufO/SPV++fR5+wk7gqxpdYM+LBWDznaSuXZ1PiLMjN5vE3x8jwBCxA==
 
-jscpd-windows-arm64-msvc@5.3.0:
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/jscpd-windows-arm64-msvc/-/jscpd-windows-arm64-msvc-5.3.0.tgz#14705966f7d569d40d4f7a7fd2efab739c21f637"
-  integrity sha512-uzkJo9bY2Er91MFyovQUYOAq06bjoO9E36v7qAhzh0yzhYaQNVchmKrP3qEFjA+5K2DL9jeJCD6JL9q4ZiQyGg==
+jscpd-windows-arm64-msvc@5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/jscpd-windows-arm64-msvc/-/jscpd-windows-arm64-msvc-5.3.1.tgz#f7ca105c13641c32b9661d0589ae25cdc1cbd087"
+  integrity sha512-pk/PRHowDkMx8nPF1FbiMSBEeBECJz8iJ21Ig24AIZmIQKDt0MjshDlEs1UHV7dMbePm56RToBtHw0J4FaxMFg==
 
-jscpd-windows-x64-msvc@5.3.0:
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/jscpd-windows-x64-msvc/-/jscpd-windows-x64-msvc-5.3.0.tgz#dead60ba9ba71ca5878a3a955021ee50f4e5ab74"
-  integrity sha512-E9FBk7BzAC6EffvFuV5ggDhXFJW1F6odrdgLe9RaMW9IWjhgHhmliJgse0ehmaqQu9HGNVwx+Cq238U4Cfe5Iw==
+jscpd-windows-x64-msvc@5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/jscpd-windows-x64-msvc/-/jscpd-windows-x64-msvc-5.3.1.tgz#6ce5ea7a0431ebab089e478ca56adeabb83cc21f"
+  integrity sha512-vIQGaPvnMdRLvMyJzvoD3bCJB8Ospv+YEYkdHdq0dZTbqbUKjrHt3arvYJ0G0T5kBYY+8QGmjelMI01p74xZPA==
 
-jscpd@^5.3.0:
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/jscpd/-/jscpd-5.3.0.tgz#c57a27dbf439be4b7eadf51e5e08d8719432c03b"
-  integrity sha512-EiGK3H6ZF8jbyiIU1c+iPkgWskcXVoSozfobYIbySK1KPlo+UYmVqSVpKUiLnfoNDOTy9vqACSmiS+JA7xPsQg==
+jscpd@^5.3.1:
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/jscpd/-/jscpd-5.3.1.tgz#0c9d333854724e12666501261ca830f8ca0a218b"
+  integrity sha512-A1A8PqFTpKN+SI5QowA30fmOYkpofQGJQzn5KyIDEYbQ1kC78GK+RBcmdz4KxZ/9QQMe3J01CsFIrtC2dUvekw==
   optionalDependencies:
-    jscpd-darwin-arm64 "5.3.0"
-    jscpd-darwin-x64 "5.3.0"
-    jscpd-linux-arm64-gnu "5.3.0"
-    jscpd-linux-arm64-musl "5.3.0"
-    jscpd-linux-x64-gnu "5.3.0"
-    jscpd-linux-x64-musl "5.3.0"
-    jscpd-windows-arm64-msvc "5.3.0"
-    jscpd-windows-x64-msvc "5.3.0"
+    jscpd-darwin-arm64 "5.3.1"
+    jscpd-darwin-x64 "5.3.1"
+    jscpd-linux-arm64-gnu "5.3.1"
+    jscpd-linux-arm64-musl "5.3.1"
+    jscpd-linux-x64-gnu "5.3.1"
+    jscpd-linux-x64-musl "5.3.1"
+    jscpd-windows-arm64-msvc "5.3.1"
+    jscpd-windows-x64-msvc "5.3.1"
 
-jsdom@^30.1.0:
-  version "30.1.0"
-  resolved "https://registry.yarnpkg.com/jsdom/-/jsdom-30.1.0.tgz#fb3f39a40fc809bc82d2709604230cca71065fd6"
-  integrity sha512-h/Q+H+KmlGf49ITw3TrykSVbg04S75S2O7ZtJc9gMGOWBrQRZmx5AJIKLtJ01e6Kszl+/tpFthCVqxNifxhoqg==
+jsdom@^30.1.1:
+  version "30.1.1"
+  resolved "https://registry.yarnpkg.com/jsdom/-/jsdom-30.1.1.tgz#cf8b82ce71ac29a0bf1ab219a6d2894bce62dbdb"
+  integrity sha512-FahmoPK5vbPc+jxV1iErMHmAZypCZ942NHF4+qqaWAuvaKKTBZxawnmAtrbGWLU7MtlxfqIP0qw6aSI+aWGtLg==
   dependencies:
     "@asamuzakjp/css-color" "^7.0.0"
-    "@asamuzakjp/dom-selector" "^9.1.2"
+    "@asamuzakjp/dom-selector" "^9.2.1"
     "@bramus/specificity" "^2.4.2"
     "@csstools/css-syntax-patches-for-csstree" "^1.1.13"
     "@exodus/bytes" "^1.15.1"
     css-tree "^3.2.1"
     data-urls "^7.0.0"
     decimal.js "^10.6.0"
-    html-encoding-sniffer "^6.0.0"
+    html-encoding-sniffer "^7.0.0"
     is-potential-custom-element-name "^1.0.1"
     lru-cache "^11.5.2"
     parse5 "^8.0.1"
     saxes "^6.0.0"
     tough-cookie "^6.0.2"
     undici "^8.10.2"
-    w3c-xmlserializer "^5.0.0"
+    w3c-xmlserializer "^6.0.0"
     webidl-conversions "^8.0.1"
     whatwg-mimetype "^5.0.0"
     whatwg-url "^17.1.1"
@@ -5518,10 +5518,10 @@ vitest@^5.0.1:
     tinyglobby "^0.2.17"
     why-is-node-running "^2.3.0"
 
-w3c-xmlserializer@^5.0.0:
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/w3c-xmlserializer/-/w3c-xmlserializer-5.0.0.tgz#f925ba26855158594d907313cedd1476c5967f6c"
-  integrity sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==
+w3c-xmlserializer@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/w3c-xmlserializer/-/w3c-xmlserializer-6.0.0.tgz#27c0747e0091ada8cdb513c3645362e71fc50d82"
+  integrity sha512-4Nsy8K5Tr6SPDH9jhKJOHf7ChDrc1zufZTVSF7x72hwuEXBqxqk9G6cK+K2NRUtB3iELRJqjXb4JPDMBjMTl2Q==
   dependencies:
     xml-name-validator "^5.0.0"
 
