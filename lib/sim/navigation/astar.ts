@@ -104,11 +104,14 @@ function nextGeneration(buffers: SearchBuffers): number {
 function reconstruct(parent: Int32Array, endKey: number, startKey: number, w: number): Vec2[] {
   const path: Vec2[] = [];
   let cur = endKey;
-  while (cur !== startKey && cur >= 0) {
+  const maxSteps = parent.length;
+  while (cur !== startKey && cur >= 0 && path.length < maxSteps) {
     const x = cur % w;
     const y = Math.floor(cur / w);
     path.push({ x, y });
-    cur = parent[cur] ?? -1;
+    const next = parent[cur] ?? -1;
+    if (next === cur) break;
+    cur = next;
   }
   path.reverse();
   return path;

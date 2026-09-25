@@ -102,9 +102,6 @@ export function buildGrid(state: SimState): CombatGrid {
   const cells = cached && cached.cols === cols && cached.rows === rows
     ? cached.cells
     : Array.from({ length: size }, () => [] as Entity[]);
-  if (cached && cached.cols === cols && cached.rows === rows) {
-    for (const cell of cells) cell.length = 0;
-  }
   const order = cached && cached.cols === cols && cached.rows === rows && cached.order.length >= state.nextId
     ? cached.order
     : new Int32Array(Math.max(state.nextId, 1));
@@ -117,6 +114,13 @@ export function buildGrid(state: SimState): CombatGrid {
   const threat = cached && cached.cols === cols && cached.rows === rows && cached.threat.length >= state.nextId
     ? cached.threat
     : new Uint8Array(Math.max(state.nextId, 1));
+  if (cached && cached.cols === cols && cached.rows === rows) {
+    for (const cell of cells) cell.length = 0;
+    byId.fill(undefined);
+    targetable.fill(0);
+    threat.fill(0);
+    order.fill(0);
+  }
   let orderCount = 0;
   // Rebuild from the current entity array. The buffers are intentionally
   // reused because combat runs once per tick and entity positions change.

@@ -757,6 +757,8 @@ describe("generated audio", () => {
     expect(starts.length).toBeGreaterThan(5);
     expect(starts.at(-1)! - 1).toBeLessThanOrEqual(MAX_SFX_QUEUE_S);
     expect(scheduleSfxTime(1, previous, 0.045)).toBeNull();
+    // When clock resets (e.g. context recreation with now = 0.1 but previous was 50), it recovers immediately
+    expect(scheduleSfxTime(0.1, 50, 0.045)).toBe(0.1);
   });
 
   it("tracks the music enable flag without requiring an audio device", () => {

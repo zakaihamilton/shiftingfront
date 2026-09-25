@@ -43,8 +43,15 @@ export function useGameKeyboard({
   const keys = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
+    const clearKeys = () => {
+      for (const k of Object.keys(keys.current)) {
+        keys.current[k] = false;
+      }
+    };
+    if (confirmationOpen) clearKeys();
+
     const down = (e: KeyboardEvent) => {
-      keys.current[e.key] = true;
+      if (isEditableTarget(e.target)) return;
       if (confirmationOpen) {
         if (e.key === "Escape") {
           e.preventDefault();
@@ -56,6 +63,9 @@ export function useGameKeyboard({
         e.preventDefault();
         closeMobilePanel();
         return;
+      }
+      if (!pausedRef.current && stateRef.current.result === "playing") {
+        keys.current[e.key] = true;
       }
       const isPanKey = (k: string) => {
         const panKeys = [
@@ -88,6 +98,9 @@ export function useGameKeyboard({
       );
       if (!command) return;
       e.preventDefault();
+      if (command.type === "pause") {
+        clearKeys();
+      }
       applyGameCommand(command, {
         activeTab: activeTabRef.current,
         openPauseMenu,
@@ -120,11 +133,19 @@ export function useGameKeyboard({
       keys.current[e.key] = false;
     };
 
+    const blur = () => {
+      for (const k of Object.keys(keys.current)) {
+        keys.current[k] = false;
+      }
+    };
+
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
     };
   }, [
     activateCameo,

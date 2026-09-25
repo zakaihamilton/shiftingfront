@@ -14,6 +14,8 @@ export * from "./synth/index";
 let sfxEnabled = true;
 const lastPlayed = new Map<SfxKind, number>();
 
+let lastAudioContext: AudioContext | null = null;
+
 export function setSfxEnabled(value: boolean): void {
   const enabledForRuntime = process.env.NEXT_PUBLIC_E2E_MUTE_SFX === "1" ? false : value;
   sfxEnabled = enabledForRuntime;
@@ -29,6 +31,10 @@ export function playSfx(kind: SfxKind, options: SfxOptions = {}): void {
   const audio = getAudioContext();
   const dest = getAudioBus("sfx");
   if (!audio || !dest) return;
+  if (lastAudioContext !== audio) {
+    lastPlayed.clear();
+    lastAudioContext = audio;
+  }
   const now = audio.currentTime;
   const requested = now + Math.max(0, options.delay ?? 0);
   const minInterval = options.minInterval ?? DEFAULT_INTERVALS[kind] ?? 0;

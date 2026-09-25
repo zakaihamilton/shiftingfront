@@ -92,7 +92,7 @@ export function createSimulationTickContext(
     collectEvents: options.collectEvents !== false,
     options,
     emit(nextEvents) {
-      if (!events || !nextEvents?.length) return;
+      if (!events || !nextEvents?.length || nextEvents === events) return;
       events.push(...nextEvents);
     },
   };

@@ -5,10 +5,12 @@ import {
   TILE_RESOURCE,
   TILE_WATER,
   isHiddenObjectiveAsset,
+  isBuildingEntity,
   type Entity,
   type SimState,
 } from "../types";
 import { fogAt } from "../sim/fog";
+import { footprintOf } from "../catalog";
 import { atlasPixelAtTile, atlasRectForTile, fogTerrainGain, getTerrainAtlas, isTerrainAtlasBaked, terrainColors } from "./terrainAtlas";
 import type { ColorblindMode } from "../persist/settings";
 
@@ -59,6 +61,22 @@ export function entityColor(e: Entity, state: SimState, mode: ColorblindMode = "
 }
 
 export function minimapEntityVisible(state: SimState, e: Entity): boolean {
+  if (isBuildingEntity(e)) {
+    const fp = footprintOf(e.kind);
+    let visible = false;
+    for (let dy = 0; dy < fp.h; dy++) {
+      for (let dx = 0; dx < fp.w; dx++) {
+        if (fogAt(state, e.x + dx, e.y + dy) === 2) {
+          visible = true;
+          break;
+        }
+      }
+      if (visible) break;
+    }
+    if (e.owner === 1 && !visible) return false;
+    if (isHiddenObjectiveAsset(e) && !visible) return false;
+    return true;
+  }
   const fog = fogAt(state, Math.round(e.x), Math.round(e.y));
   if (e.owner === 1 && fog !== 2) return false;
   // Hidden objective assets are owner-0 actors, so they need their own fog

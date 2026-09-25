@@ -589,6 +589,64 @@ describe("useGameKeyboard", () => {
     expect(resumeMission).not.toHaveBeenCalled();
     expect(saveMission).not.toHaveBeenCalled();
   });
+
+  it("does not record pan keys when typing in an editable target or when paused", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    const pausedRef = { current: false };
+    const { result } = renderHook(() => useGameKeyboard({
+      stateRef: { current: state },
+      pausedRef,
+      pauseViewRef: { current: "main" },
+      activeTabRef: { current: "construction" },
+      place: { current: null },
+      repair: { current: false },
+      sell: { current: false },
+      openPauseMenu: vi.fn(),
+      resumeMission: vi.fn(),
+      setPauseView: vi.fn(),
+      setPauseNotice: vi.fn(),
+      setActiveTab: vi.fn(),
+      activateCameo: vi.fn(),
+      assignControlGroup: vi.fn(),
+      recallControlGroup: vi.fn(),
+      jumpHome: vi.fn(),
+      centerSelection: vi.fn(),
+      toggleRepair: vi.fn(),
+      toggleSell: vi.fn(),
+      stopSelected: vi.fn(),
+      clearTools: vi.fn(),
+      saveMission: vi.fn(),
+      loadMission: vi.fn(),
+      viewMissionBriefing: vi.fn(),
+      restartMission: vi.fn(),
+      toggleSound: vi.fn(),
+      toggleMusic: vi.fn(),
+      resultPrimary: vi.fn(),
+      onNavigateHome: vi.fn(),
+    }));
+
+    // Typing in an input element should not register in keys.current
+    const inputEl = document.createElement("input");
+    document.body.appendChild(inputEl);
+    act(() => {
+      inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
+    });
+    expect(result.current.keys.current["w"]).toBeFalsy();
+    document.body.removeChild(inputEl);
+
+    // Normal key while playing should register
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    });
+    expect(result.current.keys.current["w"]).toBe(true);
+
+    // While paused, keys should not be registered as active movement keys
+    pausedRef.current = true;
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "s" }));
+    });
+    expect(result.current.keys.current["s"]).toBeFalsy();
+  });
 });
 
 describe("save before navigation", () => {

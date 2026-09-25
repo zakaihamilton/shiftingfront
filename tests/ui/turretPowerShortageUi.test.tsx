@@ -109,4 +109,40 @@ describe("SelectionPanel Turret Power Shortage UI", () => {
 
     expect(screen.queryByTestId("turret-power-shortage")).toBeNull();
   });
+
+  it("does not render power shortage badge while turret is still constructing", () => {
+    const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const turret = addBuilding(state, 0, "turret", 4, 4);
+    turret.constructing = 15;
+
+    render(
+      <SelectionPanel
+        selected={turret}
+        selectionCount={1}
+        palette={palette}
+        profile={profile}
+        power={-12}
+      />,
+    );
+
+    expect(screen.queryByTestId("turret-power-shortage")).toBeNull();
+  });
+
+  it("does not render power shortage badge for enemy turrets", () => {
+    const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const enemyTurret = addBuilding(state, 1, "turret", 4, 4);
+    enemyTurret.constructing = 0;
+
+    render(
+      <SelectionPanel
+        selected={enemyTurret}
+        selectionCount={1}
+        palette={palette}
+        profile={profile}
+        power={-12}
+      />,
+    );
+
+    expect(screen.queryByTestId("turret-power-shortage")).toBeNull();
+  });
 });

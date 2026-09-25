@@ -36,13 +36,17 @@ export function inBounds(state: SimState, x: number, y: number): boolean {
 }
 
 export function tileAt(state: SimState, x: number, y: number): TileKind {
-  if (!inBounds(state, x, y)) return 1;
-  return state.tiles[at(state, x, y)] as TileKind;
+  const rx = Math.round(x);
+  const ry = Math.round(y);
+  if (!inBounds(state, rx, ry)) return 1;
+  return state.tiles[at(state, rx, ry)] as TileKind;
 }
 
 export function heightAt(state: SimState, x: number, y: number): number {
-  if (!inBounds(state, x, y)) return 0;
-  return state.heights[at(state, x, y)] ?? 1;
+  const rx = Math.round(x);
+  const ry = Math.round(y);
+  if (!inBounds(state, rx, ry)) return 0;
+  return state.heights[at(state, rx, ry)] ?? 1;
 }
 
 function heightAtClamped(state: SimState, x: number, y: number): number {

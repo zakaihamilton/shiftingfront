@@ -160,7 +160,9 @@ function normalizeState(value: unknown): SimState {
       delete e.attackTarget;
     }
     if (!e.queue) e.queue = [];
-    if (e.facing === undefined) e.facing = e.owner === 0 ? 0 : 4;
+    if (e.facing === undefined || !Number.isInteger(e.facing) || (e.facing as number) < 0 || (e.facing as number) > 7) {
+      e.facing = ((e.facing as unknown) === 8 ? 0 : (e.owner === 0 ? 0 : 4)) as import("../../types").Facing;
+    }
     if (e.repairing === undefined) e.repairing = false;
     if (e.stance === undefined) e.stance = "aggressive";
     if (e.suppression === undefined) e.suppression = 0;

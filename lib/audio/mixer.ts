@@ -88,7 +88,10 @@ function configureLimiter(limiter: DynamicsCompressorNode, now: number): void {
 }
 
 function ensureMixer(audio: AudioContext): void {
-  if (master && music && sfx && sfxLimiter && sfxMakeup) {
+  const contextChanged = Boolean(master?.context && master.context !== (audio as unknown as BaseAudioContext));
+  if (contextChanged) musicDuck = null;
+
+  if (master && music && sfx && sfxLimiter && sfxMakeup && (!master.context || master.context === (audio as unknown as BaseAudioContext))) {
     applyLevels(audio);
     return;
   }

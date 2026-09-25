@@ -131,7 +131,7 @@ export function useGameRuntimeLifecycle({
     fxRef: interaction.renderer.fxRef, fxSeq: interaction.renderer.fxSeq, screenShakeRef: interaction.renderer.screenShakeRef,
     terminalSaveRef, campaignRecordedRef, saveSession, redraw: interaction.renderer.redraw,
     onAlert: feedback.onAlert, onCommandNotice: feedback.announceCommandFeedback, persistCampaign: !tutorial,
-    uxRef: feedback.uxRef, suppressImplicitSavesRef,
+    uxRef: feedback.uxRef, suppressImplicitSavesRef, keyBindings: audioSettings.keyBindings,
   });
 
   useGameAudioLifecycle({ seed, missionIndex: state.missionIndex, tutorial, paused, result: state.result });

@@ -57,4 +57,15 @@ describe("simulation pipeline", () => {
     expect(headlessResult.events).toEqual([]);
     expect(headless.tick).toBe(1);
   });
+
+  it("does not duplicate events when a system returns the shared event sink", () => {
+    const state = createMission({ seed: 421, missionIndex: 0 });
+    const events = [] as ReturnType<typeof createSimulationTickContext>["events"];
+    const context = createSimulationTickContext(state, events, {});
+    // Simulate a system pushing directly to context.events and then calling emit(context.events)
+    events!.push({ type: "alert", kind: "objective", text: "single" });
+    context.emit(events);
+    expect(events).toHaveLength(1);
+    expect(events![0]).toEqual({ type: "alert", kind: "objective", text: "single" });
+  });
 });

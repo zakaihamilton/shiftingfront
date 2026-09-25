@@ -1,5 +1,6 @@
 import { footprintOf, isAirUnit, UNIT_STATS } from "../catalog";
 import { isBuildingEntity, isUnitEntity, type Entity, type SimEvent, type SimState } from "../types";
+import { toIsometricFacing } from "../iso";
 import { byId } from "./world";
 import { canTarget, isCombatTarget } from "./combat/grid";
 import { entitiesFor } from "./entities";
@@ -183,7 +184,7 @@ function moveAircraft(aircraft: Aircraft, destination: { x: number; y: number })
   }
   aircraft.x += dx / distance * stats.speed;
   aircraft.y += dy / distance * stats.speed;
-  aircraft.facing = Math.round(((Math.atan2(dy, dx) / (Math.PI * 2)) * 8 + 8) % 8) as import("../types").Facing;
+  aircraft.facing = toIsometricFacing(dx, dy);
   aircraft.path = [{ ...destination }];
   aircraft.idle = false;
 }
