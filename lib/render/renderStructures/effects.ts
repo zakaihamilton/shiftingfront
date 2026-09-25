@@ -1,5 +1,5 @@
 import { tileToScreen, type Camera } from "../../iso";
-import { groundHeight, heightAt } from "../../sim/world";
+import { groundHeight, heightAt, powerFor } from "../../sim/world";
 import type { BuildingKind, Entity, SimState } from "../../types";
 import type { BuildingAnim } from "../anim";
 
@@ -9,12 +9,15 @@ export function drawBuildingFx(
   s: { x: number; y: number },
   z: number,
   anim: BuildingAnim,
+  state?: SimState,
 ): void {
   const kind = e.kind as BuildingKind;
   ctx.save();
   if (anim.lightOn && (kind === "power" || kind === "constructionYard" || kind === "objective" || kind === "turret" || kind === "antiAirTurret")) {
-    ctx.fillStyle = kind === "objective" ? "#f3dc79" : "#c7f0d4";
-    ctx.globalAlpha = 0.5 + anim.smoke * 0.3;
+    const isTurret = kind === "turret" || kind === "antiAirTurret";
+    const lowPower = isTurret && Boolean(state && powerFor(state, e.owner) < 0);
+    ctx.fillStyle = kind === "objective" ? "#f3dc79" : lowPower ? "#ff7675" : "#c7f0d4";
+    ctx.globalAlpha = lowPower ? 0.35 + anim.smoke * 0.2 : 0.5 + anim.smoke * 0.3;
     ctx.beginPath();
     ctx.ellipse(s.x + 6 * z, s.y - 12 * z, 3.5 * z, 2.5 * z, 0, 0, Math.PI * 2);
     ctx.fill();

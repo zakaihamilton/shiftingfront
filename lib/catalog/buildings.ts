@@ -250,3 +250,12 @@ export function producerFor(unit: import("../types").UnitKind): BuildingKind {
 export function powerOf(kind: BuildingKind): number {
   return BUILDING_STATS[kind].power;
 }
+
+export function isDefensiveTurret(kind: BuildingKind | import("../types").UnitKind | string): boolean {
+  return kind in BUILDING_DEFINITIONS && BUILDING_DEFINITIONS[kind as BuildingKind].aiRole === "defense";
+}
+
+/** Defensive turret penalties applied when a faction has a power deficit (power < 0). */
+export const POWER_SHORTAGE_TURRET_COOLDOWN_RATE = 0.5;
+export const POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER = 0.75;
+export const POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER = 0.75;

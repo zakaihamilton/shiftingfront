@@ -1,5 +1,5 @@
-import { isAirUnit } from "../../catalog";
-import { distToEntity, livingView } from "../world";
+import { isAirUnit, isDefensiveTurret, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER } from "../../catalog";
+import { distToEntity, livingView, powerFor } from "../world";
 import { rngFromState } from "../../seed/rng";
 import { buildGrid, statsFor, canTarget, isCombatTarget, isCombatThreat, acquire, acquirePreferred, closestEnemy } from "./grid";
 import { lineOfSight, firingPosition, heightRangeBonus } from "./targeting";
@@ -16,16 +16,24 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
   const pending = collectEvents ? createPendingAlerts() : undefined;
   const rng = rngFromState(state.rngState);
   const grid = buildGrid(state);
+  const lowPower = [powerFor(state, 0) < 0, powerFor(state, 1) < 0];
   for (const e of livingView(state)) {
     if (e.hp <= 0) continue;
     if (state.tutorialStage !== undefined && e.owner === 1) continue;
     if (e.class === "unit") e.suppression = Math.max(0, (e.suppression ?? 0) - 1);
+    const isTurret = e.class === "building" && isDefensiveTurret(e.kind);
+    const hasPowerShortage = isTurret && lowPower[e.owner];
     const st = statsFor(e);
-    const weaponRange = st.range + (st.weapon === "airStrike" ? 0 : directFireRangeBonusAt(state, e));
+    const baseRange = hasPowerShortage ? st.range * POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER : st.range;
+    const weaponRange = baseRange + (st.weapon === "airStrike" ? 0 : directFireRangeBonusAt(state, e));
     if (st.damage <= 0 || e.neutral) continue;
     if (e.class === "unit" && (e.flightState === "servicing" || e.landingRunwayId !== undefined)) continue;
     if (e.constructing > 0) continue;
-    if (e.cooldown > 0) e.cooldown -= 1;
+    if (e.cooldown > 0) {
+      if (!hasPowerShortage || state.tick % 2 === 0) {
+        e.cooldown -= 1;
+      }
+    }
 
     const ordered = e.class === "unit" && !e.idle;
     if (ordered && e.orderMode === "attackMove") e.attackTarget = undefined;

@@ -57,6 +57,7 @@ export function CommandCatalogContent({
       palette={palette}
       profile={profile}
       className={selectedClassName}
+      power={power}
       onStop={onStop}
       onStance={onStance}
       onFormation={onFormation}

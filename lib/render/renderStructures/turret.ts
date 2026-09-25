@@ -1,4 +1,4 @@
-import { BUILDING_STATS, footprintOf } from "../../catalog";
+import { BUILDING_STATS, footprintOf, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER } from "../../catalog";
 import { tileToScreen, type Camera } from "../../iso";
 import { lerpAngle } from "../gl/glMath";
 import { isBuildingEntity, type Entity, type SimState } from "../../types";
@@ -6,7 +6,8 @@ import { iffColors } from "../iff";
 import { entityElev } from "../renderPicking";
 import { buildAntiAirTurretModel, buildTurretHeadModel, type UnitModel } from "../gl/modelLoader";
 import { drawCachedTurretModel } from "../gl/turretRaster";
-import { distToEntity } from "../../sim/world";
+import { distToEntity, powerFor } from "../../sim/world";
+import { directFireRangeBonusAt } from "../../sim/terrainRules";
 
 export const turretAimMap = new Map<number, { angle: number; lastMs: number }>();
 export const TURRET_WEAPON_RANGE = 5.5;
@@ -17,8 +18,13 @@ export const TURRET_WEAPON_RANGE = 5.5;
  */
 export const ANTI_AIR_BARREL_PITCH = 0.52;
 
-function turretRange(turret: Entity): number {
-  return isBuildingEntity(turret) ? BUILDING_STATS[turret.kind].combat?.range ?? TURRET_WEAPON_RANGE : TURRET_WEAPON_RANGE;
+export function turretRange(turret: Entity, state?: SimState): number {
+  const base = isBuildingEntity(turret) ? BUILDING_STATS[turret.kind].combat?.range ?? TURRET_WEAPON_RANGE : TURRET_WEAPON_RANGE;
+  const multiplier = state && powerFor(state, turret.owner) < 0
+    ? POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER
+    : 1;
+  const terrainBonus = state ? directFireRangeBonusAt(state, turret) : 0;
+  return base * multiplier + terrainBonus;
 }
 
 /**
@@ -26,13 +32,13 @@ function turretRange(turret: Entity): number {
  * an attackTarget set for a frame while a target moves out of range; drawing
  * that stale lock makes the laser stretch across the battlefield.
  */
-export function turretTargetInRange(turret: Entity, target: Entity): boolean {
+export function turretTargetInRange(turret: Entity, target: Entity, state?: SimState): boolean {
   return turret.class === "building" &&
     (turret.kind === "turret" || turret.kind === "antiAirTurret") &&
     target.hp > 0 &&
     target.owner !== turret.owner &&
     !target.neutral &&
-    distToEntity(turret, target) <= turretRange(turret);
+    distToEntity(turret, target) <= turretRange(turret, state);
 }
 
 /** Aim at the nearest cell of a building footprint instead of its top-left corner. */
@@ -77,8 +83,9 @@ export function drawTurretCannon(
   colorblindMode: import("../../persist/settings").ColorblindMode = "none",
 ): void {
   if (e.hp <= 0 || e.constructing > 0 || e.class !== "building" || (e.kind !== "turret" && e.kind !== "antiAirTurret")) return;
-  const target = targetEntity && turretTargetInRange(e, targetEntity) ? targetEntity : undefined;
+  const target = targetEntity && turretTargetInRange(e, targetEntity, state) ? targetEntity : undefined;
   const targetPoint = target ? turretTargetPoint(e, target) : undefined;
+  const lowPower = powerFor(state, e.owner) < 0;
 
   const mountX = s.x + 1.67 * z;
   const mountY = s.y + 15.34 * z;
@@ -100,7 +107,8 @@ export function drawTurretCannon(
   }
   const dt = Math.max(0.001, Math.min(0.1, (timeMs - aim.lastMs) * 0.001));
   aim.lastMs = timeMs;
-  aim.angle = lerpAngle(aim.angle, targetAngle, Math.min(1, dt * 10.0));
+  const slewRate = lowPower ? 4.5 : 10.0;
+  aim.angle = lerpAngle(aim.angle, targetAngle, Math.min(1, dt * slewRate));
 
   const angle = aim.angle;
   const barrelPitch = e.kind === "antiAirTurret" ? ANTI_AIR_BARREL_PITCH : 0;
@@ -150,8 +158,13 @@ export function drawTurretCannon(
 
     ctx.save();
     ctx.strokeStyle = iff.laser;
-    ctx.lineWidth = Math.max(1, 1.2 * z);
-    ctx.setLineDash([4 * z, 4 * z]);
+    ctx.lineWidth = Math.max(1, (lowPower ? 0.9 : 1.2) * z);
+    if (lowPower) {
+      ctx.globalAlpha = 0.45 + Math.sin(timeMs * 0.018) * 0.25;
+      ctx.setLineDash([2 * z, 5 * z]);
+    } else {
+      ctx.setLineDash([4 * z, 4 * z]);
+    }
 
     ctx.beginPath();
     ctx.moveTo(muzzleLX, muzzleLY);
