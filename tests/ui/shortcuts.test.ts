@@ -86,6 +86,7 @@ describe("shortcut matching", () => {
     expect(gameCommandFromKey({ key: "l" }, { ...paused, pauseView: "load" })).toBeNull();
     expect(gameCommandFromKey({ key: "m" }, { ...paused, pauseView: "options" })).toEqual({ type: "toggleSound" });
     expect(gameCommandFromKey({ key: "u" }, { ...paused, pauseView: "options" })).toEqual({ type: "toggleMusic" });
+    expect(gameCommandFromKey({ key: "v" }, { ...paused, pauseView: "options" })).toEqual({ type: "toggleVoice" });
     expect(gameCommandFromKey({ key: "a" }, paused)).toBeNull();
   });
 
@@ -110,6 +111,7 @@ describe("shortcut matching", () => {
     expect(menuCommandFromKey({ key: "Escape" }, { typing: false, setupOpen: false, optionsOpen: true })).toEqual({ type: "back" });
     expect(menuCommandFromKey({ key: "m" }, { typing: false, setupOpen: false, optionsOpen: true })).toEqual({ type: "toggleSound" });
     expect(menuCommandFromKey({ key: "u" }, { typing: false, setupOpen: false, optionsOpen: true })).toEqual({ type: "toggleMusic" });
+    expect(menuCommandFromKey({ key: "v" }, { typing: false, setupOpen: false, optionsOpen: true })).toEqual({ type: "toggleVoice" });
     expect(menuCommandFromKey({ key: "n" }, { typing: false, setupOpen: false, optionsOpen: true })).toBeNull();
     expect(briefingCommandFromKey({ key: " " }, { typing: false, revealed: false })).toEqual({ type: "skip" });
     expect(briefingCommandFromKey({ key: " " }, { typing: false, revealed: true })).toEqual({ type: "launch" });

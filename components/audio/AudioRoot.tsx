@@ -14,6 +14,7 @@ import {
   saveAudibleMusicPosition,
 } from "@/lib/audio/music";
 import { setSfxEnabled } from "@/lib/audio/synth";
+import { setVoiceEnabled, setVoiceVolume } from "@/lib/audio/voice";
 import { setAudioForeground, setAudioLevels } from "@/lib/audio/mixer";
 import { cachedLocalStorage } from "@/lib/persist/save";
 import { readSettings } from "@/lib/persist/settings";
@@ -30,6 +31,8 @@ function AudioRootInner() {
     setAudioLevels(settings);
     setSfxEnabled(settings.sfxEnabled);
     setMusicEnabled(settings.musicEnabled);
+    setVoiceEnabled(settings.voiceEnabled);
+    setVoiceVolume(settings.voiceVolume);
   }, []);
 
   useEffect(() => {

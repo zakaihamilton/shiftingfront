@@ -25,6 +25,7 @@ export function MenuOverlay({
   onLaunch,
   onToggleSound,
   onToggleMusic,
+  onToggleVoice,
   onToggleReducedMotion,
   onToggleHighContrast,
   onCycleColorblind,
@@ -48,6 +49,7 @@ export function MenuOverlay({
   onLaunch: () => void;
   onToggleSound: () => void;
   onToggleMusic: () => void;
+  onToggleVoice?: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onCycleColorblind?: () => void;
@@ -84,6 +86,7 @@ export function MenuOverlay({
           settings={settings}
           onToggleSound={onToggleSound}
           onToggleMusic={onToggleMusic}
+          onToggleVoice={onToggleVoice}
           onToggleReducedMotion={onToggleReducedMotion}
           onToggleHighContrast={onToggleHighContrast}
           onCycleColorblind={onCycleColorblind}

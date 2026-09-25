@@ -113,6 +113,7 @@ export function useGameRuntimeLifecycle({
     restartMission: session.restartMission,
     toggleSound: session.toggleSound,
     toggleMusic: session.toggleMusic,
+    toggleVoice: session.toggleVoice,
     resultPrimary: session.resultPrimary,
     onNavigateHome: session.goHome,
     confirmationOpen: session.confirmation !== null,

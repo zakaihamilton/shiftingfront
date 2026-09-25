@@ -2,12 +2,13 @@ import { defaultSettings } from "../persist/settings";
 import { getAudioContext, peekAudioContext } from "./context";
 
 export type AudioBus = "music" | "sfx";
-export type AudioVolumeKey = "masterVolume" | "musicVolume" | "sfxVolume";
+export type AudioVolumeKey = "masterVolume" | "musicVolume" | "sfxVolume" | "voiceVolume";
 
 export type AudioLevels = {
   masterVolume: number;
   musicVolume: number;
   sfxVolume: number;
+  voiceVolume: number;
 };
 
 const defaults = defaultSettings();
@@ -15,6 +16,7 @@ const DEFAULT_LEVELS: AudioLevels = {
   masterVolume: defaults.masterVolume,
   musicVolume: defaults.musicVolume,
   sfxVolume: defaults.sfxVolume,
+  voiceVolume: defaults.voiceVolume,
 };
 
 const RAMP_S = 0.045;
@@ -140,6 +142,7 @@ export function setAudioLevels(next: Partial<AudioLevels>): void {
     masterVolume: next.masterVolume === undefined ? levels.masterVolume : clampAudioVolume(next.masterVolume),
     musicVolume: next.musicVolume === undefined ? levels.musicVolume : clampAudioVolume(next.musicVolume),
     sfxVolume: next.sfxVolume === undefined ? levels.sfxVolume : clampAudioVolume(next.sfxVolume),
+    voiceVolume: next.voiceVolume === undefined ? levels.voiceVolume : clampAudioVolume(next.voiceVolume),
   };
   const audio = peekAudioContext();
   if (audio) {

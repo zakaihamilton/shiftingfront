@@ -41,6 +41,7 @@ export function PauseMenu({
   onLeaveWithoutSave,
   onToggleSound,
   onToggleMusic,
+  onToggleVoice,
   onToggleReducedMotion,
   onToggleHighContrast,
   onCycleColorblind,
@@ -77,6 +78,7 @@ export function PauseMenu({
   onLeaveWithoutSave?: () => void;
   onToggleSound: () => void;
   onToggleMusic: () => void;
+  onToggleVoice?: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onCycleColorblind?: () => void;
@@ -149,6 +151,7 @@ export function PauseMenu({
             settings={settings}
             onToggleSound={onToggleSound}
             onToggleMusic={onToggleMusic}
+            onToggleVoice={onToggleVoice}
             onToggleReducedMotion={onToggleReducedMotion}
             onToggleHighContrast={onToggleHighContrast}
             onCycleColorblind={onCycleColorblind}
