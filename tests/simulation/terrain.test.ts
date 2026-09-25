@@ -3,7 +3,7 @@ import { generateMap, sceneryAt, skirtSample, featureEdgeMask, isMountainScenery
 import { createCampaign } from "../../lib/gen/campaign";
 import { createMission } from "../../lib/sim/api";
 import { validMap } from "../../lib/sim/balance";
-import { buildingAt, groundHeight, INITIAL_BUILDING_EDGE_MARGIN } from "../../lib/sim/world";
+import { buildingAt, groundHeight, heightAt, INITIAL_BUILDING_EDGE_MARGIN, tileAt } from "../../lib/sim/world";
 import { makeFixture } from "../../lib/sim/fixtures";
 import { BUILDING_STATS, footprintOf } from "../../lib/catalog";
 import type { BuildingKind } from "../../lib/types";
@@ -31,6 +31,14 @@ describe("terrain height", () => {
     expect(groundHeight(s, 1, 1)).toBe(1);
     expect(groundHeight(s, 2, 1)).toBe(2);
     expect(groundHeight(s, 1.5, 1)).toBeCloseTo(1.5);
+  });
+
+  it("resolves heightAt and tileAt with float coordinates correctly", () => {
+    const s = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" } });
+    s.heights[2 * s.width + 3] = 3;
+    s.tiles[2 * s.width + 3] = TILE_RESOURCE;
+    expect(heightAt(s, 2.9, 2.1)).toBe(3);
+    expect(tileAt(s, 2.9, 2.1)).toBe(TILE_RESOURCE);
   });
 
   it("generated maps have a heightmap with varied elevation", () => {

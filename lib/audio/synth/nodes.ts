@@ -10,7 +10,7 @@ export function scheduleSfxTime(
   maxQueue = MAX_SFX_QUEUE_S,
 ): number | null {
   if (!Number.isFinite(now)) return null;
-  if (!(minInterval > 0) || !Number.isFinite(previous)) return now;
+  if (!(minInterval > 0) || !Number.isFinite(previous) || previous > now + maxQueue) return now;
   const start = Math.max(now, previous + minInterval);
   if (start - now > maxQueue) return null;
   return start;

@@ -63,7 +63,7 @@ export function SelectionPanel({
               detail={`${Math.ceil(selected.constructing / TICKS_PER_SECOND)}s`}
             />
           ) : null}
-          {isBuildingEntity(selected) && isDefensiveTurret(selected.kind) && power !== undefined && power < 0 ? (
+          {isBuildingEntity(selected) && selected.owner === 0 && selected.constructing <= 0 && isDefensiveTurret(selected.kind) && power !== undefined && power < 0 ? (
             <div className={styles.powerWarning} data-testid="turret-power-shortage" role="status">
               ⚡ Low Power: 50% Fire Rate · -25% Range
             </div>

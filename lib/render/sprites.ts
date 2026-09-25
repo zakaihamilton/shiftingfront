@@ -254,7 +254,8 @@ export function rasterize(spec: SpriteSpec, onReady?: () => void): HTMLCanvasEle
     // and must remain crisp when the battlefield camera zooms in.
     c.width = spec.w * SVG_RASTER_SCALE;
     c.height = spec.h * SVG_RASTER_SCALE;
-    const ctx = c.getContext("2d")!;
+    const ctx = c.getContext("2d");
+    if (!ctx) return c;
     const image = imageCache.get(spec.imageSrc) ?? new Image();
     image.decoding = "async";
     const paintImage = () => {
@@ -323,7 +324,8 @@ export function rasterize(spec: SpriteSpec, onReady?: () => void): HTMLCanvasEle
   } else if (spec.svg) {
     c.width = spec.w * SVG_RASTER_SCALE;
     c.height = spec.h * SVG_RASTER_SCALE;
-    const ctx = c.getContext("2d")!;
+    const ctx = c.getContext("2d");
+    if (!ctx) return c;
     ctx.scale(SVG_RASTER_SCALE, SVG_RASTER_SCALE);
     paintSvg(ctx, spec.svg);
     readyKeys.add(key);
@@ -331,7 +333,8 @@ export function rasterize(spec: SpriteSpec, onReady?: () => void): HTMLCanvasEle
     const scale = spec.imageTextureSrc ? SVG_RASTER_SCALE : 1;
     c.width = spec.w * scale;
     c.height = spec.h * scale;
-    const ctx = c.getContext("2d")!;
+    const ctx = c.getContext("2d");
+    if (!ctx) return c;
     if (scale > 1) ctx.scale(scale, scale);
     paintShapes(ctx, spec.shapes);
     if (spec.imageTextureSrc) {

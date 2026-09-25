@@ -236,4 +236,19 @@ describe("air support", () => {
     expect(plane.orderDestination).toBeUndefined();
     expect(plane.orderMode).toBeUndefined();
   });
+
+  it("ensures aircraft facing stays strictly within 0..7 even for slight negative angles", () => {
+    const state = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const plane = addUnit(state, 0, "strikePlane", 5, 5);
+    plane.flightState = "airborne";
+    // Destination at slight negative dy (e.g. heading mostly right, slightly up)
+    plane.orderDestination = { x: 10, y: 4.999 };
+    plane.orderMode = "move";
+
+    tickAircraft(state);
+
+    expect(plane.facing).toBeGreaterThanOrEqual(0);
+    expect(plane.facing).toBeLessThanOrEqual(7);
+    expect(Number.isInteger(plane.facing)).toBe(true);
+  });
 });

@@ -8,6 +8,7 @@ import { buildAntiAirTurretModel, buildTurretHeadModel, type UnitModel } from ".
 import { drawCachedTurretModel } from "../gl/turretRaster";
 import { distToEntity, powerFor } from "../../sim/world";
 import { directFireRangeBonusAt } from "../../sim/terrainRules";
+import { heightRangeBonus } from "../../sim/combat/targeting";
 
 export const turretAimMap = new Map<number, { angle: number; lastMs: number }>();
 export const TURRET_WEAPON_RANGE = 5.5;
@@ -33,12 +34,13 @@ export function turretRange(turret: Entity, state?: SimState): number {
  * that stale lock makes the laser stretch across the battlefield.
  */
 export function turretTargetInRange(turret: Entity, target: Entity, state?: SimState): boolean {
+  const heightBonus = state ? heightRangeBonus(state, turret, target) : 0;
   return turret.class === "building" &&
     (turret.kind === "turret" || turret.kind === "antiAirTurret") &&
     target.hp > 0 &&
     target.owner !== turret.owner &&
     !target.neutral &&
-    distToEntity(turret, target) <= turretRange(turret, state);
+    distToEntity(turret, target) <= turretRange(turret, state) + heightBonus;
 }
 
 /** Aim at the nearest cell of a building footprint instead of its top-left corner. */
@@ -153,7 +155,8 @@ export function drawTurretCannon(
   const muzzleRY = mountY + sin * forwardDist - perpY - 3 * z - pitchLift;
 
   if (target && target.hp > 0) {
-    const b = tileToScreen(target.x, target.y, cam, entityElev(state, target));
+    const point = targetPoint ?? target;
+    const b = tileToScreen(point.x, point.y, cam, entityElev(state, target));
     const targetY = b.y + 6 * z;
 
     ctx.save();

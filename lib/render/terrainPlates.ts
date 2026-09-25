@@ -136,10 +136,7 @@ export function paintBuildingPlates(
   const z = cam.zoom;
   for (const e of state.entities) {
     if (e.hp <= 0 || e.class !== "building" || !entityVisible(state, e)) continue;
-    const fog = fogAt(state, Math.round(e.x), Math.round(e.y));
-    if (fog === 0) continue;
     const fp = footprintOf(e.kind as BuildingKind);
-    const alpha = fogTerrainGain(fog) * 0.92;
     const elev = entityElev(state, e);
     const tw = TILE_W * z;
     const th = TILE_H * z;
@@ -149,6 +146,9 @@ export function paintBuildingPlates(
       for (let ox = 0; ox < fp.w; ox++) {
         const tx = ox0 + ox;
         const ty = oy0 + oy;
+        const cellFog = fogAt(state, tx, ty);
+        if (cellFog === 0) continue;
+        const alpha = fogTerrainGain(cellFog) * 0.92;
         const p = tileToScreen(tx, ty, cam, elev);
         drawConcreteSlab(ctx, p.x, p.y, tw, th, z, tileVariant(state.seed, tx, ty), alpha);
       }

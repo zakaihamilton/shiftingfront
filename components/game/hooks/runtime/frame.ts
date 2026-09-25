@@ -1,6 +1,7 @@
 import { cameraPanBounds, canPan, panAvailability, panCamera, panOffset, EDGE_PAN_DELAY_MS, type PanAvailability, type PanDir } from "@/lib/render/camera";
 import type { Camera } from "@/lib/iso";
 import type { SimState } from "@/lib/types";
+import type { KeyBindings } from "@/lib/persist/settings";
 
 // Recover useful edge-pan distance when WebKit or a backgrounded tab delivers
 // animation frames sparsely, without allowing an arbitrarily long frame gap to
@@ -29,6 +30,7 @@ export function createFrameCoordinator({
   edgePanHover,
   panHold,
   panAvailabilityRef,
+  keyBindingsRef,
   setPanAvailability,
   applyEdgePan,
 }: {
@@ -38,6 +40,7 @@ export function createFrameCoordinator({
   edgePanHover: { current: { dir: PanDir; startedAt: number } | null };
   panHold: { current: PanDir | null };
   panAvailabilityRef: { current: PanAvailability };
+  keyBindingsRef?: { current: KeyBindings | undefined };
   setPanAvailability: (availability: PanAvailability) => void;
   applyEdgePan: (direction: PanDir | null) => void;
 }) {
@@ -56,10 +59,14 @@ export function createFrameCoordinator({
         const bounds = canvas
           ? cameraPanBounds(camera, state.width, state.height, canvas.width, canvas.height)
           : undefined;
-        if (keys.current.w || keys.current.ArrowUp) panCamera(camera, 0, panStep, bounds);
-        if (keys.current.s || keys.current.ArrowDown) panCamera(camera, 0, -panStep, bounds);
-        if (keys.current.a || keys.current.ArrowLeft) panCamera(camera, panStep, 0, bounds);
-        if (keys.current.d || keys.current.ArrowRight) panCamera(camera, -panStep, 0, bounds);
+        const panUpKey = keyBindingsRef?.current?.panUp || "w";
+        const panDownKey = keyBindingsRef?.current?.panDown || "s";
+        const panLeftKey = keyBindingsRef?.current?.panLeft || "a";
+        const panRightKey = keyBindingsRef?.current?.panRight || "d";
+        if (keys.current[panUpKey] || keys.current[panUpKey.toLowerCase()] || keys.current[panUpKey.toUpperCase()] || keys.current.ArrowUp) panCamera(camera, 0, panStep, bounds);
+        if (keys.current[panDownKey] || keys.current[panDownKey.toLowerCase()] || keys.current[panDownKey.toUpperCase()] || keys.current.ArrowDown) panCamera(camera, 0, -panStep, bounds);
+        if (keys.current[panLeftKey] || keys.current[panLeftKey.toLowerCase()] || keys.current[panLeftKey.toUpperCase()] || keys.current.ArrowLeft) panCamera(camera, panStep, 0, bounds);
+        if (keys.current[panRightKey] || keys.current[panRightKey.toLowerCase()] || keys.current[panRightKey.toUpperCase()] || keys.current.ArrowRight) panCamera(camera, -panStep, 0, bounds);
         const hoveredEdge = edgePanHover.current;
         const hold = hoveredEdge && now - hoveredEdge.startedAt >= EDGE_PAN_DELAY_MS ? hoveredEdge.dir : null;
         panHold.current = hold;

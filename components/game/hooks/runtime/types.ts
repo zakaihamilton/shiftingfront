@@ -38,6 +38,7 @@ export type InteractionRuntimeRefs = {
   edgePanHover: MutableRefObject<{ dir: PanDir; startedAt: number } | null>;
   panHold: MutableRefObject<PanDir | null>;
   panAvailabilityRef: MutableRefObject<PanAvailability>;
+  keyBindingsRef?: { current: KeyBindings | undefined };
 };
 
 export type RenderingRuntimeRefs = {

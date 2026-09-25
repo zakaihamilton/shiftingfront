@@ -46,6 +46,7 @@ export function useGameLoop({
   persistCampaign = true,
   uxRef: suppliedUxRef,
   suppressImplicitSavesRef,
+  keyBindings,
 }: {
   stateRef: MutableRefObject<SimState>;
   setState: (s: SimState) => void;
@@ -71,9 +72,14 @@ export function useGameLoop({
   persistCampaign?: boolean;
   uxRef?: { current: import("@/lib/persist/telemetry").MissionUxTelemetry };
   suppressImplicitSavesRef?: MutableRefObject<() => void>;
+  keyBindings?: import("@/lib/persist/settings").KeyBindings;
 }) {
   const fallbackUxRef = useRef(createFallbackUxTelemetry());
   const uxRef = suppliedUxRef ?? fallbackUxRef;
+  const keyBindingsRef = useRef(keyBindings);
+  useEffect(() => {
+    keyBindingsRef.current = keyBindings;
+  }, [keyBindings]);
   const lifecycleRef = useRef<RuntimeLifecycleState>({
     sessionState: null,
     terminalPresented: false,
@@ -105,6 +111,7 @@ export function useGameLoop({
           edgePanHover,
           panHold,
           panAvailabilityRef: panAvailRef,
+          keyBindingsRef,
         },
         rendering: {
           canvasRef,

@@ -4,9 +4,11 @@ import { makeFixture } from "../../lib/sim/fixtures";
 import { cameraPanBounds, EDGE_PAN_DELAY_MS, type PanDir } from "../../lib/render/camera";
 import { createFrameCoordinator } from "../../components/game/hooks/runtime/frame";
 
+import { defaultKeyBindings, type KeyBindings } from "../../lib/persist/settings";
+
 const ref = <T,>(current: T) => ({ current });
 
-function makeFrameCoordinator(keys: Record<string, boolean> = {}) {
+function makeFrameCoordinator(keys: Record<string, boolean> = {}, keyBindings?: KeyBindings) {
   const camera = createCamera();
   const canvas = { width: 640, height: 480 } as HTMLCanvasElement;
   const bounds = cameraPanBounds(camera, 48, 48, canvas.width, canvas.height);
@@ -24,6 +26,7 @@ function makeFrameCoordinator(keys: Record<string, boolean> = {}) {
     edgePanHover,
     panHold,
     panAvailabilityRef: panAvailability,
+    keyBindingsRef: keyBindings ? ref(keyBindings) : undefined,
     setPanAvailability,
     applyEdgePan,
   });
@@ -40,6 +43,21 @@ describe("runtime frame coordinator", () => {
     expect(frame.camera.x).toBe(frame.bounds.minX);
     expect(frame.camera.y).toBe(frame.bounds.maxY);
     expect(frame.setPanAvailability).toHaveBeenCalled();
+  });
+
+  it("supports remapped camera pan keybindings", () => {
+    const customBindings = {
+      ...defaultKeyBindings(),
+      panUp: "k",
+      panRight: "l",
+    };
+    const frame = makeFrameCoordinator({ l: true, k: true }, customBindings);
+    const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+
+    frame.coordinator.onFrame(state, 0, false, 10_000);
+
+    expect(frame.camera.x).toBe(frame.bounds.minX);
+    expect(frame.camera.y).toBe(frame.bounds.maxY);
   });
 
   it("waits for the edge-pan delay and clears edge state while paused", () => {

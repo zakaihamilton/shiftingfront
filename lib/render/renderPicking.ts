@@ -1,8 +1,8 @@
 import { HEIGHT_STEP, TILE_H, TILE_W, screenToGroundTile, tileToScreen, type Camera } from "../iso";
 import { buildingAt, groundHeight, heightAt } from "../sim/world";
 import { fogAt } from "../sim/fog";
-import { isHiddenObjectiveAsset, type Entity, type SimState } from "../types";
-import { isAirUnit } from "../catalog";
+import { isHiddenObjectiveAsset, isBuildingEntity, type Entity, type SimState } from "../types";
+import { footprintOf, isAirUnit } from "../catalog";
 import { unitRenderPosition, updateUnitHistory } from "./gl/unitTransformTracker";
 
 /** Render-space altitude in terrain-height steps for airborne units. */
@@ -70,6 +70,22 @@ export function pickTile(
 }
 
 export function entityVisible(state: SimState, e: Entity): boolean {
+  if (isBuildingEntity(e)) {
+    const fp = footprintOf(e.kind);
+    let visible = false;
+    for (let dy = 0; dy < fp.h; dy++) {
+      for (let dx = 0; dx < fp.w; dx++) {
+        if (fogAt(state, e.x + dx, e.y + dy) === 2) {
+          visible = true;
+          break;
+        }
+      }
+      if (visible) break;
+    }
+    if (e.owner === 1 && !visible) return false;
+    if (isHiddenObjectiveAsset(e) && !visible) return false;
+    return true;
+  }
   const tx = Math.round(e.x);
   const ty = Math.round(e.y);
   const fog = fogAt(state, tx, ty);

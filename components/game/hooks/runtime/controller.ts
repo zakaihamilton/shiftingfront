@@ -63,6 +63,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
     edgePanHover: interactionRefs.edgePanHover,
     panHold: interactionRefs.panHold,
     panAvailabilityRef: interactionRefs.panAvailabilityRef,
+    keyBindingsRef: interactionRefs.keyBindingsRef,
     setPanAvailability: framePorts.setPanAvailability,
     applyEdgePan: framePorts.applyEdgePan,
   });

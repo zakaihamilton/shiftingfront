@@ -24,6 +24,7 @@ class FakeParam {
 }
 
 class FakeNode {
+  context?: FakeAudioContext;
   readonly connections: FakeNode[] = [];
   readonly inputs: FakeNode[] = [];
   readonly gain = new FakeParam();
@@ -54,13 +55,21 @@ class FakeAudioContext {
   destination = new FakeNode();
   failCompressor = false;
 
+  constructor() {
+    this.destination.context = this;
+  }
+
   createGain(): FakeNode {
-    return new FakeNode();
+    const node = new FakeNode();
+    node.context = this;
+    return node;
   }
 
   createDynamicsCompressor(): FakeNode {
     if (this.failCompressor) throw new Error("compressor unavailable");
-    return new FakeNode();
+    const node = new FakeNode();
+    node.context = this;
+    return node;
   }
 }
 
@@ -175,5 +184,28 @@ describe("sfx mixer graph", () => {
 
     expect(music.gain.value).toBe(0.8);
     expect(sfx.gain.value).toBe(0.7);
+  });
+
+  it("rebuilds the graph if the AudioContext instance changes", async () => {
+    let currentAudio = new FakeAudioContext();
+    vi.stubGlobal("window", {
+      AudioContext: class {
+        constructor() {
+          return currentAudio;
+        }
+      },
+    });
+    const context = await import("../../lib/audio/context");
+    const mixer = await import("../../lib/audio/mixer");
+    context.getAudioContext();
+    mixer.getAudioBus("sfx");
+    expect(currentAudio.destination.inputs).toHaveLength(1);
+
+    // Simulate AudioContext closing and a new context being created
+    (currentAudio as unknown as { state: string }).state = "closed";
+    currentAudio = new FakeAudioContext();
+    context.getAudioContext();
+    mixer.getAudioBus("sfx");
+    expect(currentAudio.destination.inputs).toHaveLength(1);
   });
 });

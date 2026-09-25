@@ -331,6 +331,16 @@ describe("normalizeState edge cases", () => {
     expect(restoredMedic.supportTargetId).toBeUndefined();
     expect(restoredMedic.supportMode).toBe("auto");
   });
+
+  it("normalizes out-of-range or facing 8 from legacy aircraft bug to valid facing", () => {
+    const state = baseState(1000);
+    const plane = addUnit(state, 0, "strikePlane", 5, 5);
+    (plane as unknown as { facing: number }).facing = 8;
+    const raw = serializeState(state);
+    const restored = deserializeState(raw);
+    const restoredPlane = restored.entities.find((e) => e.id === plane.id)!;
+    expect(restoredPlane.facing).toBe(0);
+  });
 });
 
 describe("save allocation limits", () => {

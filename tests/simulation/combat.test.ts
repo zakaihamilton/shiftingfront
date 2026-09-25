@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { issue, tick } from "../../lib/sim/api";
 import { tickCombat } from "../../lib/sim/combat";
 import { createPendingAlerts, flushPlayerAlerts } from "../../lib/sim/combat/alerts";
+import { buildGrid } from "../../lib/sim/combat/grid";
 import { addBuilding, addUnit, makeFixture, setHeight } from "../../lib/sim/fixtures";
 import type { SimEvent } from "../../lib/types";
 
@@ -542,5 +543,23 @@ describe("combat alerts", () => {
     expect(mover.routePending).toBe(true);
     expect(mover.path).toEqual([]);
     expect(mover.orderDestination).toEqual({ x: 20, y: 2 });
+  });
+
+  it("clears cached combat grid buffers when entities are destroyed or removed", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    const foe = addUnit(s, 1, "infantry", 4, 4);
+    const foeId = foe.id;
+
+    const grid1 = buildGrid(s);
+    expect(grid1.byId[foeId]).toBe(foe);
+    expect(grid1.targetable[foeId]).toBe(1);
+    expect(grid1.threat[foeId]).toBe(1);
+
+    // Destroy foe and rebuild grid
+    foe.hp = 0;
+    const grid2 = buildGrid(s);
+    expect(grid2.byId[foeId]).toBeUndefined();
+    expect(grid2.targetable[foeId]).toBe(0);
+    expect(grid2.threat[foeId]).toBe(0);
   });
 });
