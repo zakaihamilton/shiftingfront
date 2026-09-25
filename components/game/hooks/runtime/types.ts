@@ -215,6 +215,7 @@ export type PauseSessionModel = {
   onLeaveWithoutSave?: () => void;
   onToggleSound: () => void;
   onToggleMusic: () => void;
+  onToggleVoice?: () => void;
   onToggleReducedMotion?: () => void;
   onToggleHighContrast?: () => void;
   onCycleColorblind?: () => void;

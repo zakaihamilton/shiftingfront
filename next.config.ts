@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "fullscreen=*, autoplay=*, clipboard-write=*",
+            value: "fullscreen=*, autoplay=*, clipboard-write=*, screen-wake-lock=*",
           },
           {
             key: "Content-Security-Policy",

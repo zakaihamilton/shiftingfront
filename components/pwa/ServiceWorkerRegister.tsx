@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { serviceWorkerScriptUrl } from "@/lib/pwa/serviceWorkerUrl";
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -24,8 +25,13 @@ export function ServiceWorkerRegister() {
       }
 
       const handleLoad = () => {
+        const assetUrls = [
+          ...Array.from(document.scripts, (script) => script.src),
+          ...performance.getEntriesByType("resource").map((entry) => entry.name),
+        ];
+        const scriptUrl = serviceWorkerScriptUrl(assetUrls, window.location.href);
         navigator.serviceWorker
-          .register("/sw.js", { scope: "/", updateViaCache: "none" })
+          .register(scriptUrl, { scope: "/", updateViaCache: "none" })
           .catch(() => {
             // Service worker registration error (e.g. unsupported in sandboxed iframe)
           });

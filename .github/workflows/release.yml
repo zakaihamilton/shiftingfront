@@ -6,17 +6,23 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  CI: "true"
 
 jobs:
-  release:
-    name: Create GitHub Release
+  verify:
+    name: Verify release
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -24,6 +30,17 @@ jobs:
           node-version: 22.22.2
           cache: yarn
           package-manager-cache: false
+
+      - name: Verify tag matches package version
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          expected_tag="v${version}"
+          if [[ "$TAG_NAME" != "$expected_tag" ]]; then
+            echo "Release tag $TAG_NAME does not match package version $expected_tag." >&2
+            exit 1
+          fi
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -34,12 +51,45 @@ jobs:
       - name: Run invariant tests
         run: yarn health:invariants
 
+      - name: Run performance health
+        run: yarn health:performance
+
+      - name: Run balance health
+        run: yarn health:balance
+
+      - name: Check documentation
+        run: yarn health:documentation
+
+      - name: Check dead code
+        run: yarn health:dead-code
+
+      - name: Check duplication
+        run: yarn health:duplication
+
+      - name: Audit dependencies
+        run: yarn health:audit
+
+      - name: Install Playwright browsers
+        run: yarn playwright install --with-deps chromium webkit
+
       - name: Build production application
         run: yarn build
 
+      - name: Run browser tests
+        run: yarn test:e2e
+
+  release:
+    name: Create GitHub Release
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
+          token: ${{ github.token }}
+          tag_name: ${{ github.ref_name }}
           generate_release_notes: true
           name: Shifting Front ${{ github.ref_name }}
           draft: false

@@ -747,11 +747,11 @@ test("keeps briefing dialogue and battlefield status readable on mobile", async 
     const second = element.children[1]?.getBoundingClientRect();
     return {
       bodyOverflow: document.documentElement.scrollWidth > window.innerWidth,
-      stacked: Boolean(first && second && second.top >= first.bottom - 1),
+      sideBySide: Boolean(first && second && Math.abs(first.top - second.top) <= 1 && second.left >= first.right - 1),
     };
   });
   expect(statusGeometry.bodyOverflow).toBe(false);
-  expect(statusGeometry.stacked).toBe(true);
+  expect(statusGeometry.sideBySide).toBe(true);
 });
 
 test("keeps Asset Bay selection synchronized with category filters", async ({ page }) => {

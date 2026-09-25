@@ -16,6 +16,7 @@ export function SelectionPanel({
   onStop,
   onStance,
   onFormation,
+  onCenter,
 }: {
   selected: Entity | undefined;
   selectionCount?: number;
@@ -25,6 +26,7 @@ export function SelectionPanel({
   onStop?: () => void;
   onStance?: (stance: Stance) => void;
   onFormation?: (formation: Formation) => void;
+  onCenter?: () => void;
 }) {
   const friendlyUnit = selected && selected.owner === 0 && selected.class === "unit" && !selected.neutral;
   const friendlyProducer = selected && isBuildingEntity(selected) && selected.owner === 0 && selected.constructing <= 0 && Boolean(BUILDING_DEFINITIONS[selected.kind].production);
@@ -35,7 +37,7 @@ export function SelectionPanel({
       <ConsoleLabel className={styles.label}>{selectionCount > 1 ? `${selectionCount} units selected` : "Selected"}</ConsoleLabel>
       {selected ? (
         <div className={styles.body}>
-          <SelectionIdentity selected={selected} palette={palette} profile={profile} stance={stance} />
+          <SelectionIdentity selected={selected} palette={palette} profile={profile} stance={stance} onCenter={onCenter} />
           {selected.class === "unit" ? (
             <ProgressMeter
               label="Health"

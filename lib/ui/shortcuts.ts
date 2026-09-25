@@ -47,6 +47,7 @@ export type GameCommand =
   | { type: "menu" }
   | { type: "toggleSound" }
   | { type: "toggleMusic" }
+  | { type: "toggleVoice" }
   | { type: "resultPrimary" }
   | { type: "resultMenu" };
 
@@ -59,7 +60,8 @@ export type MenuCommand =
   | { type: "randomize" }
   | { type: "back" }
   | { type: "toggleSound" }
-  | { type: "toggleMusic" };
+  | { type: "toggleMusic" }
+  | { type: "toggleVoice" };
 export type BriefingCommand = { type: "launch" } | { type: "back" } | { type: "skip" } | { type: "replay" };
 export type AssetsCommand =
   | { type: "close" }
@@ -92,6 +94,7 @@ export const SHORTCUT = {
   menu: "M",
   mute: "M",
   music: "U",
+  voice: "V",
   newGame: "N",
   tutorial: "T",
   randomize: "R",
@@ -197,6 +200,7 @@ export function gameCommandFromKey(
       if (isF1(e)) return { type: "controls" };
       if (key === "m") return { type: "toggleSound" };
       if (key === "u") return { type: "toggleMusic" };
+      if (key === "v") return { type: "toggleVoice" };
       return null;
     }
     if (isF1(e)) return { type: "controls" };
@@ -255,6 +259,7 @@ export function menuCommandFromKey(
     if (ctx.typing) return null;
     if (letter(e) === "m") return { type: "toggleSound" };
     if (letter(e) === "u") return { type: "toggleMusic" };
+    if (letter(e) === "v") return { type: "toggleVoice" };
     return null;
   }
   if (ctx.setupOpen) {

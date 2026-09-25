@@ -122,9 +122,9 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
   if (pointerType === "touch" && selectionMode) {
     const drag = box && selectionBoxDistance(box, cam) > DRAG_THRESHOLD;
     if (drag && box) {
-      return selectEffect(selectionIdsInBox(state, cam, box, false), {
-        // Explicit mobile marquee selection includes every friendly unit in the box,
-        // including harvesters; desktop drag-selection keeps its existing filtering.
+      return selectEffect(selectionIdsInBox(state, cam, box, true), {
+        // Mobile marquee selection behaves like desktop drag-selection:
+        // drops harvesters when combat units are selected, but keeps harvesters if only harvesters are in the box.
         endSelectionMode: true,
       });
     }

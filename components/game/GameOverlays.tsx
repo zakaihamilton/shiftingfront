@@ -3,6 +3,7 @@ import { shouldShowCommandSidebar } from "@/lib/sim/debrief";
 import { GamePauseSurface } from "./GamePauseSurface";
 import { GameSidebarSurface } from "./GameSidebarSurface";
 import { MobileCommandLauncher } from "./MobileCommandLauncher";
+import { MobileOrientationHint } from "./MobileOrientationHint";
 import { MissionConfirmation } from "./MissionConfirmation";
 
 function tutorialNeedsCommandSurface(stage: OverlaySurfaceModel["state"]["tutorialStage"]): boolean {
@@ -26,13 +27,16 @@ export function GameOverlays({
   return (
     <>
       {!paused && state.result === "playing" && !confirmation ? (
-        <MobileCommandLauncher
-          open={mobilePanelOpen}
-          onToggle={onToggleMobilePanel}
-          onDrag={onMobileSheetDrag}
-          buttonRef={mobileLauncherRef}
-          tutorialFocus={tutorial && !mobilePanelOpen && tutorialNeedsCommandSurface(state.tutorialStage) ? "command-launcher" : undefined}
-        />
+        <>
+          <MobileCommandLauncher
+            open={mobilePanelOpen}
+            onToggle={onToggleMobilePanel}
+            onDrag={onMobileSheetDrag}
+            buttonRef={mobileLauncherRef}
+            tutorialFocus={tutorial && !mobilePanelOpen && tutorialNeedsCommandSurface(state.tutorialStage) ? "command-launcher" : undefined}
+          />
+          <MobileOrientationHint />
+        </>
       ) : null}
 
       {shouldShowCommandSidebar(state.result) ? <GameSidebarSurface {...sidebar} /> : null}

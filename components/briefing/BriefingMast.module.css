@@ -26,6 +26,10 @@
   color: var(--chrome-text);
 }
 
+.mast .seed {
+  color: var(--chrome-text);
+}
+
 .progressStrip {
   display: flex;
   gap: 0.25rem;
@@ -67,7 +71,7 @@
   text-transform: uppercase;
   line-height: 1.05rem;
   letter-spacing: 0.12em;
-  color: var(--chrome-muted);
+  color: var(--chrome-text);
 }
 
 .objective {

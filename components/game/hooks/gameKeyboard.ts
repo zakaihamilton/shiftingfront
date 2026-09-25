@@ -25,6 +25,7 @@ export type GameCommandHandlers = {
   restartMission: () => void;
   toggleSound: () => void;
   toggleMusic: () => void;
+  toggleVoice?: () => void;
   resultPrimary: () => void;
   onNavigateHome: () => void;
 };
@@ -74,6 +75,7 @@ export function applyGameCommand(command: GameCommand, handlers: GameCommandHand
   } else if (command.type === "menu") handlers.onNavigateHome();
   else if (command.type === "toggleSound") handlers.toggleSound();
   else if (command.type === "toggleMusic") handlers.toggleMusic();
+  else if (command.type === "toggleVoice") handlers.toggleVoice?.();
   else if (command.type === "resultPrimary") handlers.resultPrimary();
   else if (command.type === "resultMenu") handlers.onNavigateHome();
 }

@@ -54,7 +54,20 @@ export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyB
           <div className={styles.list}>
             {ACTION_LABELS.map(({ key, label }) => {
               const isListening = activeRebind === key;
-              return <div className={styles.row} key={key}><span className={styles.label}>{label}</span><button type="button" className={`${styles.keyButton} ${isListening ? styles.listening : ""}`} onClick={() => setActiveRebind(isListening ? null : key)} title={`Rebind ${label}`}>{isListening ? "Press key…" : displayKey(currentBindings[key])}</button></div>;
+              return (
+                <div className={styles.row} key={key}>
+                  <span className={styles.label}>{label}</span>
+                  <button
+                    type="button"
+                    className={`${styles.keyButton} ${isListening ? styles.listening : ""}`}
+                    onClick={() => setActiveRebind(isListening ? null : key)}
+                    title={`Rebind ${label}`}
+                    aria-label={isListening ? `Press key to rebind ${label}` : `Rebind ${label}`}
+                  >
+                    {isListening ? "Press key…" : displayKey(currentBindings[key])}
+                  </button>
+                </div>
+              );
             })}
           </div>
           <div className={styles.actions}><ConsoleButton muted tooltip="Reset all shortcuts to defaults" onClick={handleResetDefaults}>Reset Defaults</ConsoleButton><ConsoleButton className={styles.action} tooltip="Save and return to options" onClick={onClose}>Done</ConsoleButton></div>

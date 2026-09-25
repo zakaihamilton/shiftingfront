@@ -47,6 +47,7 @@ export function GameSidebarSurface({
       onStop={onStop}
       onStance={onStance}
       onFormation={onFormation}
+      onCenter={() => selected && camera.centerSelection(new Set([selected.id]))}
       selectionCount={selectionCount}
     />
   );

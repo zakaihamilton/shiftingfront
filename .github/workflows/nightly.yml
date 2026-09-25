@@ -13,6 +13,7 @@ env:
 
 jobs:
   health:
+    name: Nightly health
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

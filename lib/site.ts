@@ -1,7 +1,19 @@
+import type { Viewport } from "next";
+
 export const APP_NAME = "Shifting Front";
 export const APP_SHORT_NAME = "Shifting Front";
 export const APP_DESCRIPTION = "A seeded isometric RTS — one 4-digit code writes the war.";
 export const APP_THEME_COLOR = "#05080e";
+
+export const APP_VIEWPORT: Viewport = {
+  themeColor: APP_THEME_COLOR,
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.VERCEL_PROJECT_PRODUCTION_URL

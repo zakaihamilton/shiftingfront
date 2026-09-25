@@ -30,6 +30,7 @@ export function useGameKeyboard({
   restartMission,
   toggleSound,
   toggleMusic,
+  toggleVoice,
   resultPrimary,
   onNavigateHome,
   confirmationOpen = false,
@@ -109,6 +110,7 @@ export function useGameKeyboard({
         restartMission,
         toggleSound,
         toggleMusic,
+        toggleVoice,
         resultPrimary,
         onNavigateHome,
       });
@@ -156,6 +158,7 @@ export function useGameKeyboard({
     toggleSell,
     toggleSound,
     toggleMusic,
+    toggleVoice,
     viewMissionBriefing,
     mobilePanelOpen,
     mobileToolActive,

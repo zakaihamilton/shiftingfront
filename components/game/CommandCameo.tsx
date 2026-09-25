@@ -1,11 +1,11 @@
 import type { CSSProperties } from "react";
-import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { isUnitKind, labelFor, UNIT_STATS, type CameoStatus } from "@/lib/catalog";
 import { cx } from "@/lib/ui/cx";
 import type { BuildingKind, FactionVisualProfile, Palette, UnitKind } from "@/lib/types";
 import { SpritePreview } from "./SpritePreview";
 import styles from "./CommandCameo.module.css";
 import { useShortcutLabel } from "@/components/ui/useShortcutLabel";
+import { triggerHaptic } from "@/lib/ui/haptics";
 
 export function CommandCameo({
   kind,
@@ -60,7 +60,10 @@ export function CommandCameo({
         disabled={disabled}
         className={cx(styles.card, active && styles.active, busy && styles.busy, tutorialFocus && styles.tutorialFocus)}
         data-tutorial-focus={tutorialFocus}
-        onClick={onClick}
+        onClick={() => {
+          triggerHaptic("tap");
+          onClick();
+        }}
         aria-label={`${labelFor(kind)}, ${cost} credits${busy ? `, ${cameo.phase === "waiting" ? `${cameo.queued} in queue` : `${Math.round(cameo.ratio * 100)} percent complete`}` : ""}${cancellable ? ", cancel available" : ""}${ariaStatus}`}
         aria-keyshortcuts={displayShortcut}
       >
@@ -89,17 +92,19 @@ export function CommandCameo({
         </span>
       </button>
       {cancellable && onContextMenu ? (
-        <ConsoleButton
+        <button
+          type="button"
           className={styles.cancel}
           aria-label={`Cancel ${labelFor(kind)}`}
           data-testid={`cameo-cancel-${kind}`}
           onClick={(event) => {
             event.stopPropagation();
+            triggerHaptic("tap");
             onContextMenu();
           }}
         >
           <span className={styles.cancelIcon} aria-hidden="true">×</span>
-        </ConsoleButton>
+        </button>
       ) : null}
     </span>
   );

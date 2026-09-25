@@ -25,8 +25,18 @@ describe("audio settings", () => {
   it("defaults music volume to 50% and sound effects to 25%", () => {
     expect(defaultSettings().musicVolume).toBe(0.5);
     expect(defaultSettings().sfxVolume).toBe(0.25);
+    expect(defaultSettings().voiceVolume).toBe(0.8);
+    expect(defaultSettings().voiceEnabled).toBe(true);
     expect(readSettings(memoryStorage()).musicVolume).toBe(0.5);
     expect(readSettings(memoryStorage()).sfxVolume).toBe(0.25);
+    expect(readSettings(memoryStorage()).voiceVolume).toBe(0.8);
+    expect(readSettings(memoryStorage()).voiceEnabled).toBe(true);
+  });
+
+  it("round-trips tactical voice settings through memory storage", () => {
+    const storage = memoryStorage();
+    writeSettings(storage, { ...defaultSettings(), voiceEnabled: false, voiceVolume: 0.35 });
+    expect(readSettings(storage)).toMatchObject({ voiceEnabled: false, voiceVolume: 0.35 });
   });
 
   it("rejects mismatched versions and malformed envelopes", () => {
@@ -63,12 +73,14 @@ describe("audio settings", () => {
       masterVolume: 4,
       musicVolume: -1,
       sfxVolume: Number.NaN,
+      voiceVolume: 1.5,
     });
     expect(readSettings(storage)).toEqual({
       ...defaultSettings(),
       masterVolume: 1,
       musicVolume: 0,
       sfxVolume: 0.25,
+      voiceVolume: 1,
     });
   });
 
@@ -92,6 +104,8 @@ describe("audio settings", () => {
 
     expect(readSettings(storage)).toMatchObject({
       sfxEnabled: false,
+      voiceEnabled: true,
+      voiceVolume: 0.8,
       reducedMotion: false,
       highContrast: false,
       colorblindMode: "none",

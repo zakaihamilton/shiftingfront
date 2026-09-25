@@ -3,6 +3,7 @@ import { cameraPanBounds, panCamera } from "@/lib/render/camera";
 import type { Camera } from "@/lib/iso";
 import type { SimState } from "@/lib/types";
 import type { SelectionBox } from "./selectionBox";
+import { triggerHaptic } from "@/lib/ui/haptics";
 
 export function useTouchGestures({
   camRef,
@@ -38,6 +39,7 @@ export function useTouchGestures({
       touchSelection.current = true;
       selectionModeRef.current = true;
       setSelectionMode?.(true);
+      triggerHaptic("selection");
       touchPan.current = null;
       boxRef.current = {
         x0: points[0]!.x,
@@ -58,6 +60,7 @@ export function useTouchGestures({
       const held = longPress.current;
       if (held && held.pointerId === e.pointerId && !held.fired && !touchSelection.current && !selectionModeRef.current) {
         held.fired = true;
+        triggerHaptic("order");
         issueContextOrder(stateRef.current, { x: held.x, y: held.y }, true);
       }
     }, 480);
