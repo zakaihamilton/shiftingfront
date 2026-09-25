@@ -8,6 +8,11 @@ updates:
       time: "06:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 10
+    # Next.js's React lint plugins are not yet compatible with ESLint 10.
+    ignore:
+      - dependency-name: "eslint"
+        update-types:
+          - "version-update:semver-major"
     groups:
       production-dependencies:
         dependency-type: "production"
