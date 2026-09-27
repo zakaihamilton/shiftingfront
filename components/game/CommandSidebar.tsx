@@ -92,7 +92,7 @@ export function CommandSidebar({
       </div>
 
       <div className={styles.resourceSlot}>
-        <ResourceDock credits={state.credits[0]} produced={produced} used={used} surplus={power} />
+        <ResourceDock credits={state.credits[state.viewOwner ?? 0]} produced={produced} used={used} surplus={power} />
       </div>
 
       <CommandBuildSection

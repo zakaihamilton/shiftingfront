@@ -1,12 +1,12 @@
 import { BUILDING_DEFINITIONS, BUILDING_KINDS, MAX_PRODUCTION_QUEUE, isUnitAvailable, producerFor, productionQueueSize } from "@/lib/catalog";
-import type { BuildingKind, Entity, SimState, UnitKind } from "@/lib/types";
+import type { BuildingKind, Entity, Owner, SimState, UnitKind } from "@/lib/types";
 
 export const PLACEABLE: BuildingKind[] = BUILDING_KINDS.filter(
   (kind) => BUILDING_DEFINITIONS[kind].aiRole !== "base" && BUILDING_DEFINITIONS[kind].aiRole !== "objective",
 );
 export const PRODUCIBLE: UnitKind[] = ["infantry", "antiArmor", "harvester", "tank", "medic", "repairTruck", "strikePlane"];
 
-export function leastLoadedProducer(state: SimState, owner: 0 | 1, unit: UnitKind): Entity | undefined {
+export function leastLoadedProducer(state: SimState, owner: Owner, unit: UnitKind): Entity | undefined {
   if (!isUnitAvailable(unit, state.missionIndex)) return undefined;
   const kind = producerFor(unit);
   let best: Entity | undefined;

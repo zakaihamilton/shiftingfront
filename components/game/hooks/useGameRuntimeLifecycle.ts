@@ -18,6 +18,7 @@ import { useWakeLock } from "@/lib/ui/wakeLock";
 
 export function useGameRuntimeLifecycle({
   seed, tutorial, state, stateRef, setState, saveSession, commitSelection, commandPort, cmdQ,
+  multiplayerSession,
   interaction, feedback, audioSettings, setAudioSettings, paused, setPaused, pausedRef, pauseViewRef,
   setPauseView, setPauseNotice, activeTabRef, setActiveTab, mobilePanelOpen,
   terminalSaveRef, campaignRecordedRef, suppressImplicitSavesRef, canvasRef,
@@ -31,6 +32,7 @@ export function useGameRuntimeLifecycle({
   commitSelection: (ids: number[]) => void;
   commandPort: RuntimeCommandPort;
   cmdQ: MutableRefObject<import("@/lib/types").Command[]>;
+  multiplayerSession?: import("@/lib/multiplayer/session").MultiplayerSession;
   interaction: GameRuntimeInteraction;
   feedback: GameRuntimeFeedback;
   audioSettings: GameSettings;
@@ -130,8 +132,9 @@ export function useGameRuntimeLifecycle({
     panAvailRef: interaction.panAvailRef, setPanAvail: interaction.camera.setPanAvail, applyEdgePan: interaction.camera.applyEdgePan,
     fxRef: interaction.renderer.fxRef, fxSeq: interaction.renderer.fxSeq, screenShakeRef: interaction.renderer.screenShakeRef,
     terminalSaveRef, campaignRecordedRef, saveSession, redraw: interaction.renderer.redraw,
-    onAlert: feedback.onAlert, onCommandNotice: feedback.announceCommandFeedback, persistCampaign: !tutorial,
+    onAlert: feedback.onAlert, onCommandNotice: feedback.announceCommandFeedback,
     uxRef: feedback.uxRef, suppressImplicitSavesRef, keyBindings: audioSettings.keyBindings,
+    multiplayerSession, persistCampaign: !tutorial && !state.multiplayer,
   });
 
   useGameAudioLifecycle({ seed, missionIndex: state.missionIndex, tutorial, paused, result: state.result });

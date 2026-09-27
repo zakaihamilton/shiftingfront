@@ -4,6 +4,7 @@ import { toIsometricFacing } from "../iso";
 import { byId } from "./world";
 import { canTarget, isCombatTarget } from "./combat/grid";
 import { entitiesFor } from "./entities";
+import { commandOwner } from "./orders/commandOwner";
 
 type Aircraft = import("../types").UnitEntity & { kind: "strikePlane" };
 
@@ -83,15 +84,16 @@ export function launchAircraft(state: SimState, aircraft: Entity, events?: SimEv
 }
 
 export function landAircraft(state: SimState, ids: number[], runwayId: number): SimEvent[] {
+  const owner = commandOwner(state);
   const runway = byId(state, runwayId);
-  if (!runway || !isBuildingEntity(runway) || runway.kind !== "runway" || runway.owner !== 0 || runway.constructing > 0 || runway.hp <= 0) {
+  if (!runway || !isBuildingEntity(runway) || runway.kind !== "runway" || runway.owner !== owner || runway.constructing > 0 || runway.hp <= 0) {
     return [{ type: "commandRejected", reason: "invalid runway" }];
   }
 
   let assigned = 0;
   for (const id of ids) {
     const aircraft = byId(state, id);
-    if (!aircraft || !isAircraft(aircraft) || aircraft.owner !== 0 || aircraft.neutral) continue;
+    if (!aircraft || !isAircraft(aircraft) || aircraft.owner !== owner || aircraft.neutral) continue;
     const currentRunway = aircraft.assignedRunwayId !== undefined ? byId(state, aircraft.assignedRunwayId) : undefined;
     const runwayAvailable = runway.assignedPlaneId === undefined || runway.assignedPlaneId === aircraft.id;
     if (aircraft.assignedRunwayId !== runway.id) {

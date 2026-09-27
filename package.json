@@ -66,7 +66,9 @@
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
+    "@vercel/firewall": "^1.2.5",
     "next": "16.3.5",
+    "peerjs": "^1.5.5",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

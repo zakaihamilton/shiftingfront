@@ -25,10 +25,11 @@ export function ProductionCameos({
   return (
     <CameoGrid>
       {PRODUCIBLE.map((unit, index) => {
-        const cameo = unitCameoStatus(state.entities, 0, unit);
+        const ownerCredits = state.credits[state.viewOwner ?? 0];
+        const cameo = unitCameoStatus(state.entities, state.viewOwner ?? 0, unit);
         const producer = availableProducer(unit);
         const canBuy = isUnitAvailable(unit, state.missionIndex)
-          && state.credits[0] >= UNIT_STATS[unit].cost && !!producer && power >= 0;
+          && ownerCredits >= UNIT_STATS[unit].cost && !!producer && power >= 0;
         const disabled = cameo.phase === "idle" && !canBuy;
         const recommendation = supportRecommendationText(state, unit);
         return (
@@ -59,7 +60,7 @@ export function supportRecommendationText(state: SimState, unit: UnitKind): stri
   if (unit !== "medic" && unit !== "repairTruck") return undefined;
   const domain = unit === "medic" ? "human" : "vehicle";
   const wounded = state.entities.filter((entity) =>
-    entity.owner === 0 && entity.class === "unit" && isUnitKind(entity.kind) && entity.hp > 0 && !entity.neutral && !isSupportUnit(entity.kind) &&
+    entity.owner === (state.viewOwner ?? 0) && entity.class === "unit" && isUnitKind(entity.kind) && entity.hp > 0 && !entity.neutral && !isSupportUnit(entity.kind) &&
     UNIT_STATS[entity.kind].domain === domain && entity.hp < entity.maxHp,
   ).length;
   return wounded > 0 ? `Recommended · ${wounded} damaged ${domain} unit${wounded === 1 ? "" : "s"}` : undefined;
@@ -76,7 +77,7 @@ export function productionBlockerText(
   const blockers: string[] = [];
   const producerKind = producerFor(unit);
   const producerEntities = state.entities.filter(
-    (entity) => entity.hp > 0 && entity.owner === 0 && entity.class === "building" && entity.kind === producerKind,
+    (entity) => entity.hp > 0 && entity.owner === (state.viewOwner ?? 0) && entity.class === "building" && entity.kind === producerKind,
   );
 
   if (!producer) {
@@ -89,8 +90,9 @@ export function productionBlockerText(
           : `Build a ${labelFor(producerKind)}`,
     );
   }
-  if (state.credits[0] < UNIT_STATS[unit].cost) {
-    blockers.push(`Need ${UNIT_STATS[unit].cost - state.credits[0]} more credits`);
+  const ownerCredits = state.credits[state.viewOwner ?? 0];
+  if (ownerCredits < UNIT_STATS[unit].cost) {
+    blockers.push(`Need ${UNIT_STATS[unit].cost - ownerCredits} more credits`);
   }
   if (power < 0) blockers.push("Restore power");
 

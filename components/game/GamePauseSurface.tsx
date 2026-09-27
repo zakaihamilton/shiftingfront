@@ -1,13 +1,14 @@
 import { PauseMenu } from "./PauseMenu";
 import type { PauseSurfaceModel } from "./hooks/runtime/types";
 
-export function GamePauseSurface({ view, notice, settings, tutorial, setView, setNotice, onControlsOpened, session }: PauseSurfaceModel) {
+export function GamePauseSurface({ view, notice, settings, tutorial, multiplayer, setView, setNotice, onControlsOpened, session }: PauseSurfaceModel) {
   return (
     <PauseMenu
       view={view}
       notice={notice}
       settings={settings}
       tutorial={tutorial}
+      multiplayer={multiplayer}
       saveSlots={session.saveSlots}
       loadEntries={session.loadEntries}
       defaultSlotName={session.defaultSlotName}

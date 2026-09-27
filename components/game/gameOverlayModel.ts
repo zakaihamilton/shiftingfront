@@ -11,7 +11,7 @@ export function gameOverlayModel({
   // The simulation mutates entities in place; give React a new identity for the selected snapshot.
   const selected = selectedEntity ? { ...selectedEntity } : undefined;
   return {
-    palette: state.factions[0].palette,
+    palette: state.factions[state.viewOwner ?? 0].palette,
     selected,
   };
 }
@@ -25,7 +25,7 @@ export function gameOverlayModel({
 export function powerSignature(state: SimState): string {
   const parts: string[] = [];
   for (const e of state.entities) {
-    if (e.hp <= 0 || e.owner !== 0 || e.class !== "building") continue;
+    if (e.hp <= 0 || e.owner !== (state.viewOwner ?? 0) || e.class !== "building") continue;
     parts.push(e.constructing > 0 ? `${e.kind}~` : e.kind);
   }
   return parts.sort().join("|");

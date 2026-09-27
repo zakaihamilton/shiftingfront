@@ -22,6 +22,7 @@ export function PauseMenu({
   notice,
   settings,
   tutorial = false,
+  multiplayer = false,
   saveSlots,
   loadEntries,
   defaultSlotName,
@@ -59,6 +60,7 @@ export function PauseMenu({
   notice: string;
   settings: GameSettings;
   tutorial?: boolean;
+  multiplayer?: boolean;
   saveSlots: SlotMeta[];
   loadEntries: ArchiveEntry[];
   defaultSlotName: string;
@@ -107,6 +109,7 @@ export function PauseMenu({
           <PauseMainMenu
             onResume={onResume}
             tutorial={tutorial}
+            multiplayer={multiplayer}
             onSave={onSave}
             onLoad={onLoad}
             onBriefing={onBriefing}

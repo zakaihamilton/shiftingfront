@@ -23,8 +23,9 @@ function emptyMute(): AlertMute {
   };
 }
 
-export function notePlayerAlert(attacker: Entity, target: Entity, pending: PendingAlerts): void {
-  if (attacker.owner !== 1 || target.owner !== 0) return;
+export function notePlayerAlert(state: SimState, attacker: Entity, target: Entity, pending: PendingAlerts): void {
+  const player = state.viewOwner ?? 0;
+  if (target.owner !== player || attacker.owner === player) return;
   if (target.kind === "constructionYard") pending.yard = true;
   else if (target.scenarioRole === "convoy") pending.convoy = true;
   else if (target.kind === "harvester") pending.harvester = true;

@@ -21,6 +21,7 @@ export function MissionResultActions({
   onMenu: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const multiplayer = state.multiplayer === true;
 
   const handleShare = async () => {
     try {
@@ -35,17 +36,17 @@ export function MissionResultActions({
 
   return (
     <ActionRail className={styles.actions}>
-      {state.result === "won" && state.missionIndex < MISSION_MAX ? (
+      {!multiplayer && state.result === "won" && state.missionIndex < MISSION_MAX ? (
         <ConsoleButton tooltip="Advance to the next briefing" shortcut={SHORTCUT.resultPrimary} onClick={onNextBriefing}>
           Next briefing
         </ConsoleButton>
       ) : null}
-      {state.result === "won" && state.missionIndex >= MISSION_MAX ? (
+      {!multiplayer && state.result === "won" && state.missionIndex >= MISSION_MAX ? (
         <ConsoleButton tooltip="Return to the main menu" shortcut={SHORTCUT.resultPrimary} onClick={onCampaignVictory}>
           Campaign victory
         </ConsoleButton>
       ) : null}
-      {state.result === "won" ? (
+      {!multiplayer && state.result === "won" ? (
         <ConsoleButton
           muted
           className={styles.shareAction}
@@ -55,12 +56,12 @@ export function MissionResultActions({
           {copied ? "Copied!" : "Share result"}
         </ConsoleButton>
       ) : null}
-      {state.result === "won" ? (
+      {!multiplayer && state.result === "won" ? (
         <ConsoleButton muted tooltip="Replay this mission" onClick={onRetry}>
           Replay mission
         </ConsoleButton>
       ) : null}
-      {state.result === "lost" ? (
+      {!multiplayer && state.result === "lost" ? (
         <ConsoleButton tooltip="Retry this mission" shortcut={SHORTCUT.resultPrimary} onClick={onRetry}>
           Retry
         </ConsoleButton>

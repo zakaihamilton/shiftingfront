@@ -11,6 +11,7 @@ import type { FlowField } from "./flowField";
 import { tickAircraft } from "./aircraft";
 import { entitiesFor } from "./entities";
 import { navigationMobilityFor, terrainMovementCostAt } from "./terrainRules";
+import { isPlayerControlledOwner } from "./ownership";
 
 type MovementBuffers = {
   occupancy: Uint8Array;
@@ -103,7 +104,7 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
     const result = tryFindPathDetailed(state, e, dest);
     if (!result) continue;
     const first = result.path[0];
-    if (first && e.owner === 0 && e.scenarioRole !== "convoy" && reversesPreviousStep(
+    if (first && isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && reversesPreviousStep(
       state.width,
       Math.round(e.x),
       Math.round(e.y),
@@ -214,7 +215,7 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
         e,
         blockedX,
         blockedY,
-        e.owner === 0 ? previousCells.get(e.id) : undefined,
+        isPlayerControlledOwner(state, e.owner) ? previousCells.get(e.id) : undefined,
         progressDistance,
         edgeReservations,
         movers.length < INDIVIDUAL_PASSING_GROUP_LIMIT,
@@ -225,7 +226,7 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
         occupancy,
         reserved,
         blocker,
-        blocker.owner === 0 ? previousCells.get(blocker.id) : undefined,
+        isPlayerControlledOwner(state, blocker.owner) ? previousCells.get(blocker.id) : undefined,
         edgeReservations,
       )) {
         e.blockedTicks = 0;
@@ -265,7 +266,7 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
               const dx = Math.round(detourFirst.x);
               const dy = Math.round(detourFirst.y);
               const sameBlocked = dx === blockedX && dy === blockedY;
-              const reverses = e.owner === 0 && e.scenarioRole !== "convoy" && reversesPreviousStep(
+              const reverses = isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && reversesPreviousStep(
                 state.width,
                 Math.round(e.x),
                 Math.round(e.y),

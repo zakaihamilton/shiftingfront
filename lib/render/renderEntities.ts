@@ -54,5 +54,5 @@ export function facingFor(state: SimState, e: Entity, entityById: Map<number, En
     const dy = target.y - y;
     if (Math.hypot(dx, dy) > 0.2) return toIsometricFacing(dx, dy);
   }
-  return e.facing ?? ((e.owner === 0 ? 0 : 4) as Facing);
+  return e.facing ?? ((state.multiplayer ? e.owner * 2 + 1 : e.owner === 0 ? 0 : 4) as Facing);
 }

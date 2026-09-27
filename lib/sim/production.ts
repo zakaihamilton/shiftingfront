@@ -4,6 +4,7 @@ import { frontTileNear, invalidatePowerCache, openTileNear, powerFor, trySpawnUn
 import { assignMoveDestination } from "./orders/movement";
 import { runwayServicePoint } from "./aircraft";
 import { entitiesFor } from "./entities";
+import { powerShortageByOwner } from "./powerShortage";
 
 const playerPowerOk = new WeakMap<SimState, boolean>();
 
@@ -80,7 +81,7 @@ function spawnRefineryHarvester(state: SimState, refinery: Entity, events?: SimE
 
 export function tickProduction(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
   const events = eventSink ?? (collectEvents ? [] : undefined);
-  const lowPower = [powerFor(state, 0) < 0, powerFor(state, 1) < 0];
+  const lowPower = powerShortageByOwner(state);
   const rates = productionRates(state);
   for (const e of entitiesFor(state)) {
     if (e.hp <= 0) continue;
@@ -169,8 +170,9 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
 }
 
 function notePlayerPowerShortage(state: SimState, events?: SimEvent[]): void {
-  const ok = powerFor(state, 0) >= 0;
+  const owner = state.multiplayer ? state.viewOwner ?? 0 : 0;
+  const ok = powerFor(state, owner) >= 0;
   const wasOk = playerPowerOk.get(state) ?? true;
-  if (wasOk && !ok) events?.push({ type: "powerShortage", owner: 0 });
+  if (wasOk && !ok) events?.push({ type: "powerShortage", owner });
   playerPowerOk.set(state, ok);
 }

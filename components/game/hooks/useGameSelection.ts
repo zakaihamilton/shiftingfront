@@ -20,9 +20,10 @@ export function useGameSelection({
   const selectionModeRef = useRef(false);
 
   const commitSelection = useCallback((ids: number[]) => {
+    const owner = stateRef.current.viewOwner ?? 0;
     const selectableIds = ids.filter((id) => {
       const entity = stateRef.current.entities.find((candidate) => candidate.id === id);
-      return Boolean(entity && entity.owner === 0 && isPlayerSelectableEntity(entity) && entity.hp > 0);
+      return Boolean(entity && entity.owner === owner && isPlayerSelectableEntity(entity) && entity.hp > 0);
     });
     selected.current = new Set(selectableIds);
     setSelectedIds(selectableIds);
@@ -39,9 +40,10 @@ export function useGameSelection({
 
   const assignControlGroup = useCallback((slot: ControlGroupSlot): number => {
     const state = stateRef.current;
+    const owner = state.viewOwner ?? 0;
     const ids = [...selected.current].filter((id) => {
       const entity = state.entities.find((candidate) => candidate.id === id);
-      return Boolean(entity && entity.hp > 0 && entity.owner === 0 && isPlayerSelectableUnit(entity) && !entity.neutral);
+      return Boolean(entity && entity.hp > 0 && entity.owner === owner && isPlayerSelectableUnit(entity) && !entity.neutral);
     });
     const controlGroups = { ...(state.controlGroups ?? {}), [slot]: ids };
     state.controlGroups = controlGroups;
@@ -51,10 +53,11 @@ export function useGameSelection({
 
   const recallControlGroup = useCallback((slot: ControlGroupSlot): number => {
     const state = stateRef.current;
+    const owner = state.viewOwner ?? 0;
     const existing = state.controlGroups?.[slot] ?? [];
     const ids = [...new Set(existing)].filter((id) => {
       const entity = state.entities.find((candidate) => candidate.id === id);
-      return Boolean(entity && entity.hp > 0 && entity.owner === 0 && isPlayerSelectableUnit(entity) && !entity.neutral);
+      return Boolean(entity && entity.hp > 0 && entity.owner === owner && isPlayerSelectableUnit(entity) && !entity.neutral);
     });
     const controlGroups = { ...(state.controlGroups ?? {}), [slot]: ids };
     state.controlGroups = controlGroups;

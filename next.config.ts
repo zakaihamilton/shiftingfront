@@ -1,13 +1,31 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
+function peerovoConnectSources() {
+  const sources = new Set<string>();
+  const configured = [process.env.PEEROVO_API_URL, process.env.PEEROVO_SIGNALING_ORIGIN];
+  for (const value of configured) {
+    if (!value) continue;
+    try {
+      const url = new URL(value);
+      if (url.protocol !== "https:" && url.protocol !== "http:") continue;
+      sources.add(url.origin);
+      sources.add(`${url.protocol === "https:" ? "wss:" : "ws:"}//${url.host}`);
+    } catch {
+      // Invalid optional Peerovo CSP origins are ignored; the server route
+      // validates API configuration before issuing any credentials.
+    }
+  }
+  return [...sources].join(" ");
+}
+const peerovoSources = peerovoConnectSources();
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  "connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com",
+  `connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com${peerovoSources ? ` ${peerovoSources}` : ""}`,
   "worker-src 'self'",
   "media-src 'self'",
   "object-src 'none'",

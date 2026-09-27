@@ -23,7 +23,7 @@ export function ConstructionCameos({
   return (
     <CameoGrid>
       {PLACEABLE.map((kind, index) => {
-        const cameo = buildingCameoStatus(state.entities, 0, kind);
+        const cameo = buildingCameoStatus(state.entities, state.viewOwner ?? 0, kind);
         const disabledReason = cameo.phase === "idle" ? constructionBlockerText(state, kind) : undefined;
         return (
           <CommandCameo
@@ -53,7 +53,8 @@ export function ConstructionCameos({
 }
 
 export function constructionBlockerText(state: SimState, kind: BuildingKind): string | undefined {
-  if (buildingLimitReached(state.entities, 0, kind)) return `Only one ${labelFor(kind)} allowed per mission`;
-  if (state.credits[0] < BUILDING_STATS[kind].cost) return `Need ${BUILDING_STATS[kind].cost - state.credits[0]} more credits`;
+  if (buildingLimitReached(state.entities, state.viewOwner ?? 0, kind)) return `Only one ${labelFor(kind)} allowed per mission`;
+  const ownerCredits = state.credits[state.viewOwner ?? 0];
+  if (ownerCredits < BUILDING_STATS[kind].cost) return `Need ${BUILDING_STATS[kind].cost - ownerCredits} more credits`;
   return undefined;
 }

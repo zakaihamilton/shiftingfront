@@ -7,6 +7,7 @@ import {
   PATH_DIRS,
   reversesPreviousStep,
 } from "./grid";
+import { isPlayerControlledOwner } from "../ownership";
 
 export function cellOf(state: SimState, x: number, y: number): number {
   return Math.round(y) * state.width + Math.round(x);
@@ -74,7 +75,7 @@ export function trySidestep(
     const ny = cy + d.y;
     const isWaypoint = waypoint && Math.round(waypoint.x) === nx && Math.round(waypoint.y) === ny;
     if (nx === blockedX && ny === blockedY) continue;
-    if (e.owner === 0 && e.scenarioRole !== "convoy" && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
+    if (isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
     if (navigationEdgeReserved(edgeReservations, state.width, state.height, cx, cy, nx, ny, e.id)) continue;
     if (!tileFree(state, occupancy, reserved, e, nx, ny)) continue;
     if (!navigationStepAllowed(navigation, cx, cy, nx, ny)) continue;
@@ -166,7 +167,7 @@ export function stepBlockerAside(
   for (const d of PATH_DIRS) {
     const nx = cx + d.x;
     const ny = cy + d.y;
-    if (blocker.owner === 0 && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
+    if (isPlayerControlledOwner(state, blocker.owner) && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
     if (navigationEdgeReserved(edgeReservations, state.width, state.height, cx, cy, nx, ny, blocker.id)) continue;
     if (!tileFree(state, occupancy, reserved, blocker, nx, ny)) continue;
     if (!navigationStepAllowed(navigation, cx, cy, nx, ny)) continue;

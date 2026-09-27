@@ -1,6 +1,6 @@
 import { UNIT_STATS, isUnitKind } from "../catalog";
 import type { Camera } from "../iso";
-import type { BuildingKind, SimEvent, UnitKind, WeaponType } from "../types";
+import type { BuildingKind, Owner, SimEvent, UnitKind, WeaponType } from "../types";
 import { duckMusic } from "./mixer";
 import { spatialAudioForWorld } from "./spatial";
 import { playSfx, type SfxKind } from "./synth";
@@ -44,6 +44,7 @@ export function dispatchBattlefieldAudio(
   camera: Camera,
   screenWidth: number,
   screenHeight: number,
+  playerOwner: Owner = 0,
 ): void {
   let built = false;
   let produced = false;
@@ -89,13 +90,13 @@ export function dispatchBattlefieldAudio(
       if (support.audible) {
         playSfx(supportSfxFor(event.providerKind), { pan: support.pan, gain: support.gain * 0.9, minInterval: 0.18 });
       }
-    } else if (event.type === "built" && event.owner === 0) {
+    } else if (event.type === "built" && event.owner === playerOwner) {
       built = true;
-    } else if (event.type === "produced" && event.owner === 0) {
+    } else if (event.type === "produced" && event.owner === playerOwner) {
       produced = true;
-    } else if (event.type === "credits" && event.owner === 0) {
+    } else if (event.type === "credits" && event.owner === playerOwner) {
       credits = true;
-    } else if (event.type === "powerShortage" && event.owner === 0) {
+    } else if (event.type === "powerShortage" && event.owner === playerOwner) {
       playSfx("powerShortage");
     } else if (event.type === "deadlineWarning") {
       playSfx("deadline", { force: true });

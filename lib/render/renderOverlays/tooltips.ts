@@ -52,10 +52,11 @@ export function tileTooltipLines(state: SimState, x: number, y: number): string[
 export function tooltipLines(state: SimState, e: Entity, extras: RenderExtras): string[] {
   const name = labelFor(e.kind as UnitKind | BuildingKind);
   const cls = e.class === "unit" ? "Unit" : "Building";
+  const friendly = state.multiplayer ? e.owner === (state.viewOwner ?? 0) : e.owner === 0;
   const faction = state.factions[e.owner]?.name ?? (e.owner === 0 ? "Player" : "Enemy");
   const lines = [
     `${name} · ${cls}`,
-    `${e.owner === 0 ? "Friendly" : "Hostile"} · ${faction}`,
+    `${friendly ? "Friendly" : "Hostile"} · ${faction}`,
     `Health ${Math.max(0, Math.round(e.hp))} / ${e.maxHp}`,
   ];
   if ((e.suppression ?? 0) > 0) lines.push(`Suppressed ${Math.ceil(e.suppression ?? 0)}%`);
@@ -76,12 +77,12 @@ export function tooltipLines(state: SimState, e: Entity, extras: RenderExtras): 
     const queued = e.queue?.length ?? 0;
     if (queued > 0) lines.push(`In queue: ${queued}`);
   }
-  if (isBuildingEntity(e) && e.owner === 0 && e.constructing <= 0 && BUILDING_DEFINITIONS[e.kind].production) {
+  if (isBuildingEntity(e) && friendly && e.constructing <= 0 && BUILDING_DEFINITIONS[e.kind].production) {
     lines.push(e.rallyPoint ? `Rally point ${e.rallyPoint.x}, ${e.rallyPoint.y}` : "Rally point not set");
   }
   if (e.repairing) lines.push("Repairing");
   if (e.marked && e.class === "building") lines.push("Marked objective");
-  if (extras.sellMode && e.owner === 0 && canSell(e)) {
+  if (extras.sellMode && friendly && canSell(e)) {
     lines.push(`Sell for ${sellRefundFor(e.kind as BuildingKind, e.hp)} credits`);
   }
   return lines;

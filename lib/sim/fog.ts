@@ -54,8 +54,9 @@ export function fogAt(state: { width: number; height: number; fog: number[] }, x
 
 /** Whether a tile is inside a current player-controlled sight radius. */
 export function tileInPlayerVision(state: SimState, x: number, y: number): boolean {
+  const viewOwner = state.viewOwner ?? 0;
   for (const e of livingView(state)) {
-    if (e.owner !== 0 || isHiddenObjectiveAsset(e)) continue;
+    if (e.owner !== viewOwner || isHiddenObjectiveAsset(e)) continue;
     const isTurret = isBuildingEntity(e) && isDefensiveTurret(e.kind);
     const lowPower = isTurret && powerFor(state, e.owner) < 0;
     const sight = isUnitEntity(e)
@@ -76,6 +77,7 @@ export function tileInPlayerVision(state: SimState, x: number, y: number): boole
 }
 
 export function tickFog(state: SimState): void {
+  const viewOwner = state.viewOwner ?? 0;
   state.fog = expandFog(state.fog, state.width, state.height);
   const x0 = -MAP_SKIRT;
   const y0 = -MAP_SKIRT;
@@ -85,7 +87,7 @@ export function tickFog(state: SimState): void {
     // Rescue and extraction targets are owner-0 entities for objective
     // bookkeeping, but they are not player-controlled vision sources until
     // contacted.
-    if (e.owner !== 0 || isHiddenObjectiveAsset(e)) continue;
+    if (e.owner !== viewOwner || isHiddenObjectiveAsset(e)) continue;
     const isTurret = isBuildingEntity(e) && isDefensiveTurret(e.kind);
     const lowPower = isTurret && powerFor(state, e.owner) < 0;
     const sight = isUnitEntity(e)

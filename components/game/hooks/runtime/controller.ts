@@ -34,6 +34,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
   } = kernel.ports;
   let loop: LoopHandle | null = null;
   let started = false;
+  const multiplayer = kernel.multiplayerSession ?? simRefs.multiplayerSession;
   const lifecycle = simRefs.lifecycleRef.current;
   let scenarioRunner = createScenarioRunner(simRefs.stateRef.current);
 
@@ -98,6 +99,13 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
       if (started) return;
       started = true;
       syncSession(simRefs.stateRef.current);
+      multiplayer?.bindState(
+        () => simRefs.stateRef.current,
+        (state) => {
+          simRefs.stateRef.current = state;
+          simPorts.setState({ ...state, entities: [...state.entities] });
+        },
+      );
       persistence.start();
       loop = startLoop({
         getState: () => simRefs.stateRef.current,
@@ -109,7 +117,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
           if (scenarioRunner.state !== state) scenarioRunner = createScenarioRunner(state);
           return scenarioRunner.step(commands);
         },
-        isPaused: () => simRefs.pausedRef.current,
+        isPaused: () => simRefs.pausedRef.current || Boolean(multiplayer && !multiplayer.canAdvance(simRefs.stateRef.current)),
         onTick: controller.onTick,
         onFrame: controller.onFrame,
       });
@@ -124,9 +132,12 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
     drainCommands() {
       syncSession(simRefs.stateRef.current);
       const commands = simRefs.commandQueue.current.splice(0, simRefs.commandQueue.current.length);
-      lifecycle.commandApplied = commands.length > 0;
-      lifecycle.counters.commandsIssued += commands.length;
-      return commands;
+      const tickCommands = multiplayer
+        ? multiplayer.drainTick(simRefs.stateRef.current, commands)
+        : commands;
+      lifecycle.commandApplied = tickCommands.length > 0;
+      lifecycle.counters.commandsIssued += tickCommands.length;
+      return tickCommands;
     },
     onTick(state: SimState, events: SimEvent[], now: number) {
       syncSession(state);

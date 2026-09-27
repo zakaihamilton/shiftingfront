@@ -121,7 +121,7 @@ export function drawTurretCannon(
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
 
-  const iff = iffColors(e.owner, false, colorblindMode);
+  const iff = iffColors(e.owner, false, colorblindMode, state.viewOwner ?? 0);
   ctx.save();
 
   ctx.save();

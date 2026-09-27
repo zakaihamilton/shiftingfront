@@ -47,6 +47,7 @@ export function useGameLoop({
   uxRef: suppliedUxRef,
   suppressImplicitSavesRef,
   keyBindings,
+  multiplayerSession,
 }: {
   stateRef: MutableRefObject<SimState>;
   setState: (s: SimState) => void;
@@ -73,6 +74,7 @@ export function useGameLoop({
   uxRef?: { current: import("@/lib/persist/telemetry").MissionUxTelemetry };
   suppressImplicitSavesRef?: MutableRefObject<() => void>;
   keyBindings?: import("@/lib/persist/settings").KeyBindings;
+  multiplayerSession?: import("@/lib/multiplayer/session").MultiplayerSession;
 }) {
   const fallbackUxRef = useRef(createFallbackUxTelemetry());
   const uxRef = suppliedUxRef ?? fallbackUxRef;
@@ -104,6 +106,7 @@ export function useGameLoop({
           terminalSaveRef,
           campaignRecordedRef,
           suppressImplicitSavesRef,
+          multiplayerSession,
         },
         interaction: {
           cameraRef: camRef,
@@ -126,6 +129,7 @@ export function useGameLoop({
         presentation: { onAlert, onCommandNotice: onCommandNotice ?? (() => undefined) },
         persistence: { saveSession, persistCampaign },
       },
+      multiplayerSession,
     };
     const runtime = createGameRuntimeFacade(kernel);
     runtime.start();
@@ -152,6 +156,7 @@ export function useGameLoop({
     stateRef,
     terminalSaveRef,
     persistCampaign,
+    multiplayerSession,
     uxRef,
     suppressImplicitSavesRef,
     screenShakeRef,

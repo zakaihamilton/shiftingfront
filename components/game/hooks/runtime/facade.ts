@@ -14,11 +14,11 @@ export type RuntimeCommandPort = {
   clear: () => void;
 };
 
-export function createRuntimeCommandPort(ref: MutableRefObject<Command[]>): RuntimeCommandPort {
+export function createRuntimeCommandPort(ref: MutableRefObject<Command[]>, submit?: (command: Command) => void): RuntimeCommandPort {
   return {
     ref,
-    enqueue: (command) => ref.current.push(command),
-    enqueueMany: (commands) => ref.current.push(...commands),
+    enqueue: (command) => submit ? submit(command) : ref.current.push(command),
+    enqueueMany: (commands) => submit ? commands.forEach(submit) : ref.current.push(...commands),
     clear: () => {
       ref.current = [];
     },

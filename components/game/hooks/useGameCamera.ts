@@ -114,7 +114,9 @@ export function useGameCamera({
   }, [canvasRef, cancelFocusAnimation, focusTile, panAvailRef, setPanAvail, stateRef]);
 
   const jumpHome = useCallback(() => {
-    const cy = stateRef.current?.entities.find((e) => e.hp > 0 && e.owner === 0 && e.kind === "constructionYard");
+    const current = stateRef.current;
+    const owner = current?.viewOwner ?? 0;
+    const cy = current?.entities.find((e) => e.hp > 0 && e.owner === owner && e.kind === "constructionYard");
     if (cy) focusTile(cy.x, cy.y, 1 / 3);
   }, [focusTile, stateRef]);
 
@@ -126,7 +128,7 @@ export function useGameCamera({
 
   const resetCamera = useCallback((s: SimState) => {
     cancelFocusAnimation();
-    const cy = s.entities.find((e) => e.owner === 0 && e.kind === "constructionYard");
+    const cy = s.entities.find((e) => e.owner === (s.viewOwner ?? 0) && e.kind === "constructionYard");
     const canvas = canvasRef.current;
     if (cy && canvas) {
       const elev = heightAt(s, cy.x, cy.y);

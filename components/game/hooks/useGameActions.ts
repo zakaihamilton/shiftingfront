@@ -88,9 +88,10 @@ export function useGameActions({
 
   const issueSelectedCommand = useCallback((command: "stop" | "stance" | "formation", value?: Stance | Formation) => {
     const state = stateRef.current;
+    const owner = state.viewOwner ?? 0;
     const unitIds = [...(selectedIds.length > 0 ? selectedIds : selected.current)].filter((id) => {
       const entity = state.entities.find((candidate) => candidate.id === id);
-      return Boolean(entity && entity.owner === 0 && isPlayerSelectableUnit(entity) && !entity.neutral && entity.hp > 0);
+      return Boolean(entity && entity.owner === owner && isPlayerSelectableUnit(entity) && !entity.neutral && entity.hp > 0);
     });
     if (unitIds.length === 0) return;
     if (command === "stop") enqueue({ type: "stop", unitIds });
@@ -110,10 +111,11 @@ export function useGameActions({
     const tx = Math.round(x);
     const ty = Math.round(y);
     const state = stateRef.current;
+    const owner = state.viewOwner ?? 0;
     const selectedUnitIds = [...(selectedIds.length > 0 ? selectedIds : selected.current)];
     const unitIds = selectedUnitIds.filter((id) => {
       const entity = state.entities.find((candidate) => candidate.id === id);
-      if (!entity || entity.owner !== 0 || !isPlayerSelectableUnit(entity) || entity.neutral || entity.hp <= 0) return false;
+      if (!entity || entity.owner !== owner || !isPlayerSelectableUnit(entity) || entity.neutral || entity.hp <= 0) return false;
       if (command === "harvest") return entity.kind === "harvester";
       if (command === "attackMove") return entity.kind !== "harvester";
       return true;
@@ -147,10 +149,11 @@ export function useGameActions({
   }, [notify, resolvedCommandPort, selected, selectedIds, stateRef, uxRef]);
 
   const issueTargetCommand = useCallback((command: "attack" | "support", targetId: number) => {
+    const owner = stateRef.current.viewOwner ?? 0;
     const selectedUnitIds = [...(selectedIds.length > 0 ? selectedIds : selected.current)];
     const unitIds = selectedUnitIds.filter((id) => {
       const entity = stateRef.current.entities.find((candidate) => candidate.id === id);
-      if (!entity || entity.owner !== 0 || !isPlayerSelectableUnit(entity) || entity.neutral || entity.hp <= 0) return false;
+      if (!entity || entity.owner !== owner || !isPlayerSelectableUnit(entity) || entity.neutral || entity.hp <= 0) return false;
       if (command === "attack") return entity.kind !== "harvester" && !isSupportUnit(entity.kind as UnitKind);
       return isSupportUnit(entity.kind as UnitKind);
     });
@@ -171,7 +174,8 @@ export function useGameActions({
   }, [enqueue, notify, selected, selectedIds, stateRef, uxRef]);
 
   const togglePlace = useCallback((kind: BuildingKind) => {
-    if (place.current !== kind && buildingLimitReached(stateRef.current.entities, 0, kind)) {
+    const owner = stateRef.current.viewOwner ?? 0;
+    if (place.current !== kind && buildingLimitReached(stateRef.current.entities, owner, kind)) {
       notify("This structure is limited to one per mission.", "error");
       return;
     }
@@ -221,13 +225,13 @@ export function useGameActions({
       notify("Placement cancelled.", "info");
       return;
     }
-    if (buildingCameoStatus(stateRef.current.entities, 0, kind).phase === "idle") return;
+    if (buildingCameoStatus(stateRef.current.entities, stateRef.current.viewOwner ?? 0, kind).phase === "idle") return;
     enqueue({ type: "cancelBuild", building: kind });
     beep("cancel");
     notify("Construction cancelled.", "info");
   }, [enqueue, notify, stateRef]);
 
-  const availableProducer = useCallback((unit: UnitKind) => leastLoadedProducer(stateRef.current, 0, unit), [stateRef]);
+  const availableProducer = useCallback((unit: UnitKind) => leastLoadedProducer(stateRef.current, stateRef.current.viewOwner ?? 0, unit), [stateRef]);
 
   const queueUnit = useCallback((unit: UnitKind) => {
     const next = availableProducer(unit);
@@ -242,7 +246,7 @@ export function useGameActions({
   }, [availableProducer, enqueue, notify, stateRef, uxRef]);
 
   const cancelUnit = useCallback((unit: UnitKind) => {
-    if (unitCameoStatus(stateRef.current.entities, 0, unit).phase === "idle") return;
+    if (unitCameoStatus(stateRef.current.entities, stateRef.current.viewOwner ?? 0, unit).phase === "idle") return;
     enqueue({ type: "cancelProduce", unit });
     beep("cancel");
     notify(`${unit} production cancelled.`, "info");

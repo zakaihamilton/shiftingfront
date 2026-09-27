@@ -1,4 +1,4 @@
-export type Owner = 0 | 1;
+export type Owner = 0 | 1 | 2 | 3;
 
 export type UnitKind = "harvester" | "infantry" | "antiArmor" | "tank" | "medic" | "repairTruck" | "convoyTruck" | "strikePlane";
 export type UnitDomain = "human" | "vehicle" | "air";
@@ -482,21 +482,30 @@ export type SimState = {
   fog: number[];
   entities: Entity[];
   nextId: number;
-  credits: [number, number];
-  creditsEarned: [number, number];
-  unitsProduced: [number, number];
+  credits: number[];
+  creditsEarned: number[];
+  unitsProduced: number[];
   unitsProducedByRole: Record<UnitKind, number>;
-  buildingsCompleted: [number, number];
+  buildingsCompleted: number[];
   buildingsCompletedByKind: Record<string, number>;
   losses: {
-    units: [number, number];
-    buildings: [number, number];
+    units: number[];
+    buildings: number[];
   };
   win: WinCategory;
   result: "playing" | "won" | "lost";
+  /** The peer's local seat. Omitted in campaign missions, which always use owner 0. */
+  viewOwner?: Owner;
+  /** Versus battles use Construction Yard elimination instead of campaign objectives and AI. */
+  multiplayer?: boolean;
+  /** Seats participating in this versus match, in stable owner order. */
+  multiplayerOwners?: Owner[];
+  /** Temporary command context set only while one queued order is applied. */
+  commandOwner?: Owner;
+  winner?: Owner | null;
   lossReason?: LossReason;
   rngState: number;
-  factions: [Faction, Faction];
+  factions: Faction[];
   missionName: string;
   missionKind?: MissionKind;
   runtime?: MissionRuntime;
@@ -520,7 +529,7 @@ export type SimState = {
   pathBudget?: { remaining: number; used: number };
 };
 
-export type Command =
+type CommandOrder =
   | { type: "move"; unitIds: number[]; x: number; y: number; formation?: Formation }
   | { type: "attackMove"; unitIds: number[]; x: number; y: number; formation?: Formation }
   | { type: "attack"; unitIds: number[]; targetId: number }
@@ -537,6 +546,9 @@ export type Command =
   | { type: "stop"; unitIds: number[] }
   | { type: "stance"; unitIds: number[]; stance: Stance }
   | { type: "formation"; unitIds: number[]; formation: Formation };
+
+/** Owner is assigned by the host arbiter; single-player commands default to owner 0. */
+export type Command = CommandOrder & { owner?: Owner };
 
 export type SimEvent =
   | { type: "produced"; owner: Owner; kind: UnitKind; id?: number; x?: number; y?: number; sourceId?: number }

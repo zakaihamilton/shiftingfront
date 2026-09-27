@@ -10,11 +10,13 @@ export function MenuMainPanel({
   onTutorial,
   onLoadMission,
   onOptions,
+  onMultiplayer = () => undefined,
 }: {
   onNewGame: () => void;
   onTutorial: () => void;
   onLoadMission: () => void;
   onOptions: () => void;
+  onMultiplayer?: () => void;
 }) {
   const { countdown } = useWeeklyCountdown();
 
@@ -30,6 +32,9 @@ export function MenuMainPanel({
       <div className={styles.actions}>
         <ConsoleButton className={styles.primaryAction} tooltip="Open campaign setup" shortcut={SHORTCUT.newGame} onClick={onNewGame}>
           NEW GAME
+        </ConsoleButton>
+        <ConsoleButton muted className={`${styles.utilityAction} ${styles.loadAction}`} tooltip="Host or join an online skirmish" onClick={onMultiplayer}>
+          MULTIPLAYER
         </ConsoleButton>
         <ConsoleButton muted className={`${styles.utilityAction} ${styles.loadAction}`} tooltip="Open the training range" shortcut={SHORTCUT.tutorial} onClick={onTutorial}>
           TUTORIAL

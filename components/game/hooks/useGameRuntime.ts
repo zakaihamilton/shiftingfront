@@ -8,12 +8,17 @@ import { useGameRuntimeFeedback } from "./useGameRuntimeFeedback";
 import { useGameRuntimeInteraction } from "./useGameRuntimeInteraction";
 import { useGameRuntimeLifecycle } from "./useGameRuntimeLifecycle";
 import { useGameRuntimeState } from "./useGameRuntimeState";
+import type { MultiplayerSession } from "@/lib/multiplayer/session";
 
 /** Composition facade for the mission runtime. Rendering and simulation details live in focused hooks. */
-export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tutorial = false }: { seed: number; mission: number; resume: boolean; fresh?: boolean; slot?: string; tutorial?: boolean }): GameRuntime {
-  const durable = useGameRuntimeState({ seed, mission, resume, fresh, slot, tutorial });
+export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tutorial = false, multiplayerSession }: { seed: number; mission: number; resume: boolean; fresh?: boolean; slot?: string; tutorial?: boolean; multiplayerSession?: MultiplayerSession }): GameRuntime {
+  const durable = useGameRuntimeState({
+    seed, mission, resume, fresh, slot, tutorial,
+    multiplayerOwner: multiplayerSession?.owner,
+    multiplayerOwners: multiplayerSession?.owners,
+  });
   const chrome = useGameChrome(durable.state.result);
-  const commandPort = useMemo(() => createRuntimeCommandPort(chrome.cmdQ), [chrome.cmdQ]);
+  const commandPort = useMemo(() => createRuntimeCommandPort(chrome.cmdQ, multiplayerSession ? (command) => multiplayerSession.submit(command) : undefined), [chrome.cmdQ, multiplayerSession]);
   const suppressImplicitSavesRef = useRef<() => void>(() => undefined);
 
   const feedback = useGameRuntimeFeedback({
@@ -50,6 +55,7 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
     commitSelection: interaction.selection.commitSelection,
     commandPort,
     cmdQ: chrome.cmdQ,
+    multiplayerSession,
     interaction,
     feedback,
     audioSettings: chrome.audioSettings,
@@ -72,7 +78,7 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
   return {
     campaign: durable.campaign,
     playerVisualProfile: durable.playerVisualProfile,
-    palette: durable.state.factions[0].palette,
+    palette: durable.state.factions[durable.state.viewOwner ?? 0].palette,
     state: durable.state,
     tutorial,
     paused: chrome.paused,

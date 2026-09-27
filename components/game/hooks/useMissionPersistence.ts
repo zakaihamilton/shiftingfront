@@ -105,17 +105,17 @@ export function useMissionPersistence({
   ]);
 
   const openSaveSlots = useCallback(() => {
-    if (tutorial) {
-      setPauseNotice("Training isn't saved to a campaign.");
+    if (tutorial || stateRef.current.multiplayer) {
+      setPauseNotice(stateRef.current.multiplayer ? "Online skirmishes aren't saved." : "Training isn't saved to a campaign.");
       return;
     }
     setPauseNotice("");
     setPauseView("save");
-  }, [setPauseNotice, setPauseView, tutorial]);
+  }, [setPauseNotice, setPauseView, stateRef, tutorial]);
 
   const openLoadSlots = useCallback(() => {
-    if (tutorial) {
-      setPauseNotice("Training isn't saved to a campaign.");
+    if (tutorial || stateRef.current.multiplayer) {
+      setPauseNotice(stateRef.current.multiplayer ? "Online skirmishes don't load campaign saves." : "Training isn't saved to a campaign.");
       return;
     }
     if (!hasLoadableSaves(cachedLocalStorage(), seed)) {
@@ -124,11 +124,11 @@ export function useMissionPersistence({
     }
     setPauseNotice("");
     setPauseView("load");
-  }, [seed, setPauseNotice, setPauseView, tutorial]);
+  }, [seed, setPauseNotice, setPauseView, stateRef, tutorial]);
 
   const saveNamedSlot = useCallback((name: string, overwriteId: string | null) => {
-    if (tutorial) {
-      setPauseNotice("Training isn't saved to a campaign.");
+    if (tutorial || stateRef.current.multiplayer) {
+      setPauseNotice(stateRef.current.multiplayer ? "Online skirmishes aren't saved." : "Training isn't saved to a campaign.");
       return false;
     }
     const current = stateRef.current;
@@ -154,8 +154,8 @@ export function useMissionPersistence({
   }, [saveSession, setPauseNotice, setPauseView, stateRef, tutorial]);
 
   const loadArchiveEntry = useCallback((entry: ArchiveEntry) => {
-    if (tutorial) {
-      setPauseNotice("Training isn't saved to a campaign.");
+    if (tutorial || stateRef.current.multiplayer) {
+      setPauseNotice(stateRef.current.multiplayer ? "Online skirmishes don't load campaign saves." : "Training isn't saved to a campaign.");
       return;
     }
     const storage = cachedLocalStorage();
@@ -194,6 +194,10 @@ export function useMissionPersistence({
 
   const restartMissionNow = useCallback(() => {
     const world = stateRef.current;
+    if (world.multiplayer) {
+      setPauseNotice("Online skirmishes cannot be restarted from one side.");
+      return;
+    }
     const missionIdx = tutorial ? TUTORIAL_MUSIC_MISSION : world.missionIndex;
     clearMusicPosition("mission", world.seed, missionIdx);
     const fresh = tutorial ? createTutorialMission() : createMission({ seed: world.seed, missionIndex: world.missionIndex });

@@ -40,7 +40,8 @@ export function pickSelectableEntity(s: SimState, x: number, y: number, tx: numb
 }
 
 export function friendlySupportOrders(s: SimState, ids: number[], target: SimState["entities"][number], x: number, y: number): Command[] {
-  if (target.owner !== 0 || target.class !== "unit" || target.neutral) return [];
+  const owner = s.viewOwner ?? 0;
+  if (target.owner !== owner || target.class !== "unit" || target.neutral) return [];
   const supportIds = ids.filter((id) => {
     const provider = s.entities.find((entity) => entity.id === id && entity.hp > 0);
     return provider ? canSupportEntity(provider, target) : false;
@@ -60,9 +61,10 @@ export function productionRallyOrder(
   x: number,
   y: number,
 ): Command[] | undefined {
+  const owner = s.viewOwner ?? 0;
   if (ids.length !== 1) return undefined;
   const building = s.entities.find((entity) => entity.id === ids[0] && entity.hp > 0);
-  if (!building || !isBuildingEntity(building) || building.owner !== 0 || building.constructing > 0 || !BUILDING_DEFINITIONS[building.kind].production) {
+  if (!building || !isBuildingEntity(building) || building.owner !== owner || building.constructing > 0 || !BUILDING_DEFINITIONS[building.kind].production) {
     return undefined;
   }
   return target ? [] : [{ type: "rally", buildingId: building.id, x, y }];
@@ -97,15 +99,16 @@ export function contextOrderNotice(commands: Command[]): string {
 }
 
 export function contextOrders(s: SimState, ids: number[], target: SimState["entities"][number] | undefined, x: number, y: number, attackMove = false): Command[] {
+  const owner = s.viewOwner ?? 0;
   const rallyOrders = productionRallyOrder(s, ids, target, x, y);
   if (rallyOrders !== undefined) return rallyOrders;
   const supportOrders = target ? friendlySupportOrders(s, ids, target, x, y) : [];
   if (supportOrders.length) return supportOrders;
-  if (target?.owner === 0 && target.class === "building" && target.kind === "runway") {
+  if (target?.owner === owner && target.class === "building" && target.kind === "runway") {
     const aircraft = ids.filter((id) => {
       const entity = s.entities.find((candidate) => candidate.id === id && candidate.hp > 0);
       const runwayDeadOrMissing = entity?.assignedRunwayId === undefined || !s.entities.some((c) => c.id === entity.assignedRunwayId && c.hp > 0);
-      return entity?.owner === 0 && entity.class === "unit" && isAirUnit(entity.kind) &&
+      return entity?.owner === owner && entity.class === "unit" && isAirUnit(entity.kind) &&
         (entity.assignedRunwayId === target.id || (target.assignedPlaneId === undefined && runwayDeadOrMissing));
     });
     const others = ids.filter((id) => !aircraft.includes(id));
@@ -113,7 +116,7 @@ export function contextOrders(s: SimState, ids: number[], target: SimState["enti
     if (others.length) commands.push(...groundOrders(s, others, x, y, attackMove));
     if (commands.length) return commands;
   }
-  if (target && target.owner === 1) return [{ type: "attack", unitIds: ids, targetId: target.id }];
+  if (target && target.owner !== owner) return [{ type: "attack", unitIds: ids, targetId: target.id }];
   return groundOrders(s, ids, x, y, attackMove);
 }
 
@@ -125,22 +128,23 @@ export function mobileCommandOrders(
   x: number,
   y: number,
 ): Command[] {
+  const owner = s.viewOwner ?? 0;
   const rallyOrders = command === "move" ? productionRallyOrder(s, ids, target, x, y) : undefined;
   if (rallyOrders !== undefined) return rallyOrders;
   const supportOrders = target ? friendlySupportOrders(s, ids, target, x, y) : [];
   if (supportOrders.length) return supportOrders;
-  if (target?.owner === 0 && target.class === "building" && target.kind === "runway") {
+  if (target?.owner === owner && target.class === "building" && target.kind === "runway") {
     const aircraft = ids.filter((id) => {
       const entity = s.entities.find((candidate) => candidate.id === id && candidate.hp > 0);
       const runwayDeadOrMissing = entity?.assignedRunwayId === undefined || !s.entities.some((c) => c.id === entity.assignedRunwayId && c.hp > 0);
-      return entity?.owner === 0 && entity.class === "unit" && isAirUnit(entity.kind) &&
+      return entity?.owner === owner && entity.class === "unit" && isAirUnit(entity.kind) &&
         (entity.assignedRunwayId === target.id || (target.assignedPlaneId === undefined && runwayDeadOrMissing));
     });
     if (aircraft.length) return [{ type: "land", unitIds: aircraft, runwayId: target.id }];
   }
   if (command === "move") return groundOrders(s, ids, x, y, true);
   if (command === "attackMove") return groundOrders(s, ids, x, y, true);
-  if (command === "attack" && target?.owner === 1) return [{ type: "attack", unitIds: ids, targetId: target.id }];
+  if (command === "attack" && target && target.owner !== owner) return [{ type: "attack", unitIds: ids, targetId: target.id }];
   if (command === "harvest" && s.tiles[y * s.width + x] === 2) return [{ type: "harvest", unitIds: ids, x, y }];
   return [];
 }
@@ -205,6 +209,7 @@ export function selectVisibleUnitsOfKind(
 }
 
 export function selectionIdsInBox(s: SimState, cam: Camera, box: SelectionBox, finalize: boolean, clockMs = selectionClock(s)) {
+  const owner = s.viewOwner ?? 0;
   updateUnitHistory(s, clockMs);
   const ids: number[] = [];
   const projectedBox = selectionBoxProjection(box, cam);
@@ -213,7 +218,7 @@ export function selectionIdsInBox(s: SimState, cam: Camera, box: SelectionBox, f
   const x1 = Math.max(projectedBox.x0, projectedBox.x1);
   const y1 = Math.max(projectedBox.y0, projectedBox.y1);
   for (const en of s.entities) {
-    if (en.hp <= 0 || en.owner !== 0 || !isPlayerSelectableUnit(en) || (en.neutral && !isContactTarget(s, en))) continue;
+    if (en.hp <= 0 || en.owner !== owner || !isPlayerSelectableUnit(en) || (en.neutral && !isContactTarget(s, en))) continue;
     const renderPosition = selectionRenderPosition(s, en, clockMs);
     const sp = tileToScreen(renderPosition.x, renderPosition.y, { x: 0, y: 0, zoom: cam.zoom }, renderPosition.elev);
     const projected = { x: sp.x / cam.zoom, y: sp.y / cam.zoom };

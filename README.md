@@ -67,6 +67,24 @@ The battlefield supports mouse, keyboard, and touch play. The HUD shows the comp
 
 No account is required. Campaign progress, named save slots, audio settings, scores, and medals are stored in the browser on your device.
 
+### Online skirmishes
+
+The **MULTIPLAYER** menu opens a one-battle free-for-all for two to four players. The host chooses a four-digit match seed and receives a separate six-letter invite code; up to three guests enter that code, and the host starts after their room handshakes succeed. Each player starts in a different map corner. Online skirmishes do not use campaign saves or progression.
+
+The Next.js server needs these server-only variables to enable room creation and joining:
+
+| Variable | Purpose |
+| --- | --- |
+| `PEEROVO_API_URL` | Peerovo API base URL used by the server routes. |
+| `PEEROVO_PROJECT_ID` | Peerovo project identifier. |
+| `PEEROVO_PROJECT_API_KEY` | Server-only project credential used to issue scoped peer tokens. |
+| `MULTIPLAYER_ROOM_SIGNING_SECRET` | At least 32 bytes of secret material used to sign room grants. |
+| `PEEROVO_SIGNALING_ORIGIN` | PeerJS signaling origin returned by Peerovo `/v1/config`, allowed by the browser CSP. |
+
+The room API is stateless, following HostPresent's Peerovo integration. It derives a Peerovo session ID from the six-letter code and signs short-lived host and guest grants; the selected seed is carried only in the signed host grant. Peerovo receives the server-only project key and issues a short-lived token for each exact peer ID. The browser receives that peer token, PeerJS settings, and ICE servers, never the project key. The host keeps the live roster, assigns stable seats, rejects a fifth player and locks the roster at Start. Room state and campaign progression stay in the game and browser; the server keeps no room registry.
+
+Configure edge rate limits before exposing multiplayer routes. See [multiplayer deployment security](docs/multiplayer-security.md). The invite code is a bearer credential, so share it only with the intended guest. Code resolution sends the code in a POST body rather than a URL.
+
 ## Run locally
 
 Shifting Front is an open-source browser game. To run it from source, you need [Node.js](https://nodejs.org/) `22.22.2` or newer and [Yarn 1](https://classic.yarnpkg.com/).

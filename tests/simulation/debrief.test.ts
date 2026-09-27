@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatMissionDuration, missionDebrief, missionMedals, missionScore, shouldShowCommandSidebar } from "../../lib/sim/debrief";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { minutesToTicks } from "../../lib/gen/pacing";
+import { createSkirmish } from "../../lib/sim/api";
 
 describe("mission debrief", () => {
   it("summarizes a completed primary objective and the battle record", () => {
@@ -138,5 +139,34 @@ describe("mission debrief", () => {
     expect(missionMedals(state)).toBe(2);
     state.losses.units[0] = 1;
     expect(missionMedals(state)).toBe(1);
+  });
+
+  it("reports the local seat and all rivals in a multiplayer result without campaign scoring", () => {
+    const state = createSkirmish(8123, 3, [0, 1, 2, 3]).state;
+    state.result = "won";
+    state.winner = 3;
+    state.creditsEarned = [110, 220, 330, 440];
+    state.unitsProduced = [1, 2, 3, 4];
+    state.buildingsCompleted = [5, 6, 7, 8];
+    state.losses.units = [1, 2, 3, 4];
+    state.losses.buildings = [5, 6, 7, 8];
+
+    const debrief = missionDebrief(state);
+    expect(debrief).toMatchObject({
+      status: "won",
+      outcome: "All rival Command HQs destroyed.",
+      objective: { headline: "Destroy all rival Command HQs" },
+      battle: { creditsGathered: 440, unitsTrained: 4, structuresCompleted: 8, score: 0, medals: 0 },
+      forces: {
+        friendly: { unitsLost: 4, buildingsLost: 8 },
+        enemy: { unitsLost: 6, buildingsLost: 18 },
+      },
+    });
+    expect(missionScore(state)).toBe(0);
+    expect(missionMedals(state)).toBe(0);
+
+    state.result = "lost";
+    state.winner = null;
+    expect(missionDebrief(state)).toMatchObject({ status: "lost", outcome: "The skirmish ended in a draw." });
   });
 });

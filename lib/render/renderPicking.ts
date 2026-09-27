@@ -70,6 +70,7 @@ export function pickTile(
 }
 
 export function entityVisible(state: SimState, e: Entity): boolean {
+  const hostile = state.multiplayer ? e.owner !== (state.viewOwner ?? 0) : e.owner === 1;
   if (isBuildingEntity(e)) {
     const fp = footprintOf(e.kind);
     let visible = false;
@@ -82,14 +83,14 @@ export function entityVisible(state: SimState, e: Entity): boolean {
       }
       if (visible) break;
     }
-    if (e.owner === 1 && !visible) return false;
+    if (hostile && !visible) return false;
     if (isHiddenObjectiveAsset(e) && !visible) return false;
     return true;
   }
   const tx = Math.round(e.x);
   const ty = Math.round(e.y);
   const fog = fogAt(state, tx, ty);
-  if (e.owner === 1 && fog !== 2) return false;
+  if (hostile && fog !== 2) return false;
   if (isHiddenObjectiveAsset(e) && fog !== 2) return false;
   return true;
 }
@@ -112,7 +113,8 @@ export function pruneEntityVisibilityCache(liveIds: Iterable<number>): void {
 }
 
 export function renderEntityOpacity(state: SimState, e: Entity, timeMs: number): number {
-  if (e.owner === 0 || e.class !== "unit") return entityVisible(state, e) ? 1 : 0;
+  const friendly = state.multiplayer ? e.owner === (state.viewOwner ?? 0) : e.owner === 0;
+  if (friendly || e.class !== "unit") return entityVisible(state, e) ? 1 : 0;
   const fog = fogAt(state, Math.round(e.x), Math.round(e.y));
   // A hostile contact is fully readable on the first frame it enters
   // revealed space. Revealed fog is persistent, so an old hidden alpha must

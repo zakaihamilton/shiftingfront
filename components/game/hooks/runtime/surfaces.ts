@@ -23,7 +23,7 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
   const powerSig = powerSignature(runtime.state);
   const grid = cache.powerSig === powerSig && cache.power
     ? cache.power
-    : powerBreakdown(runtime.state, 0);
+    : powerBreakdown(runtime.state, runtime.state.viewOwner ?? 0);
   cache.powerSig = powerSig;
   cache.power = grid;
   const minimapPing = runtime.combatAlert
@@ -86,7 +86,7 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
     onToggleMobilePanel: runtime.onToggleMobilePanel,
     onMobileSheetDrag: runtime.onMobileSheetDrag,
     sidebar: {
-      factionName: runtime.campaign.factions[0].name,
+      factionName: runtime.state.factions[runtime.state.viewOwner ?? 0]?.name ?? runtime.campaign.factions[0]?.name ?? "Command",
       state: runtime.state,
       palette,
       profile: runtime.playerVisualProfile,
@@ -125,6 +125,7 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
           notice: runtime.pauseNotice,
           settings: runtime.audioSettings,
           tutorial: runtime.tutorial,
+          multiplayer: runtime.state.multiplayer === true,
           setView: runtime.setPauseView,
           setNotice: runtime.setPauseNotice,
           onControlsOpened: runtime.onControlsOpened,

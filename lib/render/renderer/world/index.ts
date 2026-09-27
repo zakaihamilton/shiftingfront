@@ -61,7 +61,7 @@ export function renderWorld(
   const selectedProducer = state.entities.find((entity) =>
     selected.has(entity.id) &&
     entity.hp > 0 &&
-    entity.owner === 0 &&
+    entity.owner === (state.viewOwner ?? 0) &&
     isBuildingEntity(entity) &&
     entity.constructing <= 0 &&
     Boolean(BUILDING_DEFINITIONS[entity.kind].production) &&

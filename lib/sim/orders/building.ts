@@ -5,31 +5,34 @@ import { canRepair } from "../repair";
 import { canSell } from "../sell";
 import { refundQueuedUnits } from "../productionRefund";
 import { entitiesFor } from "../entities";
+import { commandOwner } from "./commandOwner";
 
 export { refundQueuedUnits };
 
 export function startBuild(state: SimState, kind: BuildingKind, x: number, y: number): SimEvent[] {
+  const owner = commandOwner(state);
   if (kind === "constructionYard" || kind === "objective") return [{ type: "commandRejected", reason: "invalid building" }];
-  if (buildingLimitReached(entitiesFor(state), 0, kind)) return [{ type: "commandRejected", reason: "building limit reached" }];
+  if (buildingLimitReached(entitiesFor(state), owner, kind)) return [{ type: "commandRejected", reason: "building limit reached" }];
   const tx = Math.round(x);
   const ty = Math.round(y);
   if (!canPlaceBuilding(state, kind, tx, ty)) return [{ type: "commandRejected", reason: "invalid placement" }];
   const yard = entitiesFor(state).find(
-    (e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0 && e.constructing === 0,
+    (e) => e.owner === owner && e.kind === "constructionYard" && e.hp > 0 && e.constructing === 0,
   );
   if (!yard) return [{ type: "commandRejected", reason: "construction yard unavailable" }];
   const cost = BUILDING_STATS[kind].cost;
-  if (state.credits[0] < cost) return [{ type: "commandRejected", reason: "insufficient credits" }];
-  state.credits[0] -= cost;
-  spawnBuilding(state, 0, kind, tx, ty, BUILDING_STATS[kind].buildTicks);
+  if (state.credits[owner] < cost) return [{ type: "commandRejected", reason: "insufficient credits" }];
+  state.credits[owner] -= cost;
+  spawnBuilding(state, owner, kind, tx, ty, BUILDING_STATS[kind].buildTicks);
   return [];
 }
 
 export function cancelBuild(state: SimState, kind: BuildingKind): SimEvent[] {
+  const owner = commandOwner(state);
   if (kind === "constructionYard" || kind === "objective") return [];
   let target: Entity | undefined;
   for (const e of entitiesFor(state)) {
-    if (e.hp <= 0 || e.owner !== 0 || e.class !== "building") continue;
+    if (e.hp <= 0 || e.owner !== owner || e.class !== "building") continue;
     if (e.kind !== kind || e.constructing <= 0) continue;
     target = e;
   }
@@ -38,13 +41,14 @@ export function cancelBuild(state: SimState, kind: BuildingKind): SimEvent[] {
   invalidateEntityCaches(state);
   target.constructing = 0;
   invalidateNavigation(state, target.id);
-  state.credits[0] += BUILDING_STATS[kind].cost;
+  state.credits[owner] += BUILDING_STATS[kind].cost;
   return [];
 }
 
 export function toggleRepair(state: SimState, buildingId: number): SimEvent[] {
+  const owner = commandOwner(state);
   const e = byId(state, buildingId);
-  if (!e || e.class !== "building" || e.owner !== 0) return [];
+  if (!e || e.class !== "building" || e.owner !== owner) return [];
   if (e.repairing) {
     e.repairing = false;
     return [];
@@ -55,12 +59,13 @@ export function toggleRepair(state: SimState, buildingId: number): SimEvent[] {
 }
 
 export function setRallyPoint(state: SimState, buildingId: number, x: number, y: number): SimEvent[] {
+  const owner = commandOwner(state);
   const building = byId(state, buildingId);
   if (
     !building ||
     !isBuildingEntity(building) ||
     building.hp <= 0 ||
-    building.owner !== 0 ||
+    building.owner !== owner ||
     building.constructing > 0 ||
     !BUILDING_DEFINITIONS[building.kind].production
   ) {
@@ -77,14 +82,15 @@ export function setRallyPoint(state: SimState, buildingId: number, x: number, y:
 }
 
 export function sellBuilding(state: SimState, buildingId: number): SimEvent[] {
+  const owner = commandOwner(state);
   const e = byId(state, buildingId);
-  if (!e || !isBuildingEntity(e) || e.owner !== 0 || !canSell(e)) return [];
+  if (!e || !isBuildingEntity(e) || e.owner !== owner || !canSell(e)) return [];
   refundQueuedUnits(state, e);
-  state.credits[0] += sellRefundFor(e.kind, e.hp);
+  state.credits[owner] += sellRefundFor(e.kind, e.hp);
   e.hp = 0;
   invalidateEntityCaches(state);
   e.repairing = false;
   invalidateNavigation(state, e.id);
-  state.losses.buildings[0] += 1;
+  state.losses.buildings[owner] += 1;
   return [{ type: "sold", id: e.id, kind: e.kind, x: e.x, y: e.y }];
 }

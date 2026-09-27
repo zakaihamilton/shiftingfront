@@ -59,6 +59,7 @@ export function createPresentationCoordinator({
         cameraRef.current,
         canvasRef.current?.width ?? 1,
         canvasRef.current?.height ?? 1,
+        state.viewOwner ?? 0,
       );
       if (events.some((event) => event.type === "won")) playSfx("victory", { force: true });
       if (events.some((event) => event.type === "lost")) playSfx("defeat", { force: true });

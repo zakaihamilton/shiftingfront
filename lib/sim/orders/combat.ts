@@ -6,14 +6,16 @@ import { byId, closestApproach } from "../world";
 import { assignSupportTarget, canSupportEntity } from "../support";
 import { launchAircraft } from "../aircraft";
 import { directFireRangeBonusAt } from "../terrainRules";
+import { commandOwner } from "./commandOwner";
 
 export function attackUnits(state: SimState, ids: number[], targetId: number): SimEvent[] {
+  const owner = commandOwner(state);
   const target = byId(state, targetId);
-  if (!target || target.owner !== 1 || target.neutral) return [{ type: "commandRejected", reason: "invalid attack target" }];
+  if (!target || target.owner === owner || target.neutral) return [{ type: "commandRejected", reason: "invalid attack target" }];
   let searches = 0;
   for (const id of ids) {
     const e = byId(state, id);
-    if (!e || !isUnitEntity(e) || e.owner !== 0 || e.neutral) continue;
+    if (!e || !isUnitEntity(e) || e.owner !== owner || e.neutral) continue;
     if (e.kind === "harvester" || isSupportUnit(e.kind)) continue;
     if (isAirUnit(e.kind)) launchAircraft(state, e);
     e.attackTarget = targetId;
@@ -47,14 +49,15 @@ export function attackUnits(state: SimState, ids: number[], targetId: number): S
 }
 
 export function supportUnits(state: SimState, ids: number[], targetId: number): SimEvent[] {
+  const owner = commandOwner(state);
   const target = byId(state, targetId);
-  if (!target || target.owner !== 0 || target.class !== "unit" || target.neutral) {
+  if (!target || target.owner !== owner || target.class !== "unit" || target.neutral) {
     return [{ type: "commandRejected", reason: "invalid support target" }];
   }
   let assigned = 0;
   for (const id of ids) {
     const provider = byId(state, id);
-    if (!provider || !isUnitEntity(provider) || provider.owner !== 0 || provider.neutral) continue;
+    if (!provider || !isUnitEntity(provider) || provider.owner !== owner || provider.neutral) continue;
     if (!isSupportUnit(provider.kind) || !canSupportEntity(provider, target)) continue;
     assignSupportTarget(state, provider, target);
     assigned += 1;
@@ -63,17 +66,19 @@ export function supportUnits(state: SimState, ids: number[], targetId: number): 
 }
 
 export function setStance(state: SimState, ids: number[], stance: "aggressive" | "defensive" | "hold"): SimEvent[] {
+  const owner = commandOwner(state);
   for (const id of ids) {
     const e = byId(state, id);
-    if (e?.owner === 0 && e.class === "unit") e.stance = stance;
+    if (e?.owner === owner && e.class === "unit") e.stance = stance;
   }
   return [];
 }
 
 export function setFormation(state: SimState, ids: number[], formation: Formation): SimEvent[] {
+  const owner = commandOwner(state);
   for (const id of ids) {
     const e = byId(state, id);
-    if (e?.owner === 0 && e.class === "unit") e.formation = formation;
+    if (e?.owner === owner && e.class === "unit") e.formation = formation;
   }
   return [];
 }
