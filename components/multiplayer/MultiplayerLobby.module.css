@@ -32,7 +32,7 @@
 .inviteCode { margin: 26px 0; padding: 18px; border: 1px solid #7aa0ad; background: #0a1a22; color: #eff8fa; font-size: clamp(2.3rem, 10vw, 4rem); font-weight: 700; letter-spacing: .3em; text-align: center; }
 .roster { display: grid; gap: 8px; margin: 18px 0 4px; padding: 0; list-style: none; }
 .roster li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #29434c; background: #08151c; color: #d8e4e8; }
-.roster li span:last-child { color: #84a8b4; font-size: .82rem; text-transform: uppercase; letter-spacing: .08em; }
+.roster li span:nth-of-type(2), .roster li span:last-child { color: #84a8b4; font-size: .82rem; text-transform: uppercase; letter-spacing: .08em; }
 .seatToggle { border: 1px solid #54727d; border-radius: 3px; padding: 5px 9px; background: #10242d; color: #c4d7dd; font: inherit; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
 .seatToggle:hover, .seatToggle:focus-visible { border-color: #a1c6d1; color: #f1f8fa; }
 .seatToggle:focus-visible { outline: 2px solid #a1c6d1; outline-offset: 2px; }
