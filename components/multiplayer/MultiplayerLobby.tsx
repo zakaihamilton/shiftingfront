@@ -7,6 +7,7 @@ import type { DataConnection, Peer } from "peerjs";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
+import { useModalFocus } from "@/components/ui/useModalFocus";
 import type { Owner } from "@/lib/types";
 import { MultiplayerSession, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
 import { rollSeed } from "@/components/menu/menuLaunch";
@@ -149,6 +150,11 @@ export function MultiplayerLobby() {
   const guestRetryUntilRef = useRef(0);
   const guestConnectingRef = useRef(false);
   const mountedRef = useRef(true);
+  const multiplayerDialogRef = useModalFocus(
+    mode === "battle" && !!session && (session.status === "disconnected" || session.status === "ended"),
+    session?.status,
+    "dialog",
+  );
 
   const refreshPeerCredential = useCallback(async (credential: Credential, peer: Peer) => {
     const refreshed = await postJson<Omit<Credential, "code" | "seed" | "hostPeerId" | "grant" | "expiresAt"> & { peerId: string }>("/api/multiplayer/peer-credentials", { grant: credential.grant });
@@ -322,7 +328,16 @@ export function MultiplayerLobby() {
       sessionRef.current?.receiveFrom(connection.peer, raw);
     });
 
-    connection.on("error", () => setError("A player connection encountered a network error."));
+    connection.on("error", () => {
+      const current = sessionRef.current;
+      if (hostStartedRef.current && current && current.status !== "ended") {
+        current.disconnectGuest(connection.peer);
+        setStatus("A player connection encountered a network error. The match is paused while they reconnect.");
+        connection.close();
+      } else {
+        setError("A player connection encountered a network error.");
+      }
+    });
     connection.on("close", () => {
       if (handshakeConnectionsRef.current.has(connection)) handshakeConnectionsRef.current.delete(connection);
       if (hostConnectionsRef.current.get(connection.peer) !== connection) return;
@@ -400,7 +415,10 @@ export function MultiplayerLobby() {
     roleRef.current = role;
     setLobbyRole(role);
     peer.on("error", (peerError) => {
-      setError(publicError(peerError));
+      // PeerJS also reports WebRTC negotiation errors here. Only its
+      // `disconnected` event pauses the match and starts signaling recovery;
+      // active data-channel drops are handled by the connection listeners.
+      if (!sessionRef.current) setError(publicError(peerError));
       if (peerError.type === "peer-unavailable" && role === "guest") {
         setStatus("Waiting for the host to come online…");
         guestConnectingRef.current = false;
@@ -601,7 +619,14 @@ export function MultiplayerLobby() {
     connection.on("error", () => {
       if (guestConnectionRef.current !== connection) return;
       guestConnectingRef.current = false;
-      setStatus("Connecting to host…");
+      const current = sessionRef.current;
+      if (current && current.status !== "ended") {
+        current.setDisconnected();
+        setStatus("The host data connection encountered a network error. Reconnecting…");
+      } else {
+        setStatus("Connecting to host…");
+      }
+      connection.close();
       scheduleGuestRetry(credential, peer);
     });
   }, [destroyPeer, scheduleGuestRetry, showBattle]);
@@ -657,21 +682,52 @@ export function MultiplayerLobby() {
   }, [inviteCode]);
 
   if (mode === "battle" && session && gameSeed !== null) {
+    const disconnected = session.status === "disconnected";
+    const ended = session.status === "ended";
+    const connectionStatus = status === "Skirmish in progress" ? "Reconnecting automatically…" : status;
+    const connectionTitle = connectionStatus.toLowerCase().includes("signaling")
+      ? "Signaling interrupted"
+      : connectionStatus.toLowerCase().includes("host")
+        ? "Host connection lost"
+        : "Player connection interrupted";
     return (
       <div className={styles.battle}>
-        {session.status === "disconnected" ? <div className={styles.connectionNotice} role="status">{status}</div> : null}
-        {session.status === "ended" ? (
-          <div className={styles.ended} role="status">
-            <MetalPanel className={styles.panel}>
-              <ConsoleLabel>ONLINE SKIRMISH</ConsoleLabel>
-              <h1>Connection ended</h1>
-              <p>{status}</p>
-              <ConsoleButton onClick={endCurrentMatch}>Return to menu</ConsoleButton>
+        {!ended ? <DynamicGameClient seed={gameSeed} mission={0} resume={false} fresh multiplayerSession={session} /> : null}
+        {disconnected || ended ? (
+          <div className={styles.connectionOverlay} data-state={ended ? "ended" : "disconnected"}>
+            <MetalPanel
+              ref={multiplayerDialogRef}
+              tabIndex={-1}
+              className={styles.connectionDialog}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="multiplayer-connection-title"
+              aria-describedby="multiplayer-connection-description"
+            >
+              <ConsoleLabel>ONLINE SKIRMISH · NETWORK STATUS</ConsoleLabel>
+              <h1 id="multiplayer-connection-title" className={styles.connectionTitle}>
+                {ended ? "Connection ended" : connectionTitle}
+              </h1>
+              <p id="multiplayer-connection-description" className={styles.connectionDescription}>
+                {ended
+                  ? "This skirmish can no longer continue. Return to the multiplayer menu to start or join another room."
+                  : connectionStatus.toLowerCase().includes("signaling")
+                    ? "The match is paused while your signaling connection recovers. Reconnection is automatic for up to 60 seconds."
+                    : session.role === "host"
+                    ? "The match is paused while the disconnected player reconnects. Their seat is reserved for up to 60 seconds."
+                    : "The match is paused while your connection to the host recovers. Reconnection is automatic for up to 60 seconds."}
+              </p>
+              <p className={styles.connectionStatus} role="status">
+                {ended && status === "Skirmish in progress" ? "Connection to the room ended." : connectionStatus}
+              </p>
+              <div className={styles.connectionActions}>
+                <ConsoleButton onClick={endCurrentMatch}>
+                  {ended ? "Return to menu" : "Leave skirmish"}
+                </ConsoleButton>
+              </div>
             </MetalPanel>
           </div>
-        ) : (
-          <DynamicGameClient seed={gameSeed} mission={0} resume={false} fresh multiplayerSession={session} />
-        )}
+        ) : null}
       </div>
     );
   }

@@ -1,3 +1,5 @@
+@import "../game/dialog.module.css";
+
 .screen {
   display: grid;
   min-height: 100dvh;
@@ -40,7 +42,46 @@
 .error { color: #ffb19c !important; }
 .backLink { display: inline-block; margin-top: 20px; color: #91bbc8; }
 .battle { position: relative; min-height: 100dvh; }
-.connectionNotice { position: fixed; z-index: 30; inset: 0 0 auto; padding: 10px 16px; background: #6c3c17; color: white; text-align: center; }
-.ended { position: fixed; z-index: 40; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / 78%); }
-.ended h1 { color: #edf5f7; }
+.connectionOverlay {
+  composes: overlay from "../game/dialog.module.css";
+  z-index: 120;
+  backdrop-filter: blur(3px);
+}
+.connectionDialog {
+  composes: dialog from "../game/dialog.module.css";
+  width: min(100%, 32rem);
+  max-width: 32rem;
+  border-top-color: var(--chrome-alert);
+}
+.connectionTitle {
+  composes: title from "../game/dialog.module.css";
+  color: var(--chrome-alert);
+}
+.connectionDescription {
+  margin: 0.75rem 0 0;
+  color: var(--chrome-body);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+.connectionStatus {
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-left: 2px solid var(--chrome-alert);
+  background: color-mix(in srgb, var(--chrome-alert) 8%, var(--chrome-void));
+  color: var(--chrome-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+.connectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
 .battleLoading { display: grid; min-height: 100dvh; place-items: center; background: #07121a; color: #d8e4e8; }
+
+@media (max-width: 420px) {
+  .connectionDialog { padding: 1rem; }
+  .connectionActions > * { flex: 1 1 8rem; }
+}
