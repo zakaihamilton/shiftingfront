@@ -116,7 +116,7 @@ export function contextOrders(s: SimState, ids: number[], target: SimState["enti
     if (others.length) commands.push(...groundOrders(s, others, x, y, attackMove));
     if (commands.length) return commands;
   }
-  if (target && target.owner !== owner) return [{ type: "attack", unitIds: ids, targetId: target.id }];
+  if (target && target.owner !== owner && !target.neutral) return [{ type: "attack", unitIds: ids, targetId: target.id }];
   return groundOrders(s, ids, x, y, attackMove);
 }
 
@@ -144,7 +144,7 @@ export function mobileCommandOrders(
   }
   if (command === "move") return groundOrders(s, ids, x, y, true);
   if (command === "attackMove") return groundOrders(s, ids, x, y, true);
-  if (command === "attack" && target && target.owner !== owner) return [{ type: "attack", unitIds: ids, targetId: target.id }];
+  if (command === "attack" && target && target.owner !== owner && !target.neutral) return [{ type: "attack", unitIds: ids, targetId: target.id }];
   if (command === "harvest" && s.tiles[y * s.width + x] === 2) return [{ type: "harvest", unitIds: ids, x, y }];
   return [];
 }

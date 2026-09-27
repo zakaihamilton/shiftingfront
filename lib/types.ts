@@ -1,6 +1,6 @@
 export type Owner = 0 | 1 | 2 | 3;
 
-export type UnitKind = "harvester" | "infantry" | "antiArmor" | "tank" | "medic" | "repairTruck" | "convoyTruck" | "strikePlane";
+export type UnitKind = "harvester" | "infantry" | "antiArmor" | "tank" | "medic" | "repairTruck" | "convoyTruck" | "strikePlane" | "behemoth";
 export type UnitDomain = "human" | "vehicle" | "air";
 export type CombatTargetDomain = "ground" | "air";
 export type SupportRole = "medic" | "repairTruck";
@@ -610,7 +610,7 @@ export type SimEvent =
       milestone: "firstContact" | "allContacted" | "firstReturned" | "complete";
       text: string;
     }
-  | { type: "commandRejected"; reason: string }
+  | { type: "commandRejected"; reason: string; owner?: Owner }
   | { type: "alert"; kind: "warning" | "objective" | "contact"; text: string }
   | { type: "suppressed"; id: number }
   | { type: "powerShortage"; owner: Owner }

@@ -453,8 +453,16 @@ describe("mission confirmation and routes", () => {
     expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 5 })).toBe("/campaign-complete?seed=0421");
     expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 7 })).toBe("/campaign-complete?seed=0421");
     expect(resultPrimaryPath({ result: "lost", seed: 421, missionIndex: 3 })).toBe("/briefing?seed=0421&mission=3&from=result");
+    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 3, multiplayer: true })).toBe(menuPath());
+    expect(resultPrimaryPath({ result: "lost", seed: 421, missionIndex: 3, multiplayer: true })).toBe(menuPath());
     expect(missionConfirmationFor("menu", "won").message).toBe("Return to the main menu?");
     expect(missionConfirmationFor("restart", "lost").message).toBe("Restart this mission from the beginning?");
+    expect(missionConfirmationFor("menu", "playing", true)).toMatchObject({
+      action: "menu",
+      title: "Leave skirmish?",
+      confirmLabel: "Leave skirmish",
+      message: "Return to the main menu? You will forfeit your position in this skirmish.",
+    });
   });
 });
 

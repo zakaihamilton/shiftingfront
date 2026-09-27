@@ -11,7 +11,7 @@ export function gameOverlayModel({
   // The simulation mutates entities in place; give React a new identity for the selected snapshot.
   const selected = selectedEntity ? { ...selectedEntity } : undefined;
   return {
-    palette: state.factions[state.viewOwner ?? 0].palette,
+    palette: (state.factions[state.viewOwner ?? 0] ?? state.factions[0]).palette,
     selected,
   };
 }

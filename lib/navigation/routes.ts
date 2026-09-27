@@ -23,7 +23,8 @@ export function briefingBackPath(seed: number, mission: number, returnToGame: bo
 }
 export function campaignCompletePath(seed: number): string { return `/campaign-complete?seed=${formatSeed(seed)}`; }
 export function campaignPath(seed: number): string { return `/campaign?seed=${formatSeed(seed)}`; }
-export function resultPrimaryPath(state: Pick<SimState, "result" | "seed" | "missionIndex">): string {
+export function resultPrimaryPath(state: Pick<SimState, "result" | "seed" | "missionIndex"> & Partial<Pick<SimState, "multiplayer">>): string {
+  if (state.multiplayer) return menuPath();
   if (state.result === "won" && state.missionIndex < MISSION_MAX) return briefingPath(state.seed, state.missionIndex + 1, false, "result");
   if (state.result === "won") return campaignCompletePath(state.seed);
   if (state.result === "lost") return briefingPath(state.seed, state.missionIndex, false, "result");

@@ -41,7 +41,7 @@ export function validSkirmishMatchSettings(value: unknown): boolean {
 const FORMATIONS = new Set(["line", "column", "wedge"]);
 const STANCES = new Set(["aggressive", "defensive", "hold"]);
 const BUILDINGS = new Set(["power", "refinery", "barracks", "factory", "turret", "runway", "antiAirTurret"]);
-const UNITS = new Set(["harvester", "infantry", "antiArmor", "tank", "medic", "repairTruck", "convoyTruck", "strikePlane"]);
+const UNITS = new Set(["harvester", "infantry", "antiArmor", "tank", "medic", "repairTruck", "convoyTruck", "strikePlane", "behemoth"]);
 
 function validIds(value: unknown): value is number[] {
   return Array.isArray(value) && value.length <= 256 && value.every((id) => Number.isSafeInteger(id) && id > 0);

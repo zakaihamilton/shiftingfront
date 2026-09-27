@@ -207,6 +207,7 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
 
   it.each([
     ["tank", 14],
+    ["behemoth", 10],
     ["strikePlane", 20],
     ["infantry", 18],
   ] as const)("turns %s through intermediate screen angles", (kind, turnRate) => {

@@ -49,7 +49,7 @@ export function MissionResult({
         <header className={styles.header}>
           <ConsoleLabel className={styles.headerLabel}>{state.multiplayer ? "Online skirmish" : "Campaign status"}</ConsoleLabel>
           <h2 id="mission-result-title" className={styles.title}>{resultTitle}</h2>
-          <p className={styles.mission}>Mission {state.missionIndex + 1} {"//"} {state.missionName}</p>
+          <p className={styles.mission}>{state.multiplayer ? state.missionName : `Mission ${state.missionIndex + 1} // ${state.missionName}`}</p>
         </header>
         <div className={styles.resultGrid}>
           <MissionOutcome debrief={debrief} />

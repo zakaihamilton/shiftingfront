@@ -40,6 +40,7 @@ export { terrainColors };
 
 export function entityColor(e: Entity, state: SimState, mode: ColorblindMode = "none"): string {
   if (e.marked) return "#ffe066";
+  if (e.neutral) return mode === "tritanopia" ? "#e2e8f0" : "#f5e6a8";
   const friendly = state.multiplayer ? e.owner === (state.viewOwner ?? 0) : e.owner === 0;
   if (mode === "deuteranopia" || mode === "protanopia") {
     if (friendly) {

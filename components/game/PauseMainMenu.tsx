@@ -33,7 +33,9 @@ export function PauseMainMenu({
       <ConsoleLabel>Shifting Front</ConsoleLabel>
       <h2 id="pause-title" className={styles.title}>{multiplayer ? "Skirmish Menu" : "Game paused"}</h2>
       <div className={styles.actions}>
-        <ConsoleButton className={styles.action} tooltip="Return to the battlefield" shortcut={SHORTCUT.resume} onClick={onResume}>Resume Mission</ConsoleButton>
+        <ConsoleButton className={styles.action} tooltip="Return to the battlefield" shortcut={SHORTCUT.resume} onClick={onResume}>
+          {multiplayer ? "Resume Skirmish" : "Resume Mission"}
+        </ConsoleButton>
         {!tutorial && !multiplayer ? (
           <div className={styles.group}>
             <ConsoleLabel className={styles.groupLabel}>Mission</ConsoleLabel>

@@ -143,8 +143,10 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
     },
     onTick(state: SimState, events: SimEvent[], now: number) {
       syncSession(state);
-      lifecycle.counters.commandRejections += events.filter((event) => event.type === "commandRejected").length;
-      for (const event of events) {
+      const localOwner = state.viewOwner ?? 0;
+      const rejections = events.filter((event) => event.type === "commandRejected" && (event.owner === undefined || event.owner === localOwner));
+      lifecycle.counters.commandRejections += rejections.length;
+      for (const event of rejections) {
         if (event.type === "commandRejected") {
           const reason = canonicalCommandRejectionReason(event.reason);
           lifecycle.counters.ux.commandRejectionsByReason[reason] = (lifecycle.counters.ux.commandRejectionsByReason[reason] ?? 0) + 1;

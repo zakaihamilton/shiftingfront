@@ -12,16 +12,19 @@ export type MissionConfirmation = {
 export function missionConfirmationFor(
   action: MissionConfirmationAction,
   result: SimState["result"] = "playing",
+  multiplayer = false,
 ): MissionConfirmation {
   const terminal = result !== "playing";
   if (action === "menu") {
     return {
       action,
-      title: "Leave mission?",
+      title: multiplayer ? "Leave skirmish?" : "Leave mission?",
       message: terminal
         ? "Return to the main menu?"
+        : multiplayer
+        ? "Return to the main menu? You will forfeit your position in this skirmish."
         : "Return to the main menu? Unsaved mission progress will be lost.",
-      confirmLabel: "Leave mission",
+      confirmLabel: multiplayer ? "Leave skirmish" : "Leave mission",
     };
   }
   return {

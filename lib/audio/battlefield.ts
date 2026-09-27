@@ -8,7 +8,7 @@ import { playSfx, type SfxKind } from "./synth";
 export function fireSfxFor(attackerKind: UnitKind | BuildingKind, weapon: WeaponType): SfxKind {
   if (attackerKind === "infantry") return "smallArms";
   if (attackerKind === "antiArmor") return "antiArmor";
-  if (attackerKind === "tank") return "cannon";
+  if (attackerKind === "tank" || attackerKind === "behemoth") return "cannon";
   if (attackerKind === "turret" || attackerKind === "antiAirTurret") return "turret";
   if (attackerKind === "strikePlane") return "cannon";
   if (weapon === "smallArms") return "smallArms";
@@ -79,7 +79,7 @@ export function dispatchBattlefieldAudio(
           gain: impact.gain * (cue.heavy ? 1.2 : 1),
           heavy: cue.heavy,
         });
-        if (cue.heavy || event.kind === "tank") duckMusic(cue.heavy ? 0.66 : 0.78, cue.heavy ? 0.28 : 0.18);
+        if (cue.heavy || event.kind === "tank" || event.kind === "behemoth") duckMusic(cue.heavy ? 0.66 : 0.78, cue.heavy ? 0.28 : 0.18);
       }
     } else if (event.type === "sold") {
       playSfx("sell", { force: true });

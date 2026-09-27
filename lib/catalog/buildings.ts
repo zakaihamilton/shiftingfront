@@ -109,7 +109,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingKind, BuildingDefinition> = {
     renderKey: "factory",
     aiRole: "production",
     unique: true,
-    production: ["harvester", "tank", "repairTruck"],
+    production: ["harvester", "tank", "repairTruck", "behemoth"],
     requiresFlatGround: true,
     hp: 975,
     cost: 800,

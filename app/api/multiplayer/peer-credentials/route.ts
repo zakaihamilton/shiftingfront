@@ -10,7 +10,12 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   try {
-    const body = await request.json() as { grant?: unknown };
+    let body: { grant?: unknown };
+    try {
+      body = await request.json() as { grant?: unknown };
+    } catch {
+      return NextResponse.json({ error: "invalid_request" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    }
     const credential = await refreshPeerCredential(body.grant);
     return NextResponse.json(credential, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

@@ -82,7 +82,7 @@ export function CommandCameo({
         </span>
         <span className={styles.caption}>
           <span className={styles.captionTop}>
-            <span>{labelFor(kind)}</span>
+            <span data-testid={`cameo-label-${kind}`}>{labelFor(kind)}</span>
             <b>{cost}</b>
           </span>
           <span className={cx(styles.status, disabledReason && styles.blocked)}>

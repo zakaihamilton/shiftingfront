@@ -32,7 +32,7 @@ export function pickEntity(
     const bodyY = s.y + (TILE_H / 2) * z - 12 * z;
     const unitKind = e.class === "unit" ? e.kind : undefined;
     const radius = unitKind && isAirUnit(unitKind) ? 38 * z
-      : unitKind === "harvester" || unitKind === "tank" || unitKind === "repairTruck" || unitKind === "convoyTruck" ? 42 * z
+      : unitKind === "harvester" || unitKind === "tank" || unitKind === "repairTruck" || unitKind === "convoyTruck" || unitKind === "behemoth" ? 44 * z
         : 30 * z;
     const d = Math.hypot(sx - bodyX, sy - bodyY);
     if (d <= radius && d < bestD) {

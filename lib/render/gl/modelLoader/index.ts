@@ -7,6 +7,7 @@ import { buildTurretHeadModel } from "./turret";
 import { buildAntiAirTurretModel } from "./antiAirTurret";
 import { buildConvoyTruckModel } from "./convoyTruck";
 import { buildStrikePlaneModel } from "./plane";
+import { buildBehemothModel } from "./behemoth";
 import type { ModelKind, UnitModel } from "./types";
 
 export type { MeshData, ModelKind, ModelNode, UnitModel } from "./types";
@@ -28,6 +29,7 @@ export { buildTurretHeadModel } from "./turret";
 export { buildAntiAirTurretModel } from "./antiAirTurret";
 export { buildConvoyTruckModel } from "./convoyTruck";
 export { buildStrikePlaneModel } from "./plane";
+export { buildBehemothModel } from "./behemoth";
 
 export function buildUnitModel(kind: ModelKind): UnitModel {
   switch (kind) {
@@ -39,6 +41,7 @@ export function buildUnitModel(kind: ModelKind): UnitModel {
     case "repairTruck": return { ...buildHarvesterModel(), kind: "repairTruck" };
     case "convoyTruck": return buildConvoyTruckModel();
     case "strikePlane": return buildStrikePlaneModel();
+    case "behemoth": return buildBehemothModel();
     case "turret":
     case "turretHead": return buildTurretHeadModel();
     case "antiAirTurret": return buildAntiAirTurretModel();

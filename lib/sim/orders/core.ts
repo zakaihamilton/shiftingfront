@@ -72,6 +72,13 @@ export function issue(state: SimState, command: Command): SimEvent[] {
       events = [];
   }
   state.commandOwner = priorOwner;
+  if (command.owner !== undefined) {
+    for (const event of events) {
+      if (event.type === "commandRejected" && event.owner === undefined) {
+        event.owner = command.owner;
+      }
+    }
+  }
   if (!events.some((event) => event.type === "commandRejected")) {
     advanceTutorialAfterCommand(state, command, tutorialExpectedTargets);
   }

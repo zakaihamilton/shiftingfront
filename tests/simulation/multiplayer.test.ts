@@ -154,8 +154,9 @@ describe("free-for-all skirmish simulation", () => {
         .some((event) => event.type === "commandRejected")).toBe(false);
 
       const rivalBarracks = state.entities.find((entity) => entity.owner === ((owner + 1) % 4) && entity.kind === "barracks")!;
-      expect(issue(state, { type: "produce", fromId: rivalBarracks.id, unit: "infantry", owner })
-        .some((event) => event.type === "commandRejected")).toBe(true);
+      const rejectionEvents = issue(state, { type: "produce", fromId: rivalBarracks.id, unit: "infantry", owner });
+      expect(rejectionEvents.some((event) => event.type === "commandRejected")).toBe(true);
+      expect(rejectionEvents.find((event) => event.type === "commandRejected")).toMatchObject({ owner });
     }
   });
 

@@ -330,7 +330,6 @@ describe("combat targeting", () => {
     expect(stranded.hp).toBe(hp);
   });
 });
-
 describe("combat damage model", () => {
   function strikeDamage(kind: "infantry" | "antiArmor" | "tank", target: "infantry" | "tank" | "power", seed = 7) {
     const s = makeFixture({ seed, width: 16, height: 12, win: { kind: "annihilate" } });
@@ -561,5 +560,38 @@ describe("combat alerts", () => {
     expect(grid2.byId[foeId]).toBeUndefined();
     expect(grid2.targetable[foeId]).toBe(0);
     expect(grid2.threat[foeId]).toBe(0);
+  });
+
+  it("allows behemoth to engage both ground units and airborne strike planes", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    const behemoth = addUnit(s, 0, "behemoth", 4, 4);
+    const plane = addUnit(s, 1, "strikePlane", 6, 4);
+    plane.flightState = "airborne";
+
+    tickCombat(s);
+    expect(behemoth.attackTarget).toBe(plane.id);
+    expect(plane.hp).toBeLessThan(180);
+
+    // Ground target engagement
+    const sGround = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    const b2 = addUnit(sGround, 0, "behemoth", 4, 4);
+    const foeTank = addUnit(sGround, 1, "tank", 6, 4);
+    tickCombat(sGround);
+    expect(b2.attackTarget).toBe(foeTank.id);
+    expect(foeTank.hp).toBeLessThan(320);
+  });
+
+  it("applies behemoth wide 2.2-tile splash and heavy suppression to grouped enemy formations", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    const behemoth = addUnit(s, 0, "behemoth", 4, 4);
+    const primaryTarget = addUnit(s, 1, "tank", 7, 4);
+    const clusterTarget = addUnit(s, 1, "infantry", 7, 5.8); // 1.8 tiles away from primary target
+
+    tickCombat(s);
+    expect(behemoth.attackTarget).toBe(primaryTarget.id);
+    expect(primaryTarget.hp).toBeLessThan(320);
+    // Cluster target within 2.2 splash radius receives collateral damage and suppression
+    expect(clusterTarget.hp).toBeLessThan(70);
+    expect((clusterTarget.suppression ?? 0)).toBeGreaterThan(0);
   });
 });

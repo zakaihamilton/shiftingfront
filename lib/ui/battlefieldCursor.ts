@@ -67,7 +67,7 @@ export function battlefieldCursor({
     return isStaticWalkable(state, hoverTile.x, hoverTile.y) ? "cell" : "not-allowed";
   }
   if (hoverEntity?.owner === owner) return "pointer";
-  if (hoverEntity && hoverEntity.owner !== owner) {
+  if (hoverEntity && hoverEntity.owner !== owner && !hoverEntity.neutral) {
     const selectedCombat = selectedIds.some((id) => {
       const entity = state.entities.find((item) => item.id === id && item.hp > 0 && item.owner === owner && item.class === "unit");
       return Boolean(entity && !SUPPORT_KINDS.has(entity.kind));

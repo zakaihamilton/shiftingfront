@@ -66,8 +66,13 @@ export function MissionResultActions({
           Retry
         </ConsoleButton>
       ) : null}
-      <ConsoleButton muted tooltip="Return to the main menu" shortcut={SHORTCUT.resultMenu} onClick={onMenu}>
-        Menu
+      <ConsoleButton
+        muted={!multiplayer}
+        tooltip="Return to the main menu"
+        shortcut={multiplayer ? SHORTCUT.resultPrimary : SHORTCUT.resultMenu}
+        onClick={onMenu}
+      >
+        {multiplayer ? "Return to menu" : "Menu"}
       </ConsoleButton>
     </ActionRail>
   );

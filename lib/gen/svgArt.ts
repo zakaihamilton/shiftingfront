@@ -129,10 +129,11 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
   const profile = options.profile ?? DEFAULT_PROFILE;
   const infantry = kind === "infantry" || kind === "medic";
   const antiArmor = kind === "antiArmor";
+  const behemoth = kind === "behemoth";
   // Keep foot soldiers visually subordinate to the larger tracked units while
   // retaining the same bottom contact anchor on the battlefield.
-  const w = infantry ? 38 : antiArmor ? 44 : 64;
-  const h = infantry ? 42 : antiArmor ? 46 : 60;
+  const w = infantry ? 38 : antiArmor ? 44 : behemoth ? 78 : 64;
+  const h = infantry ? 42 : antiArmor ? 46 : behemoth ? 74 : 60;
   const facing = options.facing ?? 0;
   if (kind === "strikePlane") {
     const w = 96;
@@ -181,6 +182,10 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
     imageSrc,
     imageTint: rasterTreatment(profile, palette),
     imageCrop,
+    // Behemoth source canvases place the actual tread contact line at y=475
+    // in a 512px frame, with transparent padding below it. Align that authored
+    // point to the simulation anchor so the tank does not hover above terrain.
+    imageAnchorY: behemoth ? 475 / 512 : undefined,
     anchorX: w / 2,
     anchorY: ground,
     pixelScale: 1,

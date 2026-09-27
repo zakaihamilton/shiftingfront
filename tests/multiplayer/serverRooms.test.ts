@@ -12,6 +12,7 @@ import {
 import { fetchPeerJsSettings, getPeerovoSettings, issuePeerCredential, PeerovoError } from "@/lib/multiplayer/server/peerovo";
 import { POST as createRoomRoute } from "@/app/api/multiplayer/rooms/route";
 import { POST as joinRoomRoute } from "@/app/api/multiplayer/rooms/join/route";
+import { POST as peerCredentialsRoute } from "@/app/api/multiplayer/peer-credentials/route";
 
 const envKeys = [
   "PEEROVO_API_URL",
@@ -195,5 +196,13 @@ describe("stateless multiplayer room credentials", () => {
       body: "not-json",
     }));
     expect(malformed.status).toBe(400);
+
+    const malformedCredentials = await peerCredentialsRoute(new Request("https://shiftingfront.test/api/multiplayer/peer-credentials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not-json",
+    }));
+    expect(malformedCredentials.status).toBe(400);
+    expect(await malformedCredentials.json()).toEqual({ error: "invalid_request" });
   });
 });

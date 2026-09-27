@@ -135,6 +135,7 @@ export function completedOrBuilding(state: SimState, kind: BuildingKind): number
 }
 
 export function combatValue(entity: Entity): number {
+  if (entity.kind === "behemoth") return 6;
   if (entity.kind === "tank") return 4;
   if (entity.kind === "antiArmor") return 3;
   if (entity.kind === "infantry") return 1;

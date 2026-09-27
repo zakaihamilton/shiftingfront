@@ -54,9 +54,10 @@ export function tooltipLines(state: SimState, e: Entity, extras: RenderExtras): 
   const cls = e.class === "unit" ? "Unit" : "Building";
   const friendly = state.multiplayer ? e.owner === (state.viewOwner ?? 0) : e.owner === 0;
   const faction = state.factions[e.owner]?.name ?? (e.owner === 0 ? "Player" : "Enemy");
+  const affiliation = e.neutral ? "Neutral" : friendly ? "Friendly" : "Hostile";
   const lines = [
     `${name} · ${cls}`,
-    `${friendly ? "Friendly" : "Hostile"} · ${faction}`,
+    `${affiliation} · ${faction}`,
     `Health ${Math.max(0, Math.round(e.hp))} / ${e.maxHp}`,
   ];
   if ((e.suppression ?? 0) > 0) lines.push(`Suppressed ${Math.ceil(e.suppression ?? 0)}%`);
