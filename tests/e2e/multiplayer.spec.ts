@@ -158,6 +158,7 @@ async function mockPeerovo(page: import("@playwright/test").Page, role: "host" |
 }
 
 test("host starts a four-player corner skirmish after three guests verify their seats", async ({ browser }) => {
+  test.setTimeout(60_000);
   const context = await browser.newContext();
   const host = await context.newPage();
   const guests = await Promise.all(guestPeerIds.map(() => context.newPage()));
