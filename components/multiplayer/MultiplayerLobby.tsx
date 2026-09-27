@@ -329,6 +329,8 @@ export function MultiplayerLobby() {
     });
 
     connection.on("error", () => {
+      const activeConnection = hostConnectionsRef.current.get(connection.peer);
+      if (activeConnection && activeConnection !== connection) return;
       const current = sessionRef.current;
       if (hostStartedRef.current && current && current.status !== "ended") {
         current.disconnectGuest(connection.peer);

@@ -1,5 +1,5 @@
 import type { Command, Owner, SimState } from "@/lib/types";
-import { makeFog, tickFog } from "@/lib/sim/fog";
+import { entityInPlayerVision, makeFog, tickFog } from "@/lib/sim/fog";
 import { evaluateObjectives } from "@/lib/sim/objectives";
 import { compactDestroyedEntities, invalidateEntityCaches } from "@/lib/sim/world";
 
@@ -157,6 +157,7 @@ export class MultiplayerSession {
   private guestCommands: GuestIntent[] = [];
   private guests = new Map<string, GuestSeat>();
   private frames = new Map<number, Command[]>();
+  private resyncRequested = false;
   private pendingSnapshot: SimState | null = null;
   private snapshotSource: (() => SimState) | null = null;
   private snapshotConsumer: ((state: SimState) => void) | null = null;
@@ -430,6 +431,11 @@ export class MultiplayerSession {
     if (this.recordLatencyResponse(peerId, message)) return;
     if (message.type === "intent") {
       const command = sanitizeCommand(message.command, false);
+      if (command?.type === "attack") {
+        const state = this.snapshotSource?.();
+        const target = state?.entities.find((entity) => entity.id === command.targetId);
+        if (!state || !target || !entityInPlayerVision(state, target, guest.owner)) return;
+      }
       if (command && this.guestCommands.length < 384) this.guestCommands.push({ owner: guest.owner, command });
       return;
     }
@@ -468,6 +474,7 @@ export class MultiplayerSession {
     if (!this.pendingSnapshot) return;
     const snapshot = this.pendingSnapshot;
     this.pendingSnapshot = null;
+    this.resyncRequested = false;
     for (const tick of [...this.frames.keys()]) {
       if (tick <= snapshot.tick) {
         this.frames.delete(tick);
@@ -492,7 +499,20 @@ export class MultiplayerSession {
     this.syncSnapshot();
     if (!this.connected) return false;
     if (this.role === "host") return true;
-    return this.frames.has(state.tick + 1);
+    const nextTick = state.tick + 1;
+    if (this.frames.has(nextTick)) return true;
+    if ([...this.frames.keys()].some((tick) => tick > nextTick)) this.requestResync();
+    return false;
+  }
+
+  private requestResync(): void {
+    if (this.role !== "guest" || this.resyncRequested) return;
+    this.resyncRequested = true;
+    try {
+      this.sender.send({ type: "resume" });
+    } catch {
+      this.resyncRequested = false;
+    }
   }
 
   queuedFramesCount(state: SimState): number {

@@ -1,6 +1,6 @@
 import { BUILDING_STATS, isDefensiveTurret, POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER, UNIT_STATS, footprintOf } from "../catalog";
 import { MAP_SKIRT } from "../gen/map";
-import { isBuildingEntity, isHiddenObjectiveAsset, isUnitEntity, type SimState } from "../types";
+import { isBuildingEntity, isHiddenObjectiveAsset, isUnitEntity, type Entity, type Owner, type SimState } from "../types";
 import { livingView, powerFor } from "./world";
 import { groundUnitSightAt } from "./terrainRules";
 
@@ -53,8 +53,7 @@ export function fogAt(state: { width: number; height: number; fog: number[] }, x
 }
 
 /** Whether a tile is inside a current player-controlled sight radius. */
-export function tileInPlayerVision(state: SimState, x: number, y: number): boolean {
-  const viewOwner = state.viewOwner ?? 0;
+export function tileInPlayerVision(state: SimState, x: number, y: number, viewOwner: Owner = state.viewOwner ?? 0): boolean {
   for (const e of livingView(state)) {
     if (e.owner !== viewOwner || isHiddenObjectiveAsset(e)) continue;
     const isTurret = isBuildingEntity(e) && isDefensiveTurret(e.kind);
@@ -74,6 +73,20 @@ export function tileInPlayerVision(state: SimState, x: number, y: number): boole
     if (Math.hypot(x - cx, y - cy) <= sight) return true;
   }
   return false;
+}
+
+/** Whether an entity is currently in the specified player's sight radius. */
+export function entityInPlayerVision(state: SimState, entity: Entity, viewOwner: Owner): boolean {
+  if (isBuildingEntity(entity)) {
+    const fp = footprintOf(entity.kind);
+    for (let dy = 0; dy < fp.h; dy++) {
+      for (let dx = 0; dx < fp.w; dx++) {
+        if (tileInPlayerVision(state, entity.x + dx, entity.y + dy, viewOwner)) return true;
+      }
+    }
+    return false;
+  }
+  return tileInPlayerVision(state, Math.round(entity.x), Math.round(entity.y), viewOwner);
 }
 
 export function tickFog(state: SimState): void {
