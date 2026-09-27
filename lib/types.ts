@@ -59,11 +59,21 @@ export type AiBehavior = "economy" | "defense" | "assault" | "retreat" | "regrou
 /** Last-known information the enemy may use after a player entity leaves sight. */
 export type AiContact = {
   id: number;
+  owner?: Owner;
   class: EntityClass;
   kind: UnitKind | BuildingKind;
   x: number;
   y: number;
   lastSeenTick: number;
+};
+
+export type MultiplayerAiMemory = {
+  behavior?: AiBehavior;
+  retreatTick?: number;
+  retreatLocked?: boolean;
+  contacts?: Record<string, AiContact>;
+  scoutAssignments?: Record<string, { unitId: number; target: Vec2; assignedTick: number }>;
+  nextScoutTargetIndex?: number;
 };
 
 export type SecondaryObjective = {
@@ -500,6 +510,12 @@ export type SimState = {
   multiplayer?: boolean;
   /** Seats participating in this versus match, in stable owner order. */
   multiplayerOwners?: Owner[];
+  /** Seats already eliminated from the skirmish. */
+  multiplayerEliminated?: Owner[];
+  /** Guest seats controlled by deterministic multiplayer AI. */
+  multiplayerAiOwners?: Owner[];
+  /** Per-bot decision state shared by every lockstep peer. */
+  multiplayerAiMemory?: Partial<Record<Owner, MultiplayerAiMemory>>;
   /** Temporary command context set only while one queued order is applied. */
   commandOwner?: Owner;
   winner?: Owner | null;

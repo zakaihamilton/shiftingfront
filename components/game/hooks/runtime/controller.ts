@@ -117,7 +117,9 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
           if (scenarioRunner.state !== state) scenarioRunner = createScenarioRunner(state);
           return scenarioRunner.step(commands);
         },
-        isPaused: () => simRefs.pausedRef.current || Boolean(multiplayer && !multiplayer.canAdvance(simRefs.stateRef.current)),
+        isPaused: () => (multiplayer ? !multiplayer.connected : simRefs.pausedRef.current),
+        canStep: (state) => (multiplayer ? multiplayer.canAdvance(state) : true),
+        getExtraTicks: (state) => (multiplayer ? multiplayer.queuedFramesCount(state) : 0),
         onTick: controller.onTick,
         onFrame: controller.onFrame,
       });
@@ -183,7 +185,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
       frame.onFrame(state, now, paused, frameMs);
       if (state.result !== "playing" && !lifecycle.terminalPresented) {
         lifecycle.terminalPresented = true;
-        const yard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
+        const yard = entitiesFor(state).find((entity) => entity.owner === (state.viewOwner ?? 0) && entity.class === "building" && entity.kind === "constructionYard");
         lifecycle.counters.hqHealthAtEnd = yard ? yard.hp / Math.max(1, yard.maxHp) : 0;
         persistence.onTerminal(state, now, lifecycle.counters);
         simPorts.setState({ ...state, entities: [...state.entities] });

@@ -191,7 +191,8 @@ test("host starts a four-player corner skirmish after three guests verify their 
   await handshakeStarted;
   await expect(host.getByTestId("battlefield-canvas")).toHaveCount(0);
   await expect(firstGuest.getByTestId("battlefield-canvas")).toHaveCount(0);
-  await expect(host.getByTestId("multiplayer-roster").locator("li")).toHaveCount(1);
+  await expect(host.getByTestId("multiplayer-roster").locator("li")).toHaveCount(4);
+  await expect(host.getByTestId("multiplayer-roster-seat-1")).toContainText("Open User seat");
   releaseHandshake();
   await expect(firstGuest.getByTestId("multiplayer-seat")).toContainText("Northeast");
 
@@ -248,5 +249,62 @@ test("host starts a four-player corner skirmish after three guests verify their 
   await expect(guests[2]!.getByRole("heading", { name: "Connection ended" })).toBeVisible();
   await expect(guests[2]!.getByText("The host ended the skirmish.").last()).toBeVisible();
   releaseHandshake();
+  await context.close();
+});
+
+test("host can launch a skirmish against an AI opponent", async ({ browser }) => {
+  const context = await browser.newContext();
+  const host = await context.newPage();
+  const networkId = `sf-multiplayer-ai-${Date.now()}-${Math.random()}`;
+  await mockPeerTransport(host, networkId);
+  await mockPeerovo(host, "host");
+
+  await host.goto("/");
+  await host.getByRole("button", { name: "MULTIPLAYER" }).click();
+  await host.getByRole("button", { name: "Host a room" }).click();
+  await host.getByTestId("multiplayer-seed-input").fill("0421");
+  await host.getByRole("button", { name: "Create room" }).click();
+  await expect(host.getByTestId("multiplayer-invite-code")).toHaveText(roomCode);
+  await expect(host.getByTestId("multiplayer-start-button")).toBeDisabled();
+  await host.getByTestId("multiplayer-seat-toggle-1").click();
+  await expect(host.getByTestId("multiplayer-roster-seat-1")).toContainText("AI opponent");
+  await expect(host.getByTestId("multiplayer-start-button")).toBeEnabled();
+  await host.getByTestId("multiplayer-seat-toggle-1").click();
+  await expect(host.getByTestId("multiplayer-start-button")).toBeDisabled();
+  await host.getByTestId("multiplayer-seat-toggle-1").click();
+  await host.getByTestId("multiplayer-start-button").click();
+  await expect(host.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 });
+  await expect(host.getByTestId("command-sidebar")).toBeVisible();
+  await context.close();
+});
+
+test("AI and a human guest occupy separate seats in the same skirmish", async ({ browser }) => {
+  const context = await browser.newContext();
+  const host = await context.newPage();
+  const guest = await context.newPage();
+  const networkId = `sf-multiplayer-mixed-${Date.now()}-${Math.random()}`;
+  await Promise.all([mockPeerTransport(host, networkId), mockPeerTransport(guest, networkId)]);
+  await Promise.all([mockPeerovo(host, "host"), mockPeerovo(guest, "guest", guestPeerIds[0])]);
+
+  await host.goto("/");
+  await host.getByRole("button", { name: "MULTIPLAYER" }).click();
+  await host.getByRole("button", { name: "Host a room" }).click();
+  await host.getByTestId("multiplayer-seed-input").fill("0421");
+  await host.getByRole("button", { name: "Create room" }).click();
+  await expect(host.getByTestId("multiplayer-invite-code")).toHaveText(roomCode);
+  await host.getByTestId("multiplayer-seat-toggle-1").click();
+
+  await guest.goto("/");
+  await guest.getByRole("button", { name: "MULTIPLAYER" }).click();
+  await guest.getByTestId("multiplayer-code-input").fill(roomCode);
+  await guest.getByRole("button", { name: "Join room" }).click();
+  await expect(guest.getByTestId("multiplayer-seat")).toContainText("Southeast");
+  await expect(host.getByTestId("multiplayer-roster-seat-1")).toContainText("AI opponent");
+  await expect(host.getByTestId("multiplayer-roster-seat-2")).toContainText("Connected");
+  await host.getByTestId("multiplayer-start-button").click();
+  await Promise.all([
+    expect(host.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 }),
+    expect(guest.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 }),
+  ]);
   await context.close();
 });

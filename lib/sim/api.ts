@@ -296,7 +296,7 @@ function skirmishFactions(campaign: ReadonlyCampaign): Faction[] {
   ];
 }
 
-function createSkirmishArena(seed: number, campaign: ReadonlyCampaign, owners: Owner[]): SimState {
+function createSkirmishArena(seed: number, campaign: ReadonlyCampaign, owners: Owner[], aiOwners: Owner[]): SimState {
   const size = SKIRMISH_MAP_SIZE;
   const tiles = new Array<number>(size * size).fill(TILE_CLEAR);
   const heights = new Array<number>(size * size).fill(1);
@@ -335,6 +335,9 @@ function createSkirmishArena(seed: number, campaign: ReadonlyCampaign, owners: O
   });
   state.multiplayer = true;
   state.multiplayerOwners = owners;
+  state.multiplayerEliminated = [];
+  state.multiplayerAiOwners = aiOwners;
+  state.multiplayerAiMemory = Object.fromEntries(aiOwners.map((owner) => [owner, {}]));
   state.viewOwner = owners[0] ?? 0;
   state.missionKind = "decapitate";
   state.aiState = undefined;
@@ -360,12 +363,21 @@ function createSkirmishArena(seed: number, campaign: ReadonlyCampaign, owners: O
 }
 
 /** Create a deterministic, symmetric corner arena for a two-to-four player skirmish. */
-export function createSkirmish(seed: number, viewOwner: Owner, activeOwners: readonly Owner[] = [0, 1]): { campaign: ReadonlyCampaign; state: SimState } {
+export function createSkirmish(
+  seed: number,
+  viewOwner: Owner,
+  activeOwners: readonly Owner[] = [0, 1],
+  aiOwners: readonly Owner[] = [],
+): { campaign: ReadonlyCampaign; state: SimState } {
   assertValidSeed(seed);
   const campaign = createCampaign(seed);
   const owners = [...new Set(activeOwners)].filter((owner) => owner >= 0 && owner <= 3).sort((a, b) => a - b);
-  if (owners.length < 2 || owners.length > 4 || !owners.includes(viewOwner)) throw new Error("A skirmish requires two to four active player seats");
-  const state = createSkirmishArena(seed, campaign, owners);
+  const bots = [...new Set(aiOwners)].sort((a, b) => a - b);
+  if (owners.length < 2 || owners.length > 4 || !owners.includes(0) || !owners.includes(viewOwner) ||
+      bots.length !== aiOwners.length || bots.some((owner) => owner === 0 || !owners.includes(owner))) {
+    throw new Error("A skirmish requires valid human and AI seats");
+  }
+  const state = createSkirmishArena(seed, campaign, owners, bots);
   state.viewOwner = viewOwner;
   state.fog = makeFog(state.width, state.height, 0);
   tickFog(state);

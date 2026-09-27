@@ -10,11 +10,14 @@ export function frameTickBudget(
   acc: number,
   tickMs = TICK_MS,
   maxTicks = MAX_TICKS_PER_FRAME,
+  extraAvailableTicks = 0,
 ): { ticks: number; acc: number } {
-  const available = Math.max(0, Math.floor(acc / tickMs));
+  const normalAvailable = Math.max(0, Math.floor(acc / tickMs));
+  const available = normalAvailable + Math.max(0, extraAvailableTicks);
   const frameCap = available > maxTicks ? Math.max(maxTicks, MAX_CATCH_UP_TICKS_PER_FRAME) : maxTicks;
   const ticks = Math.min(available, frameCap);
-  return { ticks, acc: Math.max(0, acc - ticks * tickMs) };
+  const fromAcc = Math.min(normalAvailable, ticks);
+  return { ticks, acc: Math.max(0, acc - fromAcc * tickMs) };
 }
 
 export type LoopHandle = {
@@ -29,6 +32,8 @@ export type LoopOptions = {
   drainCommands: () => Command[];
   step: SimulationStep;
   isPaused?: () => boolean;
+  canStep?: (state: SimState) => boolean;
+  getExtraTicks?: (state: SimState) => number;
   onFrame?: (now: number, state: SimState, paused: boolean, subTickAlpha: number, frameMs: number) => void;
   onTick?: (state: SimState, events: SimEvent[], now: number) => void;
   onEvents?: (events: SimEvent[]) => void;
@@ -40,6 +45,8 @@ export function startLoop({
   drainCommands,
   step,
   isPaused,
+  canStep,
+  getExtraTicks,
   onFrame,
   onTick,
   onEvents,
@@ -78,9 +85,17 @@ export function startLoop({
     const frameMs = Math.max(0, now - last);
     acc = Math.min(acc + frameMs, MAX_ACCUMULATOR_CAP_MS);
     last = now;
-    const budget = frameTickBudget(acc);
+    const extraTicks = getExtraTicks ? getExtraTicks(state) : 0;
+    const preBudgetAcc = acc;
+    const budget = frameTickBudget(acc, TICK_MS, MAX_TICKS_PER_FRAME, extraTicks);
+    const deductedFromAcc = Math.max(0, Math.round((preBudgetAcc - budget.acc) / TICK_MS));
     acc = budget.acc;
     for (let i = 0; i < budget.ticks && state.result === "playing"; i++) {
+      if (canStep && !canStep(state)) {
+        const unsteppedFromAcc = Math.max(0, deductedFromAcc - i);
+        acc += unsteppedFromAcc * TICK_MS;
+        break;
+      }
       const cmds = drainCommands();
       const out = step(state, cmds.length ? cmds : undefined);
       state = out.state;

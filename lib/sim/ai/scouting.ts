@@ -1,10 +1,11 @@
-import type { Entity, SimState, Vec2 } from "../../types";
+import type { Entity, Owner, SimState, Vec2 } from "../../types";
 import { isUnitEntity } from "../../types";
 import { isAirUnit, isSupportUnit } from "../../catalog";
 import { closestApproach, distToEntity, inBounds, isStaticWalkable } from "../world";
 import { cellInfluence, type InfluenceMap } from "./influence";
 import { homeGuardCount } from "../policy";
 import { holdingDestination } from "../navigation";
+import { multiplayerAiMemory } from "./ownerState";
 
 export type ScoutAssignment = {
   unitId: number;
@@ -17,19 +18,32 @@ type ScoutRegistry = {
   nextTargetIndex: number;
 };
 
-const scoutState = new WeakMap<SimState, ScoutRegistry>();
+const scoutState = new WeakMap<SimState, Map<Owner, ScoutRegistry>>();
 
 function sameTile(a: { x: number; y: number } | undefined, b: { x: number; y: number }): boolean {
   return !!a && Math.round(a.x) === Math.round(b.x) && Math.round(a.y) === Math.round(b.y);
 }
 
-function scoutsFor(state: SimState): ScoutRegistry {
-  let registry = scoutState.get(state);
+function scoutsFor(state: SimState, owner: Owner): ScoutRegistry {
+  let ownerRegistries = scoutState.get(state);
+  if (!ownerRegistries) scoutState.set(state, ownerRegistries = new Map());
+  let registry = ownerRegistries.get(owner);
   if (!registry) {
-    registry = { assignments: new Map(), nextTargetIndex: 0 };
-    scoutState.set(state, registry);
+    const memory = state.multiplayer ? multiplayerAiMemory(state, owner) : undefined;
+    registry = {
+      assignments: new Map(Object.entries(memory?.scoutAssignments ?? {}).map(([id, assignment]) => [Number(id), assignment])),
+      nextTargetIndex: memory?.nextScoutTargetIndex ?? 0,
+    };
+    ownerRegistries.set(owner, registry);
   }
   return registry;
+}
+
+function persistScouts(state: SimState, owner: Owner, registry: ScoutRegistry): void {
+  if (!state.multiplayer) return;
+  const memory = multiplayerAiMemory(state, owner);
+  memory.scoutAssignments = Object.fromEntries(registry.assignments);
+  memory.nextScoutTargetIndex = registry.nextTargetIndex;
 }
 
 export function pickScoutTarget(state: SimState, index: number): Vec2 {
@@ -74,8 +88,8 @@ export function pickScoutTarget(state: SimState, index: number): Vec2 {
   return fallback ?? center;
 }
 
-export function isActiveScout(state: SimState, unitId: number): boolean {
-  return scoutsFor(state).assignments.has(unitId);
+export function isActiveScout(state: SimState, unitId: number, owner: Owner = 1): boolean {
+  return scoutsFor(state, owner).assignments.has(unitId);
 }
 
 export function updateScouts(
@@ -84,11 +98,16 @@ export function updateScouts(
   influence: InfluenceMap,
   hasDiscoveredPlayerYard: boolean,
   yard?: Entity,
+  owner: Owner = 1,
 ): { unit: Entity; target: Vec2 }[] {
-  const registry = scoutsFor(state);
+  const registry = scoutsFor(state, owner);
   const activeScouts = registry.assignments;
   const assignments: { unit: Entity; target: Vec2 }[] = [];
   const reusableScoutIds = new Set<number>();
+  const finish = () => {
+    persistScouts(state, owner, registry);
+    return assignments;
+  };
 
   // Cleanup destroyed or busy units and pull an active scout back when its
   // local threat substantially exceeds the available friendly support.
@@ -127,15 +146,15 @@ export function updateScouts(
     }
   }
 
-  if (assignments.length > 0) return assignments;
+  if (assignments.length > 0) return finish();
 
   // If player yard is already known and engaged, scouting priority drops
   if (hasDiscoveredPlayerYard && activeScouts.size > 0) {
-    return assignments;
+    return finish();
   }
 
   // Maximum 1 scout in opening/early phases to avoid depleting base defense
-  if (activeScouts.size >= 1) return assignments;
+  if (activeScouts.size >= 1) return finish();
 
   const homeReserve = homeGuardCount(state.missionIndex);
   const defenders = yard
@@ -148,7 +167,7 @@ export function updateScouts(
 
   // Find a candidate: surplus ground combat unit with full health that is idle and not guarding base
   const candidate = units.find((u) => {
-    if (!isUnitEntity(u) || u.owner !== 1 || u.hp < u.maxHp) return false;
+    if (!isUnitEntity(u) || u.owner !== owner || u.hp < u.maxHp) return false;
     if (isAirUnit(u.kind) || isSupportUnit(u.kind) || u.kind === "harvester") return false;
     const failedScoutRoute = reusableScoutIds.has(u.id) && u.routePending !== undefined && u.path.length === 0;
     if (u.attackTarget !== undefined || (!u.idle && !failedScoutRoute)) return false;
@@ -160,7 +179,7 @@ export function updateScouts(
     return true;
   });
 
-  if (!candidate) return assignments;
+  if (!candidate) return finish();
 
   const reusingCompletedScout = reusableScoutIds.has(candidate.id);
   const target = pickScoutTarget(
@@ -181,7 +200,7 @@ export function updateScouts(
   });
 
   assignments.push({ unit: candidate, target });
-  return assignments;
+  return finish();
 }
 
 export function shouldScoutRetreat(unit: Entity, influence: InfluenceMap): boolean {

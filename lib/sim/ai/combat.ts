@@ -1,5 +1,5 @@
 import { isAirUnit, isSupportUnit, UNIT_STATS } from "../../catalog";
-import { isUnitEntity, type Entity, type SimState } from "../../types";
+import { isUnitEntity, type Entity, type Owner, type SimState } from "../../types";
 import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
 import { byId, closestApproach, distToEntity, livingView } from "../world";
@@ -13,8 +13,8 @@ function sameTile(a: { x: number; y: number } | undefined, b: { x: number; y: nu
   return !!a && Math.round(a.x) === Math.round(b.x) && Math.round(a.y) === Math.round(b.y);
 }
 
-export function enemyCombat(state: SimState): Entity[] {
-  return livingView(state).filter((e) => e.owner === 1 && isUnitEntity(e) && UNIT_STATS[e.kind].damage > 0 && !isSupportUnit(e.kind));
+export function enemyCombat(state: SimState, owner: Owner = 1): Entity[] {
+  return livingView(state).filter((e) => e.owner === owner && isUnitEntity(e) && UNIT_STATS[e.kind].damage > 0 && !isSupportUnit(e.kind));
 }
 
 export function sendHome(state: SimState, unit: Entity, yard: Entity): void {
@@ -112,6 +112,8 @@ export function assignAssault(
   playerYard: Entity,
   retarget: boolean,
   knownPlayers?: Entity[],
+  aiOwner: Owner = 1,
+  opponents: readonly Owner[] = [0],
 ): void {
   const guards = homeGuardCount(state.missionIndex);
   if (!retarget) {
@@ -134,14 +136,14 @@ export function assignAssault(
   }
   const sorted = [...units].sort((a, b) => distToEntity(a, yard) - distToEntity(b, yard) || a.id - b.id);
   const raiders = sorted.slice(guards);
-  const resourcePoint = contestedResourcePoint(state, yard, knownPlayers);
+  const resourcePoint = contestedResourcePoint(state, yard, knownPlayers, aiOwner, opponents);
   const laneHarvester = resourcePoint
-    ? nearestKnownPlayer(state, resourcePoint, (e) => e.owner === 0 && e.kind === "harvester" && e.hp > 0, knownPlayers)
+    ? nearestKnownPlayer(state, resourcePoint, (e) => opponents.includes(e.owner) && e.kind === "harvester" && e.hp > 0, knownPlayers, aiOwner, opponents)
     : undefined;
   const harvester = laneHarvester && resourcePoint && distToEntity(resourcePoint, laneHarvester) <= 12
     ? laneHarvester
-    : nearestKnownPlayer(state, yard, (e) => e.owner === 0 && e.kind === "harvester" && e.hp > 0, knownPlayers);
-  const influence = buildInfluenceMap(state, knownPlayers);
+    : nearestKnownPlayer(state, yard, (e) => opponents.includes(e.owner) && e.kind === "harvester" && e.hp > 0, knownPlayers, aiOwner, opponents);
+  const influence = buildInfluenceMap(state, knownPlayers, aiOwner, opponents);
   const flank = findWeakestFlank(state, influence, playerYard);
   raiders.forEach((u, index) => {
     if (!retarget && u.attackTarget !== undefined && byId(state, u.attackTarget)) return;
@@ -152,7 +154,7 @@ export function assignAssault(
       // the bounded route search proves it unreachable, attack directly
       // instead of leaving this raider permanently stranded at the flank.
       if (u.routePending === false && u.path.length === 0 && Math.hypot(u.x - flank.x, u.y - flank.y) > 0.001) {
-        assignAttack(state, u, harvester ?? playerYard);
+      assignAttack(state, u, harvester ?? playerYard);
       }
       return;
     }

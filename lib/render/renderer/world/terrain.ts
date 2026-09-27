@@ -61,7 +61,7 @@ export function renderTerrainPhase(
 
   if (extras.placeKind && hoverTile) {
     const fp = footprintOf(extras.placeKind);
-    const ok = canPlaceBuilding(state, extras.placeKind, hoverTile.x, hoverTile.y);
+    const ok = canPlaceBuilding(state, extras.placeKind, hoverTile.x, hoverTile.y, state.viewOwner ?? 0);
     for (let oy = 0; oy < fp.h; oy++) {
       for (let ox = 0; ox < fp.w; ox++) {
         const tx = hoverTile.x + ox;

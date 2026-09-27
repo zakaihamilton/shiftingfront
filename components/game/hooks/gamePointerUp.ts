@@ -175,7 +175,7 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
   }
 
   if (placeKind) {
-    const validPlacement = canPlaceBuilding(state, placeKind, tx, ty);
+    const validPlacement = canPlaceBuilding(state, placeKind, tx, ty, owner);
     return {
       clearBox: true,
       commands: [{ type: "build", building: placeKind, x: tx, y: ty }],

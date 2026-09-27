@@ -16,6 +16,7 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
     seed, mission, resume, fresh, slot, tutorial,
     multiplayerOwner: multiplayerSession?.owner,
     multiplayerOwners: multiplayerSession?.owners,
+    multiplayerAiOwners: multiplayerSession?.aiOwners,
   });
   const chrome = useGameChrome(durable.state.result);
   const commandPort = useMemo(() => createRuntimeCommandPort(chrome.cmdQ, multiplayerSession ? (command) => multiplayerSession.submit(command) : undefined), [chrome.cmdQ, multiplayerSession]);

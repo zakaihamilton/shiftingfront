@@ -50,6 +50,12 @@ describe("sim catch-up budget", () => {
   it("runs no ticks when the accumulator is short", () => {
     expect(frameTickBudget(TICK_MS - 1)).toEqual({ ticks: 0, acc: TICK_MS - 1 });
   });
+
+  it("incorporates extra available ticks for multiplayer catch-up", () => {
+    const budget = frameTickBudget(TICK_MS * 0.4, TICK_MS, MAX_TICKS_PER_FRAME, 3);
+    expect(budget.ticks).toBe(3);
+    expect(budget.acc).toBeCloseTo(TICK_MS * 0.4);
+  });
 });
 
 describe("startLoop", () => {
@@ -117,6 +123,57 @@ describe("startLoop", () => {
     loop.stop();
 
     expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("preserves unstepped ticks in accumulator when canStep returns false and catches up with extraTicks", () => {
+    let now = 0;
+    let nextRafId = 1;
+    const rafs = new Map<number, FrameRequestCallback>();
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      const id = nextRafId++;
+      rafs.set(id, callback);
+      return id;
+    });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => {
+      rafs.delete(id);
+    });
+
+    const state = createMission({ seed: 421, missionIndex: 0 });
+    let canAdvanceTick = false;
+    let recordedAlpha = 0;
+    let extraTicksCount = 0;
+    const loop = startLoop({
+      getState: () => state,
+      setState: () => undefined,
+      drainCommands: () => [],
+      step: tick,
+      canStep: () => canAdvanceTick,
+      getExtraTicks: () => extraTicksCount,
+      onFrame: (_now, _s, _paused, alpha) => { recordedAlpha = alpha; },
+    });
+
+    const flushFrame = (time: number) => {
+      now = time;
+      const [id, callback] = rafs.entries().next().value as [number, FrameRequestCallback];
+      rafs.delete(id);
+      callback(time);
+    };
+
+    flushFrame(0);
+    // 1 tick of real time elapsed, but next frame has not arrived over network
+    flushFrame(TICK_MS);
+    expect(state.tick).toBe(0);
+    expect(recordedAlpha).toBeCloseTo(1);
+
+    // Frame arrives with 2 buffered frames to catch up
+    canAdvanceTick = true;
+    extraTicksCount = 2;
+    flushFrame(TICK_MS + 16);
+    // Should step the normal accumulated tick plus the 2 extra buffered ticks = 3 ticks
+    expect(state.tick).toBe(3);
+
+    loop.stop();
   });
 });
 

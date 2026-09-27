@@ -6,7 +6,7 @@ import { runwayServicePoint } from "./aircraft";
 import { entitiesFor } from "./entities";
 import { powerShortageByOwner } from "./powerShortage";
 
-const playerPowerOk = new WeakMap<SimState, boolean>();
+const playerPowerOk = new WeakMap<SimState, Map<number, boolean>>();
 
 function isUnitProducer(kind: string): kind is BuildingKind {
   return BUILDING_DEFINITIONS[kind as BuildingKind]?.production !== undefined;
@@ -140,7 +140,7 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
           spawned.y = spot.y;
           spawned.assignedRunwayId = e.id;
           spawned.flightState = "servicing";
-          spawned.facing = spawned.owner === 0 ? 1 : 5;
+          spawned.facing = state.multiplayer ? (([1, 3, 5, 7] as const)[spawned.owner] ?? 1) : (spawned.owner === 0 ? 1 : 5);
           spawned.serviceTicks = 0;
           spawned.ammo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo ?? 0;
           spawned.maxAmmo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo;
@@ -172,7 +172,9 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
 function notePlayerPowerShortage(state: SimState, events?: SimEvent[]): void {
   const owner = state.multiplayer ? state.viewOwner ?? 0 : 0;
   const ok = powerFor(state, owner) >= 0;
-  const wasOk = playerPowerOk.get(state) ?? true;
+  let ownerMap = playerPowerOk.get(state);
+  if (!ownerMap) playerPowerOk.set(state, (ownerMap = new Map()));
+  const wasOk = ownerMap.get(owner) ?? true;
   if (wasOk && !ok) events?.push({ type: "powerShortage", owner });
-  playerPowerOk.set(state, ok);
+  ownerMap.set(owner, ok);
 }

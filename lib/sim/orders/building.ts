@@ -15,7 +15,7 @@ export function startBuild(state: SimState, kind: BuildingKind, x: number, y: nu
   if (buildingLimitReached(entitiesFor(state), owner, kind)) return [{ type: "commandRejected", reason: "building limit reached" }];
   const tx = Math.round(x);
   const ty = Math.round(y);
-  if (!canPlaceBuilding(state, kind, tx, ty)) return [{ type: "commandRejected", reason: "invalid placement" }];
+  if (!canPlaceBuilding(state, kind, tx, ty, owner)) return [{ type: "commandRejected", reason: "invalid placement" }];
   const yard = entitiesFor(state).find(
     (e) => e.owner === owner && e.kind === "constructionYard" && e.hp > 0 && e.constructing === 0,
   );

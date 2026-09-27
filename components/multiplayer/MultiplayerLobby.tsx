@@ -31,7 +31,7 @@ type Credential = {
 };
 
 type LobbyMode = "choose" | "hostSetup" | "joining" | "waiting" | "battle";
-type LobbyPlayer = { owner: Owner; peerId?: string; connected: boolean; host?: boolean; forfeited?: boolean };
+type LobbyPlayer = { owner: Owner; peerId?: string; connected: boolean; host?: boolean; ai?: boolean; forfeited?: boolean };
 type PeerConstructor = typeof import("peerjs").Peer;
 
 declare global {
@@ -106,6 +106,11 @@ function validOwners(value: unknown, localOwner: Owner): value is Owner[] {
     value.includes(0) && value.includes(localOwner) && new Set(value).size === value.length;
 }
 
+function validAiOwners(value: unknown, owners: readonly Owner[], localHumanOwner: unknown): value is Owner[] {
+  return Array.isArray(value) && new Set(value).size === value.length &&
+    value.every((owner) => (owner === 1 || owner === 2 || owner === 3) && owner !== localHumanOwner && owners.includes(owner));
+}
+
 function ownerLabel(owner: Owner): string {
   return ["Northwest · Host", "Northeast", "Southeast", "Southwest"][owner] ?? `Player ${owner + 1}`;
 }
@@ -127,6 +132,7 @@ export function MultiplayerLobby() {
   const guestConnectionRef = useRef<DataConnection | null>(null);
   const hostConnectionsRef = useRef(new Map<string, DataConnection>());
   const hostSeatsRef = useRef(new Map<string, Owner>());
+  const hostAiOwnersRef = useRef(new Set<Owner>());
   const hostSeatTimersRef = useRef(new Map<string, number>());
   const hostForfeitedRef = useRef(new Set<string>());
   const handshakeConnectionsRef = useRef(new Set<DataConnection>());
@@ -154,10 +160,20 @@ export function MultiplayerLobby() {
   }, []);
 
   const publishRoster = useCallback(() => {
-    const guests = [...hostSeatsRef.current.entries()]
-      .map(([peerId, owner]) => ({ owner, peerId, connected: hostConnectionsRef.current.get(peerId)?.open === true, forfeited: hostForfeitedRef.current.has(peerId) }))
-      .sort((a, b) => a.owner - b.owner);
-    setRoster([{ owner: 0, connected: true, host: true }, ...guests]);
+    const peerByOwner = new Map([...hostSeatsRef.current.entries()].map(([peerId, owner]) => [owner, peerId]));
+    const players: LobbyPlayer[] = [0, 1, 2, 3].map((value) => {
+      const owner = value as Owner;
+      if (owner === 0) return { owner, connected: true, host: true };
+      const peerId = peerByOwner.get(owner);
+      if (peerId) return {
+        owner,
+        peerId,
+        connected: hostConnectionsRef.current.get(peerId)?.open === true,
+        forfeited: hostForfeitedRef.current.has(peerId),
+      };
+      return { owner, connected: false, ai: hostAiOwnersRef.current.has(owner) };
+    });
+    setRoster(players);
   }, []);
 
   const destroyPeer = useCallback(() => {
@@ -178,6 +194,7 @@ export function MultiplayerLobby() {
     roleRef.current = null;
     setLobbyRole(null);
     hostSeatsRef.current.clear();
+    hostAiOwnersRef.current.clear();
     hostForfeitedRef.current.clear();
     handshakeConnectionsRef.current.clear();
     hostStartedRef.current = false;
@@ -260,7 +277,10 @@ export function MultiplayerLobby() {
         try {
           const peerId = connection.peer;
           const knownOwner = hostSeatsRef.current.get(peerId);
-          if (hostForfeitedRef.current.has(peerId) || (hostStartedRef.current && knownOwner === undefined) || (!hostStartedRef.current && knownOwner === undefined && hostSeatsRef.current.size >= 3)) {
+          const openUserSeat = ([1, 2, 3] as const).some((candidate) =>
+            !hostAiOwnersRef.current.has(candidate) && ![...hostSeatsRef.current.values()].includes(candidate),
+          );
+          if (hostForfeitedRef.current.has(peerId) || (hostStartedRef.current && knownOwner === undefined) || (!hostStartedRef.current && knownOwner === undefined && !openUserSeat)) {
             rejectRoomFull(connection);
             return;
           }
@@ -269,15 +289,13 @@ export function MultiplayerLobby() {
           let owner = knownOwner;
           if (owner === undefined) {
             const used = new Set(hostSeatsRef.current.values());
-            owner = ([1, 2, 3] as const).find((candidate) => !used.has(candidate));
+            owner = ([1, 2, 3] as const).find((candidate) => !used.has(candidate) && !hostAiOwnersRef.current.has(candidate));
             if (owner === undefined || hostStartedRef.current) {
               rejectRoomFull(connection);
               return;
             }
             hostSeatsRef.current.set(peerId, owner);
           }
-          const prior = hostConnectionsRef.current.get(peerId);
-          if (prior && prior !== connection) prior.close();
           hostConnectionsRef.current.set(peerId, connection);
           const timer = hostSeatTimersRef.current.get(peerId);
           if (timer) window.clearTimeout(timer);
@@ -423,7 +441,7 @@ export function MultiplayerLobby() {
       setError("");
       if (role === "host") {
         sessionRef.current?.attach({ send() {} });
-        setStatus(hostStartedRef.current ? "Signaling restored. The match is ready." : "Room ready. Waiting for up to three guests.");
+        setStatus(hostStartedRef.current ? "Signaling restored. The match is ready." : "Room ready. Invite guests or assign AI opponents.");
       } else if (sessionRef.current && guestConnectionRef.current?.open) {
         const connection = guestConnectionRef.current;
         sessionRef.current.attach({ send: (value: unknown) => { if (connection.open) connection.send(value); } });
@@ -446,6 +464,7 @@ export function MultiplayerLobby() {
     destroyPeer();
     setInviteCode("");
     setRoster([{ owner: 0, connected: true, host: true }]);
+    hostAiOwnersRef.current.clear();
     setMode("waiting");
     setError("");
     setStatus("Creating room…");
@@ -456,6 +475,7 @@ export function MultiplayerLobby() {
       const peer = await startPeer(credential, "host");
       if (!peer) return;
       peer.on("connection", (connection) => bindHostConnection(connection, credential.grant, parsedSeed));
+      publishRoster();
       await waitForPeerOpen(peer);
       if (!mountedRef.current || peerRef.current !== peer) return;
       setInviteCode(credential.code);
@@ -464,12 +484,13 @@ export function MultiplayerLobby() {
       setMode("hostSetup");
       setError(publicError(createError));
     }
-  }, [bindHostConnection, destroyPeer, seed, startPeer]);
+  }, [bindHostConnection, destroyPeer, publishRoster, seed, startPeer]);
 
   const startMatch = useCallback(() => {
     if (roleRef.current !== "host" || hostStartedRef.current) return;
     const connected = [...hostSeatsRef.current.entries()].filter(([peerId]) => hostConnectionsRef.current.get(peerId)?.open === true);
-    if (connected.length < 1 || connected.length > 3) return;
+    const aiOwners = [...hostAiOwnersRef.current].sort((a, b) => a - b);
+    if (connected.length + aiOwners.length < 1 || connected.length + aiOwners.length > 3) return;
     for (const peerId of [...hostSeatsRef.current.keys()]) {
       if (connected.some(([connectedId]) => connectedId === peerId)) continue;
       const timer = hostSeatTimersRef.current.get(peerId);
@@ -477,9 +498,10 @@ export function MultiplayerLobby() {
       hostSeatTimersRef.current.delete(peerId);
       hostSeatsRef.current.delete(peerId);
     }
-    const owners: Owner[] = [0 as Owner, ...connected.map(([, owner]) => owner)].sort((a, b) => a - b);
+    const owners: Owner[] = [0 as Owner, ...connected.map(([, owner]) => owner), ...aiOwners].sort((a, b) => a - b);
+    if (owners.length < 2 || aiOwners.some((owner) => !owners.includes(owner))) return;
     const roomSeed = Number(seed);
-    const hostSession = new MultiplayerSession("host", 0, roomSeed, { send() {} }, owners);
+    const hostSession = new MultiplayerSession("host", 0, roomSeed, { send() {} }, owners, aiOwners);
     for (const [peerId, owner] of connected) {
       const connection = hostConnectionsRef.current.get(peerId);
       if (!connection?.open || !hostSession.addGuest(peerId, owner, { send: (value) => { if (connection.open) connection.send(value); } })) return;
@@ -487,7 +509,7 @@ export function MultiplayerLobby() {
     hostStartedRef.current = true;
     sessionRef.current = hostSession;
     for (const [peerId, owner] of connected) {
-      hostConnectionsRef.current.get(peerId)?.send({ type: "start", seed: roomSeed, settings: SKIRMISH_MATCH_SETTINGS, owner, owners });
+      hostConnectionsRef.current.get(peerId)?.send({ type: "start", seed: roomSeed, settings: SKIRMISH_MATCH_SETTINGS, owner, owners, aiOwners });
     }
     showBattle(hostSession, roomSeed);
   }, [seed, showBattle]);
@@ -525,13 +547,13 @@ export function MultiplayerLobby() {
         const owner = message.owner;
         if (!Number.isInteger(message.seed) || seedValue < 0 || seedValue > 9999 ||
             !validSkirmishMatchSettings(message.settings) || (owner !== 1 && owner !== 2 && owner !== 3) ||
-            !validOwners(message.owners, owner)) {
+            !validOwners(message.owners, owner) || !validAiOwners(message.aiOwners, message.owners, owner)) {
           setError("The host sent incompatible match settings.");
           connection.close();
           return;
         }
         const sender = { send: (value: unknown) => { if (connection.open) connection.send(value); } };
-        const next = new MultiplayerSession("guest", owner, seedValue, sender, message.owners);
+        const next = new MultiplayerSession("guest", owner, seedValue, sender, message.owners, message.aiOwners);
         guestOwnerRef.current = owner;
         setGuestOwner(owner);
         showBattle(next, seedValue);
@@ -583,6 +605,14 @@ export function MultiplayerLobby() {
       scheduleGuestRetry(credential, peer);
     });
   }, [destroyPeer, scheduleGuestRetry, showBattle]);
+
+  const setSeatAi = useCallback((owner: Owner) => {
+    if (owner === 0 || roleRef.current !== "host" || hostStartedRef.current) return;
+    if ([...hostSeatsRef.current.values()].includes(owner)) return;
+    if (hostAiOwnersRef.current.has(owner)) hostAiOwnersRef.current.delete(owner);
+    else hostAiOwnersRef.current.add(owner);
+    publishRoster();
+  }, [publishRoster]);
 
   useEffect(() => { beginGuestConnectionRef.current = beginGuestConnection; }, [beginGuestConnection]);
 
@@ -646,7 +676,7 @@ export function MultiplayerLobby() {
     );
   }
 
-  const connectedPlayers = roster.filter((player) => player.connected && !player.forfeited).length;
+  const activePlayers = roster.filter((player) => player.host || (player.connected && !player.forfeited) || player.ai).length;
   return (
     <main className={styles.screen}>
       <MetalPanel as="section" className={styles.panel} role="region" aria-labelledby="multiplayer-title">
@@ -654,7 +684,7 @@ export function MultiplayerLobby() {
         <h1 id="multiplayer-title">{mode === "waiting" ? (lobbyRole === "host" ? "Room open" : "Waiting for host") : mode === "joining" ? "Joining room" : "Multiplayer"}</h1>
         {mode === "choose" ? (
           <>
-            <p>Host a room for up to three guests, or enter a six-letter invite code. The host starts once at least two players are connected.</p>
+            <p>Host a room, invite up to three guests, or fill vacant corners with AI. The host can start with at least one opponent.</p>
             <div className={styles.actions}>
               <ConsoleButton onClick={() => { setMode("hostSetup"); setError(""); }}>Host a room</ConsoleButton>
               <form onSubmit={joinRoom} className={styles.joinForm}>
@@ -681,19 +711,30 @@ export function MultiplayerLobby() {
           <>
             {lobbyRole === "host" ? (
               <>
-                <p>Invite up to three guests. Start locks the connected roster and places each force in its corner.</p>
+                <p>Invite guests or switch vacant User seats to AI. Start locks the roster and places each force in its corner.</p>
                 <div className={styles.inviteCode} data-testid="multiplayer-invite-code">{inviteCode || "······"}</div>
                 <ul className={styles.roster} data-testid="multiplayer-roster" aria-label="Room roster">
                   {roster.map((player) => (
-                    <li key={player.peerId ?? "host"}>
+                    <li key={player.owner} data-testid={`multiplayer-roster-seat-${player.owner}`}>
                       <span>{ownerLabel(player.owner)}</span>
-                      <span>{player.forfeited ? "Forfeited" : player.connected ? "Connected" : "Waiting"}</span>
+                      <span>{player.host ? "Host" : player.forfeited ? "Forfeited" : player.ai ? "AI opponent" : player.peerId ? player.connected ? "Connected" : "Reserved · reconnecting" : "Open User seat"}</span>
+                      {!player.host && !player.peerId ? (
+                        <button
+                          type="button"
+                          className={styles.seatToggle}
+                          data-testid={`multiplayer-seat-toggle-${player.owner}`}
+                          aria-label={`Set ${ownerLabel(player.owner)} to ${player.ai ? "User" : "AI"}`}
+                          onClick={() => setSeatAi(player.owner)}
+                        >
+                          {player.ai ? "Switch to User" : "Switch to AI"}
+                        </button>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
                 <div className={styles.actions}>
                   <ConsoleButton muted onClick={() => void copyInvite()} disabled={!inviteCode}>Copy code</ConsoleButton>
-                  <ConsoleButton data-testid="multiplayer-start-button" onClick={startMatch} disabled={connectedPlayers < 2}>Start skirmish</ConsoleButton>
+                  <ConsoleButton data-testid="multiplayer-start-button" onClick={startMatch} disabled={activePlayers < 2}>Start skirmish</ConsoleButton>
                   <ConsoleButton muted onClick={endCurrentMatch}>Close room</ConsoleButton>
                 </div>
               </>

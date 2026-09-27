@@ -1,30 +1,41 @@
 import { isUnitAvailable, UNIT_STATS } from "../../catalog";
 import { TILE_RESOURCE } from "../../types";
-import type { Entity, SimState, UnitKind, Vec2 } from "../../types";
+import type { Entity, Owner, SimState, UnitKind, Vec2 } from "../../types";
 import { BUILDING_PLACEMENT_RADIUS, canPlaceBuilding, findBuildSite, livingView, powerFor } from "../world";
 import { objectiveContractFor } from "../../gen/profile";
 import { nearestKnownPlayer } from "./visibility";
+import { aiBehavior, aiRetreatLocked, aiRetreatTick, setAiRetreatLocked, setAiRetreatTick } from "./ownerState";
 
 export const RETREAT_ENTER_HEALTH = 0.35;
 export const RETREAT_RECOVER_HEALTH = 0.5;
 export const RETREAT_MAX_TICKS = 240;
 
 const RESOURCE_SCAN_INTERVAL = 24;
-const resourcePointCache = new WeakMap<SimState, { tick: number; point?: Vec2 }>();
+const resourcePointCache = new WeakMap<SimState, Map<Owner, { tick: number; point?: Vec2 }>>();
 
 export function distance(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-export function contestedResourcePoint(state: SimState, yard: Entity, knownPlayers?: Entity[]): Vec2 | undefined {
-  const cached = resourcePointCache.get(state);
+export function contestedResourcePoint(
+  state: SimState,
+  yard: Entity,
+  knownPlayers?: Entity[],
+  aiOwner: Owner = 1,
+  opponents: readonly Owner[] = [0],
+): Vec2 | undefined {
+  let ownerCache = resourcePointCache.get(state);
+  if (!ownerCache) resourcePointCache.set(state, ownerCache = new Map());
+  const cached = ownerCache.get(aiOwner);
   if (cached && state.tick - cached.tick < RESOURCE_SCAN_INTERVAL) return cached.point;
 
   const playerYard = nearestKnownPlayer(
     state,
     yard,
-    (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+    (entity) => opponents.includes(entity.owner) && entity.kind === "constructionYard",
     knownPlayers,
+    aiOwner,
+    opponents,
   );
   let best: Vec2 | undefined;
   let bestScore = Infinity;
@@ -37,7 +48,7 @@ export function contestedResourcePoint(state: SimState, yard: Entity, knownPlaye
       const point = { x, y };
       const enemyDistance = distance(yard, point);
       if (enemyDistance < 10) continue;
-      if (hasBuildingNear(state, "refinery", point, 8)) continue;
+      if (hasBuildingNear(state, "refinery", point, 8, aiOwner)) continue;
       if (enemyDistance < fallbackDistance) {
         fallbackDistance = enemyDistance;
         fallback = point;
@@ -51,14 +62,14 @@ export function contestedResourcePoint(state: SimState, yard: Entity, knownPlaye
     }
   }
   const point = best ?? fallback;
-  resourcePointCache.set(state, { tick: state.tick, point });
+  ownerCache.set(aiOwner, { tick: state.tick, point });
   return point;
 }
 
-export function hasBuildingNear(state: SimState, kind: "power" | "refinery", point: Vec2, radius: number): boolean {
+export function hasBuildingNear(state: SimState, kind: "power" | "refinery", point: Vec2, radius: number, owner: Owner = 1): boolean {
   const radius2 = radius * radius;
   for (const entity of livingView(state)) {
-    if (entity.owner !== 1 || entity.class !== "building" || entity.kind !== kind) continue;
+    if (entity.owner !== owner || entity.class !== "building" || entity.kind !== kind) continue;
     const dx = entity.x - point.x;
     const dy = entity.y - point.y;
     if (dx * dx + dy * dy <= radius2) return true;
@@ -66,7 +77,7 @@ export function hasBuildingNear(state: SimState, kind: "power" | "refinery", poi
   return false;
 }
 
-export function forwardRelaySite(state: SimState, yard: Entity, point: Vec2): Vec2 | undefined {
+export function forwardRelaySite(state: SimState, yard: Entity, point: Vec2, owner: Owner = 1): Vec2 | undefined {
   const dx = point.x - yard.x;
   const dy = point.y - yard.y;
   const length = Math.hypot(dx, dy);
@@ -79,14 +90,14 @@ export function forwardRelaySite(state: SimState, yard: Entity, point: Vec2): Ve
       x: Math.round(point.x - direction.x * retreat),
       y: Math.round(point.y - direction.y * retreat),
     };
-    const spot = findBuildSite(state, "power", desired.x, desired.y, 4, 1);
+    const spot = findBuildSite(state, "power", desired.x, desired.y, 4, owner);
     if (!spot || distance(spot, yard) < minimumForwardDistance) continue;
     return spot;
   }
   return undefined;
 }
 
-export function forwardRefinerySite(state: SimState, yard: Entity, point: Vec2): Vec2 | undefined {
+export function forwardRefinerySite(state: SimState, yard: Entity, point: Vec2, owner: Owner = 1): Vec2 | undefined {
   const cx = Math.round(point.x);
   const cy = Math.round(point.y);
   for (let radius = 0; radius <= 10; radius += 1) {
@@ -95,20 +106,20 @@ export function forwardRefinerySite(state: SimState, yard: Entity, point: Vec2):
         if (radius > 0 && Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
         const spot = { x: cx + dx, y: cy + dy };
         if (distance(spot, yard) < 10) continue;
-        if (canPlaceBuilding(state, "refinery", spot.x, spot.y, 1)) return spot;
+        if (canPlaceBuilding(state, "refinery", spot.x, spot.y, owner)) return spot;
       }
     }
   }
   return undefined;
 }
 
-export function queueUnit(state: SimState, producer: Entity, kind: UnitKind): boolean {
+export function queueUnit(state: SimState, producer: Entity, kind: UnitKind, owner: Owner = 1): boolean {
   if (!isUnitAvailable(kind, state.missionIndex)) return false;
   if (producer.class !== "building" || producer.constructing > 0 || producer.producing) return false;
   if (producer.kind === "runway" && producer.assignedPlaneId !== undefined) return false;
   const cost = UNIT_STATS[kind].cost;
-  if (state.credits[1] < cost || powerFor(state, 1) < 0) return false;
-  state.credits[1] -= cost;
+  if (producer.owner !== owner || state.credits[owner] < cost || powerFor(state, owner) < 0) return false;
+  state.credits[owner] -= cost;
   producer.producing = { kind, remaining: UNIT_STATS[kind].buildTicks };
   return true;
 }
@@ -120,23 +131,23 @@ export function shouldAutoRepair(state: SimState, building: Entity): boolean {
   return true;
 }
 
-export function shouldRetreat(state: SimState, averageHealth: number): boolean {
+export function shouldRetreat(state: SimState, averageHealth: number, owner: Owner = 1): boolean {
   if (averageHealth >= RETREAT_RECOVER_HEALTH) {
-    state.aiRetreatLocked = undefined;
-    state.aiRetreatTick = undefined;
+    setAiRetreatLocked(state, owner, undefined);
+    setAiRetreatTick(state, owner, undefined);
   }
-  if (state.aiRetreatLocked) return false;
+  if (aiRetreatLocked(state, owner)) return false;
 
-  const holding = state.aiState === "retreat" && averageHealth < RETREAT_RECOVER_HEALTH;
+  const holding = aiBehavior(state, owner) === "retreat" && averageHealth < RETREAT_RECOVER_HEALTH;
   const entering = averageHealth < RETREAT_ENTER_HEALTH;
   if (!holding && !entering) {
-    state.aiRetreatTick = undefined;
+    setAiRetreatTick(state, owner, undefined);
     return false;
   }
-  if (state.aiRetreatTick === undefined) state.aiRetreatTick = state.tick;
-  if (state.tick - state.aiRetreatTick >= RETREAT_MAX_TICKS) {
-    state.aiRetreatLocked = true;
-    state.aiRetreatTick = undefined;
+  if (aiRetreatTick(state, owner) === undefined) setAiRetreatTick(state, owner, state.tick);
+  if (state.tick - (aiRetreatTick(state, owner) ?? state.tick) >= RETREAT_MAX_TICKS) {
+    setAiRetreatLocked(state, owner, true);
+    setAiRetreatTick(state, owner, undefined);
     return false;
   }
   return true;

@@ -8,7 +8,7 @@ export type MultiplayerStatus = "connected" | "disconnected" | "ended";
 export type MultiplayerWire = { send: (value: unknown) => void };
 export type TickFrame = { type: "tick"; protocolVersion: number; tick: number; commands: Command[] };
 export const SKIRMISH_MATCH_SETTINGS = Object.freeze({
-  protocolVersion: 2,
+  protocolVersion: 3,
   fogOfWar: true,
   victoryCondition: "constructionYardDestruction",
   maxPlayers: 4,
@@ -108,13 +108,23 @@ export function sanitizeCommand(value: unknown, allowOwner = false): Command | n
   return command ? { ...command, ...(owner === undefined ? {} : { owner }) } as Command : null;
 }
 
-function isSimSnapshot(value: unknown, seed: number): value is SimState {
+function sameOwners(value: unknown, expected: readonly Owner[], allowSubset = false): value is Owner[] {
+  if (!Array.isArray(value) || value.some((owner) => owner !== 0 && owner !== 1 && owner !== 2 && owner !== 3)) return false;
+  const owners = value as Owner[];
+  return new Set(owners).size === owners.length && (allowSubset
+    ? owners.includes(0) && owners.every((owner) => expected.includes(owner))
+    : owners.length === expected.length && expected.every((owner) => owners.includes(owner)));
+}
+
+function isSimSnapshot(value: unknown, seed: number, owners: readonly Owner[], aiOwners: readonly Owner[]): value is SimState {
   if (!value || typeof value !== "object") return false;
   const state = value as Partial<SimState>;
   return state.seed === seed && state.multiplayer === true && Number.isSafeInteger(state.tick) &&
     Array.isArray(state.entities) && Array.isArray(state.tiles) && Array.isArray(state.heights) &&
     Array.isArray(state.resourceAmount) && Array.isArray(state.fog) &&
-    Array.isArray(state.multiplayerOwners) && state.multiplayerOwners.length >= 2 && state.multiplayerOwners.length <= 4 &&
+    sameOwners(state.multiplayerOwners, owners, true) &&
+    sameOwners(state.multiplayerAiOwners, aiOwners) && aiOwners.every((owner) => state.multiplayerOwners!.includes(owner)) &&
+    state.multiplayerAiMemory !== undefined && typeof state.multiplayerAiMemory === "object" &&
     (state.result === "playing" || state.result === "won" || state.result === "lost");
 }
 
@@ -125,6 +135,7 @@ export class MultiplayerSession {
   readonly owner: Owner;
   readonly role: MultiplayerRole;
   readonly owners: Owner[];
+  readonly aiOwners: Owner[];
   private sender: MultiplayerWire;
   private statusValue: MultiplayerStatus = "connected";
   private listeners = new Set<() => void>();
@@ -136,11 +147,25 @@ export class MultiplayerSession {
   private snapshotSource: (() => SimState) | null = null;
   private snapshotConsumer: ((state: SimState) => void) | null = null;
 
-  constructor(role: MultiplayerRole, owner: Owner, readonly seed: number, sender: MultiplayerWire, owners: readonly Owner[] = [0, 1]) {
+  constructor(
+    role: MultiplayerRole,
+    owner: Owner,
+    readonly seed: number,
+    sender: MultiplayerWire,
+    owners: readonly Owner[] = [0, 1],
+    aiOwners: readonly Owner[] = [],
+  ) {
     this.role = role;
     this.owner = owner;
     this.sender = sender;
     this.owners = [...owners];
+    this.aiOwners = [...aiOwners];
+    if (this.owners.length < 2 || this.owners.length > 4 || !this.owners.includes(0) ||
+        !sameOwners(this.owners, this.owners) || !this.owners.includes(owner) ||
+        !Array.isArray(aiOwners) || new Set(aiOwners).size !== aiOwners.length ||
+        aiOwners.some((aiOwner) => aiOwner === 0 || aiOwner === owner || !this.owners.includes(aiOwner))) {
+      throw new Error("Invalid multiplayer roster");
+    }
   }
 
   get status(): MultiplayerStatus { return this.statusValue; }
@@ -165,7 +190,8 @@ export class MultiplayerSession {
 
   /** Register one authenticated guest seat on the host's peer mesh. */
   addGuest(peerId: string, owner: Owner, sender: MultiplayerWire): boolean {
-    if (this.role !== "host" || owner === 0 || !peerId || [...this.guests.values()].some((guest) => guest.owner === owner && guest.peerId !== peerId)) return false;
+    if (this.role !== "host" || owner === 0 || !this.owners.includes(owner) || this.aiOwners.includes(owner) || !peerId ||
+        [...this.guests.values()].some((guest) => guest.owner === owner && guest.peerId !== peerId)) return false;
     this.guests.set(peerId, { peerId, owner, sender, connected: true });
     this.refreshHostStatus();
     return true;
@@ -243,7 +269,7 @@ export class MultiplayerSession {
       }
       return;
     }
-    if (this.role === "guest" && message.type === "resync" && isSimSnapshot(message.state, this.seed)) {
+    if (this.role === "guest" && message.type === "resync" && isSimSnapshot(message.state, this.seed, this.owners, this.aiOwners)) {
       this.pendingSnapshot = message.state;
       return;
     }
@@ -308,6 +334,11 @@ export class MultiplayerSession {
     if (!this.pendingSnapshot) return;
     const snapshot = this.pendingSnapshot;
     this.pendingSnapshot = null;
+    for (const tick of [...this.frames.keys()]) {
+      if (tick <= snapshot.tick) {
+        this.frames.delete(tick);
+      }
+    }
     const local = this.snapshotSource?.();
     const state: SimState = {
       ...snapshot,
@@ -316,7 +347,7 @@ export class MultiplayerSession {
         ? [...local.fog]
         : makeFog(snapshot.width, snapshot.height, 0),
     };
-    if (state.result !== "playing") {
+    if (state.result !== "playing" || (state.multiplayerOwners && !state.multiplayerOwners.includes(this.owner))) {
       state.result = state.winner === null ? "lost" : state.winner === this.owner ? "won" : "lost";
     }
     tickFog(state);
@@ -328,6 +359,18 @@ export class MultiplayerSession {
     if (!this.connected) return false;
     if (this.role === "host") return true;
     return this.frames.has(state.tick + 1);
+  }
+
+  queuedFramesCount(state: SimState): number {
+    this.syncSnapshot();
+    if (this.role === "host") return 0;
+    let count = 0;
+    let tick = state.tick + 1;
+    while (this.frames.has(tick)) {
+      count++;
+      tick++;
+    }
+    return count;
   }
 
   drainTick(state: SimState, localCommands: Command[]): Command[] {

@@ -187,35 +187,45 @@ export function evaluateObjectives(state: SimState, eventSink?: SimEvent[], coll
   if (state.result !== "playing") return EMPTY_EVENTS;
   if (state.multiplayer) {
     const owners = state.multiplayerOwners ?? [0, 1];
+    state.multiplayerEliminated = state.multiplayerEliminated ?? [];
     const yardOwners = new Set(livingView(state)
       .filter((entity) => entity.kind === "constructionYard")
       .map((entity) => entity.owner));
-    let eliminated = false;
+    let eliminatedAny = false;
+    const events: SimEvent[] = [];
     for (const owner of owners) {
       if (yardOwners.has(owner)) continue;
+      if (state.multiplayerEliminated.includes(owner)) continue;
+      state.multiplayerEliminated.push(owner);
       for (const entity of state.entities) {
         if (entity.owner === owner && entity.hp > 0) {
           entity.hp = 0;
-          eliminated = true;
+          eliminatedAny = true;
         }
       }
+      const text = owner === (state.viewOwner ?? 0)
+        ? "Command HQ destroyed — your forces have been eliminated."
+        : `Player ${owner + 1} eliminated.`;
+      events.push({ type: "alert", kind: "warning", text });
     }
-    if (eliminated) invalidateEntityCaches(state);
+    if (eliminatedAny) invalidateEntityCaches(state);
     const survivingOwners = owners.filter((owner) => yardOwners.has(owner));
     if (survivingOwners.length === 0) {
       state.result = "lost";
       state.winner = null;
       if (state.runtime) state.runtime.phase = "complete";
-      return objectiveEvents(eventSink, [{ type: "lost" }], collectEvents);
+      events.push({ type: "lost" });
+      return objectiveEvents(eventSink, events, collectEvents);
     }
     if (survivingOwners.length === 1) {
       const winner = survivingOwners[0]!;
       state.winner = winner;
       state.result = winner === (state.viewOwner ?? 0) ? "won" : "lost";
       if (state.runtime) state.runtime.phase = "complete";
-      return objectiveEvents(eventSink, [{ type: state.result === "won" ? "won" : "lost" }], collectEvents);
+      events.push({ type: state.result === "won" ? "won" : "lost" });
+      return objectiveEvents(eventSink, events, collectEvents);
     }
-    return EMPTY_EVENTS;
+    return events.length ? objectiveEvents(eventSink, events, collectEvents) : EMPTY_EVENTS;
   }
   const playerCy = livingView(state).some((e) => e.owner === 0 && e.kind === "constructionYard");
   if (!playerCy) {

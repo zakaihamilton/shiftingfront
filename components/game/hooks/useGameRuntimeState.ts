@@ -19,6 +19,7 @@ export function useGameRuntimeState({
   tutorial,
   multiplayerOwner,
   multiplayerOwners,
+  multiplayerAiOwners,
 }: {
   seed: number;
   mission: number;
@@ -28,12 +29,13 @@ export function useGameRuntimeState({
   tutorial: boolean;
   multiplayerOwner?: Owner;
   multiplayerOwners?: Owner[];
+  multiplayerAiOwners?: Owner[];
 }) {
   const campaign = useMemo(() => createCampaign(seed), [seed]);
   const playerVisualProfile = useMemo(() => generateVisualProfile(seed, multiplayerOwner ?? 0), [seed, multiplayerOwner]);
   const [state, setState] = useState<SimState>(() => multiplayerOwner === undefined
     ? initialMission(seed, mission, resume, tutorial, fresh, slot)
-    : createSkirmish(seed, multiplayerOwner, multiplayerOwners).state);
+    : createSkirmish(seed, multiplayerOwner, multiplayerOwners, multiplayerAiOwners).state);
   const saveSession = useMemo(() => createSaveSession(cachedLocalStorage(), seed), [seed]);
   const stateRef = useRef<SimState>(state);
   const hostRef = useRef<HTMLDivElement>(null);

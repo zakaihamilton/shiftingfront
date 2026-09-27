@@ -1,5 +1,5 @@
 import { BUILDING_STATS, UNIT_STATS, footprintOf, isAirUnit, isSupportUnit, isUnitAvailable } from "../../catalog";
-import { isUnitEntity, type Entity, type MissionDirectorPhase, type SimState, type UnitKind } from "../../types";
+import { isUnitEntity, type Entity, type MissionDirectorPhase, type Owner, type SimState, type UnitKind } from "../../types";
 import { rngFromState } from "../../seed/rng";
 import { missionDifficulty } from "../difficulty";
 import { objectiveContractFor, profileContractFor, resolveMissionProfile } from "../../gen/profile";
@@ -10,6 +10,7 @@ import { contestedResourcePoint, distance, queueUnit, shouldAutoRepair, shouldRe
 import { enemyKnownPlayerEntities, nearestKnownPlayer } from "./visibility";
 import { buildInfluenceMap } from "./influence";
 import { isActiveScout, updateScouts } from "./scouting";
+import { aiBehavior, setAiBehavior } from "./ownerState";
 import { isCombatTarget } from "../combat/grid";
 import { homeGuardCount, isTimedRecovery } from "../policy";
 
@@ -84,9 +85,16 @@ export function guardScenarioObjectives(state: SimState, units: Entity[]): void 
   });
 }
 
-export function guardResourceLane(state: SimState, units: Entity[], yard: Entity, knownPlayers?: Entity[]): void {
+export function guardResourceLane(
+  state: SimState,
+  units: Entity[],
+  yard: Entity,
+  knownPlayers?: Entity[],
+  aiOwner: Owner = 1,
+  opponents: readonly Owner[] = [0],
+): void {
   if (directorPhase(state) === "opening") return;
-  const point = contestedResourcePoint(state, yard, knownPlayers);
+  const point = contestedResourcePoint(state, yard, knownPlayers, aiOwner, opponents);
   const guardIndex = homeGuardCount(state.missionIndex);
   if (!point || units.length <= guardIndex) return;
 
@@ -98,14 +106,14 @@ export function guardResourceLane(state: SimState, units: Entity[], yard: Entity
   assignMove(state, guard, point);
 }
 
-export function tickAi(state: SimState): void {
+function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Owner[]): void {
   if (state.result !== "playing" || state.tutorialStage !== undefined) return;
   const rng = rngFromState(state.rngState);
   // This is on the hot path for every simulation tick. Build the frequently
   // used views in one pass instead of repeatedly filtering the same entity
   // list during production, repair, and assault decisions.
   const active = livingView(state);
-  const knownPlayers = enemyKnownPlayerEntities(state, active);
+  const knownPlayers = enemyKnownPlayerEntities(state, active, aiOwner, opponents);
   const { enemyBuildings, enemyUnits, enemyAircraft } = buffersFor(state);
   let hasHarvester = false;
   let playerTanks = 0;
@@ -121,8 +129,8 @@ export function tickAi(state: SimState): void {
     if (entity.kind === "antiArmor") playerAntiArmor += 1;
   }
   for (const entity of active) {
-    if (entity.owner === 1 && entity.class === "building") enemyBuildings.push(entity);
-    if (entity.owner === 1 && isUnitEntity(entity)) {
+    if (entity.owner === aiOwner && entity.class === "building") enemyBuildings.push(entity);
+    if (entity.owner === aiOwner && isUnitEntity(entity)) {
       if (isAirUnit(entity.kind)) enemyAircraft.push(entity);
       else if (UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind)) enemyUnits.push(entity);
       if (entity.kind === "harvester") hasHarvester = true;
@@ -134,7 +142,7 @@ export function tickAi(state: SimState): void {
   }
   const yard = enemyBuildings.find((e) => e.kind === "constructionYard");
   if (!yard) {
-    state.aiState = "retreat";
+    setAiBehavior(state, aiOwner, "retreat");
     state.rngState = rng.state;
     return;
   }
@@ -155,7 +163,7 @@ export function tickAi(state: SimState): void {
   const timedScenario = state.runtime?.director !== undefined && state.missionIndex >= 4 && (
     state.runtime.kind === "escort" || isTimedRecovery(state.runtime.kind)
   );
-  const openingOffensive = state.win.kind === "decapitate" && state.missionIndex < 2;
+  const openingOffensive = !state.multiplayer && state.win.kind === "decapitate" && state.missionIndex < 2;
   const timedProductionScale = state.runtime?.kind === "extraction" ? 2.5 : 2;
   const holdLineProductionScale = holdLinePressureScale;
   const productionEvery = timedScenario
@@ -172,7 +180,7 @@ export function tickAi(state: SimState): void {
     state.tick >= difficulty.enemyProductionStart &&
     (state.tick - difficulty.enemyProductionStart) % productionEvery === 0 &&
     !finiteCloseout;
-  const powerDeficit = powerFor(state, 1) < 0;
+  const powerDeficit = powerFor(state, aiOwner) < 0;
   if (productionWindow || powerDeficit) {
     const factory = enemyBuildings.find((e) => e.kind === "factory" && e.constructing === 0 && !e.producing);
     const barracks = enemyBuildings.find((e) => e.kind === "barracks" && e.constructing === 0 && !e.producing);
@@ -180,7 +188,7 @@ export function tickAi(state: SimState): void {
     const runwayCount = enemyBuildings.filter((e) => e.kind === "runway").length;
     // Introduce dedicated air infrastructure from mission 2 onward, after the
     // player has completed the opening mission and can answer the new threat.
-    const airEnabled = state.missionIndex >= 2;
+    const airEnabled = state.multiplayer || state.missionIndex >= 2;
     const desiredRunways = state.missionIndex >= 4 ? 2 : 1;
     const aircraftCap = state.missionIndex >= 4 ? 2 : 1;
     const hasRefinery = enemyBuildings.some((e) => e.kind === "refinery");
@@ -196,57 +204,64 @@ export function tickAi(state: SimState): void {
         : woundedVehicles && repairTruckCount === 0 && isUnitAvailable("repairTruck", state.missionIndex) ? "repairTruck"
           : undefined;
     const supportProducer = supportWant === "medic" ? barracks : supportWant === "repairTruck" ? factory : undefined;
-    const power = powerFor(state, 1);
+    const power = powerFor(state, aiOwner);
     if (power < 0) {
       // Restore the grid before expanding. If a plant is already under
       // construction (or no valid site/credits are available), stop here;
       // falling through would spend the remaining budget on unrelated
       // barracks while the deficit is still active.
-      tryBuildPower(state, yard.x, yard.y);
-    } else if (phase !== "opening" && tryBuildForwardInfrastructure(state, yard, knownPlayers)) {
+      tryBuildPower(state, yard.x, yard.y, aiOwner);
+    } else if (phase !== "opening" && tryBuildForwardInfrastructure(state, yard, knownPlayers, aiOwner, opponents)) {
       // Contest a remote resource lane before committing to another assault wave.
-    } else if (!hasRefinery && tryBuildRefinery(state, yard.x, yard.y)) {
+    } else if (!hasRefinery && tryBuildRefinery(state, yard.x, yard.y, aiOwner)) {
       // Keep ore income before spending on combat.
-    } else if (!hasHarvester && factory && queueUnit(state, factory, "harvester")) {
+    } else if (!hasHarvester && factory && queueUnit(state, factory, "harvester", aiOwner)) {
       // Replace a lost harvester before more combat units.
-    } else if (airEnabled && phase !== "opening" && runwayCount < desiredRunways && tryBuildRunway(state, yard, desiredRunways)) {
+    } else if (airEnabled && phase !== "opening" && runwayCount < desiredRunways && tryBuildRunway(state, yard, desiredRunways, aiOwner)) {
       // Establish dedicated air infrastructure before committing to a sortie.
-    } else if (airEnabled && phase !== "opening" && runway && enemyAircraft.length < aircraftCap && queueUnit(state, runway, "strikePlane")) {
+    } else if (airEnabled && phase !== "opening" && runway && enemyAircraft.length < aircraftCap && queueUnit(state, runway, "strikePlane", aiOwner)) {
       // Runways each service one finite-ammunition strike plane.
-    } else if (supportWant && supportProducer && queueUnit(state, supportProducer, supportWant)) {
+    } else if (supportWant && supportProducer && queueUnit(state, supportProducer, supportWant, aiOwner)) {
       // Add one support unit when the army has a matching damaged domain.
-    } else if (producer && queueUnit(state, producer, want)) {
+    } else if (producer && queueUnit(state, producer, want, aiOwner)) {
       // Counter-produce against the player mix.
-    } else if (state.credits[1] >= BUILDING_STATS.barracks.cost && !barracks) {
-      const spot = findBuildSite(state, "barracks", yard.x - 3, yard.y, 12, 1);
+    } else if (state.credits[aiOwner] >= BUILDING_STATS.barracks.cost && !barracks) {
+      const spot = findBuildSite(state, "barracks", yard.x - 3, yard.y, 12, aiOwner);
       if (spot) {
-        state.credits[1] -= BUILDING_STATS.barracks.cost;
-        spawnBuilding(state, 1, "barracks", spot.x, spot.y, BUILDING_STATS.barracks.buildTicks);
+        state.credits[aiOwner] -= BUILDING_STATS.barracks.cost;
+        spawnBuilding(state, aiOwner, "barracks", spot.x, spot.y, BUILDING_STATS.barracks.buildTicks);
       }
-    } else if (state.credits[1] >= BUILDING_STATS.factory.cost && !factory) {
-      const spot = findBuildSite(state, "factory", yard.x, yard.y - 3, 12, 1);
+    } else if (state.credits[aiOwner] >= BUILDING_STATS.factory.cost && !factory) {
+      const spot = findBuildSite(state, "factory", yard.x, yard.y - 3, 12, aiOwner);
       if (spot) {
-        state.credits[1] -= BUILDING_STATS.factory.cost;
-        spawnBuilding(state, 1, "factory", spot.x, spot.y, BUILDING_STATS.factory.buildTicks);
+        state.credits[aiOwner] -= BUILDING_STATS.factory.cost;
+        spawnBuilding(state, aiOwner, "factory", spot.x, spot.y, BUILDING_STATS.factory.buildTicks);
       }
     } else if (power < 20) {
-      tryBuildPower(state, yard.x, yard.y);
+      tryBuildPower(state, yard.x, yard.y, aiOwner);
     }
   }
 
   if (state.win.kind === "holdTheLine" && state.tick > 0 && state.tick % holdLineAssaultEvery === 0) {
     const fp = footprintOf("constructionYard");
     const spot = { x: yard.x - 1, y: yard.y + fp.h };
-    const spawned = trySpawnUnit(state, 1, rng.chance(0.45) ? "tank" : "infantry", spot.x, spot.y);
+    const spawned = trySpawnUnit(state, aiOwner, rng.chance(0.45) ? "tank" : "infantry", spot.x, spot.y);
     if (spawned) enemyUnits.push(spawned);
     if (state.missionIndex >= 4) {
-      const extraSpawned = trySpawnUnit(state, 1, "infantry", spot.x, spot.y + 1);
+      const extraSpawned = trySpawnUnit(state, aiOwner, "infantry", spot.x, spot.y + 1);
       if (extraSpawned) enemyUnits.push(extraSpawned);
     }
   }
 
-  const playerYard = knownPlayers.find((entity) => entity.kind === "constructionYard");
-  const pressureScale = timedScenario ? 2 : state.win.kind === "decapitate" && state.missionIndex < 2 ? 4 : 1;
+  const playerYard = nearestKnownPlayer(
+    state,
+    yard,
+    (entity) => opponents.includes(entity.owner) && entity.kind === "constructionYard",
+    knownPlayers,
+    aiOwner,
+    opponents,
+  );
+  const pressureScale = timedScenario ? 2 : (!state.multiplayer && state.win.kind === "decapitate" && state.missionIndex < 2) ? 4 : 1;
   const waveEvery = Math.max(240, Math.round((holdLineAssaultEvery
     + (profileContract?.assaultEveryOffset ?? 0)
     + (objectiveContract?.assaultDelay ?? 0)) * pressureScale));
@@ -259,76 +274,99 @@ export function tickAi(state: SimState): void {
   const threat = nearestKnownPlayer(
     state,
     yard,
-    (e) => e.owner === 0 && isUnitEntity(e) && isCombatTarget(state, e) && e.kind !== "harvester" && !isSupportUnit(e.kind) && (
+    (e) => opponents.includes(e.owner) && isUnitEntity(e) && isCombatTarget(state, e) && e.kind !== "harvester" && !isSupportUnit(e.kind) && (
       (!e.neutral || e.scenarioRole === "convoy")
     ) && !(e.scenarioRole === "convoy" && state.runtime?.convoyStartTick !== undefined),
     knownPlayers,
+    aiOwner,
+    opponents,
   );
   const airThreat = nearestKnownPlayer(
     state,
     yard,
-    (e) => e.owner === 0 && isUnitEntity(e) && isAirUnit(e.kind) && e.hp > 0 && isCombatTarget(state, e),
+    (e) => opponents.includes(e.owner) && isUnitEntity(e) && isAirUnit(e.kind) && e.hp > 0 && isCombatTarget(state, e),
     knownPlayers,
+    aiOwner,
+    opponents,
   );
   const units = enemyUnits;
   const averageHealth = units.length ? units.reduce((sum, unit) => sum + unit.hp / unit.maxHp, 0) / units.length : 1;
-  if (shouldRetreat(state, averageHealth)) state.aiState = "retreat";
-  else if (threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) state.aiState = "defense";
-  else if (playerYard && state.tick >= waveEvery) state.aiState = "assault";
-  else if (units.length > 0 && state.tick % 180 === 0) state.aiState = "regroup";
-  else state.aiState = "economy";
+  if (shouldRetreat(state, averageHealth, aiOwner)) setAiBehavior(state, aiOwner, "retreat");
+  else if (threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) setAiBehavior(state, aiOwner, "defense");
+  else if (playerYard && state.tick >= waveEvery) setAiBehavior(state, aiOwner, "assault");
+  else if (units.length > 0 && state.tick % 180 === 0) setAiBehavior(state, aiOwner, "regroup");
+  else setAiBehavior(state, aiOwner, "economy");
 
   if (airThreat && distToEntity(yard, airThreat) <= YARD_DEFENSE_RANGE + 4) {
-    tryBuildAntiAir(state, yard, airThreat);
+    tryBuildAntiAir(state, yard, airThreat, aiOwner);
   }
 
-  if (state.aiState === "defense" && threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) {
-    tryBuildTurret(state, yard, threat);
+  const behavior = aiBehavior(state, aiOwner);
+  if (behavior === "defense" && threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) {
+    tryBuildTurret(state, yard, threat, aiOwner);
     for (const u of units) {
       if (u.attackTarget) continue;
       assignAttack(state, u, threat);
     }
-  } else if (state.aiState === "assault" && playerYard && state.tick > 0) {
-    assignAssault(state, units, yard, playerYard, state.tick % waveEvery === 0, knownPlayers);
+  } else if (behavior === "assault" && playerYard && state.tick > 0) {
+    assignAssault(state, units, yard, playerYard, state.tick % waveEvery === 0, knownPlayers, aiOwner, opponents);
     for (const aircraft of enemyAircraft) {
       if (aircraft.attackTarget !== undefined && byId(state, aircraft.attackTarget)) continue;
       const aircraftTarget = nearestKnownPlayer(
         state,
         aircraft,
-        (entity) => entity.owner === 0
+        (entity) => opponents.includes(entity.owner)
           && entity.class === "unit"
           && entity.kind !== "harvester"
           && !isAirUnit(entity.kind)
           && entity.hp > 0
           && isCombatTarget(state, entity),
         knownPlayers,
+        aiOwner,
+        opponents,
       ) ?? playerYard;
       assignAttack(state, aircraft, aircraftTarget);
     }
-  } else if (state.aiState === "retreat") {
+  } else if (behavior === "retreat") {
     for (const u of units) sendHome(state, u, yard);
-  } else if (state.aiState === "economy" || state.aiState === "regroup") {
+  } else if (behavior === "economy" || behavior === "regroup") {
     for (const u of units) {
       // Combat acquires targets before the director runs. Do not replace an
       // active attack with a return-to-base route on the same tick.
       if (u.attackTarget !== undefined) continue;
-      if (isActiveScout(state, u.id) && !playerYard) continue;
+      if (isActiveScout(state, u.id, aiOwner) && !playerYard) continue;
       if (distToEntity(u, yard) <= YARD_DEFENSE_RANGE) continue;
       sendHome(state, u, yard);
     }
     guardScenarioObjectives(state, units);
     if (!state.runtime || (state.runtime.kind !== "sabotage" && state.runtime.kind !== "destroyMarked")) {
-      guardResourceLane(state, units, yard, knownPlayers);
+      guardResourceLane(state, units, yard, knownPlayers, aiOwner, opponents);
     }
     // Escort has a hard completion deadline and its combat reserve must stay
     // with the convoy. Other mission types can afford the pre-contact patrol.
     if (state.runtime?.kind !== "escort") {
-      const influence = buildInfluenceMap(state, knownPlayers);
-      const scoutTasks = updateScouts(state, units, influence, !!playerYard, yard);
+      const influence = buildInfluenceMap(state, knownPlayers, aiOwner, opponents);
+      const scoutTasks = updateScouts(state, units, influence, !!playerYard, yard, aiOwner);
       for (const { unit, target } of scoutTasks) {
         assignMove(state, unit, target);
       }
     }
   }
   state.rngState = rng.state;
+}
+
+/** Campaign keeps its historical owner-1 opponent behavior. */
+export function tickAi(state: SimState): void {
+  tickAiForOwner(state, 1, [0]);
+}
+
+/** Run each assigned bot in stable owner order on every lockstep peer. */
+export function tickMultiplayerAi(state: SimState): void {
+  if (!state.multiplayer || state.result !== "playing") return;
+  const active = state.multiplayerOwners ?? [];
+  const bots = [...new Set(state.multiplayerAiOwners ?? [])].filter((owner) => active.includes(owner)).sort((a, b) => a - b);
+  for (const owner of bots) {
+    const opponents = active.filter((candidate) => candidate !== owner);
+    if (opponents.length > 0) tickAiForOwner(state, owner, opponents);
+  }
 }
