@@ -7,6 +7,18 @@ export type MultiplayerRole = "host" | "guest";
 export type MultiplayerStatus = "connected" | "disconnected" | "ended";
 export type MultiplayerWire = { send: (value: unknown) => void };
 export type TickFrame = { type: "tick"; protocolVersion: number; tick: number; commands: Command[] };
+const RTT_PROBE_INTERVAL_MS = 2_000;
+const RTT_SAMPLE_MAX_AGE_MS = 6_000;
+const MAX_PENDING_RTT_PROBES = 8;
+
+function monotonicNow(): number {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
+function validProbeId(value: unknown): value is number {
+  return Number.isSafeInteger(value) && Number(value) > 0;
+}
+
 export const SKIRMISH_MATCH_SETTINGS = Object.freeze({
   protocolVersion: 3,
   fogOfWar: true,
@@ -130,6 +142,7 @@ function isSimSnapshot(value: unknown, seed: number, owners: readonly Owner[], a
 
 type GuestSeat = { peerId: string; owner: Owner; sender: MultiplayerWire; connected: boolean };
 type GuestIntent = { owner: Owner; command: Command };
+type RttSample = { milliseconds: number; measuredAt: number };
 
 export class MultiplayerSession {
   readonly owner: Owner;
@@ -139,6 +152,7 @@ export class MultiplayerSession {
   private sender: MultiplayerWire;
   private statusValue: MultiplayerStatus = "connected";
   private listeners = new Set<() => void>();
+  private pingListeners = new Set<() => void>();
   private localCommands: Command[] = [];
   private guestCommands: GuestIntent[] = [];
   private guests = new Map<string, GuestSeat>();
@@ -146,6 +160,11 @@ export class MultiplayerSession {
   private pendingSnapshot: SimState | null = null;
   private snapshotSource: (() => SimState) | null = null;
   private snapshotConsumer: ((state: SimState) => void) | null = null;
+  private rttInterval: ReturnType<typeof setInterval> | null = null;
+  private nextProbeId = 0;
+  private pendingRttProbes = new Map<string, Map<number, number>>();
+  private rttSamples = new Map<string, RttSample>();
+  private lastPublishedPingMs: number | null = null;
 
   constructor(
     role: MultiplayerRole,
@@ -170,13 +189,116 @@ export class MultiplayerSession {
 
   get status(): MultiplayerStatus { return this.statusValue; }
   get connected(): boolean { return this.statusValue === "connected"; }
+  get hasPeerConnection(): boolean {
+    return this.role === "guest" || this.guests.size > 0;
+  }
+  get pingMs(): number | null {
+    if (!this.connected) return null;
+    const now = monotonicNow();
+    const peerIds = this.role === "host"
+      ? [...this.guests.values()].filter((guest) => guest.connected).map((guest) => guest.peerId)
+      : ["host"];
+    const samples = peerIds
+      .map((peerId) => this.rttSamples.get(peerId))
+      .filter((sample): sample is RttSample => sample !== undefined && now - sample.measuredAt <= RTT_SAMPLE_MAX_AGE_MS);
+    if (samples.length === 0) return null;
+    return Math.round(samples.reduce((total, sample) => total + sample.milliseconds, 0) / samples.length);
+  }
+
+  /** Start lightweight peer-to-peer RTT probes while the battlefield is mounted. */
+  startLatencyProbes(): () => void {
+    this.stopLatencyProbes(false);
+    if (this.statusValue === "ended") return () => undefined;
+    const probe = () => {
+      if (this.statusValue === "ended") return;
+      if (this.connected) {
+        if (this.role === "host") {
+          for (const guest of this.guests.values()) {
+            if (guest.connected) this.sendLatencyProbe(guest.peerId, guest.sender);
+          }
+        } else {
+          this.sendLatencyProbe("host", this.sender);
+        }
+      }
+      // Re-render once an older measurement expires, even if no pong arrives.
+      this.publishPing();
+    };
+    probe();
+    this.rttInterval = setInterval(probe, RTT_PROBE_INTERVAL_MS);
+    return () => this.stopLatencyProbes();
+  }
+
+  private stopLatencyProbes(publish = true): void {
+    if (this.rttInterval !== null) clearInterval(this.rttInterval);
+    this.rttInterval = null;
+    this.pendingRttProbes.clear();
+    this.rttSamples.clear();
+    if (publish) this.publishPing();
+  }
+
+  private sendLatencyProbe(peerId: string, sender: MultiplayerWire): void {
+    const now = monotonicNow();
+    const id = ++this.nextProbeId;
+    const pending = this.pendingRttProbes.get(peerId) ?? new Map<number, number>();
+    for (const [pendingId, sentAt] of pending) {
+      if (now - sentAt > RTT_SAMPLE_MAX_AGE_MS) pending.delete(pendingId);
+    }
+    pending.set(id, now);
+    while (pending.size > MAX_PENDING_RTT_PROBES) {
+      const oldestId = pending.keys().next().value;
+      if (oldestId === undefined) break;
+      pending.delete(oldestId);
+    }
+    this.pendingRttProbes.set(peerId, pending);
+    try {
+      sender.send({ type: "ping", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, id });
+    } catch {
+      pending.delete(id);
+    }
+  }
+
+  private replyToLatencyProbe(sender: MultiplayerWire, message: Record<string, unknown>): boolean {
+    if (message.type !== "ping") return false;
+    if (message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion && validProbeId(message.id)) {
+      sender.send({ type: "pong", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, id: message.id });
+    }
+    return true;
+  }
+
+  private recordLatencyResponse(peerId: string, message: Record<string, unknown>): boolean {
+    if (message.type !== "pong") return false;
+    if (message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion || !validProbeId(message.id)) return true;
+    const pending = this.pendingRttProbes.get(peerId);
+    const sentAt = pending?.get(message.id);
+    if (sentAt === undefined) return true;
+    pending!.delete(message.id);
+    const receivedAt = monotonicNow();
+    this.rttSamples.set(peerId, { milliseconds: Math.max(0, Math.round(receivedAt - sentAt)), measuredAt: receivedAt });
+    this.publishPing();
+    return true;
+  }
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
-  private publish() { for (const listener of this.listeners) listener(); }
+  subscribePing(listener: () => void): () => void {
+    this.pingListeners.add(listener);
+    return () => this.pingListeners.delete(listener);
+  }
+
+  private publishPing(): void {
+    const next = this.pingMs;
+    if (next === this.lastPublishedPingMs) return;
+    this.lastPublishedPingMs = next;
+    for (const listener of this.pingListeners) listener();
+  }
+
+  private publish(): void {
+    for (const listener of this.listeners) listener();
+    this.publishPing();
+  }
 
   attach(sender: MultiplayerWire) {
     if (this.statusValue === "ended") return;
@@ -217,6 +339,10 @@ export class MultiplayerSession {
     if (this.role !== "host" || this.statusValue === "ended") return;
     const next: MultiplayerStatus = [...this.guests.values()].some((guest) => !guest.connected) ? "disconnected" : "connected";
     if (next === this.statusValue) return;
+    if (next === "connected") {
+      this.pendingRttProbes.clear();
+      this.rttSamples.clear();
+    }
     this.statusValue = next;
     this.publish();
     this.broadcast({ type: next === "disconnected" ? "paused" : "resumed" });
@@ -235,6 +361,8 @@ export class MultiplayerSession {
     if (this.statusValue === "ended") return;
     if (this.statusValue === "disconnected") return;
     this.statusValue = "disconnected";
+    this.pendingRttProbes.clear();
+    this.rttSamples.clear();
     this.publish();
     if (this.role === "host") this.broadcast({ type: "paused" });
   }
@@ -259,6 +387,8 @@ export class MultiplayerSession {
     if (!value || typeof value !== "object" || Array.isArray(value)) return;
     const message = value as Record<string, unknown>;
     if (this.role === "host") return;
+    if (this.replyToLatencyProbe(this.sender, message)) return;
+    if (this.recordLatencyResponse("host", message)) return;
     if (this.role === "guest" && message.type === "tick" && Number.isSafeInteger(message.tick) && Array.isArray(message.commands) && message.commands.length <= 256) {
       if (message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion) return;
       const tick = Number(message.tick);
@@ -296,6 +426,8 @@ export class MultiplayerSession {
     const guest = this.guests.get(peerId);
     if (!guest?.connected || !value || typeof value !== "object" || Array.isArray(value)) return;
     const message = value as Record<string, unknown>;
+    if (this.replyToLatencyProbe(guest.sender, message)) return;
+    if (this.recordLatencyResponse(peerId, message)) return;
     if (message.type === "intent") {
       const command = sanitizeCommand(message.command, false);
       if (command && this.guestCommands.length < 384) this.guestCommands.push({ owner: guest.owner, command });
@@ -315,6 +447,8 @@ export class MultiplayerSession {
     const state = this.snapshotSource?.();
     if (!guest || !state) return null;
     this.guests.delete(peerId);
+    this.pendingRttProbes.delete(peerId);
+    this.rttSamples.delete(peerId);
     this.guestCommands = this.guestCommands.filter((intent) => intent.owner !== guest.owner);
     state.multiplayerOwners = (state.multiplayerOwners ?? [0, guest.owner]).filter((owner) => owner !== guest.owner);
     for (const entity of state.entities) if (entity.owner === guest.owner) entity.hp = 0;
@@ -395,6 +529,7 @@ export class MultiplayerSession {
     if (this.statusValue === "ended") return;
     if (this.role === "host") this.broadcast({ type: "ended" });
     this.statusValue = "ended";
+    this.stopLatencyProbes(false);
     this.publish();
   }
 }

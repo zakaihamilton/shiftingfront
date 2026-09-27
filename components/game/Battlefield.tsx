@@ -33,6 +33,8 @@ export function Battlefield({
   timeLimitTicks,
   onObjectivePanelToggle,
   defaultDirectiveExpanded,
+  multiplayerPingMs,
+  multiplayerHost,
   showHud = true,
   biome,
   children,
@@ -66,6 +68,8 @@ export function Battlefield({
   timeLimitTicks?: number;
   onObjectivePanelToggle?: () => void;
   defaultDirectiveExpanded?: boolean;
+  multiplayerPingMs?: number | null;
+  multiplayerHost?: boolean;
   showHud?: boolean;
   biome: BiomeName;
   children?: ReactNode;
@@ -118,6 +122,8 @@ export function Battlefield({
           timeLimitTicks={timeLimitTicks}
           onObjectivePanelToggle={onObjectivePanelToggle}
           defaultExpanded={defaultDirectiveExpanded}
+          multiplayerPingMs={multiplayerPingMs}
+          multiplayerHost={multiplayerHost}
         />
       ) : null}
       {children}

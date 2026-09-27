@@ -8,7 +8,10 @@ import { CommandNotice } from "./CommandNotice";
 import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "./hooks/useGameCamera";
 import { playFieldStatus } from "./playFieldStatus";
 
-export type GamePlayFieldProps = PlayFieldSurfaceModel;
+export type GamePlayFieldProps = PlayFieldSurfaceModel & {
+  multiplayerPingMs?: number | null;
+  multiplayerHost?: boolean;
+};
 
 export function GamePlayField({
   hostRef,
@@ -24,6 +27,8 @@ export function GamePlayField({
   resultActions,
   feedback,
   onObjectivePanelToggle,
+  multiplayerPingMs,
+  multiplayerHost,
 }: GamePlayFieldProps) {
   const status = playFieldStatus(state, campaign);
   return (
@@ -50,6 +55,8 @@ export function GamePlayField({
       timeRemainingTicks={tutorial ? undefined : status.timeRemainingTicks}
       timeLimitTicks={tutorial ? undefined : status.timeLimitTicks}
       onObjectivePanelToggle={onObjectivePanelToggle}
+      multiplayerPingMs={state.multiplayer ? multiplayerPingMs : undefined}
+      multiplayerHost={multiplayerHost}
       showHud={state.result === "playing"}
       biome={state.biome}
       {...pointer}

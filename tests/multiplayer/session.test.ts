@@ -171,4 +171,72 @@ describe("four-player canonical multiplayer command stream", () => {
     // Past frames 1 and 2 should have been purged, leaving only frame 5
     expect(guest.queuedFramesCount({ tick: 4 } as never)).toBe(1);
   });
+
+  it("exchanges latency probes between host and guests, measures pingMs, and notifies subscribers", () => {
+    const owners: Owner[] = [0, 1];
+    let guestSent: unknown = null;
+    let hostSent: unknown = null;
+
+    const host = new MultiplayerSession("host", 0, 8123, { send() {} }, owners);
+    const guest = new MultiplayerSession("guest", 1, 8123, {
+      send: (value) => { guestSent = value; host.receiveFrom("guest-1", value); },
+    }, owners);
+
+    host.addGuest("guest-1", 1, {
+      send: (value) => { hostSent = value; guest.receive(value); },
+    });
+
+    expect(host.hasPeerConnection).toBe(true);
+    expect(guest.hasPeerConnection).toBe(true);
+    expect(host.pingMs).toBeNull();
+    expect(guest.pingMs).toBeNull();
+
+    let hostPingNotified = 0;
+    let guestPingNotified = 0;
+    const unsubHost = host.subscribePing(() => { hostPingNotified++; });
+    const unsubGuest = guest.subscribePing(() => { guestPingNotified++; });
+
+    // Start latency probes
+    const stopHost = host.startLatencyProbes();
+    expect(hostSent).toMatchObject({ type: "ping", protocolVersion: 3 });
+    // Guest received ping and responded with pong
+    expect(guestSent).toMatchObject({ type: "pong", protocolVersion: 3 });
+    // Host recorded pong
+    expect(typeof host.pingMs).toBe("number");
+    expect(hostPingNotified).toBeGreaterThan(0);
+
+    const stopGuest = guest.startLatencyProbes();
+    expect(guestSent).toMatchObject({ type: "ping", protocolVersion: 3 });
+    expect(hostSent).toMatchObject({ type: "pong", protocolVersion: 3 });
+    expect(typeof guest.pingMs).toBe("number");
+    expect(guestPingNotified).toBeGreaterThan(0);
+
+    stopHost();
+    stopGuest();
+    unsubHost();
+    unsubGuest();
+  });
+
+  it("reports hasPeerConnection accurately and clears ping measurements on disconnect or teardown", () => {
+    const hostAlone = new MultiplayerSession("host", 0, 8123, { send() {} }, [0, 1], [1]);
+    expect(hostAlone.hasPeerConnection).toBe(false);
+
+    const host = new MultiplayerSession("host", 0, 8123, { send() {} }, [0, 1]);
+    expect(host.hasPeerConnection).toBe(false);
+
+    host.addGuest("guest-1", 1, {
+      send: (value) => host.receiveFrom("guest-1", { type: "pong", protocolVersion: 3, id: (value as { id: number }).id }),
+    });
+    expect(host.hasPeerConnection).toBe(true);
+
+    const stop = host.startLatencyProbes();
+    expect(typeof host.pingMs).toBe("number");
+
+    // Disconnect clears active samples
+    host.disconnectGuest("guest-1");
+    expect(host.pingMs).toBeNull();
+
+    stop();
+  });
 });
+

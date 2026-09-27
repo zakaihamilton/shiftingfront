@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useGameRuntime } from "./hooks/useGameRuntime";
 import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "./hooks/runtime/surfaces";
 import { TacticalScreen } from "./TacticalScreen";
@@ -27,7 +27,22 @@ export function GameClient({
   const runtime = useGameRuntime({ seed, mission, resume, fresh, slot, tutorial, multiplayerSession });
   const surfaceCache = useMemo(() => createGameRuntimeSurfaceCache(), []);
   const surfaces = createGameRuntimeSurfaces(runtime, surfaceCache);
+  const subscribeToPing = useCallback(
+    (listener: () => void) => multiplayerSession?.subscribePing(listener) ?? (() => undefined),
+    [multiplayerSession],
+  );
+  const getPing = useCallback(() => multiplayerSession?.pingMs ?? null, [multiplayerSession]);
+  const multiplayerPingMs = useSyncExternalStore(subscribeToPing, getPing, () => null);
+
+  useEffect(() => multiplayerSession?.startLatencyProbes(), [multiplayerSession]);
+
   return (
-    <TacticalScreen palette={runtime.palette} {...surfaces} title={APP_NAME} />
+    <TacticalScreen
+      palette={runtime.palette}
+      {...surfaces}
+      title={APP_NAME}
+      multiplayerPingMs={multiplayerSession?.hasPeerConnection ? multiplayerPingMs : undefined}
+      multiplayerHost={multiplayerSession?.role === "host"}
+    />
   );
 }

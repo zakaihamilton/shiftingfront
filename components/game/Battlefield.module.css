@@ -121,6 +121,26 @@
   content: "/";
 }
 
+.networkPing {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  padding-left: 0.65rem;
+  border-left: 1px solid color-mix(in srgb, var(--chrome-cyan) 34%, transparent);
+  color: var(--chrome-muted);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.networkPing strong {
+  color: var(--chrome-cyan);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
 .mission {
   margin-top: 0.35rem;
   overflow: hidden;
@@ -636,8 +656,14 @@
   .missionMeta {
     display: flex;
     align-items: flex-start;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0.25rem;
+  }
+
+  .networkPing {
+    gap: 0.18rem;
+    padding-left: 0.3rem;
+    letter-spacing: 0.04em;
   }
 
   .objectiveStack {
