@@ -43,6 +43,7 @@
   border-radius: 0;
   background: transparent;
   color: transparent;
+  caret-color: transparent;
   cursor: text;
   opacity: 0;
 }

@@ -833,7 +833,7 @@ export function MultiplayerLobby() {
           <p role="status">{status}</p>
         )}
         {error ? <p className={styles.error} role="alert">{error}</p> : null}
-        <p className={styles.status} role="status">{status}</p>
+        {mode !== "joining" ? <p className={styles.status} role="status">{status}</p> : null}
         {mode === "choose" ? <Link className={styles.backLink} href="/">Back to menu</Link> : null}
       </MetalPanel>
     </main>
