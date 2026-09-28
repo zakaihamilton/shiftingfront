@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { DataConnection, Peer } from "peerjs";
+import { CodeInput } from "@/components/shared/CodeInput";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
@@ -120,6 +121,8 @@ export function MultiplayerLobby() {
   const [mode, setMode] = useState<LobbyMode>("choose");
   const [seed, setSeed] = useState("0000");
   const [joinCode, setJoinCode] = useState("");
+  const seedInputRef = useRef<HTMLInputElement>(null);
+  const joinCodeInputRef = useRef<HTMLInputElement>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Create a room or join with a six-letter code.");
@@ -751,7 +754,19 @@ export function MultiplayerLobby() {
               <ConsoleButton onClick={() => { setMode("hostSetup"); setError(""); }}>Host a room</ConsoleButton>
               <form onSubmit={joinRoom} className={styles.joinForm}>
                 <label htmlFor="join-code">Host code</label>
-                <input id="join-code" data-testid="multiplayer-code-input" value={joinCode} maxLength={6} autoComplete="off" spellCheck={false} onChange={(event) => { setJoinCode(event.currentTarget.value.toUpperCase()); setError(""); }} />
+                <CodeInput
+                  id="join-code"
+                  testId="multiplayer-code-input"
+                  value={joinCode}
+                  length={6}
+                  label="Six-letter host code"
+                  inputRef={joinCodeInputRef}
+                  inputMode="text"
+                  autoCapitalize="characters"
+                  onChange={(value) => { setJoinCode(value); setError(""); }}
+                  normalize={(value) => value.toUpperCase().replace(/[^A-HJ-NP-Z]/g, "")}
+                  className={styles.joinCode}
+                />
                 <ConsoleButton type="submit" disabled={joinCode.length !== 6}>Join room</ConsoleButton>
               </form>
             </div>
@@ -761,7 +776,17 @@ export function MultiplayerLobby() {
             <p>Choose the four-digit match seed. This is separate from the invite code.</p>
             <label htmlFor="multiplayer-seed">Match seed</label>
             <div className={styles.seedRow}>
-              <input id="multiplayer-seed" data-testid="multiplayer-seed-input" value={seed} inputMode="numeric" maxLength={4} onChange={(event) => setSeed(event.currentTarget.value.replace(/\D/g, "").slice(0, 4))} />
+              <CodeInput
+                id="multiplayer-seed"
+                testId="multiplayer-seed-input"
+                value={seed}
+                length={4}
+                label="Four digit match seed"
+                inputRef={seedInputRef}
+                onChange={setSeed}
+                normalize={(value) => value.replace(/\D/g, "")}
+                onEnter={() => void hostRoom()}
+              />
               <ConsoleButton muted onClick={() => setSeed(rollSeed())}>Roll seed</ConsoleButton>
             </div>
             <div className={styles.actions}>

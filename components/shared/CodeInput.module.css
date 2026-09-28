@@ -1,0 +1,71 @@
+.wrap {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.digits {
+  pointer-events: none;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cell {
+  display: flex;
+  width: 3.5rem;
+  height: 4rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--chrome-inset);
+  background: var(--chrome-steel-lo);
+  color: var(--chrome-cyan);
+  font-family: var(--font-mono);
+  font-size: 1.875rem;
+  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-bevel);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wrap:focus-within .cell {
+  border-color: var(--chrome-cyan);
+  background: color-mix(in srgb, var(--chrome-cyan) 8%, var(--chrome-steel-lo));
+  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-bevel), 0 0 0 1px var(--chrome-cyan-dim);
+}
+
+.wrap .input {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: transparent;
+  cursor: text;
+  opacity: 0;
+}
+
+@media (max-width: 420px) {
+  .digits {
+    gap: 0.3rem;
+  }
+
+  .cell {
+    width: 3rem;
+    height: 3.25rem;
+    font-size: 1.55rem;
+  }
+}
+
+@media (max-width: 474px) {
+  .digits[data-length="6"] {
+    gap: 0.2rem;
+  }
+
+  .digits[data-length="6"] .cell {
+    width: 2.1rem;
+    font-size: 1.25rem;
+  }
+}

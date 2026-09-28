@@ -26,11 +26,10 @@
 .panel label { display: block; margin: 18px 0 7px; color: #9aafb7; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; }
 .panel input { min-width: 0; padding: 12px 14px; border: 1px solid #54727d; border-radius: 3px; background: #07121a; color: #e9f1f3; font: inherit; font-size: 1.15rem; letter-spacing: .18em; }
 .actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 24px; }
-.joinForm { display: flex; flex: 1 1 100%; align-items: end; gap: 10px; }
+.joinForm { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: end; gap: 10px; }
 .joinForm label { flex-basis: 100%; margin-bottom: -5px; }
-.joinForm input { flex: 1; min-width: 160px; text-transform: uppercase; }
-.seedRow { display: flex; gap: 10px; }
-.seedRow input { width: 130px; text-align: center; }
+.joinCode { max-width: 100%; }
+.seedRow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .inviteCode { margin: 26px 0; padding: 18px; border: 1px solid #7aa0ad; background: #0a1a22; color: #eff8fa; font-size: clamp(2.3rem, 10vw, 4rem); font-weight: 700; letter-spacing: .3em; text-align: center; }
 .roster { display: grid; gap: 8px; margin: 18px 0 4px; padding: 0; list-style: none; }
 .roster li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #29434c; background: #08151c; color: #d8e4e8; }
@@ -84,4 +83,6 @@
 @media (max-width: 420px) {
   .connectionDialog { padding: 1rem; }
   .connectionActions > * { flex: 1 1 8rem; }
+  .joinForm > button { flex: 1 1 100%; }
+  .seedRow > button { flex: 1 1 auto; }
 }
