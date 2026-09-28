@@ -17,6 +17,7 @@ const TUTORIAL_CAMERA_FOCUS_MS = 900;
 
 export function useGameRuntimeInteraction({
   state,
+  battlefieldReady,
   tutorial,
   stateRef,
   setState,
@@ -35,6 +36,7 @@ export function useGameRuntimeInteraction({
   missionIntroRef,
 }: {
   state: SimState;
+  battlefieldReady: boolean;
   tutorial: boolean;
   stateRef: React.MutableRefObject<SimState>;
   setState: (state: SimState) => void;
@@ -66,7 +68,7 @@ export function useGameRuntimeInteraction({
     announceCommandFeedback(count > 0 ? `Control group ${slot} selected.` : `Control group ${slot} is empty.`, count > 0 ? "success" : "info");
   }, [announceCommandFeedback, recallControlGroup]);
 
-  const camera = useGameCamera({ stateRef, canvasRef, hostRef });
+  const camera = useGameCamera({ stateRef, canvasRef, hostRef, enabled: battlefieldReady });
   const { camRef, panAvail, panAvailRef, hotPan, panHold, edgePanHover, applyEdgePan, focusTileAnimated, resetCamera } = camera;
 
   const tutorialFocusStageRef = useRef<typeof state.tutorialStage>(undefined);

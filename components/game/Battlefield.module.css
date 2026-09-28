@@ -642,7 +642,7 @@
   }
 }
 
-@media (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
+@media (max-width: 1023px) and (orientation: portrait) {
   .status {
     --status-backdrop-height: 9rem;
     display: grid;

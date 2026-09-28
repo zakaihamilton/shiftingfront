@@ -42,6 +42,7 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
   });
   const interaction = useGameRuntimeInteraction({
     state: durable.state,
+    battlefieldReady: durable.battlefieldReady,
     tutorial,
     stateRef: durable.stateRef,
     setState: durable.setState,

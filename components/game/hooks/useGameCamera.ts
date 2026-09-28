@@ -35,10 +35,12 @@ export function useGameCamera({
   stateRef,
   canvasRef,
   hostRef,
+  enabled = true,
 }: {
   stateRef: RefObject<SimState | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   hostRef: RefObject<HTMLDivElement | null>;
+  enabled?: boolean;
 }) {
   const camRef = useRef<Camera>(createCamera());
   const panAvailRef = useRef<PanAvailability>({ left: false, right: false, up: false, down: false });
@@ -156,6 +158,7 @@ export function useGameCamera({
   useEffect(() => () => cancelFocusAnimation(), [cancelFocusAnimation]);
 
   useEffect(() => {
+    if (!enabled) return;
     const s = stateRef.current;
     const canvas = canvasRef.current;
     const host = hostRef.current;
@@ -201,7 +204,7 @@ export function useGameCamera({
       observer?.disconnect();
       window.removeEventListener("resize", syncViewport);
     };
-  }, [camRef, canvasRef, hostRef, panAvailRef, resetCamera, setPanAvail, stateRef]);
+  }, [camRef, canvasRef, enabled, hostRef, panAvailRef, resetCamera, setPanAvail, stateRef]);
 
   return {
     camRef,

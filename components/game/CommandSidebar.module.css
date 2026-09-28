@@ -181,7 +181,7 @@
   box-shadow: inset 1px 1px var(--chrome-bevel), inset -1px -1px var(--chrome-inset), 0 0 0 1px var(--a, var(--chrome-cyan));
 }
 
-@media (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
+@media (max-width: 1023px) and (orientation: portrait) {
   .sidebar {
     position: absolute;
     z-index: 55;
@@ -258,15 +258,9 @@
   }
 }
 
-@media (min-width: 800px) and (max-width: 1023px) and (orientation: portrait), (min-width: 1024px) and (max-width: 1400px) and (pointer: coarse) {
+@media (min-width: 800px) and (max-width: 1023px) and (orientation: portrait) {
   .sidebar {
     width: min(17.5rem, 42dvh);
-  }
-}
-
-@media (pointer: coarse) and (max-width: 1400px) and (orientation: landscape) {
-  .sidebar {
-    width: min(18rem, 38vw);
   }
 }
 
