@@ -22,6 +22,7 @@ async function openBriefing(page: Page) {
   await seed.fill("0421");
   await page.getByTestId("deploy-screen").getByRole("button", { name: "Start" }).click();
   await expect(page).toHaveURL(/\/briefing\?seed=0421&mission=0/);
+  await expect(page.getByTestId("briefing-screen")).toBeVisible();
 }
 
 async function deployToBattlefield(page: Page) {
@@ -889,8 +890,7 @@ test("keeps tactical radar clicks anchored and cleans up interrupted drags", asy
 
   await page.mouse.move(startX + 48, startY + 24);
   await expect(radar).toHaveAttribute("data-dragging", "true");
-  await nextFrame(page);
-  expect(await canvasDigest(radar)).not.toBe(beforeDrag);
+  await expect.poll(() => canvasDigest(radar)).not.toBe(beforeDrag);
 
   await radar.dispatchEvent("pointercancel", { bubbles: true, pointerId: 1 });
   await expect(radar).not.toHaveAttribute("data-dragging", "true");
@@ -900,8 +900,7 @@ test("keeps tactical radar clicks anchored and cleans up interrupted drags", asy
   await nextFrame(page);
   const beforeClick = await canvasDigest(radar);
   await radar.click({ position: { x: 8, y: 8 } });
-  await nextFrame(page);
-  expect(await canvasDigest(radar)).not.toBe(beforeClick);
+  await expect.poll(() => canvasDigest(radar)).not.toBe(beforeClick);
 });
 
 test("toggles music and sound from welcome options", async ({ page }) => {
@@ -1021,7 +1020,8 @@ test("does not expose soundtrack download controls from pause and mission result
 
 test("replays the incoming transmission from the start", async ({ page }) => {
   await openBriefing(page);
-  await page.keyboard.press(" ");
+  await page.getByRole("button", { name: "Skip transmission" }).click();
+  await expect(page.getByTestId("briefing-dialogue")).toHaveAttribute("data-complete", "true");
   const lastLine = page.getByTestId("briefing-line").nth(2);
   await expect(lastLine).toBeVisible();
   const lastText = (await lastLine.innerText()).trim();
