@@ -752,10 +752,10 @@
   resolved "https://registry.yarnpkg.com/@next/env/-/env-16.3.5.tgz#32fd0528a0deb720c139d6d25737b657e6ba57a3"
   integrity sha512-NWEXVDMqoEo0ktmU6u0sE2Vg0LOcsD7NnOTJNo3/fEaTfsg+F1bMIxuDmQbda4e3yTIQwVdUREF2yIuMOusKtg==
 
-"@next/eslint-plugin-next@16.3.5":
-  version "16.3.5"
-  resolved "https://registry.yarnpkg.com/@next/eslint-plugin-next/-/eslint-plugin-next-16.3.5.tgz#487996bdc5197bdb619cce3d4a3ca54e57f8cfe3"
-  integrity sha512-PGfSeItHJ12DH8t+6sEbuMe59NE5rAhCfgk06QKTH2ne9VUL1JlaXdYXY3B8RaiF2SO50rDYvd39TulP6A6xZQ==
+"@next/eslint-plugin-next@16.3.6":
+  version "16.3.6"
+  resolved "https://registry.yarnpkg.com/@next/eslint-plugin-next/-/eslint-plugin-next-16.3.6.tgz#285f6d86748a6480261a54810da679aeb32531cc"
+  integrity sha512-jowwDX+7DOlDIjJLgTMxudw+k37QnWu1JkZLkSi9MaJBfDYcfhAPMKBhXL0idYzFN/AGg//axnOR4cLkHX/Rng==
   dependencies:
     "@eslint-community/eslint-utils" "4.9.1"
     fast-glob "3.3.1"
@@ -2498,12 +2498,12 @@ escape-string-regexp@^4.0.0:
   resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-4.0.0.tgz#14ba83a5d373e3d311e5afca29cf5bfad965bf34"
   integrity sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==
 
-eslint-config-next@16.3.5:
-  version "16.3.5"
-  resolved "https://registry.yarnpkg.com/eslint-config-next/-/eslint-config-next-16.3.5.tgz#ae4234db76020e1c391ca3e797e4c0e158a06c48"
-  integrity sha512-wPjq9MLQuWykHs8tsm2gH6OJThk6N27L8Te2JatlaGZ7jT1gtgGmJKukygL28xOlWsg5J1a1bGy/PvLyQC8OYA==
+eslint-config-next@16.3.6:
+  version "16.3.6"
+  resolved "https://registry.yarnpkg.com/eslint-config-next/-/eslint-config-next-16.3.6.tgz#46adc0ce206ccb09e8a982875cbc7867f2be1391"
+  integrity sha512-1Upt3U7BDwU+ilpe2byZjAfts9oNq4d4fv/zXEvs8/4yS+cwOQW/WCxUNy8gCDquX67SzeehDvKblVC6ZBMocQ==
   dependencies:
-    "@next/eslint-plugin-next" "16.3.5"
+    "@next/eslint-plugin-next" "16.3.6"
     eslint-import-resolver-node "^0.3.6"
     eslint-import-resolver-typescript "^3.5.2"
     eslint-plugin-import "^2.32.0"
@@ -3469,59 +3469,59 @@ js-yaml@^4.3.2:
   dependencies:
     argparse "^2.0.1"
 
-jscpd-darwin-arm64@5.3.1:
-  version "5.3.1"
-  resolved "https://registry.yarnpkg.com/jscpd-darwin-arm64/-/jscpd-darwin-arm64-5.3.1.tgz#f8d4cc55072c5da6e0190b6f5ca41a3ad5c65093"
-  integrity sha512-t2gKgDw8b1tXv8UZW4p5dSFODSSmTVMtlVUIyCab/R8L+EFc/NPvlC0NUvv8P03zU4QENHJwSaQUAoULcGnaLA==
+jscpd-darwin-arm64@5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/jscpd-darwin-arm64/-/jscpd-darwin-arm64-5.3.2.tgz#af3f01a57b9a3f0bfffe543157de5e49aecbadd6"
+  integrity sha512-dlNh+revPs3X1yTRNAYqZD9u7eqiR9I+KoNvEk9JzSwzOuaUQrgwpP5EZQB0NKuF0oZZZeKrk05OTsNorVpqmQ==
 
-jscpd-darwin-x64@5.3.1:
-  version "5.3.1"
-  resolved "https://registry.yarnpkg.com/jscpd-darwin-x64/-/jscpd-darwin-x64-5.3.1.tgz#16adbf310d0a6a69f389207a1ad6cbea255f0587"
-  integrity sha512-2/xqNtHoLF2wBzA0g6ynxSuEk758yWEtt1vgEhoOYsDe0gQZLaGdszW0KK05T+30Xst12dkFJzVtgBfMkn5jtg==
+jscpd-darwin-x64@5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/jscpd-darwin-x64/-/jscpd-darwin-x64-5.3.2.tgz#5b5b8d957106cd3554354522acc507cf5044d764"
+  integrity sha512-JUt9dhLw2k1WNLqbFcqbDf8ErR6mp9ucKn+chRBsBRdx7MNbdEXmV5UuHRBO8d9h7Cw1eSpfpBPMTCXOS4aaeA==
 
-jscpd-linux-arm64-gnu@5.3.1:
-  version "5.3.1"
-  resolved "https://registry.yarnpkg.com/jscpd-linux-arm64-gnu/-/jscpd-linux-arm64-gnu-5.3.1.tgz#6ad7db661d7a20b3d6156e933c316891a7a6dd74"
-  integrity sha512-Nw14CJAbCICjaDYYBmi38gZ8ayuM5E9eLj3xXZQ9swQD7PORY0hHT3CsME0LzGQdeMfzHVJWQUAiar9Bq86BIQ==
+jscpd-linux-arm64-gnu@5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/jscpd-linux-arm64-gnu/-/jscpd-linux-arm64-gnu-5.3.2.tgz#7a02ec340c2900eec55cdc0ada4ce4063c575031"
+  integrity sha512-4+Z/fW7nqruf47AXRXPe8nTeExPm93Gt4A/6B4Wsi6b0G8Ei/tYDxB4jAwUBXnOGVwxrr/IDJlgSEvHLbzX+MQ==
 
-jscpd-linux-arm64-musl@5.3.1:
-  version "5.3.1"
-  resolved "https://registry.yarnpkg.com/jscpd-linux-arm64-musl/-/jscpd-linux-arm64-musl-5.3.1.tgz#718e7d4a69551d8eba50a54e8c78d3e64bed679f"
-  integrity sha512-KkHFfEE/8pQfPWT/T4uQCL3xtJqo5Q4OMVnRf5hRPhYuriifAefN90q8/rhevAICgg/UkAVZ78hYMOp/WcgivA==
+jscpd-linux-arm64-musl@5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/jscpd-linux-arm64-musl/-/jscpd-linux-arm64-musl-5.3.2.tgz#0d5b900c6e9bd6da09077c0ede095948d9838c1a"
+  integrity sha512-+OsVA0iLfDNUIzJArAaJnGyOHxsflpbpkGh/mWs2nZV7vPd1g5Y9SWO+vj83f6BdaO9VNbUbaQAY4dBYadfHIA==
 
-jscpd-linux-x64-gnu@5.3.1:
-  version "5.3.1"
-  resolved "https://registry.yarnpkg.com/jscpd-linux-x64-gnu/-/jscpd-linux-x64-gnu-5.3.1.tgz#014d91b99af98b0d801e579596a98978dc7dde6e"
-  integrity sha512-YG7V1k+ejE3UaQG0voZscCqZg7X1bwRDgxZlRcllEySHtWHiUl2UR4arHR0PdF6uBUGw0rfjOKkKZu0AYQoimw==
+jscpd-linux-x64-gnu@5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/jscpd-linux-x64-gnu/-/jscpd-linux-x64-gnu-5.3.2.tgz#60f803b37ff3458dc7d9e4677e8c7718a47826b0"
+  integrity sha512-DsNsbCCc5mMOGZdhzgPETsp9RAaKk03cdx1K9wx9RShePnF+AXstYYSiW7M/qjZqvBMlSpO60BXpJvNUQljJJg==
 
-jscpd-linux-x64-musl@5.3.1:
-  version "5.3.1"
-  resolved "https://registry.yarnpkg.com/jscpd-linux-x64-musl/-/jscpd-linux-x64-musl-5.3.1.tgz#ffda15e07f0527fa6f34a9aecf531817db8aa42f"
-  integrity sha512-Wnz0SJB8rZC3UbRYFKSDR0qXJEYMz5hUufO/SPV++fR5+wk7gqxpdYM+LBWDznaSuXZ1PiLMjN5vE3x8jwBCxA==
+jscpd-linux-x64-musl@5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/jscpd-linux-x64-musl/-/jscpd-linux-x64-musl-5.3.2.tgz#f2e86789b981466ede1b418e9dd27e0ba2fef32f"
+  integrity sha512-9D+Jg4MXTHoY5FiK6Fh3FeAr1MsqNS98X5zMUH6PNXu9PKsT0g3Rez2vdYOnoKOE4n8o1XAs8eyU0pm3+HYwog==
 
-jscpd-windows-arm64-msvc@5.3.1:
-  version "5.3.1"
-  resolved "https://registry.yarnpkg.com/jscpd-windows-arm64-msvc/-/jscpd-windows-arm64-msvc-5.3.1.tgz#f7ca105c13641c32b9661d0589ae25cdc1cbd087"
-  integrity sha512-pk/PRHowDkMx8nPF1FbiMSBEeBECJz8iJ21Ig24AIZmIQKDt0MjshDlEs1UHV7dMbePm56RToBtHw0J4FaxMFg==
+jscpd-windows-arm64-msvc@5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/jscpd-windows-arm64-msvc/-/jscpd-windows-arm64-msvc-5.3.2.tgz#f72cd18c96ba3333e81e25b903cbf0193886199f"
+  integrity sha512-qPqZEMHUOjc5tKVU7PElyIhI1J0xyAuQ44S2SwLvKS5qw1NATGTaGhp8MuJkrvTmNcNZmLF0Me6Cv6zj6DVlWA==
 
-jscpd-windows-x64-msvc@5.3.1:
-  version "5.3.1"
-  resolved "https://registry.yarnpkg.com/jscpd-windows-x64-msvc/-/jscpd-windows-x64-msvc-5.3.1.tgz#6ce5ea7a0431ebab089e478ca56adeabb83cc21f"
-  integrity sha512-vIQGaPvnMdRLvMyJzvoD3bCJB8Ospv+YEYkdHdq0dZTbqbUKjrHt3arvYJ0G0T5kBYY+8QGmjelMI01p74xZPA==
+jscpd-windows-x64-msvc@5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/jscpd-windows-x64-msvc/-/jscpd-windows-x64-msvc-5.3.2.tgz#b8c727b24345e91773d50960792e5d38b9445642"
+  integrity sha512-WfO1k0/NXA+2HjLaWUkheQv6bEkYrI4WKa/Cf429+dnpdiYB6S8KpJyd6/xGJd+XJ9nKhE0mIFuk3+VdXtaFMQ==
 
-jscpd@^5.3.1:
-  version "5.3.1"
-  resolved "https://registry.yarnpkg.com/jscpd/-/jscpd-5.3.1.tgz#0c9d333854724e12666501261ca830f8ca0a218b"
-  integrity sha512-A1A8PqFTpKN+SI5QowA30fmOYkpofQGJQzn5KyIDEYbQ1kC78GK+RBcmdz4KxZ/9QQMe3J01CsFIrtC2dUvekw==
+jscpd@^5.3.2:
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/jscpd/-/jscpd-5.3.2.tgz#d7b0d6cdcc0c8d011b23f2a84d776e9c3bb58062"
+  integrity sha512-siYdg3TBNwizWFaYPgr1vwuSs+NWeKJjLAbd00Nkmr2y8TSZRSW0cOGKtqSLgOv7QXDbC/XECnCrZEm5v6RMkg==
   optionalDependencies:
-    jscpd-darwin-arm64 "5.3.1"
-    jscpd-darwin-x64 "5.3.1"
-    jscpd-linux-arm64-gnu "5.3.1"
-    jscpd-linux-arm64-musl "5.3.1"
-    jscpd-linux-x64-gnu "5.3.1"
-    jscpd-linux-x64-musl "5.3.1"
-    jscpd-windows-arm64-msvc "5.3.1"
-    jscpd-windows-x64-msvc "5.3.1"
+    jscpd-darwin-arm64 "5.3.2"
+    jscpd-darwin-x64 "5.3.2"
+    jscpd-linux-arm64-gnu "5.3.2"
+    jscpd-linux-arm64-musl "5.3.2"
+    jscpd-linux-x64-gnu "5.3.2"
+    jscpd-linux-x64-musl "5.3.2"
+    jscpd-windows-arm64-msvc "5.3.2"
+    jscpd-windows-x64-msvc "5.3.2"
 
 jsdom@^30.1.1:
   version "30.1.1"
@@ -3620,10 +3620,10 @@ keyv@^4.5.4:
   dependencies:
     json-buffer "3.0.1"
 
-knip@^6.37.0:
-  version "6.37.0"
-  resolved "https://registry.yarnpkg.com/knip/-/knip-6.37.0.tgz#6aff69da159c4de2e9ab58c4efdf649358780620"
-  integrity sha512-NKCYuoGKJ+o2AuoCuV1mDvfMYnSSWfDXqxwmzxeHyd8fftjNRl8TBUg3fbSrtJjhm7Vj6sc1PX3WZnZhECs9EQ==
+knip@^6.38.0:
+  version "6.38.0"
+  resolved "https://registry.yarnpkg.com/knip/-/knip-6.38.0.tgz#d1ff703b3e14b5666054db0867ba288f5a45bbed"
+  integrity sha512-umytiMCaZf02MV9SOO1FEDgbDf6h20VZk3ruJE0kh52kkGjYZFRUAXHJWYoLhvhoHGINO/7GXVJmQ2vxTBvl6A==
   dependencies:
     fdir "^6.5.0"
     formatly "^0.7.0"
