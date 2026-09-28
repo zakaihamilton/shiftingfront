@@ -474,10 +474,11 @@ test("keeps sidebar item portraits sharp across command tabs", async ({ page }) 
   productionPortraits.forEach((portrait) => expectInsideSidebar(portrait.card));
   expect(productionPortraits.every((portrait) => portrait.backingWidth >= portrait.cssWidth && portrait.backingHeight >= portrait.cssHeight)).toBe(true);
 
+  await page.keyboard.press("h");
   const geometry = await battlefieldEntityGeometry(page, state, yard!);
   await page.mouse.click(geometry.pointer.x, geometry.pointer.y);
   await sidebar.getByRole("tab", { name: "Selected" }).click();
-  await expect(page.getByTestId("selected-kind")).toHaveText("Construction Yard");
+  await expect(page.getByTestId("selected-kind")).toHaveText("Command HQ");
   const selectedPortrait = sidebar.locator("[data-testid='selected-panel'] canvas");
   await expect(selectedPortrait).toBeVisible();
   const selectedMetrics = await selectedPortrait.evaluate((element) => {
