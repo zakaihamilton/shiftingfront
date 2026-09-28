@@ -6,7 +6,7 @@ type Props = {
   value: string;
   length: number;
   label: string;
-  inputRef: RefObject<HTMLInputElement | null>;
+  inputRef?: RefObject<HTMLInputElement | null>;
   onChange: (value: string) => void;
   normalize: (value: string) => string;
   onEnter?: () => void;
@@ -54,7 +54,11 @@ export function CodeInput({
           event.preventDefault();
           event.currentTarget.select();
         }}
-        onChange={(event) => onChange(normalize(event.currentTarget.value).slice(0, length))}
+        onChange={(event) => {
+          const next = normalize(event.currentTarget.value).slice(0, length);
+          event.currentTarget.value = next;
+          onChange(next);
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter" && onEnter) {
             event.preventDefault();
