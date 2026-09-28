@@ -10,8 +10,12 @@ import { terrainLayoutSignature } from "../terrainAtlasBake";
 
 const TERRAIN_RENDER_REV = "world-atlas-v32-no-feature-boundaries";
 
-const terrainScroll: ScrollLayer = emptyScrollLayer();
-let terrainCanvas: HTMLCanvasElement | null = null;
+export type TerrainRenderCache = {
+  canvas: HTMLCanvasElement;
+  scroll: ScrollLayer;
+};
+
+let terrainCaches = new WeakMap<HTMLCanvasElement, TerrainRenderCache>();
 export const entityById = new Map<number, Entity>();
 export const drawList: Entity[] = [];
 export const entityDrawOrder = new Map<number, number>();
@@ -25,17 +29,23 @@ export function spriteCacheKey(state: SimState, entity: Entity): string {
   return `${spriteSessionKey(state)}:${entity.id}`;
 }
 
-export function ensureTerrainCanvas(bw: number, bh: number): HTMLCanvasElement | null {
+export function ensureTerrainRenderCache(
+  ownerCanvas: HTMLCanvasElement,
+  bw: number,
+  bh: number,
+): TerrainRenderCache | null {
   if (typeof document === "undefined") return null;
-  if (!terrainCanvas) {
-    terrainCanvas = document.createElement("canvas");
+  let cache = terrainCaches.get(ownerCanvas);
+  if (!cache) {
+    cache = { canvas: document.createElement("canvas"), scroll: emptyScrollLayer() };
+    terrainCaches.set(ownerCanvas, cache);
   }
-  if (terrainCanvas.width !== bw || terrainCanvas.height !== bh) {
-    terrainCanvas.width = bw;
-    terrainCanvas.height = bh;
-    terrainScroll.key = "";
+  if (cache.canvas.width !== bw || cache.canvas.height !== bh) {
+    cache.canvas.width = bw;
+    cache.canvas.height = bh;
+    cache.scroll.key = "";
   }
-  return terrainCanvas;
+  return cache;
 }
 
 export function terrainContentKey(state: SimState, cam: Camera, w: number, h: number): string {
@@ -45,16 +55,13 @@ export function terrainContentKey(state: SimState, cam: Camera, w: number, h: nu
 }
 
 export function invalidateTerrainCache(): void {
-  terrainScroll.key = "";
+  terrainCaches = new WeakMap<HTMLCanvasElement, TerrainRenderCache>();
 }
 
 export function clearRendererSessionCache(): void {
-  terrainScroll.key = "";
-  terrainCanvas = null;
+  terrainCaches = new WeakMap<HTMLCanvasElement, TerrainRenderCache>();
   entityById.clear();
   drawList.length = 0;
   entityDrawOrder.clear();
   lastReadySprite.clear();
 }
-
-export { terrainScroll };

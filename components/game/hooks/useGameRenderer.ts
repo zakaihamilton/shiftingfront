@@ -78,6 +78,8 @@ export function useGameRenderer({
   const fxRef = useRef<FxBurst[]>([]);
   const fxSeq = useRef(1);
   const screenShakeRef = useRef<ScreenShakeState>(createScreenShakeState());
+  const lastRenderedAtRef = useRef<number | null>(null);
+  const renderCostAverageRef = useRef(0);
 
   const redraw = useCallback((nowMs?: number, subTickAlpha = 0) => {
     const s = stateRef.current;
@@ -88,6 +90,13 @@ export function useGameRenderer({
     extrasRef.current.reducedMotion = reducedMotion;
 
     const currentNow = nowMs ?? performance.now();
+    // Keep the intro composite at display rate while it remains cheap, then
+    // use the same 30 fps fallback as gameplay on devices that cannot sustain it.
+    const targetFrameMs = renderCostAverageRef.current > 18 ? 1_000 / 30 : 1_000 / 60;
+    const lastRenderedAt = lastRenderedAtRef.current;
+    if (lastRenderedAt !== null && currentNow - lastRenderedAt < targetFrameMs) return;
+
+    const renderStartedAt = performance.now();
     const shake = updateScreenShake(screenShakeRef.current, currentNow, reducedMotion);
     const renderCam = (shake.offsetX !== 0 || shake.offsetY !== 0)
       ? { ...camRef.current, x: camRef.current.x + shake.offsetX, y: camRef.current.y + shake.offsetY }
@@ -125,6 +134,11 @@ export function useGameRenderer({
     miniCtxRef.current = frame.miniCtx;
     mobileMiniCtxRef.current = frame.secondaryMiniCtx;
     fxRef.current = frame.fx;
+    const renderCost = performance.now() - renderStartedAt;
+    renderCostAverageRef.current = renderCostAverageRef.current === 0
+      ? renderCost
+      : renderCostAverageRef.current * 0.75 + renderCost * 0.25;
+    lastRenderedAtRef.current = currentNow;
   }, [boxRef, camRef, canvasRef, colorblindMode, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, missionIntroRef, place, reducedMotion, repair, selected, sell, stateRef, tooltipCanvasRef]);
 
   return { extrasRef, fxRef, fxSeq, screenShakeRef, redraw };

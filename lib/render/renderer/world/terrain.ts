@@ -12,9 +12,8 @@ import { drawDiamond, type RenderExtras } from "../../renderOverlays";
 import { TILE_H, TILE_W, tileToScreen } from "../../../iso";
 
 import {
-  ensureTerrainCanvas,
+  ensureTerrainRenderCache,
   terrainContentKey,
-  terrainScroll,
 } from "../cache";
 
 function paintTerrain(ctx: CanvasRenderingContext2D, state: SimState, cam: Camera): void {
@@ -32,19 +31,21 @@ export function renderTerrainPhase(
 ): void {
   const pad = terrainScrollPad(cam.zoom);
   const contentKey = terrainContentKey(state, cam, w, h);
-  const layer = ensureTerrainCanvas(w + pad * 2, h + pad * 2);
-  if (layer && scrollLayerNeedsRebuild(terrainScroll, contentKey, cam.x, cam.y)) {
+  const terrainCache = ensureTerrainRenderCache(ctx.canvas, w + pad * 2, h + pad * 2);
+  const layer = terrainCache?.canvas;
+  const scroll = terrainCache?.scroll;
+  if (layer && scroll && scrollLayerNeedsRebuild(scroll, contentKey, cam.x, cam.y)) {
     const tctx = layer.getContext("2d");
     if (tctx) {
       paintTerrain(tctx, state, scrollLayerPaintCamera(cam, pad));
-      terrainScroll.key = contentKey;
-      terrainScroll.originX = cam.x;
-      terrainScroll.originY = cam.y;
-      terrainScroll.pad = pad;
+      scroll.key = contentKey;
+      scroll.originX = cam.x;
+      scroll.originY = cam.y;
+      scroll.pad = pad;
     }
   }
-  if (layer && terrainScroll.key === contentKey) {
-    const blit = scrollLayerBlitOffset(terrainScroll, cam.x, cam.y);
+  if (layer && scroll && scroll.key === contentKey) {
+    const blit = scrollLayerBlitOffset(scroll, cam.x, cam.y);
     ctx.drawImage(layer, blit.x, blit.y);
   } else {
     paintTerrain(ctx, state, cam);

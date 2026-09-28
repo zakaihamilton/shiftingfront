@@ -1,101 +1,255 @@
 .overlay {
+  --intro-accent: #acd1c7;
+
   position: fixed;
   z-index: 120;
   inset: 0;
-  display: grid;
-  place-items: center;
   overflow: hidden;
-  background: transparent;
-  color: #c7dfd9;
-  font: 600 0.72rem/1.3 var(--font-mono, ui-monospace, monospace);
-  letter-spacing: 0.12em;
+  color: #e9f0ec;
+  font: 500 0.68rem/1.35 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.13em;
   cursor: wait;
   touch-action: none;
+  pointer-events: none;
 }
 
 .overlay::before,
 .overlay::after {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
+  right: 0;
+  left: 0;
   content: "";
+  pointer-events: none;
 }
 
 .overlay::before {
-  opacity: 0.12;
-  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(170, 229, 217, 0.38) 4px, transparent 5px);
+  top: 0;
+  height: 20%;
+  background: linear-gradient(180deg, rgba(3, 8, 10, 0.56), transparent);
 }
 
 .overlay::after {
-  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.68) 100%);
+  bottom: 0;
+  height: 30%;
+  background: linear-gradient(0deg, rgba(3, 8, 10, 0.7), transparent);
 }
 
 .frame {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: clamp(1rem, 3vw, 2rem);
-  pointer-events: none;
+  padding: clamp(1rem, 3.1vw, 2.7rem);
 }
 
-.classification {
-  align-self: flex-start;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid rgba(126, 199, 192, 0.4);
-  background: rgba(4, 12, 14, 0.72);
-  color: #a5c8c0;
+.frameLine {
+  position: absolute;
+  inset: clamp(0.65rem, 1.55vw, 1.25rem);
+  border: 1px solid rgba(224, 238, 231, 0.18);
+}
+
+.frameLine::before,
+.frameLine::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: clamp(1.1rem, 4.2vh, 3.2rem);
+  background: rgba(3, 8, 10, 0.84);
+  content: "";
+}
+
+.frameLine::before {
+  top: 0;
+  border-bottom: 1px solid rgba(224, 238, 231, 0.13);
+}
+
+.frameLine::after {
+  bottom: 0;
+  border-top: 1px solid rgba(224, 238, 231, 0.13);
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: clamp(1.1rem, 2.4vw, 2rem) clamp(1.2rem, 2.8vw, 2.5rem) 0;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.72);
+}
+
+.identity {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.7rem;
+  align-items: center;
+}
+
+.signal {
+  grid-row: span 2;
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 1px solid var(--intro-accent, #acd1c7);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--intro-accent, #acd1c7) 65%, transparent);
+  transform: rotate(45deg);
+}
+
+.identityLabel {
+  color: var(--intro-accent, #acd1c7);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+}
+
+.identityLabel i,
+.heroTitle i,
+.skipKey i {
+  color: rgba(223, 237, 229, 0.44);
+  font-style: normal;
+}
+
+.identity strong {
+  color: rgba(234, 242, 236, 0.88);
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+}
+
+.channel {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  color: rgba(226, 238, 231, 0.74);
+  font-size: 0.58rem;
+  text-align: right;
+}
+
+.channelLight {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--intro-accent, #acd1c7);
+  box-shadow: 0 0 12px var(--intro-accent, #acd1c7);
+}
+
+.heroTitle {
+  position: absolute;
+  bottom: clamp(4.4rem, 10vh, 7rem);
+  left: clamp(2rem, 6vw, 5.2rem);
+  display: grid;
+  gap: 0.42rem;
+  opacity: 0;
+  transform: translateY(0.7rem);
+  text-shadow: 0 3px 28px rgba(0, 0, 0, 0.9);
+  transition: opacity 700ms ease, transform 700ms ease;
+}
+
+.overlay[data-online="true"] .heroTitle {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.heroTitle > span {
+  color: var(--intro-accent, #acd1c7);
+  font-size: 0.6rem;
+  letter-spacing: 0.19em;
+}
+
+.heroTitle strong {
+  color: #f1f5f0;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3.3rem);
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  line-height: 1;
+}
+
+.heroTitle b {
+  color: rgba(235, 244, 237, 0.76);
   font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.26em;
 }
 
 .skip {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid rgba(134, 214, 203, 0.66);
-  background: rgba(4, 15, 16, 0.88);
-  color: #d8eee4;
+  position: absolute;
+  right: clamp(1.2rem, 3vw, 2.6rem);
+  bottom: clamp(1.1rem, 3vh, 2rem);
+  display: grid;
+  gap: 0.3rem;
+  min-width: 9rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(222, 239, 230, 0.42);
+  background: rgba(8, 17, 18, 0.62);
+  color: #edf3ed;
   font: inherit;
   letter-spacing: inherit;
+  text-align: left;
   pointer-events: auto;
   cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: background 160ms ease, border-color 160ms ease;
 }
 
-.skip:hover,
+.skip:hover:not(:disabled),
 .skip:focus-visible {
-  outline: 2px solid #bce8d9;
-  outline-offset: 2px;
-  background: rgba(21, 47, 45, 0.96);
+  outline: 2px solid #d2eee0;
+  outline-offset: 3px;
+  border-color: rgba(229, 245, 236, 0.88);
+  background: rgba(18, 37, 36, 0.82);
 }
 
-.skip span {
-  color: #87aaa4;
-  font-size: 0.58rem;
+.skip:disabled {
+  cursor: wait;
+  opacity: 0.78;
 }
 
-.overlay[data-reduced-motion="true"]::before {
-  opacity: 0.07;
+.skipLabel {
+  color: #f1f5f0;
+  font-size: 0.62rem;
+}
+
+.skipKey {
+  color: rgba(210, 226, 217, 0.72);
+  font-size: 0.55rem;
 }
 
 @media (max-width: 600px) {
   .frame {
-    align-items: flex-start;
-    flex-direction: column;
-    justify-content: space-between;
+    padding: 0.75rem;
+  }
+
+  .frameLine {
+    inset: 0.45rem;
+  }
+
+  .header {
+    padding: 1rem 1rem 0;
+  }
+
+  .identityLabel,
+  .identity strong,
+  .channel {
+    font-size: 0.5rem;
+  }
+
+  .channel {
+    max-width: 9rem;
+  }
+
+  .heroTitle {
+    bottom: 5.2rem;
+    left: 1.4rem;
   }
 
   .skip {
-    align-self: flex-end;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
+    right: 1rem;
+    bottom: 0.95rem;
+    min-width: 7.6rem;
+    padding: 0.55rem 0.65rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .overlay::before {
-    opacity: 0.06;
+  .heroTitle,
+  .skip {
+    transition: none;
   }
 }

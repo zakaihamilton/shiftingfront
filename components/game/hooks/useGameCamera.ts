@@ -11,13 +11,23 @@ import { heightAt } from "@/lib/sim/world";
 import type { SimState } from "@/lib/types";
 import { useMinimapInteraction } from "./useMinimapInteraction";
 
-export const MIN_RENDER_WIDTH = 640;
-export const MIN_RENDER_HEIGHT = 480;
+export const MIN_RENDER_WIDTH = 1;
+export const MIN_RENDER_HEIGHT = 1;
+const MAX_TOUCH_RENDER_PIXELS = 1_500_000;
 
 export function renderDimensions(host: HTMLElement): { width: number; height: number } {
+  const width = Math.max(MIN_RENDER_WIDTH, Math.floor(host.clientWidth));
+  const height = Math.max(MIN_RENDER_HEIGHT, Math.floor(host.clientHeight));
+  const isTouchDevice = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
+  const pixelCount = width * height;
+  if (!isTouchDevice || pixelCount <= MAX_TOUCH_RENDER_PIXELS) return { width, height };
+
+  // Keep the canvas and its CSS box at the same aspect ratio while reducing
+  // work on high-resolution touch screens.
+  const scale = Math.sqrt(MAX_TOUCH_RENDER_PIXELS / pixelCount);
   return {
-    width: Math.max(MIN_RENDER_WIDTH, Math.floor(host.clientWidth)),
-    height: Math.max(MIN_RENDER_HEIGHT, Math.floor(host.clientHeight)),
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
   };
 }
 
@@ -25,10 +35,12 @@ export function useGameCamera({
   stateRef,
   canvasRef,
   hostRef,
+  enabled = true,
 }: {
   stateRef: RefObject<SimState | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   hostRef: RefObject<HTMLDivElement | null>;
+  enabled?: boolean;
 }) {
   const camRef = useRef<Camera>(createCamera());
   const panAvailRef = useRef<PanAvailability>({ left: false, right: false, up: false, down: false });
@@ -146,20 +158,53 @@ export function useGameCamera({
   useEffect(() => () => cancelFocusAnimation(), [cancelFocusAnimation]);
 
   useEffect(() => {
+    if (!enabled) return;
     const s = stateRef.current;
     const canvas = canvasRef.current;
     const host = hostRef.current;
     if (!canvas || !host) return;
-    const dimensions = renderDimensions(host);
+    let dimensions = renderDimensions(host);
     if (canvas.width !== dimensions.width || canvas.height !== dimensions.height) {
       canvas.width = dimensions.width;
       canvas.height = dimensions.height;
     }
 
-    // Keep subsequent backing-store resizes inside renderGameFrame, where the
-    // new size is repainted before the browser can display the cleared canvas.
     if (s) resetCamera(s);
-  }, [canvasRef, hostRef, resetCamera, stateRef]);
+
+    const syncViewport = () => {
+      const nextDimensions = renderDimensions(host);
+      if (nextDimensions.width === dimensions.width && nextDimensions.height === dimensions.height) return;
+
+      const currentState = stateRef.current;
+      if (currentState) {
+        // Preserve the world point at the center of the view as fullscreen,
+        // orientation, or the responsive sidebar changes the battlefield size.
+        camRef.current.x += (nextDimensions.width - dimensions.width) / 2;
+        camRef.current.y += (nextDimensions.height - dimensions.height) / 2;
+        const bounds = cameraPanBounds(
+          camRef.current,
+          currentState.width,
+          currentState.height,
+          nextDimensions.width,
+          nextDimensions.height,
+        );
+        clampCamera(camRef.current, bounds);
+        const availability = panAvailability(camRef.current, bounds);
+        panAvailRef.current = availability;
+        setPanAvail(availability);
+      }
+
+      dimensions = nextDimensions;
+    };
+
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncViewport);
+    observer?.observe(host);
+    window.addEventListener("resize", syncViewport);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", syncViewport);
+    };
+  }, [camRef, canvasRef, enabled, hostRef, panAvailRef, resetCamera, setPanAvail, stateRef]);
 
   return {
     camRef,

@@ -5,7 +5,6 @@ import { setVoiceEnabled as applyVoiceEnabled, setVoiceVolume as applyVoiceVolum
 import { setAudioLevels, type AudioVolumeKey } from "@/lib/audio/mixer";
 import { cachedLocalStorage } from "@/lib/persist/save";
 import { writeSettings, type ColorblindMode, type GameSettings, type HudScale, type KeyBindings } from "@/lib/persist/settings";
-import type { FieldGuideTopic } from "@/lib/fieldGuide";
 
 export function useAudioPreferences(
   settings: GameSettings,
@@ -78,13 +77,6 @@ export function useAudioPreferences(
     writeSettings(cachedLocalStorage(), next);
   }, [setSettings, settings]);
 
-  const markFieldGuideTopicSeen = useCallback((topic: FieldGuideTopic) => {
-    if (settings.seenFieldGuideTopics.includes(topic)) return;
-    const next = { ...settings, seenFieldGuideTopics: [...settings.seenFieldGuideTopics, topic] };
-    setSettings(next);
-    writeSettings(cachedLocalStorage(), next);
-  }, [setSettings, settings]);
-
   return {
     toggleSound,
     toggleMusic,
@@ -95,6 +87,5 @@ export function useAudioPreferences(
     cycleHudScale,
     updateKeyBindings,
     updateVolume,
-    markFieldGuideTopicSeen,
   };
 }

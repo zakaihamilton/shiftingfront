@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useRef } from "react";
 import { createCamera } from "../../lib/iso";
@@ -43,6 +43,12 @@ import { useGameRenderer } from "../../components/game/hooks/useGameRenderer";
 import { initialMission } from "../../components/game/hooks/useGameSession";
 import { useGameRuntime } from "../../components/game/hooks/useGameRuntime";
 import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "../../components/game/hooks/runtime/surfaces";
+
+async function renderGameRuntime(options: Parameters<typeof useGameRuntime>[0]) {
+  const rendered = renderHook(() => useGameRuntime(options));
+  await waitFor(() => expect(startLoop).toHaveBeenCalledOnce());
+  return rendered;
+}
 
 afterEach(() => {
   cleanup();
@@ -273,8 +279,8 @@ describe("useGameRuntime", () => {
     expect(window.location.search).toContain("resume=1");
   });
 
-  it("saves the current state when the page is unloaded", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("saves the current state when the page is unloaded", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const loopOptions = (startLoop.mock.calls as unknown[][])[0]?.[0] as { setState: (state: typeof result.current.state) => void };
     const current = { ...result.current.state, tick: 120 };
 
@@ -286,8 +292,8 @@ describe("useGameRuntime", () => {
     expect(readSave(localStorageAdapter(), 421)?.tick).toBe(120);
   });
 
-  it("does not overwrite a checkpoint when loading another mission triggers pagehide", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("does not overwrite a checkpoint when loading another mission triggers pagehide", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const checkpoint = { ...makeFixture({ seed: 421, win: { kind: "annihilate" } }), missionIndex: 1, tick: 88 };
     const written = writeSlot(localStorageAdapter(), {
       name: "Earlier mission",
@@ -306,8 +312,8 @@ describe("useGameRuntime", () => {
     expect(readSave(localStorageAdapter(), 421)).toMatchObject({ missionIndex: 1, tick: 88 });
   });
 
-  it("does not replace a newer same-seed save during unload", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("does not replace a newer same-seed save during unload", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const loopOptions = (startLoop.mock.calls as unknown[][])[0]?.[0] as { setState: (state: typeof result.current.state) => void };
     loopOptions.setState({ ...result.current.state, tick: 120 });
 
@@ -321,11 +327,11 @@ describe("useGameRuntime", () => {
     expect(readSave(localStorageAdapter(), 421)?.tick).toBe(77);
   });
 
-  it("honors cross-tab storage notifications even when the raw value is unchanged", () => {
+  it("honors cross-tab storage notifications even when the raw value is unchanged", async () => {
     const saved = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     expect(writeSave(localStorageAdapter(), saved)).toBe(true);
     const raw = window.localStorage.getItem(saveKey(421));
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: true, tutorial: false }));
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: true, tutorial: false });
     const loopOptions = (startLoop.mock.calls as unknown[][])[0]?.[0] as { setState: (state: typeof result.current.state) => void };
     loopOptions.setState({ ...result.current.state, tick: 120 });
 
@@ -341,8 +347,8 @@ describe("useGameRuntime", () => {
     expect(readSave(localStorageAdapter(), 421)?.tick).toBe(0);
   });
 
-  it("starts the sim loop and exposes the gameplay runtime contract", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("starts the sim loop and exposes the gameplay runtime contract", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
 
     expect(startLoop).toHaveBeenCalledOnce();
     expect(result.current.campaign.seedNumber).toBe(421);
@@ -372,8 +378,8 @@ describe("useGameRuntime", () => {
     expect(startLoop).toHaveBeenCalledOnce();
   });
 
-  it("adapts the runtime contract into independent screen surfaces", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("adapts the runtime contract into independent screen surfaces", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const cache = createGameRuntimeSurfaceCache();
     const surfaces = createGameRuntimeSurfaces(result.current, cache);
 
@@ -390,8 +396,8 @@ describe("useGameRuntime", () => {
     expect(pausedSurfaces.overlays.pause?.session.onResume).toBe(result.current.session.resumeMission);
   });
 
-  it("reuses the cached power model while the building signature is unchanged", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("reuses the cached power model while the building signature is unchanged", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const cache = createGameRuntimeSurfaceCache();
 
     createGameRuntimeSurfaces(result.current, cache);
@@ -402,8 +408,8 @@ describe("useGameRuntime", () => {
     expect(cache.power).toBe(firstPower);
   });
 
-  it("wires runtime lifecycle callbacks and stops the loop on unmount", () => {
-    const { unmount } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("wires runtime lifecycle callbacks and stops the loop on unmount", async () => {
+    const { unmount } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const options = (startLoop.mock.calls[0] as unknown as [LoopOptions])[0];
 
     expect(options.drainCommands).toEqual(expect.any(Function));
@@ -413,8 +419,8 @@ describe("useGameRuntime", () => {
     expect(stopLoop).toHaveBeenCalledOnce();
   });
 
-  it("returns focus to the launcher when a mobile panel action closes it", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("returns focus to the launcher when a mobile panel action closes it", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const launcher = document.createElement("button");
     document.body.append(launcher);
     (result.current.mobileLauncherRef as { current: HTMLButtonElement | null }).current = launcher;
@@ -434,12 +440,12 @@ describe("useGameRuntime", () => {
     sidebarControl.remove();
   });
 
-  it("does not record telemetry again when resuming a terminal save", () => {
+  it("does not record telemetry again when resuming a terminal save", async () => {
     const terminalState = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     terminalState.result = "won";
     expect(writeSave(localStorageAdapter(), terminalState)).toBe(true);
 
-    renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: true, tutorial: false }));
+    await renderGameRuntime({ seed: 421, mission: 0, resume: true, tutorial: false });
     const firstCall = startLoop.mock.calls[0] as unknown as [{ onFrame: (now: number, state: typeof terminalState, paused: boolean, alpha: number) => void }] | undefined;
     expect(firstCall).toBeDefined();
     act(() => firstCall?.[0].onFrame(1_000, terminalState, false, 0));
@@ -449,7 +455,7 @@ describe("useGameRuntime", () => {
 
   it.each(["won", "lost"] as const)("pauses mission music immediately when the simulation reaches a %s result", async (outcome) => {
     const { pauseMusic } = await import("@/lib/audio/music");
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const options = (startLoop.mock.calls[0] as unknown as [{ onTick: (state: typeof result.current.state, events: SimEvent[], now: number) => void }] | undefined)?.[0];
     expect(options).toBeDefined();
 
@@ -462,8 +468,8 @@ describe("useGameRuntime", () => {
 });
 
 describe("automatic save recovery", () => {
-  it("retries a failed terminal save without duplicating telemetry", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("retries a failed terminal save without duplicating telemetry", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const state = { ...result.current.state, result: "lost" as const };
     const options = (startLoop.mock.calls as unknown as [{ onFrame: (now: number, snapshot: typeof state, paused: boolean, alpha: number, frameMs: number) => void }][])[0]![0];
     const original = Storage.prototype.setItem;
@@ -486,8 +492,8 @@ describe("automatic save recovery", () => {
     spy.mockRestore();
   });
 
-  it("does not overwrite an external save after a terminal conflict", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("does not overwrite an external save after a terminal conflict", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const state = { ...result.current.state, result: "lost" as const };
     const external = { ...state, tick: 123, result: "playing" as const };
     writeSave(localStorageAdapter(), external);
@@ -500,8 +506,8 @@ describe("automatic save recovery", () => {
 });
 
 describe("mission replacement in a mounted loop", () => {
-  it("saves and records each terminal result after restarting in place", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("saves and records each terminal result after restarting in place", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const options = (startLoop.mock.calls as unknown as [LoopOptions][])[0]![0];
     const finish = (now: number) => {
       const state = options.getState();
@@ -519,8 +525,8 @@ describe("mission replacement in a mounted loop", () => {
     expect(JSON.parse(localStorage.getItem(TELEMETRY_KEY)!).records).toHaveLength(2);
   });
 
-  it("does not replay terminal telemetry when loading a finished slot in place", () => {
-    const { result } = renderHook(() => useGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false }));
+  it("does not replay terminal telemetry when loading a finished slot in place", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const state = { ...result.current.state, result: "lost" as const };
     const slot = writeSlot(localStorageAdapter(), { name: "Finished", state, campaign: freshCampaignProgress(421) });
     expect(slot.ok).toBe(true);
@@ -531,7 +537,7 @@ describe("mission replacement in a mounted loop", () => {
     expect(localStorage.getItem(TELEMETRY_KEY)).toBeNull();
   });
 
-  it("does not pause loop when opening pause menu during an online skirmish unless disconnected", () => {
+  it("does not pause loop when opening pause menu during an online skirmish unless disconnected", async () => {
     let connected = true;
     const fakeSession = {
       owner: 0,
@@ -545,13 +551,13 @@ describe("mission replacement in a mounted loop", () => {
       drainTick: vi.fn((_s, cmds) => cmds),
     } as unknown as import("@/lib/multiplayer/session").MultiplayerSession;
 
-    const { result } = renderHook(() => useGameRuntime({
+    const { result } = await renderGameRuntime({
       seed: 421,
       mission: 0,
       resume: false,
       tutorial: false,
       multiplayerSession: fakeSession,
-    }));
+    });
 
     const options = (startLoop.mock.calls as unknown as [LoopOptions][])[0]![0];
     expect(options.isPaused!()).toBe(false);

@@ -48,7 +48,7 @@
   font-size: var(--text-2xs);
 }
 
-@media (max-width: 1023px) and (orientation: portrait) {
+@media (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
   .dock {
     grid-template-columns: 1fr 1.1fr;
   }

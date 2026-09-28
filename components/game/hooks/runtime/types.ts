@@ -7,7 +7,6 @@ import type { PanAvailability, PanDir } from "@/lib/render/camera";
 import type { ScreenShakeState } from "@/lib/render/screenShake";
 import type { Campaign, Entity, FactionVisualProfile, Palette, BuildingKind, Command, Formation, SimEvent, SimState, Stance, UnitKind } from "@/lib/types";
 import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
-import type { FieldGuideTopic } from "@/lib/fieldGuide";
 import type { ArchiveEntry, SlotMeta } from "@/lib/persist/save";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { CommandTab, PauseView } from "@/lib/ui/shortcuts";
@@ -19,6 +18,7 @@ import type { CombatAlertKind } from "../useCombatAlert";
 import type { CommandNoticeState } from "../useGameChrome";
 import type { MinimapPing } from "../../MinimapFrame";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
+import type { MissionIntroPhase } from "@/lib/render/missionIntro";
 
 export type SimulationRuntimeRefs = {
   stateRef: MutableRefObject<SimState>;
@@ -149,6 +149,7 @@ export type PlayFieldSurfaceModel = {
   tutorial: boolean;
   missionIntroActive: boolean;
   missionIntroWaiting: boolean;
+  missionIntroPhase: MissionIntroPhase;
   onSkipMissionIntro: () => void;
   paused: boolean;
   pointer: CanvasPointerHandlers;
@@ -230,7 +231,6 @@ export type PauseSessionModel = {
   onCycleHudScale?: () => void;
   onUpdateKeyBindings?: (bindings: KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
-  onMarkFieldGuideTopicSeen?: (topic: FieldGuideTopic) => void;
   onExportTelemetry?: () => boolean;
   onClearTelemetry?: () => boolean;
 };
@@ -279,7 +279,9 @@ export interface GameRuntime {
   state: SimState;
   tutorial: boolean;
   missionIntroActive: boolean;
+  battlefieldReady: boolean;
   missionIntroWaiting: boolean;
+  missionIntroPhase: MissionIntroPhase;
   onSkipMissionIntro: () => void;
   paused: boolean;
   hostRef: RefObject<HTMLDivElement | null>;

@@ -39,8 +39,6 @@ export function GamePauseSurface({ view, notice, settings, tutorial, multiplayer
       onCycleHudScale={session.onCycleHudScale}
       onUpdateKeyBindings={session.onUpdateKeyBindings}
       onVolumeChange={session.onVolumeChange}
-      onMarkFieldGuideTopicSeen={session.onMarkFieldGuideTopicSeen}
-      onFieldGuide={() => { setView("fieldGuide"); setNotice(""); }}
       telemetryRecordCount={session.telemetryEnabled ? session.telemetryRecordCount : undefined}
       onExportTelemetry={session.telemetryEnabled ? session.onExportTelemetry : undefined}
       onClearTelemetry={session.telemetryEnabled ? session.onClearTelemetry : undefined}

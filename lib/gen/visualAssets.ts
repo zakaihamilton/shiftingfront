@@ -52,6 +52,18 @@ export type UnitView =
   | "back"
   | "back-right";
 
+/** Intro-only art; the mobile HQ is not a simulation unit. */
+export const MOBILE_HQ_DIRECTION_ART: Record<UnitView, string> = {
+  right: "/art/sprites/sleek-modular/mobile-hq/right.webp",
+  "front-right": "/art/sprites/sleek-modular/mobile-hq/front-right.webp",
+  front: "/art/sprites/sleek-modular/mobile-hq/front.webp",
+  "front-left": "/art/sprites/sleek-modular/mobile-hq/front-left.webp",
+  left: "/art/sprites/sleek-modular/mobile-hq/left.webp",
+  "back-left": "/art/sprites/sleek-modular/mobile-hq/back-left.webp",
+  back: "/art/sprites/sleek-modular/mobile-hq/back.webp",
+  "back-right": "/art/sprites/sleek-modular/mobile-hq/back-right.webp",
+};
+
 export const STRIKE_PLANE_DIRECTION_ART: Record<UnitView, string> = {
   right: "/art/sprites/sleek-modular/air-support/strike-plane-right-v1.webp",
   "front-right": AIR_SUPPORT_ART.strikePlane,
@@ -333,10 +345,12 @@ export function listMissionRasterSources(
     if (entity.hp <= 0 || !isMissionRasterVisible(state, entity)) continue;
     if (entity.class === "building") {
       sources.add(SPRITE_ART[entity.kind as BuildingKind]);
+      sources.add(TEXTURE_ART.worn);
       continue;
     }
     const directional = UNIT_DIRECTION_ART[entity.kind as UnitKind];
     if (!directional) continue;
+    if (entity.kind === "strikePlane") sources.add(TEXTURE_ART.worn);
     for (const source of Object.values(directional)) sources.add(source);
     if (entity.kind === "infantry" || entity.kind === "antiArmor" || entity.kind === "medic") {
       for (const source of Object.values(UNIT_WALK_CYCLE_ART[entity.kind])) sources.add(source);

@@ -653,8 +653,6 @@ describe("PauseMenu", () => {
     const onDiagnostics = vi.fn();
     const onBackToOptions = vi.fn();
     const onBack = vi.fn();
-    const onFieldGuide = vi.fn();
-    const onMarkFieldGuideTopicSeen = vi.fn();
     const onCommitSave = vi.fn(() => true);
     const onLoadEntry = vi.fn();
     const onLeaveWithoutSave = vi.fn();
@@ -676,8 +674,6 @@ describe("PauseMenu", () => {
       onDiagnostics,
       onBackToOptions,
       onOptions,
-      onFieldGuide,
-      onMarkFieldGuideTopicSeen,
       onMenu: vi.fn(),
       onLeaveWithoutSave,
       onToggleSound: vi.fn(),
@@ -700,8 +696,7 @@ describe("PauseMenu", () => {
     expect(screen.queryByRole("button", { name: "Soundtrack" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Options" }));
     expect(onOptions).toHaveBeenCalledOnce();
-    fireEvent.click(screen.getByRole("button", { name: "Field Guide" }));
-    expect(onFieldGuide).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Field Guide" })).toBeNull();
     expect(screen.getByRole("button", { name: "Main Menu" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Leave without saving" }));
     expect(onLeaveWithoutSave).toHaveBeenCalledOnce();
@@ -725,13 +720,6 @@ describe("PauseMenu", () => {
     expect(screen.getByRole("heading", { name: "Save mission" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onCommitSave).toHaveBeenCalledWith("Test · M1", null);
-
-    rerender(<PauseMenu {...props} view="fieldGuide" notice="" />);
-    expect(screen.getByTestId("pause-field-guide")).toBeVisible();
-    fireEvent.click(screen.getAllByRole("button", { name: "Mark read" })[0]!);
-    expect(onMarkFieldGuideTopicSeen).toHaveBeenCalledWith("scenario:campaign");
-    fireEvent.click(screen.getByRole("button", { name: "Back to pause menu" }));
-    expect(onBack).toHaveBeenCalledOnce();
 
     rerender(<PauseMenu {...props} view="main" notice="" tutorial />);
     expect(screen.queryByRole("button", { name: "Save Mission" })).toBeNull();

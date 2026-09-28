@@ -9,7 +9,6 @@ import {
   pauseMusic,
   setMusicCue,
   setMusicEnabled,
-  isAudioUnlocked,
   unlockAudio,
   saveAudibleMusicPosition,
 } from "@/lib/audio/music";
@@ -55,8 +54,7 @@ function AudioRootInner() {
     let windowFocused = document.hasFocus();
     const setForeground = (value: boolean) => {
       setAudioForeground(value);
-      if (value && isAudioUnlocked()) unlockAudio();
-      else if (!value) saveAudibleMusicPosition();
+      if (!value) saveAudibleMusicPosition();
     };
     const updateForeground = () => setForeground(documentVisible && windowFocused);
     const onVisibility = () => {

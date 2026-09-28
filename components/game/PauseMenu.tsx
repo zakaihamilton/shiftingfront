@@ -7,10 +7,8 @@ import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { ArchiveEntry, SlotMeta } from "@/lib/persist/save";
 import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
 import type { PauseView } from "@/lib/ui/shortcuts";
-import type { FieldGuideTopic } from "@/lib/fieldGuide";
 import { PauseControls } from "./PauseControls";
 import { PauseDiagnostics } from "./PauseDiagnostics";
-import { PauseFieldGuide } from "./PauseFieldGuide";
 import { PauseLoadSlots } from "./PauseLoadSlots";
 import { PauseMainMenu } from "./PauseMainMenu";
 import { PauseOptions } from "@/components/settings/PauseOptions";
@@ -49,8 +47,6 @@ export function PauseMenu({
   onCycleHudScale,
   onUpdateKeyBindings,
   onVolumeChange,
-  onMarkFieldGuideTopicSeen,
-  onFieldGuide,
   telemetryRecordCount,
   onExportTelemetry,
   onClearTelemetry,
@@ -87,8 +83,6 @@ export function PauseMenu({
   onCycleHudScale?: () => void;
   onUpdateKeyBindings?: (bindings: KeyBindings) => void;
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
-  onMarkFieldGuideTopicSeen?: (topic: FieldGuideTopic) => void;
-  onFieldGuide?: () => void;
   telemetryRecordCount?: number;
   onExportTelemetry?: () => boolean;
   onClearTelemetry?: () => boolean;
@@ -116,7 +110,6 @@ export function PauseMenu({
             onRestart={onRestart}
             onControls={onControls}
             onOptions={onOptions}
-            onFieldGuide={() => onFieldGuide?.()}
             onMenu={onMenu}
           />
         ) : view === "controls" ? (
@@ -141,12 +134,6 @@ export function PauseMenu({
             entries={loadEntries}
             onLoad={onLoadEntry}
             onDelete={onDeleteEntry}
-            onBack={onBack}
-          />
-        ) : view === "fieldGuide" ? (
-          <PauseFieldGuide
-            seenTopics={settings.seenFieldGuideTopics}
-            onMarkSeen={(topic) => onMarkFieldGuideTopicSeen?.(topic)}
             onBack={onBack}
           />
         ) : (

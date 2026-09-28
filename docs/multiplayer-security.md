@@ -1,6 +1,8 @@
 # Multiplayer deployment security
 
-The multiplayer API is stateless and does not provide an in-process rate-limit fallback. Room creation, room join, handshake validation, and peer-credential refresh all call Vercel's `@vercel/firewall` SDK before parsing the body or contacting Peerovo. Each route fails closed with `503` if its rule is missing or the Firewall check fails, and returns `429` when the limit is reached. This follows HostPresent's shared-edge approach without Redis or per-instance counters.
+The multiplayer API is stateless and does not provide an in-process rate-limit fallback. In Vercel production, room creation, room join, handshake validation, and peer-credential refresh call Vercel's `@vercel/firewall` SDK before parsing the body or contacting Peerovo. Each route fails closed with `503` if its rule is missing or the Firewall check fails, and returns `429` when the limit is reached. This follows HostPresent's shared-edge approach without Redis or per-instance counters.
+
+On non-Vercel deployments, requests whose host is `localhost`, `127.0.0.1`, or `[::1]` skip the edge check so multiplayer works when a production build is served locally. Requests to other hosts still require the shared external limiter and fail closed when it is not configured.
 
 Suggested Vercel Firewall rules for Preview and Production:
 

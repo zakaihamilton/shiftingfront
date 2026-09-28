@@ -24,7 +24,15 @@ function runtimeFromEnvironment(): MultiplayerRateLimitRuntime {
   };
 }
 
-/** Uses shared edge counters; production requests fail closed if the configured limiter is unavailable. */
+function isLoopbackRequest(request: Request): boolean {
+  try {
+    return ["localhost", "127.0.0.1", "[::1]"].includes(new URL(request.url).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+/** Uses shared edge counters in production while allowing non-Vercel loopback requests for local runs. */
 export async function checkMultiplayerRateLimit(
   request: Request,
   key: MultiplayerRateLimitKey,
@@ -32,6 +40,7 @@ export async function checkMultiplayerRateLimit(
   check: typeof checkRateLimit = checkRateLimit,
 ): Promise<MultiplayerRateLimitOutcome> {
   if (!runtime.production) return "allowed";
+  if (!runtime.vercel && isLoopbackRequest(request)) return "allowed";
   if (!runtime.vercel) return runtime.externalLimiterConfigured ? "allowed" : "unavailable";
 
   try {

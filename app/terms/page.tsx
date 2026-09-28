@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ConsoleNoticeLink } from "@/components/ui/ConsoleNotice";
+import { EscapeToHome } from "@/components/ui/EscapeToHome";
 import styles from "../legal.module.css";
 
 export const metadata: Metadata = {
@@ -10,6 +12,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <div className={styles.page}>
+      <EscapeToHome />
       <main className={styles.container}>
         <header className={styles.header}>
           <div className={styles.eyebrow}>Command Desk // Protocol Verification</div>
@@ -50,9 +53,9 @@ export default function TermsPage() {
         </section>
 
         <footer className={styles.footer}>
-          <Link href="/" className={styles.backLink}>
+          <ConsoleNoticeLink href="/" muted>
             &larr; Return to Main Menu
-          </Link>
+          </ConsoleNoticeLink>
           <div className={styles.otherLinks}>
             <Link href="/privacy">Privacy Policy</Link>
           </div>

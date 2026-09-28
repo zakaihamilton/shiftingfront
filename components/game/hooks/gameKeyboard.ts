@@ -45,6 +45,7 @@ export type GameKeyboardParams = Omit<GameCommandHandlers, "activeTab"> & {
   closeMobilePanel?: () => void;
   mobileToolActive?: boolean;
   keyBindings?: import("@/lib/persist/settings").KeyBindings;
+  enabled?: boolean;
 };
 
 export function applyGameCommand(command: GameCommand, handlers: GameCommandHandlers): void {

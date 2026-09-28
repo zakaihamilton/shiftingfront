@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { APP_NAME, APP_THEME_COLOR } from "@/lib/site";
+import { EscapeToHome } from "@/components/ui/EscapeToHome";
 
 export default function GlobalError({
   error,
@@ -35,6 +36,7 @@ export default function GlobalError({
           boxSizing: "border-box",
         }}
       >
+        <EscapeToHome />
         <div
           style={{
             maxWidth: "480px",

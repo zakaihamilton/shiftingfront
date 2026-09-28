@@ -18,7 +18,7 @@ export async function skipMissionIntroIfPresent(page: Page): Promise<void> {
 
   if (await intro.count()) {
     await expect(intro).toBeVisible();
-    await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
+    await page.getByRole("button", { name: /SKIP INTRO/ }).click();
     await expect(intro).toHaveCount(0, { timeout: 15_000 });
   }
 }

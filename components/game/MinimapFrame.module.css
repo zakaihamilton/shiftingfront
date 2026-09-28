@@ -75,7 +75,7 @@
   to { transform: translateY(75%); }
 }
 
-@media (max-width: 799px), (max-width: 1023px) and (orientation: portrait) {
+@media (max-width: 799px), (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
   .canvas {
     height: 118px;
   }

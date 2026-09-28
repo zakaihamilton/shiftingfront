@@ -131,7 +131,8 @@ export function preloadTerrainAtlas(
 
   return Promise.all([loadOne(biomeSrc), loadOne(plateSrc)]).then(async () => {
     if (typeof document !== "undefined") {
-      await getTerrainAtlasAsync(state, options);
+      if (options?.rowsPerChunk === undefined) bakeAndCacheTerrainAtlas(state);
+      else await getTerrainAtlasAsync(state, options);
     }
     return true;
   });
@@ -199,6 +200,32 @@ function restoreWaterPixels(ctx: CanvasRenderingContext2D, baked: TerrainAtlasDa
   ctx.putImageData(image, 0, 0);
 }
 
+function createTerrainAtlas(state: AtlasWorld, baked: TerrainAtlasData): TerrainAtlas {
+  let canvas: HTMLCanvasElement | null = null;
+  if (typeof document !== "undefined") {
+    canvas = document.createElement("canvas");
+    canvas.width = baked.width;
+    canvas.height = baked.height;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      const image = ctx.createImageData(baked.width, baked.height);
+      image.data.set(baked.data);
+      ctx.putImageData(image, 0, 0);
+      overlayGrain(ctx, state, baked.width, baked.height);
+      restoreWaterPixels(ctx, baked);
+    }
+  }
+  return { ...baked, canvas };
+}
+
+function bakeAndCacheTerrainAtlas(state: AtlasWorld): TerrainAtlas {
+  const key = terrainAtlasKey(state);
+  if (atlasCache && atlasCache.key === key) return atlasCache;
+  const atlas = createTerrainAtlas(state, bakeTerrainAtlasData(state));
+  atlasCache = atlas;
+  return atlas;
+}
+
 export function invalidateTerrainAtlas(): void {
   atlasCache = null;
   atlasBakePromises.clear();
@@ -240,22 +267,10 @@ export async function getTerrainAtlasAsync(
 
   const invalidationGeneration = atlasInvalidationGeneration;
   const promise = (async () => {
-    const baked = await bakeTerrainAtlasDataAsync(state, options);
-    let canvas: HTMLCanvasElement | null = null;
-    if (typeof document !== "undefined") {
-      canvas = document.createElement("canvas");
-      canvas.width = baked.width;
-      canvas.height = baked.height;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        const image = ctx.createImageData(baked.width, baked.height);
-        image.data.set(baked.data);
-        ctx.putImageData(image, 0, 0);
-        overlayGrain(ctx, state, baked.width, baked.height);
-        restoreWaterPixels(ctx, baked);
-      }
-    }
-    const atlas = { ...baked, canvas };
+    const baked = options?.rowsPerChunk === undefined
+      ? bakeTerrainAtlasData(state)
+      : await bakeTerrainAtlasDataAsync(state, options);
+    const atlas = createTerrainAtlas(state, baked);
     if (invalidationGeneration === atlasInvalidationGeneration && terrainAtlasKey(state) === key) {
       atlasCache = atlas;
     }
@@ -287,21 +302,5 @@ export function getTerrainAtlas(state: AtlasWorld): TerrainAtlas {
       canvas: null,
     };
   }
-  const baked = bakeTerrainAtlasData(state);
-  let canvas: HTMLCanvasElement | null = null;
-  if (typeof document !== "undefined") {
-    canvas = document.createElement("canvas");
-    canvas.width = baked.width;
-    canvas.height = baked.height;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      const image = ctx.createImageData(baked.width, baked.height);
-      image.data.set(baked.data);
-      ctx.putImageData(image, 0, 0);
-      overlayGrain(ctx, state, baked.width, baked.height);
-      restoreWaterPixels(ctx, baked);
-    }
-  }
-  atlasCache = { ...baked, canvas };
-  return atlasCache;
+  return bakeAndCacheTerrainAtlas(state);
 }

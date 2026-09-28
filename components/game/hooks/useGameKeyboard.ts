@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { gameCommandFromKey, isEditableTarget } from "@/lib/ui/shortcuts";
 import { applyGameCommand, type GameKeyboardParams } from "./gameKeyboard";
 
@@ -40,8 +40,13 @@ export function useGameKeyboard({
   closeMobilePanel = () => {},
   mobileToolActive = false,
   keyBindings,
+  enabled = true,
 }: GameKeyboardParams) {
   const keys = useRef<Record<string, boolean>>({});
+  const enabledRef = useRef(enabled);
+  useLayoutEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
 
   useEffect(() => {
     const clearKeys = () => {
@@ -52,6 +57,7 @@ export function useGameKeyboard({
     if (confirmationOpen) clearKeys();
 
     const down = (e: KeyboardEvent) => {
+      if (!enabledRef.current) return;
       if (isEditableTarget(e.target)) return;
       if (confirmationOpen) {
         if (e.key === "Escape") {
