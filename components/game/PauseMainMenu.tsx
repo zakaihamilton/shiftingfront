@@ -13,7 +13,6 @@ export function PauseMainMenu({
   onRestart,
   onControls,
   onOptions,
-  onFieldGuide,
   onMenu,
 }: {
   onResume: () => void;
@@ -25,7 +24,6 @@ export function PauseMainMenu({
   onRestart: () => void;
   onControls: () => void;
   onOptions: () => void;
-  onFieldGuide: () => void;
   onMenu: () => void;
 }) {
   return (
@@ -52,7 +50,6 @@ export function PauseMainMenu({
         <div className={styles.group}>
           <ConsoleLabel className={styles.groupLabel}>{multiplayer ? "Online skirmish" : "Campaign"}</ConsoleLabel>
           <ConsoleButton className={styles.action} tooltip="Audio, display, and data options" shortcut={SHORTCUT.options} onClick={onOptions}>Options</ConsoleButton>
-          {!multiplayer ? <ConsoleButton className={styles.action} tooltip="Review scenario procedures and biome rules" onClick={onFieldGuide}>Field Guide</ConsoleButton> : null}
           <ConsoleButton muted className={styles.action} tooltip={multiplayer ? "Leave the online skirmish" : "Leave the campaign"} shortcut={SHORTCUT.menu} onClick={onMenu}>{multiplayer ? "Leave Skirmish" : "Main Menu"}</ConsoleButton>
         </div>
       </div>

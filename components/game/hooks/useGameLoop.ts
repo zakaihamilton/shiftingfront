@@ -49,6 +49,7 @@ export function useGameLoop({
   missionIntroActiveRef,
   keyBindings,
   multiplayerSession,
+  enabled = true,
 }: {
   stateRef: MutableRefObject<SimState>;
   setState: (s: SimState) => void;
@@ -77,6 +78,7 @@ export function useGameLoop({
   missionIntroActiveRef?: MutableRefObject<boolean>;
   keyBindings?: import("@/lib/persist/settings").KeyBindings;
   multiplayerSession?: import("@/lib/multiplayer/session").MultiplayerSession;
+  enabled?: boolean;
 }) {
   const fallbackUxRef = useRef(createFallbackUxTelemetry());
   const uxRef = suppliedUxRef ?? fallbackUxRef;
@@ -96,6 +98,7 @@ export function useGameLoop({
   });
 
   useEffect(() => {
+    if (!enabled) return;
     const kernel: RuntimeKernel = {
       refs: {
         simulation: {
@@ -164,5 +167,6 @@ export function useGameLoop({
     suppressImplicitSavesRef,
     missionIntroActiveRef,
     screenShakeRef,
+    enabled,
   ]);
 }

@@ -1,17 +1,19 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { DataConnection, Peer } from "peerjs";
 import { CodeInput } from "@/components/shared/CodeInput";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
+import { CampaignPreviewPane } from "@/components/menu/NewGameSetup";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
 import type { Owner } from "@/lib/types";
 import { MultiplayerSession, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
 import { rollSeed } from "@/components/menu/menuLaunch";
+import { createCampaign } from "@/lib/gen/campaign";
 import styles from "./MultiplayerLobby.module.css";
 
 const DynamicGameClient = dynamic(() => import("@/components/game/GameClient").then((module) => module.GameClient), {
@@ -42,11 +44,12 @@ declare global {
   }
 }
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
+async function postJson<T>(url: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
+    signal,
     body: JSON.stringify(body),
   });
   const payload = await response.json() as T & { error?: string };
@@ -63,18 +66,22 @@ function peerOptions(credential: Credential) {
   };
 }
 
-function waitForPeerOpen(peer: Peer, timeoutMs = 15_000): Promise<void> {
+function waitForPeerOpen(peer: Peer, timeoutMs = 15_000, signal?: AbortSignal): Promise<void> {
   if (peer.open) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => finish(new Error("peer_open_timeout")), timeoutMs);
     const onOpen = () => finish();
     const onError = (error: Error) => finish(error);
+    const onAbort = () => finish(new Error("peer_open_aborted"));
     const finish = (error?: Error) => {
       window.clearTimeout(timeout);
       peer.off("open", onOpen);
       peer.off("error", onError);
+      signal?.removeEventListener("abort", onAbort);
       if (error) reject(error); else resolve();
     };
+    if (signal?.aborted) { onAbort(); return; }
+    signal?.addEventListener("abort", onAbort, { once: true });
     peer.on("open", onOpen);
     peer.on("error", onError);
   });
@@ -86,6 +93,7 @@ function publicError(error: unknown): string {
     invalid_code: "Enter a six-letter room code.",
     room_full: "That room is full or has already started.",
     server_not_configured: "Online play is not configured on this server yet.",
+    rate_limit_unavailable: "Online room creation is not configured on this server yet.",
     unconfigured: "Online play is not configured on this server yet.",
     invalid_handshake: "The room handshake could not be verified.",
     peerovo_unavailable: "Could not get a secure connection. Try again in a moment.",
@@ -118,8 +126,10 @@ function ownerLabel(owner: Owner): string {
 }
 
 export function MultiplayerLobby() {
+  const router = useRouter();
   const [mode, setMode] = useState<LobbyMode>("choose");
   const [seed, setSeed] = useState("0000");
+  const campaignPreview = useMemo(() => /^\d{4}$/.test(seed) ? createCampaign(Number(seed)) : null, [seed]);
   const [joinCode, setJoinCode] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
@@ -150,12 +160,15 @@ export function MultiplayerLobby() {
   const signalingRetryUntilRef = useRef(0);
   const guestRetryUntilRef = useRef(0);
   const guestConnectingRef = useRef(false);
+  const requestAbortRef = useRef<AbortController | null>(null);
+  const operationRef = useRef(0);
   const mountedRef = useRef(true);
   const multiplayerDialogRef = useModalFocus(
     mode === "battle" && !!session && (session.status === "disconnected" || session.status === "ended"),
     session?.status,
     "dialog",
   );
+
 
   const refreshPeerCredential = useCallback(async (credential: Credential, peer: Peer) => {
     const refreshed = await postJson<Omit<Credential, "code" | "seed" | "hostPeerId" | "grant" | "expiresAt"> & { peerId: string }>("/api/multiplayer/peer-credentials", { grant: credential.grant });
@@ -184,6 +197,9 @@ export function MultiplayerLobby() {
   }, []);
 
   const destroyPeer = useCallback(() => {
+    operationRef.current += 1;
+    requestAbortRef.current?.abort();
+    requestAbortRef.current = null;
     window.clearTimeout(reconnectTimerRef.current);
     window.clearTimeout(guestReconnectTimerRef.current);
     window.clearTimeout(disconnectTimerRef.current);
@@ -224,6 +240,31 @@ export function MultiplayerLobby() {
     setRoster([{ owner: 0, connected: true, host: true }]);
     setMode("choose");
   }, [destroyPeer]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || event.repeat ||
+          event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (mode === "battle" && session &&
+          session.status !== "disconnected" && session.status !== "ended") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (mode === "choose") router.push("/");
+      else if (mode === "hostSetup") {
+        setMode("choose");
+        setError("");
+      } else if (mode === "joining") {
+        destroyPeer();
+        setMode("choose");
+        setStatus("Create a room or join with a six-letter code.");
+        setError("");
+      } else {
+        endCurrentMatch();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [destroyPeer, endCurrentMatch, mode, router, session]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -409,9 +450,9 @@ export function MultiplayerLobby() {
 
   useEffect(() => { scheduleGuestRetryRef.current = scheduleGuestRetry; }, [scheduleGuestRetry]);
 
-  const startPeer = useCallback(async (credential: Credential, role: "host" | "guest") => {
+  const startPeer = useCallback(async (credential: Credential, role: "host" | "guest", operation: number) => {
     const PeerConstructor = await PeerFactory();
-    if (!mountedRef.current) return null;
+    if (!mountedRef.current || operationRef.current !== operation) return null;
     const peer = new PeerConstructor(credential.peerId, peerOptions(credential));
     peerRef.current = peer;
     credentialRef.current = credential;
@@ -483,6 +524,9 @@ export function MultiplayerLobby() {
       return;
     }
     destroyPeer();
+    const operation = operationRef.current;
+    const requestAbort = new AbortController();
+    requestAbortRef.current = requestAbort;
     setInviteCode("");
     setRoster([{ owner: 0, connected: true, host: true }]);
     hostAiOwnersRef.current.clear();
@@ -490,17 +534,20 @@ export function MultiplayerLobby() {
     setError("");
     setStatus("Creating room…");
     try {
-      const credential = await postJson<Credential>("/api/multiplayer/rooms", { seed: parsedSeed });
-      if (!mountedRef.current) return;
+      const credential = await postJson<Credential>("/api/multiplayer/rooms", { seed: parsedSeed }, requestAbort.signal);
+      if (!mountedRef.current || operationRef.current !== operation) return;
       credentialRef.current = credential;
-      const peer = await startPeer(credential, "host");
+      const peer = await startPeer(credential, "host", operation);
       if (!peer) return;
       peer.on("connection", (connection) => bindHostConnection(connection, credential.grant, parsedSeed));
       publishRoster();
-      await waitForPeerOpen(peer);
-      if (!mountedRef.current || peerRef.current !== peer) return;
+      await waitForPeerOpen(peer, 15_000, requestAbort.signal);
+      if (!mountedRef.current || operationRef.current !== operation || peerRef.current !== peer) return;
+      requestAbortRef.current = null;
       setInviteCode(credential.code);
     } catch (createError) {
+      if (!mountedRef.current || operationRef.current !== operation) return;
+      requestAbortRef.current = null;
       destroyPeer();
       setMode("hostSetup");
       setStatus("Room creation failed.");
@@ -655,16 +702,20 @@ export function MultiplayerLobby() {
       return;
     }
     destroyPeer();
+    const operation = operationRef.current;
+    const requestAbort = new AbortController();
+    requestAbortRef.current = requestAbort;
     setMode("joining");
     setError("");
     setStatus("Looking up room…");
     try {
-      const credential = await postJson<Credential>("/api/multiplayer/rooms/join", { code: normalized });
-      if (!mountedRef.current) return;
+      const credential = await postJson<Credential>("/api/multiplayer/rooms/join", { code: normalized }, requestAbort.signal);
+      if (!mountedRef.current || operationRef.current !== operation) return;
+      requestAbortRef.current = null;
       credentialRef.current = credential;
       guestRetryUntilRef.current = Date.now() + 60_000;
       setStatus("Connecting to host…");
-      const peer = await startPeer(credential, "guest");
+      const peer = await startPeer(credential, "guest", operation);
       if (!peer) return;
       const waitForOpen = () => {
         if (peer.open) beginGuestConnection(credential, peer);
@@ -672,6 +723,8 @@ export function MultiplayerLobby() {
       };
       waitForOpen();
     } catch (joinError) {
+      if (!mountedRef.current || operationRef.current !== operation) return;
+      requestAbortRef.current = null;
       setMode("choose");
       setStatus("Room lookup failed.");
       setError(publicError(joinError));
@@ -741,100 +794,97 @@ export function MultiplayerLobby() {
 
   const activePlayers = roster.filter((player) => player.host || (player.connected && !player.forfeited) || player.ai).length;
   return (
-    <main className={styles.screen}>
-      <MetalPanel as="section" className={styles.panel} role="region" aria-labelledby="multiplayer-title">
-        <ConsoleLabel>ONLINE SKIRMISH · FREE-FOR-ALL</ConsoleLabel>
-        <h1 id="multiplayer-title">{mode === "waiting" ? (lobbyRole === "host" ? "Room open" : "Waiting for host") : mode === "joining" ? "Joining room" : "Multiplayer"}</h1>
-        {mode === "choose" ? (
+    <main className={styles.screen + (mode === "hostSetup" ? " " + styles.hostSetupScreen : "")}>
+      <MetalPanel
+        as="section"
+        className={styles.panel + (mode === "hostSetup" ? " " + styles.hostSetupPanel : "")}
+        role="region"
+        aria-labelledby="multiplayer-title"
+      >
+        {mode === "hostSetup" ? (
+          <div className={styles.hostSetupLayout}>
+            <section className={styles.hostSetupForm}>
+              <ConsoleLabel>ONLINE SKIRMISH · FREE-FOR-ALL</ConsoleLabel>
+              <h1 id="multiplayer-title">Host a room</h1>
+              <p>Choose the four-digit match seed. This is separate from the invite code.</p>
+              <label htmlFor="multiplayer-seed">Match seed</label>
+              <div className={styles.seedRow}>
+                <CodeInput id="multiplayer-seed" testId="multiplayer-seed-input" value={seed} length={4}
+                  label="Four digit match seed" onChange={setSeed}
+                  normalize={(value) => value.replace(/\D/g, "")} onEnter={() => void hostRoom()} />
+                <ConsoleButton muted onClick={() => setSeed(rollSeed())}>Roll seed</ConsoleButton>
+              </div>
+              <div className={styles.actions}>
+                <ConsoleButton onClick={() => void hostRoom()}>Create room</ConsoleButton>
+                <ConsoleButton muted onClick={() => setMode("choose")}>Back</ConsoleButton>
+              </div>
+              {error ? <p className={styles.error} role="alert">{error}</p> : null}
+              {status === "Room creation failed." ? <p className={styles.status} role="status">{status}</p> : null}
+            </section>
+            <CampaignPreviewPane preview={campaignPreview} className={styles.hostSetupPreview} />
+          </div>
+        ) : (
           <>
-            <p>Host a room, invite up to three guests, or fill vacant corners with AI. The host can start with at least one opponent.</p>
-            <div className={styles.actions}>
-              <ConsoleButton onClick={() => { setMode("hostSetup"); setError(""); }}>Host a room</ConsoleButton>
-              <form onSubmit={joinRoom} className={styles.joinForm}>
-                <label htmlFor="join-code">Host code</label>
-                <CodeInput
-                  id="join-code"
-                  testId="multiplayer-code-input"
-                  value={joinCode}
-                  length={6}
-                  label="Six-letter host code"
-                  inputMode="text"
-                  autoCapitalize="characters"
-                  onChange={(value) => { setJoinCode(value); setError(""); }}
-                  normalize={(value) => value.toUpperCase().replace(/[^A-HJ-NP-Z]/g, "")}
-                  className={styles.joinCode}
-                />
-                <ConsoleButton type="submit" disabled={joinCode.length !== 6}>Join room</ConsoleButton>
-              </form>
-            </div>
-          </>
-        ) : mode === "hostSetup" ? (
-          <>
-            <p>Choose the four-digit match seed. This is separate from the invite code.</p>
-            <label htmlFor="multiplayer-seed">Match seed</label>
-            <div className={styles.seedRow}>
-              <CodeInput
-                id="multiplayer-seed"
-                testId="multiplayer-seed-input"
-                value={seed}
-                length={4}
-                label="Four digit match seed"
-                onChange={setSeed}
-                normalize={(value) => value.replace(/\D/g, "")}
-                onEnter={() => void hostRoom()}
-              />
-              <ConsoleButton muted onClick={() => setSeed(rollSeed())}>Roll seed</ConsoleButton>
-            </div>
-            <div className={styles.actions}>
-              <ConsoleButton onClick={() => void hostRoom()}>Create room</ConsoleButton>
-              <ConsoleButton muted onClick={() => setMode("choose")}>Back</ConsoleButton>
-            </div>
-          </>
-        ) : mode === "waiting" ? (
-          <>
-            {lobbyRole === "host" ? (
+            <ConsoleLabel>ONLINE SKIRMISH · FREE-FOR-ALL</ConsoleLabel>
+            <h1 id="multiplayer-title">{mode === "waiting" ? (lobbyRole === "host" ? "Room open" : "Waiting for host") : mode === "joining" ? "Joining room" : "Multiplayer"}</h1>
+            {mode === "choose" ? (
               <>
-                <p>Invite guests or switch vacant User seats to AI. Start locks the roster and places each force in its corner.</p>
-                <div className={styles.inviteCode} data-testid="multiplayer-invite-code">{inviteCode || "······"}</div>
-                <ul className={styles.roster} data-testid="multiplayer-roster" aria-label="Room roster">
-                  {roster.map((player) => (
-                    <li key={player.owner} data-testid={`multiplayer-roster-seat-${player.owner}`}>
-                      <span>{ownerLabel(player.owner)}</span>
-                      <span>{player.host ? "Host" : player.forfeited ? "Forfeited" : player.ai ? "AI opponent" : player.peerId ? player.connected ? "Connected" : "Reserved · reconnecting" : "Open User seat"}</span>
-                      {!player.host && !player.peerId ? (
-                        <button
-                          type="button"
-                          className={styles.seatToggle}
-                          data-testid={`multiplayer-seat-toggle-${player.owner}`}
-                          aria-label={`Set ${ownerLabel(player.owner)} to ${player.ai ? "User" : "AI"}`}
-                          onClick={() => setSeatAi(player.owner)}
-                        >
-                          {player.ai ? "Switch to User" : "Switch to AI"}
-                        </button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                <p>Host a room, invite up to three guests, or fill vacant corners with AI. The host can start with at least one opponent.</p>
                 <div className={styles.actions}>
-                  <ConsoleButton muted onClick={() => void copyInvite()} disabled={!inviteCode}>Copy code</ConsoleButton>
-                  <ConsoleButton data-testid="multiplayer-start-button" onClick={startMatch} disabled={activePlayers < 2}>Start skirmish</ConsoleButton>
-                  <ConsoleButton muted onClick={endCurrentMatch}>Close room</ConsoleButton>
+                  <ConsoleButton onClick={() => { setMode("hostSetup"); setError(""); }}>Host a room</ConsoleButton>
+                  <form onSubmit={joinRoom} className={styles.joinForm}>
+                    <label htmlFor="join-code">Host code</label>
+                    <CodeInput id="join-code" testId="multiplayer-code-input" value={joinCode} length={6}
+                      label="Six-letter host code" inputMode="text" autoCapitalize="characters"
+                      onChange={(value) => { setJoinCode(value); setError(""); }}
+                      normalize={(value) => value.toUpperCase().replace(/[^A-HJ-NP-Z]/g, "")}
+                      className={styles.joinCode} />
+                    <ConsoleButton type="submit" disabled={joinCode.length !== 6}>Join room</ConsoleButton>
+                  </form>
                 </div>
               </>
-            ) : (
+            ) : mode === "waiting" ? (
               <>
-                <p data-testid="multiplayer-seat">{guestOwner === null ? "Verifying your room seat…" : `${ownerLabel(guestOwner)} is reserved.`}</p>
-                <p>The host will start the match when ready. Your corner and the match seed are set by the host.</p>
-                <ConsoleButton muted onClick={endCurrentMatch}>Leave room</ConsoleButton>
+                {lobbyRole === "host" ? (
+                  <>
+                    <p>Invite guests or switch vacant User seats to AI. Start locks the roster and places each force in its corner.</p>
+                    <div className={styles.inviteCode} data-testid="multiplayer-invite-code">{inviteCode || "······"}</div>
+                    <ul className={styles.roster} data-testid="multiplayer-roster" aria-label="Room roster">
+                      {roster.map((player) => (
+                        <li key={player.owner} data-testid={"multiplayer-roster-seat-" + player.owner}>
+                          <span>{ownerLabel(player.owner)}</span>
+                          <span>{player.host ? "Host" : player.forfeited ? "Forfeited" : player.ai ? "AI opponent" : player.peerId ? player.connected ? "Connected" : "Reserved · reconnecting" : "Open User seat"}</span>
+                          {!player.host && !player.peerId ? (
+                            <button type="button" className={styles.seatToggle}
+                              data-testid={"multiplayer-seat-toggle-" + player.owner}
+                              aria-label={"Set " + ownerLabel(player.owner) + " to " + (player.ai ? "User" : "AI")}
+                              onClick={() => setSeatAi(player.owner)}>
+                              {player.ai ? "Switch to User" : "Switch to AI"}
+                            </button>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className={styles.actions}>
+                      <ConsoleButton muted onClick={() => void copyInvite()} disabled={!inviteCode}>Copy code</ConsoleButton>
+                      <ConsoleButton data-testid="multiplayer-start-button" onClick={startMatch} disabled={activePlayers < 2}>Start skirmish</ConsoleButton>
+                      <ConsoleButton muted onClick={endCurrentMatch}>Close room</ConsoleButton>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p data-testid="multiplayer-seat">{guestOwner === null ? "Verifying your room seat…" : ownerLabel(guestOwner) + " is reserved."}</p>
+                    <p>The host will start the match when ready. Your corner and the match seed are set by the host.</p>
+                    <ConsoleButton muted onClick={endCurrentMatch}>Leave room</ConsoleButton>
+                  </>
+                )}
               </>
-            )}
+            ) : <p role="status">{status}</p>}
+            {error ? <p className={styles.error} role="alert">{error}</p> : null}
+            {mode !== "joining" ? <p className={styles.status} role="status">{status}</p> : null}
+            {mode === "choose" ? <ConsoleButton className={styles.menuBack} muted onClick={() => router.push("/")}>Back to menu</ConsoleButton> : null}
           </>
-        ) : (
-          <p role="status">{status}</p>
         )}
-        {error ? <p className={styles.error} role="alert">{error}</p> : null}
-        {mode !== "joining" ? <p className={styles.status} role="status">{status}</p> : null}
-        {mode === "choose" ? <Link className={styles.backLink} href="/">Back to menu</Link> : null}
       </MetalPanel>
     </main>
   );

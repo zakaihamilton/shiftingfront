@@ -203,6 +203,30 @@ export function preloadRasterSources(srcs: readonly string[]): void {
   for (const src of srcs) cachedImage(src);
 }
 
+export function preloadRasterSourcesAsync(srcs: readonly string[]): Promise<void> {
+  if (typeof Image === "undefined") return Promise.resolve();
+  if (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom")) return Promise.resolve();
+
+  const pending = [...new Set(srcs)].map((src) => {
+    const image = cachedImage(src);
+    if (image.complete) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        image.removeEventListener("load", finish);
+        image.removeEventListener("error", finish);
+        resolve();
+      };
+      image.addEventListener("load", finish, { once: true });
+      image.addEventListener("error", finish, { once: true });
+      if (image.complete) finish();
+    });
+  });
+  return Promise.all(pending).then(() => undefined);
+}
+
 function paintTexture(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,

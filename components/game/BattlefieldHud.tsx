@@ -10,7 +10,7 @@ import styles from "./Battlefield.module.css";
 export function isMobileDirectiveViewport(): boolean {
   if (typeof window === "undefined" || !window.matchMedia) return false;
   return window.matchMedia(
-    "(max-width: 1023px) and (orientation: portrait), (max-height: 600px), (max-width: 799px), (pointer: coarse) and (max-width: 1024px)",
+    "(max-width: 1023px) and (orientation: portrait), (max-height: 600px), (max-width: 799px), (pointer: coarse) and (max-width: 1400px)",
   ).matches;
 }
 

@@ -53,7 +53,7 @@
   scroll-behavior: auto !important;
 }
 
-@media (max-width: 1023px) and (orientation: portrait) {
+@media (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) and (orientation: portrait) {
   .shell {
     flex-direction: column;
   }

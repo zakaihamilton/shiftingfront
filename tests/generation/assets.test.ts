@@ -22,6 +22,7 @@ import {
   AIR_SUPPORT_ART,
   ANTI_AIR_TURRET_BASE_CROP,
   SPRITE_ART,
+  TEXTURE_ART,
   STRIKE_PLANE_DIRECTION_ART,
   UNIT_DIRECTION_ART,
   UNIT_WALK_CYCLE_ART,
@@ -279,6 +280,7 @@ describe("tactical procedural assets", () => {
     state.fog.fill(0);
     const sources = listMissionRasterSources(state);
     expect(sources).toContain(SPRITE_ART.constructionYard);
+    expect(sources).toContain(TEXTURE_ART.worn);
     expect(sources).toContain(UNIT_DIRECTION_ART.infantry.front);
     expect(sources).toContain(UNIT_WALK_CYCLE_ART.infantry.front);
     expect(sources).not.toContain(SPRITE_ART.turret);

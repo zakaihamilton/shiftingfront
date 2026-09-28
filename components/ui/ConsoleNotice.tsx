@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { ConsoleLabel } from "./ConsoleLabel";
 import { MetalPanel } from "./MetalPanel";
 import { cx } from "@/lib/ui/cx";
@@ -43,8 +44,8 @@ export function ConsoleNoticeLink({
   testId?: string;
 }) {
   return (
-    <a href={href} className={cx(styles.link, muted && styles.linkMuted)} data-testid={testId}>
+    <Link href={href} className={cx(styles.link, muted && styles.linkMuted)} data-testid={testId}>
       {children}
-    </a>
+    </Link>
   );
 }

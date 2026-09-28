@@ -158,6 +158,29 @@ async function mockPeerovo(page: import("@playwright/test").Page, role: "host" |
   }
 }
 
+test("multiplayer menu uses a button and Escape follows host setup navigation", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "MULTIPLAYER" }).click();
+  await expect(page.getByRole("heading", { name: "Multiplayer" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back to menu" })).toBeVisible();
+  await page.getByRole("button", { name: "Back to menu" }).click();
+  await expect(page.getByRole("button", { name: "NEW GAME" })).toBeVisible();
+
+  await page.getByRole("button", { name: "MULTIPLAYER" }).click();
+  await page.getByRole("button", { name: "Host a room" }).click();
+  const preview = page.getByTestId("campaign-info-pane");
+  await expect(preview).toBeVisible();
+  await expect(preview.getByTestId("campaign-backdrop")).toBeVisible();
+  await expect(preview.getByText("Campaign preview")).toBeVisible();
+  await page.getByTestId("multiplayer-seed-input").fill("0421");
+  await expect(preview.getByTestId("campaign-details")).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Host a room" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "NEW GAME" })).toBeVisible();
+});
+
 test("host starts a four-player corner skirmish after three guests verify their seats", async ({ browser }) => {
   test.setTimeout(60_000);
   const context = await browser.newContext();

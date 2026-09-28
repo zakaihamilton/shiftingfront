@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
-import { createMissionIntroPlan, createMissionIntroPlayback, updateMissionIntroReducedMotion, type MissionIntroPlayback } from "@/lib/render/missionIntro";
+import { createMissionIntroPlan, createMissionIntroPlayback, missionIntroPhaseFor, updateMissionIntroReducedMotion, type MissionIntroPhase, type MissionIntroPlayback } from "@/lib/render/missionIntro";
+import { MOBILE_HQ_DIRECTION_ART, SPRITE_ART } from "@/lib/gen/visualAssets";
+import { preloadRasterSources } from "@/lib/render/sprites";
 import type { SimState } from "@/lib/types";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -21,6 +23,7 @@ function systemReducedMotionSnapshot(): boolean {
 export function useMissionIntro({
   state,
   initiallyActive,
+  assetsReady,
   session,
   reducedMotion,
   pausedRef,
@@ -29,6 +32,7 @@ export function useMissionIntro({
 }: {
   state: SimState;
   initiallyActive: boolean;
+  assetsReady: boolean;
   session?: MultiplayerSession;
   reducedMotion: boolean;
   pausedRef: MutableRefObject<boolean>;
@@ -48,6 +52,15 @@ export function useMissionIntro({
   const playbackRef = useRef<MissionIntroPlayback | null>(bootPlayback);
   const [active, setActive] = useState(isInitiallyActive);
   const [awaiting, setAwaiting] = useState(false);
+  const [phase, setPhase] = useState<MissionIntroPhase>("APPROACHING BASE SITE");
+  const phaseRef = useRef<MissionIntroPhase>("APPROACHING BASE SITE");
+
+  useEffect(() => {
+    if (active) preloadRasterSources([
+      ...Object.values(MOBILE_HQ_DIRECTION_ART),
+      SPRITE_ART.constructionYard,
+    ]);
+  }, [active]);
 
   const introReleased = useSyncExternalStore(
     useCallback((listener) => typeof session?.subscribe === "function" ? session.subscribe(listener) : (() => undefined), [session]),
@@ -90,6 +103,8 @@ export function useMissionIntro({
     localReadyRef.current = false;
     setAwaiting(false);
     setActive(true);
+    phaseRef.current = "APPROACHING BASE SITE";
+    setPhase("APPROACHING BASE SITE");
     pausedRef.current = true;
     setPaused(true);
   }, [pausedRef, setPaused, shouldReduceMotion]);
@@ -115,6 +130,11 @@ export function useMissionIntro({
   useEffect(() => {
     const playback = playbackRef.current;
     if (playback) updateMissionIntroReducedMotion(playback, shouldReduceMotion);
+    if (playback) {
+      const nextPhase = missionIntroPhaseFor(playback.plan, playback.elapsedMs, playback.reducedMotion);
+      phaseRef.current = nextPhase;
+      setPhase(nextPhase);
+    }
   }, [shouldReduceMotion]);
 
   useEffect(() => {
@@ -128,7 +148,7 @@ export function useMissionIntro({
   }, [active, finish, introReleased]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || !assetsReady) return;
     let raf = 0;
     let previous = performance.now();
     const frame = (now: number) => {
@@ -136,6 +156,11 @@ export function useMissionIntro({
       if (!playback || !activeRef.current) return;
       const delta = Math.min(80, Math.max(0, now - previous));
       previous = now;
+      const nextPhase = missionIntroPhaseFor(playback.plan, playback.elapsedMs, playback.reducedMotion);
+      if (nextPhase !== phaseRef.current) {
+        phaseRef.current = nextPhase;
+        setPhase(nextPhase);
+      }
       if (!localReadyRef.current) {
         playback.elapsedMs = Math.min(playback.plan.durationMs, playback.elapsedMs + delta);
         if (playback.elapsedMs >= playback.plan.durationMs) {
@@ -157,13 +182,14 @@ export function useMissionIntro({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [active, finish, markReady, session]);
+  }, [active, assetsReady, finish, markReady, session]);
 
   return {
     active,
     activeRef,
     playbackRef,
     awaiting,
+    phase,
     reducedMotion: shouldReduceMotion,
     begin,
     skip,

@@ -21,7 +21,7 @@ export function useGameRuntimeLifecycle({
   multiplayerSession,
   interaction, feedback, audioSettings, setAudioSettings, paused, setPaused, pausedRef, pauseViewRef,
   setPauseView, setPauseNotice, activeTabRef, setActiveTab, mobilePanelOpen,
-  terminalSaveRef, campaignRecordedRef, suppressImplicitSavesRef, canvasRef, missionIntroActiveRef, onRestartMission,
+  terminalSaveRef, campaignRecordedRef, suppressImplicitSavesRef, canvasRef, missionIntroActiveRef, battlefieldReady, onRestartMission,
 }: {
   seed: number;
   tutorial: boolean;
@@ -51,6 +51,7 @@ export function useGameRuntimeLifecycle({
   campaignRecordedRef: MutableRefObject<boolean>;
   suppressImplicitSavesRef: MutableRefObject<() => void>;
   missionIntroActiveRef: MutableRefObject<boolean>;
+  battlefieldReady: boolean;
   onRestartMission: (state: SimState) => void;
 }) {
   const session = useGameSession({
@@ -87,7 +88,7 @@ export function useGameRuntimeLifecycle({
     if (tutorial || paused || state.result !== "playing") resetTransientMobileUi();
   }, [paused, resetTransientMobileUi, state.result, tutorial]);
 
-  useWakeLock(!paused && state.result === "playing");
+  useWakeLock(battlefieldReady && !paused && state.result === "playing");
 
   const { keys } = useGameKeyboard({
     stateRef,
@@ -127,6 +128,7 @@ export function useGameRuntimeLifecycle({
     closeMobilePanel: interaction.closeMobilePanel,
     mobileToolActive: interaction.selectionMode || interaction.actions.mobileCommandState !== null,
     keyBindings: audioSettings.keyBindings,
+    enabled: battlefieldReady,
   });
 
   useGameLoop({
@@ -137,7 +139,7 @@ export function useGameRuntimeLifecycle({
     terminalSaveRef, campaignRecordedRef, saveSession, redraw: interaction.renderer.redraw,
     onAlert: feedback.onAlert, onCommandNotice: feedback.announceCommandFeedback,
     uxRef: feedback.uxRef, suppressImplicitSavesRef, missionIntroActiveRef, keyBindings: audioSettings.keyBindings,
-    multiplayerSession, persistCampaign: !tutorial && !state.multiplayer,
+    multiplayerSession, persistCampaign: !tutorial && !state.multiplayer, enabled: battlefieldReady,
   });
 
   useGameAudioLifecycle({ seed, missionIndex: state.missionIndex, tutorial, paused, result: state.result });

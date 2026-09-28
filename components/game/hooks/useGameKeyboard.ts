@@ -40,10 +40,12 @@ export function useGameKeyboard({
   closeMobilePanel = () => {},
   mobileToolActive = false,
   keyBindings,
+  enabled = true,
 }: GameKeyboardParams) {
   const keys = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
+    if (!enabled) return;
     const clearKeys = () => {
       for (const k of Object.keys(keys.current)) {
         keys.current[k] = false;
@@ -190,6 +192,7 @@ export function useGameKeyboard({
     mobileToolActive,
     missionIntroActiveRef,
     keyBindings,
+    enabled,
   ]);
 
   return { keys };

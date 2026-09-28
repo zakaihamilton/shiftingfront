@@ -2,7 +2,7 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import NotFound from "../../app/not-found";
 import { BriefingMast } from "../../components/briefing/BriefingMast";
 import { BattlefieldHud } from "../../components/game/BattlefieldHud";
@@ -12,6 +12,8 @@ import { PageFallback } from "../../components/ui/PageFallback";
 import { createCampaign } from "../../lib/gen/campaign";
 import { objectiveCardsFor } from "../../lib/ui/missionPresentation";
 import { makeFixture } from "../../lib/sim/fixtures";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 afterEach(() => cleanup());
 
@@ -269,4 +271,3 @@ describe("product chrome", () => {
     expect(screen.queryByTestId("multiplayer-rtt")).not.toBeInTheDocument();
   });
 });
-

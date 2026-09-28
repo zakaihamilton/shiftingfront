@@ -341,14 +341,14 @@ test("new game launch goes to briefing without training", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "Leave mission?" })).toHaveCount(0);
 });
 
-test("fresh battlefield launches through the procedural arrival and can be skipped", async ({ page }) => {
+test("fresh battlefield launches through the authored command intro and can be skipped", async ({ page }) => {
   await page.goto("/play?seed=0421&mission=0&fresh=1");
   await expect(page.getByTestId("battlefield-canvas")).toBeVisible();
   const intro = page.getByRole("dialog", { name: "Mission arrival feed" });
   await expect(intro).toBeVisible();
   await expect(page.getByTestId("command-sidebar")).toHaveCount(0);
 
-  await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
+  await page.getByRole("button", { name: /SKIP INTRO/ }).click();
   await expect(intro).toHaveCount(0);
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
 });

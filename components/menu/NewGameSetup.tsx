@@ -13,6 +13,62 @@ import styles from "./NewGameSetup.module.css";
 
 const LONG_FACTION_CHARS = 24;
 
+export function CampaignPreviewPane({ preview, onLaunch, className }: { preview: Campaign | null; onLaunch?: () => void; className?: string }) {
+  const factionLine = preview ? preview.factions[0].name + " vs " + preview.factions[1].name : "";
+  const wideFactions = factionLine.length > LONG_FACTION_CHARS;
+  const worldContext = preview ? biomeLabel(preview.world.biome) + " · " + preview.world.era : "";
+  const conflictLine = preview ? preview.world.conflict.charAt(0).toUpperCase() + preview.world.conflict.slice(1) + "." : "";
+
+  return (
+    <div className={styles.infoPane + (className ? " " + className : "")} data-testid="campaign-info-pane">
+      {preview ? (
+        <>
+          <div
+            className={styles.backdrop}
+            style={{ "--campaign-art": "url(\"" + biomeArt(preview.world.biome) + "\")" } as CSSProperties}
+            role="img"
+            aria-label={biomeLabel(preview.world.biome) + " campaign backdrop"}
+            data-testid="campaign-backdrop"
+          />
+          <div className={styles.infoContent}>
+            <ConsoleLabel>Campaign preview</ConsoleLabel>
+            <h3 className={styles.campaignTitle}>{preview.world.name}</h3>
+            <p className={styles.worldContext}>{worldContext}</p>
+            <p className={styles.conflict}>{conflictLine}</p>
+            <div className={styles.factionMatchup} data-wide={wideFactions ? "true" : undefined} data-testid="campaign-details">
+              <div className={styles.faction}>
+                <span className={styles.detailLabel}>You</span>
+                <strong>{preview.factions[0].name}</strong>
+              </div>
+              <span className={styles.factionVs}>VS</span>
+              <div className={styles.faction + " " + styles.opponent}>
+                <span className={styles.detailLabel}>Enemy</span>
+                <strong>{preview.factions[1].name}</strong>
+              </div>
+            </div>
+            <div className={styles.infoMeta}>
+              <div><span className={styles.detailLabel}>Commander</span><strong>{preview.characters.commander.name}</strong></div>
+              <div><span className={styles.detailLabel}>Operations</span><strong>6 operations</strong></div>
+            </div>
+            {onLaunch ? (
+              <ConsoleButton className={styles.start} tooltip="Begin the first briefing" shortcut={SHORTCUT.deploy} onClick={onLaunch}>
+                Start
+              </ConsoleButton>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <div className={styles.emptyInfo} role="status">
+          <div className={styles.emptyMark} aria-hidden="true">+</div>
+          <ConsoleLabel>Campaign preview</ConsoleLabel>
+          <h3 className={styles.emptyTitle}>Choose a code</h3>
+          <p>Enter four digits to reveal your campaign.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function NewGameSetup({
   code,
   error,
@@ -42,17 +98,6 @@ export function NewGameSetup({
 }) {
   const { countdown } = useWeeklyCountdown();
   const isSynchronized = code === weeklySeed();
-  const factionLine = preview
-    ? `${preview.factions[0].name} vs ${preview.factions[1].name}`
-    : "";
-  const wideFactions = factionLine.length > LONG_FACTION_CHARS;
-  const worldContext = preview
-    ? `${biomeLabel(preview.world.biome)} · ${preview.world.era}`
-    : "";
-  const conflictLine = preview
-    ? `${preview.world.conflict.charAt(0).toUpperCase()}${preview.world.conflict.slice(1)}.`
-    : "";
-
   return (
     <MetalPanel as="section" className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="new-game-title" data-testid="deploy-screen">
       <div className={styles.codePane} data-testid="campaign-code-pane">
@@ -121,64 +166,7 @@ export function NewGameSetup({
         </div>
       </div>
 
-      <div className={styles.infoPane} data-testid="campaign-info-pane">
-        {preview ? (
-          <>
-            <div
-              className={styles.backdrop}
-              style={{ "--campaign-art": `url("${biomeArt(preview.world.biome)}")` } as CSSProperties}
-              role="img"
-              aria-label={`${biomeLabel(preview.world.biome)} campaign backdrop`}
-              data-testid="campaign-backdrop"
-            />
-            <div className={styles.infoContent}>
-              <ConsoleLabel>Campaign preview</ConsoleLabel>
-              <h3 className={styles.campaignTitle}>{preview.world.name}</h3>
-              <p className={styles.worldContext}>{worldContext}</p>
-              <p className={styles.conflict}>{conflictLine}</p>
-
-              <div className={styles.factionMatchup} data-wide={wideFactions ? "true" : undefined} data-testid="campaign-details">
-                <div className={styles.faction}>
-                  <span className={styles.detailLabel}>You</span>
-                  <strong>{preview.factions[0].name}</strong>
-                </div>
-                <span className={styles.factionVs}>VS</span>
-                <div className={`${styles.faction} ${styles.opponent}`}>
-                  <span className={styles.detailLabel}>Enemy</span>
-                  <strong>{preview.factions[1].name}</strong>
-                </div>
-              </div>
-
-              <div className={styles.infoMeta}>
-                <div>
-                  <span className={styles.detailLabel}>Commander</span>
-                  <strong>{preview.characters.commander.name}</strong>
-                </div>
-                <div>
-                  <span className={styles.detailLabel}>Operations</span>
-                  <strong>6 operations</strong>
-                </div>
-              </div>
-
-              <ConsoleButton
-                className={styles.start}
-                tooltip="Begin the first briefing"
-                shortcut={SHORTCUT.deploy}
-                onClick={onLaunch}
-              >
-                Start
-              </ConsoleButton>
-            </div>
-          </>
-        ) : (
-          <div className={styles.emptyInfo} role="status">
-            <div className={styles.emptyMark} aria-hidden="true">+</div>
-            <ConsoleLabel>Campaign preview</ConsoleLabel>
-            <h3 className={styles.emptyTitle}>Choose a code</h3>
-            <p>Enter four digits to reveal your campaign.</p>
-          </div>
-        )}
-      </div>
+      <CampaignPreviewPane preview={preview} onLaunch={onLaunch} />
     </MetalPanel>
   );
 }

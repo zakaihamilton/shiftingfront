@@ -42,8 +42,6 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
   };
 
   useEffect(() => {
-    if (!operations) return;
-
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
@@ -52,7 +50,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [operations, router]);
+  }, [router]);
 
   const launchMission = (missionIndex: number) => {
     router.push(briefingPath(seed, missionIndex, false, "campaign"));

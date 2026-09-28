@@ -40,6 +40,8 @@ export function TacticalScreen({ title, palette, playField, overlays, multiplaye
       {playField.missionIntroActive ? (
         <MissionIntroOverlay
           waiting={playField.missionIntroWaiting}
+          phase={playField.missionIntroPhase}
+          biome={playField.state.biome}
           reducedMotion={audioSettings.reducedMotion}
           confirmationOpen={Boolean(overlays.confirmation)}
           onSkip={playField.onSkipMissionIntro}

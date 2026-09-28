@@ -5,6 +5,7 @@ import { useGameRuntime } from "./hooks/useGameRuntime";
 import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "./hooks/runtime/surfaces";
 import { TacticalScreen } from "./TacticalScreen";
 import { APP_NAME } from "@/lib/site";
+import { PageFallback } from "@/components/ui/PageFallback";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
 
 export function GameClient({
@@ -35,6 +36,8 @@ export function GameClient({
   const multiplayerPingMs = useSyncExternalStore(subscribeToPing, getPing, () => null);
 
   useEffect(() => multiplayerSession?.startLatencyProbes(), [multiplayerSession]);
+
+  if (!runtime.battlefieldReady) return <PageFallback>Preparing battlefield…</PageFallback>;
 
   return (
     <TacticalScreen

@@ -1,6 +1,5 @@
 import { safeSetItem, type StorageAdapter } from "./save";
 import { isRecord, readPersistedEnvelope } from "./utils";
-import { FIELD_GUIDE_TOPICS, isFieldGuideTopic, type FieldGuideTopic } from "../fieldGuide";
 
 export const SETTINGS_KEY = "shiftingfront:settings";
 export const SETTINGS_VERSION = 4 as const;
@@ -53,7 +52,6 @@ export type GameSettings = {
   colorblindMode: ColorblindMode;
   hudScale: HudScale;
   keyBindings: KeyBindings;
-  seenFieldGuideTopics: FieldGuideTopic[];
 };
 
 export function defaultSettings(): GameSettings {
@@ -70,7 +68,6 @@ export function defaultSettings(): GameSettings {
     colorblindMode: "none",
     hudScale: "normal",
     keyBindings: defaultKeyBindings(),
-    seenFieldGuideTopics: [],
   };
 }
 
@@ -131,9 +128,6 @@ function normalize(value: unknown): GameSettings {
     colorblindMode,
     hudScale,
     keyBindings: normalizeKeyBindings(raw.keyBindings),
-    seenFieldGuideTopics: Array.isArray(raw.seenFieldGuideTopics)
-      ? [...new Set(raw.seenFieldGuideTopics.filter(isFieldGuideTopic))]
-      : [],
   };
 }
 
@@ -166,7 +160,6 @@ export function writeSettings(storage: StorageAdapter, settings: GameSettings): 
       colorblindMode: settings.colorblindMode || "none",
       hudScale: settings.hudScale || "normal",
       keyBindings: normalizeKeyBindings(settings.keyBindings),
-      seenFieldGuideTopics: FIELD_GUIDE_TOPICS.filter((topic) => settings.seenFieldGuideTopics?.includes(topic)),
     },
   }));
 }

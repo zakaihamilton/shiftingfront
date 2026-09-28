@@ -3,13 +3,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
+import type { ComponentProps } from "react";
 import { ErrorBoundary } from "../../components/ui/ErrorBoundary";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: ReactNode }) => (
-    <a href={href} data-testid="home-link">{children}</a>
-  ),
+  default: ({ children, ...props }: ComponentProps<"a">) => <a {...props}>{children}</a>,
 }));
 
 let shouldThrow = true;

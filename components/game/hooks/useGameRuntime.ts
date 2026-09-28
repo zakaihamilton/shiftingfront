@@ -26,6 +26,7 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
   const missionIntro = useMissionIntro({
     state: durable.state,
     initiallyActive: durable.initialIntro,
+    assetsReady: durable.battlefieldReady,
     session: multiplayerSession,
     reducedMotion: chrome.audioSettings.reducedMotion,
     pausedRef: chrome.pausedRef,
@@ -89,6 +90,7 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
     campaignRecordedRef: chrome.campaignRecordedRef,
     suppressImplicitSavesRef,
     missionIntroActiveRef: missionIntro.activeRef,
+    battlefieldReady: durable.battlefieldReady,
     onRestartMission: missionIntro.begin,
     canvasRef: durable.canvasRef,
   });
@@ -99,8 +101,10 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
     palette: durable.state.factions[durable.state.viewOwner ?? 0].palette,
     state: durable.state,
     tutorial,
+    battlefieldReady: durable.battlefieldReady,
     missionIntroActive: missionIntro.active,
     missionIntroWaiting: missionIntro.awaiting,
+    missionIntroPhase: missionIntro.phase,
     onSkipMissionIntro: missionIntro.skip,
     paused: chrome.paused,
     hostRef: durable.hostRef,
