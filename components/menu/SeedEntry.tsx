@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
+import { CodeInput } from "@/components/shared/CodeInput";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./SeedEntry.module.css";
 
@@ -31,39 +32,15 @@ export function SeedEntry({
   return (
     <div className={styles.block}>
       <div className={styles.row}>
-        <div className={styles.digitsWrap}>
-          <div className={styles.digits} aria-hidden>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className={styles.cell}>
-                {code[i] ?? "·"}
-              </div>
-            ))}
-          </div>
-          <input
-            ref={inputRef}
-            value={code}
-            onFocus={(e) => {
-              if (code.length === 4) e.currentTarget.select();
-            }}
-            onMouseUp={(e) => {
-              if (code.length !== 4) return;
-              e.preventDefault();
-              e.currentTarget.select();
-            }}
-            onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 4))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onLaunch();
-              }
-            }}
-            maxLength={4}
-            inputMode="numeric"
-            autoComplete="off"
-            aria-label="Four digit campaign code"
-            className={styles.input}
-          />
-        </div>
+        <CodeInput
+          value={code}
+          length={4}
+          label="Four digit campaign code"
+          inputRef={inputRef}
+          onChange={onChange}
+          normalize={(value) => value.replace(/\D/g, "")}
+          onEnter={onLaunch}
+        />
         <div className={styles.seedActions}>
           <ConsoleButton
             className={styles.roll}

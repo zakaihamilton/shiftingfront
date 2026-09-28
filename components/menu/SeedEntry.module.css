@@ -10,44 +10,6 @@
   gap: 0.75rem;
 }
 
-.digitsWrap {
-  position: relative;
-}
-
-.digits {
-  pointer-events: none;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.cell {
-  display: flex;
-  height: 4rem;
-  width: 3.5rem;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--chrome-inset);
-  background: var(--chrome-steel-lo);
-  font-family: var(--font-mono);
-  font-size: 1.875rem;
-  color: var(--chrome-cyan);
-  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-bevel);
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.digitsWrap:focus-within .cell {
-  border-color: var(--chrome-cyan);
-  background: color-mix(in srgb, var(--chrome-cyan) 8%, var(--chrome-steel-lo));
-  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-bevel), 0 0 0 1px var(--chrome-cyan-dim);
-}
-
-.input {
-  position: absolute;
-  inset: 0;
-  cursor: text;
-  opacity: 0;
-}
-
 .seedActions {
   display: flex;
   flex-shrink: 0;
@@ -91,16 +53,6 @@
 @media (max-width: 420px) {
   .row {
     gap: 0.45rem;
-  }
-
-  .digits {
-    gap: 0.3rem;
-  }
-
-  .cell {
-    width: 3rem;
-    height: 3.25rem;
-    font-size: 1.55rem;
   }
 
   .roll,
