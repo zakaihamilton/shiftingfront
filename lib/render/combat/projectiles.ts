@@ -50,7 +50,7 @@ export function drawCombatProjectiles(
       ax = mountX + Math.cos(angle) * 24 * z;
       ay = mountY + Math.sin(angle) * 24 * z;
     } else {
-      const muzzle = e.class === "building" ? 18 : e.kind === "infantry" ? 14 : 20;
+      const muzzle = e.class === "building" ? 18 : e.kind === "infantry" ? 14 : e.kind === "behemoth" ? 28 : 20;
       ax = a.x + dir.x * muzzle * z;
       ay = a.y + 6 * z + dir.y * muzzle * z;
     }
@@ -60,11 +60,12 @@ export function drawCombatProjectiles(
     const py = ay + (by - ay) * u;
     const anti = e.kind === "antiArmor" || e.kind === "antiAirTurret";
     const airStrike = e.class === "unit" && isAirUnit(e.kind);
-    const heavy = e.kind === "tank" || e.kind === "turret" || e.kind === "antiAirTurret";
-    const coreWidth = Math.max(1, Math.round(z * (heavy ? 3 : anti ? 2 : 1)));
-    const glowWidth = coreWidth + Math.max(2, Math.round((heavy ? 5 : 3) * z));
-    const coreColor = airStrike ? "#ffcc72" : anti ? "#ff8b3d" : heavy ? "#ffe08a" : "#f6d06c";
-    const glowColor = airStrike ? "rgba(255, 185, 76, 0.36)" : anti ? "rgba(255, 90, 40, 0.32)" : "rgba(255, 213, 106, 0.34)";
+    const isSuper = e.kind === "behemoth";
+    const heavy = e.kind === "tank" || e.kind === "turret" || e.kind === "antiAirTurret" || isSuper;
+    const coreWidth = Math.max(1, Math.round(z * (isSuper ? 4.5 : heavy ? 3 : anti ? 2 : 1)));
+    const glowWidth = coreWidth + Math.max(2, Math.round((isSuper ? 7 : heavy ? 5 : 3) * z));
+    const coreColor = isSuper ? "#fff2a8" : airStrike ? "#ffcc72" : anti ? "#ff8b3d" : heavy ? "#ffe08a" : "#f6d06c";
+    const glowColor = isSuper ? "rgba(255, 175, 45, 0.48)" : airStrike ? "rgba(255, 185, 76, 0.36)" : anti ? "rgba(255, 90, 40, 0.32)" : "rgba(255, 213, 106, 0.34)";
     ctx.save();
     ctx.lineCap = "round";
     ctx.globalAlpha = 0.55 + (1 - u) * 0.35;

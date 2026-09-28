@@ -170,6 +170,7 @@ export function useGameSession({
     restartNow: persistence.restartMissionNow,
     goHomeNow: confirmGoHome,
     getResult: useCallback(() => stateRef.current.result, [stateRef]),
+    isMultiplayer: useCallback(() => Boolean(stateRef.current.multiplayer), [stateRef]),
   });
   const { goHome: requestConfirmationLeave, cancelConfirmation: cancelConfirmationState } = confirmation;
   const requestBrowserLeave = useCallback(() => {

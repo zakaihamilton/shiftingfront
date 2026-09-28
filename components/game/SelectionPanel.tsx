@@ -2,7 +2,7 @@ import { BUILDING_DEFINITIONS, BUILDING_STATS, MAX_PRODUCTION_QUEUE, TICKS_PER_S
 import { ProgressMeter } from "@/components/ui/ProgressMeter";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { cx } from "@/lib/ui/cx";
-import { isBuildingEntity, type Entity, type FactionVisualProfile, type Formation, type Palette, type Stance } from "@/lib/types";
+import { isBuildingEntity, type Entity, type FactionVisualProfile, type Formation, type Owner, type Palette, type Stance } from "@/lib/types";
 import { SelectionIdentity } from "./SelectionIdentity";
 import { SelectionOrders } from "./SelectionOrders";
 import styles from "./SelectionPanel.module.css";
@@ -14,6 +14,7 @@ export function SelectionPanel({
   profile,
   className,
   power,
+  playerOwner = 0,
   onStop,
   onStance,
   onFormation,
@@ -25,13 +26,14 @@ export function SelectionPanel({
   profile: FactionVisualProfile;
   className?: string;
   power?: number;
+  playerOwner?: Owner;
   onStop?: () => void;
   onStance?: (stance: Stance) => void;
   onFormation?: (formation: Formation) => void;
   onCenter?: () => void;
 }) {
-  const friendlyUnit = selected && selected.owner === 0 && selected.class === "unit" && !selected.neutral;
-  const friendlyProducer = selected && isBuildingEntity(selected) && selected.owner === 0 && selected.constructing <= 0 && Boolean(BUILDING_DEFINITIONS[selected.kind].production);
+  const friendlyUnit = selected && selected.owner === playerOwner && selected.class === "unit" && !selected.neutral;
+  const friendlyProducer = selected && isBuildingEntity(selected) && selected.owner === playerOwner && selected.constructing <= 0 && Boolean(BUILDING_DEFINITIONS[selected.kind].production);
   const stance = selected?.stance ?? "aggressive";
   const formation = selected?.formation;
   return (
@@ -63,7 +65,7 @@ export function SelectionPanel({
               detail={`${Math.ceil(selected.constructing / TICKS_PER_SECOND)}s`}
             />
           ) : null}
-          {isBuildingEntity(selected) && selected.owner === 0 && selected.constructing <= 0 && isDefensiveTurret(selected.kind) && power !== undefined && power < 0 ? (
+          {isBuildingEntity(selected) && selected.owner === playerOwner && selected.constructing <= 0 && isDefensiveTurret(selected.kind) && power !== undefined && power < 0 ? (
             <div className={styles.powerWarning} data-testid="turret-power-shortage" role="status">
               ⚡ Low Power: 50% Fire Rate · -25% Range
             </div>

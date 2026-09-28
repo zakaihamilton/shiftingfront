@@ -10,16 +10,18 @@ export function useMissionConfirmation({
   restartNow,
   goHomeNow,
   getResult,
+  isMultiplayer,
 }: {
   restartNow: () => void;
   goHomeNow: () => void;
   getResult?: () => SimState["result"];
+  isMultiplayer?: () => boolean;
 }) {
   const [confirmation, setConfirmation] = useState<MissionConfirmation | null>(null);
 
   const requestConfirmation = useCallback((action: MissionConfirmationAction) => {
-    setConfirmation(missionConfirmationFor(action, getResult?.() ?? "playing"));
-  }, [getResult]);
+    setConfirmation(missionConfirmationFor(action, getResult?.() ?? "playing", isMultiplayer?.() ?? false));
+  }, [getResult, isMultiplayer]);
 
   const restartMission = useCallback(() => {
     requestConfirmation("restart");

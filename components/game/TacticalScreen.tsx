@@ -11,10 +11,12 @@ import styles from "./GameClient.module.css";
 type TacticalScreenProps = GameRuntimeSurfaces & {
   title: string;
   palette: SimState["factions"][number]["palette"];
+  multiplayerPingMs?: number | null;
+  multiplayerHost?: boolean;
 };
 
 /** Pure screen composition for the tactical mission view. */
-export function TacticalScreen({ title, palette, playField, overlays }: TacticalScreenProps) {
+export function TacticalScreen({ title, palette, playField, overlays, multiplayerPingMs, multiplayerHost }: TacticalScreenProps) {
   const { audioSettings } = overlays;
   return (
     <div
@@ -32,7 +34,7 @@ export function TacticalScreen({ title, palette, playField, overlays }: Tactical
       onContextMenu={(e) => e.preventDefault()}
     >
       <DocumentTitle title={title} />
-      <GamePlayField {...playField} />
+      <GamePlayField {...playField} multiplayerPingMs={multiplayerPingMs} multiplayerHost={multiplayerHost} />
       <GameOverlays {...overlays} />
     </div>
   );

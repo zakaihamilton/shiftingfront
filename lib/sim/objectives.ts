@@ -2,7 +2,7 @@ import { isAirUnit, labelFor, TICKS_PER_SECOND } from "../catalog";
 import type { Entity, InspectReport, MissionRuntime, SimEvent, SimState } from "../types";
 import { formatSeed } from "../seed/rng";
 import { formatMissionClock, formatMissionClockFromTicks } from "../gen/pacing";
-import { livingView } from "./world";
+import { invalidateEntityCaches, livingView } from "./world";
 import { DEADLINE_SCENARIO_KINDS, scenarioDefinitionFor } from "./scenarios";
 
 export function formatHoldClock(seconds: number): string {
@@ -87,6 +87,19 @@ export function secondaryProgress(state: SimState): SecondaryProgress[] {
 
 export function objectiveProgress(state: SimState): ObjectiveProgress {
   const w = state.win;
+  if (state.multiplayer) {
+    const owners = state.multiplayerOwners ?? [0, 1];
+    const rivals = owners.filter((owner) => owner !== (state.viewOwner ?? 0));
+    const remaining = livingView(state).filter((entity) =>
+      rivals.includes(entity.owner) && entity.kind === "constructionYard",
+    ).length;
+    const destroyed = rivals.length - remaining;
+    return {
+      current: destroyed,
+      target: rivals.length,
+      label: remaining > 0 ? `Rival Command HQs remaining ${remaining}` : "All rival Command HQs destroyed",
+    };
+  }
   const scenarioProgress = scenarioDefinitionFor(w.kind).progress(state);
   if (scenarioProgress) {
     return { ...scenarioProgress, timeRemainingTicks: timeRemainingTicks(state), phase: state.runtime?.phase };
@@ -172,6 +185,48 @@ function objectiveEvents(eventSink: SimEvent[] | undefined, events: SimEvent[], 
 
 export function evaluateObjectives(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
   if (state.result !== "playing") return EMPTY_EVENTS;
+  if (state.multiplayer) {
+    const owners = state.multiplayerOwners ?? [0, 1];
+    state.multiplayerEliminated = state.multiplayerEliminated ?? [];
+    const yardOwners = new Set(livingView(state)
+      .filter((entity) => entity.kind === "constructionYard")
+      .map((entity) => entity.owner));
+    let eliminatedAny = false;
+    const events: SimEvent[] = [];
+    for (const owner of owners) {
+      if (yardOwners.has(owner)) continue;
+      if (state.multiplayerEliminated.includes(owner)) continue;
+      state.multiplayerEliminated.push(owner);
+      for (const entity of state.entities) {
+        if (entity.owner === owner && entity.hp > 0) {
+          entity.hp = 0;
+          eliminatedAny = true;
+        }
+      }
+      const text = owner === (state.viewOwner ?? 0)
+        ? "Command HQ destroyed — your forces have been eliminated."
+        : `Player ${owner + 1} eliminated.`;
+      events.push({ type: "alert", kind: "warning", text });
+    }
+    if (eliminatedAny) invalidateEntityCaches(state);
+    const survivingOwners = owners.filter((owner) => yardOwners.has(owner));
+    if (survivingOwners.length === 0) {
+      state.result = "lost";
+      state.winner = null;
+      if (state.runtime) state.runtime.phase = "complete";
+      events.push({ type: "lost" });
+      return objectiveEvents(eventSink, events, collectEvents);
+    }
+    if (survivingOwners.length === 1) {
+      const winner = survivingOwners[0]!;
+      state.winner = winner;
+      state.result = winner === (state.viewOwner ?? 0) ? "won" : "lost";
+      if (state.runtime) state.runtime.phase = "complete";
+      events.push({ type: state.result === "won" ? "won" : "lost" });
+      return objectiveEvents(eventSink, events, collectEvents);
+    }
+    return events.length ? objectiveEvents(eventSink, events, collectEvents) : EMPTY_EVENTS;
+  }
   const playerCy = livingView(state).some((e) => e.owner === 0 && e.kind === "constructionYard");
   if (!playerCy) {
     state.result = "lost";

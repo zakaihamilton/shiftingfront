@@ -529,6 +529,42 @@ describe("mission replacement in a mounted loop", () => {
     act(() => options.onFrame!(1000, options.getState(), true, 0, 0));
     expect(localStorage.getItem(TELEMETRY_KEY)).toBeNull();
   });
+
+  it("does not pause loop when opening pause menu during an online skirmish unless disconnected", () => {
+    let connected = true;
+    const fakeSession = {
+      owner: 0,
+      owners: [0, 1],
+      aiOwners: [],
+      get connected() { return connected; },
+      canAdvance: vi.fn(() => true),
+      queuedFramesCount: vi.fn(() => 0),
+      submit: vi.fn(),
+      bindState: vi.fn(),
+      drainTick: vi.fn((_s, cmds) => cmds),
+    } as unknown as import("@/lib/multiplayer/session").MultiplayerSession;
+
+    const { result } = renderHook(() => useGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+      multiplayerSession: fakeSession,
+    }));
+
+    const options = (startLoop.mock.calls as unknown as [LoopOptions][])[0]![0];
+    expect(options.isPaused!()).toBe(false);
+
+    // Opening pause menu sets pausedRef = true
+    act(() => result.current.session.openPauseMenu());
+    expect(result.current.paused).toBe(true);
+    // In multiplayer, isPaused should STILL be false while connected
+    expect(options.isPaused!()).toBe(false);
+
+    // Disconnecting causes isPaused to become true
+    connected = false;
+    expect(options.isPaused!()).toBe(true);
+  });
 });
 
 describe("initial slot load failures", () => {

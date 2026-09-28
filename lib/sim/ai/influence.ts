@@ -1,4 +1,4 @@
-import type { Entity, SimState, Vec2 } from "../../types";
+import type { Entity, Owner, SimState, Vec2 } from "../../types";
 import { isCombatTarget, statsFor } from "../combat/grid";
 import { inBounds, isStaticWalkable, livingView } from "../world";
 import { enemyKnownPlayerEntities } from "./visibility";
@@ -20,7 +20,7 @@ export type InfluenceMap = {
 
 const INFLUENCE_CELL_SIZE = 8;
 const INFLUENCE_CACHE_TICKS = 12;
-const influenceCache = new WeakMap<SimState, { tick: number; knownPlayersKey?: string; map: InfluenceMap }>();
+const influenceCache = new WeakMap<SimState, Map<Owner, { tick: number; knownPlayersKey?: string; map: InfluenceMap }>>();
 
 function knownPlayersKey(knownPlayers: Entity[] | undefined): string | undefined {
   if (knownPlayers === undefined) return undefined;
@@ -56,9 +56,16 @@ export function cellInfluence(map: InfluenceMap, x: number, y: number): Influenc
   };
 }
 
-export function buildInfluenceMap(state: SimState, knownPlayers?: Entity[]): InfluenceMap {
+export function buildInfluenceMap(
+  state: SimState,
+  knownPlayers?: Entity[],
+  aiOwner: Owner = 1,
+  opponents: readonly Owner[] = [0],
+): InfluenceMap {
   const playersKey = knownPlayersKey(knownPlayers);
-  const cached = influenceCache.get(state);
+  let ownerCache = influenceCache.get(state);
+  if (!ownerCache) influenceCache.set(state, ownerCache = new Map());
+  const cached = ownerCache.get(aiOwner);
   if (cached && cached.knownPlayersKey === playersKey && state.tick - cached.tick < INFLUENCE_CACHE_TICKS) {
     return cached.map;
   }
@@ -86,14 +93,14 @@ export function buildInfluenceMap(state: SimState, knownPlayers?: Entity[]): Inf
 
   // Bot (Friendly) forces
   for (const entity of livingView(state)) {
-    if (entity.owner !== 1 || entity.hp <= 0) continue;
+    if (entity.owner !== aiOwner || entity.hp <= 0) continue;
     const stats = statsFor(entity);
     const power = stats.damage > 0 ? stats.damage * 2 + entity.hp * 0.1 : entity.hp * 0.05;
     applyPower(entity.x, entity.y, power, 0);
   }
 
   // Detected player (Threat) forces
-  const players = knownPlayers ?? enemyKnownPlayerEntities(state);
+  const players = knownPlayers ?? enemyKnownPlayerEntities(state, livingView(state), aiOwner, opponents);
   for (const target of players) {
     if (target.hp <= 0 || !isCombatTarget(state, target)) continue;
     const stats = statsFor(target);
@@ -117,7 +124,7 @@ export function buildInfluenceMap(state: SimState, knownPlayers?: Entity[]): Inf
     height: state.height,
   };
 
-  influenceCache.set(state, { tick: state.tick, knownPlayersKey: playersKey, map });
+  ownerCache.set(aiOwner, { tick: state.tick, knownPlayersKey: playersKey, map });
   return map;
 }
 

@@ -259,6 +259,12 @@ describe("game overlay surfaces", () => {
     rerender(<MissionResult state={won} {...callbacks} />);
     expect(screen.getByTestId("mission-result")).toHaveAttribute("data-result", "won");
     expect(screen.getByTestId("mission-result")).toHaveStyle({ "--result-art": 'url("/art/results/victory.webp")' });
+    expect(screen.getByText("Mission 1 // Fixture")).toBeInTheDocument();
+
+    const multiplayerWon = { ...won, multiplayer: true, missionName: "Versus Skirmish" };
+    rerender(<MissionResult state={multiplayerWon} {...callbacks} />);
+    expect(screen.getByText("Versus Skirmish")).toBeInTheDocument();
+    expect(screen.queryByText(/Mission 1/)).toBeNull();
   });
 
   it("separates required mission conditions from bonus objectives", () => {

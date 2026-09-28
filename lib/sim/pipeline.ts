@@ -1,5 +1,5 @@
 import type { SimEvent, SimState } from "../types";
-import { tickAi } from "./ai";
+import { tickAi, tickMultiplayerAi } from "./ai";
 import { tickCombat } from "./combat";
 import { tickEconomy } from "./economy";
 import { tickFog } from "./fog";
@@ -65,11 +65,11 @@ export const SIMULATION_SYSTEMS: readonly SimulationSystem[] = [
   { id: "tutorial", run: ({ state }) => advanceTutorialAfterTick(state) },
   { id: "repair", run: (context) => runWithEvents(context, tickRepair) },
   { id: "support", run: (context) => runWithEvents(context, tickSupport) },
-  { id: "director", run: (context) => runWithEvents(context, tickMissionDirector) },
-  { id: "ai", run: ({ state }) => tickAi(state) },
+  { id: "director", run: (context) => { if (!context.state.multiplayer) runWithEvents(context, tickMissionDirector); } },
+  { id: "ai", run: ({ state }) => { if (state.multiplayer) tickMultiplayerAi(state); else tickAi(state); } },
   { id: "fog", run: ({ state, options }) => { if (options.updateFog !== false) tickFog(state); } },
   { id: "clock", run: ({ state }) => { state.tick += 1; } },
-  { id: "scenario", run: (context) => runWithEvents(context, tickScenario) },
+  { id: "scenario", run: (context) => { if (!context.state.multiplayer) runWithEvents(context, tickScenario); } },
   {
     id: "objectives",
     run: (context) => {

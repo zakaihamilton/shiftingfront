@@ -64,6 +64,10 @@ describe("battlefieldCursor", () => {
       hoverTile: { x: 5, y: 5 },
       selectedIds: [harvester.id],
     }))).toBe("cell");
+    const neutral = addUnit(state, 1, "infantry", 7, 7);
+    neutral.neutral = true;
+    expect(battlefieldCursor(cursorOpts(state, { hoverEntity: neutral, selectedIds: [infantry.id] }))).toBe("crosshair");
+    expect(battlefieldCursor(cursorOpts(state, { hoverEntity: neutral, selectedIds: [harvester.id] }))).toBe("crosshair");
     expect(battlefieldCursor(cursorOpts(state))).toBe("crosshair");
   });
 });

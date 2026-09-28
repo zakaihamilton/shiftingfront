@@ -1,6 +1,6 @@
 import { UNIT_STATS, isUnitKind } from "../catalog";
 import type { Camera } from "../iso";
-import type { BuildingKind, SimEvent, UnitKind, WeaponType } from "../types";
+import type { BuildingKind, Owner, SimEvent, UnitKind, WeaponType } from "../types";
 import { duckMusic } from "./mixer";
 import { spatialAudioForWorld } from "./spatial";
 import { playSfx, type SfxKind } from "./synth";
@@ -8,7 +8,7 @@ import { playSfx, type SfxKind } from "./synth";
 export function fireSfxFor(attackerKind: UnitKind | BuildingKind, weapon: WeaponType): SfxKind {
   if (attackerKind === "infantry") return "smallArms";
   if (attackerKind === "antiArmor") return "antiArmor";
-  if (attackerKind === "tank") return "cannon";
+  if (attackerKind === "tank" || attackerKind === "behemoth") return "cannon";
   if (attackerKind === "turret" || attackerKind === "antiAirTurret") return "turret";
   if (attackerKind === "strikePlane") return "cannon";
   if (weapon === "smallArms") return "smallArms";
@@ -44,6 +44,7 @@ export function dispatchBattlefieldAudio(
   camera: Camera,
   screenWidth: number,
   screenHeight: number,
+  playerOwner: Owner = 0,
 ): void {
   let built = false;
   let produced = false;
@@ -78,7 +79,7 @@ export function dispatchBattlefieldAudio(
           gain: impact.gain * (cue.heavy ? 1.2 : 1),
           heavy: cue.heavy,
         });
-        if (cue.heavy || event.kind === "tank") duckMusic(cue.heavy ? 0.66 : 0.78, cue.heavy ? 0.28 : 0.18);
+        if (cue.heavy || event.kind === "tank" || event.kind === "behemoth") duckMusic(cue.heavy ? 0.66 : 0.78, cue.heavy ? 0.28 : 0.18);
       }
     } else if (event.type === "sold") {
       playSfx("sell", { force: true });
@@ -89,13 +90,13 @@ export function dispatchBattlefieldAudio(
       if (support.audible) {
         playSfx(supportSfxFor(event.providerKind), { pan: support.pan, gain: support.gain * 0.9, minInterval: 0.18 });
       }
-    } else if (event.type === "built" && event.owner === 0) {
+    } else if (event.type === "built" && event.owner === playerOwner) {
       built = true;
-    } else if (event.type === "produced" && event.owner === 0) {
+    } else if (event.type === "produced" && event.owner === playerOwner) {
       produced = true;
-    } else if (event.type === "credits" && event.owner === 0) {
+    } else if (event.type === "credits" && event.owner === playerOwner) {
       credits = true;
-    } else if (event.type === "powerShortage" && event.owner === 0) {
+    } else if (event.type === "powerShortage" && event.owner === playerOwner) {
       playSfx("powerShortage");
     } else if (event.type === "deadlineWarning") {
       playSfx("deadline", { force: true });

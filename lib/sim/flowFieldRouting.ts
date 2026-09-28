@@ -5,6 +5,7 @@ import { reversesPreviousStep } from "./pathfinding";
 import { tryFindPathDetailed } from "./pathBudget";
 import { entitiesFor } from "./entities";
 import { navigationMobilityFor } from "./terrainRules";
+import { isPlayerControlledOwner } from "./ownership";
 
 const FLOW_PATH_PREFIX_LENGTH = 2;
 const MIN_CONGESTION_GROUP_SIZE = 16;
@@ -139,7 +140,7 @@ export function prepareFlowFieldRoutes(
         continue;
       }
       if ((personalCheb <= ARRIVAL_DISTANCE || routeDistance <= arrivalSwitchDistance) &&
-        finishFlowFieldRoute(state, occupancy, entity, entity.owner === 0 ? previousCells?.get(entity.id) : undefined)) {
+        finishFlowFieldRoute(state, occupancy, entity, isPlayerControlledOwner(state, entity.owner) ? previousCells?.get(entity.id) : undefined)) {
         flowOrder?.set(entity.id, order++);
         continue;
       }
@@ -246,7 +247,7 @@ function assignFlowPrefix(
 ): void {
   let cursorX = Math.round(entity.x);
   let cursorY = Math.round(entity.y);
-  const previousCell = entity.owner === 0 ? previousCells?.get(entity.id) : undefined;
+  const previousCell = isPlayerControlledOwner(state, entity.owner) ? previousCells?.get(entity.id) : undefined;
   const existing = entity.path[0];
   const existingIsCurrent = existing && Math.round(existing.x) === cursorX && Math.round(existing.y) === cursorY;
   const existingDistance = existing
@@ -359,7 +360,7 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     return false;
   }
   const first = result.path[0];
-  if (first && entity.owner === 0 && entity.scenarioRole !== "convoy" && reversesPreviousStep(
+  if (first && isPlayerControlledOwner(state, entity.owner) && entity.scenarioRole !== "convoy" && reversesPreviousStep(
     state.width,
     Math.round(entity.x),
     Math.round(entity.y),

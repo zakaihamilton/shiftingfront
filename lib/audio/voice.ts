@@ -68,8 +68,18 @@ if (typeof window !== "undefined") {
 const BARK_PHRASES: Record<VoiceBarkType, string[]> = {
   select: ["Standing by.", "Unit ready.", "Awaiting orders.", "Reporting in."],
   move: ["Acknowledged.", "Moving out.", "Affirmative.", "Coordinates set."],
-  attack: ["Engaging target.", "Weapons free.", "Target acquired.", "Commencing attack."],
-  harvest: ["Harvesting ore.", "Heading to field.", "Extraction in progress."],
+  attack: [
+    "Acknowledged.",
+    "Acknowledged. Engaging target.",
+    "Target acknowledged.",
+    "Engaging target.",
+    "Weapons free.",
+    "Target acquired.",
+    "Commencing attack.",
+    "Copy. Taking the shot.",
+    "Firing on target.",
+  ],
+  harvest: ["Harvesting ore.", "Heading to field.", "Extraction in progress.", "Ore field confirmed.", "Starting collection."],
   threat: ["Base under attack!", "Warning: perimeter breached!"],
 };
 
@@ -219,4 +229,3 @@ export function voiceBarkForBeep(kind: import("./synth/types").BeepKind | undefi
   else if (kind === "ackHarvest") playVoiceBark("harvest");
   else if (kind === "alert") playVoiceBark("threat");
 }
-

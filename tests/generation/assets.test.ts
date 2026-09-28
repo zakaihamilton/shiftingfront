@@ -1,4 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { basename, resolve } from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
@@ -217,6 +218,34 @@ describe("tactical procedural assets", () => {
       expect(views[5]!.imageSrc).toContain("-back-left-v1.webp");
       expect(views[6]!.imageSrc).toMatch(/-back(?:-v1)?\.webp/);
       expect(views[7]!.imageSrc).toContain("-back-right-v1.webp");
+    }
+  });
+
+  it("ships eight unique transparent behemoth views with one shared tread baseline", async () => {
+    const views = Array.from({ length: 8 }, (_, facing) =>
+      unitSprite("behemoth", palette, { facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 }),
+    );
+    const sources = views.map((view) => view.imageSrc!);
+    expect(new Set(sources).size).toBe(8);
+
+    const fingerprints = new Set<string>();
+    for (const source of sources) {
+      const sourcePath = resolve(process.cwd(), "public", source.slice(1));
+      expect(existsSync(sourcePath), source).toBe(true);
+      const metadata = await sharp(sourcePath).metadata();
+      expect(metadata.width, source).toBe(512);
+      expect(metadata.height, source).toBe(512);
+      expect(metadata.hasAlpha, source).toBe(true);
+
+      const { data, info } = await sharp(sourcePath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const bounds = opaquePixelBounds(data, info.width, info.height);
+      expect(bounds, source).toBeDefined();
+      expect(bounds!.minY + bounds!.height - 1, `${source} tread baseline`).toBe(474);
+      expect(bounds!.minX).toBeGreaterThan(0);
+      expect(bounds!.minX + bounds!.width - 1).toBeLessThan(511);
+      const fingerprint = createHash("sha256").update(data).digest("hex");
+      expect(fingerprints.has(fingerprint), `${source} should be a unique authored view`).toBe(false);
+      fingerprints.add(fingerprint);
     }
   });
 

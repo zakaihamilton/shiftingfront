@@ -1,5 +1,5 @@
 import { BUILDING_STATS, footprintOf, isAirUnit } from "../../catalog";
-import { isBuildingEntity, type Entity, type SimState, type TileKind, type Vec2 } from "../../types";
+import { isBuildingEntity, type Entity, type Owner, type SimState, type TileKind, type Vec2 } from "../../types";
 
 type LivingCache = { tick: number; entities: SimState["entities"]; value: Entity[] };
 const livingCache = new WeakMap<SimState, LivingCache>();
@@ -8,7 +8,7 @@ const unitAtCache = new WeakMap<SimState, UnitAtCache>();
 type UnitOccupancyCache = { tick: number; entities: SimState["entities"]; value: Uint8Array };
 const unitOccupancyCache = new WeakMap<SimState, UnitOccupancyCache>();
 type PowerTotals = { produced: number; used: number; surplus: number };
-type PowerCache = { tick: number; entities: SimState["entities"]; value: [PowerTotals, PowerTotals] };
+type PowerCache = { tick: number; entities: SimState["entities"]; value: PowerTotals[] };
 const powerCache = new WeakMap<SimState, PowerCache>();
 type EntityIndexCache = { entities: SimState["entities"]; value: Map<number, Entity> };
 const entityIndexCache = new WeakMap<SimState, EntityIndexCache>();
@@ -171,14 +171,11 @@ export function invalidatePowerCache(state: SimState): void {
 }
 
 /** Compute both factions' power totals once for the current simulation tick. */
-export function powerBreakdownFor(state: SimState, owner: 0 | 1): PowerTotals {
+export function powerBreakdownFor(state: SimState, owner: Owner): PowerTotals {
   const cached = powerCache.get(state);
   if (cached?.tick === state.tick && cached.entities === state.entities) return cached.value[owner];
 
-  const value: [PowerTotals, PowerTotals] = [
-    { produced: 0, used: 0, surplus: 0 },
-    { produced: 0, used: 0, surplus: 0 },
-  ];
+  const value: PowerTotals[] = state.factions.map(() => ({ produced: 0, used: 0, surplus: 0 }));
   for (const e of livingView(state)) {
     if (!isBuildingEntity(e) || e.constructing > 0) continue;
     const totals = value[e.owner];
@@ -186,8 +183,7 @@ export function powerBreakdownFor(state: SimState, owner: 0 | 1): PowerTotals {
     if (watt >= 0) totals.produced += watt;
     else totals.used -= watt;
   }
-  value[0]!.surplus = value[0]!.produced - value[0]!.used;
-  value[1]!.surplus = value[1]!.produced - value[1]!.used;
+  for (const totals of value) totals.surplus = totals.produced - totals.used;
   powerCache.set(state, { tick: state.tick, entities: state.entities, value });
   return value[owner];
 }

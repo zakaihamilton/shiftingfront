@@ -1,5 +1,5 @@
 import { isAirUnit, isDefensiveTurret, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER } from "../../catalog";
-import { distToEntity, livingView, powerFor } from "../world";
+import { distToEntity, livingView } from "../world";
 import { rngFromState } from "../../seed/rng";
 import { buildGrid, statsFor, canTarget, isCombatTarget, isCombatThreat, acquire, acquirePreferred, closestEnemy } from "./grid";
 import { lineOfSight, firingPosition, heightRangeBonus } from "./targeting";
@@ -8,6 +8,7 @@ import { createPendingAlerts, flushPlayerAlerts } from "./alerts";
 import type { SimEvent, SimState } from "../../types";
 import { tryFindPath } from "../pathBudget";
 import { directFireRangeBonusAt } from "../terrainRules";
+import { powerShortageByOwner } from "../powerShortage";
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
@@ -16,7 +17,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
   const pending = collectEvents ? createPendingAlerts() : undefined;
   const rng = rngFromState(state.rngState);
   const grid = buildGrid(state);
-  const lowPower = [powerFor(state, 0) < 0, powerFor(state, 1) < 0];
+  const lowPower = powerShortageByOwner(state);
   for (const e of livingView(state)) {
     if (e.hp <= 0) continue;
     if (state.tutorialStage !== undefined && e.owner === 1) continue;
@@ -63,7 +64,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
             }
           }
         } else {
-          const intercept = e.owner === 1 && !isCombatThreat(state, assigned)
+          const intercept = !state.multiplayer && e.owner === 1 && !isCombatThreat(state, assigned)
             ? closestEnemy(grid, e, weaponRange, true)
             : undefined;
           if (intercept && ((e.class === "unit" && isAirUnit(e.kind)) || (intercept.class === "unit" && isAirUnit(intercept.kind)) || lineOfSight(state, e, intercept))) {

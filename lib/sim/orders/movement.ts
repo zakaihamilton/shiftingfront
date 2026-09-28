@@ -6,6 +6,7 @@ import { isUnitEntity, type Entity, type Formation, type SimEvent, type SimState
 import { byId, inBounds, isStaticWalkable } from "../world";
 import { clearSupportOrder } from "../support";
 import { launchAircraft } from "../aircraft";
+import { commandOwner } from "./commandOwner";
 
 export function moveUnits(state: SimState, ids: number[], x: number, y: number, formation?: Formation): SimEvent[] {
   return issueTravelOrder(state, ids, x, y, "move", formation);
@@ -79,10 +80,11 @@ function issueTravelOrder(
 }
 
 export function collectMovers(state: SimState, ids: number[], attackMove: boolean): Entity[] {
+  const owner = commandOwner(state);
   const movers: Entity[] = [];
   for (const id of ids) {
     const e = byId(state, id);
-    if (!e || e.class !== "unit" || e.owner !== 0 || e.neutral) continue;
+    if (!e || e.class !== "unit" || e.owner !== owner || e.neutral) continue;
     if (attackMove && e.kind === "harvester") continue;
     movers.push(e);
   }

@@ -74,7 +74,7 @@ export type PointerUpEffect = {
 const DRAG_THRESHOLD = 8;
 
 function selectableIds(state: SimState, hit: SimState["entities"][number] | undefined): number[] {
-  return hit && hit.owner === 0 && isPlayerSelectableEntity(hit) && (!hit.neutral || isContactTarget(state, hit)) ? [hit.id] : [];
+  return hit && hit.owner === (state.viewOwner ?? 0) && isPlayerSelectableEntity(hit) && (!hit.neutral || isContactTarget(state, hit)) ? [hit.id] : [];
 }
 
 function selectionForHit(
@@ -117,6 +117,7 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
     doubleClick,
     viewport,
   } = input;
+  const owner = state.viewOwner ?? 0;
   const { x: tx, y: ty } = pointerTile(state, p, cam);
 
   if (pointerType === "touch" && selectionMode) {
@@ -174,7 +175,7 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
   }
 
   if (placeKind) {
-    const validPlacement = canPlaceBuilding(state, placeKind, tx, ty);
+    const validPlacement = canPlaceBuilding(state, placeKind, tx, ty, owner);
     return {
       clearBox: true,
       commands: [{ type: "build", building: placeKind, x: tx, y: ty }],
@@ -188,7 +189,7 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
 
   if (repairMode) {
     const hit = pickSelectableEntity(state, p.x, p.y, tx, ty, cam);
-    if (hit && hit.owner === 0 && hit.class === "building") {
+    if (hit && hit.owner === owner && hit.class === "building") {
       return {
         clearBox: true,
         commands: [{ type: "repair", buildingId: hit.id }],
@@ -200,7 +201,7 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
 
   if (sellMode) {
     const hit = pickSelectableEntity(state, p.x, p.y, tx, ty, cam);
-    if (hit && hit.owner === 0 && hit.class === "building") {
+    if (hit && hit.owner === owner && hit.class === "building") {
       if (!canSell(hit)) {
         return { clearBox: true, commandNotice: { text: "That building cannot be sold.", kind: "error" } };
       }
@@ -227,14 +228,14 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
       beep: beepForCommands(commands),
     };
   }
-  if (pointerType === "touch" && selectedIds.length > 0 && hit?.owner === 0) {
+  if (pointerType === "touch" && selectedIds.length > 0 && hit?.owner === owner) {
     const supportOrders = friendlySupportOrders(state, selectedIds, hit, tx, ty);
     if (supportOrders.length) {
       return { clearBox: true, commands: supportOrders, beep: beepForCommands(supportOrders) };
     }
     return selectEffect(selectionForHit(state, cam, hit, doubleClick, viewport));
   }
-  if (pointerType === "touch" && selectedIds.length > 0 && hit?.owner === 1 && !hit.neutral) {
+  if (pointerType === "touch" && selectedIds.length > 0 && hit && hit.owner !== owner && !hit.neutral) {
     const commands: Command[] = [{ type: "attack", unitIds: selectedIds, targetId: hit.id }];
     return {
       clearBox: true,

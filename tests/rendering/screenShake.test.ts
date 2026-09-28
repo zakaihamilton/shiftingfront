@@ -101,4 +101,33 @@ describe("presentation coordinator screen shake filtering", () => {
     ], 300);
     expect(screenShakeRef.current.trauma).toBeCloseTo(0.7);
   });
+
+  it("only notifies and alerts on the local view owner's rejections", async () => {
+    const { createPresentationCoordinator } = await import(
+      "../../components/game/hooks/runtime/presentation"
+    );
+    const notices: string[] = [];
+    const coordinator = createPresentationCoordinator({
+      cameraRef: { current: { x: 0, y: 0, zoom: 1 } },
+      canvasRef: { current: null },
+      fxRef: { current: [] },
+      fxSequence: { current: 0 },
+      onAlert: () => undefined,
+      onCommandNotice: (msg) => { notices.push(msg); },
+    });
+
+    const hostState = { tick: 1, viewOwner: 0, entities: [] } as unknown as import("../../lib/types").SimState;
+
+    // Rival rejection (owner 1) -> host should NOT receive notification
+    coordinator.onTick(hostState, [{ type: "commandRejected", reason: "insufficient credits", owner: 1 }], 100);
+    expect(notices).toHaveLength(0);
+
+    // Host rejection (owner 0) -> host SHOULD receive notification
+    coordinator.onTick(hostState, [{ type: "commandRejected", reason: "insufficient credits", owner: 0 }], 200);
+    expect(notices).toHaveLength(1);
+
+    // Untagged rejection (single-player backward compat) -> host SHOULD receive notification
+    coordinator.onTick(hostState, [{ type: "commandRejected", reason: "invalid placement" }], 300);
+    expect(notices).toHaveLength(2);
+  });
 });

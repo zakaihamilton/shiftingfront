@@ -40,14 +40,16 @@ export { terrainColors };
 
 export function entityColor(e: Entity, state: SimState, mode: ColorblindMode = "none"): string {
   if (e.marked) return "#ffe066";
+  if (e.neutral) return mode === "tritanopia" ? "#e2e8f0" : "#f5e6a8";
+  const friendly = state.multiplayer ? e.owner === (state.viewOwner ?? 0) : e.owner === 0;
   if (mode === "deuteranopia" || mode === "protanopia") {
-    if (e.owner === 0) {
+    if (friendly) {
       return "#38bdf8";
     }
     return "#fb923c";
   }
   if (mode === "tritanopia") {
-    if (e.owner === 0) {
+    if (friendly) {
       return "#14b8a6";
     }
     return "#f43f5e";
@@ -61,6 +63,7 @@ export function entityColor(e: Entity, state: SimState, mode: ColorblindMode = "
 }
 
 export function minimapEntityVisible(state: SimState, e: Entity): boolean {
+  const hostile = state.multiplayer ? e.owner !== (state.viewOwner ?? 0) : e.owner === 1;
   if (isBuildingEntity(e)) {
     const fp = footprintOf(e.kind);
     let visible = false;
@@ -73,12 +76,12 @@ export function minimapEntityVisible(state: SimState, e: Entity): boolean {
       }
       if (visible) break;
     }
-    if (e.owner === 1 && !visible) return false;
+    if (hostile && !visible) return false;
     if (isHiddenObjectiveAsset(e) && !visible) return false;
     return true;
   }
   const fog = fogAt(state, Math.round(e.x), Math.round(e.y));
-  if (e.owner === 1 && fog !== 2) return false;
+  if (hostile && fog !== 2) return false;
   // Hidden objective assets are owner-0 actors, so they need their own fog
   // check or their location would leak through the minimap.
   if (isHiddenObjectiveAsset(e) && fog !== 2) return false;

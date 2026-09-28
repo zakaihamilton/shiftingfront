@@ -41,23 +41,24 @@ export function battlefieldCursor({
   repairMode: boolean;
   sellMode: boolean;
 }): BattlefieldCursor {
+  const owner = state.viewOwner ?? 0;
   if (placeKind) {
     if (!hoverTile) return "cell";
-    return canPlaceBuilding(state, placeKind, hoverTile.x, hoverTile.y) ? "cell" : "not-allowed";
+    return canPlaceBuilding(state, placeKind, hoverTile.x, hoverTile.y, owner) ? "cell" : "not-allowed";
   }
   if (repairMode) {
     if (!hoverEntity) return "not-allowed";
-    return hoverEntity.owner === 0 && (hoverEntity.repairing || canRepair(hoverEntity)) ? "pointer" : "not-allowed";
+    return hoverEntity.owner === owner && (hoverEntity.repairing || canRepair(hoverEntity)) ? "pointer" : "not-allowed";
   }
   if (sellMode) {
     if (!hoverEntity) return "not-allowed";
-    return hoverEntity.owner === 0 && canSell(hoverEntity) ? "pointer" : "not-allowed";
+    return hoverEntity.owner === owner && canSell(hoverEntity) ? "pointer" : "not-allowed";
   }
   const selectedProducer = selectedIds.length === 1
     ? state.entities.find((entity) => entity.id === selectedIds[0] && entity.hp > 0)
     : undefined;
   if (
-    selectedProducer?.owner === 0 &&
+    selectedProducer?.owner === owner &&
     isBuildingEntity(selectedProducer) &&
     selectedProducer.constructing <= 0 &&
     Boolean(BUILDING_DEFINITIONS[selectedProducer.kind].production)
@@ -65,10 +66,10 @@ export function battlefieldCursor({
     if (!hoverTile || hoverEntity) return "not-allowed";
     return isStaticWalkable(state, hoverTile.x, hoverTile.y) ? "cell" : "not-allowed";
   }
-  if (hoverEntity?.owner === 0) return "pointer";
-  if (hoverEntity && hoverEntity.owner === 1) {
+  if (hoverEntity?.owner === owner) return "pointer";
+  if (hoverEntity && hoverEntity.owner !== owner && !hoverEntity.neutral) {
     const selectedCombat = selectedIds.some((id) => {
-      const entity = state.entities.find((item) => item.id === id && item.hp > 0 && item.owner === 0 && item.class === "unit");
+      const entity = state.entities.find((item) => item.id === id && item.hp > 0 && item.owner === owner && item.class === "unit");
       return Boolean(entity && !SUPPORT_KINDS.has(entity.kind));
     });
     return selectedCombat ? "crosshair" : "not-allowed";
@@ -76,7 +77,7 @@ export function battlefieldCursor({
   if (hoverTile && hasResourceNear(state, hoverTile.x, hoverTile.y, 1)) {
     const harvesting = selectedIds.some((id) => {
       const entity = state.entities.find((item) => item.id === id);
-      return entity?.kind === "harvester" && entity.hp > 0 && entity.owner === 0;
+      return entity?.kind === "harvester" && entity.hp > 0 && entity.owner === owner;
     });
     if (harvesting) return "cell";
   }

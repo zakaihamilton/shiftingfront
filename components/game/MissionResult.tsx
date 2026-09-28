@@ -26,6 +26,10 @@ export function MissionResult({
 }) {
   const dialogRef = useModalFocus(state.result !== "playing", state.result, "dialog");
   if (state.result === "playing") return null;
+  const draw = state.multiplayer && state.winner === null;
+  const resultTitle = state.multiplayer
+    ? draw ? "Draw" : state.result === "won" ? "Skirmish won" : "Skirmish lost"
+    : state.result === "won" ? "Mission complete" : "Mission failed";
   const debrief = missionDebrief(state);
   return (
     <div
@@ -43,11 +47,9 @@ export function MissionResult({
         aria-labelledby="mission-result-title"
       >
         <header className={styles.header}>
-          <ConsoleLabel className={styles.headerLabel}>Campaign status</ConsoleLabel>
-          <h2 id="mission-result-title" className={styles.title}>
-            {state.result === "won" ? "Mission complete" : "Mission failed"}
-          </h2>
-          <p className={styles.mission}>Mission {state.missionIndex + 1} {"//"} {state.missionName}</p>
+          <ConsoleLabel className={styles.headerLabel}>{state.multiplayer ? "Online skirmish" : "Campaign status"}</ConsoleLabel>
+          <h2 id="mission-result-title" className={styles.title}>{resultTitle}</h2>
+          <p className={styles.mission}>{state.multiplayer ? state.missionName : `Mission ${state.missionIndex + 1} // ${state.missionName}`}</p>
         </header>
         <div className={styles.resultGrid}>
           <MissionOutcome debrief={debrief} />

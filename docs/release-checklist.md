@@ -55,6 +55,10 @@ Shifting Front is a fully client-side Next.js application running on Vercel prod
 - [x] Service worker registers and precaches core routes (`/`, `/tutorial`, `/briefing`, `/campaign`, `/play`, `/campaign-complete`, `/load`, `/privacy`, `/terms`) and icons as a required install set, then best-effort precaches all 112 visual art assets (biomes, 3D models, sprites, portraits, terrain, textures), and dynamically discovers/caches linked Next.js static bundles with offline query-parameter routing.
 - [x] Universal social cards available at `/opengraph-image.png` and `/twitter-image.png`.
 
+### Multiplayer deployment gate
+
+Before enabling public multiplayer on Preview or Production, configure all four Vercel Firewall rules for room creation, room join, handshake validation, and peer-credential refresh at the limits in [multiplayer deployment security](multiplayer-security.md). Verify the deployed rules with `APP_URL=https://your-deployment.example ./scripts/verify-multiplayer-firewall.sh`; the check must observe at least one `429` from each route.
+
 ---
 
 ## 3. Web Game Portals (itch.io, Newgrounds, CrazyGames)

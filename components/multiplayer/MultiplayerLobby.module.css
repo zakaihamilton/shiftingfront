@@ -1,0 +1,87 @@
+@import "../game/dialog.module.css";
+
+.screen {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at 50% 22%, #173742 0%, #09151d 60%, #050a0e 100%);
+  color: #d8e4e8;
+}
+
+.panel {
+  width: min(100%, 620px);
+  padding: clamp(24px, 5vw, 48px);
+}
+
+.panel h1 {
+  margin: 12px 0;
+  color: #f1f5f6;
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.panel p { line-height: 1.55; color: #b5c4c9; }
+.panel label { display: block; margin: 18px 0 7px; color: #9aafb7; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; }
+.panel input { min-width: 0; padding: 12px 14px; border: 1px solid #54727d; border-radius: 3px; background: #07121a; color: #e9f1f3; font: inherit; font-size: 1.15rem; letter-spacing: .18em; }
+.actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 24px; }
+.joinForm { display: flex; flex: 1 1 100%; align-items: end; gap: 10px; }
+.joinForm label { flex-basis: 100%; margin-bottom: -5px; }
+.joinForm input { flex: 1; min-width: 160px; text-transform: uppercase; }
+.seedRow { display: flex; gap: 10px; }
+.seedRow input { width: 130px; text-align: center; }
+.inviteCode { margin: 26px 0; padding: 18px; border: 1px solid #7aa0ad; background: #0a1a22; color: #eff8fa; font-size: clamp(2.3rem, 10vw, 4rem); font-weight: 700; letter-spacing: .3em; text-align: center; }
+.roster { display: grid; gap: 8px; margin: 18px 0 4px; padding: 0; list-style: none; }
+.roster li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #29434c; background: #08151c; color: #d8e4e8; }
+.roster li span:nth-of-type(2), .roster li span:last-child { color: #84a8b4; font-size: .82rem; text-transform: uppercase; letter-spacing: .08em; }
+.seatToggle { border: 1px solid #54727d; border-radius: 3px; padding: 5px 9px; background: #10242d; color: #c4d7dd; font: inherit; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.seatToggle:hover, .seatToggle:focus-visible { border-color: #a1c6d1; color: #f1f8fa; }
+.seatToggle:focus-visible { outline: 2px solid #a1c6d1; outline-offset: 2px; }
+.status { color: #84a8b4 !important; font-size: .88rem; }
+.error { color: #ffb19c !important; }
+.backLink { display: inline-block; margin-top: 20px; color: #91bbc8; }
+.battle { position: relative; min-height: 100dvh; }
+.connectionOverlay {
+  composes: overlay from "../game/dialog.module.css";
+  z-index: 120;
+  backdrop-filter: blur(3px);
+}
+.connectionDialog {
+  composes: dialog from "../game/dialog.module.css";
+  width: min(100%, 32rem);
+  max-width: 32rem;
+  border-top-color: var(--chrome-alert);
+}
+.connectionTitle {
+  composes: title from "../game/dialog.module.css";
+  color: var(--chrome-alert);
+}
+.connectionDescription {
+  margin: 0.75rem 0 0;
+  color: var(--chrome-body);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+.connectionStatus {
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-left: 2px solid var(--chrome-alert);
+  background: color-mix(in srgb, var(--chrome-alert) 8%, var(--chrome-void));
+  color: var(--chrome-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+.connectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+.battleLoading { display: grid; min-height: 100dvh; place-items: center; background: #07121a; color: #d8e4e8; }
+
+@media (max-width: 420px) {
+  .connectionDialog { padding: 1rem; }
+  .connectionActions > * { flex: 1 1 8rem; }
+}

@@ -29,6 +29,7 @@ export function useMissionRoutes({
   const prepareLeave = useCallback((leaveWithoutSave: () => void = () => undefined) => {
     if (tutorial) return true;
     const state = stateRef.current;
+    if (state.multiplayer) return true;
     if (!recordWonCampaignProgress(cachedLocalStorage(), state)) {
       onSaveError("Couldn't save campaign progress. Check browser storage, then try leaving again.", leaveWithoutSave);
       return false;
@@ -42,8 +43,9 @@ export function useMissionRoutes({
   }, [onSaveError, saveSession, stateRef, tutorial]);
 
   const navigate = useCallback((path: string) => {
+    if (stateRef.current.multiplayer && path !== menuPath()) return;
     if (prepareLeave(() => router.push(path))) router.push(path);
-  }, [prepareLeave, router]);
+  }, [prepareLeave, router, stateRef]);
 
   const viewMissionBriefing = useCallback(() => {
     navigate(briefingPath(stateRef.current.seed, stateRef.current.missionIndex, true, "result"));

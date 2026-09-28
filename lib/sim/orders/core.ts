@@ -11,9 +11,12 @@ import { attackUnits, supportUnits, setStance, setFormation } from "./combat";
 import { startBuild, cancelBuild, sellBuilding, setRallyPoint, toggleRepair } from "./building";
 import { startProduce, cancelProduce } from "./production";
 import { entitiesFor } from "../entities";
+import { commandOwner } from "./commandOwner";
 
 export function issue(state: SimState, command: Command): SimEvent[] {
   if (state.result !== "playing") return [];
+  const priorOwner = state.commandOwner;
+  state.commandOwner = command.owner ?? 0;
   const tutorialExpectedTargets = state.tutorialStage ? tutorialTargets(state) : undefined;
   let events: SimEvent[];
   switch (command.type) {
@@ -68,6 +71,14 @@ export function issue(state: SimState, command: Command): SimEvent[] {
     default:
       events = [];
   }
+  state.commandOwner = priorOwner;
+  if (command.owner !== undefined) {
+    for (const event of events) {
+      if (event.type === "commandRejected" && event.owner === undefined) {
+        event.owner = command.owner;
+      }
+    }
+  }
   if (!events.some((event) => event.type === "commandRejected")) {
     advanceTutorialAfterCommand(state, command, tutorialExpectedTargets);
   }
@@ -92,7 +103,7 @@ function advanceTutorialAfterCommand(state: SimState, command: Command, expected
   if (stage === "build") {
     if (tutorialCommandCompletesStage(state, command, expectedTargets) && command.type === "build") {
       const building = entitiesFor(state).find((entity) =>
-        entity.owner === 0 &&
+        entity.owner === commandOwner(state) &&
         entity.class === "building" &&
         entity.kind === "power" &&
         entity.constructing > 0 &&
@@ -108,9 +119,10 @@ function advanceTutorialAfterCommand(state: SimState, command: Command, expected
 }
 
 function stopUnits(state: SimState, ids: number[]): SimEvent[] {
+  const owner = commandOwner(state);
   for (const id of ids) {
     const e = byId(state, id);
-    if (!e || e.owner !== 0 || e.class !== "unit") continue;
+    if (!e || e.owner !== owner || e.class !== "unit") continue;
     e.path = [];
     e.attackTarget = undefined;
     e.orderMode = undefined;
@@ -177,6 +189,7 @@ export function patchResourceTiles(state: SimState, cx: number, cy: number, radi
 
 /** Right-click / tap ground: harvest ore with harvesters, move everyone else onto the tile. */
 export function groundOrders(state: SimState, ids: number[], x: number, y: number, attackMove = false): Command[] {
+  const owner = commandOwner(state);
   const tx = Math.round(x);
   const ty = Math.round(y);
   if (!inBounds(state, tx, ty)) {
@@ -186,7 +199,7 @@ export function groundOrders(state: SimState, ids: number[], x: number, y: numbe
   const movers: number[] = [];
   for (const id of ids) {
     const e = byId(state, id);
-    if (!e || e.class !== "unit" || e.owner !== 0 || e.neutral) continue;
+    if (!e || e.class !== "unit" || e.owner !== owner || e.neutral) continue;
     if (e.kind === "harvester") harvesters.push(id);
     else movers.push(id);
   }
@@ -212,7 +225,7 @@ function harvestUnits(state: SimState, ids: number[], x: number, y: number): Sim
 
   const validUnits = ids
     .map((id) => byId(state, id))
-    .filter((e): e is Entity => Boolean(e && e.kind === "harvester" && e.owner === 0 && !e.neutral));
+    .filter((e): e is Entity => Boolean(e && e.kind === "harvester" && e.owner === commandOwner(state) && !e.neutral));
 
   let searches = 0;
   validUnits.forEach((e, index) => {

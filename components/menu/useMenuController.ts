@@ -60,6 +60,7 @@ export function useMenuController() {
   const openOptions = useCallback(() => setView("options"), []);
   const openCredits = useCallback(() => setView("credits"), []);
   const openLoadMission = useCallback(() => router.push("/load"), [router]);
+  const openMultiplayer = useCallback(() => router.push("/multiplayer"), [router]);
   const openTutorial = useCallback(() => router.push(tutorialPath()), [router]);
 
   const randomize = useCallback(() => {
@@ -139,6 +140,7 @@ export function useMenuController() {
     openNewGame,
     openTutorial,
     openLoadMission,
+    openMultiplayer,
     openOptions,
     openCredits,
     randomize,

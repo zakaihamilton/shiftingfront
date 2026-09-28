@@ -10,6 +10,7 @@ export const UNIT_KINDS: UnitKind[] = [
   "repairTruck",
   "convoyTruck",
   "strikePlane",
+  "behemoth",
 ];
 
 export type UnitStats = {
@@ -218,6 +219,27 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
     domain: "air",
     targetDomains: ["ground"],
     ammoMax: 3,
+  },
+  behemoth: {
+    label: "Behemoth",
+    renderKey: "behemoth",
+    aiRole: "combat",
+    producer: "factory",
+    hp: 1100,
+    speed: 0.045,
+    damage: 38,
+    range: 4.8,
+    cooldown: 22,
+    cost: 1250,
+    buildTicks: 260,
+    sight: 8,
+    carryMax: 0,
+    armor: "heavy",
+    weapon: "cannon",
+    splashRadius: 2.2,
+    suppression: 40,
+    domain: "vehicle",
+    targetDomains: ["ground", "air"],
   },
 };
 

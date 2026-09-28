@@ -223,4 +223,50 @@ describe("product chrome", () => {
 
     expect(screen.getByTestId("seed")).toHaveTextContent("Mission 1/3");
   });
+
+  it("renders the multiplayer ping RTT indicator when connected to peers", () => {
+    const campaign = createCampaign(421);
+    const { rerender } = render(
+      <BattlefieldHud
+        seed={421}
+        levelNumber={1}
+        levelCount={campaign.missions.length}
+        missionName="Versus Skirmish"
+        objective="Decapitate the enemy command"
+        multiplayerPingMs={null}
+        multiplayerHost={true}
+      />,
+    );
+
+    const rtt = screen.getByTestId("multiplayer-rtt");
+    expect(rtt).toHaveTextContent("RTT—");
+    expect(rtt).toHaveAttribute("aria-label", "Average peer round-trip time: measuring");
+
+    rerender(
+      <BattlefieldHud
+        seed={421}
+        levelNumber={1}
+        levelCount={campaign.missions.length}
+        missionName="Versus Skirmish"
+        objective="Decapitate the enemy command"
+        multiplayerPingMs={42}
+        multiplayerHost={false}
+      />,
+    );
+    expect(screen.getByTestId("multiplayer-rtt")).toHaveTextContent("RTT42 ms");
+    expect(screen.getByTestId("multiplayer-rtt")).toHaveAttribute("aria-label", "Host round-trip time: 42 milliseconds");
+
+    rerender(
+      <BattlefieldHud
+        seed={421}
+        levelNumber={1}
+        levelCount={campaign.missions.length}
+        missionName="Operation 1"
+        objective="Hold the line"
+        multiplayerPingMs={undefined}
+      />,
+    );
+    expect(screen.queryByTestId("multiplayer-rtt")).not.toBeInTheDocument();
+  });
 });
+

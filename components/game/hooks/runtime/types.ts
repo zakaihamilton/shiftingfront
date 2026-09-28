@@ -18,6 +18,7 @@ import type { GameSession } from "../useGameSession";
 import type { CombatAlertKind } from "../useCombatAlert";
 import type { CommandNoticeState } from "../useGameChrome";
 import type { MinimapPing } from "../../MinimapFrame";
+import type { MultiplayerSession } from "@/lib/multiplayer/session";
 
 export type SimulationRuntimeRefs = {
   stateRef: MutableRefObject<SimState>;
@@ -30,6 +31,7 @@ export type SimulationRuntimeRefs = {
   uxRef: MutableRefObject<MissionUxTelemetry>;
   /** Prevents the old runtime from overwriting a checkpoint during load navigation. */
   suppressImplicitSavesRef?: MutableRefObject<() => void>;
+  multiplayerSession?: MultiplayerSession;
 };
 
 export type InteractionRuntimeRefs = {
@@ -84,6 +86,7 @@ export type RuntimeKernelPorts = {
 export type RuntimeKernel = {
   refs: RuntimeKernelRefs;
   ports: RuntimeKernelPorts;
+  multiplayerSession?: MultiplayerSession;
 };
 
 export type RuntimeCounters = {
@@ -233,6 +236,7 @@ export type PauseSurfaceModel = {
   notice: string;
   settings: GameSettings;
   tutorial: boolean;
+  multiplayer?: boolean;
   setView: (view: PauseView) => void;
   setNotice: (notice: string) => void;
   onControlsOpened?: () => void;

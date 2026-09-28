@@ -163,6 +163,16 @@ export const UNIT_DIRECTION_ART: Record<UnitKind, Record<UnitView, string>> = {
     "back-right": "/art/sprites/sleek-modular/convoy-truck-back-right-v1.webp",
   },
   strikePlane: STRIKE_PLANE_DIRECTION_ART,
+  behemoth: {
+    "front-right": "/art/sprites/sleek-modular/behemoth-front-right-v1.webp",
+    front: "/art/sprites/sleek-modular/behemoth-front-v1.webp",
+    right: "/art/sprites/sleek-modular/behemoth-right-v1.webp",
+    "front-left": "/art/sprites/sleek-modular/behemoth-front-left-v1.webp",
+    "back-left": "/art/sprites/sleek-modular/behemoth-back-left-v1.webp",
+    back: "/art/sprites/sleek-modular/behemoth-back-v1.webp",
+    left: "/art/sprites/sleek-modular/behemoth-left-v1.webp",
+    "back-right": "/art/sprites/sleek-modular/behemoth-back-right-v1.webp",
+  },
 };
 
 /** Generated four-frame walk cycles for units with visible legs and feet. */

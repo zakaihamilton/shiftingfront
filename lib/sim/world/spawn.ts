@@ -63,7 +63,7 @@ export function makeUnit(
     queue: [],
     marked: false,
     idle: true,
-    facing: owner === 0 ? 0 : 4,
+    facing: state.multiplayer ? (([1, 3, 5, 7] as const)[owner] ?? 1) : (owner === 0 ? 0 : 4),
     stance: "aggressive",
     suppression: 0,
     armor: stats.armor,
@@ -101,7 +101,7 @@ export function makeBuilding(
     queue: [],
     marked,
     idle: true,
-    facing: owner === 0 ? 0 : 4,
+    facing: state.multiplayer ? (([1, 3, 5, 7] as const)[owner] ?? 1) : (owner === 0 ? 0 : 4),
     stance: "aggressive",
     suppression: 0,
     armor: stats.armor,
@@ -228,5 +228,5 @@ export function spawnBuildingAt(
 }
 
 export function emptyRoleCounts(): Record<UnitKind, number> {
-  return { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0, convoyTruck: 0, strikePlane: 0 };
+  return { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0, convoyTruck: 0, strikePlane: 0, behemoth: 0 };
 }

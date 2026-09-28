@@ -104,6 +104,22 @@ describe("vehicle perspective consistency", () => {
     }
   });
 
+  it("aligns each behemoth view's authored tread line to its world anchor", () => {
+    const canvasW = 128;
+    const canvasH = 120;
+    const inset = Math.max(1, Math.round(Math.min(canvasW, canvasH) * 0.025));
+
+    for (let facing = 0; facing < 8; facing++) {
+      const spec = unitSprite("behemoth", palette, {
+        facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+      });
+      expect(spec.imageAnchorY).toBe(475 / 512);
+      const placement = spriteRasterPlacement(spec, 512, 512, canvasW, canvasH, inset);
+      const sourceGroundY = placement.destY + placement.dh * spec.imageAnchorY!;
+      expect(Math.abs(sourceGroundY - canvasH)).toBeLessThanOrEqual(0.5);
+    }
+  });
+
   it("centers every authored plane view in its logical airframe frame", () => {
     const canvasW = 192;
     const canvasH = 128;

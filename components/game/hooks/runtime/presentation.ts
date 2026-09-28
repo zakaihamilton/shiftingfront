@@ -59,11 +59,13 @@ export function createPresentationCoordinator({
         cameraRef.current,
         canvasRef.current?.width ?? 1,
         canvasRef.current?.height ?? 1,
+        state.viewOwner ?? 0,
       );
       if (events.some((event) => event.type === "won")) playSfx("victory", { force: true });
       if (events.some((event) => event.type === "lost")) playSfx("defeat", { force: true });
 
-      const rejection = events.find((event) => event.type === "commandRejected");
+      const localOwner = state.viewOwner ?? 0;
+      const rejection = events.find((event) => event.type === "commandRejected" && (event.owner === undefined || event.owner === localOwner));
       if (rejection?.type === "commandRejected") {
         playSfx(rejectionSfx(rejection.reason));
         const message = commandRejectionMessage(rejection.reason);

@@ -56,6 +56,7 @@ export function CommandCatalogContent({
       selectionCount={selectionCount}
       palette={palette}
       profile={profile}
+      playerOwner={state.viewOwner ?? 0}
       className={selectedClassName}
       power={power}
       onStop={onStop}

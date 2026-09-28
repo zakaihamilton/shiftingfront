@@ -33,7 +33,7 @@ export function renderHoverPhase(
     const hovered = visibleBuildingAt(state, hoverTile.x, hoverTile.y);
     if (hovered && hovered.hp > 0) {
       const fp = footprintOf(hovered.kind as import("../../../types").BuildingKind);
-      const ok = hovered.owner === 0 && (
+      const ok = hovered.owner === (state.viewOwner ?? 0) && (
         extras.repairMode
           ? hovered.repairing || canRepair(hovered)
           : canSell(hovered)

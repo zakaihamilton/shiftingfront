@@ -34,6 +34,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
   } = kernel.ports;
   let loop: LoopHandle | null = null;
   let started = false;
+  const multiplayer = kernel.multiplayerSession ?? simRefs.multiplayerSession;
   const lifecycle = simRefs.lifecycleRef.current;
   let scenarioRunner = createScenarioRunner(simRefs.stateRef.current);
 
@@ -98,6 +99,13 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
       if (started) return;
       started = true;
       syncSession(simRefs.stateRef.current);
+      multiplayer?.bindState(
+        () => simRefs.stateRef.current,
+        (state) => {
+          simRefs.stateRef.current = state;
+          simPorts.setState({ ...state, entities: [...state.entities] });
+        },
+      );
       persistence.start();
       loop = startLoop({
         getState: () => simRefs.stateRef.current,
@@ -109,7 +117,9 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
           if (scenarioRunner.state !== state) scenarioRunner = createScenarioRunner(state);
           return scenarioRunner.step(commands);
         },
-        isPaused: () => simRefs.pausedRef.current,
+        isPaused: () => (multiplayer ? !multiplayer.connected : simRefs.pausedRef.current),
+        canStep: (state) => (multiplayer ? multiplayer.canAdvance(state) : true),
+        getExtraTicks: (state) => (multiplayer ? multiplayer.queuedFramesCount(state) : 0),
         onTick: controller.onTick,
         onFrame: controller.onFrame,
       });
@@ -124,14 +134,19 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
     drainCommands() {
       syncSession(simRefs.stateRef.current);
       const commands = simRefs.commandQueue.current.splice(0, simRefs.commandQueue.current.length);
-      lifecycle.commandApplied = commands.length > 0;
-      lifecycle.counters.commandsIssued += commands.length;
-      return commands;
+      const tickCommands = multiplayer
+        ? multiplayer.drainTick(simRefs.stateRef.current, commands)
+        : commands;
+      lifecycle.commandApplied = tickCommands.length > 0;
+      lifecycle.counters.commandsIssued += tickCommands.length;
+      return tickCommands;
     },
     onTick(state: SimState, events: SimEvent[], now: number) {
       syncSession(state);
-      lifecycle.counters.commandRejections += events.filter((event) => event.type === "commandRejected").length;
-      for (const event of events) {
+      const localOwner = state.viewOwner ?? 0;
+      const rejections = events.filter((event) => event.type === "commandRejected" && (event.owner === undefined || event.owner === localOwner));
+      lifecycle.counters.commandRejections += rejections.length;
+      for (const event of rejections) {
         if (event.type === "commandRejected") {
           const reason = canonicalCommandRejectionReason(event.reason);
           lifecycle.counters.ux.commandRejectionsByReason[reason] = (lifecycle.counters.ux.commandRejectionsByReason[reason] ?? 0) + 1;
@@ -172,7 +187,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
       frame.onFrame(state, now, paused, frameMs);
       if (state.result !== "playing" && !lifecycle.terminalPresented) {
         lifecycle.terminalPresented = true;
-        const yard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
+        const yard = entitiesFor(state).find((entity) => entity.owner === (state.viewOwner ?? 0) && entity.class === "building" && entity.kind === "constructionYard");
         lifecycle.counters.hqHealthAtEnd = yard ? yard.hp / Math.max(1, yard.maxHp) : 0;
         persistence.onTerminal(state, now, lifecycle.counters);
         simPorts.setState({ ...state, entities: [...state.entities] });

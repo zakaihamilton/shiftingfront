@@ -23,6 +23,17 @@ function forceDebrief(state: SimState, owner: Owner): ForceDebrief {
   };
 }
 
+function forceDebriefForOwners(state: SimState, owners: readonly Owner[]): ForceDebrief {
+  const ownerSet = new Set(owners);
+  const active = livingView(state).filter((entity) => ownerSet.has(entity.owner));
+  return {
+    unitsRemaining: active.filter((entity) => entity.class === "unit").length,
+    buildingsRemaining: active.filter((entity) => entity.class === "building").length,
+    unitsLost: owners.reduce<number>((total, owner) => total + (state.losses.units[owner] ?? 0), 0),
+    buildingsLost: owners.reduce<number>((total, owner) => total + (state.losses.buildings[owner] ?? 0), 0),
+  };
+}
+
 function scenarioTargetObjective(state: SimState, won: boolean) {
   const runtime = state.runtime;
   if (!runtime || runtime.targetIds.length === 0) return undefined;
@@ -50,6 +61,7 @@ export function shouldShowCommandSidebar(result: SimState["result"]): boolean {
 }
 
 export function missionMedals(state: SimState): number {
+  if (state.multiplayer) return 0;
   if (state.result !== "won") return 0;
   const secondaries = secondaryProgress(state);
   const allSecondaries = secondaries.length > 0 && secondaries.every((objective) => objective.completed);
@@ -68,6 +80,7 @@ function remainingTimeBonus(state: SimState): number {
 }
 
 export function missionScore(state: SimState): number {
+  if (state.multiplayer) return 0;
   if (state.result !== "won") return 0;
   const completedSecondaries = secondaryProgress(state).filter((objective) => objective.completed).length;
   return Math.max(
@@ -95,6 +108,9 @@ export function missionLossMessage(state: SimState): string {
 export function missionDebrief(state: SimState) {
   const objective = objectiveProgress(state);
   const won = state.result === "won";
+  const playerOwner = state.multiplayer ? (state.viewOwner ?? 0) : 0;
+  const enemyOwners = (state.multiplayerOwners ?? [0, 1]).filter((owner) => owner !== playerOwner);
+  const draw = state.multiplayer === true && state.winner === null;
   const profile = profileContractFor(resolveMissionProfile(state.seed, state.missionIndex, state.win.kind));
   const secondary = secondaryProgress(state);
   const targetObjective = scenarioTargetObjective(state, won);
@@ -105,10 +121,12 @@ export function missionDebrief(state: SimState) {
   const optionalObjectives = secondary.filter((item) => objectivePriorityFor(item.id) === "optional");
   return {
     status: won ? "won" as const : "lost" as const,
-    outcome: won ? "Primary objective achieved." : missionLossMessage(state),
-    retryGuidance: won ? undefined : retryGuidance(state),
+    outcome: state.multiplayer
+      ? draw ? "The skirmish ended in a draw." : won ? "All rival Command HQs destroyed." : "Your Command HQ was destroyed."
+      : won ? "Primary objective achieved." : missionLossMessage(state),
+    retryGuidance: won || state.multiplayer ? undefined : retryGuidance(state),
     objective: {
-      headline: objectiveHeadline(state.win),
+      headline: state.multiplayer ? "Destroy all rival Command HQs" : objectiveHeadline(state.win),
       progress: objective.label,
     },
     tactical: {
@@ -124,15 +142,15 @@ export function missionDebrief(state: SimState) {
     optionalObjectives,
     battle: {
       duration: formatMissionDuration(state.tick),
-      creditsGathered: state.creditsEarned[0],
-      unitsTrained: state.unitsProduced[0],
-      structuresCompleted: state.buildingsCompleted[0],
+      creditsGathered: state.creditsEarned[playerOwner] ?? 0,
+      unitsTrained: state.unitsProduced[playerOwner] ?? 0,
+      structuresCompleted: state.buildingsCompleted[playerOwner] ?? 0,
       score: missionScore(state),
       medals: missionMedals(state),
     },
     forces: {
-      friendly: forceDebrief(state, 0),
-      enemy: forceDebrief(state, 1),
+      friendly: forceDebrief(state, playerOwner),
+      enemy: state.multiplayer ? forceDebriefForOwners(state, enemyOwners) : forceDebrief(state, 1),
     },
   };
 }

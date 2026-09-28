@@ -257,8 +257,8 @@ export function computeUnitDynamicTransform(
   }
 
   // Smooth angular interpolation for chassis in GL model space
-  const isVehicle = e.kind === "tank" || e.kind === "harvester" || e.kind === "convoyTruck" || e.kind === "repairTruck";
-  const legacyTurnSpeed = e.kind === "tank" ? 9.0 : 14.0;
+  const isVehicle = e.kind === "tank" || e.kind === "harvester" || e.kind === "convoyTruck" || e.kind === "repairTruck" || e.kind === "behemoth";
+  const legacyTurnSpeed = e.kind === "tank" ? 9.0 : e.kind === "behemoth" ? 6.0 : 14.0;
   hist.yaw = lerpAngle(hist.yaw, targetYaw, Math.min(1, dt * legacyTurnSpeed));
 
   // Compute screen isometric target angle
@@ -280,8 +280,8 @@ export function computeUnitDynamicTransform(
   const turnSpeed = isWalker
     ? (isMoving ? 18.0 : 12.0)
     : isMoving
-      ? (e.kind === "tank" ? 14.0 : e.kind === "harvester" ? 16.0 : 20.0)
-      : (e.kind === "tank" ? 8.0 : e.kind === "harvester" ? 9.0 : 12.0);
+      ? (e.kind === "behemoth" ? 10.0 : e.kind === "tank" ? 14.0 : e.kind === "harvester" ? 16.0 : 20.0)
+      : (e.kind === "behemoth" ? 5.0 : e.kind === "tank" ? 8.0 : e.kind === "harvester" ? 9.0 : 12.0);
   const prevAngle = hist.screenAngle;
   hist.screenAngle = lerpAngle(hist.screenAngle, targetScreenAngle, Math.min(1, dt * turnSpeed));
   const angularVelocity = (hist.screenAngle - prevAngle) / dt;

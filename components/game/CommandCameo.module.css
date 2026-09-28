@@ -206,9 +206,19 @@
 
 .captionTop {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 4px;
+}
+
+.captionTop > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.15;
 }
 
 .caption span {
@@ -220,8 +230,10 @@
 }
 
 .caption b {
+  flex: 0 0 auto;
   color: var(--chrome-gold);
   font-size: var(--text-xs);
+  white-space: nowrap;
 }
 
 .status {

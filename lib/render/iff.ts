@@ -71,15 +71,16 @@ const TRITANOPIA_NEUTRAL: IffColors = {
   pip: "#e2e8f0",
 };
 
-export function iffColors(owner: Owner, neutral = false, mode: ColorblindMode = "none"): IffColors {
+export function iffColors(owner: Owner, neutral = false, mode: ColorblindMode = "none", viewOwner: Owner = 0): IffColors {
   if (neutral) {
     return mode === "tritanopia" ? TRITANOPIA_NEUTRAL : NEUTRAL_IFF;
   }
+  const friendly = owner === viewOwner;
   if (mode === "deuteranopia" || mode === "protanopia") {
-    return owner === 0 ? DEUTERANOPIA_ALLY : DEUTERANOPIA_ENEMY;
+    return friendly ? DEUTERANOPIA_ALLY : DEUTERANOPIA_ENEMY;
   }
   if (mode === "tritanopia") {
-    return owner === 0 ? TRITANOPIA_ALLY : TRITANOPIA_ENEMY;
+    return friendly ? TRITANOPIA_ALLY : TRITANOPIA_ENEMY;
   }
-  return owner === 0 ? ALLY_IFF : ENEMY_IFF;
+  return friendly ? ALLY_IFF : ENEMY_IFF;
 }

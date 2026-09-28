@@ -31,6 +31,8 @@ export function BattlefieldHud({
   timeLimitTicks,
   onObjectivePanelToggle,
   defaultExpanded,
+  multiplayerPingMs,
+  multiplayerHost,
 }: {
   seed: number;
   levelNumber: number;
@@ -48,6 +50,8 @@ export function BattlefieldHud({
   timeLimitTicks?: number;
   onObjectivePanelToggle?: () => void;
   defaultExpanded?: boolean;
+  multiplayerPingMs?: number | null;
+  multiplayerHost?: boolean;
 }) {
   const fullscreen = useFullscreen();
   const [directiveExpanded, setDirectiveExpanded] = useState(() => {
@@ -128,6 +132,17 @@ export function BattlefieldHud({
               ))}
             </span>
           </div>
+          {multiplayerPingMs !== undefined ? (
+            <div
+              className={styles.networkPing}
+              data-testid="multiplayer-rtt"
+              title={multiplayerHost ? "Average round-trip time across connected guests" : "Round-trip time to the host"}
+              aria-label={`${multiplayerHost ? "Average peer" : "Host"} round-trip time: ${multiplayerPingMs === null ? "measuring" : `${multiplayerPingMs} milliseconds`}`}
+            >
+              <span>RTT</span>
+              <strong>{multiplayerPingMs === null ? "—" : `${multiplayerPingMs} ms`}</strong>
+            </div>
+          ) : null}
         </div>
         <div className={styles.mission}>{missionName}</div>
         <div className={styles.operationFoot}>

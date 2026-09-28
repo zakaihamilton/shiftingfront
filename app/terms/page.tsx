@@ -30,7 +30,7 @@ export default function TermsPage() {
 
           <h2>3. Acceptable Use</h2>
           <p>
-            You agree to use Shifting Front for lawful purposes only. Because the game runs locally on your device with no server authority or multiplayer competition, you are welcome to experiment with client-side modifications, custom seeds, or inspection tooling.
+            You agree to use Shifting Front for lawful purposes only. Campaign play runs locally on your device. Online skirmishes use Peerovo signaling and peer-to-peer WebRTC connections, with the host arbitrating match commands; client-side modifications may affect how a local game behaves.
           </p>
 
           <h2>4. Disclaimer of Warranty</h2>

@@ -49,6 +49,7 @@ export function MenuScreen() {
               onTutorial={controller.openTutorial}
               onLoadMission={controller.openLoadMission}
               onOptions={controller.openOptions}
+              onMultiplayer={() => controller.openMultiplayer()}
             />
             <footer className={styles.menuFooter}>
               <button

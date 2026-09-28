@@ -147,6 +147,22 @@ async function waitForCommandSidebarToSettle(
   }).toBeLessThanOrEqual(viewportWidth);
 }
 
+async function cameoLabelMetrics(sidebar: import("@playwright/test").Locator) {
+  return sidebar.locator("[data-testid^='cameo-label-']").evaluateAll((labels) => labels.map((node) => {
+    const label = node as HTMLElement;
+    const style = getComputedStyle(label);
+    return {
+      text: label.textContent?.trim() ?? "",
+      clientWidth: label.clientWidth,
+      scrollWidth: label.scrollWidth,
+      clientHeight: label.clientHeight,
+      scrollHeight: label.scrollHeight,
+      whiteSpace: style.whiteSpace,
+      textOverflow: style.textOverflow,
+    };
+  }));
+}
+
 async function waitForStableSelection(page: import("@playwright/test").Page) {
   await page.waitForTimeout(100);
   await page.evaluate(() => new Promise<void>((resolve) => {
@@ -727,6 +743,29 @@ test.describe("mobile-first layouts", () => {
         const tabWidths = layout.tabs.map(({ width }) => width);
         expect(tabWidths).toHaveLength(5);
         expect(Math.max(...tabWidths) - Math.min(...tabWidths)).toBeLessThanOrEqual(1);
+
+        const constructionLabels = await cameoLabelMetrics(sidebar);
+        expect(constructionLabels.map(({ text }) => text)).toContain("Vehicle Plant");
+        expect(constructionLabels.every(({ text, clientWidth, scrollWidth, clientHeight, scrollHeight, whiteSpace, textOverflow }) =>
+          text.length > 0 &&
+          scrollWidth <= clientWidth + 1 &&
+          scrollHeight <= clientHeight + 1 &&
+          whiteSpace === "normal" &&
+          textOverflow === "clip",
+        )).toBe(true);
+
+        const productionTab = sidebar.getByRole("tab", { name: "Production" });
+        if (testInfo.project.name === "desktop") await productionTab.click();
+        else await productionTab.tap();
+        const productionLabels = await cameoLabelMetrics(sidebar);
+        expect(productionLabels.map(({ text }) => text)).toContain("Repair Truck");
+        expect(productionLabels.every(({ text, clientWidth, scrollWidth, clientHeight, scrollHeight, whiteSpace, textOverflow }) =>
+          text.length > 0 &&
+          scrollWidth <= clientWidth + 1 &&
+          scrollHeight <= clientHeight + 1 &&
+          whiteSpace === "normal" &&
+          textOverflow === "clip",
+        )).toBe(true);
       } finally {
         await viewportPage.close();
       }

@@ -95,6 +95,13 @@ describe("mobile command policy", () => {
     ]);
     expect(mobileCommandOrders(state, "attack", [unit.id], undefined, 4, 4)).toEqual([]);
     expect(isContactTarget(state, contact)).toBe(true);
+
+    const neutralEnemy = addUnit(state, 1, "tank", 6, 6);
+    neutralEnemy.neutral = true;
+    expect(contextOrders(state, [unit.id], neutralEnemy, 6, 6)).toEqual([
+      { type: "move", unitIds: [unit.id], x: 6, y: 6 },
+    ]);
+    expect(mobileCommandOrders(state, "attack", [unit.id], neutralEnemy, 6, 6)).toEqual([]);
   });
 
   it("turns empty-ground move taps and right-clicks from a producer into rally commands", () => {
