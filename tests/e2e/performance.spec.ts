@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { skipMissionIntroIfPresent } from "./missionIntro";
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, saveKey } from "../../lib/persist/save";
 import { createMission } from "../../lib/sim/api";
 import { makeBuilding, makeUnit } from "../../lib/sim/world";
@@ -14,11 +15,7 @@ async function waitForBattlefield(page: import("@playwright/test").Page) {
     const canvasElement = element as HTMLCanvasElement;
     return canvasElement.width > 0 && canvasElement.height > 0;
   })).toBe(true);
-  const intro = page.getByRole("dialog", { name: "Mission arrival feed" });
-  if (await intro.count()) {
-    await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
-    await expect(intro).toHaveCount(0);
-  }
+  await skipMissionIntroIfPresent(page);
 }
 
 function denseLateGameState(): SimState {

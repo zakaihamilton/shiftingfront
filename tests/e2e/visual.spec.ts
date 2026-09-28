@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { skipMissionIntroIfPresent } from "./missionIntro";
 
 async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
   const canvas = page.getByTestId("battlefield-canvas");
@@ -18,12 +19,7 @@ async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
     });
   }).toBeGreaterThan(0);
 
-  const intro = page.getByRole("dialog", { name: "Mission arrival feed" });
-  if (await intro.count()) {
-    await expect(intro).toBeVisible();
-    await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
-    await expect(intro).toHaveCount(0);
-  }
+  await skipMissionIntroIfPresent(page);
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
   return canvas;
 }

@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { skipMissionIntroIfPresent } from "./missionIntro";
 import { BUILDING_KINDS, footprintOf } from "../../lib/catalog";
 import { TILE_H, tileToScreen } from "../../lib/iso";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
@@ -27,16 +28,7 @@ async function deployToBattlefield(page: Page) {
   await openBriefing(page);
   await page.getByRole("button", { name: "Launch" }).click();
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0/);
-  await skipMissionIntro(page);
-}
-
-async function skipMissionIntro(page: Page) {
-  const intro = page.getByRole("dialog", { name: "Mission arrival feed" });
-  if (await intro.count()) {
-    await expect(intro).toBeVisible();
-    await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
-    await expect(intro).toHaveCount(0);
-  }
+  await skipMissionIntroIfPresent(page);
 }
 
 async function canvasDigest(canvas: Locator): Promise<number> {
@@ -81,7 +73,7 @@ async function waitForBattlefield(page: Page) {
     const canvasElement = element as HTMLCanvasElement;
     return canvasElement.width > 0 && canvasElement.height > 0;
   })).toBe(true);
-  await skipMissionIntro(page);
+  await skipMissionIntroIfPresent(page);
 }
 
 async function waitForTutorialStage(coach: Locator, stage: string, timeout = 5000): Promise<void> {
@@ -378,7 +370,7 @@ test("launches a seeded campaign from menu to battlefield", async ({ page }) => 
 
   await page.getByRole("button", { name: "Launch" }).click();
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0/);
-  await skipMissionIntro(page);
+  await skipMissionIntroIfPresent(page);
   await expect(page.getByTestId("seed")).toContainText("Seed 0421");
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
   await expect(page.getByTestId("credits")).toBeVisible();
@@ -764,7 +756,7 @@ test("keeps briefing dialogue and battlefield status readable on mobile", async 
     }),
   });
   await page.goto("/play?seed=0421&mission=0&fresh=1");
-  await skipMissionIntro(page);
+  await skipMissionIntroIfPresent(page);
   await expect(page.getByTestId("time-remaining")).toBeVisible();
 
   const statusGeometry = await page.getByTestId("battlefield-status").evaluate((element) => {
@@ -1204,7 +1196,7 @@ test("starts a new same-seed mission after reloading before a fresh launch", asy
   await expect(page).toHaveURL(/\/briefing\?seed=0421&mission=0/);
   await page.getByRole("button", { name: "Launch" }).click();
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0&fresh=1/);
-  await skipMissionIntro(page);
+  await skipMissionIntroIfPresent(page);
   await expect(page.getByTestId("credits")).toHaveText("2,000");
 });
 
