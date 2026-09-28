@@ -422,9 +422,7 @@ test("keeps battlefield entities and hover tooltips visible after water effects"
 test("keeps sidebar item portraits sharp across command tabs", async ({ page }) => {
   const state = createMission({ seed: 421, missionIndex: 0 });
   const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
-  const unit = state.entities.find((entity) => entity.owner === 0 && entity.class === "unit" && entity.kind === "infantry");
   expect(yard).toBeDefined();
-  expect(unit).toBeDefined();
 
   await deployToBattlefield(page);
   await waitForBattlefield(page);
@@ -476,10 +474,10 @@ test("keeps sidebar item portraits sharp across command tabs", async ({ page }) 
   productionPortraits.forEach((portrait) => expectInsideSidebar(portrait.card));
   expect(productionPortraits.every((portrait) => portrait.backingWidth >= portrait.cssWidth && portrait.backingHeight >= portrait.cssHeight)).toBe(true);
 
-  const geometry = await battlefieldEntityGeometry(page, state, unit!);
+  const geometry = await battlefieldEntityGeometry(page, state, yard!);
   await page.mouse.click(geometry.pointer.x, geometry.pointer.y);
   await sidebar.getByRole("tab", { name: "Selected" }).click();
-  await expect(page.getByTestId("selected-kind")).toBeVisible();
+  await expect(page.getByTestId("selected-kind")).toHaveText("Construction Yard");
   const selectedPortrait = sidebar.locator("[data-testid='selected-panel'] canvas");
   await expect(selectedPortrait).toBeVisible();
   const selectedMetrics = await selectedPortrait.evaluate((element) => {
