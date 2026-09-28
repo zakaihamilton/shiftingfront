@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createRuntimeCommandPort } from "./runtime/facade";
 import type { GameRuntime } from "./runtime/types";
 import { useGameChrome } from "./useGameChrome";
@@ -9,6 +9,7 @@ import { useGameRuntimeInteraction } from "./useGameRuntimeInteraction";
 import { useGameRuntimeLifecycle } from "./useGameRuntimeLifecycle";
 import { useGameRuntimeState } from "./useGameRuntimeState";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
+import { useMissionIntro } from "./useMissionIntro";
 
 /** Composition facade for the mission runtime. Rendering and simulation details live in focused hooks. */
 export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tutorial = false, multiplayerSession }: { seed: number; mission: number; resume: boolean; fresh?: boolean; slot?: string; tutorial?: boolean; multiplayerSession?: MultiplayerSession }): GameRuntime {
@@ -18,9 +19,19 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
     multiplayerOwners: multiplayerSession?.owners,
     multiplayerAiOwners: multiplayerSession?.aiOwners,
   });
-  const chrome = useGameChrome(durable.state.result);
+  const chrome = useGameChrome(durable.state.result, durable.initialIntro && !multiplayerSession);
   const commandPort = useMemo(() => createRuntimeCommandPort(chrome.cmdQ, multiplayerSession ? (command) => multiplayerSession.submit(command) : undefined), [chrome.cmdQ, multiplayerSession]);
   const suppressImplicitSavesRef = useRef<() => void>(() => undefined);
+  const jumpHomeRef = useRef<() => void>(() => undefined);
+  const missionIntro = useMissionIntro({
+    state: durable.state,
+    initiallyActive: durable.initialIntro,
+    session: multiplayerSession,
+    reducedMotion: chrome.audioSettings.reducedMotion,
+    pausedRef: chrome.pausedRef,
+    setPaused: chrome.setPaused,
+    onHandoff: () => jumpHomeRef.current(),
+  });
 
   const feedback = useGameRuntimeFeedback({
     seed,
@@ -39,6 +50,7 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
     miniRef: durable.miniRef,
     mobileMiniRef: durable.mobileMiniRef,
     audioSettings: chrome.audioSettings,
+    missionIntroRef: missionIntro.playbackRef,
     pausedRef: chrome.pausedRef,
     mobilePanelOpen: chrome.mobilePanelOpen,
     setMobilePanelOpen: chrome.setMobilePanelOpen,
@@ -46,6 +58,9 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
     commandPort,
     feedback,
   });
+  useEffect(() => {
+    jumpHomeRef.current = interaction.camera.jumpHome;
+  }, [interaction.camera.jumpHome]);
   const lifecycle = useGameRuntimeLifecycle({
     seed,
     tutorial,
@@ -73,6 +88,8 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
     terminalSaveRef: chrome.terminalSaveRef,
     campaignRecordedRef: chrome.campaignRecordedRef,
     suppressImplicitSavesRef,
+    missionIntroActiveRef: missionIntro.activeRef,
+    onRestartMission: missionIntro.begin,
     canvasRef: durable.canvasRef,
   });
 
@@ -82,6 +99,9 @@ export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tut
     palette: durable.state.factions[durable.state.viewOwner ?? 0].palette,
     state: durable.state,
     tutorial,
+    missionIntroActive: missionIntro.active,
+    missionIntroWaiting: missionIntro.awaiting,
+    onSkipMissionIntro: missionIntro.skip,
     paused: chrome.paused,
     hostRef: durable.hostRef,
     canvasRef: durable.canvasRef,

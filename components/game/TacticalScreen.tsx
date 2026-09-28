@@ -5,6 +5,7 @@ import type { SimState } from "@/lib/types";
 import { DocumentTitle } from "@/components/ui/DocumentTitle";
 import { GameOverlays } from "./GameOverlays";
 import { GamePlayField } from "./GamePlayField";
+import { MissionIntroOverlay } from "./MissionIntroOverlay";
 import type { GameRuntimeSurfaces } from "./hooks/runtime/surfaces";
 import styles from "./GameClient.module.css";
 
@@ -35,7 +36,15 @@ export function TacticalScreen({ title, palette, playField, overlays, multiplaye
     >
       <DocumentTitle title={title} />
       <GamePlayField {...playField} multiplayerPingMs={multiplayerPingMs} multiplayerHost={multiplayerHost} />
-      <GameOverlays {...overlays} />
+      <GameOverlays {...overlays} hideNonConfirmation={playField.missionIntroActive} />
+      {playField.missionIntroActive ? (
+        <MissionIntroOverlay
+          waiting={playField.missionIntroWaiting}
+          reducedMotion={audioSettings.reducedMotion}
+          confirmationOpen={Boolean(overlays.confirmation)}
+          onSkip={playField.onSkipMissionIntro}
+        />
+      ) : null}
     </div>
   );
 }

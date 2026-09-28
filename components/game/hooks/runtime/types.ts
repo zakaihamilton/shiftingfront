@@ -31,6 +31,7 @@ export type SimulationRuntimeRefs = {
   uxRef: MutableRefObject<MissionUxTelemetry>;
   /** Prevents the old runtime from overwriting a checkpoint during load navigation. */
   suppressImplicitSavesRef?: MutableRefObject<() => void>;
+  missionIntroActiveRef?: MutableRefObject<boolean>;
   multiplayerSession?: MultiplayerSession;
 };
 
@@ -146,6 +147,9 @@ export type PlayFieldSurfaceModel = {
   campaign: Campaign;
   state: SimState;
   tutorial: boolean;
+  missionIntroActive: boolean;
+  missionIntroWaiting: boolean;
+  onSkipMissionIntro: () => void;
   paused: boolean;
   pointer: CanvasPointerHandlers;
   resultActions: {
@@ -274,6 +278,9 @@ export interface GameRuntime {
   palette: Palette;
   state: SimState;
   tutorial: boolean;
+  missionIntroActive: boolean;
+  missionIntroWaiting: boolean;
+  onSkipMissionIntro: () => void;
   paused: boolean;
   hostRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;

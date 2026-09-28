@@ -30,17 +30,21 @@ export function MobileTouchControls({
   onSelectionMode: (active: boolean) => void;
   onStop: () => void;
 }) {
+  const selectionStatus = selectionMode ? "Select units" : selectedCount > 0 ? `${selectedCount} selected` : "No selection";
+  const commandStatus = selectionMode ? "Drag a box around friendly units" : activeCommand ? `${mobileCommandLabel(activeCommand)} ready` : "Touch controls";
+
   return (
     <section className={styles.touchControls} data-testid="mobile-touch-controls">
       <div className={styles.touchStatus} aria-live="polite">
-        <strong>{selectionMode ? "Select units" : selectedCount > 0 ? `${selectedCount} selected` : "No selection"}</strong>
-        <span>{selectionMode ? "Drag a box around friendly units" : activeCommand ? `${mobileCommandLabel(activeCommand)} ready` : "Touch controls"}</span>
+        <strong data-tooltip={selectionStatus}>{selectionStatus}</strong>
+        <span data-tooltip={commandStatus}>{commandStatus}</span>
       </div>
       <div className={styles.touchActions}>
         <ConsoleButton
           className={styles.touchButton}
           aria-pressed={selectionMode}
           data-testid="mobile-select-mode"
+          tooltip={selectionMode ? "Cancel unit selection" : "Select units"}
           onClick={() => onSelectionMode(!selectionMode)}
         >
           {selectionMode ? "Cancel" : "Select"}
@@ -53,12 +57,13 @@ export function MobileTouchControls({
                 className={styles.touchButton}
                 aria-pressed={activeCommand === id}
                 data-testid={`mobile-command-${id}`}
+                tooltip={label}
                 onClick={() => onCommand(id)}
               >
                 {label}
               </ConsoleButton>
             ))}
-            <ConsoleButton className={styles.touchButton} data-testid="mobile-command-stop" onClick={onStop}>
+            <ConsoleButton className={styles.touchButton} data-testid="mobile-command-stop" tooltip="Stop selected units" onClick={onStop}>
               Stop
             </ConsoleButton>
           </>

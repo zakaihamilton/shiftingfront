@@ -5,6 +5,7 @@ import { applyGameCommand, type GameKeyboardParams } from "./gameKeyboard";
 export function useGameKeyboard({
   stateRef,
   pausedRef,
+  missionIntroActiveRef,
   pauseViewRef,
   activeTabRef,
   place,
@@ -57,6 +58,10 @@ export function useGameKeyboard({
           e.preventDefault();
           cancelConfirmation();
         }
+        return;
+      }
+      if (missionIntroActiveRef?.current) {
+        clearKeys();
         return;
       }
       if (e.key === "Escape" && mobilePanelOpen && !pausedRef.current && stateRef.current.result === "playing") {
@@ -183,6 +188,7 @@ export function useGameKeyboard({
     viewMissionBriefing,
     mobilePanelOpen,
     mobileToolActive,
+    missionIntroActiveRef,
     keyBindings,
   ]);
 

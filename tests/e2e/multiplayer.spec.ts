@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { skipMissionIntroIfPresent } from "./missionIntro";
 
 const roomCode = "ABCDEF";
 const hostPeerId = "host-peer-e2e";
@@ -208,9 +209,10 @@ test("host starts a four-player corner skirmish after three guests verify their 
   await expect(host.getByTestId("multiplayer-roster").locator("li")).toHaveCount(4);
   await expect(host.getByTestId("multiplayer-start-button")).toBeEnabled();
   await host.getByTestId("multiplayer-start-button").click();
-  await Promise.all([host, ...guests].map((page) => expect(page.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 })));
-  await expect(host.getByTestId("command-sidebar")).toBeVisible();
-  for (const guest of guests) await expect(guest.getByTestId("command-sidebar")).toBeVisible();
+  const players = [host, ...guests];
+  await Promise.all(players.map((page) => expect(page.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 })));
+  await Promise.all(players.map(skipMissionIntroIfPresent));
+  await Promise.all(players.map((page) => expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 })));
 
   const lateGuest = await context.newPage();
   await mockPeerTransport(lateGuest, networkId);
@@ -275,7 +277,8 @@ test("host can launch a skirmish against an AI opponent", async ({ browser }) =>
   await host.getByTestId("multiplayer-seat-toggle-1").click();
   await host.getByTestId("multiplayer-start-button").click();
   await expect(host.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 });
-  await expect(host.getByTestId("command-sidebar")).toBeVisible();
+  await skipMissionIntroIfPresent(host);
+  await expect(host.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 });
   await context.close();
 });
 
@@ -307,5 +310,6 @@ test("AI and a human guest occupy separate seats in the same skirmish", async ({
     expect(host.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 }),
     expect(guest.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 }),
   ]);
+  await Promise.all([host, guest].map(skipMissionIntroIfPresent));
   await context.close();
 });

@@ -47,6 +47,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
     onAlert: presentationPorts.onAlert,
     persistenceRef: simRefs.persistenceRef,
     suppressImplicitSavesRef: simRefs.suppressImplicitSavesRef,
+    canPersist: () => !simRefs.missionIntroActiveRef?.current,
   });
   const presentation = createPresentationCoordinator({
     cameraRef: interactionRefs.cameraRef,
@@ -117,7 +118,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
           if (scenarioRunner.state !== state) scenarioRunner = createScenarioRunner(state);
           return scenarioRunner.step(commands);
         },
-        isPaused: () => (multiplayer ? !multiplayer.connected : simRefs.pausedRef.current),
+        isPaused: () => (multiplayer ? (!multiplayer.connected || multiplayer.introReleased === false) : simRefs.pausedRef.current),
         canStep: (state) => (multiplayer ? multiplayer.canAdvance(state) : true),
         getExtraTicks: (state) => (multiplayer ? multiplayer.queuedFramesCount(state) : 0),
         onTick: controller.onTick,
