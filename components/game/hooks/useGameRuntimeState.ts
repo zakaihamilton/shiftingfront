@@ -37,7 +37,7 @@ export function useGameRuntimeState({
     ? initialMissionBoot(seed, mission, resume, tutorial, fresh, slot)
     : { state: createSkirmish(seed, multiplayerOwner, multiplayerOwners, multiplayerAiOwners).state, intro: true });
   const [state, setState] = useState<SimState>(boot.state);
-  const [battlefieldReady, setBattlefieldReady] = useState(false);
+  const [battlefieldReady, setBattlefieldReady] = useState(!boot.intro);
   const saveSession = useMemo(() => createSaveSession(cachedLocalStorage(), seed), [seed]);
   const stateRef = useRef<SimState>(state);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -56,14 +56,19 @@ export function useGameRuntimeState({
         SPRITE_ART.constructionYard,
       );
     }
-    void Promise.all([
+    const preload = Promise.all([
       preloadTerrainAtlas(currentState),
       preloadRasterSourcesAsync(sources),
-    ]).then(() => {
-      if (!cancelled) setBattlefieldReady(true);
-    }).catch(() => {
-      if (!cancelled) setBattlefieldReady(true);
-    });
+    ]);
+    if (boot.intro) {
+      void preload.then(() => {
+        if (!cancelled) setBattlefieldReady(true);
+      }).catch(() => {
+        if (!cancelled) setBattlefieldReady(true);
+      });
+    } else {
+      void preload.catch(() => undefined);
+    }
     return () => { cancelled = true; };
   }, [boot, mission, seed]);
 
