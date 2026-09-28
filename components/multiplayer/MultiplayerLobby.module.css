@@ -24,7 +24,6 @@
 
 .panel p { line-height: 1.55; color: #b5c4c9; }
 .panel label { display: block; margin: 18px 0 7px; color: #9aafb7; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; }
-.panel input { min-width: 0; padding: 12px 14px; border: 1px solid #54727d; border-radius: 3px; background: #07121a; color: #e9f1f3; font: inherit; font-size: 1.15rem; letter-spacing: .18em; }
 .actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 24px; }
 .joinForm { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: end; gap: 10px; }
 .joinForm label { flex-basis: 100%; margin-bottom: -5px; }

@@ -121,8 +121,6 @@ export function MultiplayerLobby() {
   const [mode, setMode] = useState<LobbyMode>("choose");
   const [seed, setSeed] = useState("0000");
   const [joinCode, setJoinCode] = useState("");
-  const seedInputRef = useRef<HTMLInputElement>(null);
-  const joinCodeInputRef = useRef<HTMLInputElement>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Create a room or join with a six-letter code.");
@@ -760,7 +758,6 @@ export function MultiplayerLobby() {
                   value={joinCode}
                   length={6}
                   label="Six-letter host code"
-                  inputRef={joinCodeInputRef}
                   inputMode="text"
                   autoCapitalize="characters"
                   onChange={(value) => { setJoinCode(value); setError(""); }}
@@ -782,7 +779,6 @@ export function MultiplayerLobby() {
                 value={seed}
                 length={4}
                 label="Four digit match seed"
-                inputRef={seedInputRef}
                 onChange={setSeed}
                 normalize={(value) => value.replace(/\D/g, "")}
                 onEnter={() => void hostRoom()}
