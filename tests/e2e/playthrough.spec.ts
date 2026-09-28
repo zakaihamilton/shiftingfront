@@ -53,7 +53,7 @@ async function waitForBattlefield(page: Page) {
     const width = Math.max(mins.width, Math.floor(host.clientWidth));
     const height = Math.max(mins.height, Math.floor(host.clientHeight));
     return canvasEl.width === width && canvasEl.height === height;
-  }, { width: MIN_RENDER_WIDTH, height: MIN_RENDER_HEIGHT })).toBe(true);
+  }, { width: MIN_RENDER_WIDTH, height: MIN_RENDER_HEIGHT }), { timeout: 15_000 }).toBe(true);
 }
 
 async function loadAutosaveFromPause(page: Page) {

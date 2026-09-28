@@ -17,6 +17,14 @@ async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
       return ink;
     });
   }).toBeGreaterThan(0);
+
+  const intro = page.getByRole("dialog", { name: "Mission arrival feed" });
+  if (await intro.count()) {
+    await expect(intro).toBeVisible();
+    await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
+    await expect(intro).toHaveCount(0);
+  }
+  await expect(page.getByTestId("command-sidebar")).toBeVisible();
   return canvas;
 }
 
