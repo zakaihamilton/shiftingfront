@@ -6,14 +6,14 @@ import styles from "./MissionIntroOverlay.module.css";
 export function MissionIntroOverlay({ waiting, reducedMotion, confirmationOpen, onSkip }: { waiting: boolean; reducedMotion: boolean; confirmationOpen: boolean; onSkip: () => void }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (confirmationOpen || event.repeat || !(event.key === "Escape" || event.key === "Enter" || event.key === " ")) return;
+      if (waiting || confirmationOpen || event.repeat || !(event.key === "Escape" || event.key === "Enter" || event.key === " ")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       onSkip();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [confirmationOpen, onSkip]);
+  }, [confirmationOpen, onSkip, waiting]);
 
   return (
     <section

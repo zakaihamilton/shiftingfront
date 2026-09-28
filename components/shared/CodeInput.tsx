@@ -47,12 +47,19 @@ export function CodeInput({
         type="text"
         value={value}
         onFocus={(event) => {
-          if (value.length === length) event.currentTarget.select();
+          if (value.length === length) {
+            event.currentTarget.select();
+          } else {
+            event.currentTarget.setSelectionRange(value.length, value.length);
+          }
         }}
         onMouseUp={(event) => {
-          if (value.length !== length) return;
           event.preventDefault();
-          event.currentTarget.select();
+          if (value.length === length) {
+            event.currentTarget.select();
+          } else {
+            event.currentTarget.setSelectionRange(value.length, value.length);
+          }
         }}
         onChange={(event) => {
           const next = normalize(event.currentTarget.value).slice(0, length);

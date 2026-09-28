@@ -91,6 +91,19 @@ describe("CodeInput", () => {
     expect(input).toHaveValue("9876");
   });
 
+  it("positions cursor at the end when focused or clicked at partial length", async () => {
+    const user = userEvent.setup();
+    render(<ControlledCodeInput initialValue="12" length={4} />);
+    const input = screen.getByTestId<HTMLInputElement>("test-code-input");
+
+    await user.click(input);
+    expect(input.selectionStart).toBe(2);
+    expect(input.selectionEnd).toBe(2);
+
+    await user.keyboard("34");
+    expect(input).toHaveValue("1234");
+  });
+
   it("sanitizes input and does not consume maxLength on invalid characters", async () => {
     const user = userEvent.setup();
     render(<ControlledCodeInput initialValue="" length={4} />);
