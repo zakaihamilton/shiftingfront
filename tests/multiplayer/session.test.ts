@@ -5,6 +5,34 @@ import { fogAt } from "@/lib/sim/fog";
 import type { Owner } from "@/lib/types";
 
 describe("four-player canonical multiplayer command stream", () => {
+  it("holds ticks behind the intro-ready barrier until every human seat is ready", () => {
+    const sentToGuest: unknown[] = [];
+    const host = new MultiplayerSession("host", 0, 9123, { send() {} }, [0, 1]);
+    const guest = new MultiplayerSession("guest", 1, 9123, {
+      send: (value) => host.receiveFrom("guest-1", value),
+    }, [0, 1]);
+    expect(host.addGuest("guest-1", 1, {
+      send: (value) => { sentToGuest.push(value); guest.receive(value); },
+    })).toBe(true);
+    host.armIntroBarrier();
+    guest.armIntroBarrier();
+
+    expect(host.introReleased).toBe(false);
+    expect(guest.introReleased).toBe(false);
+    expect(host.canAdvance({ tick: 0 } as never)).toBe(false);
+    expect(guest.canAdvance({ tick: 0 } as never)).toBe(false);
+
+    guest.markIntroReady();
+    expect(host.introReleased).toBe(false);
+    host.markIntroReady();
+
+    expect(host.introReleased).toBe(true);
+    expect(guest.introReleased).toBe(true);
+    expect(host.canAdvance({ tick: 0 } as never)).toBe(true);
+    expect(guest.canAdvance({ tick: 0 } as never)).toBe(false);
+    expect(sentToGuest).toContainEqual({ type: "intro-release", protocolVersion: 4 });
+  });
+
   it("assigns seats from authenticated peers and fans ordered tick frames to every guest", () => {
     const owners: Owner[] = [0, 1, 2, 3];
     const hostFrames: unknown[] = [];
@@ -30,9 +58,9 @@ describe("four-player canonical multiplayer command stream", () => {
     const commands = host.drainTick({ tick: 0 } as never, []);
     expect(hostFrames).toHaveLength(3);
     expect(hostFrames.map((frame) => (frame as { value: unknown }).value)).toEqual([
-      { type: "tick", protocolVersion: 3, tick: 1, commands },
-      { type: "tick", protocolVersion: 3, tick: 1, commands },
-      { type: "tick", protocolVersion: 3, tick: 1, commands },
+      { type: "tick", protocolVersion: 4, tick: 1, commands },
+      { type: "tick", protocolVersion: 4, tick: 1, commands },
+      { type: "tick", protocolVersion: 4, tick: 1, commands },
     ]);
     expect(commands).toEqual([
       { type: "stop", unitIds: [10], owner: 0 },
@@ -139,9 +167,9 @@ describe("four-player canonical multiplayer command stream", () => {
     expect(guest.queuedFramesCount({ tick: 0 } as never)).toBe(0);
 
     // Host sends frames 1, 2, 3
-    guest.receive({ type: "tick", protocolVersion: 3, tick: 1, commands: [] });
-    guest.receive({ type: "tick", protocolVersion: 3, tick: 2, commands: [] });
-    guest.receive({ type: "tick", protocolVersion: 3, tick: 3, commands: [] });
+    guest.receive({ type: "tick", protocolVersion: 4, tick: 1, commands: [] });
+    guest.receive({ type: "tick", protocolVersion: 4, tick: 2, commands: [] });
+    guest.receive({ type: "tick", protocolVersion: 4, tick: 3, commands: [] });
 
     expect(guest.queuedFramesCount({ tick: 0 } as never)).toBe(3);
     expect(guest.queuedFramesCount({ tick: 1 } as never)).toBe(2);
@@ -156,9 +184,9 @@ describe("four-player canonical multiplayer command stream", () => {
     guest.bindState(() => guestState, (s) => { synced = s; });
 
     // Buffer old frames 1 and 2, and future frame 5
-    guest.receive({ type: "tick", protocolVersion: 3, tick: 1, commands: [] });
-    guest.receive({ type: "tick", protocolVersion: 3, tick: 2, commands: [] });
-    guest.receive({ type: "tick", protocolVersion: 3, tick: 5, commands: [] });
+    guest.receive({ type: "tick", protocolVersion: 4, tick: 1, commands: [] });
+    guest.receive({ type: "tick", protocolVersion: 4, tick: 2, commands: [] });
+    guest.receive({ type: "tick", protocolVersion: 4, tick: 5, commands: [] });
 
     // Host sends resync at tick 4 where guest 2 has been forfeited (multiplayerOwners = [0, 1])
     const resyncState = createSkirmish(8123, 0, [0, 1]).state;
@@ -198,16 +226,16 @@ describe("four-player canonical multiplayer command stream", () => {
 
     // Start latency probes
     const stopHost = host.startLatencyProbes();
-    expect(hostSent).toMatchObject({ type: "ping", protocolVersion: 3 });
+    expect(hostSent).toMatchObject({ type: "ping", protocolVersion: 4 });
     // Guest received ping and responded with pong
-    expect(guestSent).toMatchObject({ type: "pong", protocolVersion: 3 });
+    expect(guestSent).toMatchObject({ type: "pong", protocolVersion: 4 });
     // Host recorded pong
     expect(typeof host.pingMs).toBe("number");
     expect(hostPingNotified).toBeGreaterThan(0);
 
     const stopGuest = guest.startLatencyProbes();
-    expect(guestSent).toMatchObject({ type: "ping", protocolVersion: 3 });
-    expect(hostSent).toMatchObject({ type: "pong", protocolVersion: 3 });
+    expect(guestSent).toMatchObject({ type: "ping", protocolVersion: 4 });
+    expect(hostSent).toMatchObject({ type: "pong", protocolVersion: 4 });
     expect(typeof guest.pingMs).toBe("number");
     expect(guestPingNotified).toBeGreaterThan(0);
 
@@ -225,7 +253,7 @@ describe("four-player canonical multiplayer command stream", () => {
     expect(host.hasPeerConnection).toBe(false);
 
     host.addGuest("guest-1", 1, {
-      send: (value) => host.receiveFrom("guest-1", { type: "pong", protocolVersion: 3, id: (value as { id: number }).id }),
+      send: (value) => host.receiveFrom("guest-1", { type: "pong", protocolVersion: 4, id: (value as { id: number }).id }),
     });
     expect(host.hasPeerConnection).toBe(true);
 
@@ -239,4 +267,3 @@ describe("four-player canonical multiplayer command stream", () => {
     stop();
   });
 });
-

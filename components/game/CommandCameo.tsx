@@ -42,8 +42,20 @@ export function CommandCameo({
   const showCount = cameo.queued > 1 || cameo.phase === "waiting";
   const cancellable = busy || active;
   const role = isUnitKind(kind) ? ` · ${UNIT_STATS[kind].armor} armor · ${UNIT_STATS[kind].weapon} weapon` : "";
-  const tooltip = `${labelFor(kind)}${role} · ${cost} credits${busy ? (cameo.phase === "waiting" ? ` · ${cameo.queued} in queue` : ` · ${Math.round(cameo.ratio * 100)}% complete`) : ""}${cancellable ? " · Right-click or use Cancel" : ""}${disabledReason ? ` · ${disabledReason}` : ""}`;
-  const ariaStatus = disabledReason ? `, ${disabledReason}` : "";
+  const tooltip = [
+    `${labelFor(kind)}${role} · ${cost} credits`,
+    busy ? (cameo.phase === "waiting" ? `${cameo.queued} in queue` : `${Math.round(cameo.ratio * 100)}% complete`) : undefined,
+    detail?.trim() || undefined,
+    cancellable ? "Right-click or use Cancel" : undefined,
+    disabledReason,
+  ].filter((part): part is string => Boolean(part)).join(" · ");
+  const ariaLabel = [
+    `${labelFor(kind)}, ${cost} credits`,
+    busy ? (cameo.phase === "waiting" ? `${cameo.queued} in queue` : `${Math.round(cameo.ratio * 100)} percent complete`) : undefined,
+    detail?.trim() || undefined,
+    cancellable ? "cancel available" : undefined,
+    disabledReason,
+  ].filter((part): part is string => Boolean(part)).join(", ");
   return (
     <span
       className={styles.wrap}
@@ -64,7 +76,7 @@ export function CommandCameo({
           triggerHaptic("tap");
           onClick();
         }}
-        aria-label={`${labelFor(kind)}, ${cost} credits${busy ? `, ${cameo.phase === "waiting" ? `${cameo.queued} in queue` : `${Math.round(cameo.ratio * 100)} percent complete`}` : ""}${cancellable ? ", cancel available" : ""}${ariaStatus}`}
+        aria-label={ariaLabel}
         aria-keyshortcuts={displayShortcut}
       >
         <span className={styles.art}>

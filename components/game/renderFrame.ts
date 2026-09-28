@@ -6,6 +6,7 @@ import { cullFx, type FxBurst } from "@/lib/render/fx";
 import type { BuildingKind, SimState } from "@/lib/types";
 import { renderDimensions } from "./hooks/useGameCamera";
 import { selectionBoxScreen, type SelectionBox } from "./hooks/selectionBox";
+import { drawMissionIntro, type MissionIntroPlayback } from "@/lib/render/missionIntro";
 
 type Point = { x: number; y: number };
 export type RenderFrameOptions = {
@@ -33,6 +34,7 @@ export type RenderFrameOptions = {
   nowMs?: number;
   subTickAlpha?: number;
   colorblindMode?: import("@/lib/persist/settings").ColorblindMode;
+  missionIntro?: MissionIntroPlayback | null;
 };
 
 export type RenderFrameResult = {
@@ -110,11 +112,22 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
   extras.colorblindMode = options.colorblindMode;
 
   const perfStarted = isPerfHudEnabled() ? performance.now() : 0;
-  const worldTimings = renderWorld(worldCtx, state, cam, selected, hover, extras, tooltipCtx ?? worldCtx);
+  const intro = options.missionIntro;
+  const introTransition = intro && intro.elapsedMs >= intro.plan.durationMs * 0.91;
+  let worldTimings: ReturnType<typeof renderWorld> = null;
+  if (!intro || introTransition) {
+    worldTimings = renderWorld(worldCtx, state, cam, selected, hover, extras, tooltipCtx ?? worldCtx);
+  } else {
+    worldCtx.fillStyle = "#071014";
+    worldCtx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  if (intro) {
+    drawMissionIntro(worldCtx, state, intro, now, state.factions[intro.plan.owner]?.palette);
+  }
   let miniCtx = options.miniCtx;
   let secondaryMiniCtx = options.secondaryMiniCtx;
   let minimapMs = 0;
-  if (options.miniCanvas) {
+  if (!intro && options.miniCanvas) {
     if (!miniCtx || miniCtx.canvas !== options.miniCanvas) {
       miniCtx = options.miniCanvas.getContext("2d", { alpha: false });
     }
@@ -124,7 +137,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
       if (worldTimings) minimapMs = performance.now() - miniStarted;
     }
   }
-  if (options.secondaryMiniCanvas) {
+  if (!intro && options.secondaryMiniCanvas) {
     if (!secondaryMiniCtx || secondaryMiniCtx.canvas !== options.secondaryMiniCanvas) {
       secondaryMiniCtx = options.secondaryMiniCanvas.getContext("2d", { alpha: false });
     }

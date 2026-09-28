@@ -7,12 +7,12 @@ import type { CommandTab, PauseView } from "@/lib/ui/shortcuts";
 export type CommandNoticeKind = "success" | "info" | "warning" | "error";
 export type CommandNoticeState = { text: string; kind: CommandNoticeKind } | null;
 
-export function useGameChrome(initialResult: SimState["result"] = "playing") {
+export function useGameChrome(initialResult: SimState["result"] = "playing", initiallyPaused = false) {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<CommandTab>("construction");
   const activeTabRef = useRef(activeTab);
-  const [paused, setPaused] = useState(false);
-  const pausedRef = useRef(false);
+  const [paused, setPaused] = useState(initiallyPaused);
+  const pausedRef = useRef(initiallyPaused);
   const terminalSaveRef = useRef(initialResult !== "playing");
   const campaignRecordedRef = useRef(initialResult === "won");
   const [pauseView, setPauseView] = useState<PauseView>("main");

@@ -33,6 +33,21 @@ export function SelectionIdentity({
               ? "Moving"
               : selected.idle ? "Idle" : "Holding position"
     : undefined;
+  const healthText = `Health ${Math.ceil(selected.hp)} / ${selected.maxHp}`;
+  const stanceText = `Stance ${stanceLabel(stance)}`;
+  const supportText = selected.supportMode ? `Support: ${SUPPORT_MODE_LABEL[selected.supportMode]}` : "";
+  const orderText = currentOrder ? `Order: ${currentOrder}` : "";
+  const suppressionText = `Suppressed ${Math.ceil(selected.suppression ?? 0)}%`;
+  const cargoText = `Cargo ${selected.carry} / ${UNIT_STATS.harvester.carryMax}`;
+  const ammoText = selected.class === "unit" && isAirUnit(selected.kind)
+    ? `Ammo ${selected.ammo ?? 0} / ${selected.maxAmmo ?? UNIT_STATS[selected.kind].ammoMax ?? 0}${selected.flightState === "servicing" ? " · Servicing runway" : selected.landingRunwayId !== undefined ? " · Returning to runway" : ""}`
+    : "";
+  const runwayText = selected.assignedPlaneId !== undefined ? `Assigned plane #${selected.assignedPlaneId}` : "Ready for aircraft";
+  const warningText = selected.neutral
+    ? "Stranded — cannot move until freed"
+    : selected.marked && selected.class === "unit"
+      ? "Cargo — return to extraction zone"
+      : "";
   return (
     <div className={cx(styles.row, selected.class === "unit" && styles.unitRow)}>
       <div className={styles.portrait}>
@@ -60,33 +75,32 @@ export function SelectionIdentity({
         >
           {labelFor(selected.kind)}
         </strong>
-        <span className={styles.stat}>Health {Math.ceil(selected.hp)} / {selected.maxHp}</span>
+        <span className={styles.stat} data-tooltip={healthText}>{healthText}</span>
         {selected.neutral ? (
-          <span className={styles.warning} data-testid="selected-status">Stranded — cannot move until freed</span>
+          <span className={styles.warning} data-testid="selected-status" data-tooltip={warningText}>{warningText}</span>
         ) : selected.marked && selected.class === "unit" ? (
-          <span className={styles.warning} data-testid="selected-status">Cargo — return to extraction zone</span>
-        ) : selected.class === "unit" ? <span className={styles.stat}>Stance {stanceLabel(stance)}</span> : null}
+          <span className={styles.warning} data-testid="selected-status" data-tooltip={warningText}>{warningText}</span>
+        ) : selected.class === "unit" ? <span className={styles.stat} data-tooltip={stanceText}>{stanceText}</span> : null}
         {selected.class === "unit" && selected.supportMode ? (
-          <span className={styles.stat} data-testid="selected-support-status">
-            Support: {SUPPORT_MODE_LABEL[selected.supportMode]}
+          <span className={styles.stat} data-testid="selected-support-status" data-tooltip={supportText}>
+            {supportText}
           </span>
         ) : null}
-        {currentOrder ? <span className={styles.orderStatus} data-testid="selected-order">Order: {currentOrder}</span> : null}
-        {(selected.suppression ?? 0) > 0 ? <span className={styles.stat}>Suppressed {Math.ceil(selected.suppression ?? 0)}%</span> : null}
+        {currentOrder ? <span className={styles.orderStatus} data-testid="selected-order" data-tooltip={orderText}>{orderText}</span> : null}
+        {(selected.suppression ?? 0) > 0 ? <span className={styles.stat} data-tooltip={suppressionText}>{suppressionText}</span> : null}
         {selected.kind === "harvester" ? (
-          <span className={styles.carry}>
-            Cargo {selected.carry} / {UNIT_STATS.harvester.carryMax}
+          <span className={styles.carry} data-tooltip={cargoText}>
+            {cargoText}
           </span>
         ) : null}
         {selected.class === "unit" && isAirUnit(selected.kind) ? (
-          <span className={styles.stat} data-testid="selected-ammo">
-            Ammo {selected.ammo ?? 0} / {selected.maxAmmo ?? UNIT_STATS[selected.kind].ammoMax ?? 0}
-            {selected.flightState === "servicing" ? " · Servicing runway" : selected.landingRunwayId !== undefined ? " · Returning to runway" : ""}
+          <span className={styles.stat} data-testid="selected-ammo" data-tooltip={ammoText}>
+            {ammoText}
           </span>
         ) : null}
         {selected.class === "building" && selected.kind === "runway" ? (
-          <span className={styles.stat} data-testid="runway-status">
-            {selected.assignedPlaneId !== undefined ? `Assigned plane #${selected.assignedPlaneId}` : "Ready for aircraft"}
+          <span className={styles.stat} data-testid="runway-status" data-tooltip={runwayText}>
+            {runwayText}
           </span>
         ) : null}
       </div>

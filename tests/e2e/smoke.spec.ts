@@ -27,6 +27,16 @@ async function deployToBattlefield(page: Page) {
   await openBriefing(page);
   await page.getByRole("button", { name: "Launch" }).click();
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0/);
+  await skipMissionIntro(page);
+}
+
+async function skipMissionIntro(page: Page) {
+  const intro = page.getByRole("dialog", { name: "Mission arrival feed" });
+  if (await intro.count()) {
+    await expect(intro).toBeVisible();
+    await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
+    await expect(intro).toHaveCount(0);
+  }
 }
 
 async function canvasDigest(canvas: Locator): Promise<number> {
@@ -70,7 +80,8 @@ async function waitForBattlefield(page: Page) {
   await expect.poll(() => canvas.evaluate((element) => {
     const canvasElement = element as HTMLCanvasElement;
     return canvasElement.width > 0 && canvasElement.height > 0;
-})).toBe(true);
+  })).toBe(true);
+  await skipMissionIntro(page);
 }
 
 async function waitForTutorialStage(coach: Locator, stage: string, timeout = 5000): Promise<void> {
@@ -338,6 +349,18 @@ test("new game launch goes to briefing without training", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "Leave mission?" })).toHaveCount(0);
 });
 
+test("fresh battlefield launches through the procedural arrival and can be skipped", async ({ page }) => {
+  await page.goto("/play?seed=0421&mission=0&fresh=1");
+  await expect(page.getByTestId("battlefield-canvas")).toBeVisible();
+  const intro = page.getByRole("dialog", { name: "Mission arrival feed" });
+  await expect(intro).toBeVisible();
+  await expect(page.getByTestId("command-sidebar")).toHaveCount(0);
+
+  await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
+  await expect(intro).toHaveCount(0);
+  await expect(page.getByTestId("command-sidebar")).toBeVisible();
+});
+
 test("Escape returns a New Campaign briefing to its launcher", async ({ page }) => {
   await openBriefing(page);
 
@@ -355,6 +378,7 @@ test("launches a seeded campaign from menu to battlefield", async ({ page }) => 
 
   await page.getByRole("button", { name: "Launch" }).click();
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0/);
+  await skipMissionIntro(page);
   await expect(page.getByTestId("seed")).toContainText("Seed 0421");
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
   await expect(page.getByTestId("credits")).toBeVisible();
@@ -740,6 +764,7 @@ test("keeps briefing dialogue and battlefield status readable on mobile", async 
     }),
   });
   await page.goto("/play?seed=0421&mission=0&fresh=1");
+  await skipMissionIntro(page);
   await expect(page.getByTestId("time-remaining")).toBeVisible();
 
   const statusGeometry = await page.getByTestId("battlefield-status").evaluate((element) => {
@@ -1179,6 +1204,7 @@ test("starts a new same-seed mission after reloading before a fresh launch", asy
   await expect(page).toHaveURL(/\/briefing\?seed=0421&mission=0/);
   await page.getByRole("button", { name: "Launch" }).click();
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0&fresh=1/);
+  await skipMissionIntro(page);
   await expect(page.getByTestId("credits")).toHaveText("2,000");
 });
 

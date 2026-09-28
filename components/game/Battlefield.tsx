@@ -100,10 +100,10 @@ export function Battlefield({
         onPointerCancel={onPointerCancel}
       />
       <canvas ref={tooltipCanvasRef} className={styles.tooltipCanvas} aria-hidden="true" />
-      <ScrollArrow dir="left" available={panAvail.left} hot={hotPan === "left"} />
-      <ScrollArrow dir="right" available={panAvail.right} hot={hotPan === "right"} />
-      <ScrollArrow dir="up" available={panAvail.up} hot={hotPan === "up"} />
-      <ScrollArrow dir="down" available={panAvail.down} hot={hotPan === "down"} />
+      {showHud ? <ScrollArrow dir="left" available={panAvail.left} hot={hotPan === "left"} /> : null}
+      {showHud ? <ScrollArrow dir="right" available={panAvail.right} hot={hotPan === "right"} /> : null}
+      {showHud ? <ScrollArrow dir="up" available={panAvail.up} hot={hotPan === "up"} /> : null}
+      {showHud ? <ScrollArrow dir="down" available={panAvail.down} hot={hotPan === "down"} /> : null}
       {showHud ? (
         <BattlefieldHud
           seed={seed}

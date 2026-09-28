@@ -11,6 +11,7 @@ import { useGameInput } from "./useGameInput";
 import { useGameRenderer } from "./useGameRenderer";
 import { useGameSelection } from "./useGameSelection";
 import type { GameRuntimeFeedback } from "./useGameRuntimeFeedback";
+import type { MissionIntroPlayback } from "@/lib/render/missionIntro";
 
 const TUTORIAL_CAMERA_FOCUS_MS = 900;
 
@@ -31,6 +32,7 @@ export function useGameRuntimeInteraction({
   setActiveTab,
   commandPort,
   feedback,
+  missionIntroRef,
 }: {
   state: SimState;
   tutorial: boolean;
@@ -48,6 +50,7 @@ export function useGameRuntimeInteraction({
   setActiveTab: (tab: "construction" | "production" | "selected") => void;
   commandPort: RuntimeCommandPort;
   feedback: GameRuntimeFeedback;
+  missionIntroRef?: React.MutableRefObject<MissionIntroPlayback | null>;
 }) {
   const { uxRef, announceCommandFeedback, recordCommandRejection, recordMobilePanelOpened } = feedback;
   const onSelectionTab = useCallback(() => setActiveTab("selected"), [setActiveTab]);
@@ -95,6 +98,7 @@ export function useGameRuntimeInteraction({
   const renderer = useGameRenderer({
     stateRef, hostRef, canvasRef, tooltipCanvasRef, miniRef, mobileMiniRef, camRef, selected, hoverRef, cursorRef, boxRef, commandMarkerRef,
     place, repair, sell, reducedMotionOverride: audioSettings.reducedMotion, colorblindMode: audioSettings.colorblindMode,
+    missionIntroRef,
   });
 
   const resetTransientMobileUi = useCallback(() => {

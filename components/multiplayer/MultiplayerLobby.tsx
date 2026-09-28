@@ -502,6 +502,7 @@ export function MultiplayerLobby() {
     } catch (createError) {
       destroyPeer();
       setMode("hostSetup");
+      setStatus("Room creation failed.");
       setError(publicError(createError));
     }
   }, [bindHostConnection, destroyPeer, publishRoster, seed, startPeer]);
@@ -526,6 +527,7 @@ export function MultiplayerLobby() {
       const connection = hostConnectionsRef.current.get(peerId);
       if (!connection?.open || !hostSession.addGuest(peerId, owner, { send: (value) => { if (connection.open) connection.send(value); } })) return;
     }
+    hostSession.armIntroBarrier();
     hostStartedRef.current = true;
     sessionRef.current = hostSession;
     for (const [peerId, owner] of connected) {
@@ -574,6 +576,7 @@ export function MultiplayerLobby() {
         }
         const sender = { send: (value: unknown) => { if (connection.open) connection.send(value); } };
         const next = new MultiplayerSession("guest", owner, seedValue, sender, message.owners, message.aiOwners);
+        next.armIntroBarrier();
         guestOwnerRef.current = owner;
         setGuestOwner(owner);
         showBattle(next, seedValue);
@@ -669,6 +672,7 @@ export function MultiplayerLobby() {
       waitForOpen();
     } catch (joinError) {
       setMode("choose");
+      setStatus("Room lookup failed.");
       setError(publicError(joinError));
     }
   }, [beginGuestConnection, destroyPeer, joinCode, startPeer]);

@@ -135,6 +135,11 @@ async function waitForBattlefield(page: import("@playwright/test").Page) {
   await page.evaluate(() => new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   }));
+  const intro = page.getByRole("dialog", { name: "Mission arrival feed" });
+  if (await intro.count()) {
+    await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
+    await expect(intro).toHaveCount(0);
+  }
 }
 
 async function waitForCommandSidebarToSettle(

@@ -14,6 +14,11 @@ async function waitForBattlefield(page: import("@playwright/test").Page) {
     const canvasElement = element as HTMLCanvasElement;
     return canvasElement.width > 0 && canvasElement.height > 0;
   })).toBe(true);
+  const intro = page.getByRole("dialog", { name: "Mission arrival feed" });
+  if (await intro.count()) {
+    await page.getByRole("button", { name: /SKIP ARRIVAL/ }).click();
+    await expect(intro).toHaveCount(0);
+  }
 }
 
 function denseLateGameState(): SimState {

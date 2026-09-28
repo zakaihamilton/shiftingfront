@@ -22,6 +22,7 @@ export function GamePlayField({
   campaign,
   state,
   tutorial,
+  missionIntroActive,
   paused = false,
   pointer,
   resultActions,
@@ -57,7 +58,7 @@ export function GamePlayField({
       onObjectivePanelToggle={onObjectivePanelToggle}
       multiplayerPingMs={state.multiplayer ? multiplayerPingMs : undefined}
       multiplayerHost={multiplayerHost}
-      showHud={state.result === "playing"}
+      showHud={state.result === "playing" && !missionIntroActive}
       biome={state.biome}
       {...pointer}
     >

@@ -6,7 +6,7 @@ import { cachedLocalStorage, createSaveSession } from "@/lib/persist/save";
 import type { Owner, SimState } from "@/lib/types";
 import { preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
 import { preloadRasterSources } from "@/lib/render/sprites";
-import { initialMission } from "./useGameSession";
+import { initialMissionBoot } from "./useGameSession";
 import { createSkirmish } from "@/lib/sim/api";
 
 /** Owns the durable mission/session state and DOM refs used by runtime layers. */
@@ -33,9 +33,10 @@ export function useGameRuntimeState({
 }) {
   const campaign = useMemo(() => createCampaign(seed), [seed]);
   const playerVisualProfile = useMemo(() => generateVisualProfile(seed, multiplayerOwner ?? 0), [seed, multiplayerOwner]);
-  const [state, setState] = useState<SimState>(() => multiplayerOwner === undefined
-    ? initialMission(seed, mission, resume, tutorial, fresh, slot)
-    : createSkirmish(seed, multiplayerOwner, multiplayerOwners, multiplayerAiOwners).state);
+  const [boot] = useState(() => multiplayerOwner === undefined
+    ? initialMissionBoot(seed, mission, resume, tutorial, fresh, slot)
+    : { state: createSkirmish(seed, multiplayerOwner, multiplayerOwners, multiplayerAiOwners).state, intro: true });
+  const [state, setState] = useState<SimState>(boot.state);
   const saveSession = useMemo(() => createSaveSession(cachedLocalStorage(), seed), [seed]);
   const stateRef = useRef<SimState>(state);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -54,6 +55,7 @@ export function useGameRuntimeState({
     campaign,
     saveSession,
     playerVisualProfile,
+    initialIntro: boot.intro,
     state,
     setState,
     stateRef,

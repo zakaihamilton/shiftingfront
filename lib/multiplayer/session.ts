@@ -7,6 +7,8 @@ export type MultiplayerRole = "host" | "guest";
 export type MultiplayerStatus = "connected" | "disconnected" | "ended";
 export type MultiplayerWire = { send: (value: unknown) => void };
 export type TickFrame = { type: "tick"; protocolVersion: number; tick: number; commands: Command[] };
+export type IntroReadyMessage = { type: "intro-ready"; protocolVersion: number };
+export type IntroReleaseMessage = { type: "intro-release"; protocolVersion: number };
 const RTT_PROBE_INTERVAL_MS = 2_000;
 const RTT_SAMPLE_MAX_AGE_MS = 6_000;
 const MAX_PENDING_RTT_PROBES = 8;
@@ -20,7 +22,7 @@ function validProbeId(value: unknown): value is number {
 }
 
 export const SKIRMISH_MATCH_SETTINGS = Object.freeze({
-  protocolVersion: 3,
+  protocolVersion: 4,
   fogOfWar: true,
   victoryCondition: "constructionYardDestruction",
   maxPlayers: 4,
@@ -166,6 +168,11 @@ export class MultiplayerSession {
   private pendingRttProbes = new Map<string, Map<number, number>>();
   private rttSamples = new Map<string, RttSample>();
   private lastPublishedPingMs: number | null = null;
+  private introBarrierArmed = false;
+  private introReleasedValue = true;
+  private localIntroReady = false;
+  private hostIntroReady = false;
+  private readyGuests = new Set<string>();
 
   constructor(
     role: MultiplayerRole,
@@ -190,6 +197,7 @@ export class MultiplayerSession {
 
   get status(): MultiplayerStatus { return this.statusValue; }
   get connected(): boolean { return this.statusValue === "connected"; }
+  get introReleased(): boolean { return !this.introBarrierArmed || this.introReleasedValue; }
   get hasPeerConnection(): boolean {
     return this.role === "guest" || this.guests.size > 0;
   }
@@ -308,7 +316,48 @@ export class MultiplayerSession {
     else {
       this.statusValue = "connected";
       this.publish();
+      if (this.introBarrierArmed && this.localIntroReady) this.sendIntroReady();
     }
+  }
+
+  /** Hold lockstep ticks until every human seat has completed its local arrival scene. */
+  armIntroBarrier(): void {
+    this.introBarrierArmed = true;
+    this.introReleasedValue = false;
+    this.localIntroReady = false;
+    this.hostIntroReady = false;
+    this.readyGuests.clear();
+    this.publish();
+  }
+
+  markIntroReady(): void {
+    if (!this.introBarrierArmed || this.introReleasedValue || this.localIntroReady) return;
+    this.localIntroReady = true;
+    if (this.role === "host") {
+      this.hostIntroReady = true;
+      this.tryReleaseIntro();
+    } else {
+      this.sendIntroReady();
+    }
+  }
+
+  private sendIntroReady(): void {
+    if (this.role !== "guest" || !this.introBarrierArmed || !this.localIntroReady || !this.connected) return;
+    try {
+      const message: IntroReadyMessage = { type: "intro-ready", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion };
+      this.sender.send(message);
+    } catch {
+      // Reconnect will resend readiness through attach().
+    }
+  }
+
+  private tryReleaseIntro(): void {
+    if (this.role !== "host" || !this.introBarrierArmed || this.introReleasedValue || !this.hostIntroReady) return;
+    if ([...this.guests.keys()].some((peerId) => !this.readyGuests.has(peerId))) return;
+    this.introReleasedValue = true;
+    const message: IntroReleaseMessage = { type: "intro-release", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion };
+    this.broadcast(message);
+    this.publish();
   }
 
   /** Register one authenticated guest seat on the host's peer mesh. */
@@ -333,6 +382,9 @@ export class MultiplayerSession {
     guest.sender = sender;
     guest.connected = true;
     this.refreshHostStatus();
+    if (this.introBarrierArmed && this.introReleasedValue) {
+      sender.send({ type: "intro-release", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion } satisfies IntroReleaseMessage);
+    }
     return true;
   }
 
@@ -390,6 +442,13 @@ export class MultiplayerSession {
     if (this.role === "host") return;
     if (this.replyToLatencyProbe(this.sender, message)) return;
     if (this.recordLatencyResponse("host", message)) return;
+    if (message.type === "intro-release") {
+      if (this.introBarrierArmed && message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion) {
+        this.introReleasedValue = true;
+        this.publish();
+      }
+      return;
+    }
     if (this.role === "guest" && message.type === "tick" && Number.isSafeInteger(message.tick) && Array.isArray(message.commands) && message.commands.length <= 256) {
       if (message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion) return;
       const tick = Number(message.tick);
@@ -429,6 +488,13 @@ export class MultiplayerSession {
     const message = value as Record<string, unknown>;
     if (this.replyToLatencyProbe(guest.sender, message)) return;
     if (this.recordLatencyResponse(peerId, message)) return;
+    if (message.type === "intro-ready") {
+      if (this.introBarrierArmed && message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion) {
+        this.readyGuests.add(peerId);
+        this.tryReleaseIntro();
+      }
+      return;
+    }
     if (message.type === "intent") {
       const command = sanitizeCommand(message.command, false);
       if (command?.type === "attack") {
@@ -453,6 +519,7 @@ export class MultiplayerSession {
     const state = this.snapshotSource?.();
     if (!guest || !state) return null;
     this.guests.delete(peerId);
+    this.readyGuests.delete(peerId);
     this.pendingRttProbes.delete(peerId);
     this.rttSamples.delete(peerId);
     this.guestCommands = this.guestCommands.filter((intent) => intent.owner !== guest.owner);
@@ -467,6 +534,7 @@ export class MultiplayerSession {
     this.snapshotConsumer?.(snapshot);
     this.broadcast({ type: "resync", state: snapshot });
     this.refreshHostStatus();
+    this.tryReleaseIntro();
     return guest.owner;
   }
 
@@ -497,7 +565,7 @@ export class MultiplayerSession {
 
   canAdvance(state: SimState): boolean {
     this.syncSnapshot();
-    if (!this.connected) return false;
+    if (!this.connected || !this.introReleased) return false;
     if (this.role === "host") return true;
     const nextTick = state.tick + 1;
     if (this.frames.has(nextTick)) return true;

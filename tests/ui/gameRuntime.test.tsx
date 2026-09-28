@@ -514,6 +514,7 @@ describe("mission replacement in a mounted loop", () => {
     act(() => result.current.session.confirmAction());
     expect(options.getState().result).toBe("playing");
     expect(startLoop).toHaveBeenCalledOnce();
+    act(() => result.current.onSkipMissionIntro());
     finish(2000);
     expect(JSON.parse(localStorage.getItem(TELEMETRY_KEY)!).records).toHaveLength(2);
   });
