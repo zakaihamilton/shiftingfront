@@ -1,7 +1,7 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, type MutableRefObject, type PointerEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject, type PointerEvent, type RefObject } from "react";
 import { pickTile } from "@/lib/render/renderer";
 import type { CommandMarker } from "@/lib/render/renderOverlays";
-import { panDirFromPointer, EDGE_PAN_BAND, type PanAvailability, type PanDir } from "@/lib/render/camera";
+import { cameraPanBounds, panAvailability, panCamera, panDirFromPointer, EDGE_PAN_BAND, type PanAvailability, type PanDir } from "@/lib/render/camera";
 import { type Camera } from "@/lib/iso";
 import type { BuildingKind, Command, SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
@@ -18,9 +18,19 @@ import type { CommandNoticeKind } from "./useGameChrome";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { activeProducerFor, isSharedProducerKind } from "@/lib/sim/producerState";
 
+const WHEEL_LINE_SIZE_PX = 16;
+
+function wheelDeltaInPixels(delta: number, deltaMode: number, pageSize: number): number {
+  if (deltaMode === 1) return delta * WHEEL_LINE_SIZE_PX;
+  if (deltaMode === 2) return delta * pageSize;
+  return delta;
+}
+
 export function useGameInput({
   stateRef,
   camRef,
+  canvasRef,
+  cancelCameraFocus,
   selectedRef,
   selectedIds,
   commitSelection,
@@ -40,6 +50,7 @@ export function useGameInput({
   setMobileCommandState,
   pausedRef,
   panAvailRef,
+  setPanAvailability,
   applyEdgePan,
   selectionModeRef,
   setSelectionMode,
@@ -49,6 +60,8 @@ export function useGameInput({
 }: {
   stateRef: MutableRefObject<SimState>;
   camRef: MutableRefObject<Camera>;
+  canvasRef: RefObject<HTMLCanvasElement | null>;
+  cancelCameraFocus: () => void;
   selectedRef: MutableRefObject<Set<number>>;
   selectedIds?: readonly number[];
   commitSelection: (ids: number[]) => void;
@@ -69,6 +82,7 @@ export function useGameInput({
   setMobileCommandState: (v: MobileCommand | null) => void;
   pausedRef: MutableRefObject<boolean>;
   panAvailRef: MutableRefObject<PanAvailability>;
+  setPanAvailability: (availability: PanAvailability) => void;
   applyEdgePan: (dir: PanDir | null) => void;
   selectionModeRef: MutableRefObject<boolean>;
   setSelectionMode: (active: boolean) => void;
@@ -113,6 +127,35 @@ export function useGameInput({
   useLayoutEffect(() => {
     syncCursor();
   }, [placeKind, repairMode, sellMode, selectedIds, syncCursor]);
+
+  const onWheel = useCallback((event: WheelEvent) => {
+    if (event.ctrlKey || event.metaKey) return;
+    event.preventDefault();
+
+    const canvas = canvasRef.current;
+    const state = stateRef.current;
+    if (!canvas || pausedRef.current || state.result !== "playing") return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const deltaX = wheelDeltaInPixels(event.deltaX, event.deltaMode, rect.width) * canvas.width / rect.width;
+    const deltaY = wheelDeltaInPixels(event.deltaY, event.deltaMode, rect.height) * canvas.height / rect.height;
+    if (deltaX === 0 && deltaY === 0) return;
+
+    cancelCameraFocus();
+    const bounds = cameraPanBounds(camRef.current, state.width, state.height, canvas.width, canvas.height);
+    panCamera(camRef.current, -deltaX, -deltaY, bounds);
+    const nextAvailability = panAvailability(camRef.current, bounds);
+    panAvailRef.current = nextAvailability;
+    setPanAvailability(nextAvailability);
+  }, [camRef, cancelCameraFocus, canvasRef, panAvailRef, pausedRef, setPanAvailability, stateRef]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", onWheel);
+  }, [canvasRef, onWheel]);
 
   const { markUnitCommand, markInvalidCommand, issueContextOrder } = useOrderDispatch({
     camRef,

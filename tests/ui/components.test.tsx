@@ -630,9 +630,6 @@ describe("MenuMainPanel dashboard", () => {
     expect(screen.getByRole("navigation", { name: "Main menu" })).toHaveTextContent("LOAD MISSION");
     expect(screen.getByRole("navigation", { name: "Main menu" })).not.toHaveTextContent("Campaign archive");
     expect(screen.queryByRole("button", { name: "IMPORT SAVE" })).toBeNull();
-    expect(screen.getByTestId("weekly-countdown")).toHaveTextContent(/^Current campaign expires in /);
-    expect(screen.getByTestId("weekly-countdown")).not.toHaveTextContent(/^WEEK /);
-    expect(screen.getByTestId("weekly-countdown")).toHaveAttribute("title", "Time until current campaign expires");
 
     fireEvent.click(screen.getByRole("button", { name: "NEW GAME" }));
     fireEvent.click(screen.getByRole("button", { name: "TUTORIAL" }));

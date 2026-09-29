@@ -4,6 +4,7 @@ import { act, renderHook } from "@testing-library/react";
 import { useRef, type PointerEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createCamera, TILE_H, tileToScreen } from "../../lib/iso";
+import { cameraPanBounds, panAvailability } from "../../lib/render/camera";
 import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { heightAt } from "../../lib/sim/world";
 import type { BuildingKind, Command, SimState } from "../../lib/types";
@@ -15,15 +16,15 @@ vi.mock("@/lib/audio/synth", () => ({ beep: vi.fn() }));
 vi.mock("@/lib/audio/voice", () => ({ voiceBarkForBeep: vi.fn() }));
 
 function testCanvas() {
-  const canvas = {
-    width: 800,
-    height: 600,
-    style: { cursor: "" },
-    getBoundingClientRect: () => ({ left: 10, top: 20, width: 800, height: 600 }) as DOMRect,
-    setPointerCapture: vi.fn(),
-    hasPointerCapture: vi.fn(() => true),
-    releasePointerCapture: vi.fn(),
-  } as unknown as HTMLCanvasElement;
+  const canvas = document.createElement("canvas");
+  canvas.width = 800;
+  canvas.height = 600;
+  Object.defineProperties(canvas, {
+    getBoundingClientRect: { configurable: true, value: () => ({ left: 10, top: 20, width: 800, height: 600 }) as DOMRect },
+    setPointerCapture: { configurable: true, value: vi.fn() },
+    hasPointerCapture: { configurable: true, value: vi.fn(() => true) },
+    releasePointerCapture: { configurable: true, value: vi.fn() },
+  });
   return canvas;
 }
 
@@ -50,42 +51,64 @@ function renderInput(
     repairRef?: { current: boolean };
     placeKind?: BuildingKind;
     selected?: Set<number>;
+    width?: number;
+    height?: number;
+    paused?: boolean;
     setup?: (state: SimState) => void;
   } = {},
 ) {
-  const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+  const state = makeFixture({ width: overrides.width ?? 12, height: overrides.height ?? 12, win: { kind: "annihilate" } });
   overrides.setup?.(state);
   const commitSelection = vi.fn();
   const applyEdgePan = vi.fn();
   const clearTools = vi.fn();
+  const setPanAvailability = vi.fn();
+  const cancelCameraFocus = vi.fn();
   const repairRef = overrides.repairRef ?? { current: overrides.repairMode ?? false };
   const commandQueue = { current: [] as Command[] };
   const { result, rerender } = renderHook(
-    (props: { repairMode: boolean }) => useGameInput({
-      stateRef: useRef(state),
-      camRef: useRef(createCamera()),
-      selectedRef: useRef(overrides.selected ?? new Set<number>()),
-      commitSelection,
-      cmdQRef: commandQueue,
-      placeRef: useRef<BuildingKind | null>(overrides.placeKind ?? null),
-      setPlaceKind: vi.fn(),
-      repairRef,
-      repairMode: props.repairMode,
-      setRepairMode: vi.fn(),
-      sellRef: useRef(false),
-      setSellMode: vi.fn(),
-      clearTools,
-      mobileCommandRef: useRef(null),
-      setMobileCommandState: vi.fn(),
-      pausedRef: useRef(false),
-      panAvailRef: useRef({ left: true, right: true, up: true, down: true }),
-      applyEdgePan,
-      selectionModeRef: useRef(false),
-      setSelectionMode: vi.fn(),
-    }),
+    (props: { repairMode: boolean }) => {
+      const stateRef = useRef(state);
+      const camRef = useRef(createCamera());
+      const canvasRef = useRef<HTMLCanvasElement | null>(canvas);
+      const pausedRef = useRef(overrides.paused ?? false);
+      const panAvailRef = useRef({ left: true, right: true, up: true, down: true });
+      const input = useGameInput({
+        stateRef,
+        camRef,
+        canvasRef,
+        cancelCameraFocus,
+        selectedRef: useRef(overrides.selected ?? new Set<number>()),
+        commitSelection,
+        cmdQRef: commandQueue,
+        placeRef: useRef<BuildingKind | null>(overrides.placeKind ?? null),
+        setPlaceKind: vi.fn(),
+        repairRef,
+        repairMode: props.repairMode,
+        setRepairMode: vi.fn(),
+        sellRef: useRef(false),
+        setSellMode: vi.fn(),
+        clearTools,
+        mobileCommandRef: useRef(null),
+        setMobileCommandState: vi.fn(),
+        pausedRef,
+        panAvailRef,
+        setPanAvailability,
+        applyEdgePan,
+        selectionModeRef: useRef(false),
+        setSelectionMode: vi.fn(),
+      });
+      return { ...input, camRef, stateRef, panAvailRef };
+    },
     { initialProps: { repairMode: overrides.repairMode ?? false } },
   );
   return { result, canvas, commandQueue, commitSelection, applyEdgePan, clearTools, repairRef, rerender, state };
+}
+
+function dispatchWheel(canvas: HTMLCanvasElement, options: WheelEventInit): WheelEvent {
+  const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, ...options });
+  canvas.dispatchEvent(event);
+  return event;
 }
 
 describe("desktop marquee pointer lifecycle", () => {
@@ -165,6 +188,102 @@ describe("battlefield cursor", () => {
     repairRef.current = true;
     rerender({ repairMode: true });
     expect(canvas.style.cursor).toBe("not-allowed");
+  });
+});
+
+describe("trackpad and mouse wheel camera panning", () => {
+  it("pans with the gesture on both axes and refreshes pan availability", () => {
+    const canvas = testCanvas();
+    const { result } = renderInput(canvas, { width: 40, height: 40 });
+    const camera = result.current.camRef.current;
+    const start = { x: camera.x, y: camera.y };
+
+    let event: WheelEvent;
+    act(() => {
+      event = dispatchWheel(canvas, { deltaX: -24, deltaY: 36 });
+    });
+
+    expect(camera.x).toBe(start.x + 24);
+    expect(camera.y).toBe(start.y - 36);
+    expect(event!.defaultPrevented).toBe(true);
+    expect(result.current.panAvailRef.current).toEqual(panAvailability(
+      camera,
+      cameraPanBounds(camera, result.current.stateRef.current.width, result.current.stateRef.current.height, canvas.width, canvas.height),
+    ));
+  });
+
+  it("normalizes line and page wheel deltas", () => {
+    const canvas = testCanvas();
+    const { result } = renderInput(canvas, { width: 40, height: 40 });
+    const camera = result.current.camRef.current;
+    const start = { x: camera.x, y: camera.y };
+
+    act(() => {
+      dispatchWheel(canvas, { deltaY: 2, deltaMode: WheelEvent.DOM_DELTA_LINE });
+      dispatchWheel(canvas, { deltaX: -0.25, deltaMode: WheelEvent.DOM_DELTA_PAGE });
+    });
+
+    expect(camera.y).toBe(start.y - 2 * 16);
+    expect(camera.x).toBe(start.x + 0.25 * canvas.width);
+  });
+
+  it("clamps wheel movement to the map bounds", () => {
+    const canvas = testCanvas();
+    const { result } = renderInput(canvas, { width: 40, height: 40 });
+    const camera = result.current.camRef.current;
+    const bounds = cameraPanBounds(camera, 40, 40, canvas.width, canvas.height);
+    camera.x = bounds.maxX;
+    camera.y = bounds.minY;
+
+    act(() => {
+      dispatchWheel(canvas, { deltaX: -1000, deltaY: 1000 });
+    });
+
+    expect(camera.x).toBe(bounds.maxX);
+    expect(camera.y).toBe(bounds.minY);
+  });
+
+  it("consumes wheel input without panning while paused or after play ends", () => {
+    const pausedCanvas = testCanvas();
+    const paused = renderInput(pausedCanvas, { width: 40, height: 40, paused: true });
+    const pausedCamera = paused.result.current.camRef.current;
+    const pausedStart = { x: pausedCamera.x, y: pausedCamera.y };
+    let pausedEvent: WheelEvent;
+    act(() => {
+      pausedEvent = dispatchWheel(pausedCanvas, { deltaY: 50 });
+    });
+    expect(pausedCamera).toMatchObject(pausedStart);
+    expect(pausedEvent!.defaultPrevented).toBe(true);
+
+    const endedCanvas = testCanvas();
+    const ended = renderInput(endedCanvas, { width: 40, height: 40 });
+    const endedCamera = ended.result.current.camRef.current;
+    const endedStart = { x: endedCamera.x, y: endedCamera.y };
+    ended.result.current.stateRef.current.result = "won";
+    let endedEvent: WheelEvent;
+    act(() => {
+      endedEvent = dispatchWheel(endedCanvas, { deltaY: 50 });
+    });
+    expect(endedCamera).toMatchObject(endedStart);
+    expect(endedEvent!.defaultPrevented).toBe(true);
+  });
+
+  it("leaves Ctrl/Meta+wheel untouched for browser zoom", () => {
+    const canvas = testCanvas();
+    const { result } = renderInput(canvas, { width: 40, height: 40 });
+    const camera = result.current.camRef.current;
+    const start = { x: camera.x, y: camera.y };
+    let ctrlEvent: WheelEvent;
+    let metaEvent: WheelEvent;
+
+    act(() => {
+      ctrlEvent = dispatchWheel(canvas, { deltaY: 40, ctrlKey: true });
+      metaEvent = dispatchWheel(canvas, { deltaX: 40, metaKey: true });
+    });
+
+    expect(camera).toMatchObject(start);
+    expect(ctrlEvent!.defaultPrevented).toBe(false);
+    expect(metaEvent!.defaultPrevented).toBe(false);
   });
 });
 

@@ -203,7 +203,7 @@
     0 2px 0 var(--chrome-void),
     0 8px 24px rgba(0, 0, 0, 0.65);
   clip-path: inset(0 100% 0 0);
-  animation: stencil-wipe 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: stencil-wipe 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
 }
 
 .subtitle {
@@ -220,7 +220,7 @@
     0 2px 0 var(--chrome-void),
     0 8px 24px rgba(0, 0, 0, 0.65);
   clip-path: inset(0 100% 0 0);
-  animation: stencil-wipe 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+  animation: stencil-wipe 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
 }
 
 .heroRule {
@@ -264,14 +264,13 @@
 
 .taglineText {
   display: inline-block;
-  overflow: hidden;
-  max-width: 0;
   vertical-align: bottom;
   white-space: nowrap;
   border-right: 0.08em solid var(--chrome-cyan);
+  clip-path: inset(0 100% 0 0);
   animation:
-    type-tagline 1.35s steps(26, end) 0.55s forwards,
-    caret-blink 0.7s step-end 1.9s infinite;
+    type-tagline 1.35s steps(26, end) 0.72s both,
+    caret-blink 0.7s step-end 2.1s 3 forwards;
 }
 
 @keyframes ken-burns {
@@ -285,28 +284,22 @@
 }
 
 @keyframes stencil-wipe {
-  0% {
+  from {
     clip-path: inset(0 100% 0 0);
-    text-shadow:
-      0 0 8px #fff,
-      0 0 28px color-mix(in srgb, var(--chrome-cyan) 92%, transparent),
-      0 0 52px color-mix(in srgb, var(--chrome-cyan) 60%, transparent),
-      0 2px 0 var(--chrome-void),
-      0 8px 24px rgba(0, 0, 0, 0.65);
   }
-  100% {
+  to {
     clip-path: inset(0 0 0 0);
   }
-}
-
-@keyframes type-tagline {
-  from { max-width: 0; }
-  to { max-width: 28em; }
 }
 
 @keyframes caret-blink {
   0%, 49% { border-right-color: var(--chrome-cyan); }
   50%, 100% { border-right-color: transparent; }
+}
+
+@keyframes type-tagline {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0); }
 }
 
 @keyframes status-acquire {
@@ -328,14 +321,9 @@
   }
 
   .title,
-  .subtitle {
-    clip-path: none;
-    animation: none !important;
-  }
-
+  .subtitle,
   .taglineText {
-    max-width: none;
-    border-right: 0;
+    clip-path: none;
     animation: none !important;
   }
 

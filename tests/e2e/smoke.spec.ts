@@ -1220,6 +1220,9 @@ test("shows a mission result overlay from a finished save", async ({ page }) => 
   await page.setViewportSize({ width: 1280, height: 600 });
   await page.reload();
   await expect(page.getByTestId("mission-result")).toBeVisible();
+  await page.getByTestId("mission-result").locator("[role='dialog']").evaluate(async (panel) => {
+    await Promise.all(panel.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => undefined)));
+  });
   const resultLayout = await page.getByTestId("mission-result").evaluate((element) => {
     const panel = element.querySelector<HTMLElement>("[role='dialog']");
     const actions = panel?.querySelector<HTMLElement>("[class*='actions']");
@@ -1229,15 +1232,39 @@ test("shows a mission result overlay from a finished save", async ({ page }) => 
     return {
       panelTop: panelBounds.top,
       panelBottom: panelBounds.bottom,
+      panelCenterX: panelBounds.left + panelBounds.width / 2,
+      panelCenterY: panelBounds.top + panelBounds.height / 2,
       panelClientHeight: panel.clientHeight,
       panelScrollHeight: panel.scrollHeight,
       actionsBottom: actionBounds.bottom,
+      animationName: getComputedStyle(panel).animationName,
+      sceneArt: getComputedStyle(panel).getPropertyValue("--scene-art"),
     };
   });
   expect(resultLayout.panelTop).toBeGreaterThanOrEqual(0);
   expect(resultLayout.panelBottom).toBeLessThanOrEqual(600);
+  expect(Math.abs(resultLayout.panelCenterX - 640)).toBeLessThanOrEqual(1);
+  expect(Math.abs(resultLayout.panelCenterY - 300)).toBeLessThanOrEqual(1);
   expect(resultLayout.actionsBottom).toBeLessThanOrEqual(600);
   expect(resultLayout.panelScrollHeight).toBeLessThanOrEqual(resultLayout.panelClientHeight + 1);
+  expect(resultLayout.animationName).not.toBe("none");
+  expect(resultLayout.sceneArt).toContain("/art/biomes/");
+});
+
+test("respects reduced motion on the mission result dialog", async ({ page }) => {
+  const state = distinctiveSave("lost");
+  await page.addInitScript(({ key, raw }) => localStorage.setItem(key, raw), {
+    key: saveKey(421),
+    raw: saveEnvelope(state),
+  });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/play?seed=0421&resume=1");
+
+  await expect(page.getByRole("heading", { name: "Mission failed" })).toBeVisible();
+  const animationName = await page.getByTestId("mission-result").locator("[role='dialog']").evaluate((element) => getComputedStyle(element).animationName);
+  expect(animationName).toBe("none");
+  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 });
 
 test("reflows failed mission actions without a share slot", async ({ page }) => {

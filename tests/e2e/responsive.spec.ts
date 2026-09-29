@@ -5,7 +5,7 @@ import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "../../components/game/hooks
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { TILE_H, tileToScreen } from "../../lib/iso";
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, SLOT_VERSION, saveKey, slotKey } from "../../lib/persist/save";
-import { freshCampaignProgress } from "../../lib/persist/campaign";
+import { CAMPAIGN_PROGRESS_VERSION, campaignKey, freshCampaignProgress } from "../../lib/persist/campaign";
 import { createMission } from "../../lib/sim/api";
 import { addUnit, setHeight } from "../../lib/sim/fixtures";
 import { heightAt } from "../../lib/sim/world";
@@ -94,6 +94,7 @@ async function expectOperationsMapFit(
   await page.setViewportSize(viewport);
   await page.goto("/campaign?seed=0421");
   await expect(page.getByRole("heading", { name: "Operations map" })).toBeVisible();
+  await expect(page.getByTestId("operations-panel")).toHaveAttribute("data-complete", "false");
 
   const dimensions = await expectNoHorizontalOverflow(page);
   expect(dimensions.documentHeight).toBeLessThanOrEqual(viewport.height);
@@ -317,6 +318,7 @@ test.describe("campaign complete responsive layout", () => {
       await expect(page.getByRole("heading", { name: "Campaign record" })).toBeVisible();
 
       const panel = page.getByTestId("campaign-complete-panel");
+      await expect(panel).toHaveAttribute("data-complete", "false");
       const layout = await panel.evaluate((element) => {
         const panel = element as HTMLElement;
         panel.scrollTop = panel.scrollHeight;
@@ -333,6 +335,79 @@ test.describe("campaign complete responsive layout", () => {
       expect(bounds!.y).toBeGreaterThanOrEqual(0);
       expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height);
     }
+  });
+
+  test("centers the completed campaign finale and keeps its record controls reachable", async ({ page }) => {
+    const completedProgress = {
+      ...freshCampaignProgress(TEST_SEED),
+      unlockedMission: 5,
+      completedMissions: [0, 1, 2, 3, 4, 5],
+      medals: { "0": 2, "1": 2, "2": 2, "3": 2, "4": 2, "5": 2 },
+      bestScores: { "0": 1200, "1": 1200, "2": 1200, "3": 1200, "4": 1200, "5": 1200 },
+    };
+    await page.addInitScript(({ key, raw }) => localStorage.setItem(key, raw), {
+      key: campaignKey(TEST_SEED),
+      raw: JSON.stringify({ version: CAMPAIGN_PROGRESS_VERSION, savedAt: Date.now(), progress: completedProgress }),
+    });
+
+    for (const viewport of [
+      { width: 1280, height: 720 },
+      { width: 390, height: 844 },
+      { width: 320, height: 568 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/campaign-complete?seed=0421");
+      await expect(page.getByRole("heading", { name: "Campaign complete" })).toBeVisible();
+
+      const panel = page.getByTestId("campaign-complete-panel");
+      await expect(panel).toHaveAttribute("data-complete", "true");
+      await expect(page.getByText("Final campaign debrief")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Share dossier" })).toBeVisible();
+
+      const geometry = await panel.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        const htmlElement = element as HTMLElement;
+        return {
+          left: bounds.left,
+          top: bounds.top,
+          right: bounds.right,
+          bottom: bounds.bottom,
+          centerX: bounds.left + bounds.width / 2,
+          centerY: bounds.top + bounds.height / 2,
+          scrollHeight: htmlElement.scrollHeight,
+          clientHeight: htmlElement.clientHeight,
+          sceneArt: getComputedStyle(element).getPropertyValue("--scene-art"),
+        };
+      });
+      expect(geometry.left).toBeGreaterThanOrEqual(0);
+      expect(geometry.right).toBeLessThanOrEqual(viewport.width);
+      expect(geometry.top).toBeGreaterThanOrEqual(0);
+      expect(geometry.bottom).toBeLessThanOrEqual(viewport.height);
+      expect(Math.abs(geometry.centerX - viewport.width / 2)).toBeLessThanOrEqual(1);
+      expect(Math.abs(geometry.centerY - viewport.height / 2)).toBeLessThanOrEqual(1);
+      expect(geometry.sceneArt).toContain("/art/biomes/");
+
+      await panel.evaluate((element) => {
+        const scrollPanel = element as HTMLElement;
+        scrollPanel.scrollTop = scrollPanel.scrollHeight;
+      });
+      await expect(page.getByRole("button", { name: "Return to menu" })).toBeVisible();
+      expect(geometry.scrollHeight).toBeGreaterThan(geometry.clientHeight);
+    }
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/campaign-complete?seed=0421");
+    await expect(page.getByRole("heading", { name: "Campaign complete" })).toBeVisible();
+    const finaleMotion = await page.getByTestId("campaign-complete-panel").evaluate((panel) => {
+      const header = panel.querySelector<HTMLElement>("header");
+      const card = panel.querySelector<HTMLElement>("[data-testid^='mission-card-']");
+      return {
+        header: header ? getComputedStyle(header).animationName : "missing",
+        card: card ? getComputedStyle(card).animationName : "missing",
+      };
+    });
+    expect(finaleMotion.header).toBe("none");
+    expect(finaleMotion.card).toBe("none");
   });
 });
 

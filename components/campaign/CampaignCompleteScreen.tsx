@@ -27,6 +27,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
   const progress = useCampaignProgress(seed);
   const summary = campaignSummary(campaign, progress);
   const operations = mode === "operations";
+  const finale = !operations && summary.isComplete;
   const [selectedMissionIndex, setSelectedMissionIndex] = useState(() => Math.min(progress.unlockedMission, campaign.missions.length - 1));
   const [copied, setCopied] = useState(false);
 
@@ -74,7 +75,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
 
   const missionQueue = (
     <DossierSection
-      className={styles.section}
+      className={`${styles.section} ${finale ? styles.finaleMissionQueue : ""}`}
       aria-labelledby="mission-record-title"
       label={operations ? "Operations" : "Mission record"}
       title={<h2 id="mission-record-title" className={styles.sectionTitle}>{operations ? "Select an operation" : "Six operations"}</h2>}
@@ -138,7 +139,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
   const missionDetail = selectedMission ? (
     <ArtBackedCard
       as="section"
-      className={styles.detail}
+      className={`${styles.detail} ${finale ? styles.finaleDetail : ""}`}
       art={biomeArt(selectedMission.biome)}
       aria-labelledby="mission-detail-title"
       data-testid="mission-detail"
@@ -202,23 +203,24 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
 
   return (
     <main
-      className={`${styles.screen} ${operations ? styles.operationsScreen : ""}`}
-      style={{ "--scene-art": `url("${RASTER_ART.victory}")` } as React.CSSProperties}
+      className={`${styles.screen} ${operations ? styles.operationsScreen : ""} ${finale ? styles.finaleScreen : ""}`}
+      style={{ "--scene-art": `url("${finale ? biomeArt(campaign.world.biome) : RASTER_ART.victory}")` } as React.CSSProperties}
     >
       <DocumentTitle title={APP_NAME} />
       <div className={styles.vignette} />
       <div className={styles.content}>
         <MetalPanel
-          className={`${styles.panel} ${operations ? styles.operationsPanel : ""}`}
+          className={`${styles.panel} ${operations ? styles.operationsPanel : ""} ${finale ? styles.finalePanel : ""}`}
           data-testid={operations ? "operations-panel" : "campaign-complete-panel"}
+          data-complete={finale ? "true" : "false"}
         >
-          <header className={styles.header}>
+          <header className={`${styles.header} ${finale ? styles.finaleHeader : ""}`}>
             <div className={styles.headerIdentity}>
-              <ConsoleLabel>{operations ? "Campaign status" : "Strategic command record"}</ConsoleLabel>
+              <ConsoleLabel>{operations ? "Campaign status" : finale ? "Final campaign debrief" : "Strategic command record"}</ConsoleLabel>
               <h1 className={styles.title}>{operations ? "Operations map" : summary.isComplete ? "Campaign complete" : "Campaign record"}</h1>
-              <p className={styles.subtitle}>{operations ? "SELECT DEPLOYMENT" : summary.isComplete ? "CAMPAIGN SECURED" : "PROGRESS ARCHIVED"}</p>
+              <p className={styles.subtitle}>{operations ? "SELECT DEPLOYMENT" : finale ? `${summary.completed} OPERATIONS SECURED // COMMAND RECORD FINALIZED` : summary.isComplete ? "CAMPAIGN SECURED" : "PROGRESS ARCHIVED"}</p>
             </div>
-            <div className={styles.headerContext} aria-label="Campaign context">
+            <div className={`${styles.headerContext} ${finale ? styles.finaleContext : ""}`} aria-label="Campaign context">
               <span className={styles.contextSeed}>SEED {formatSeed(seed)}</span>
               <strong>{campaign.world.name}</strong>
               <span>{campaign.factions[0].name}</span>
@@ -226,7 +228,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
           </header>
 
           <MetricCluster
-            className={styles.summary}
+            className={`${styles.summary} ${finale ? styles.finaleSummary : ""}`}
             aria-label="Campaign summary"
             items={[
               {
@@ -256,7 +258,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
             </>
           )}
 
-          <ActionRail className={styles.actions}>
+          <ActionRail className={`${styles.actions} ${finale ? styles.finaleActions : ""}`}>
             <ConsoleButton
               tooltip={copied ? "Campaign dossier copied to clipboard!" : "Copy campaign score to clipboard"}
               onClick={handleShare}

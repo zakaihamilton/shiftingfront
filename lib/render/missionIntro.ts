@@ -35,24 +35,15 @@ const INTRO_RASTER_PADDING = 112;
 export const MISSION_INTRO_WIDTH = INTRO_REFERENCE_WIDTH;
 export const MISSION_INTRO_HEIGHT = INTRO_REFERENCE_HEIGHT;
 
-type CameraCurve = [Vec2, Vec2, Vec2, Vec2];
-
 export type MissionIntroBeatId = "establish" | "entry" | "arrival" | "deployment" | "reveal";
 export type MissionIntroBeat = { id: MissionIntroBeatId; start: number; end: number };
-export type MissionIntroCameraShot = MissionIntroBeat & {
-  cutOnEntry: boolean;
-  focus: CameraCurve;
-  zoomStart: number;
-  zoomEnd: number;
-  screenY: number;
-};
 
 const INTRO_BEATS: readonly MissionIntroBeat[] = [
-  { id: "establish", start: 0, end: 0.06 },
-  { id: "entry", start: 0.06, end: 0.66 },
-  { id: "arrival", start: 0.66, end: 0.72 },
-  { id: "deployment", start: 0.72, end: 0.88 },
-  { id: "reveal", start: 0.88, end: 1 },
+  { id: "establish", start: 0, end: 700 / INTRO_DURATION_MS },
+  { id: "entry", start: 700 / INTRO_DURATION_MS, end: 3_700 / INTRO_DURATION_MS },
+  { id: "arrival", start: 3_700 / INTRO_DURATION_MS, end: 4_500 / INTRO_DURATION_MS },
+  { id: "deployment", start: 4_500 / INTRO_DURATION_MS, end: 5_900 / INTRO_DURATION_MS },
+  { id: "reveal", start: 5_900 / INTRO_DURATION_MS, end: 1 },
 ];
 
 export type MissionIntroPlan = {
@@ -60,7 +51,7 @@ export type MissionIntroPlan = {
   routeDistances: number[];
   routeLength: number;
   beats: readonly MissionIntroBeat[];
-  shots: MissionIntroCameraShot[];
+  cameraOffset: Vec2;
   staging: MissionIntroBiomeStaging;
   yard: Entity;
   mapWidth: number;
@@ -225,21 +216,26 @@ export function createMissionIntroPlan(state: SimState, reducedMotion = false): 
   const routeLength = Math.max(1, routeDistances.at(-1) ?? 0);
   const beats = INTRO_BEATS.map((beat) => ({ ...beat }));
   const cameraSeed = state.seed ^ Math.imul(state.missionIndex + 1, 0x9e3779b9) ^ Math.imul(owner + 1, 0x85ebca6b);
-  const shots = createMissionIntroShots(
-    { route, routeDistances, routeLength, yard },
-    state.width,
-    state.height,
-    cameraSeed,
-    staging,
-    beats,
-  );
+  const first = route[0] ?? destination;
+  const forward = { x: destination.x - first.x, y: destination.y - first.y };
+  const forwardLength = Math.max(0.001, Math.hypot(forward.x, forward.y));
+  const right = { x: forward.y / forwardLength, y: -forward.x / forwardLength };
+  const center = { x: state.width / 2, y: state.height / 2 };
+  const inward = { x: center.x - first.x, y: center.y - first.y };
+  const sideSign = right.x * inward.x + right.y * inward.y >= 0 ? 1 : -1;
+  const handedness = seededFraction(cameraSeed, 1) < 0.5 ? -1 : 1;
+  const sideOffset = 0.06 + seededFraction(cameraSeed, 41) * 0.04;
+  const cameraOffset = {
+    x: right.x * sideSign * handedness * sideOffset,
+    y: right.y * sideSign * handedness * sideOffset,
+  };
 
   return {
     route,
     routeDistances,
     routeLength,
     beats,
-    shots,
+    cameraOffset,
     staging,
     yard,
     mapWidth: state.width,
@@ -317,83 +313,6 @@ function seededFraction(seed: number, salt: number): number {
   return value / 0x1_0000_0000;
 }
 
-function cubicCurve(points: Vec2[], progress: number): Vec2 {
-  const t = Math.max(0, Math.min(1, progress));
-  const inverse = 1 - t;
-  return {
-    x: inverse ** 3 * points[0]!.x + 3 * inverse ** 2 * t * points[1]!.x + 3 * inverse * t ** 2 * points[2]!.x + t ** 3 * points[3]!.x,
-    y: inverse ** 3 * points[0]!.y + 3 * inverse ** 2 * t * points[1]!.y + 3 * inverse * t ** 2 * points[2]!.y + t ** 3 * points[3]!.y,
-  };
-}
-
-function createMissionIntroShots(
-  plan: Pick<MissionIntroPlan, "route" | "routeDistances" | "routeLength" | "yard">,
-  mapWidth: number,
-  mapHeight: number,
-  seed: number,
-  staging: MissionIntroBiomeStaging,
-  beats: readonly MissionIntroBeat[],
-): MissionIntroCameraShot[] {
-  const start = pointAlongRoute(plan, 0).point;
-  const destination = pointAlongRoute(plan, 1).point;
-  const forward = { x: destination.x - start.x, y: destination.y - start.y };
-  const routeLength = Math.max(0.001, Math.hypot(forward.x, forward.y));
-  const right = { x: forward.y / routeLength, y: -forward.x / routeLength };
-  const center = { x: mapWidth / 2, y: mapHeight / 2 };
-  const inward = { x: center.x - start.x, y: center.y - start.y };
-  const sideSign = right.x * inward.x + right.y * inward.y >= 0 ? 1 : -1;
-  const handedness = seededFraction(seed, 1) < 0.5 ? -1 : 1;
-  const side = sideSign * handedness;
-  const focusAt = (progress: number, sideOffset = 0) => {
-    const point = pointAlongRoute(plan, progress).point;
-    return clampFocus({
-      x: point.x + right.x * sideOffset * side,
-      y: point.y + right.y * sideOffset * side,
-    }, mapWidth, mapHeight);
-  };
-  const beat = (id: MissionIntroBeatId) => beats.find((candidate) => candidate.id === id)!;
-  const makeShot = (
-    id: MissionIntroBeatId,
-    focusStart: number,
-    focusEnd: number,
-    zoomStart: number,
-    zoomEnd: number,
-    sideOffset: number,
-    screenY: number,
-    focusEndPoint?: Vec2,
-  ): MissionIntroCameraShot => {
-    const curveProgress = [0, 0.32, 0.68, 1] as const;
-    const focus = curveProgress.map((t) => {
-      if (t === 1 && focusEndPoint) return { ...focusEndPoint };
-      return focusAt(focusStart + (focusEnd - focusStart) * t, sideOffset);
-    }) as CameraCurve;
-    return {
-      ...beat(id),
-      cutOnEntry: id !== "establish",
-      focus,
-      zoomStart: Math.max(0.56, zoomStart),
-      zoomEnd: Math.max(0.56, zoomEnd),
-      screenY,
-    };
-  };
-
-  const zooms = staging.cameraZooms;
-  const sideOffset = 0.06 + seededFraction(seed, 41) * 0.04;
-  // The final shot frames the actual HQ origin, matching the gameplay camera.
-  const gameplayFocus = { x: plan.yard.x, y: plan.yard.y };
-  const gameplayScreenY = 1 / 3;
-  return [
-    // Each beat owns a separate composition. The end and start frames at beat
-    // boundaries intentionally differ so these play as editorial cuts rather
-    // than one continuous camera spline.
-    makeShot("establish", 0, 0.14, zooms[0], zooms[1], sideOffset, 0.35),
-    makeShot("entry", 0, 0.68, zooms[1], zooms[2], -0.22, 0.38),
-    makeShot("arrival", 0.92, 1, zooms[2], zooms[3], sideOffset + 0.16, 0.46),
-    makeShot("deployment", 1, 1, zooms[3], zooms[4], -0.34, 0.38),
-    makeShot("reveal", 1, 1, zooms[4], 1, 0, gameplayScreenY, gameplayFocus),
-  ];
-}
-
 export function sampleMissionIntroCameraPose(
   state: SimState,
   plan: MissionIntroPlan,
@@ -403,21 +322,33 @@ export function sampleMissionIntroCameraPose(
   height = INTRO_REFERENCE_HEIGHT,
 ): { pose: MissionIntroCameraPose } {
   const time = Math.max(0, Math.min(1, elapsedMs / Math.max(1, plan.durationMs)));
-  // Choosing a new shot at its beat boundary is a hard editorial cut. Each
-  // shot has its own start composition; camera motion stays smooth within it.
-  const shot = reducedMotion
-    ? plan.shots.at(-1)!
-    : plan.shots.find((candidate) => time < candidate.end) ?? plan.shots.at(-1)!;
-  const progress = reducedMotion
+  const entryBeat = plan.beats.find((beat) => beat.id === "entry")!;
+  const arrivalBeat = plan.beats.find((beat) => beat.id === "arrival")!;
+  const approach = reducedMotion
     ? 1
-    : Math.max(0, Math.min(1, (time - shot.start) / Math.max(0.001, shot.end - shot.start)));
-  const focus = cubicCurve(shot.focus, progress);
-  const zoom = shot.zoomStart + (shot.zoomEnd - shot.zoomStart) * progress;
-  const focusHeight = shot.id === "reveal" && progress === 1
+    : smoothstep((time - entryBeat.start) / (entryBeat.end - entryBeat.start));
+  const settle = reducedMotion
+    ? 1
+    : smoothstep((time - arrivalBeat.start) / (1 - arrivalBeat.start));
+  const convoy = pointAlongRoute(plan, approach).point;
+  const trackingFocus = clampFocus({
+    x: convoy.x + plan.cameraOffset.x,
+    y: convoy.y + plan.cameraOffset.y,
+  }, plan.mapWidth, plan.mapHeight);
+  const gameplayFocus = { x: plan.yard.x, y: plan.yard.y };
+  const focus = {
+    x: trackingFocus.x + (gameplayFocus.x - trackingFocus.x) * settle,
+    y: trackingFocus.y + (gameplayFocus.y - trackingFocus.y) * settle,
+  };
+  const trackingZoom = plan.staging.establishZoom
+    + (plan.staging.travelZoom - plan.staging.establishZoom) * approach;
+  const zoom = trackingZoom + (1 - trackingZoom) * settle;
+  const screenY = 0.43 + (1 / 3 - 0.43) * settle;
+  const focusHeight = (reducedMotion || settle === 1)
     ? heightAt(state, plan.yard.x, plan.yard.y)
     : groundHeight(state, focus.x, focus.y);
-  const camera = cameraForFocus(state, focus, zoom, shot.screenY, width, height, focusHeight);
-  return { pose: { camera, focus, zoom, screenY: shot.screenY } };
+  const camera = cameraForFocus(state, focus, zoom, screenY, width, height, focusHeight);
+  return { pose: { camera, focus, zoom, screenY } };
 }
 
 function cameraForFocus(
@@ -482,8 +413,8 @@ export function sampleMissionIntroTimeline(
     ? smoothstep((time - 0.22) / 0.48)
     : smoothstep((time - deploymentBeat.start) / (deploymentBeat.end - deploymentBeat.start));
   const transitionAlpha = Math.sin(deployment * Math.PI);
-  const vehicleAlpha = 1 - smoothstep((deployment - 0.18) / 0.3);
-  const structure = smoothstep((deployment - 0.32) / 0.52);
+  const vehicleAlpha = 1 - smoothstep((deployment - 0.16) / 0.42);
+  const structure = smoothstep((deployment - 0.08) / 0.72);
   const supportStart = reducedMotion ? 0.7 : revealBeat.start;
   const supportEnd = reducedMotion ? 0.9 : revealBeat.end;
   const supportConstruction = structure >= 1
@@ -582,28 +513,47 @@ function colorWithAlpha(color: string, alpha: number): string {
   return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
 }
 
-function drawDeploymentGlow(
+function drawDeploymentEffects(
   ctx: CanvasRenderingContext2D,
   state: SimState,
   plan: MissionIntroPlan,
   camera: Camera,
-  alpha: number,
+  deployment: number,
+  glowAlpha: number,
   palette: Palette,
 ): void {
-  if (alpha <= 0) return;
+  if (deployment <= 0) return;
   const footprint = footprintOf("constructionYard");
   const centerX = plan.yard.x + (footprint.w - 1) / 2;
   const centerY = plan.yard.y + (footprint.h - 1) / 2;
   const ground = tileToScreen(centerX, centerY, camera, groundHeight(state, centerX, centerY));
   const radius = 112 * camera.zoom;
   const glow = ctx.createRadialGradient(ground.x, ground.y - 24 * camera.zoom, 0, ground.x, ground.y - 24 * camera.zoom, radius);
-  glow.addColorStop(0, colorWithAlpha(palette.accent, 0.3 * alpha));
-  glow.addColorStop(0.45, colorWithAlpha(palette.accent, 0.11 * alpha));
+  glow.addColorStop(0, colorWithAlpha(palette.accent, 0.3 * glowAlpha));
+  glow.addColorStop(0.45, colorWithAlpha(palette.accent, 0.11 * glowAlpha));
   glow.addColorStop(1, colorWithAlpha(palette.accent, 0));
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   ctx.fillStyle = glow;
   ctx.fillRect(ground.x - radius, ground.y - 24 * camera.zoom - radius, radius * 2, radius * 2);
+  const ringProgress = smoothstep(Math.min(1, deployment / 0.82));
+  const ringFadeIn = smoothstep(deployment / 0.12);
+  const ringFadeOut = 1 - smoothstep((deployment - 0.68) / 0.32);
+  ctx.globalAlpha = 0.42 * ringFadeIn * ringFadeOut;
+  ctx.strokeStyle = palette.accent;
+  ctx.lineWidth = Math.max(0.8, 1.25 * camera.zoom);
+  ctx.setLineDash([7 * camera.zoom, 5 * camera.zoom]);
+  ctx.beginPath();
+  ctx.ellipse(
+    ground.x,
+    ground.y,
+    (16 + 94 * ringProgress) * camera.zoom,
+    (8 + 44 * ringProgress) * camera.zoom,
+    0,
+    0,
+    Math.PI * 2,
+  );
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -758,7 +708,7 @@ export function drawMissionIntro(
 
   output.save();
   output.globalAlpha = 1 - fade;
-  drawDeploymentGlow(output, state, playback.plan, pose.camera, timeline.transitionAlpha, factionPalette);
+  drawDeploymentEffects(output, state, playback.plan, pose.camera, timeline.deployment, timeline.transitionAlpha, factionPalette);
   drawConvoy(output, state, pose.camera, routePose.point, heading, timeline.vehicleAlpha, factionPalette);
   drawCommandYard(output, state, playback.plan, pose.camera, timeline.structure);
   output.restore();

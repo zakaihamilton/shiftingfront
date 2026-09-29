@@ -89,10 +89,10 @@ export function useGameRuntimeInteraction({
   const mobileLauncherRef = useRef<HTMLButtonElement>(null);
 
   const input = useGameInput({
-    stateRef, camRef, selectedRef: selected, selectedIds, commitSelection, commandPort,
+    stateRef, camRef, canvasRef, cancelCameraFocus: camera.cancelFocusAnimation, selectedRef: selected, selectedIds, commitSelection, commandPort,
     placeRef: place, placeKind, setPlaceKind, repairRef: repair, repairMode, setRepairMode,
     sellRef: sell, sellMode, setSellMode, clearTools, mobileCommandRef: mobileCommand,
-    setMobileCommandState, pausedRef, panAvailRef, applyEdgePan, selectionModeRef, setSelectionMode,
+    setMobileCommandState, pausedRef, panAvailRef, setPanAvailability: camera.setPanAvail, applyEdgePan, selectionModeRef, setSelectionMode,
     onCommandNotice: announceCommandFeedback, onCommandRejection: recordCommandRejection, uxRef,
   });
   const { hoverRef, cursorRef, boxRef, commandMarkerRef, resetInput, onDown, onEnter, onMove, onLeave, onUp, onCancel } = input;

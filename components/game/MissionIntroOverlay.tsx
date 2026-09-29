@@ -7,6 +7,8 @@ import { MISSION_INTRO_BIOMES } from "@/lib/render/missionIntroBiome";
 import styles from "./MissionIntroOverlay.module.css";
 
 export function MissionIntroOverlay({ waiting, reducedMotion, confirmationOpen, onSkip, biome, phase }: { waiting: boolean; reducedMotion: boolean; confirmationOpen: boolean; onSkip: () => void; biome: BiomeName; phase: MissionIntroPhase }) {
+  const channelStatus = waiting ? "SYNCING FIELD UNITS" : phase;
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (waiting || confirmationOpen || event.repeat || !(event.key === "Escape" || event.key === "Enter" || event.key === " ")) return;
@@ -42,7 +44,7 @@ export function MissionIntroOverlay({ waiting, reducedMotion, confirmationOpen, 
           </div>
           <div className={styles.channel}>
             <span className={styles.channelLight} />
-            <span>{waiting ? "SYNCING FIELD UNITS" : phase}</span>
+            <span className={styles.channelStatus} key={channelStatus}>{channelStatus}</span>
           </div>
         </header>
         <div className={styles.heroTitle} aria-hidden="true">

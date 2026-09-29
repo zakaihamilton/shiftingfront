@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { formatMissionClockFromTicks } from "@/lib/gen/pacing";
 import { formatSeed } from "@/lib/seed/rng";
 import type { MissionObjective } from "@/lib/gen/story";
 import { deadlineUrgency, type ObjectiveCardModel } from "@/lib/ui/missionPresentation";
@@ -98,7 +99,8 @@ export function BattlefieldHud({
     : urgency === "urgent" ? "Urgent deadline"
       : urgency === "watch" ? "Deadline watch"
         : "Time remaining";
-  const timerValue = timeRemaining?.replace(/^Time remaining\s*/, "") ?? "";
+  const timerValue = timeRemaining?.replace(/^Time remaining\s*/, "")
+    ?? (timeRemainingTicks === undefined ? "" : formatMissionClockFromTicks(Math.max(0, timeRemainingTicks)));
   const timerText = urgency === "normal" ? `Time remaining ${timerValue}` : `Time remaining ${timerValue} · ${timerLabel}`;
   const requiredCards = objectiveCards.filter((card) => !card.primary && card.priority === "primary");
   const optionalCards = objectiveCards.filter((card) => !card.primary && card.priority !== "primary");
@@ -112,7 +114,10 @@ export function BattlefieldHud({
     setDirectiveExpanded((expanded) => !expanded);
     onObjectivePanelToggle?.();
   };
-  const timerReadout = timeRemaining ? (
+  // Hold objectives have ticks but no separate countdown string; surface their
+  // clock only while the objective details that already contain it are hidden.
+  const showTimerReadout = timeRemaining !== undefined || (!directiveExpanded && timeRemainingTicks !== undefined);
+  const timerReadout = showTimerReadout ? (
     <div className={styles.timeRemaining} data-testid="time-remaining" data-placement={directiveExpanded ? "body" : "collapsed"} data-urgency={urgency} data-tooltip="Time left to complete the primary objective. The mission fails at 00:00.">
       <span className={styles.timerGlyph} aria-hidden="true">{timerGlyph}</span>
       <span>{timerText}</span>
@@ -191,7 +196,9 @@ export function BattlefieldHud({
               {primaryCard && primaryCard.target > 0 ? (
                 <span className={styles.objectiveProgress}>
                   <span>{primaryCard.label}</span>
-                  <span className={styles.objectiveCount}>{Math.min(primaryCard.current, primaryCard.target)} / {primaryCard.target}</span>
+                  {primaryCard.showCount !== false ? (
+                    <span className={styles.objectiveCount}>{Math.min(primaryCard.current, primaryCard.target)} / {primaryCard.target}</span>
+                  ) : null}
                   <span className={styles.objectiveBar} aria-hidden="true">
                     <span style={{ width: `${Math.round(Math.max(0, Math.min(1, primaryCard.current / primaryCard.target)) * 100)}%` }} />
                   </span>

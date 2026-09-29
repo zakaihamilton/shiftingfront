@@ -57,6 +57,7 @@ The battlefield supports mouse, keyboard, and touch play. The HUD shows the comp
 | Right click | Move while firing at enemies on the way; attack enemy targets, harvest ore, or assign support. |
 | Ctrl / Cmd + right click | Explicit attack-move order with the same attack-and-continue behavior. |
 | WASD / arrow keys | Pan the camera. |
+| Two-finger trackpad scroll / mouse wheel | Pan the camera with the gesture. |
 | `R` / `F` / `X` | Repair, scrap, or stop selected units. |
 | `Space` / `Esc` | Center on the selection, or pause and cancel. |
 | Touch under 800px | Use the mobile command tray. |
