@@ -229,12 +229,18 @@
 
 .priorityIcon {
   display: inline-grid;
-  width: 0.9rem;
-  height: 0.9rem;
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  box-sizing: border-box;
+  padding: 0;
   place-items: center;
   border: 1px solid currentColor;
   color: var(--chrome-gold);
-  font-size: var(--text-2xs);
+  font-size: 0.625rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .objective > strong {

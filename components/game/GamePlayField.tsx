@@ -42,8 +42,8 @@ export function GamePlayField({
       panAvail={panAvail}
       hotPan={hotPan}
       seed={state.seed}
-      levelNumber={state.missionIndex + 1}
-      levelCount={campaign.missions.length}
+      levelNumber={state.multiplayer ? 1 : state.missionIndex + 1}
+      levelCount={state.multiplayer ? 1 : campaign.missions.length}
       missionName={state.missionName}
       objective={status.objective}
       profileLabel={tutorial ? undefined : status.profileLabel}
