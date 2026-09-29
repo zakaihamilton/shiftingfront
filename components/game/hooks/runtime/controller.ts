@@ -47,7 +47,6 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
     onAlert: presentationPorts.onAlert,
     persistenceRef: simRefs.persistenceRef,
     suppressImplicitSavesRef: simRefs.suppressImplicitSavesRef,
-    canPersist: () => !simRefs.missionIntroActiveRef?.current,
   });
   const presentation = createPresentationCoordinator({
     cameraRef: interactionRefs.cameraRef,

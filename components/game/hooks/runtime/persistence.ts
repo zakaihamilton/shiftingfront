@@ -22,7 +22,6 @@ export function createPersistenceCoordinator({
   onAlert,
   persistenceRef,
   suppressImplicitSavesRef,
-  canPersist,
 }: {
   stateRef: { current: SimState };
   terminalSaveRef: { current: boolean };
@@ -32,7 +31,6 @@ export function createPersistenceCoordinator({
   onAlert: (text: string) => void;
   persistenceRef: { current: RuntimePersistenceState };
   suppressImplicitSavesRef?: { current: () => void };
-  canPersist?: () => boolean;
 }) {
   const saveRetry: SaveRetry = persistenceRef.current.saveRetry;
   let idleHandle: number | null = null;
@@ -48,7 +46,7 @@ export function createPersistenceCoordinator({
   };
 
   const saveImplicit = (state: SimState, now: number) => {
-    if (implicitSavesSuppressed || canPersist?.() === false) return "saved" as const;
+    if (implicitSavesSuppressed) return "saved" as const;
     const status = saveSession.write(state, "implicit");
     saveRetry.state = state;
     saveRetry.retry = status === "failed";
@@ -78,7 +76,7 @@ export function createPersistenceCoordinator({
   };
 
   const scheduleAutosave = () => {
-    if (!persistCampaign || implicitSavesSuppressed || canPersist?.() === false) return;
+    if (!persistCampaign || implicitSavesSuppressed) return;
     cancelIdle();
     const run = () => {
       idleHandle = null;
@@ -94,7 +92,7 @@ export function createPersistenceCoordinator({
   };
 
   const saveOnPageHide = () => {
-    if (!persistCampaign || canPersist?.() === false) return;
+    if (!persistCampaign) return;
     const state = stateRef.current;
     saveImplicit(state, performance.now());
     if (state.result === "won" && !campaignRecordedRef.current && recordWonCampaignProgress(cachedLocalStorage(), state)) {
@@ -119,7 +117,7 @@ export function createPersistenceCoordinator({
     suppressImplicitSaves,
     scheduleAutosave,
     onTickFrame(state: SimState, now: number) {
-      if (!persistCampaign || implicitSavesSuppressed || canPersist?.() === false) return;
+      if (!persistCampaign || implicitSavesSuppressed) return;
       if (saveRetry.retry && now >= saveRetry.nextAttemptMs) saveImplicit(state, now);
       if (state.result === "won" && !campaignRecordedRef.current && now >= nextCampaignSaveAttemptMs) {
         const recorded = recordWonCampaignProgress(cachedLocalStorage(), state);
@@ -131,7 +129,7 @@ export function createPersistenceCoordinator({
       }
     },
     onTerminal(state: SimState, now: number, counters: RuntimeCounters) {
-      if (!persistCampaign || implicitSavesSuppressed || canPersist?.() === false) return;
+      if (!persistCampaign || implicitSavesSuppressed) return;
       cancelIdle();
       saveImplicit(state, now);
       recordTelemetry(

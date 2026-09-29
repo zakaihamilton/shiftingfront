@@ -33,7 +33,6 @@ export type GameCommandHandlers = {
 export type GameKeyboardParams = Omit<GameCommandHandlers, "activeTab"> & {
   stateRef: MutableRefObject<SimState>;
   pausedRef: MutableRefObject<boolean>;
-  missionIntroActiveRef?: MutableRefObject<boolean>;
   pauseViewRef: MutableRefObject<PauseView>;
   activeTabRef: MutableRefObject<CommandTab>;
   place: MutableRefObject<BuildingKind | null>;

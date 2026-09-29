@@ -5,7 +5,6 @@ import { useGameRuntime } from "./hooks/useGameRuntime";
 import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "./hooks/runtime/surfaces";
 import { TacticalScreen } from "./TacticalScreen";
 import { APP_NAME } from "@/lib/site";
-import { PageFallback } from "@/components/ui/PageFallback";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
 import { registerGameplayAudioClient } from "@/lib/audio/mixer";
 
@@ -38,8 +37,6 @@ export function GameClient({
 
   useEffect(() => registerGameplayAudioClient(), []);
   useEffect(() => multiplayerSession?.startLatencyProbes(), [multiplayerSession]);
-
-  if (!runtime.battlefieldReady) return <PageFallback>Preparing battlefield…</PageFallback>;
 
   return (
     <TacticalScreen

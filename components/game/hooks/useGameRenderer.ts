@@ -7,7 +7,6 @@ import type { BuildingKind, SimState } from "@/lib/types";
 import { renderGameFrame } from "../renderFrame";
 import { createScreenShakeState, updateScreenShake, type ScreenShakeState } from "@/lib/render/screenShake";
 import type { SelectionBox } from "./selectionBox";
-import type { MissionIntroPlayback } from "@/lib/render/missionIntro";
 
 type Point = { x: number; y: number };
 
@@ -42,7 +41,6 @@ export function useGameRenderer({
   sell,
   reducedMotionOverride = false,
   colorblindMode,
-  missionIntroRef,
 }: {
   stateRef: RefObject<SimState | null>;
   hostRef: RefObject<HTMLDivElement | null>;
@@ -61,7 +59,6 @@ export function useGameRenderer({
   sell: MutableRefObject<boolean>;
   reducedMotionOverride?: boolean;
   colorblindMode?: import("@/lib/persist/settings").ColorblindMode;
-  missionIntroRef?: MutableRefObject<MissionIntroPlayback | null>;
 }) {
   const systemReducedMotion = useSyncExternalStore(subscribeReducedMotion, reducedMotionSnapshot, () => false);
   const reducedMotion = systemReducedMotion || reducedMotionOverride;
@@ -127,7 +124,6 @@ export function useGameRenderer({
       nowMs: currentNow,
       subTickAlpha,
       colorblindMode,
-      missionIntro: missionIntroRef?.current ?? null,
     });
     worldCtxRef.current = frame.worldCtx;
     tooltipCtxRef.current = frame.tooltipCtx;
@@ -139,7 +135,7 @@ export function useGameRenderer({
       ? renderCost
       : renderCostAverageRef.current * 0.75 + renderCost * 0.25;
     lastRenderedAtRef.current = currentNow;
-  }, [boxRef, camRef, canvasRef, colorblindMode, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, missionIntroRef, place, reducedMotion, repair, selected, sell, stateRef, tooltipCanvasRef]);
+  }, [boxRef, camRef, canvasRef, colorblindMode, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, place, reducedMotion, repair, selected, sell, stateRef, tooltipCanvasRef]);
 
   return { extrasRef, fxRef, fxSeq, screenShakeRef, redraw };
 }
