@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { pauseMusic, setMusicCue, setMusicDucked } from "@/lib/audio/music";
+import { cancelVoiceSpeech } from "@/lib/audio/voice";
 import type { SimState } from "@/lib/types";
 
 export function useGameAudioLifecycle({ seed, missionIndex, tutorial, paused, result }: { seed: number; missionIndex: number; tutorial: boolean; paused: boolean; result: SimState["result"] }) {
@@ -14,5 +15,7 @@ export function useGameAudioLifecycle({ seed, missionIndex, tutorial, paused, re
 
   useEffect(() => () => {
     setMusicDucked(false);
+    pauseMusic();
+    cancelVoiceSpeech();
   }, []);
 }

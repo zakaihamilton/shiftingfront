@@ -67,7 +67,10 @@
 .battle { position: relative; min-height: 100dvh; }
 .connectionOverlay {
   composes: overlay from "../game/dialog.module.css";
+  position: fixed;
+  inset: 0;
   z-index: 120;
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(3px);
 }
 .connectionDialog {

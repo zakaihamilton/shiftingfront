@@ -26,6 +26,9 @@ export const SFX_MAKEUP_GAIN = 1.35;
 let levels: AudioLevels = { ...DEFAULT_LEVELS };
 let enabled: Record<AudioBus, boolean> = { music: true, sfx: true };
 let foreground = true;
+let browserForeground = true;
+let gameplayAudioManaged = false;
+const gameplayAudioClients = new Set<symbol>();
 let master: GainNode | null = null;
 let music: GainNode | null = null;
 let sfx: GainNode | null = null;
@@ -163,14 +166,36 @@ export function setAudioBusEnabled(bus: AudioBus, value: boolean): void {
   }
 }
 
-/** Mute both buses while the game is not the active foreground page. */
-export function setAudioForeground(value: boolean): void {
-  foreground = value;
+function updateForeground(): void {
+  foreground = browserForeground && (!gameplayAudioManaged || gameplayAudioClients.size > 0);
   const audio = peekAudioContext();
   if (audio) {
     ensureMixer(audio);
     applyLevels(audio);
   }
+}
+
+/** Update whether the browser document is visible and focused. */
+export function setAudioForeground(value: boolean): void {
+  browserForeground = value;
+  updateForeground();
+}
+
+/** Require a mounted gameplay client before allowing audio in the app. */
+export function setGameplayAudioManaged(value: boolean): void {
+  gameplayAudioManaged = value;
+  updateForeground();
+}
+
+/** Register a live gameplay surface and mute audio again when it unmounts. */
+export function registerGameplayAudioClient(): () => void {
+  const client = Symbol("gameplay-audio-client");
+  gameplayAudioClients.add(client);
+  updateForeground();
+  return () => {
+    if (!gameplayAudioClients.delete(client)) return;
+    updateForeground();
+  };
 }
 
 /** Briefly make room for nearby heavy battlefield cues, then recover the saved music level. */
@@ -187,10 +212,11 @@ export function duckMusic(depth = 0.78, duration = 0.16): void {
     until: Math.max(nextUntil, activeDuck?.until ?? 0),
     depth: Math.min(nextDepth, activeDuck?.depth ?? 1),
   };
-  const ducked = levels.musicVolume * musicDuck.depth;
+  const musicAudible = enabled.music && foreground;
+  const ducked = musicAudible ? levels.musicVolume * musicDuck.depth : 0;
   music.gain.cancelScheduledValues?.(now);
   music.gain.setTargetAtTime(ducked, now, 0.018);
-  music.gain.setTargetAtTime(levels.musicVolume, musicDuck.until, 0.08);
+  music.gain.setTargetAtTime(musicAudible ? levels.musicVolume : 0, musicDuck.until, 0.08);
 }
 
 export function getAudioLevels(): AudioLevels {
@@ -201,6 +227,9 @@ export function resetAudioMixerForTests(): void {
   levels = { ...DEFAULT_LEVELS };
   enabled = { music: true, sfx: true };
   foreground = true;
+  browserForeground = true;
+  gameplayAudioManaged = false;
+  gameplayAudioClients.clear();
   musicDuck = null;
   teardownMixer();
 }

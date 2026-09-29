@@ -1,3 +1,13 @@
+.overlay {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  justify-content: safe center;
+  padding: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .dialog {
   width: 100%;
   max-width: min(100%, 38rem);
