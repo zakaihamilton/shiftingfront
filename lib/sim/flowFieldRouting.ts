@@ -1,6 +1,7 @@
 import type { Entity, SimState } from "../types";
 import { flowCellTaken, flowDistanceAt, flowFieldForGoals, flowStep, type FlowField } from "./flowField";
 import { navigationEdgeKey, navigationEdgeReserved, returnsToPreviousCell } from "./navigation/grid";
+import { reversesPreviousStep } from "./pathfinding";
 import { tryFindPathDetailed } from "./pathBudget";
 import { entitiesFor } from "./entities";
 import { navigationMobilityFor } from "./terrainRules";
@@ -356,7 +357,7 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     return true;
   }
   const first = result.path[0];
-  if (first && isPlayerControlledOwner(state, entity.owner) && entity.scenarioRole !== "convoy" && returnsToPreviousCell(
+  if (first && isPlayerControlledOwner(state, entity.owner) && entity.scenarioRole !== "convoy" && reversesPreviousStep(
     state.width,
     Math.round(entity.x),
     Math.round(entity.y),
