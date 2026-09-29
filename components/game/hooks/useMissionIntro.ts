@@ -162,8 +162,9 @@ export function useMissionIntro({
         setPhase(nextPhase);
       }
       if (!localReadyRef.current) {
-        playback.elapsedMs = Math.min(playback.plan.durationMs, playback.elapsedMs + delta);
-        if (playback.elapsedMs >= playback.plan.durationMs) {
+        const readyAt = session ? playback.plan.durationMs * 0.9 : playback.plan.durationMs;
+        playback.elapsedMs = Math.min(readyAt, playback.elapsedMs + delta);
+        if (playback.elapsedMs >= readyAt) {
           if (session) markReady();
           else {
             finish();

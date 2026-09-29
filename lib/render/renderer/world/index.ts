@@ -61,7 +61,7 @@ export function renderWorld(
   const owner = state.viewOwner ?? 0;
   for (const kind of SHARED_PRODUCER_KINDS) {
     const producer = activeProducerFor(state, owner, kind);
-    if (producer) drawActiveProducerIndicator(ctx, state, cam, producer);
+    if (producer) drawActiveProducerIndicator(ctx, state, cam, producer, selected.has(producer.id));
   }
 
   lap("entities");
@@ -91,7 +91,7 @@ export function renderWorld(
   return profile ? timings : null;
 }
 
-function drawActiveProducerIndicator(ctx: CanvasRenderingContext2D, state: SimState, cam: Camera, producer: Entity): void {
+function drawActiveProducerIndicator(ctx: CanvasRenderingContext2D, state: SimState, cam: Camera, producer: Entity, selected: boolean): void {
   if (!isBuildingEntity(producer)) return;
   const footprint = footprintOf(producer.kind);
   const centerX = producer.x + (footprint.w - 1) / 2;
@@ -104,7 +104,11 @@ function drawActiveProducerIndicator(ctx: CanvasRenderingContext2D, state: SimSt
   ctx.strokeStyle = "#59f0c6";
   ctx.fillStyle = "rgba(8, 31, 29, 0.94)";
   ctx.lineWidth = Math.max(2, 2.5 * cam.zoom);
-  strokeFootprint(ctx, state, cam, producer.x, producer.y, footprint.w, footprint.h);
+  if (!selected) {
+    ctx.setLineDash([1, 3]);
+    ctx.lineCap = "round";
+    strokeFootprint(ctx, state, cam, producer.x, producer.y, footprint.w, footprint.h);
+  }
   ctx.font = `700 ${fontSize}px monospace`;
   const badgeWidth = ctx.measureText("ACTIVE").width + 12;
   const badgeX = Math.round(screen.x - badgeWidth / 2);
