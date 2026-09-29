@@ -363,10 +363,19 @@ function resetPreviousCellsForNewOrders(
 ): void {
   for (const entity of entitiesFor(state)) {
     if (entity.class !== "unit") continue;
-    const destination = entity.orderDestination;
-    const flowGoal = entity.flowGoal;
-    const intent = `${entity.orderMode ?? ""}:${destination?.x ?? ""},${destination?.y ?? ""}:${flowGoal?.x ?? ""},${flowGoal?.y ?? ""}`;
+    const intent = movementIntent(entity);
     if (movementIntents.get(entity.id) !== intent) previousCells.delete(entity.id);
     movementIntents.set(entity.id, intent);
   }
+}
+
+function movementIntent(entity: Entity): string {
+  const orderMode = entity.orderMode ?? "";
+  // Pursuit coordinates move continuously; identify those orders by target so
+  // following a moving entity does not erase the unit's last navigation step.
+  if (entity.attackTarget !== undefined) return `${orderMode}:attack:${entity.attackTarget}`;
+  if (entity.supportTargetId !== undefined) return `${orderMode}:support:${entity.supportTargetId}`;
+  const cellKey = (point: { x: number; y: number } | undefined) =>
+    point ? `${Math.round(point.x)},${Math.round(point.y)}` : "";
+  return `${orderMode}:${cellKey(entity.orderDestination)}:${cellKey(entity.flowGoal)}`;
 }

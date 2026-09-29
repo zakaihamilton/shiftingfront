@@ -211,7 +211,12 @@ function prepareSmallGroupRoutes(
       Math.abs(Math.round(entity.y) - Math.round(goal.y)),
     );
     if (personalCheb <= ARRIVAL_DISTANCE || sharedCheb <= ARRIVAL_DISTANCE) {
-      if (finishFlowFieldRoute(state, occupancy, entity)) continue;
+      if (finishFlowFieldRoute(
+        state,
+        occupancy,
+        entity,
+        isPlayerControlledOwner(state, entity.owner) ? previousCells?.get(entity.id) : undefined,
+      )) continue;
       entity.routePending = true;
       continue;
     }
@@ -344,6 +349,16 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     occupancy,
   });
   if (!result) return false;
+  if (result.status === "unreachable") return false;
+  const first = result.path[0];
+  if (first && isPlayerControlledOwner(state, entity.owner) && entity.scenarioRole !== "convoy" && reversesPreviousStep(
+    state.width,
+    Math.round(entity.x),
+    Math.round(entity.y),
+    Math.round(first.x),
+    Math.round(first.y),
+    previousCell,
+  )) return false;
   // A temporary unit blockade must not consume the shared flow route. A
   // useful partial path gets one tick to run while the flow goal remains
   // attached; a blocked or exhausted partial path rejoins the field.
@@ -354,20 +369,10 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     entity.idle = false;
     return true;
   }
-  if (result.status === "unreachable") return false;
   const last = result.path[result.path.length - 1];
   if (last && (Math.round(last.x) !== Math.round(destination.x) || Math.round(last.y) !== Math.round(destination.y))) {
     return false;
   }
-  const first = result.path[0];
-  if (first && isPlayerControlledOwner(state, entity.owner) && entity.scenarioRole !== "convoy" && reversesPreviousStep(
-    state.width,
-    Math.round(entity.x),
-    Math.round(entity.y),
-    Math.round(first.x),
-    Math.round(first.y),
-    previousCell,
-  )) return false;
   // Keep the shared goal attached until the unit actually reaches its slot.
   // This makes a complete static path a temporary handoff, so a newly
   // occupied waypoint can return the unit to the flow field instead of
