@@ -43,7 +43,7 @@ Ensure all gates pass with 0 errors and 0 warnings. `yarn health:balance` runs o
 
 ## 2. Production Web Deployment (`shiftingfront.com` / `www.shiftingfront.com`)
 
-Shifting Front is a fully client-side Next.js application running on Vercel production hosting.
+Shifting Front runs on Vercel production hosting. Campaign and tutorial simulation and persistence run in the browser; multiplayer uses Next.js server routes and Peerovo. Configure the server-only variables listed in the [README](../README.md#online-skirmishes) before enabling online play.
 
 ### Domain & DNS Verification
 

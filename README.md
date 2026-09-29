@@ -74,6 +74,8 @@ The **MULTIPLAYER** menu opens a one-battle free-for-all for two to four players
 
 If a guest disconnects during a match, play pauses while they have up to 60 seconds to reconnect to their reserved seat. If they do not return in time, their force is forfeited and the remaining match resumes.
 
+Campaign and tutorial play work without multiplayer configuration. Missing configuration or unavailable multiplayer services display a connection error in the lobby; they do not prevent local play.
+
 The Next.js server needs these server-only variables to enable room creation and joining:
 
 | Variable | Purpose |
