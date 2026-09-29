@@ -85,9 +85,10 @@ export function sellBuilding(state: SimState, buildingId: number): SimEvent[] {
   const owner = commandOwner(state);
   const e = byId(state, buildingId);
   if (!e || !isBuildingEntity(e) || e.owner !== owner || !canSell(e)) return [];
-  refundQueuedUnits(state, e);
-  state.credits[owner] += sellRefundFor(e.kind, e.hp);
+  const buildingRefund = sellRefundFor(e.kind, e.hp);
   e.hp = 0;
+  refundQueuedUnits(state, e);
+  state.credits[owner] += buildingRefund;
   invalidateEntityCaches(state);
   e.repairing = false;
   invalidateNavigation(state, e.id);

@@ -1,6 +1,7 @@
-import { isSupportUnit, UNIT_STATS } from "../../catalog";
+import { isSupportUnit, producerFor, UNIT_STATS } from "../../catalog";
 import { isUnitEntity, type BuildingKind, type Command, type Entity, type MissionKind, type SimState, type UnitKind } from "../../types";
 import { livingView } from "../world";
+import { isSharedProducerKind, readSharedProductionQueue } from "../producerState";
 
 export const COMMANDER_CADENCE = 24;
 export const COMBAT_ORDER_REFRESH = 96;
@@ -11,9 +12,7 @@ export const YARD_THREAT_RADIUS = 18;
 // surgical strike: chasing scouts at the larger radius is what blows the
 // deadline. Timed recovery already uses the generic yard radius.
 export const OFFENSIVE_RESPONSE_RADIUS = 24;
-// Keep this list aligned with generated structure-quota objectives. Barracks
-// and factories are single-instance buildings, so asking the commander to
-// build another one would produce a rejected command forever.
+// Keep this list aligned with generated structure-quota objectives.
 export const STRUCTURE_QUOTA_KINDS: BuildingKind[] = ["power", "refinery", "turret"];
 export const OFFENSIVE_KINDS = new Set<MissionKind>([
   "sabotage",
@@ -116,6 +115,11 @@ export function readyProducers(state: SimState, kind: BuildingKind): Entity[] {
 }
 
 export function queuedUnitCount(state: SimState, kind: UnitKind): number {
+  const producerKind = producerFor(kind);
+  if (isSharedProducerKind(producerKind)) {
+    const queue = readSharedProductionQueue(state, 0, producerKind);
+    return (queue.producing?.kind === kind ? 1 : 0) + queue.queue.filter((item) => item === kind).length;
+  }
   let count = 0;
   for (const producer of playerBuildingsView(state)) {
     const active = producer.producing?.kind === kind ? 1 : 0;

@@ -8,7 +8,7 @@ import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { isPlayerSelectableUnit, type BuildingKind, type Command, type Formation, type SimState, type Stance, type UnitKind } from "@/lib/types";
 import { inBounds, terrainAccess } from "@/lib/sim/world";
 import type { MobileCommand } from "../mobileCommandTypes";
-import { PLACEABLE, PRODUCIBLE, leastLoadedProducer } from "./gameActions";
+import { PLACEABLE, PRODUCIBLE, productionBuildingFor } from "./gameActions";
 import { createRuntimeCommandPort, type RuntimeCommandPort } from "./runtime/facade";
 import type { CommandNoticeKind } from "./useGameChrome";
 
@@ -231,7 +231,7 @@ export function useGameActions({
     notify("Construction cancelled.", "info");
   }, [enqueue, notify, stateRef]);
 
-  const availableProducer = useCallback((unit: UnitKind) => leastLoadedProducer(stateRef.current, stateRef.current.viewOwner ?? 0, unit), [stateRef]);
+  const availableProducer = useCallback((unit: UnitKind) => productionBuildingFor(stateRef.current, stateRef.current.viewOwner ?? 0, unit), [stateRef]);
 
   const queueUnit = useCallback((unit: UnitKind) => {
     const next = availableProducer(unit);

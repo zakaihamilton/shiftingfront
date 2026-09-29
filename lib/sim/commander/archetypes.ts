@@ -19,6 +19,7 @@ import {
   readyProducers,
   totalUnitCount,
 } from "./queries";
+import { isSharedProducerKind, readSharedProductionQueue, sharedProductionQueueSize } from "../producerState";
 
 export type ArchetypeStrategy = Exclude<BalanceStrategy, "competent" | "baseline">;
 
@@ -134,8 +135,14 @@ function productionCommands(state: SimState, strategy: ArchetypeStrategy): Comma
     + queuedUnitCount(state, "tank");
   const producers = [...readyProducers(state, "barracks"), ...readyProducers(state, "factory")]
     .sort((a, b) => a.id - b.id);
+  const handledKinds = new Set<string>();
   for (const producer of producers) {
-    if (productionQueueSize(producer) >= MAX_ARCHETYPE_QUEUE) continue;
+    if (handledKinds.has(producer.kind)) continue;
+    handledKinds.add(producer.kind);
+    const queueSize = isSharedProducerKind(producer.kind)
+      ? sharedProductionQueueSize(readSharedProductionQueue(state, 0, producer.kind))
+      : productionQueueSize(producer);
+    if (queueSize >= MAX_ARCHETYPE_QUEUE) continue;
     if (strategy === "greed" && producer.kind === "barracks" && harvesters < 4) continue;
     const unit = desiredUnit(state, strategy, producer);
     if (!unit || !isUnitAvailable(unit, state.missionIndex) || producerFor(unit) !== producer.kind) continue;

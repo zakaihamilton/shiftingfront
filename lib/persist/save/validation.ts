@@ -1,10 +1,11 @@
-import { BUILDING_KINDS, UNIT_KINDS } from "../../catalog";
-import type { AiContact, BuildingKind, CampaignProgress, ControlGroups, Entity, SimState, UnitKind } from "../../types";
+import { BUILDING_KINDS, MAX_PRODUCTION_QUEUE, UNIT_KINDS } from "../../catalog";
+import type { AiContact, BuildingKind, CampaignProgress, ControlGroups, Entity, Owner, SimState, UnitKind } from "../../types";
 import { fogGridHeight, fogGridWidth } from "../../sim/fog";
 import { MISSION_MAX, MISSION_MIN, SEED_MAX, SEED_MIN } from "../../seed/rng";
 import { isRecord } from "../utils";
 
-export const SAVE_CONTENT_VERSION = 1;
+export const SAVE_CONTENT_VERSION = 2;
+const MAX_MULTIPLAYER_PATH_POINTS = 262_144;
 
 const MISSION_KINDS = [
   "harvestQuota", "forceQuota", "structureQuota", "destroyMarked", "razeAll", "decapitate",
@@ -26,12 +27,8 @@ const TILE_KINDS = [0, 1, 2, 3] as const;
 const RNG_STATE_MIN = -0x80000000;
 const RNG_STATE_MAX = 0xffffffff;
 
-function isNumberPair(value: unknown): value is [number, number] {
-  return Array.isArray(value) && value.length === 2 && value.every((item) => typeof item === "number" && Number.isFinite(item));
-}
-
-function isNonNegativeNumberPair(value: unknown): value is [number, number] {
-  return isNumberPair(value) && value.every((item) => item >= 0);
+function isNonNegativeNumberArray(value: unknown, length: number): value is number[] {
+  return Array.isArray(value) && value.length === length && value.every(isNonNegativeNumber);
 }
 
 export function isFiniteNumber(value: unknown): value is number {
@@ -61,6 +58,17 @@ function isOneOf<T extends string>(value: unknown, values: readonly T[]): value 
   return typeof value === "string" && values.includes(value as T);
 }
 
+function boundedEntries(value: unknown, maxEntries: number): [string, unknown][] | null {
+  if (!isRecord(value) || Array.isArray(value)) return null;
+  const entries: [string, unknown][] = [];
+  for (const key in value) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+    if (entries.length >= maxEntries) return null;
+    entries.push([key, value[key]]);
+  }
+  return entries;
+}
+
 function isUnitKind(value: unknown): value is UnitKind {
   return typeof value === "string" && UNIT_KINDS.includes(value as UnitKind);
 }
@@ -69,15 +77,36 @@ function isBuildingKind(value: unknown): value is BuildingKind {
   return typeof value === "string" && BUILDING_KINDS.includes(value as BuildingKind);
 }
 
+function isSharedProducerKind(value: unknown): value is "barracks" | "factory" {
+  return value === "barracks" || value === "factory";
+}
+
+function isSharedProductionQueue(value: unknown, maxQueueLength = Number.MAX_SAFE_INTEGER): boolean {
+  if (!isRecord(value) || !Array.isArray(value.queue) || value.queue.length > maxQueueLength || !value.queue.every(isUnitKind)) return false;
+  if (value.producing === undefined) return true;
+  return isRecord(value.producing)
+    && isUnitKind(value.producing.kind)
+    && isNonNegativeNumber(value.producing.remaining);
+}
+
+function isOwnerProducerMap(value: unknown, validateProducer: (entry: unknown) => boolean): boolean {
+  const owners = boundedEntries(value, 4);
+  return owners !== null && owners.every(([owner, producers]) => {
+    const producerEntries = boundedEntries(producers, 2);
+    return /^(0|1|2|3)$/.test(owner) && producerEntries !== null &&
+      producerEntries.every(([kind, entry]) => isSharedProducerKind(kind) && validateProducer(entry));
+  });
+}
+
 function isVec2(value: unknown): value is { x: number; y: number } {
   return isRecord(value) && isFiniteNumber(value.x) && isFiniteNumber(value.y);
 }
 
 function isControlGroups(value: unknown): value is ControlGroups {
-  if (!isRecord(value) || Array.isArray(value)) return false;
-  return Object.entries(value).every(([slot, ids]) => {
+  const entries = boundedEntries(value, 9);
+  return entries !== null && entries.every(([slot, ids]) => {
     if (!/^[1-9]$/.test(slot) || !Array.isArray(ids)) return false;
-    return ids.every((id) => isIntegerInRange(id, 0, Number.MAX_SAFE_INTEGER))
+    return ids.length <= 8_192 && ids.every((id) => isIntegerInRange(id, 0, Number.MAX_SAFE_INTEGER))
       && new Set(ids).size === ids.length;
   });
 }
@@ -90,8 +119,12 @@ function isFaction(value: unknown, owner: number): boolean {
   return isRecord(value) && value.id === owner && isString(value.name) && isString(value.adjective) && isPalette(value.palette);
 }
 
-export function isEntity(value: unknown): value is Entity {
+export function isEntity(
+  value: unknown,
+  options: { allowedOwners?: readonly Owner[]; maxQueueLength?: number; maxPathLength?: number } = {},
+): value is Entity {
   if (!isRecord(value)) return false;
+  const allowedOwners: readonly Owner[] = options.allowedOwners ?? [0, 1];
   const classIsUnit = value.class === "unit";
   const classIsBuilding = value.class === "building";
   if (!classIsUnit && !classIsBuilding) return false;
@@ -99,12 +132,14 @@ export function isEntity(value: unknown): value is Entity {
   if (
     !kindValid ||
     !isIntegerInRange(value.id, 0, Number.MAX_SAFE_INTEGER) ||
-    (value.owner !== 0 && value.owner !== 1) ||
+    !allowedOwners.includes(value.owner as Owner) ||
     !isFiniteNumber(value.x) || !isFiniteNumber(value.y) ||
     !isFiniteNumber(value.hp) || !isFiniteNumber(value.maxHp) || value.maxHp <= 0 || value.hp < 0 || value.hp > value.maxHp ||
-    !isNonNegativeNumber(value.cooldown) || !Array.isArray(value.path) || !value.path.every(isVec2) ||
+    !isNonNegativeNumber(value.cooldown) || !Array.isArray(value.path) ||
+    (options.maxPathLength !== undefined && value.path.length > options.maxPathLength) || !value.path.every(isVec2) ||
     !isNonNegativeNumber(value.carry) || !isNonNegativeNumber(value.constructing) ||
-    !Array.isArray(value.queue) || !value.queue.every(isUnitKind) ||
+    !Array.isArray(value.queue) ||
+    (options.maxQueueLength !== undefined && value.queue.length > options.maxQueueLength) || !value.queue.every(isUnitKind) ||
     typeof value.marked !== "boolean" || typeof value.idle !== "boolean"
   ) return false;
   if (value.attackTarget !== undefined && !isIntegerInRange(value.attackTarget, 0, Number.MAX_SAFE_INTEGER)) return false;
@@ -159,7 +194,7 @@ export function isWin(value: unknown): boolean {
   if (value.role !== undefined && !isUnitKind(value.role)) return false;
   if (value.building !== undefined && !isBuildingKind(value.building)) return false;
   if (value.targetCount !== undefined && !isIntegerInRange(value.targetCount, 0, Number.MAX_SAFE_INTEGER)) return false;
-  if (value.targetIds !== undefined && (!Array.isArray(value.targetIds) || !value.targetIds.every((id) => isIntegerInRange(id, 0, Number.MAX_SAFE_INTEGER)) || new Set(value.targetIds).size !== value.targetIds.length)) return false;
+  if (value.targetIds !== undefined && (!Array.isArray(value.targetIds) || value.targetIds.length > 8_192 || !value.targetIds.every((id) => isIntegerInRange(id, 0, Number.MAX_SAFE_INTEGER)) || new Set(value.targetIds).size !== value.targetIds.length)) return false;
   if (value.ticks !== undefined && !isIntegerInRange(value.ticks, 0, Number.MAX_SAFE_INTEGER)) return false;
   return true;
 }
@@ -175,7 +210,7 @@ function isRuntime(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (!isOneOf(value.kind, MISSION_KINDS) || !isOneOf(value.phase, ["active", "extraction", "complete"] as const)) return false;
   const targetIds = value.targetIds;
-  if (!Array.isArray(targetIds) || !targetIds.every((id) => isIntegerInRange(id, 0, Number.MAX_SAFE_INTEGER)) || new Set(targetIds).size !== targetIds.length) return false;
+  if (!Array.isArray(targetIds) || targetIds.length > 8_192 || !targetIds.every((id) => isIntegerInRange(id, 0, Number.MAX_SAFE_INTEGER)) || new Set(targetIds).size !== targetIds.length) return false;
   if (!isIntegerInRange(value.rescued, 0, Number.MAX_SAFE_INTEGER) || !isIntegerInRange(value.required, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (isOneOf(value.kind, ["escort", "rescue", "extraction"] as const) &&
     (value.required > targetIds.length || value.rescued > value.required)) return false;
@@ -194,12 +229,12 @@ function isRuntime(value: unknown): boolean {
     if (contactedIds === undefined || !validateRuntimeIds(contactedIds, targetIds) || rescuedIds.some((id) => !contactedIds.includes(id))) return false;
     if (value.rescued !== rescuedIds.length) return false;
   }
-  if (!Array.isArray(value.secondary) || !value.secondary.every(isSecondaryObjective)) return false;
+  if (!Array.isArray(value.secondary) || value.secondary.length > 32 || !value.secondary.every(isSecondaryObjective)) return false;
   if (value.convoyStartTick !== undefined && !isIntegerInRange(value.convoyStartTick, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (value.zone !== undefined && !isVec2(value.zone)) return false;
   if (value.deadline !== undefined && !isIntegerInRange(value.deadline, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (value.extractedIds !== undefined && (
-    !Array.isArray(value.extractedIds) ||
+    !Array.isArray(value.extractedIds) || value.extractedIds.length > 8_192 ||
     !value.extractedIds.every((id) => isIntegerInRange(id, 0, Number.MAX_SAFE_INTEGER)) ||
     new Set(value.extractedIds).size !== value.extractedIds.length ||
     value.extractedIds.some((id) => !targetIds.includes(id))
@@ -221,11 +256,24 @@ export function isNormalizableStateInput(value: unknown): value is Record<string
   return true;
 }
 
-export function isStateShape(value: unknown): value is SimState {
+export function isStateShape(
+  value: unknown,
+  options: { multiplayer?: boolean; maxEntities?: number } = {},
+): value is SimState {
   if (!isRecord(value)) return false;
+  const multiplayer = options.multiplayer === true;
+  const ownerCount = multiplayer ? 4 : 2;
   const width = value.width;
   const height = value.height;
-  if (!isIntegerInRange(width, 1, 256) || !isIntegerInRange(height, 1, 256) || width * height > 256 * 256) return false;
+  const maxDimension = multiplayer ? 128 : 256;
+  if (!isIntegerInRange(width, 1, maxDimension) || !isIntegerInRange(height, 1, maxDimension) || width * height > maxDimension * maxDimension) return false;
+  const entityValidation = multiplayer
+    ? {
+      allowedOwners: [0, 1, 2, 3] as const,
+      maxQueueLength: MAX_PRODUCTION_QUEUE,
+      maxPathLength: Math.min(width * height, 8_192),
+    }
+    : undefined;
   if (!isIntegerInRange(value.seed, SEED_MIN, SEED_MAX) || !isIntegerInRange(value.missionIndex, MISSION_MIN, MISSION_MAX) || !isIntegerInRange(value.tick, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (!isIntegerInRange(value.navigationRevision, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (!Array.isArray(value.tiles) || value.tiles.length !== width * height || !value.tiles.every((tile) => typeof tile === "number" && TILE_KINDS.includes(tile as typeof TILE_KINDS[number]))) return false;
@@ -235,21 +283,41 @@ export function isStateShape(value: unknown): value is SimState {
   const fogWidth = fogGridWidth(width);
   const fogHeight = fogGridHeight(height);
   if (!Array.isArray(value.fog) || value.fog.length !== fogWidth * fogHeight || !value.fog.every((cell) => isIntegerInRange(cell, 0, 2))) return false;
-  if (!Array.isArray(value.entities) || !value.entities.every(isEntity)) return false;
+  if (!Array.isArray(value.entities) ||
+      (options.maxEntities !== undefined && value.entities.length > options.maxEntities) ||
+      (multiplayer && value.entities.length > 8_192)) return false;
+  if (multiplayer) {
+    let totalPathPoints = 0;
+    for (const entity of value.entities) {
+      if (!isRecord(entity) || !Array.isArray(entity.path)) return false;
+      totalPathPoints += entity.path.length;
+      if (totalPathPoints > MAX_MULTIPLAYER_PATH_POINTS) return false;
+    }
+  }
+  if (!value.entities.every((entity) => isEntity(entity, entityValidation))) return false;
+  if (value.productionQueues !== undefined && !isOwnerProducerMap(
+    value.productionQueues,
+    (queue) => isSharedProductionQueue(queue, multiplayer ? MAX_PRODUCTION_QUEUE : undefined),
+  )) return false;
+  if (value.activeProducerIds !== undefined && !isOwnerProducerMap(
+    value.activeProducerIds,
+    (id) => isIntegerInRange(id, 0, Number.MAX_SAFE_INTEGER),
+  )) return false;
   const entities = value.entities as Entity[];
   if (new Set(entities.map((entity) => entity.id)).size !== entities.length) return false;
   if (entities.some((entity) => entity.x < 0 || entity.x >= width || entity.y < 0 || entity.y >= height || entity.path.some((point) => point.x < 0 || point.x >= width || point.y < 0 || point.y >= height))) return false;
   const nextId = value.nextId;
   if (!isIntegerInRange(nextId, 1, Number.MAX_SAFE_INTEGER) || entities.some((entity) => entity.id >= nextId)) return false;
-  if (!isNonNegativeNumberPair(value.credits) || !isNonNegativeNumberPair(value.creditsEarned) || !isNonNegativeNumberPair(value.unitsProduced) || !isNonNegativeNumberPair(value.buildingsCompleted)) return false;
+  if (!isNonNegativeNumberArray(value.credits, ownerCount) || !isNonNegativeNumberArray(value.creditsEarned, ownerCount) || !isNonNegativeNumberArray(value.unitsProduced, ownerCount) || !isNonNegativeNumberArray(value.buildingsCompleted, ownerCount)) return false;
   const unitsProducedByRole = value.unitsProducedByRole;
   if (!isRecord(unitsProducedByRole) || !UNIT_KINDS.every((kind) => isNonNegativeNumber(unitsProducedByRole[kind]))) return false;
-  if (!isRecord(value.buildingsCompletedByKind) || !Object.values(value.buildingsCompletedByKind).every(isNonNegativeNumber)) return false;
-  if (!isRecord(value.losses) || !isNonNegativeNumberPair(value.losses.units) || !isNonNegativeNumberPair(value.losses.buildings)) return false;
+  const completedByKind = boundedEntries(value.buildingsCompletedByKind, BUILDING_KINDS.length);
+  if (!completedByKind || !completedByKind.every(([, count]) => isNonNegativeNumber(count))) return false;
+  if (!isRecord(value.losses) || !isNonNegativeNumberArray(value.losses.units, ownerCount) || !isNonNegativeNumberArray(value.losses.buildings, ownerCount)) return false;
   if (!isWin(value.win) || !["playing", "won", "lost"].includes(value.result as string)) return false;
   if (value.lossReason !== undefined && !isOneOf(value.lossReason, LOSS_REASONS)) return false;
   if (!isRngState(value.rngState) || !isOneOf(value.biome, BIOMES)) return false;
-  if (!Array.isArray(value.factions) || value.factions.length !== 2 || !isFaction(value.factions[0], 0) || !isFaction(value.factions[1], 1)) return false;
+  if (!Array.isArray(value.factions) || value.factions.length !== ownerCount || !value.factions.every((faction, owner) => isFaction(faction, owner))) return false;
   if (!isString(value.missionName)) return false;
   if (!isControlGroups(value.controlGroups)) return false;
   if (value.missionKind !== undefined && !isOneOf(value.missionKind, MISSION_KINDS)) return false;
@@ -260,7 +328,8 @@ export function isStateShape(value: unknown): value is SimState {
   if (value.aiState !== undefined && !isOneOf(value.aiState, ["economy", "defense", "assault", "retreat", "regroup"] as const)) return false;
   if (value.aiRetreatTick !== undefined && !isIntegerInRange(value.aiRetreatTick, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (value.aiRetreatLocked !== undefined && typeof value.aiRetreatLocked !== "boolean") return false;
-  if (value.aiContacts !== undefined && (!isRecord(value.aiContacts) || !Object.entries(value.aiContacts).every(([key, contact]) =>
+  const aiContacts = value.aiContacts === undefined ? null : boundedEntries(value.aiContacts, 8_192);
+  if (value.aiContacts !== undefined && (!aiContacts || !aiContacts.every(([key, contact]) =>
     isIntegerInRange(Number(key), 0, Number.MAX_SAFE_INTEGER) && isAiContact(contact),
   ))) return false;
   if (value.pathBudget !== undefined && (!isRecord(value.pathBudget) || !isIntegerInRange(value.pathBudget.remaining, 0, Number.MAX_SAFE_INTEGER) || !isIntegerInRange(value.pathBudget.used, 0, Number.MAX_SAFE_INTEGER))) return false;

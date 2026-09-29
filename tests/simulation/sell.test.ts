@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BUILDING_STATS, UNIT_STATS, sellRefundFor } from "../../lib/catalog";
+import { BUILDING_STATS, sellRefundFor } from "../../lib/catalog";
 import { issue } from "../../lib/sim/api";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { tickProduction } from "../../lib/sim/production";
 import { canSell } from "../../lib/sim/sell";
 
 describe("structure selling", () => {
@@ -29,23 +30,33 @@ describe("structure selling", () => {
     expect(s.credits[0]).toBeLessThan(startCredits + sellRefundFor("turret", turret.maxHp));
   });
 
-  it("refunds in-progress and queued units when a producer is sold", () => {
+  it("keeps shared jobs when a producer is sold and uses another producer", () => {
     const s = makeFixture({ width: 16, height: 12, win: { kind: "harvestQuota", target: 99999 } });
     addBuilding(s, 0, "constructionYard", 0, 0);
+    addBuilding(s, 0, "power", 3, 0);
     const barracks = addBuilding(s, 0, "barracks", 4, 4);
-    barracks.producing = { kind: "infantry", remaining: 40 };
-    barracks.queue = ["antiArmor", "infantry"];
+    const otherBarracks = addBuilding(s, 0, "barracks", 8, 4);
+    issue(s, { type: "produce", fromId: barracks.id, unit: "infantry" });
+    issue(s, { type: "produce", fromId: otherBarracks.id, unit: "antiArmor" });
+    issue(s, { type: "produce", fromId: otherBarracks.id, unit: "infantry" });
+    const sharedQueue = s.productionQueues?.[0]?.barracks;
+    sharedQueue!.producing!.remaining = 1;
     const startCredits = s.credits[0];
 
     issue(s, { type: "sell", buildingId: barracks.id });
     expect(barracks.hp).toBe(0);
-    expect(s.credits[0]).toBe(
-      startCredits +
-        sellRefundFor("barracks", BUILDING_STATS.barracks.hp) +
-        UNIT_STATS.infantry.cost +
-        UNIT_STATS.antiArmor.cost +
-        UNIT_STATS.infantry.cost,
-    );
+    expect(s.credits[0]).toBe(startCredits + sellRefundFor("barracks", BUILDING_STATS.barracks.hp));
+    expect(sharedQueue).toEqual({
+      producing: { kind: "infantry", remaining: 1 },
+      queue: ["antiArmor", "infantry"],
+    });
+
+    const events = tickProduction(s);
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "produced",
+      kind: "infantry",
+      sourceId: otherBarracks.id,
+    }));
   });
 
   it("refuses enemy, constructing, yard, objective, and unit targets", () => {

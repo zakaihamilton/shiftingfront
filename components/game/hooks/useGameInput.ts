@@ -8,7 +8,7 @@ import type { MobileCommand } from "../mobileCommandTypes";
 import { canvasPointerPos } from "./canvasPointer";
 import { entityAt, pickSelectableEntity, pointerTile } from "./gameInputOrders";
 import { battlefieldCursor } from "@/lib/ui/battlefieldCursor";
-import { resolvePointerUp, isSameKindDoubleClick, type LastUnitClick } from "./gamePointerUp";
+import { resolvePointerUp, isSameKindDoubleClick, isSameProducerDoubleClick, type LastProducerClick, type LastUnitClick } from "./gamePointerUp";
 import { selectionBoxDistance, selectionProjectionPoint, type SelectionBox } from "./selectionBox";
 import { useTouchGestures } from "./useTouchGestures";
 import { useOrderDispatch } from "./useOrderDispatch";
@@ -16,6 +16,7 @@ import { usePointerUpHandler } from "./usePointerUpHandler";
 import { createRuntimeCommandPort, type RuntimeCommandPort } from "./runtime/facade";
 import type { CommandNoticeKind } from "./useGameChrome";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
+import { activeProducerFor, isSharedProducerKind } from "@/lib/sim/producerState";
 
 export function useGameInput({
   stateRef,
@@ -86,6 +87,7 @@ export function useGameInput({
   const commandMarkerRef = useRef<CommandMarker | null>(null);
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
   const lastUnitClickRef = useRef<LastUnitClick | null>(null);
+  const lastProducerClickRef = useRef<LastProducerClick | null>(null);
 
   const syncCursor = useCallback((canvas?: HTMLCanvasElement | null) => {
     if (canvas) canvasElRef.current = canvas;
@@ -255,6 +257,25 @@ export function useGameInput({
           y: p.y,
         }),
     );
+    const owner = s.viewOwner ?? 0;
+    const producerHit = hoverHit?.class === "building" &&
+      isSharedProducerKind(hoverHit.kind) &&
+      hoverHit.owner === owner &&
+      hoverHit.constructing <= 0 &&
+      !placeRef.current && !repairRef.current && !sellRef.current && !mobileCommandRef.current &&
+      (e.button === 0 || e.pointerType === "touch")
+      ? (hoverHit as import("@/lib/types").BuildingEntity & { kind: import("@/lib/types").SharedProducerKind })
+      : undefined;
+    const activatesProducer = Boolean(
+      producerHit &&
+      isSameProducerDoubleClick(lastProducerClickRef.current, {
+        atMs: nowMs,
+        buildingId: producerHit.id,
+        x: p.x,
+        y: p.y,
+      }) &&
+      activeProducerFor(s, owner, producerHit.kind)?.id !== producerHit.id,
+    );
     const effect = resolvePointerUp({
       pointerType: e.pointerType,
       button: e.button,
@@ -287,13 +308,22 @@ export function useGameInput({
     };
     if (effect.contextOrder) {
       lastUnitClickRef.current = null;
+      lastProducerClickRef.current = null;
       if (effect.preventDefault) e.preventDefault();
       issueContextOrder(s, p, effect.attackMove);
       return;
     }
     applyPointerUp(effect, e);
+    if (activatesProducer && producerHit && !effect.commands?.length) {
+      resolvedCommandPort.enqueue({ type: "activateProducer", buildingId: producerHit.id });
+      lastProducerClickRef.current = null;
+    } else if (producerHit && !effect.commands?.length && effect.select?.includes(producerHit.id)) {
+      lastProducerClickRef.current = { atMs: nowMs, buildingId: producerHit.id, x: p.x, y: p.y };
+    } else {
+      lastProducerClickRef.current = null;
+    }
     rememberUnitClick();
-  }, [applyEdgePan, applyPointerUp, camRef, endTouch, issueContextOrder, mobileCommandRef, placeRef, repairRef, selectedRef, selectionModeRef, sellRef, stateRef]);
+  }, [applyEdgePan, applyPointerUp, camRef, endTouch, issueContextOrder, mobileCommandRef, placeRef, repairRef, resolvedCommandPort, selectedRef, selectionModeRef, sellRef, stateRef]);
 
   const onCancel = useCallback((e: PointerEvent<HTMLCanvasElement>) => {
     try {

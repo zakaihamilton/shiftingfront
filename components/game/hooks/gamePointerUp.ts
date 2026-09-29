@@ -27,9 +27,22 @@ export type LastUnitClick = {
   y: number;
 };
 
+export type LastProducerClick = {
+  atMs: number;
+  buildingId: number;
+  x: number;
+  y: number;
+};
+
 export function isSameKindDoubleClick(last: LastUnitClick | null | undefined, next: LastUnitClick): boolean {
   if (!last) return false;
   if (next.kind !== last.kind) return false;
+  if (next.atMs - last.atMs > DOUBLE_CLICK_MS) return false;
+  return Math.hypot(next.x - last.x, next.y - last.y) <= DOUBLE_CLICK_PX;
+}
+
+export function isSameProducerDoubleClick(last: LastProducerClick | null | undefined, next: LastProducerClick): boolean {
+  if (!last || next.buildingId !== last.buildingId) return false;
   if (next.atMs - last.atMs > DOUBLE_CLICK_MS) return false;
   return Math.hypot(next.x - last.x, next.y - last.y) <= DOUBLE_CLICK_PX;
 }

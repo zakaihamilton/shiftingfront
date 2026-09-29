@@ -1,14 +1,16 @@
 import { isBuildingEntity, type Entity, type SimState } from "../../../types";
-import { BUILDING_DEFINITIONS } from "../../../catalog";
+import { BUILDING_DEFINITIONS, footprintOf } from "../../../catalog";
 import { animClock } from "../../anim";
-import { type Camera } from "../../../iso";
+import { tileToScreen, type Camera } from "../../../iso";
 import { isPerfHudEnabled, type WorldPhaseTimings } from "../../perfHud";
 import { drawCombatEffects, drawFxLayer } from "../../renderCombat";
 import { drawCommandMarker, drawRallyPoint, drawSelectBox } from "../../renderOverlays";
 import type { RenderExtras } from "../../renderOverlays";
 import { facingFor as resolveFacing } from "../../renderEntities";
-import { pruneEntityVisibilityCache } from "../../renderPicking";
+import { entityElev, pruneEntityVisibilityCache } from "../../renderPicking";
+import { strokeFootprint } from "../../renderStructures";
 import { pruneTurretAimCache } from "../../renderStructures/turret";
+import { activeProducerFor, SHARED_PRODUCER_KINDS } from "../../../sim/producerState";
 import { drawList, entityById } from "../cache";
 import { renderTerrainPhase } from "./terrain";
 import { renderEntityPhase } from "./entities";
@@ -56,6 +58,12 @@ export function renderWorld(
     colorblindMode: extras.colorblindMode,
   });
 
+  const owner = state.viewOwner ?? 0;
+  for (const kind of SHARED_PRODUCER_KINDS) {
+    const producer = activeProducerFor(state, owner, kind);
+    if (producer) drawActiveProducerIndicator(ctx, state, cam, producer);
+  }
+
   lap("entities");
 
   const selectedProducer = state.entities.find((entity) =>
@@ -81,4 +89,31 @@ export function renderWorld(
   renderHoverPhase(ctx, state, cam, hoverTile, w, h, extras, tooltipCtx);
   lap("combat");
   return profile ? timings : null;
+}
+
+function drawActiveProducerIndicator(ctx: CanvasRenderingContext2D, state: SimState, cam: Camera, producer: Entity): void {
+  if (!isBuildingEntity(producer)) return;
+  const footprint = footprintOf(producer.kind);
+  const centerX = producer.x + (footprint.w - 1) / 2;
+  const centerY = producer.y + (footprint.h - 1) / 2;
+  const screen = tileToScreen(centerX, centerY, cam, entityElev(state, producer));
+  const fontSize = Math.max(9, Math.min(12, 12 * cam.zoom));
+  const badgeHeight = fontSize + 7;
+  ctx.save();
+  ctx.globalAlpha = 0.96;
+  ctx.strokeStyle = "#59f0c6";
+  ctx.fillStyle = "rgba(8, 31, 29, 0.94)";
+  ctx.lineWidth = Math.max(2, 2.5 * cam.zoom);
+  strokeFootprint(ctx, state, cam, producer.x, producer.y, footprint.w, footprint.h);
+  ctx.font = `700 ${fontSize}px monospace`;
+  const badgeWidth = ctx.measureText("ACTIVE").width + 12;
+  const badgeX = Math.round(screen.x - badgeWidth / 2);
+  const badgeY = Math.round(screen.y - 48 * cam.zoom - badgeHeight);
+  ctx.fillRect(badgeX, badgeY, badgeWidth, badgeHeight);
+  ctx.strokeRect(badgeX, badgeY, badgeWidth, badgeHeight);
+  ctx.fillStyle = "#a5ffe7";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("ACTIVE", screen.x, badgeY + badgeHeight / 2);
+  ctx.restore();
 }

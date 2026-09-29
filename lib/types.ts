@@ -15,6 +15,13 @@ export type BuildingKind =
   | "antiAirTurret"
   | "objective";
 
+/** Producer types whose queues are shared across all buildings of that type. */
+export type SharedProducerKind = "barracks" | "factory";
+export type SharedProductionQueue = {
+  producing?: { kind: UnitKind; remaining: number };
+  queue: UnitKind[];
+};
+
 export type EntityClass = "unit" | "building";
 
 export type WinCategoryKind =
@@ -491,6 +498,10 @@ export type SimState = {
   resourceAmount: number[];
   fog: number[];
   entities: Entity[];
+  /** Shared Barracks and Vehicle Plant production queues, keyed by owner and producer type. */
+  productionQueues?: Partial<Record<Owner, Partial<Record<SharedProducerKind, SharedProductionQueue>>>>;
+  /** Active Barracks and Vehicle Plant for each owner. */
+  activeProducerIds?: Partial<Record<Owner, Partial<Record<SharedProducerKind, number>>>>;
   nextId: number;
   credits: number[];
   creditsEarned: number[];
@@ -554,6 +565,7 @@ type CommandOrder =
   | { type: "harvest"; unitIds: number[]; x: number; y: number }
   | { type: "build"; building: BuildingKind; x: number; y: number }
   | { type: "produce"; fromId: number; unit: UnitKind }
+  | { type: "activateProducer"; buildingId: number }
   | { type: "rally"; buildingId: number; x: number; y: number }
   | { type: "cancelBuild"; building: BuildingKind }
   | { type: "cancelProduce"; unit: UnitKind }

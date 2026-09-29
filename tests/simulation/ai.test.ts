@@ -401,8 +401,7 @@ describe("enemy AI", () => {
 
     tickAi(s);
 
-    const barracks = s.entities.find((e) => e.owner === 1 && e.kind === "barracks");
-    expect(barracks?.producing?.kind).toBe("antiArmor");
+    expect(s.productionQueues?.[1]?.barracks?.producing?.kind).toBe("antiArmor");
   });
 
   it("does not place turrets past the mission cap", () => {
@@ -445,8 +444,7 @@ describe("enemy AI", () => {
 
     tickAi(s);
 
-    const factory = s.entities.find((e) => e.owner === 1 && e.kind === "factory");
-    expect(factory?.producing?.kind).toBe("harvester");
+    expect(s.productionQueues?.[1]?.factory?.producing?.kind).toBe("harvester");
   });
 
   it("rebuilds a refinery when none remain", () => {

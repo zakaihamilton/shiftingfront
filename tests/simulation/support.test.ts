@@ -102,7 +102,7 @@ describe("support units", () => {
     expect(isUnitAvailable("repairTruck", 0)).toBe(true);
     expect(isUnitAvailable("convoyTruck", 0)).toBe(false);
     expect(issue(state, { type: "produce", fromId: barracks.id, unit: "medic" })).toEqual([]);
-    expect(barracks.producing).toEqual({ kind: "medic", remaining: UNIT_STATS.medic.buildTicks });
+    expect(state.productionQueues?.[0]?.barracks?.producing).toEqual({ kind: "medic", remaining: UNIT_STATS.medic.buildTicks });
   });
 
   it("lets the AI produce a medic for a damaged human force", () => {
@@ -111,13 +111,13 @@ describe("support units", () => {
     addBuilding(state, 1, "constructionYard", 4, 4);
     addBuilding(state, 1, "power", 7, 4);
     addBuilding(state, 1, "refinery", 4, 8);
-    const barracks = addBuilding(state, 1, "barracks", 7, 8);
+    addBuilding(state, 1, "barracks", 7, 8);
     const infantry = addUnit(state, 1, "infantry", 9, 8);
     infantry.hp -= 20;
     state.tick = missionDifficulty(0).enemyProductionStart;
 
     tickAi(state);
 
-    expect(barracks.producing?.kind).toBe("medic");
+    expect(state.productionQueues?.[1]?.barracks?.producing?.kind).toBe("medic");
   });
 });

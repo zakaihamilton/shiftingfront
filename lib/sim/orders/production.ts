@@ -1,8 +1,9 @@
-import { BUILDING_DEFINITIONS, MAX_PRODUCTION_QUEUE, UNIT_STATS, isUnitAvailable, productionQueueSize } from "../../catalog";
+import { BUILDING_DEFINITIONS, MAX_PRODUCTION_QUEUE, UNIT_STATS, isUnitAvailable, producerFor, productionQueueSize } from "../../catalog";
 import { type BuildingKind, type Entity, type SimEvent, type SimState, type UnitKind } from "../../types";
 import { byId, powerFor } from "../world";
 import { entitiesFor } from "../entities";
 import { commandOwner } from "./commandOwner";
+import { activateProducer, ensureActiveProducer, isSharedProducerKind, sharedProductionQueue, sharedProductionQueueSize } from "../producerState";
 
 export function startProduce(state: SimState, fromId: number, unit: UnitKind): SimEvent[] {
   const owner = commandOwner(state);
@@ -10,6 +11,19 @@ export function startProduce(state: SimState, fromId: number, unit: UnitKind): S
   const b = byId(state, fromId);
   if (!b || b.class !== "building" || b.owner !== owner || b.constructing > 0) return [{ type: "commandRejected", reason: "producer unavailable" }];
   if (!BUILDING_DEFINITIONS[b.kind as BuildingKind].production?.includes(unit)) return [{ type: "commandRejected", reason: "wrong producer" }];
+  const producerKind = producerFor(unit);
+  if (isSharedProducerKind(producerKind)) {
+    if (!ensureActiveProducer(state, owner, producerKind)) return [{ type: "commandRejected", reason: "producer unavailable" }];
+    const queue = sharedProductionQueue(state, owner, producerKind);
+    if (sharedProductionQueueSize(queue) >= MAX_PRODUCTION_QUEUE) return [{ type: "commandRejected", reason: "production queue full" }];
+    const stats = UNIT_STATS[unit];
+    if (state.credits[owner] < stats.cost) return [{ type: "commandRejected", reason: "insufficient credits" }];
+    if (powerFor(state, owner) < 0) return [{ type: "commandRejected", reason: "power shortage" }];
+    state.credits[owner] -= stats.cost;
+    if (!queue.producing) queue.producing = { kind: unit, remaining: stats.buildTicks };
+    else queue.queue.push(unit);
+    return [];
+  }
   if (!b.queue) b.queue = [];
   if (b.kind === "runway" && (
     b.assignedPlaneId !== undefined ||
@@ -29,8 +43,32 @@ export function startProduce(state: SimState, fromId: number, unit: UnitKind): S
   return [];
 }
 
+export function activateProductionBuilding(state: SimState, buildingId: number): SimEvent[] {
+  const owner = commandOwner(state);
+  if (!activateProducer(state, owner, buildingId)) {
+    return [{ type: "commandRejected", reason: "producer unavailable" }];
+  }
+  return [];
+}
+
 export function cancelProduce(state: SimState, unit: UnitKind): SimEvent[] {
   const owner = commandOwner(state);
+  const producerKind = producerFor(unit);
+  if (isSharedProducerKind(producerKind)) {
+    const queue = sharedProductionQueue(state, owner, producerKind);
+    const queuedIndex = queue.queue.lastIndexOf(unit);
+    if (queuedIndex >= 0) {
+      queue.queue.splice(queuedIndex, 1);
+      state.credits[owner] += UNIT_STATS[unit].cost;
+      return [];
+    }
+    if (queue.producing?.kind !== unit) return [];
+    state.credits[owner] += UNIT_STATS[unit].cost;
+    const next = queue.queue.shift();
+    queue.producing = next ? { kind: next, remaining: UNIT_STATS[next].buildTicks } : undefined;
+    return [];
+  }
+
   let queued: { entity: Entity; index: number } | undefined;
   let producing: Entity | undefined;
   for (const e of entitiesFor(state)) {

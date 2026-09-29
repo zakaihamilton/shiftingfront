@@ -30,6 +30,7 @@ import {
   readyProducers,
   totalUnitCount,
 } from "./queries";
+import { isSharedProducerKind, readSharedProductionQueue, sharedProductionQueueSize } from "../producerState";
 
 export function targetForProduction(state: SimState): UnitKind | undefined {
   const role = state.win.role;
@@ -241,8 +242,14 @@ export function planProduction(state: SimState): Command[] {
       return aPriority - bPriority || a.id - b.id;
     });
   let availableCredits = state.credits[0];
+  const handledKinds = new Set<string>();
   for (const producer of producers) {
-    if (productionQueueSize(producer) >= 3) continue;
+    if (handledKinds.has(producer.kind)) continue;
+    handledKinds.add(producer.kind);
+    const queueSize = isSharedProducerKind(producer.kind)
+      ? sharedProductionQueueSize(readSharedProductionQueue(state, 0, producer.kind))
+      : productionQueueSize(producer);
+    if (queueSize >= 3) continue;
     if (role && producerFor(role) !== producer.kind && availableCredits < UNIT_STATS[role].cost) continue;
     let desired: UnitKind | undefined;
     if (support && producerFor(support) === producer.kind) {

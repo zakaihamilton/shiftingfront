@@ -1,5 +1,6 @@
 import { BUILDING_DEFINITIONS, BUILDING_KINDS, MAX_PRODUCTION_QUEUE, isUnitAvailable, producerFor, productionQueueSize } from "@/lib/catalog";
 import type { BuildingKind, Entity, Owner, SimState, UnitKind } from "@/lib/types";
+import { activeProducerFor, isSharedProducerKind, readSharedProductionQueue, sharedProductionQueueSize } from "@/lib/sim/producerState";
 
 export const PLACEABLE: BuildingKind[] = BUILDING_KINDS.filter(
   (kind) => BUILDING_DEFINITIONS[kind].aiRole !== "base" && BUILDING_DEFINITIONS[kind].aiRole !== "objective",
@@ -26,4 +27,12 @@ export function leastLoadedProducer(state: SimState, owner: Owner, unit: UnitKin
     }
   }
   return best;
+}
+
+export function productionBuildingFor(state: SimState, owner: Owner, unit: UnitKind): Entity | undefined {
+  const kind = producerFor(unit);
+  if (!isSharedProducerKind(kind)) return leastLoadedProducer(state, owner, unit);
+  const queue = readSharedProductionQueue(state, owner, kind);
+  if (sharedProductionQueueSize(queue) >= MAX_PRODUCTION_QUEUE) return undefined;
+  return activeProducerFor(state, owner, kind);
 }

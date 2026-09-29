@@ -3,7 +3,7 @@ import { compactDestroyedEntities } from "../../lib/sim/world";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { tick } from "../../lib/sim/api";
 import { deserializeState, serializeState } from "../../lib/persist/save";
-import { UNIT_STATS } from "../../lib/catalog";
+import { tickProduction } from "../../lib/sim/production";
 
 describe("destroyed entity lifecycle", () => {
   it("compacts dead entities and clears references without changing counters", () => {
@@ -72,39 +72,61 @@ describe("destroyed entity lifecycle", () => {
     expect(restored.runtime?.targetIds).toEqual([target.id]);
   });
 
-  it("refunds prepaid production when a player producer is destroyed", () => {
+  it("keeps shared production when its active producer is destroyed", () => {
     const state = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    addBuilding(state, 0, "power", 0, 0);
     const barracks = addBuilding(state, 0, "barracks", 4, 4);
-    barracks.producing = { kind: "infantry", remaining: 20 };
-    barracks.queue = ["antiArmor"];
+    const spareBarracks = addBuilding(state, 0, "barracks", 8, 4);
+    state.productionQueues![0] = {
+      barracks: { producing: { kind: "infantry", remaining: 1 }, queue: ["antiArmor"] },
+    };
+    state.activeProducerIds![0] = { barracks: barracks.id };
     const startCredits = state.credits[0];
     barracks.hp = 0;
 
     compactDestroyedEntities(state);
 
-    expect(state.credits[0]).toBe(startCredits + UNIT_STATS.infantry.cost + UNIT_STATS.antiArmor.cost);
+    expect(state.credits[0]).toBe(startCredits);
     expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(false);
+    const events = tickProduction(state);
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "produced",
+      kind: "infantry",
+      sourceId: spareBarracks.id,
+    }));
+    expect(state.productionQueues?.[0]?.barracks?.producing?.kind).toBe("antiArmor");
+    expect(state.credits[0]).toBe(startCredits);
   });
 
-  it("credits a save snapshot without double-refunding the live world", () => {
+  it("preserves shared queues in a compacted save without refunding jobs", () => {
     const state = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
     const barracks = addBuilding(state, 0, "barracks", 4, 4);
-    barracks.producing = { kind: "infantry", remaining: 20 };
-    barracks.queue = ["antiArmor"];
+    addBuilding(state, 0, "barracks", 8, 4);
+    state.productionQueues![0] = {
+      barracks: { producing: { kind: "infantry", remaining: 20 }, queue: ["antiArmor"] },
+    };
+    state.activeProducerIds![0] = { barracks: barracks.id };
     barracks.hp = 0;
-    const payout = UNIT_STATS.infantry.cost + UNIT_STATS.antiArmor.cost;
     const startCredits = state.credits[0];
 
     const restored = deserializeState(serializeState(state));
 
     expect(state.credits[0]).toBe(startCredits);
     expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(true);
-    expect(restored.credits[0]).toBe(startCredits + payout);
+    expect(restored.credits[0]).toBe(startCredits);
     expect(restored.entities.some((entity) => entity.id === barracks.id)).toBe(false);
+    expect(restored.productionQueues?.[0]?.barracks).toEqual({
+      producing: { kind: "infantry", remaining: 20 },
+      queue: ["antiArmor"],
+    });
 
     compactDestroyedEntities(state);
 
-    expect(state.credits[0]).toBe(startCredits + payout);
+    expect(state.credits[0]).toBe(startCredits);
     expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(false);
+    expect(state.productionQueues?.[0]?.barracks).toEqual({
+      producing: { kind: "infantry", remaining: 20 },
+      queue: ["antiArmor"],
+    });
   });
 });

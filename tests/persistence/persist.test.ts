@@ -213,21 +213,36 @@ describe("persist", () => {
     expect(loaded.fog[0]).toBe(0);
   });
 
-  it("round-trips a production queue and backfills missing queues", () => {
+  it("round-trips shared production queues and migrates legacy building queues", () => {
     const s = makeFixture({ seed: 421, win: { kind: "annihilate" } });
-    const barracks = addBuilding(s, 0, "barracks", 2, 2);
-    barracks.producing = { kind: "infantry", remaining: 40 };
-    barracks.queue = ["infantry", "antiArmor"];
+    addBuilding(s, 0, "barracks", 2, 2);
+    s.productionQueues![0] = {
+      barracks: { producing: { kind: "infantry", remaining: 40 }, queue: ["infantry", "antiArmor"] },
+    };
     const storage = memoryStorage();
     writeSave(storage, s);
     const loaded = readSave(storage, 421);
-    expect(loaded?.entities[0]?.producing).toEqual({ kind: "infantry", remaining: 40 });
-    expect(loaded?.entities[0]?.queue).toEqual(["infantry", "antiArmor"]);
+    expect(loaded?.productionQueues?.[0]?.barracks).toEqual({
+      producing: { kind: "infantry", remaining: 40 },
+      queue: ["infantry", "antiArmor"],
+    });
 
-    const raw = JSON.parse(serializeState(s)) as { entities: { queue?: string[] }[] };
-    delete raw.entities[0]!.queue;
+    const raw = JSON.parse(serializeState(s)) as {
+      productionQueues?: unknown;
+      activeProducerIds?: unknown;
+      entities: { producing?: { kind: "infantry"; remaining: number }; queue?: string[] }[];
+    };
+    delete raw.productionQueues;
+    delete raw.activeProducerIds;
+    raw.entities[0]!.producing = { kind: "infantry", remaining: 40 };
+    raw.entities[0]!.queue = ["infantry", "antiArmor"];
     const backfilled = deserializeState(JSON.stringify(raw));
+    expect(backfilled.productionQueues?.[0]?.barracks).toEqual({
+      producing: { kind: "infantry", remaining: 40 },
+      queue: ["infantry", "antiArmor"],
+    });
     expect(backfilled.entities[0]?.queue).toEqual([]);
+    expect(backfilled.entities[0]?.producing).toBeUndefined();
   });
 
   it("backfills facing on legacy entities", () => {

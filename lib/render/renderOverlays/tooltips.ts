@@ -10,6 +10,7 @@ import { isBuildingEntity, type BuildingKind, type Entity, type SimState, type U
 import { SceneryMemo } from "../sceneryMemo";
 import type { RenderExtras } from "./types";
 import { chromeMonoFont } from "../../ui/chromeFont";
+import { activeProducerFor, isSharedProducerKind, readSharedProductionQueue } from "../../sim/producerState";
 
 const sceneryMemo = new SceneryMemo();
 
@@ -73,9 +74,17 @@ export function tooltipLines(state: SimState, e: Entity, extras: RenderExtras): 
   if (e.constructing > 0) {
     lines.push(`Under construction (${Math.ceil(e.constructing / TICKS_PER_SECOND)}s)`);
   }
-  if (e.producing) {
-    lines.push(`Training ${labelFor(e.producing.kind)} (${Math.ceil(e.producing.remaining / TICKS_PER_SECOND)}s)`);
-    const queued = e.queue?.length ?? 0;
+  const sharedKind = isBuildingEntity(e) && isSharedProducerKind(e.kind) ? e.kind : undefined;
+  const sharedQueue = sharedKind ? readSharedProductionQueue(state, e.owner, sharedKind) : undefined;
+  const producing = sharedKind ? sharedQueue?.producing : e.producing;
+  if (sharedKind && friendly && e.constructing <= 0) {
+    const active = activeProducerFor(state, e.owner, sharedKind);
+    lines.push(active?.id === e.id ? "ACTIVE · units deploy here" : active ? `Inactive · active #${active.id}` : "No active producer");
+    if (active?.id !== e.id) lines.push("Double-click to activate");
+  }
+  if (producing) {
+    lines.push(`${sharedKind ? "Shared queue · " : ""}Training ${labelFor(producing.kind)} (${Math.ceil(producing.remaining / TICKS_PER_SECOND)}s)`);
+    const queued = sharedQueue?.queue.length ?? e.queue?.length ?? 0;
     if (queued > 0) lines.push(`In queue: ${queued}`);
   }
   if (isBuildingEntity(e) && friendly && e.constructing <= 0 && BUILDING_DEFINITIONS[e.kind].production) {

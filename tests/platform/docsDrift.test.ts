@@ -45,7 +45,7 @@ describe("docs and process drift", () => {
 
   it("keeps the release workflow on Node 24 action runtimes", () => {
     const release = readFileSync(resolve(process.cwd(), ".github/workflows/release.yml"), "utf-8");
-    expect(release).toContain("softprops/action-gh-release@v3");
+    expect(release).toMatch(/softprops\/action-gh-release@(?:v3|[a-f0-9]+ # v3)/);
     expect(release).not.toContain("action-gh-release@v2");
   });
 });

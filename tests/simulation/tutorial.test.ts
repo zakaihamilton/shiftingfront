@@ -45,7 +45,7 @@ describe("tutorial", () => {
   it("returns the move prompt for the move stage", () => {
     const state = createTutorialMission();
     state.tutorialStage = "move";
-    expect(tutorialPrompt(state)).toBe("Move the selected unit to the highlighted ground (right click).");
+    expect(tutorialPrompt(state)).toBe("Tap the highlighted ground to move the selected unit, or right-click it with a mouse.");
   });
 
   it("returns the build prompt for the build stage", () => {

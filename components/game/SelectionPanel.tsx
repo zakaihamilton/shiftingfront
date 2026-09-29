@@ -2,7 +2,7 @@ import { BUILDING_DEFINITIONS, BUILDING_STATS, MAX_PRODUCTION_QUEUE, TICKS_PER_S
 import { ProgressMeter } from "@/components/ui/ProgressMeter";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { cx } from "@/lib/ui/cx";
-import { isBuildingEntity, type Entity, type FactionVisualProfile, type Formation, type Owner, type Palette, type Stance } from "@/lib/types";
+import { isBuildingEntity, type Entity, type FactionVisualProfile, type Formation, type Owner, type Palette, type SharedProductionQueue, type Stance } from "@/lib/types";
 import { SelectionIdentity } from "./SelectionIdentity";
 import { SelectionOrders } from "./SelectionOrders";
 import styles from "./SelectionPanel.module.css";
@@ -14,6 +14,8 @@ export function SelectionPanel({
   profile,
   className,
   power,
+  sharedQueue,
+  activeProducerId,
   playerOwner = 0,
   onStop,
   onStance,
@@ -26,6 +28,8 @@ export function SelectionPanel({
   profile: FactionVisualProfile;
   className?: string;
   power?: number;
+  sharedQueue?: SharedProductionQueue;
+  activeProducerId?: number;
   playerOwner?: Owner;
   onStop?: () => void;
   onStance?: (stance: Stance) => void;
@@ -36,6 +40,8 @@ export function SelectionPanel({
   const friendlyProducer = selected && isBuildingEntity(selected) && selected.owner === playerOwner && selected.constructing <= 0 && Boolean(BUILDING_DEFINITIONS[selected.kind].production);
   const stance = selected?.stance ?? "aggressive";
   const formation = selected?.formation;
+  const producing = sharedQueue ? sharedQueue.producing : selected?.producing;
+  const queuedUnits = sharedQueue ? sharedQueue.queue : selected?.queue ?? [];
   return (
     <section className={cx(styles.section, className)}>
       <ConsoleLabel className={styles.label}>{selectionCount > 1 ? `${selectionCount} units selected` : "Selected"}</ConsoleLabel>
@@ -70,16 +76,21 @@ export function SelectionPanel({
               ⚡ Low Power: 50% Fire Rate · -25% Range
             </div>
           ) : null}
-          {selected.producing ? (
+          {producing ? (
             <ProgressMeter
-              label={`Training ${labelFor(selected.producing.kind)}`}
-              ratio={1 - selected.producing.remaining / (UNIT_STATS[selected.producing.kind].buildTicks || 1)}
+              label={`Training ${labelFor(producing.kind)}`}
+              ratio={1 - producing.remaining / (UNIT_STATS[producing.kind].buildTicks || 1)}
               detail={
-                (selected.queue?.length ?? 0) > 0
-                  ? `Queue ${(selected.queue?.length ?? 0) + 1} of ${MAX_PRODUCTION_QUEUE}`
-                  : `${Math.ceil(selected.producing.remaining / TICKS_PER_SECOND)}s`
+                queuedUnits.length > 0
+                  ? `Queue ${queuedUnits.length + 1} of ${MAX_PRODUCTION_QUEUE}`
+                  : `${Math.ceil(producing.remaining / TICKS_PER_SECOND)}s`
               }
             />
+          ) : null}
+          {friendlyProducer && isBuildingEntity(selected) && (selected.kind === "barracks" || selected.kind === "factory") ? (
+            <span className={styles.orderStatus} data-testid="active-producer-status">
+              {activeProducerId === selected.id ? "Active production building" : `Inactive · active building #${activeProducerId ?? "none"}`}
+            </span>
           ) : null}
           {friendlyProducer ? (
             <span className={styles.orderStatus} data-testid="rally-status">

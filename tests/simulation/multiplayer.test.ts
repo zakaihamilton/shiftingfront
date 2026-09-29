@@ -65,7 +65,11 @@ describe("free-for-all skirmish simulation", () => {
     expect(guest.rngState).toBe(host.rngState);
     expect(guest.multiplayerAiMemory).toEqual(host.multiplayerAiMemory);
     for (const owner of aiOwners) {
-      expect((host.unitsProduced[owner] ?? 0) > 0 || host.entities.some((entity) => entity.owner === owner && entity.producing)).toBe(true);
+      expect(
+        (host.unitsProduced[owner] ?? 0) > 0
+        || host.productionQueues?.[owner]?.barracks?.producing !== undefined
+        || host.productionQueues?.[owner]?.factory?.producing !== undefined,
+      ).toBe(true);
       expect(Object.keys(host.multiplayerAiMemory?.[owner]?.contacts ?? {}).length).toBeGreaterThan(0);
     }
   });
@@ -131,7 +135,7 @@ describe("free-for-all skirmish simulation", () => {
       turret.cooldown = 10;
 
       const events = tickProduction(state);
-      expect(factory.producing.remaining).toBe(20);
+      expect(state.productionQueues?.[owner]?.factory?.producing?.remaining).toBe(20);
       expect(turret.constructing).toBe(5);
       expect(events).toContainEqual({ type: "powerShortage", owner });
 
@@ -146,7 +150,7 @@ describe("free-for-all skirmish simulation", () => {
     for (const owner of ALL_PLAYERS) {
       const barracks = state.entities.find((entity) => entity.owner === owner && entity.kind === "barracks")!;
       issue(state, { type: "produce", fromId: barracks.id, unit: "infantry", owner });
-      expect(barracks.producing?.kind).toBe("infantry");
+      expect(state.productionQueues?.[owner]?.barracks?.producing?.kind).toBe("infantry");
 
       const tank = state.entities.find((entity) => entity.owner === owner && entity.kind === "tank")!;
       const rival = state.entities.find((entity) => entity.owner === ((owner + 1) % 4) && entity.kind === "constructionYard")!;
