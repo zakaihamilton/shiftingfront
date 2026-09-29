@@ -30,7 +30,12 @@ export type SaveEnvelope = {
 };
 
 export function decodeSavedState(value: unknown): SimState {
-  const state = normalizeState(value);
+  const needsProducerMigration = isRecord(value)
+    && (!("productionQueues" in value) || !("activeProducerIds" in value));
+  const migrated = needsProducerMigration
+    ? migrateSaveContent(value, LEGACY_SAVE_CONTENT_VERSION)
+    : value;
+  const state = normalizeState(migrated);
   if (!isStateShape(state)) throw new Error("Invalid save state");
   return state;
 }
@@ -139,6 +144,8 @@ function normalizeState(value: unknown): SimState {
   if (!s.buildingsCompletedByKind || typeof s.buildingsCompletedByKind !== "object") {
     s.buildingsCompletedByKind = {};
   }
+  if (!s.productionQueues || typeof s.productionQueues !== "object" || Array.isArray(s.productionQueues)) s.productionQueues = {};
+  if (!s.activeProducerIds || typeof s.activeProducerIds !== "object" || Array.isArray(s.activeProducerIds)) s.activeProducerIds = {};
   if (s.controlGroups === undefined) s.controlGroups = {};
   if (!Array.isArray(s.entities)) s.entities = [];
   const scenarioRole =

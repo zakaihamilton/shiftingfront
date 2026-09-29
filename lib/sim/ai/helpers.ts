@@ -5,6 +5,7 @@ import { BUILDING_PLACEMENT_RADIUS, canPlaceBuilding, findBuildSite, livingView,
 import { objectiveContractFor } from "../../gen/profile";
 import { nearestKnownPlayer } from "./visibility";
 import { aiBehavior, aiRetreatLocked, aiRetreatTick, setAiRetreatLocked, setAiRetreatTick } from "./ownerState";
+import { isSharedProducerKind, sharedProductionQueue, sharedProductionQueueSize } from "../producerState";
 
 export const RETREAT_ENTER_HEALTH = 0.35;
 export const RETREAT_RECOVER_HEALTH = 0.5;
@@ -115,10 +116,18 @@ export function forwardRefinerySite(state: SimState, yard: Entity, point: Vec2, 
 
 export function queueUnit(state: SimState, producer: Entity, kind: UnitKind, owner: Owner = 1): boolean {
   if (!isUnitAvailable(kind, state.missionIndex)) return false;
-  if (producer.class !== "building" || producer.constructing > 0 || producer.producing) return false;
+  if (producer.class !== "building" || producer.constructing > 0) return false;
+  if (producer.owner !== owner || state.credits[owner] < UNIT_STATS[kind].cost || powerFor(state, owner) < 0) return false;
+  if (isSharedProducerKind(producer.kind)) {
+    const queue = sharedProductionQueue(state, owner, producer.kind);
+    if (sharedProductionQueueSize(queue) > 0) return false;
+    queue.producing = { kind, remaining: UNIT_STATS[kind].buildTicks };
+    state.credits[owner] -= UNIT_STATS[kind].cost;
+    return true;
+  }
+  if (producer.producing) return false;
   if (producer.kind === "runway" && producer.assignedPlaneId !== undefined) return false;
   const cost = UNIT_STATS[kind].cost;
-  if (producer.owner !== owner || state.credits[owner] < cost || powerFor(state, owner) < 0) return false;
   state.credits[owner] -= cost;
   producer.producing = { kind, remaining: UNIT_STATS[kind].buildTicks };
   return true;

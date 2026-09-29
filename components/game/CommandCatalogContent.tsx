@@ -2,6 +2,7 @@ import type { CommandCatalogContentProps } from "./commandCatalogTypes";
 import { ConstructionCameos } from "./ConstructionCameos";
 import { ProductionCameos } from "./ProductionCameos";
 import { SelectionPanel } from "./SelectionPanel";
+import { activeProducerFor, isSharedProducerKind, readSharedProductionQueue } from "@/lib/sim/producerState";
 
 export function CommandCatalogContent({
   state,
@@ -59,6 +60,12 @@ export function CommandCatalogContent({
       playerOwner={state.viewOwner ?? 0}
       className={selectedClassName}
       power={power}
+      sharedQueue={selected && selected.class === "building" && selected.owner === (state.viewOwner ?? 0) && isSharedProducerKind(selected.kind)
+        ? readSharedProductionQueue(state, state.viewOwner ?? 0, selected.kind)
+        : undefined}
+      activeProducerId={selected && selected.class === "building" && isSharedProducerKind(selected.kind)
+        ? activeProducerFor(state, selected.owner, selected.kind)?.id
+        : undefined}
       onStop={onStop}
       onStance={onStance}
       onFormation={onFormation}

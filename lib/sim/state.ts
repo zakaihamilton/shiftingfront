@@ -8,6 +8,8 @@ export function createBaseState(
     tick: 0,
     navigationRevision: 0,
     entities: [],
+    productionQueues: {},
+    activeProducerIds: {},
     nextId: 1,
     creditsEarned: overrides.factions.map(() => 0),
     unitsProduced: overrides.factions.map(() => 0),

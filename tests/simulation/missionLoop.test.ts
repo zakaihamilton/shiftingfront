@@ -86,7 +86,7 @@ describe("scripted mission loops", () => {
     expect(turret?.constructing).toBeGreaterThan(0);
 
     expect(issue(s, { type: "produce", fromId: factory.id, unit: "tank" })).toEqual([]);
-    expect(factory.producing?.kind).toBe("tank");
+    expect(s.productionQueues?.[0]?.factory?.producing?.kind).toBe("tank");
 
     const runner = createScenarioRunner(s);
     runner.run({ maxTicks: 180 });

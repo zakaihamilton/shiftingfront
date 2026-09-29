@@ -15,7 +15,7 @@ const STAGE_TITLES: Record<TutorialStage, string> = {
 
 const HINTS: Record<TutorialStage, string> = {
   select: "Selection works with a click or a drag box. The highlighted Infantry is the lesson target.",
-  move: "Right-click ground to move. Use attack-move when advancing under fire.",
+  move: "Tap the highlighted ground to move on touch, or right-click it with a mouse. Use attack-move when advancing under fire.",
   build: "Power keeps the command center online and unlocks production. The highlighted site is a valid placement.",
   produce: "Queue Infantry from the Production tab. The command panel accepts keyboard shortcuts too.",
   attack: "The drill target is passive. Attack it directly or use attack-move on its highlighted tile.",

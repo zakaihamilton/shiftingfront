@@ -26,7 +26,7 @@ const TUTORIAL_STAGES: TutorialStage[] = ["select", "move", "build", "produce", 
 export function tutorialPrompt(state: SimState): string {
   switch (state.tutorialStage) {
     case "select": return "Tap or click your Infantry to select it.";
-    case "move": return "Move the selected unit to the highlighted ground (right click).";
+    case "move": return "Tap the highlighted ground to move the selected unit, or right-click it with a mouse.";
     case "build": return "Open Construction, choose Power Plant, then place it at the highlighted site.";
     case "produce": return "Open Production and queue one Infantry.";
     case "attack": return "Select a combat unit, then attack the highlighted drill target.";

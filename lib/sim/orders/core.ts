@@ -9,7 +9,7 @@ import { landAircraft } from "../aircraft";
 import { moveUnits, attackMoveUnits } from "./movement";
 import { attackUnits, supportUnits, setStance, setFormation } from "./combat";
 import { startBuild, cancelBuild, sellBuilding, setRallyPoint, toggleRepair } from "./building";
-import { startProduce, cancelProduce } from "./production";
+import { startProduce, cancelProduce, activateProductionBuilding } from "./production";
 import { entitiesFor } from "../entities";
 import { commandOwner } from "./commandOwner";
 
@@ -43,6 +43,9 @@ export function issue(state: SimState, command: Command): SimEvent[] {
       break;
     case "produce":
       events = startProduce(state, command.fromId, command.unit);
+      break;
+    case "activateProducer":
+      events = activateProductionBuilding(state, command.buildingId);
       break;
     case "rally":
       events = setRallyPoint(state, command.buildingId, command.x, command.y);

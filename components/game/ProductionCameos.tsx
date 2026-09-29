@@ -1,6 +1,7 @@
 import { TICKS_PER_SECOND, UNIT_STATS, isSupportUnit, isUnitAvailable, isUnitKind, labelFor, producerFor, unitCameoStatus } from "@/lib/catalog";
 import type { Entity, FactionVisualProfile, Palette, SimState, UnitKind } from "@/lib/types";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
+import { isSharedProducerKind, readSharedProductionQueue } from "@/lib/sim/producerState";
 import { CameoGrid } from "./CameoGrid";
 import { CommandCameo } from "./CommandCameo";
 import { PRODUCIBLE } from "./hooks/useGameActions";
@@ -25,8 +26,13 @@ export function ProductionCameos({
   return (
     <CameoGrid>
       {PRODUCIBLE.map((unit, index) => {
-        const ownerCredits = state.credits[state.viewOwner ?? 0];
-        const cameo = unitCameoStatus(state.entities, state.viewOwner ?? 0, unit);
+        const owner = state.viewOwner ?? 0;
+        const ownerCredits = state.credits[owner];
+        const producerKind = producerFor(unit);
+        const sharedQueue = isSharedProducerKind(producerKind)
+          ? readSharedProductionQueue(state, owner, producerKind)
+          : undefined;
+        const cameo = unitCameoStatus(state.entities, owner, unit, sharedQueue);
         const producer = availableProducer(unit);
         const canBuy = isUnitAvailable(unit, state.missionIndex)
           && ownerCredits >= UNIT_STATS[unit].cost && !!producer && power >= 0;

@@ -69,7 +69,9 @@ No account is required. Campaign progress, named save slots, audio settings, sco
 
 ### Online skirmishes
 
-The **MULTIPLAYER** menu opens a one-battle free-for-all for two to four players. The host chooses a four-digit match seed and receives a separate six-letter invite code; up to three guests enter that code, and the host starts after their room handshakes succeed. Each player starts in a different map corner. Online skirmishes do not use campaign saves or progression.
+The **MULTIPLAYER** menu opens a one-battle free-for-all for two to four players. The host chooses a four-digit match seed and receives a separate six-letter invite code; up to three guests enter that code, and the host starts after their room handshakes succeed. Each player starts in a different map corner. The host can fill vacant seats with AI opponents and can mix AI and human players. Online skirmishes do not use campaign saves or progression.
+
+If a guest disconnects during a match, play pauses while they have up to 60 seconds to reconnect to their reserved seat. If they do not return in time, their force is forfeited and the remaining match resumes.
 
 The Next.js server needs these server-only variables to enable room creation and joining:
 
@@ -119,7 +121,8 @@ For browser tests, install the required Playwright browsers once with `yarn play
 The project is built with Next.js 16, React 19, TypeScript, and a Canvas 2D isometric renderer. Campaign generation and gameplay simulation live in DOM-free modules, so the browser, tests, and headless tools exercise the same deterministic game logic.
 
 - `app/` contains the menu, briefing, campaign, tutorial, and play routes.
-- `components/` contains the HUD, Canvas shell, menus, briefings, and Asset Bay.
+- `components/` contains the HUD, Canvas shell, menus, briefings, Asset Bay, and multiplayer lobby views. The multiplayer lobby controller owns room setup and connection lifecycle; its view components render host, join, waiting-room, battle, and connection-status screens.
+- `lib/multiplayer/` contains the match session and peer coordination logic; `app/api/multiplayer/` issues stateless room and peer credentials.
 - `lib/gen/` creates worlds, factions, characters, maps, stories, objectives, and visual specs from a seed.
 - `lib/sim/` runs economy, production, movement, combat, support, repair, AI, and objectives.
 - `public/art/` contains the game’s visual assets.

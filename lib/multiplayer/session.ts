@@ -1,4 +1,5 @@
 import type { Command, Owner, SimState } from "@/lib/types";
+import { isStateShape } from "@/lib/persist/save/validation";
 import { entityInPlayerVision, makeFog, tickFog } from "@/lib/sim/fog";
 import { evaluateObjectives } from "@/lib/sim/objectives";
 import { compactDestroyedEntities, invalidateEntityCaches } from "@/lib/sim/world";
@@ -12,6 +13,70 @@ export type IntroReleaseMessage = { type: "intro-release"; protocolVersion: numb
 const RTT_PROBE_INTERVAL_MS = 2_000;
 const RTT_SAMPLE_MAX_AGE_MS = 6_000;
 const MAX_PENDING_RTT_PROBES = 8;
+const MAX_MULTIPLAYER_SNAPSHOT_ENTITIES = 8_192;
+const MAX_AI_MEMORY_ENTRIES = 8_192;
+const AI_BEHAVIORS = new Set(["economy", "defense", "assault", "retreat", "regroup"]);
+
+function isRecordLike(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function boundedEntries(value: Record<string, unknown>, maxEntries: number): [string, unknown][] | null {
+  const entries: [string, unknown][] = [];
+  for (const key in value) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+    if (entries.length >= maxEntries) return null;
+    entries.push([key, value[key]]);
+  }
+  return entries;
+}
+
+function isAiMemoryShape(value: unknown, tick: number, width: number, height: number): boolean {
+  if (!isRecordLike(value)) return false;
+  if (value.behavior !== undefined && (typeof value.behavior !== "string" || !AI_BEHAVIORS.has(value.behavior))) return false;
+  if (value.retreatTick !== undefined && (!Number.isSafeInteger(value.retreatTick) || Number(value.retreatTick) < 0 || Number(value.retreatTick) > tick)) return false;
+  if (value.retreatLocked !== undefined && typeof value.retreatLocked !== "boolean") return false;
+  if (value.nextScoutTargetIndex !== undefined && (!Number.isSafeInteger(value.nextScoutTargetIndex) || Number(value.nextScoutTargetIndex) < 0)) return false;
+
+  if (value.contacts !== undefined) {
+    if (!isRecordLike(value.contacts)) return false;
+    const contacts = boundedEntries(value.contacts, MAX_AI_MEMORY_ENTRIES);
+    if (!contacts || contacts.some(([key, contact]) => {
+      if (!/^(0|[1-9]\d*)$/.test(key) || !Number.isSafeInteger(Number(key)) || !isRecordLike(contact)) return true;
+      const validKind = contact.class === "unit"
+        ? typeof contact.kind === "string" && UNITS.has(contact.kind)
+        : contact.class === "building" && typeof contact.kind === "string" && AI_BUILDINGS.has(contact.kind);
+      return !validKind || !Number.isSafeInteger(contact.id) || Number(contact.id) < 0 || Number(contact.id) !== Number(key) ||
+        (contact.owner !== undefined && contact.owner !== 0 && contact.owner !== 1 && contact.owner !== 2 && contact.owner !== 3) ||
+        typeof contact.x !== "number" || !Number.isFinite(contact.x) || contact.x < 0 || contact.x >= width ||
+        typeof contact.y !== "number" || !Number.isFinite(contact.y) || contact.y < 0 || contact.y >= height ||
+        !Number.isSafeInteger(contact.lastSeenTick) || Number(contact.lastSeenTick) < 0 || Number(contact.lastSeenTick) > tick;
+    })) return false;
+  }
+
+  if (value.scoutAssignments !== undefined) {
+    if (!isRecordLike(value.scoutAssignments)) return false;
+    const assignments = boundedEntries(value.scoutAssignments, MAX_AI_MEMORY_ENTRIES);
+    if (!assignments || assignments.some(([key, assignment]) => {
+      if (!/^[1-9]\d*$/.test(key) || !Number.isSafeInteger(Number(key)) || !isRecordLike(assignment)) return true;
+      const target = assignment.target;
+      return !Number.isSafeInteger(assignment.unitId) || Number(assignment.unitId) < 1 || Number(assignment.unitId) !== Number(key) ||
+        !Number.isSafeInteger(assignment.assignedTick) || Number(assignment.assignedTick) < 0 || Number(assignment.assignedTick) > tick ||
+        !isRecordLike(target) || typeof target.x !== "number" || !Number.isFinite(target.x) || target.x < 0 || target.x >= width ||
+        typeof target.y !== "number" || !Number.isFinite(target.y) || target.y < 0 || target.y >= height;
+    })) return false;
+  }
+  return true;
+}
+
+function isMultiplayerAiMemory(value: unknown, aiOwners: readonly Owner[], tick: number, width: number, height: number): boolean {
+  if (!isRecordLike(value)) return false;
+  const entries = boundedEntries(value, aiOwners.length);
+  if (!entries || entries.length !== aiOwners.length || entries.some(([owner, memory]) =>
+    !/^(0|1|2|3)$/.test(owner) || !aiOwners.includes(Number(owner) as Owner) || !isAiMemoryShape(memory, tick, width, height),
+  )) return false;
+  return aiOwners.every((owner) => Object.prototype.hasOwnProperty.call(value, String(owner)));
+}
 
 function monotonicNow(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -44,6 +109,7 @@ const FORMATIONS = new Set(["line", "column", "wedge"]);
 const STANCES = new Set(["aggressive", "defensive", "hold"]);
 const BUILDINGS = new Set(["power", "refinery", "barracks", "factory", "turret", "runway", "antiAirTurret"]);
 const UNITS = new Set(["harvester", "infantry", "antiArmor", "tank", "medic", "repairTruck", "convoyTruck", "strikePlane", "behemoth"]);
+const AI_BUILDINGS = new Set([...BUILDINGS, "constructionYard", "objective"]);
 
 function validIds(value: unknown): value is number[] {
   return Array.isArray(value) && value.length <= 256 && value.every((id) => Number.isSafeInteger(id) && id > 0);
@@ -86,6 +152,10 @@ export function sanitizeCommand(value: unknown, allowOwner = false): Command | n
       if (!Number.isSafeInteger(input.fromId) || Number(input.fromId) <= 0 || typeof input.unit !== "string" || !UNITS.has(input.unit)) return null;
       command = { type: "produce", fromId: Number(input.fromId), unit: input.unit as Extract<Command, { type: "produce" }>["unit"] };
       break;
+    case "activateProducer":
+      if (!Number.isSafeInteger(input.buildingId) || Number(input.buildingId) <= 0) return null;
+      command = { type: "activateProducer", buildingId: Number(input.buildingId) };
+      break;
     case "rally":
       if (!Number.isSafeInteger(input.buildingId) || Number(input.buildingId) <= 0 || !pointOk(input.x, input.y)) return null;
       command = { type: "rally", buildingId: Number(input.buildingId), x: Number(input.x), y: Number(input.y) };
@@ -123,23 +193,34 @@ export function sanitizeCommand(value: unknown, allowOwner = false): Command | n
 }
 
 function sameOwners(value: unknown, expected: readonly Owner[], allowSubset = false): value is Owner[] {
-  if (!Array.isArray(value) || value.some((owner) => owner !== 0 && owner !== 1 && owner !== 2 && owner !== 3)) return false;
+  if (!Array.isArray(value) || value.length > 4 || value.some((owner) => owner !== 0 && owner !== 1 && owner !== 2 && owner !== 3)) return false;
   const owners = value as Owner[];
   return new Set(owners).size === owners.length && (allowSubset
     ? owners.includes(0) && owners.every((owner) => expected.includes(owner))
     : owners.length === expected.length && expected.every((owner) => owners.includes(owner)));
 }
 
-function isSimSnapshot(value: unknown, seed: number, owners: readonly Owner[], aiOwners: readonly Owner[]): value is SimState {
-  if (!value || typeof value !== "object") return false;
+function isSimSnapshot(
+  value: unknown,
+  seed: number,
+  owners: readonly Owner[],
+  aiOwners: readonly Owner[],
+  expectedMap?: Pick<SimState, "width" | "height">,
+): value is SimState {
+  if (!isRecordLike(value)) return false;
   const state = value as Partial<SimState>;
-  return state.seed === seed && state.multiplayer === true && Number.isSafeInteger(state.tick) &&
-    Array.isArray(state.entities) && Array.isArray(state.tiles) && Array.isArray(state.heights) &&
-    Array.isArray(state.resourceAmount) && Array.isArray(state.fog) &&
-    sameOwners(state.multiplayerOwners, owners, true) &&
-    sameOwners(state.multiplayerAiOwners, aiOwners) && aiOwners.every((owner) => state.multiplayerOwners!.includes(owner)) &&
-    state.multiplayerAiMemory !== undefined && typeof state.multiplayerAiMemory === "object" &&
-    (state.result === "playing" || state.result === "won" || state.result === "lost");
+  if (state.seed !== seed || state.multiplayer !== true || !Number.isSafeInteger(state.tick) ||
+      !isStateShape(value, { multiplayer: true, maxEntities: MAX_MULTIPLAYER_SNAPSHOT_ENTITIES }) ||
+      (expectedMap !== undefined && (state.width !== expectedMap.width || state.height !== expectedMap.height)) ||
+      !sameOwners(state.multiplayerOwners, owners, true) ||
+      !sameOwners(state.multiplayerAiOwners, aiOwners) ||
+      !aiOwners.every((owner) => state.multiplayerOwners!.includes(owner)) ||
+      !isMultiplayerAiMemory(state.multiplayerAiMemory, aiOwners, state.tick!, state.width!, state.height!)) return false;
+  if (state.multiplayerEliminated !== undefined &&
+      (!Array.isArray(state.multiplayerEliminated) || state.multiplayerEliminated.length > 4 ||
+        state.multiplayerEliminated.some((owner) => owner !== 0 && owner !== 1 && owner !== 2 && owner !== 3 || !owners.includes(owner)) ||
+        new Set(state.multiplayerEliminated).size !== state.multiplayerEliminated.length)) return false;
+  return true;
 }
 
 type GuestSeat = { peerId: string; owner: Owner; sender: MultiplayerWire; connected: boolean };
@@ -459,8 +540,9 @@ export class MultiplayerSession {
       }
       return;
     }
-    if (this.role === "guest" && message.type === "resync" && isSimSnapshot(message.state, this.seed, this.owners, this.aiOwners)) {
-      this.pendingSnapshot = message.state;
+    if (this.role === "guest" && message.type === "resync") {
+      const localState = this.snapshotSource?.();
+      if (isSimSnapshot(message.state, this.seed, this.owners, this.aiOwners, localState)) this.pendingSnapshot = message.state;
       return;
     }
     if (this.role === "guest" && message.type === "paused") {

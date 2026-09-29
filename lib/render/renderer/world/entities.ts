@@ -2,6 +2,7 @@ import { footprintOf, isAirUnit, UNIT_STATS } from "../../../catalog";
 import { buildingSprite, unitSprite } from "../../../gen/assets";
 import { generateVisualProfile } from "../../../gen/visualProfile";
 import type { BuildingKind, Entity, SimState, UnitKind } from "../../../types";
+import { activeProducerFor, isSharedProducerKind } from "../../../sim/producerState";
 import {
   animClock,
   buildingAnim,
@@ -193,6 +194,12 @@ export function renderEntityPhase(
   const z = cam.zoom;
   const cullPad = Math.max(128, 140 * z);
   const repairTargets = repairTargetIds(state);
+  const activeProducingIds = new Set<number>();
+  for (const entity of drawList) {
+    if (entity.class !== "building" || !isSharedProducerKind(entity.kind)) continue;
+    if (!state.productionQueues?.[entity.owner]?.[entity.kind]?.producing) continue;
+    if (activeProducerFor(state, entity.owner, entity.kind)?.id === entity.id) activeProducingIds.add(entity.id);
+  }
 
   for (const e of drawList) {
     const entityAlpha = renderEntityOpacity(state, e, timeMs);
@@ -201,7 +208,9 @@ export function renderEntityPhase(
     let cy = e.y;
     let elev = entityElev(state, e);
     const uAnim = e.class === "unit" ? unitAnim(e, state.tick, clock) : null;
-    const bAnim = e.class === "building" ? buildingAnim(e, state.tick, clock) : null;
+    const bAnim = e.class === "building"
+      ? buildingAnim(e, state.tick, clock, isSharedProducerKind(e.kind) ? activeProducingIds.has(e.id) : Boolean(e.producing))
+      : null;
     const damageStage = bAnim?.damageStage ?? (e.hp / e.maxHp < 0.34 ? 2 : e.hp / e.maxHp < 0.67 ? 1 : 0);
 
     if (e.class === "unit") {

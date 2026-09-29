@@ -1091,15 +1091,16 @@ describe("production queue", () => {
     addBuilding(s, 0, "constructionYard", 0, 0);
     addBuilding(s, 0, "power", 2, 0);
     const barracks = addBuilding(s, 0, "barracks", 6, 4);
+    const otherBarracks = addBuilding(s, 0, "barracks", 10, 4);
     for (let i = 0; i < MAX_PRODUCTION_QUEUE; i++) {
-      const events = issue(s, { type: "produce", fromId: barracks.id, unit: "infantry" });
+      const events = issue(s, { type: "produce", fromId: i % 2 === 0 ? barracks.id : otherBarracks.id, unit: "infantry" });
       expect(events).toEqual([]);
     }
-    expect(barracks.producing?.kind).toBe("infantry");
-    expect(barracks.queue).toHaveLength(MAX_PRODUCTION_QUEUE - 1);
+    expect(s.productionQueues?.[0]?.barracks?.producing?.kind).toBe("infantry");
+    expect(s.productionQueues?.[0]?.barracks?.queue).toHaveLength(MAX_PRODUCTION_QUEUE - 1);
     const creditsAfterTen = s.credits[0];
-    issue(s, { type: "produce", fromId: barracks.id, unit: "infantry" });
-    expect(barracks.queue).toHaveLength(MAX_PRODUCTION_QUEUE - 1);
+    issue(s, { type: "produce", fromId: otherBarracks.id, unit: "infantry" });
+    expect(s.productionQueues?.[0]?.barracks?.queue).toHaveLength(MAX_PRODUCTION_QUEUE - 1);
     expect(s.credits[0]).toBe(creditsAfterTen);
   });
 
@@ -1111,29 +1112,25 @@ describe("production queue", () => {
     const barracks = addBuilding(s, 0, "barracks", 6, 4);
     issue(s, { type: "produce", fromId: barracks.id, unit: "infantry" });
     issue(s, { type: "produce", fromId: barracks.id, unit: "antiArmor" });
-    barracks.producing = { kind: "infantry", remaining: 1 };
+    s.productionQueues![0]!.barracks!.producing!.remaining = 1;
     tickProduction(s);
     expect(s.entities.some((e) => e.class === "unit" && e.kind === "infantry")).toBe(true);
-    expect(barracks.producing?.kind).toBe("antiArmor");
-    expect(barracks.producing?.remaining).toBe(UNIT_STATS.antiArmor.buildTicks);
-    expect(barracks.queue).toHaveLength(0);
+    expect(s.productionQueues?.[0]?.barracks?.producing?.kind).toBe("antiArmor");
+    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(UNIT_STATS.antiArmor.buildTicks);
+    expect(s.productionQueues?.[0]?.barracks?.queue).toHaveLength(0);
   });
 });
 
 describe("cancel production and construction", () => {
-  it("allows only one barracks and one factory per owner in a mission", () => {
+  it("allows multiple Barracks and Vehicle Plants per owner", () => {
     const s = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
     s.credits[0] = 50_000;
     addBuilding(s, 0, "constructionYard", 0, 0);
 
     expect(issue(s, { type: "build", building: "barracks", x: 4, y: 4 })).toEqual([]);
-    expect(issue(s, { type: "build", building: "barracks", x: 8, y: 4 })).toEqual([
-      { type: "commandRejected", reason: "building limit reached" },
-    ]);
+    expect(issue(s, { type: "build", building: "barracks", x: 8, y: 4 })).toEqual([]);
     expect(issue(s, { type: "build", building: "factory", x: 4, y: 8 })).toEqual([]);
-    expect(issue(s, { type: "build", building: "factory", x: 8, y: 8 })).toEqual([
-      { type: "commandRejected", reason: "building limit reached" },
-    ]);
+    expect(issue(s, { type: "build", building: "factory", x: 8, y: 8 })).toEqual([]);
   });
 
   it("refunds a queued unit before cancelling the unit in progress", () => {
@@ -1148,14 +1145,14 @@ describe("cancel production and construction", () => {
     const afterQueue = s.credits[0];
 
     issue(s, { type: "cancelProduce", unit: "infantry" });
-    expect(barracks.producing?.kind).toBe("infantry");
-    expect(barracks.queue).toEqual(["antiArmor"]);
+    expect(s.productionQueues?.[0]?.barracks?.producing?.kind).toBe("infantry");
+    expect(s.productionQueues?.[0]?.barracks?.queue).toEqual(["antiArmor"]);
     expect(s.credits[0]).toBe(afterQueue + UNIT_STATS.infantry.cost);
 
     issue(s, { type: "cancelProduce", unit: "infantry" });
-    expect(barracks.producing?.kind).toBe("antiArmor");
-    expect(barracks.producing?.remaining).toBe(UNIT_STATS.antiArmor.buildTicks);
-    expect(barracks.queue).toHaveLength(0);
+    expect(s.productionQueues?.[0]?.barracks?.producing?.kind).toBe("antiArmor");
+    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(UNIT_STATS.antiArmor.buildTicks);
+    expect(s.productionQueues?.[0]?.barracks?.queue).toHaveLength(0);
     expect(s.credits[0]).toBe(afterQueue + UNIT_STATS.infantry.cost * 2);
   });
 

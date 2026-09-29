@@ -13,6 +13,7 @@ import { isActiveScout, updateScouts } from "./scouting";
 import { aiBehavior, setAiBehavior } from "./ownerState";
 import { isCombatTarget } from "../combat/grid";
 import { homeGuardCount, isTimedRecovery } from "../policy";
+import { activeProducerFor } from "../producerState";
 
 const YARD_DEFENSE_RANGE = 14;
 
@@ -182,8 +183,8 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
     !finiteCloseout;
   const powerDeficit = powerFor(state, aiOwner) < 0;
   if (productionWindow || powerDeficit) {
-    const factory = enemyBuildings.find((e) => e.kind === "factory" && e.constructing === 0 && !e.producing);
-    const barracks = enemyBuildings.find((e) => e.kind === "barracks" && e.constructing === 0 && !e.producing);
+    const factory = activeProducerFor(state, aiOwner, "factory");
+    const barracks = activeProducerFor(state, aiOwner, "barracks");
     const runway = enemyBuildings.find((e) => e.kind === "runway" && e.constructing === 0 && !e.producing);
     const runwayCount = enemyBuildings.filter((e) => e.kind === "runway").length;
     // Introduce dedicated air infrastructure from mission 2 onward, after the

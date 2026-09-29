@@ -29,7 +29,8 @@ function producesAt(kind: MissionKind, offset: number): boolean {
   state.credits[1] = 5000;
   state.tick = missionDifficulty(state.missionIndex).enemyProductionStart + offset;
   tickAi(state);
-  return state.entities.some((entity) => entity.owner === 1 && entity.producing !== undefined);
+  return state.productionQueues?.[1]?.barracks?.producing !== undefined
+    || state.productionQueues?.[1]?.factory?.producing !== undefined;
 }
 
 describe("objective-specific enemy AI contracts", () => {
@@ -86,7 +87,8 @@ describe("objective-specific enemy AI contracts", () => {
 
       tickAi(state);
 
-      expect(state.entities.some((entity) => entity.owner === 1 && entity.producing !== undefined)).toBe(false);
+      expect(state.productionQueues?.[1]?.barracks?.producing).toBeUndefined();
+      expect(state.productionQueues?.[1]?.factory?.producing).toBeUndefined();
     },
   );
 

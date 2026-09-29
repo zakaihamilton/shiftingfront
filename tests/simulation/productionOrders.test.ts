@@ -102,21 +102,22 @@ describe("startProduce rejection branches", () => {
 });
 
 describe("startProduce queue behavior", () => {
-  it("queues units when a production is already active", () => {
+  it("shares the Barracks queue across buildings of the same type", () => {
     const s = readyBase();
     const barracks = s.entities.find((e) => e.kind === "barracks" && e.owner === 0)!;
+    const otherBarracks = addBuilding(s, 0, "barracks", 5, 10);
     startProduce(s, barracks.id, "infantry");
-    expect(barracks.producing).toBeDefined();
-    startProduce(s, barracks.id, "antiArmor");
-    expect(barracks.queue).toContain("antiArmor");
+    expect(s.productionQueues?.[0]?.barracks?.producing).toEqual({ kind: "infantry", remaining: UNIT_STATS.infantry.buildTicks });
+    startProduce(s, otherBarracks.id, "antiArmor");
+    expect(s.productionQueues?.[0]?.barracks?.queue).toContain("antiArmor");
   });
 
-  it("initializes queue array when building has no queue", () => {
+  it("initializes the shared queue when no local queue exists", () => {
     const s = readyBase();
     const barracks = s.entities.find((e) => e.kind === "barracks" && e.owner === 0)!;
     delete (barracks as { queue?: unknown }).queue;
     startProduce(s, barracks.id, "infantry");
-    expect(barracks.queue).toEqual([]);
+    expect(s.productionQueues?.[0]?.barracks?.queue).toEqual([]);
   });
 });
 
@@ -130,7 +131,7 @@ describe("cancelProduce", () => {
     const events = cancelProduce(s, "antiArmor");
     expect(events).toEqual([]);
     expect(s.credits[0]).toBe(creditsBefore + UNIT_STATS.antiArmor.cost);
-    expect(barracks.queue).not.toContain("antiArmor");
+    expect(s.productionQueues?.[0]?.barracks?.queue).not.toContain("antiArmor");
   });
 
   it("cancels active production and promotes next in queue", () => {
@@ -140,7 +141,7 @@ describe("cancelProduce", () => {
     startProduce(s, barracks.id, "antiArmor");
     const creditsBefore = s.credits[0];
     cancelProduce(s, "infantry");
-    expect(barracks.producing?.kind).toBe("antiArmor");
+    expect(s.productionQueues?.[0]?.barracks?.producing?.kind).toBe("antiArmor");
     expect(s.credits[0]).toBe(creditsBefore + UNIT_STATS.infantry.cost);
   });
 
@@ -149,7 +150,7 @@ describe("cancelProduce", () => {
     const barracks = s.entities.find((e) => e.kind === "barracks" && e.owner === 0)!;
     startProduce(s, barracks.id, "infantry");
     cancelProduce(s, "infantry");
-    expect(barracks.producing).toBeUndefined();
+    expect(s.productionQueues?.[0]?.barracks?.producing).toBeUndefined();
   });
 
   it("returns early when no building is producing the unit", () => {
@@ -160,7 +161,7 @@ describe("cancelProduce", () => {
     expect(s.credits[0]).toBe(creditsBefore);
   });
 
-  it("skips dead and enemy buildings when searching", () => {
+  it("cancels shared jobs independently of producer building state", () => {
     const s = readyBase();
     const barracks = s.entities.find((e) => e.kind === "barracks" && e.owner === 0)!;
     startProduce(s, barracks.id, "infantry");
@@ -169,17 +170,15 @@ describe("cancelProduce", () => {
     deadBarracks.hp = 0;
     const events = cancelProduce(s, "infantry");
     expect(events).toEqual([]);
-    expect(barracks.producing).toBeUndefined();
+    expect(s.productionQueues?.[0]?.barracks?.producing).toBeUndefined();
     expect(s.credits[0]).toBe(creditsBefore + UNIT_STATS.infantry.cost);
     expect(deadBarracks.hp).toBe(0);
   });
 
-  it("initializes queue on buildings that lack it during search", () => {
+  it("leaves an empty shared queue unchanged when no job matches", () => {
     const s = readyBase();
-    const barracks = s.entities.find((e) => e.kind === "barracks" && e.owner === 0)!;
-    delete (barracks as { queue?: unknown }).queue;
     const events = cancelProduce(s, "infantry");
     expect(events).toEqual([]);
-    expect(barracks.queue).toEqual([]);
+    expect(s.productionQueues?.[0]?.barracks).toEqual({ queue: [] });
   });
 });

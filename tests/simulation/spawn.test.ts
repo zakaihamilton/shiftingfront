@@ -34,7 +34,7 @@ describe("unit spawning", () => {
     barracks.producing = { kind: "infantry", remaining: 0 };
 
     expect(() => tickProduction(state)).not.toThrow();
-    expect(barracks.producing?.remaining).toBe(1);
+    expect(state.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(1);
     expect(state.unitsProduced[0]).toBe(0);
   });
 });

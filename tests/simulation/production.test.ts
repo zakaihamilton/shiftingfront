@@ -30,9 +30,9 @@ describe("producer speed", () => {
       tickProduction(two);
     }
 
-    expect(barracks.producing?.remaining).toBe(half);
+    expect(one.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(half);
     expect(two.entities.some((e) => e.class === "unit" && e.kind === "infantry")).toBe(true);
-    expect(first.producing).toBeUndefined();
+    expect(two.productionQueues?.[0]?.barracks?.producing).toBeUndefined();
   });
 
   it("speeds tanks and harvesters with extra war factories", () => {
@@ -41,18 +41,18 @@ describe("producer speed", () => {
     addBuilding(s, 0, "factory", 10, 4);
     issue(s, { type: "produce", fromId: factory.id, unit: "tank" });
     tickProduction(s);
-    expect(factory.producing?.remaining).toBe(UNIT_STATS.tank.buildTicks - 2);
+    expect(s.productionQueues?.[0]?.factory?.producing?.remaining).toBe(UNIT_STATS.tank.buildTicks - 2);
   });
 
-  it("splits extra capacity when several producers are busy", () => {
+  it("uses all ready Barracks to advance their shared queue", () => {
     const s = readyBase();
     const a = addBuilding(s, 0, "barracks", 6, 4);
     const b = addBuilding(s, 0, "barracks", 9, 4);
     issue(s, { type: "produce", fromId: a.id, unit: "infantry" });
     issue(s, { type: "produce", fromId: b.id, unit: "infantry" });
     tickProduction(s);
-    expect(a.producing?.remaining).toBe(UNIT_STATS.infantry.buildTicks - 1);
-    expect(b.producing?.remaining).toBe(UNIT_STATS.infantry.buildTicks - 1);
+    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(UNIT_STATS.infantry.buildTicks - 2);
+    expect(s.productionQueues?.[0]?.barracks?.queue).toEqual(["infantry"]);
   });
 
   it("ignores unfinished barracks when counting speed", () => {
@@ -61,7 +61,7 @@ describe("producer speed", () => {
     addBuilding(s, 0, "barracks", 9, 4, 40);
     issue(s, { type: "produce", fromId: barracks.id, unit: "infantry" });
     tickProduction(s);
-    expect(barracks.producing?.remaining).toBe(UNIT_STATS.infantry.buildTicks - 1);
+    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(UNIT_STATS.infantry.buildTicks - 1);
   });
 });
 
@@ -183,7 +183,7 @@ describe("production rally routing", () => {
   it("spawns at the exit and gives produced units a normal move order to the rally point", () => {
     const s = readyBase();
     const barracks = addBuilding(s, 0, "barracks", 6, 4);
-    barracks.producing = { kind: "infantry", remaining: 1 };
+    s.productionQueues![0] = { barracks: { producing: { kind: "infantry", remaining: 1 }, queue: [] } };
     barracks.rallyPoint = { x: 14, y: 10 };
 
     const events = tickProduction(s);
@@ -197,8 +197,8 @@ describe("production rally routing", () => {
 
   it("keeps the default idle spawn behavior when no rally point is set", () => {
     const s = readyBase();
-    const barracks = addBuilding(s, 0, "barracks", 6, 4);
-    barracks.producing = { kind: "infantry", remaining: 1 };
+    addBuilding(s, 0, "barracks", 6, 4);
+    s.productionQueues![0] = { barracks: { producing: { kind: "infantry", remaining: 1 }, queue: [] } };
 
     tickProduction(s);
     const produced = s.entities.find((entity) => entity.class === "unit" && entity.kind === "infantry");

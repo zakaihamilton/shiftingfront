@@ -204,13 +204,13 @@ export function unitAnim(e: Entity, tick: number, clockMs?: number): UnitAnim {
   };
 }
 
-export function buildingAnim(e: Entity, tick: number, clockMs?: number): BuildingAnim {
+export function buildingAnim(e: Entity, tick: number, clockMs?: number, producingOverride?: boolean): BuildingAnim {
   const t = animClock(tick, clockMs);
   const phase = t * 0.001 + e.id * 0.29;
   const hpRatio = e.maxHp > 0 ? e.hp / e.maxHp : 1;
   const damageStage = hpRatio < 0.34 ? 2 : hpRatio < 0.67 ? 1 : 0;
   const constructing = e.constructing > 0;
-  const producing = Boolean(e.producing);
+  const producing = producingOverride ?? Boolean(e.producing);
   const repairing = Boolean(e.repairing) && !constructing;
   const frame = animFrame(t, constructing || producing || repairing ? 110 : 280, 4, e.id);
   return {
