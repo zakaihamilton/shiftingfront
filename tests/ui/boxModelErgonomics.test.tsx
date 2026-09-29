@@ -36,25 +36,26 @@ describe("Box Model, Padding, and Ergonomics Invariants", () => {
     expect(css).toMatch(/min-height:\s*3rem;/);
   });
 
-  it("employs min-width: 0 on flex/grid children in ResourceDock and PowerMeter to prevent horizontal overflow", () => {
+  it("employs min-width constraints in ResourceDock and its readouts to prevent horizontal overflow", () => {
     const dockCss = readFileSync(resolve(process.cwd(), "components/game/ResourceDock.module.css"), "utf-8");
+    const creditsCss = readFileSync(resolve(process.cwd(), "components/game/CreditsCounter.module.css"), "utf-8");
     const powerCss = readFileSync(resolve(process.cwd(), "components/game/PowerMeter.module.css"), "utf-8");
 
-    // ResourceDock host and power totals must have min-width: 0 to prevent grid blowout
+    // ResourceDock hosts and the credits readout must be allowed to shrink inside their grids.
     expect(dockCss).toMatch(/\.host\s*\{[^}]*min-width:\s*0;/);
-    expect(dockCss).toMatch(/\.powerTotals\s*\{[^}]*min-width:\s*0;/);
-    expect(dockCss).toMatch(/\.powerTotals\s*>\s*span\s*\{[^}]*min-width:\s*0;/);
+    expect(creditsCss).toMatch(/\.readout\s*\{[^}]*min-width:\s*0;/);
 
     // PowerMeter root must specify min-width
     expect(powerCss).toMatch(/min-width:\s*5\.4rem;/);
   });
 
-  it("protects text containers with ellipsis and nowrap against multiline wrapping", () => {
-    const dockCss = readFileSync(resolve(process.cwd(), "components/game/ResourceDock.module.css"), "utf-8");
+  it("clips resource readouts inside their LCD frames", () => {
+    const chromePanelCss = readFileSync(resolve(process.cwd(), "components/game/chromePanel.module.css"), "utf-8");
+    const powerCss = readFileSync(resolve(process.cwd(), "components/game/PowerMeter.module.css"), "utf-8");
 
-    expect(dockCss).toMatch(/overflow:\s*hidden;/);
-    expect(dockCss).toMatch(/text-overflow:\s*ellipsis;/);
-    expect(dockCss).toMatch(/white-space:\s*nowrap;/);
+    // CreditsCounter composes its LCD from chromePanel; PowerMeter defines its own LCD.
+    expect(chromePanelCss).toMatch(/\.lcd\s*\{[^}]*overflow:\s*hidden;/);
+    expect(powerCss).toMatch(/\.lcd\s*\{[^}]*overflow:\s*hidden;/);
   });
 
   it("incorporates safe-area-inset padding/offsets on mobile floating affordances", () => {
