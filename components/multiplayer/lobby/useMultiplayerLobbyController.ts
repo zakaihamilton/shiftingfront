@@ -5,7 +5,8 @@ import type { Owner } from "@/lib/types";
 import { MultiplayerSession, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
 import { createCampaign } from "@/lib/gen/campaign";
 import type { Credential, LobbyMode, LobbyPlayer } from "./types";
-import { PeerFactory, ownerLabel, peerOptions, postJson, publicError, validAiOwners, validOwners, waitForPeerOpen } from "./utils";
+import { PeerLifecycle } from "./peerLifecycle";
+import { PeerFactory, ownerLabel, peerOptions, postJson, publicError, validAiOwners, validOwners } from "./utils";
 
 export function useMultiplayerLobbyController() {
   const router = useRouter();
@@ -22,39 +23,28 @@ export function useMultiplayerLobbyController() {
   const [guestOwner, setGuestOwner] = useState<Owner | null>(null);
   const [lobbyRole, setLobbyRole] = useState<"host" | "guest" | null>(null);
   const [, setSessionRevision] = useState(0);
-  const peerRef = useRef<Peer | null>(null);
+  const [lifecycle] = useState(() => new PeerLifecycle({
+    createPeer: async (credential) => {
+      const PeerConstructor = await PeerFactory();
+      return new PeerConstructor(credential.peerId, peerOptions(credential));
+    },
+    request: postJson,
+    now: () => Date.now(),
+    setTimeout: (callback, delay) => window.setTimeout(callback, delay),
+    clearTimeout: (timer) => window.clearTimeout(timer),
+  }));
   const guestConnectionRef = useRef<DataConnection | null>(null);
   const hostConnectionsRef = useRef(new Map<string, DataConnection>());
   const hostSeatsRef = useRef(new Map<string, Owner>());
   const hostAiOwnersRef = useRef(new Set<Owner>());
-  const hostSeatTimersRef = useRef(new Map<string, number>());
   const hostForfeitedRef = useRef(new Set<string>());
   const handshakeConnectionsRef = useRef(new Set<DataConnection>());
-  const credentialRef = useRef<Credential | null>(null);
-  const roleRef = useRef<"host" | "guest" | null>(null);
   const hostStartedRef = useRef(false);
   const sessionRef = useRef<MultiplayerSession | null>(null);
   const beginGuestConnectionRef = useRef<(credential: Credential, peer: Peer) => void>(() => undefined);
-  const scheduleGuestRetryRef = useRef<(credential: Credential, peer: Peer, delayMs?: number) => void>(() => undefined);
-  const reconnectTimerRef = useRef(0);
-  const guestReconnectTimerRef = useRef(0);
-  const disconnectTimerRef = useRef(0);
-  const signalingRetryUntilRef = useRef(0);
-  const guestRetryUntilRef = useRef(0);
   const guestConnectingRef = useRef(false);
-  const requestAbortRef = useRef<AbortController | null>(null);
-  const operationRef = useRef(0);
   const mountedRef = useRef(true);
 
-
-  const refreshPeerCredential = useCallback(async (credential: Credential, peer: Peer) => {
-    const refreshed = await postJson<Omit<Credential, "code" | "seed" | "hostPeerId" | "grant" | "expiresAt"> & { peerId: string }>("/api/multiplayer/peer-credentials", { grant: credential.grant });
-    credential.peerToken = refreshed.peerToken;
-    credential.peerExpiresAt = refreshed.peerExpiresAt;
-    credential.iceServers = refreshed.iceServers;
-    peer.options.token = refreshed.peerToken;
-    peer.options.config = { iceServers: refreshed.iceServers };
-  }, []);
 
   const publishRoster = useCallback(() => {
     const peerByOwner = new Map([...hostSeatsRef.current.entries()].map(([peerId, owner]) => [owner, peerId]));
@@ -74,24 +64,9 @@ export function useMultiplayerLobbyController() {
   }, []);
 
   const destroyPeer = useCallback(() => {
-    operationRef.current += 1;
-    requestAbortRef.current?.abort();
-    requestAbortRef.current = null;
-    window.clearTimeout(reconnectTimerRef.current);
-    window.clearTimeout(guestReconnectTimerRef.current);
-    window.clearTimeout(disconnectTimerRef.current);
-    for (const timer of hostSeatTimersRef.current.values()) window.clearTimeout(timer);
-    hostSeatTimersRef.current.clear();
-    const guestConnection = guestConnectionRef.current;
+    lifecycle.dispose();
     guestConnectionRef.current = null;
-    guestConnection?.close();
-    const hostConnections = [...hostConnectionsRef.current.values()];
     hostConnectionsRef.current.clear();
-    for (const connection of hostConnections) connection.close();
-    peerRef.current?.destroy();
-    peerRef.current = null;
-    credentialRef.current = null;
-    roleRef.current = null;
     setLobbyRole(null);
     hostSeatsRef.current.clear();
     hostAiOwnersRef.current.clear();
@@ -100,9 +75,8 @@ export function useMultiplayerLobbyController() {
     hostStartedRef.current = false;
     guestOwnerRef.current = null;
     guestConnectingRef.current = false;
-    signalingRetryUntilRef.current = 0;
-    guestRetryUntilRef.current = 0;
-  }, []);
+    lifecycle.finishGuestRecovery();
+  }, [lifecycle]);
 
   const guestOwnerRef = useRef<Owner | null>(null);
 
@@ -158,21 +132,15 @@ export function useMultiplayerLobbyController() {
 
   useEffect(() => {
     mountedRef.current = true;
-    const hostSeatTimers = hostSeatTimersRef.current;
     const hostConnections = hostConnectionsRef.current;
     return () => {
       mountedRef.current = false;
-      window.clearTimeout(reconnectTimerRef.current);
-      window.clearTimeout(guestReconnectTimerRef.current);
-      window.clearTimeout(disconnectTimerRef.current);
-      for (const timer of hostSeatTimers.values()) window.clearTimeout(timer);
       sessionRef.current?.end();
-      peerRef.current?.destroy();
-      peerRef.current = null;
+      lifecycle.dispose();
       guestConnectionRef.current = null;
       hostConnections.clear();
     };
-  }, []);
+  }, [lifecycle]);
 
   useEffect(() => {
     if (!session) return;
@@ -196,17 +164,23 @@ export function useMultiplayerLobbyController() {
   }, []);
 
   const rejectRoomFull = useCallback((connection: DataConnection) => {
+    const operation = lifecycle.operation;
     const announce = () => {
-      if (!connection.open) return;
+      if (!lifecycle.isCurrent(operation) || !connection.open) return;
       connection.send({ type: "room_full" });
-      window.setTimeout(() => { if (connection.open) connection.close(); }, 150);
+      lifecycle.schedule(`reject:${connection.connectionId}`, () => { if (connection.open) connection.close(); }, 150);
     };
     if (connection.open) announce();
     else connection.once("open", announce);
-  }, []);
+  }, [lifecycle]);
 
   const bindHostConnection = useCallback((connection: DataConnection, grant: string, roomSeed: number) => {
+    const operation = lifecycle.operation;
+    lifecycle.trackConnection(connection);
+    const isCurrentConnection = () => mountedRef.current && lifecycle.isCurrent(operation);
+
     connection.on("data", async (raw) => {
+      if (!isCurrentConnection()) return;
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
       const message = raw as Record<string, unknown>;
       if (message.type === "hello") {
@@ -222,7 +196,8 @@ export function useMultiplayerLobbyController() {
             rejectRoomFull(connection);
             return;
           }
-          const handshake = await postJson<{ valid: boolean; seed: number }>("/api/multiplayer/handshake", { hostGrant: grant, guestGrant: message.grant, guestPeerId: peerId });
+          const handshake = await lifecycle.request<{ valid: boolean; seed: number }>("/api/multiplayer/handshake", { hostGrant: grant, guestGrant: message.grant, guestPeerId: peerId });
+          if (!isCurrentConnection()) return;
           if (!connection.open || !handshake.valid || handshake.seed !== roomSeed) throw new Error("invalid_handshake");
           let owner = knownOwner;
           if (owner === undefined) {
@@ -235,9 +210,7 @@ export function useMultiplayerLobbyController() {
             hostSeatsRef.current.set(peerId, owner);
           }
           hostConnectionsRef.current.set(peerId, connection);
-          const timer = hostSeatTimersRef.current.get(peerId);
-          if (timer) window.clearTimeout(timer);
-          hostSeatTimersRef.current.delete(peerId);
+          lifecycle.clearTimer(`seat:${peerId}`);
           publishRoster();
           const sender = { send: (value: unknown) => { if (connection.open) connection.send(value); } };
           const current = sessionRef.current;
@@ -250,6 +223,7 @@ export function useMultiplayerLobbyController() {
             setStatus(`${ownerLabel(owner)} joined. Start when at least two players are connected.`);
           }
         } catch (handshakeError) {
+          if (!isCurrentConnection()) return;
           setError(publicError(handshakeError));
           if (connection.open) connection.close();
         } finally {
@@ -261,6 +235,7 @@ export function useMultiplayerLobbyController() {
     });
 
     connection.on("error", () => {
+      if (!isCurrentConnection()) return;
       const activeConnection = hostConnectionsRef.current.get(connection.peer);
       if (activeConnection && activeConnection !== connection) return;
       const current = sessionRef.current;
@@ -273,6 +248,7 @@ export function useMultiplayerLobbyController() {
       }
     });
     connection.on("close", () => {
+      if (!isCurrentConnection()) return;
       if (handshakeConnectionsRef.current.has(connection)) handshakeConnectionsRef.current.delete(connection);
       if (hostConnectionsRef.current.get(connection.peer) !== connection) return;
       hostConnectionsRef.current.delete(connection.peer);
@@ -285,10 +261,7 @@ export function useMultiplayerLobbyController() {
       } else {
         setStatus("A player disconnected. Their seat is reserved for 60 seconds.");
       }
-      const previousTimer = hostSeatTimersRef.current.get(peerId);
-      if (previousTimer) window.clearTimeout(previousTimer);
-      const timer = window.setTimeout(() => {
-        hostSeatTimersRef.current.delete(peerId);
+      lifecycle.schedule(`seat:${peerId}`, () => {
         if (hostConnectionsRef.current.has(peerId)) return;
         if (hostStartedRef.current && current) {
           const owner = current.forfeitGuest(peerId);
@@ -302,110 +275,76 @@ export function useMultiplayerLobbyController() {
         }
         publishRoster();
       }, 60_000);
-      hostSeatTimersRef.current.set(peerId, timer);
     });
-  }, [publishRoster, rejectRoomFull]);
+  }, [lifecycle, publishRoster, rejectRoomFull]);
 
   const scheduleGuestRetry = useCallback((credential: Credential, peer: Peer, delayMs = 1800) => {
-    if (!guestRetryUntilRef.current) guestRetryUntilRef.current = Date.now() + 60_000;
-    if (Date.now() >= guestRetryUntilRef.current) {
-      guestConnectingRef.current = false;
-      if (sessionRef.current && sessionRef.current.status !== "ended") {
-        sessionRef.current.end();
-        destroyPeer();
-        setStatus("The host did not reconnect. The skirmish has ended.");
-      } else {
-        destroyPeer();
-        setMode("choose");
-        setError("The host could not be reached. Ask them to create a new room.");
-      }
-      return;
-    }
-    window.clearTimeout(guestReconnectTimerRef.current);
-    guestReconnectTimerRef.current = window.setTimeout(async () => {
-      if (!mountedRef.current || peerRef.current !== peer || peer.disconnected || sessionRef.current?.status === "ended") return;
-      if (guestConnectionRef.current?.open) return;
-      const previous = guestConnectionRef.current;
-      guestConnectionRef.current = null;
-      guestConnectingRef.current = false;
-      previous?.close();
-      try {
-        if (credential.peerExpiresAt * 1000 < Date.now() + 30_000) await refreshPeerCredential(credential, peer);
+    lifecycle.retryGuest(credential, peer, {
+      canRetry: () => mountedRef.current && !guestConnectionRef.current?.open && sessionRef.current?.status !== "ended",
+      connect: () => {
+        const previous = guestConnectionRef.current;
+        guestConnectionRef.current = null;
+        guestConnectingRef.current = false;
+        previous?.close();
         beginGuestConnectionRef.current(credential, peer);
-      } catch {
-        scheduleGuestRetryRef.current(credential, peer);
-      }
+      },
+      expired: () => {
+        guestConnectingRef.current = false;
+        if (sessionRef.current && sessionRef.current.status !== "ended") {
+          sessionRef.current.end();
+          destroyPeer();
+          setStatus("The host did not reconnect. The skirmish has ended.");
+        } else {
+          destroyPeer();
+          setMode("choose");
+          setError("The host could not be reached. Ask them to create a new room.");
+        }
+      },
     }, delayMs);
-  }, [destroyPeer, refreshPeerCredential]);
-
-  useEffect(() => { scheduleGuestRetryRef.current = scheduleGuestRetry; }, [scheduleGuestRetry]);
+  }, [destroyPeer, lifecycle]);
 
   const startPeer = useCallback(async (credential: Credential, role: "host" | "guest", operation: number) => {
-    const PeerConstructor = await PeerFactory();
-    if (!mountedRef.current || operationRef.current !== operation) return null;
-    const peer = new PeerConstructor(credential.peerId, peerOptions(credential));
-    peerRef.current = peer;
-    credentialRef.current = credential;
-    roleRef.current = role;
-    setLobbyRole(role);
-    peer.on("error", (peerError) => {
-      // PeerJS also reports WebRTC negotiation errors here. Only its
-      // `disconnected` event pauses the match and starts signaling recovery;
-      // active data-channel drops are handled by the connection listeners.
-      if (!sessionRef.current) setError(publicError(peerError));
-      if (peerError.type === "peer-unavailable" && role === "guest") {
+    const peer = await lifecycle.start(credential, role, operation, {
+      error: (peerError) => {
+        if (!sessionRef.current) setError(publicError(peerError));
+      },
+      unavailable: () => {
         setStatus("Waiting for the host to come online…");
         guestConnectingRef.current = false;
         const previous = guestConnectionRef.current;
         guestConnectionRef.current = null;
         previous?.close();
-        scheduleGuestRetry(credential, peer);
-      }
-    });
-    peer.on("disconnected", () => {
-      sessionRef.current?.setDisconnected();
-      setStatus("Signaling disconnected. Reconnecting…");
-      signalingRetryUntilRef.current = Date.now() + 60_000;
-      window.clearTimeout(reconnectTimerRef.current);
-      const retrySignaling = async () => {
-        if (!mountedRef.current || peerRef.current !== peer) return;
-        if (Date.now() >= signalingRetryUntilRef.current) {
-          sessionRef.current?.end();
-          destroyPeer();
-          setStatus("Signaling did not recover within 60 seconds. The skirmish has ended.");
-          return;
+        if (lifecycle.peer) scheduleGuestRetry(credential, lifecycle.peer);
+      },
+      disconnected: () => {
+        sessionRef.current?.setDisconnected();
+        setStatus("Signaling disconnected. Reconnecting…");
+      },
+      expired: () => {
+        sessionRef.current?.end();
+        destroyPeer();
+        setStatus("Signaling did not recover within 60 seconds. The skirmish has ended.");
+      },
+      open: () => {
+        if (sessionRef.current?.status === "ended") return;
+        setError("");
+        if (role === "host") {
+          sessionRef.current?.attach({ send() {} });
+          setStatus(hostStartedRef.current ? "Signaling restored. The match is ready." : "Room ready. Invite guests or assign AI opponents.");
+        } else if (sessionRef.current && guestConnectionRef.current?.open) {
+          const connection = guestConnectionRef.current;
+          sessionRef.current.attach({ send: (value: unknown) => { if (connection.open) connection.send(value); } });
+          lifecycle.finishGuestRecovery();
+          setStatus("Signaling restored. The skirmish has resumed.");
+        } else if (lifecycle.guestRetryUntil > 0 && lifecycle.peer) {
+          guestConnectingRef.current = false;
+          beginGuestConnectionRef.current(credential, lifecycle.peer);
         }
-        if (!peer.disconnected) return;
-        try {
-          if (credential.peerExpiresAt * 1000 < Date.now() + 30_000) await refreshPeerCredential(credential, peer);
-          peer.reconnect();
-          reconnectTimerRef.current = window.setTimeout(() => { if (peer.disconnected) void retrySignaling(); }, 1800);
-        } catch {
-          reconnectTimerRef.current = window.setTimeout(() => void retrySignaling(), 1800);
-        }
-      };
-      reconnectTimerRef.current = window.setTimeout(() => void retrySignaling(), 0);
+      },
     });
-    peer.on("open", () => {
-      if (sessionRef.current?.status === "ended") return;
-      signalingRetryUntilRef.current = 0;
-      window.clearTimeout(reconnectTimerRef.current);
-      setError("");
-      if (role === "host") {
-        sessionRef.current?.attach({ send() {} });
-        setStatus(hostStartedRef.current ? "Signaling restored. The match is ready." : "Room ready. Invite guests or assign AI opponents.");
-      } else if (sessionRef.current && guestConnectionRef.current?.open) {
-        const connection = guestConnectionRef.current;
-        sessionRef.current.attach({ send: (value: unknown) => { if (connection.open) connection.send(value); } });
-        guestRetryUntilRef.current = 0;
-        setStatus("Signaling restored. The skirmish has resumed.");
-      } else if (guestRetryUntilRef.current > 0) {
-        guestConnectingRef.current = false;
-        beginGuestConnectionRef.current(credential, peer);
-      }
-    });
+    if (peer) setLobbyRole(role);
     return peer;
-  }, [destroyPeer, refreshPeerCredential, scheduleGuestRetry]);
+  }, [destroyPeer, lifecycle, scheduleGuestRetry]);
 
   const hostRoom = useCallback(async () => {
     const parsedSeed = Number(seed);
@@ -414,9 +353,7 @@ export function useMultiplayerLobbyController() {
       return;
     }
     destroyPeer();
-    const operation = operationRef.current;
-    const requestAbort = new AbortController();
-    requestAbortRef.current = requestAbort;
+    const operation = lifecycle.operation;
     setInviteCode("");
     setRoster([{ owner: 0, connected: true, host: true }]);
     hostAiOwnersRef.current.clear();
@@ -424,37 +361,35 @@ export function useMultiplayerLobbyController() {
     setError("");
     setStatus("Creating room…");
     try {
-      const credential = await postJson<Credential>("/api/multiplayer/rooms", { seed: parsedSeed }, requestAbort.signal);
-      if (!mountedRef.current || operationRef.current !== operation) return;
-      credentialRef.current = credential;
+      const credential = await lifecycle.request<Credential>("/api/multiplayer/rooms", { seed: parsedSeed });
+      if (!mountedRef.current || !lifecycle.isCurrent(operation)) return;
       const peer = await startPeer(credential, "host", operation);
       if (!peer) return;
-      peer.on("connection", (connection) => bindHostConnection(connection, credential.grant, parsedSeed));
+      peer.on("connection", (connection) => {
+        if (!lifecycle.isCurrent(operation)) { connection.close(); return; }
+        bindHostConnection(connection, credential.grant, parsedSeed);
+      });
       publishRoster();
-      await waitForPeerOpen(peer, 15_000, requestAbort.signal);
-      if (!mountedRef.current || operationRef.current !== operation || peerRef.current !== peer) return;
-      requestAbortRef.current = null;
+      await lifecycle.waitForOpen(peer);
+      if (!mountedRef.current || !lifecycle.isCurrent(operation) || !lifecycle.owns(peer)) return;
       setInviteCode(credential.code);
     } catch (createError) {
-      if (!mountedRef.current || operationRef.current !== operation) return;
-      requestAbortRef.current = null;
+      if (!mountedRef.current || !lifecycle.isCurrent(operation)) return;
       destroyPeer();
       setMode("hostSetup");
       setStatus("Room creation failed.");
       setError(publicError(createError));
     }
-  }, [bindHostConnection, destroyPeer, publishRoster, seed, startPeer]);
+  }, [bindHostConnection, destroyPeer, lifecycle, publishRoster, seed, startPeer]);
 
   const startMatch = useCallback(() => {
-    if (roleRef.current !== "host" || hostStartedRef.current) return;
+    if (lifecycle.role !== "host" || hostStartedRef.current) return;
     const connected = [...hostSeatsRef.current.entries()].filter(([peerId]) => hostConnectionsRef.current.get(peerId)?.open === true);
     const aiOwners = [...hostAiOwnersRef.current].sort((a, b) => a - b);
     if (connected.length + aiOwners.length < 1 || connected.length + aiOwners.length > 3) return;
     for (const peerId of [...hostSeatsRef.current.keys()]) {
       if (connected.some(([connectedId]) => connectedId === peerId)) continue;
-      const timer = hostSeatTimersRef.current.get(peerId);
-      if (timer) window.clearTimeout(timer);
-      hostSeatTimersRef.current.delete(peerId);
+      lifecycle.clearTimer(`seat:${peerId}`);
       hostSeatsRef.current.delete(peerId);
     }
     const owners: Owner[] = [0 as Owner, ...connected.map(([, owner]) => owner), ...aiOwners].sort((a, b) => a - b);
@@ -472,20 +407,23 @@ export function useMultiplayerLobbyController() {
       hostConnectionsRef.current.get(peerId)?.send({ type: "start", seed: roomSeed, settings: SKIRMISH_MATCH_SETTINGS, owner, owners, aiOwners });
     }
     showBattle(hostSession, roomSeed);
-  }, [seed, showBattle]);
+  }, [lifecycle, seed, showBattle]);
 
   const beginGuestConnection = useCallback((credential: Credential, peer: Peer) => {
-    if (!mountedRef.current || peerRef.current !== peer || peer.disconnected || guestConnectingRef.current ||
+    if (!mountedRef.current || !lifecycle.owns(peer) || peer.disconnected || guestConnectingRef.current ||
         guestConnectionRef.current?.open || sessionRef.current?.status === "ended") return;
     guestConnectingRef.current = true;
     const connection = peer.connect(credential.hostPeerId, { reliable: true });
     guestConnectionRef.current = connection;
+    lifecycle.trackConnection(connection);
+    const operation = lifecycle.operation;
+    const isCurrentConnection = () => mountedRef.current && lifecycle.isCurrent(operation) && guestConnectionRef.current === connection;
     connection.on("data", (raw) => {
+      if (!isCurrentConnection()) return;
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
       const message = raw as Record<string, unknown>;
       if (message.type === "room_full") {
-        window.clearTimeout(guestReconnectTimerRef.current);
-        guestRetryUntilRef.current = 0;
+        lifecycle.finishGuestRecovery();
         guestConnectingRef.current = false;
         if (guestConnectionRef.current === connection) guestConnectionRef.current = null;
         destroyPeer();
@@ -523,32 +461,31 @@ export function useMultiplayerLobbyController() {
       if (message.type === "reconnected") {
         sessionRef.current?.attach({ send: (value: unknown) => { if (connection.open) connection.send(value); } });
         connection.send({ type: "resume" });
-        window.clearTimeout(disconnectTimerRef.current);
+        lifecycle.clearTimer("guest-disconnect");
         setStatus("Reconnected. Resynchronizing the match.");
         return;
       }
       sessionRef.current?.receive(raw);
     });
     connection.on("open", () => {
-      if (guestConnectionRef.current !== connection) {
+      if (!isCurrentConnection()) {
         connection.close();
         return;
       }
       guestConnectingRef.current = false;
-      guestRetryUntilRef.current = 0;
-      window.clearTimeout(guestReconnectTimerRef.current);
+      lifecycle.finishGuestRecovery();
       connection.send({ type: "hello", grant: credential.grant });
     });
     connection.on("close", () => {
-      if (guestConnectionRef.current !== connection) return;
+      if (!isCurrentConnection()) return;
       guestConnectionRef.current = null;
       guestConnectingRef.current = false;
-      guestRetryUntilRef.current = Date.now() + 60_000;
+      lifecycle.beginGuestRecovery();
       if (sessionRef.current && sessionRef.current.status !== "ended") {
         sessionRef.current.setDisconnected();
         setStatus("Host connection lost. Reconnecting for 60 seconds…");
-        window.clearTimeout(disconnectTimerRef.current);
-        disconnectTimerRef.current = window.setTimeout(() => {
+        lifecycle.clearTimer("guest-disconnect");
+        lifecycle.schedule("guest-disconnect", () => {
           if (sessionRef.current?.status === "disconnected") {
             sessionRef.current.end();
             setStatus("The host left. The skirmish has ended.");
@@ -560,7 +497,7 @@ export function useMultiplayerLobbyController() {
       scheduleGuestRetry(credential, peer, 1200);
     });
     connection.on("error", () => {
-      if (guestConnectionRef.current !== connection) return;
+      if (!isCurrentConnection()) return;
       guestConnectingRef.current = false;
       const current = sessionRef.current;
       if (current && current.status !== "ended") {
@@ -572,15 +509,15 @@ export function useMultiplayerLobbyController() {
       connection.close();
       scheduleGuestRetry(credential, peer);
     });
-  }, [destroyPeer, scheduleGuestRetry, showBattle]);
+  }, [destroyPeer, lifecycle, scheduleGuestRetry, showBattle]);
 
   const setSeatAi = useCallback((owner: Owner) => {
-    if (owner === 0 || roleRef.current !== "host" || hostStartedRef.current) return;
+    if (owner === 0 || lifecycle.role !== "host" || hostStartedRef.current) return;
     if ([...hostSeatsRef.current.values()].includes(owner)) return;
     if (hostAiOwnersRef.current.has(owner)) hostAiOwnersRef.current.delete(owner);
     else hostAiOwnersRef.current.add(owner);
     publishRoster();
-  }, [publishRoster]);
+  }, [lifecycle, publishRoster]);
 
   useEffect(() => { beginGuestConnectionRef.current = beginGuestConnection; }, [beginGuestConnection]);
 
@@ -592,18 +529,14 @@ export function useMultiplayerLobbyController() {
       return;
     }
     destroyPeer();
-    const operation = operationRef.current;
-    const requestAbort = new AbortController();
-    requestAbortRef.current = requestAbort;
+    const operation = lifecycle.operation;
     setMode("joining");
     setError("");
     setStatus("Looking up room…");
     try {
-      const credential = await postJson<Credential>("/api/multiplayer/rooms/join", { code: normalized }, requestAbort.signal);
-      if (!mountedRef.current || operationRef.current !== operation) return;
-      requestAbortRef.current = null;
-      credentialRef.current = credential;
-      guestRetryUntilRef.current = Date.now() + 60_000;
+      const credential = await lifecycle.request<Credential>("/api/multiplayer/rooms/join", { code: normalized });
+      if (!mountedRef.current || !lifecycle.isCurrent(operation)) return;
+      lifecycle.beginGuestRecovery();
       setStatus("Connecting to host…");
       const peer = await startPeer(credential, "guest", operation);
       if (!peer) return;
@@ -613,13 +546,12 @@ export function useMultiplayerLobbyController() {
       };
       waitForOpen();
     } catch (joinError) {
-      if (!mountedRef.current || operationRef.current !== operation) return;
-      requestAbortRef.current = null;
+      if (!mountedRef.current || !lifecycle.isCurrent(operation)) return;
       setMode("choose");
       setStatus("Room lookup failed.");
       setError(publicError(joinError));
     }
-  }, [beginGuestConnection, destroyPeer, joinCode, startPeer]);
+  }, [beginGuestConnection, destroyPeer, joinCode, lifecycle, startPeer]);
 
   const copyInvite = useCallback(async () => {
     if (!inviteCode) return;

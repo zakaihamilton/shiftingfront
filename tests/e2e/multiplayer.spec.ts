@@ -52,6 +52,7 @@ async function mockPeerTransport(page: import("@playwright/test").Page, networkI
       disconnected = false;
       options: { token?: string; config?: RTCConfiguration };
       connections: Record<string, FakeConnection[]> = {};
+      connectCount = 0;
       private channel = new BroadcastChannel(channelName);
       constructor(readonly id: string, options: { token?: string; config?: RTCConfiguration }) {
         super();
@@ -87,6 +88,7 @@ async function mockPeerTransport(page: import("@playwright/test").Page, networkI
         }, openDelay);
       }
       connect(peerId: string) {
+        this.connectCount += 1;
         const connection = new FakeConnection(peerId, this.id, `${this.id}:${peerId}`, this.channel);
         this.connections[peerId] = [connection];
         this.channel.postMessage({ kind: "connect", to: peerId, from: this.id, id: connection.id });
@@ -277,6 +279,19 @@ test("host starts a four-player corner skirmish after three guests verify their 
   });
   await expect(host.getByText("Signaling disconnected. Reconnecting…")).toHaveCount(0);
 
+  await firstGuest.evaluate((remotePeerId) => {
+    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ connections: Record<string, Array<{ close: () => void }>> }> };
+    testWindow.__SHIFTFRONT_TEST_PEERS__?.[0]?.connections[remotePeerId]?.[0]?.close();
+  }, hostPeerId);
+  await expect(host.getByText("A player disconnected. The match is paused while they reconnect (60 seconds).")).toBeVisible();
+  await expect.poll(() => firstGuest.evaluate(() => {
+    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ connectCount: number }> };
+    return testWindow.__SHIFTFRONT_TEST_PEERS__?.[0]?.connectCount ?? 0;
+  })).toBe(2);
+  await expect(host.getByText("A player disconnected. The match is paused while they reconnect (60 seconds).")).toHaveCount(0);
+  await expect(firstGuest.getByRole("heading", { name: "Connection ended" })).toHaveCount(0);
+  await expect(firstGuest.getByTestId("command-sidebar")).toBeVisible();
+
   const hostSaves = await host.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("shiftingfront:save:")));
   expect(hostSaves).toEqual([]);
   for (const guest of guests) {
@@ -289,6 +304,9 @@ test("host starts a four-player corner skirmish after three guests verify their 
   }, guestPeerIds[2]);
   await expect(guests[2]!.getByRole("heading", { name: "Connection ended" })).toBeVisible();
   await expect(guests[2]!.getByText("The host ended the skirmish.").last()).toBeVisible();
+  await host.getByRole("button", { name: "Leave skirmish" }).click();
+  await expect(firstGuest.getByRole("heading", { name: "Connection ended" })).toBeVisible();
+  await expect(guests[1]!.getByRole("heading", { name: "Connection ended" })).toBeVisible();
   releaseHandshake();
   await context.close();
 });
@@ -349,5 +367,42 @@ test("AI and a human guest occupy separate seats in the same skirmish", async ({
     expect(guest.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 }),
   ]);
   await Promise.all([host, guest].map(waitForBattlefieldReady));
+  await context.close();
+});
+
+
+test("cancelled join can be followed by a fresh join without stale peer callbacks", async ({ browser }) => {
+  const context = await browser.newContext();
+  const host = await context.newPage();
+  const guest = await context.newPage();
+  const networkId = `sf-multiplayer-cancel-${Date.now()}-${Math.random()}`;
+  await mockPeerTransport(host, networkId);
+  await mockPeerTransport(guest, networkId, 1000);
+  await mockPeerovo(host, "host");
+  await mockPeerovo(guest, "guest");
+  await host.goto("/multiplayer");
+  await host.getByRole("button", { name: "Host a room" }).click();
+  await host.getByTestId("multiplayer-seed-input").fill("0421");
+  await host.getByRole("button", { name: "Create room" }).click();
+  await expect(host.getByTestId("multiplayer-invite-code")).toHaveText(roomCode);
+
+  await guest.goto("/multiplayer");
+  await guest.getByTestId("multiplayer-code-input").fill(roomCode);
+  await guest.getByRole("button", { name: "Join room" }).click();
+  await expect.poll(() => guest.evaluate(() => {
+    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: unknown[] };
+    return testWindow.__SHIFTFRONT_TEST_PEERS__?.length ?? 0;
+  })).toBe(1);
+  await guest.keyboard.press("Escape");
+  await expect(guest.getByRole("button", { name: "Join room" })).toBeVisible();
+  await guest.getByRole("button", { name: "Join room" }).click();
+  await expect(guest.getByTestId("multiplayer-seat")).toContainText("Northeast");
+  await expect(host.getByTestId("multiplayer-roster-seat-1")).toContainText("Connected");
+  await expect(host.getByTestId("multiplayer-roster-seat-2")).toContainText("Open User seat");
+  const peers = await guest.evaluate(() => {
+    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ connectCount: number }> };
+    return testWindow.__SHIFTFRONT_TEST_PEERS__?.map((peer) => peer.connectCount);
+  });
+  expect(peers).toEqual([0, 1]);
   await context.close();
 });

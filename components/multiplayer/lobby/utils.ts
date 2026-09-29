@@ -1,4 +1,3 @@
-import type { Peer } from "peerjs";
 import type { Owner } from "@/lib/types";
 import type { Credential } from "./types";
 
@@ -22,27 +21,6 @@ export function peerOptions(credential: Credential) {
     config: { iceServers: credential.iceServers },
     debug: 0 as const,
   };
-}
-
-export function waitForPeerOpen(peer: Peer, timeoutMs = 15_000, signal?: AbortSignal): Promise<void> {
-  if (peer.open) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const timeout = window.setTimeout(() => finish(new Error("peer_open_timeout")), timeoutMs);
-    const onOpen = () => finish();
-    const onError = (error: Error) => finish(error);
-    const onAbort = () => finish(new Error("peer_open_aborted"));
-    const finish = (error?: Error) => {
-      window.clearTimeout(timeout);
-      peer.off("open", onOpen);
-      peer.off("error", onError);
-      signal?.removeEventListener("abort", onAbort);
-      if (error) reject(error); else resolve();
-    };
-    if (signal?.aborted) { onAbort(); return; }
-    signal?.addEventListener("abort", onAbort, { once: true });
-    peer.on("open", onOpen);
-    peer.on("error", onError);
-  });
 }
 
 export function publicError(error: unknown): string {
