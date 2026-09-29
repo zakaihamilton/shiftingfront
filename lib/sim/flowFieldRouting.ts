@@ -1,6 +1,6 @@
 import type { Entity, SimState } from "../types";
 import { flowCellTaken, flowDistanceAt, flowFieldForGoals, flowStep, type FlowField } from "./flowField";
-import { navigationEdgeKey, navigationEdgeReserved } from "./navigation/grid";
+import { navigationEdgeKey, navigationEdgeReserved, returnsToPreviousCell } from "./navigation/grid";
 import { reversesPreviousStep } from "./pathfinding";
 import { tryFindPathDetailed } from "./pathBudget";
 import { entitiesFor } from "./entities";
@@ -256,6 +256,7 @@ function assignFlowPrefix(
   const currentDistance = field.distance[cursorY * field.width + cursorX] ?? -1;
   const existingFree = existing
     ? !existingIsCurrent && existingDistance >= 0 && existingDistance < currentDistance &&
+      !returnsToPreviousCell(state.width, cursorX, cursorY, Math.round(existing.x), Math.round(existing.y), previousCell) &&
       prefixCellOpen(state, occupancy, reserved, entity.id, existing.x, existing.y, plannedVacates) &&
       !edgeBlocked(state, edgeReservations, entity.id, cursorX, cursorY, Math.round(existing.x), Math.round(existing.y))
     : false;
@@ -344,6 +345,7 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     occupancy,
   });
   if (!result) return false;
+  if (result.status === "unreachable") return false;
   // A temporary unit blockade must not consume the shared flow route. A
   // useful partial path gets one tick to run while the flow goal remains
   // attached; a blocked or exhausted partial path rejoins the field.
@@ -354,11 +356,6 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     entity.idle = false;
     return true;
   }
-  if (result.status === "unreachable") return false;
-  const last = result.path[result.path.length - 1];
-  if (last && (Math.round(last.x) !== Math.round(destination.x) || Math.round(last.y) !== Math.round(destination.y))) {
-    return false;
-  }
   const first = result.path[0];
   if (first && isPlayerControlledOwner(state, entity.owner) && entity.scenarioRole !== "convoy" && reversesPreviousStep(
     state.width,
@@ -368,6 +365,10 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     Math.round(first.y),
     previousCell,
   )) return false;
+  const last = result.path[result.path.length - 1];
+  if (last && (Math.round(last.x) !== Math.round(destination.x) || Math.round(last.y) !== Math.round(destination.y))) {
+    return false;
+  }
   // Keep the shared goal attached until the unit actually reaches its slot.
   // This makes a complete static path a temporary handoff, so a newly
   // occupied waypoint can return the unit to the flow field instead of

@@ -35,6 +35,22 @@ export function reversesPreviousStep(
   return incomingX * outgoingX + incomingY * outgoingY < 0;
 }
 
+/** Whether a candidate immediately sends the unit back into its last tile. */
+export function returnsToPreviousCell(
+  width: number,
+  currentX: number,
+  currentY: number,
+  nextX: number,
+  nextY: number,
+  previousCell?: number,
+): boolean {
+  if (previousCell === undefined) return false;
+  const previousX = previousCell % width;
+  const previousY = Math.floor(previousCell / width);
+  return Math.max(Math.abs(currentX - previousX), Math.abs(currentY - previousY)) === 1 &&
+    nextX === previousX && nextY === previousY;
+}
+
 export function inBoundsNavigation(navigation: ReturnType<typeof staticNavigationFor>, x: number, y: number): boolean {
   return x >= 0 && y >= 0 && x < navigation.width && y < navigation.height;
 }
