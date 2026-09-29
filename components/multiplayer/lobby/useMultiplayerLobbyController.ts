@@ -11,7 +11,7 @@ export function useMultiplayerLobbyController() {
   const router = useRouter();
   const [mode, setMode] = useState<LobbyMode>("choose");
   const [seed, setSeed] = useState("0000");
-  const campaignPreview = useMemo(() => /^\d{4}$/.test(seed) ? createCampaign(Number(seed)) : null, [seed]);
+  const skirmishBiome = useMemo(() => /^\d{4}$/.test(seed) ? createCampaign(Number(seed)).world.biome : null, [seed]);
   const [joinCode, setJoinCode] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
@@ -641,7 +641,7 @@ export function useMultiplayerLobbyController() {
   return {
     mode,
     seed,
-    campaignPreview,
+    skirmishBiome,
     joinCode,
     inviteCode,
     error,

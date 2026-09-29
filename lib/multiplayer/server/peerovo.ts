@@ -101,13 +101,17 @@ export async function issuePeerCredential(input: {
     headers: { Authorization: `Bearer ${settings.projectApiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ peerId: input.peerId, expiresInSeconds }),
   });
+  const responseReceivedAtMs = Date.now();
   if (response.status !== 201) throw new PeerovoError("ticket_unavailable");
   const payload = await json(response) as Record<string, unknown>;
   const nowSeconds = Math.floor(Date.now() / 1000);
+  // Capture the response time before reading its body so a slow stream cannot
+  // extend the accepted credential lifetime. Allow a small clock-boundary skew.
+  const latestAllowedExpiry = Math.floor(responseReceivedAtMs / 1000) + expiresInSeconds + 5;
   if (payload.projectId !== settings.projectId || payload.sessionId !== input.sessionId || payload.peerId !== input.peerId ||
       typeof payload.peerToken !== "string" || payload.peerToken.length === 0 || payload.peerToken.length > 2048 ||
       !Number.isInteger(payload.expiresAt) || Number(payload.expiresAt) <= nowSeconds ||
-      Number(payload.expiresAt) > Math.floor(requestedAtMs / 1000) + expiresInSeconds ||
+      Number(payload.expiresAt) > latestAllowedExpiry ||
       Number(payload.expiresAt) > Math.floor(input.sessionExpiresAt / 1000)) {
     throw new PeerovoError("invalid_ticket_response");
   }

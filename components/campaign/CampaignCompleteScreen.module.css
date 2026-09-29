@@ -879,6 +879,10 @@
     grid-template-columns: 1fr;
   }
 
+  .operationsBody .missions {
+    grid-template-columns: 1fr;
+  }
+
   .detailGrid {
     grid-template-columns: 1fr;
   }
