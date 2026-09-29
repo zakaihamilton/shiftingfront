@@ -47,6 +47,7 @@
     "test:visual": "tsx scripts/e2e-preflight.ts && playwright test tests/e2e/visual.spec.ts",
     "test:visual:update": "tsx scripts/e2e-preflight.ts && playwright test tests/e2e/visual.spec.ts --update-snapshots",
     "health": "repnix check",
+    "health:asset-versioning": "tsx scripts/asset-versioning.ts",
     "health:dead-code": "knip",
     "health:duplication": "jscpd app components lib scripts",
     "health:coverage": "VITEST_COVERAGE=1 yarn test:fast --coverage",

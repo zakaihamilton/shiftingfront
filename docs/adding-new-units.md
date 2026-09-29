@@ -86,7 +86,9 @@ Use these art rules for every static view:
   back view or rely on renderer rotation to create missing directions.
 - Preserve the unit's readable silhouette at the battlefield's small scale.
 - Use kebab-case filenames and a version suffix such as `-v1`. Increment the
-  suffix when replacing an art roster with an incompatible framing or design.
+  suffix whenever bytes change, including compression-only changes. Art and
+  icons have one-year immutable caching: never replace an existing URL in place.
+  Update every reference and service-worker precache entry with the new paths.
 - A shared canvas is preferred. For a normal compact ground unit, use a
   transparent 384x512 canvas unless the unit deliberately needs another
   framing. If the source canvas has neighboring artwork or unusual margins,
@@ -206,6 +208,12 @@ When adding an aircraft:
 - Confirm wreck rendering reuses the correct directional live asset.
 
 ## Verification
+
+Before publishing art changes, run `yarn health:asset-versioning --base <git-ref>`
+against the commit before those changes (the PR base in CI). The check includes
+uncommitted edits, allows additions and deletions, and rejects changed bytes at
+existing paths under `public/art` and `public/icons`. Previously cached assets
+refresh through new URLs; changing cache headers cannot evict an old cached URL.
 
 Run the focused checks first:
 
