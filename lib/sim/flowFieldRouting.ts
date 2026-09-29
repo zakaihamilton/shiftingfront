@@ -1,7 +1,6 @@
 import type { Entity, SimState } from "../types";
 import { flowCellTaken, flowDistanceAt, flowFieldForGoals, flowStep, type FlowField } from "./flowField";
-import { navigationEdgeKey, navigationEdgeReserved } from "./navigation/grid";
-import { reversesPreviousStep } from "./pathfinding";
+import { navigationEdgeKey, navigationEdgeReserved, returnsToPreviousCell } from "./navigation/grid";
 import { tryFindPathDetailed } from "./pathBudget";
 import { entitiesFor } from "./entities";
 import { navigationMobilityFor } from "./terrainRules";
@@ -350,15 +349,6 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
   });
   if (!result) return false;
   if (result.status === "unreachable") return false;
-  const first = result.path[0];
-  if (first && isPlayerControlledOwner(state, entity.owner) && entity.scenarioRole !== "convoy" && reversesPreviousStep(
-    state.width,
-    Math.round(entity.x),
-    Math.round(entity.y),
-    Math.round(first.x),
-    Math.round(first.y),
-    previousCell,
-  )) return false;
   // A temporary unit blockade must not consume the shared flow route. A
   // useful partial path gets one tick to run while the flow goal remains
   // attached; a blocked or exhausted partial path rejoins the field.
@@ -369,6 +359,15 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     entity.idle = false;
     return true;
   }
+  const first = result.path[0];
+  if (first && isPlayerControlledOwner(state, entity.owner) && entity.scenarioRole !== "convoy" && returnsToPreviousCell(
+    state.width,
+    Math.round(entity.x),
+    Math.round(entity.y),
+    Math.round(first.x),
+    Math.round(first.y),
+    previousCell,
+  )) return false;
   const last = result.path[result.path.length - 1];
   if (last && (Math.round(last.x) !== Math.round(destination.x) || Math.round(last.y) !== Math.round(destination.y))) {
     return false;
