@@ -260,6 +260,7 @@ function assignFlowPrefix(
   const currentDistance = field.distance[cursorY * field.width + cursorX] ?? -1;
   const existingFree = existing
     ? !existingIsCurrent && existingDistance >= 0 && existingDistance < currentDistance &&
+      !returnsToPreviousCell(state.width, cursorX, cursorY, Math.round(existing.x), Math.round(existing.y), previousCell) &&
       prefixCellOpen(state, occupancy, reserved, entity.id, existing.x, existing.y, plannedVacates) &&
       !edgeBlocked(state, edgeReservations, entity.id, cursorX, cursorY, Math.round(existing.x), Math.round(existing.y))
     : false;
