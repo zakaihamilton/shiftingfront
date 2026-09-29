@@ -16,7 +16,7 @@
 .itemMarker { display: grid; width: 2rem; height: 2rem; place-items: center; border: 1px solid currentColor; color: var(--chrome-cyan); font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 800; letter-spacing: 0.04em; box-shadow: 0 0 12px color-mix(in srgb, var(--chrome-cyan) 14%, transparent); }
 .item[data-kind="slot"] .itemMarker { color: var(--chrome-gold); }
 .itemCopy { display: grid; min-width: 0; gap: 0.18rem; }
-.itemTitle, .itemCampaign, .itemMeta { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.itemTitle, .itemCampaign, .itemMeta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .itemTitle { color: var(--chrome-text); font-size: var(--text-base); line-height: 1.1; }
 .itemCampaign { color: var(--chrome-body); font-size: var(--text-xs); line-height: 1.2; }
 .itemMeta { display: grid; justify-items: end; gap: 0.18rem; color: var(--chrome-muted); font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; line-height: 1.2; text-align: right; text-transform: uppercase; white-space: nowrap; }
@@ -32,7 +32,7 @@
 .confirmActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem; }
 .confirmDelete { color: var(--chrome-alert); }
 @media (max-width: 420px) {
-  .row { grid-template-columns: minmax(0, 1fr) 4rem auto 2.5rem; }
+  .row { grid-template-columns: minmax(0, 1fr) 4rem auto auto; }
   .operations, .export, .delete { padding-inline: 0.35rem; }
   .confirmActions > * { flex: 1 1 8rem; }
 }
