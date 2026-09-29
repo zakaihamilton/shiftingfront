@@ -101,13 +101,13 @@ export async function issuePeerCredential(input: {
     headers: { Authorization: `Bearer ${settings.projectApiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ peerId: input.peerId, expiresInSeconds }),
   });
+  const responseReceivedAtMs = Date.now();
   if (response.status !== 201) throw new PeerovoError("ticket_unavailable");
   const payload = await json(response) as Record<string, unknown>;
   const nowSeconds = Math.floor(Date.now() / 1000);
-  // The token service starts its TTL after it receives this request. Measure
-  // the returned expiry from response time so request latency (or a one-second
-  // clock boundary) does not make a correctly scoped token look too long-lived.
-  const latestAllowedExpiry = nowSeconds + expiresInSeconds + 5;
+  // Capture the response time before reading its body so a slow stream cannot
+  // extend the accepted credential lifetime. Allow a small clock-boundary skew.
+  const latestAllowedExpiry = Math.floor(responseReceivedAtMs / 1000) + expiresInSeconds + 5;
   if (payload.projectId !== settings.projectId || payload.sessionId !== input.sessionId || payload.peerId !== input.peerId ||
       typeof payload.peerToken !== "string" || payload.peerToken.length === 0 || payload.peerToken.length > 2048 ||
       !Number.isInteger(payload.expiresAt) || Number(payload.expiresAt) <= nowSeconds ||
