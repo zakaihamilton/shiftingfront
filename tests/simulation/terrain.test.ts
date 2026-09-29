@@ -201,6 +201,7 @@ describe("map skirt scenery", () => {
   it("draws outside the playable map at a lower opacity", () => {
     const w = 24;
     const h = 24;
+    expect(MAP_SKIRT_ALPHA).toBe(0.6);
     expect(skirtAlpha(0, 0, w, h)).toBe(1);
     expect(skirtAlpha(w - 1, h - 1, w, h)).toBe(1);
     expect(skirtAlpha(-1, 8, w, h)).toBe(MAP_SKIRT_ALPHA);

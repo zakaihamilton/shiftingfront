@@ -211,6 +211,7 @@ export function useGameCamera({
     panAvail,
     panAvailRef,
     setPanAvail,
+    cancelFocusAnimation,
     hotPan,
     panHold,
     edgePanHover,

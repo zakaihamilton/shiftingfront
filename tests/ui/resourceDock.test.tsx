@@ -76,7 +76,7 @@ describe("Resource Management UI components", () => {
   });
 
   describe("ResourceDock", () => {
-    it("combines credits and power meter with tooltips and grid load", () => {
+    it("combines credits and power meter with tooltips", () => {
       render(
         <ResourceDock
           credits={3400}
@@ -91,10 +91,6 @@ describe("Resource Management UI components", () => {
 
       // Power meter display
       expect(screen.getByTestId("power")).toHaveTextContent("+80");
-
-      // Power totals readout
-      expect(screen.getByLabelText("Power used 120 of 200")).toBeInTheDocument();
-      expect(screen.getByText("Grid load")).toBeInTheDocument();
     });
 
     it("surfaces deficit tooltips when power is in deficit", () => {

@@ -13,56 +13,8 @@
   min-width: 0;
 }
 
-.powerTotals {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.25rem;
-  min-width: 0;
-  margin: 0 0.25rem 0.2rem;
-  color: var(--chrome-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.powerTotals > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.powerTotals strong {
-  flex: 0 0 auto;
-  color: var(--chrome-text);
-  font-size: var(--text-xs);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.powerTotals small {
-  color: var(--chrome-muted);
-  font-size: var(--text-2xs);
-}
-
 @media (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
   .dock {
     grid-template-columns: 1fr 1.1fr;
-  }
-}
-
-@media (max-width: 799px) and (orientation: landscape) {
-  .powerTotals {
-    gap: 0.15rem;
-    font-size: calc(0.60rem * var(--hud-scale, 1));
-    letter-spacing: 0.04em;
-  }
-
-  .powerTotals strong,
-  .powerTotals small {
-    font-size: calc(0.60rem * var(--hud-scale, 1));
   }
 }

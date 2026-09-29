@@ -1,43 +1,86 @@
 .overlay {
+  --outcome-accent: var(--chrome-cyan);
+  --outcome-glow: color-mix(in srgb, var(--chrome-cyan) 24%, transparent);
+
   box-sizing: border-box;
-  position: absolute;
+  position: fixed;
+  z-index: 140;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  background:
-    linear-gradient(90deg, rgba(3, 7, 12, 0.66), rgba(3, 7, 12, 0.34) 52%, rgba(3, 7, 12, 0.72)),
-    radial-gradient(circle at 72% 42%, rgba(3, 7, 12, 0.12), rgba(3, 7, 12, 0.76) 78%),
-    var(--result-art) center / cover no-repeat;
-  isolation: isolate;
   overflow: hidden;
+  padding: clamp(0.55rem, 2vw, 1.5rem);
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(3, 7, 12, 0.56), rgba(3, 7, 12, 0.9)),
+    radial-gradient(ellipse at 50% 38%, rgba(6, 13, 20, 0.08), rgba(3, 7, 12, 0.78) 82%),
+    var(--scene-art) center / cover no-repeat,
+    var(--chrome-void);
+}
+
+.overlay::before,
+.overlay::after {
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+}
+
+.overlay::before {
+  background:
+    linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.025) 50%, transparent 68%),
+    var(--result-art) center / cover no-repeat;
+  filter: saturate(0.74);
+  mix-blend-mode: screen;
+  opacity: 0.16;
+}
+
+.overlay::after {
+  background: radial-gradient(ellipse at center, transparent 28%, rgba(1, 4, 8, 0.48) 100%);
+}
+
+.overlay[data-outcome="won"] {
+  --outcome-accent: var(--chrome-gold);
+  --outcome-glow: color-mix(in srgb, var(--chrome-gold) 28%, transparent);
+}
+
+.overlay[data-outcome="lost"] {
+  --outcome-accent: var(--chrome-alert);
+  --outcome-glow: color-mix(in srgb, var(--chrome-alert) 24%, transparent);
+}
+
+.overlay[data-outcome="draw"] {
+  --outcome-accent: var(--chrome-cyan);
+  --outcome-glow: color-mix(in srgb, var(--chrome-cyan) 20%, transparent);
 }
 
 .panel {
   box-sizing: border-box;
+  position: relative;
   display: grid;
-  width: min(100%, 64rem);
-  height: min(54rem, calc(100vh - 2rem));
-  max-height: calc(100vh - 2rem);
+  width: min(76rem, 100%);
+  height: min(54rem, calc(100dvh - 2.5rem));
+  max-height: calc(100dvh - 2.5rem);
   min-height: 0;
-  border-radius: var(--chrome-radius-lg);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 0.7rem;
-  padding: 1.2rem;
+  gap: clamp(0.65rem, 1.5vh, 1rem);
   overflow: hidden;
-  text-align: center;
-  backdrop-filter: blur(12px) saturate(0.7);
-  border-color: color-mix(in srgb, var(--chrome-cyan) 38%, var(--chrome-inset));
+  padding: clamp(0.85rem, 2.2vw, 1.6rem);
+  border: 1px solid color-mix(in srgb, var(--outcome-accent) 42%, var(--chrome-inset));
+  border-radius: var(--chrome-radius-lg);
+  text-align: left;
+  backdrop-filter: blur(14px) saturate(0.78);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--chrome-raised) 32%, transparent), transparent 18%),
-    linear-gradient(145deg, rgba(40, 54, 66, 0.84), rgba(8, 13, 20, 0.96)),
+    linear-gradient(145deg, rgba(32, 44, 55, 0.96), rgba(7, 12, 18, 0.97)),
     var(--texture-brushed) center / 420px 420px;
   box-shadow:
-    inset 1px 1px color-mix(in srgb, var(--chrome-bevel) 68%, transparent),
+    inset 1px 1px color-mix(in srgb, var(--chrome-bevel) 72%, transparent),
     inset -1px -1px var(--chrome-void),
-    0 24px 70px rgba(0, 0, 0, 0.54),
-    0 0 0 1px color-mix(in srgb, var(--chrome-cyan) 12%, transparent);
+    0 26px 80px rgba(0, 0, 0, 0.68),
+    0 0 34px var(--outcome-glow);
+  animation: result-panel-arrive 720ms cubic-bezier(0.18, 0.8, 0.22, 1) both;
 }
 
 .panel::before {
@@ -45,12 +88,12 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(8, 13, 20, 0.96), rgba(8, 13, 20, 0.72) 42%, rgba(8, 13, 20, 0.12) 82%, transparent),
-    linear-gradient(180deg, rgba(8, 13, 20, 0.04), rgba(8, 13, 20, 0.42) 88%),
+    linear-gradient(90deg, rgba(6, 11, 17, 0.94), rgba(6, 11, 17, 0.82) 46%, rgba(6, 11, 17, 0.24)),
+    linear-gradient(180deg, rgba(8, 13, 20, 0.04), rgba(8, 13, 20, 0.86) 96%),
     var(--result-art) right center / cover no-repeat;
   content: "";
-  filter: brightness(1.3) saturate(1.16);
-  opacity: 1;
+  filter: brightness(1.12) saturate(0.92);
+  opacity: 0.62;
 }
 
 .panel::after {
@@ -58,14 +101,9 @@
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
-  background: linear-gradient(90deg, var(--chrome-cyan-dim), var(--chrome-cyan), transparent 78%);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--chrome-cyan) 26%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--outcome-accent) 46%, transparent), var(--outcome-accent) 38%, transparent 84%);
+  box-shadow: 0 0 20px var(--outcome-glow);
   content: "";
-}
-
-.overlay[data-result="won"] .panel::after {
-  background: linear-gradient(90deg, var(--chrome-gold-dim), var(--chrome-gold), transparent 78%);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--chrome-gold) 26%, transparent);
 }
 
 .panel > * {
@@ -74,47 +112,134 @@
 }
 
 .header {
+  display: grid;
   min-width: 0;
-  padding: 0.35rem 0.6rem 0.85rem;
+  grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.36fr);
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.4rem);
+  padding: 0.65rem 0.5rem 1.1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--outcome-accent) 32%, var(--chrome-line));
+  animation: result-copy-arrive 580ms cubic-bezier(0.18, 0.8, 0.22, 1) 90ms both;
+}
+
+.headerCopy {
+  min-width: 0;
+}
+
+.headerMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
 }
 
 .headerLabel {
-  color: var(--chrome-cyan);
+  color: var(--outcome-accent);
   font-size: var(--text-xs);
-  letter-spacing: 0.26em;
+  letter-spacing: 0.24em;
 }
 
-.overlay[data-result="won"] .headerLabel {
-  color: var(--chrome-gold);
+.headerBadge {
+  flex: 0 0 auto;
+  padding: 0.38rem 0.58rem;
+  border-left-width: 3px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.16em;
 }
 
 .title {
-  margin: 0.28rem 0 0;
-  color: var(--chrome-text);
-  font-size: clamp(2.15rem, 5.5vh, 3.8rem);
+  margin: 0.7rem 0 0;
+  color: var(--outcome-accent);
+  font-family: var(--font-display);
+  font-size: clamp(2.35rem, 6.3vh, 4.5rem);
   font-weight: 900;
-  letter-spacing: 0.08em;
-  line-height: 0.92;
+  letter-spacing: 0.045em;
+  line-height: 0.9;
+  text-shadow: 0 0 28px var(--outcome-glow);
   text-transform: uppercase;
 }
 
-.overlay[data-result="won"] .title {
-  color: var(--chrome-gold);
-  text-shadow: 0 0 24px color-mix(in srgb, var(--chrome-gold) 35%, transparent);
-}
-
-.overlay[data-result="lost"] .title {
-  color: var(--chrome-alert);
-  text-shadow: 0 0 24px color-mix(in srgb, var(--chrome-alert) 35%, transparent);
-}
-
 .mission {
-  margin: 0.55rem 0 0;
+  margin: 0.7rem 0 0;
   overflow: hidden;
-  color: var(--chrome-muted);
-  font-size: 0.76rem;
+  color: var(--chrome-body);
+  font-size: 0.8rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.15em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.heroOutcome {
+  max-width: 48rem;
+  margin: 0.48rem 0 0;
+  color: var(--chrome-muted);
+  font-size: clamp(0.84rem, 1.5vw, 1rem);
+  font-weight: 650;
+  line-height: 1.42;
+}
+
+.headerContext {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--outcome-accent) 28%, var(--chrome-line));
+  border-left: 3px solid var(--outcome-accent);
+  border-radius: var(--chrome-radius);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--outcome-accent) 10%, rgba(5, 10, 15, 0.9)), rgba(5, 10, 15, 0.76));
+  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.035), 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.headerSignal {
+  display: grid;
+  width: 4.5rem;
+  height: 4.5rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--outcome-accent) 68%, transparent);
+  color: var(--outcome-accent);
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0 18px var(--outcome-glow);
+  clip-path: polygon(0 0, 86% 0, 100% 14%, 100% 100%, 0 100%);
+  background: color-mix(in srgb, var(--outcome-accent) 8%, rgba(3, 7, 12, 0.86));
+  box-shadow: inset 1px 1px color-mix(in srgb, var(--outcome-accent) 25%, transparent), 0 0 24px var(--outcome-glow);
+}
+
+.contextGrid {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.contextGrid > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.contextGrid dt {
+  color: var(--chrome-muted);
+  font-size: var(--text-2xs);
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.contextGrid dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--chrome-text);
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -123,150 +248,95 @@
 .resultGrid {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(18rem, 0.82fr);
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1.2rem;
-  padding-top: 0.85rem;
   min-height: 0;
-  overflow: hidden;
+  grid-template-columns: minmax(0, 1.12fr) minmax(17rem, 0.88fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.9rem;
+  overflow: auto;
+  padding: 0.1rem 0.35rem 0.35rem 0;
+  scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
+}
+
+.resultGrid:focus-visible {
+  outline: 2px solid var(--chrome-focus);
+  outline-offset: -3px;
 }
 
 .outcome,
 .section {
   min-width: 0;
   min-height: 0;
-  padding: 0.1rem 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+  padding: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--outcome-accent) 22%, var(--chrome-line));
+  border-radius: var(--chrome-radius-lg);
+  background: linear-gradient(145deg, rgba(18, 29, 38, 0.8), rgba(5, 10, 16, 0.72));
+  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.035), inset -1px -1px var(--chrome-inset), 0 12px 30px rgba(0, 0, 0, 0.16);
   text-align: left;
 }
 
 .outcome {
-  grid-row: 1 / span 2;
   display: flex;
+  grid-row: 1 / span 2;
   flex-direction: column;
   gap: 0.65rem;
-  overflow: hidden;
-  border-left: 2px solid var(--chrome-cyan-dim);
-  padding-left: 0.9rem;
-  padding-right: 0.4rem;
+  overflow: auto;
+  border-left: 3px solid var(--outcome-accent);
+  animation: result-card-arrive 540ms cubic-bezier(0.18, 0.8, 0.22, 1) 190ms both;
 }
 
-.overlay[data-result="won"] .outcome {
-  border-left-color: var(--chrome-gold-dim);
-}
-
-.overlay[data-result="lost"] .outcome {
-  border-left-color: var(--chrome-alert);
-}
-
-.resultGrid > [aria-label="Battle record"] {
+.resultGrid > [aria-label="Battle record"],
+.resultGrid > [aria-label="Match record"] {
   grid-column: 2;
   grid-row: 1;
-  overflow: hidden;
-  padding: 0.85rem;
-  border-radius: var(--chrome-radius);
-  border: 1px solid color-mix(in srgb, var(--chrome-cyan) 28%, var(--chrome-line));
-  background: linear-gradient(145deg, rgba(35, 54, 66, 0.62), rgba(7, 13, 20, 0.64));
-  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.035), inset -1px -1px var(--chrome-inset);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
+  border-top: 2px solid color-mix(in srgb, var(--chrome-cyan) 58%, var(--chrome-line));
+  animation: result-card-arrive 540ms cubic-bezier(0.18, 0.8, 0.22, 1) 270ms both;
 }
 
 .resultGrid > [aria-label="Force disposition"] {
   grid-column: 2;
   grid-row: 2;
-  overflow: hidden;
-  padding: 0.85rem;
-  border-radius: var(--chrome-radius);
-  border: 1px solid color-mix(in srgb, var(--chrome-gold) 24%, var(--chrome-line));
-  background: linear-gradient(145deg, rgba(43, 46, 40, 0.5), rgba(7, 13, 20, 0.64));
-  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.03), inset -1px -1px var(--chrome-inset);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
+  border-top: 2px solid color-mix(in srgb, var(--chrome-gold) 58%, var(--chrome-line));
+  animation: result-card-arrive 540ms cubic-bezier(0.18, 0.8, 0.22, 1) 350ms both;
 }
 
-.outcomeSummary {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  min-height: 3.15rem;
-  padding: 0.72rem 0.85rem;
-  border-radius: var(--chrome-radius);
-  border: 1px solid color-mix(in srgb, var(--chrome-alert) 32%, var(--chrome-line));
-  border-left: 3px solid var(--chrome-cyan-dim);
-  background: linear-gradient(105deg, rgba(31, 50, 61, 0.78), rgba(8, 14, 21, 0.38));
-  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.035), 0 10px 26px rgba(0, 0, 0, 0.14);
-}
-
-.outcome[data-status="complete"] .outcomeSummary {
-  border-color: color-mix(in srgb, var(--chrome-gold) 34%, var(--chrome-line));
-  border-left-color: var(--chrome-gold);
-}
-
-.outcome[data-status="failed"] .outcomeSummary {
-  border-left-color: var(--chrome-alert);
-}
-
-.outcomeIcon {
-  display: grid;
-  flex: 0 0 2.45rem;
-  width: 2.45rem;
-  height: 2.45rem;
-  place-items: center;
-  border: 1px solid var(--chrome-cyan-dim);
-  color: var(--chrome-cyan);
-  background: color-mix(in srgb, var(--chrome-cyan) 7%, var(--chrome-void));
-  box-shadow: inset 1px 1px color-mix(in srgb, var(--chrome-cyan) 22%, transparent), 0 0 18px color-mix(in srgb, var(--chrome-cyan) 10%, transparent);
-  clip-path: polygon(0 0, 88% 0, 100% 14%, 100% 100%, 0 100%);
-  font-size: 1.35rem;
-  font-weight: 900;
-}
-
-.overlay[data-result="won"] .outcomeIcon {
-  border-color: var(--chrome-gold-dim);
-  background: color-mix(in srgb, var(--chrome-gold) 7%, var(--chrome-void));
-  box-shadow: inset 1px 1px color-mix(in srgb, var(--chrome-gold) 22%, transparent), 0 0 18px color-mix(in srgb, var(--chrome-gold) 10%, transparent);
-  color: var(--chrome-gold);
-}
-
-.overlay[data-result="lost"] .outcomeIcon {
-  border-color: var(--chrome-alert);
-  background: color-mix(in srgb, var(--chrome-alert) 8%, var(--chrome-void));
-  box-shadow: inset 1px 1px color-mix(in srgb, var(--chrome-alert) 22%, transparent), 0 0 18px color-mix(in srgb, var(--chrome-alert) 10%, transparent);
-  color: var(--chrome-alert);
-}
-
-.outcomeText {
-  margin: 0;
-  color: var(--chrome-body);
-  font-size: 0.92rem;
-  font-weight: 800;
-  line-height: 1.3;
-  text-transform: uppercase;
+.resultGrid > [aria-label="Battle record"]:focus-visible,
+.resultGrid > [aria-label="Match record"]:focus-visible,
+.resultGrid > [aria-label="Force disposition"]:focus-visible {
+  outline: 2px solid var(--chrome-focus);
+  outline-offset: -3px;
 }
 
 .resultCard {
-  padding: 0.76rem 0.82rem;
+  padding: 0.85rem 0.9rem 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--outcome-accent) 42%, var(--chrome-line));
+  border-left: 4px solid var(--outcome-accent);
   border-radius: var(--chrome-radius);
-  border: 1px solid color-mix(in srgb, var(--chrome-cyan) 42%, var(--chrome-line));
-  border-left: 4px solid var(--chrome-cyan);
-  background: linear-gradient(105deg, rgba(25, 56, 65, 0.88), rgba(8, 14, 21, 0.58));
-  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.035), inset -1px -1px var(--chrome-inset);
+  background: linear-gradient(115deg, color-mix(in srgb, var(--outcome-accent) 12%, rgba(8, 15, 21, 0.94)), rgba(6, 12, 18, 0.86));
+  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.04), 0 10px 28px rgba(0, 0, 0, 0.16);
 }
 
 .resultCard[data-status="complete"] {
-  border-color: color-mix(in srgb, var(--chrome-success) 42%, var(--chrome-line));
-  border-left-color: var(--chrome-success);
-  background: linear-gradient(105deg, rgba(32, 66, 57, 0.82), rgba(8, 14, 21, 0.58));
+  --outcome-accent: var(--chrome-success);
 }
 
 .resultCard[data-status="failed"] {
-  border-color: color-mix(in srgb, var(--chrome-alert) 48%, var(--chrome-line));
-  border-left-color: var(--chrome-alert);
-  background: linear-gradient(105deg, rgba(72, 45, 45, 0.82), rgba(8, 14, 21, 0.58));
+  --outcome-accent: var(--chrome-alert);
+}
+
+.resultCard[data-status="draw"] {
+  --outcome-accent: var(--chrome-cyan);
 }
 
 .resultCardHeader,
-.listHeader,
-.sectionHeader {
+.listHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -277,99 +347,89 @@
   margin: 0;
   color: var(--chrome-muted);
   font-size: var(--text-xs);
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  font-weight: 850;
+  letter-spacing: 0.17em;
   text-transform: uppercase;
 }
 
-.cardStatus,
-.objectiveRowState {
-  color: var(--chrome-cyan);
+.cardStatus {
+  flex: 0 0 auto;
   font-size: var(--text-xs);
   font-weight: 900;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  white-space: nowrap;
+  letter-spacing: 0.1em;
 }
 
 .cardStatus span {
   margin-right: 0.25rem;
 }
 
-.resultCard[data-status="complete"] .cardStatus,
-.objectiveRow[data-status="complete"] .objectiveRowState {
-  color: var(--chrome-success);
-}
-
-.resultCard[data-status="failed"] .cardStatus,
-.objectiveRow[data-status="failed"] .objectiveRowState {
-  color: var(--chrome-alert);
-}
-
 .objectiveHeadline {
-  margin: 0.26rem 0 0;
+  margin: 0.55rem 0 0;
   color: var(--chrome-text);
-  font-size: 0.98rem;
-  font-weight: 900;
-  line-height: 1.25;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2vw, 1.55rem);
+  font-weight: 850;
+  line-height: 1.15;
   text-transform: uppercase;
 }
 
 .objectiveProgress {
-  margin: 0.25rem 0 0;
-  color: var(--chrome-cyan);
-  font-size: 0.8rem;
-  font-weight: 800;
+  margin: 0.42rem 0 0;
+  color: var(--outcome-accent);
+  font-size: 0.83rem;
+  font-weight: 780;
+  line-height: 1.35;
 }
 
 .objectiveList {
   display: grid;
-  gap: 0.25rem;
-  padding: 0.48rem 0.55rem 0.55rem;
+  gap: 0.32rem;
+  padding: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--chrome-cyan) 21%, var(--chrome-line));
   border-radius: var(--chrome-radius);
-  border: 1px solid color-mix(in srgb, var(--chrome-cyan) 22%, var(--chrome-line));
-  background: rgba(8, 15, 22, 0.48);
+  background: rgba(5, 11, 17, 0.62);
 }
 
 .listHeader {
+  padding: 0.05rem 0.12rem 0.22rem;
   color: var(--chrome-muted);
   font-size: var(--text-xs);
-  font-weight: 800;
+  font-weight: 850;
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
 .listHeader > span:last-child {
-  color: var(--chrome-cyan);
+  color: var(--outcome-accent);
 }
 
 .objectiveRow {
   display: grid;
-  grid-template-columns: 1rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.35rem;
   min-width: 0;
-  padding: 0.48rem 0.45rem;
-  border-radius: var(--chrome-radius-sm);
+  grid-template-columns: 1.15rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.52rem 0.48rem;
   border-left: 2px solid transparent;
-  background: rgba(31, 49, 59, 0.38);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.02);
+  border-radius: var(--chrome-radius-sm);
+  background: rgba(31, 49, 59, 0.42);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
 }
 
 .objectiveRow[data-status="complete"] {
   border-left-color: var(--chrome-success);
-  background: color-mix(in srgb, var(--chrome-success) 8%, rgba(31, 49, 59, 0.38));
+  background: color-mix(in srgb, var(--chrome-success) 8%, rgba(31, 49, 59, 0.42));
 }
 
 .objectiveRow[data-status="failed"] {
   border-left-color: var(--chrome-alert);
-  background: color-mix(in srgb, var(--chrome-alert) 8%, rgba(31, 49, 59, 0.38));
+  background: color-mix(in srgb, var(--chrome-alert) 8%, rgba(31, 49, 59, 0.42));
 }
 
 .objectiveStatusIcon {
   display: grid;
-  width: 1rem;
-  height: 1rem;
+  width: 1.05rem;
+  height: 1.05rem;
   place-items: center;
   border: 1px solid currentColor;
   color: var(--chrome-gold);
@@ -389,51 +449,54 @@
   min-width: 0;
   overflow: hidden;
   color: var(--chrome-body);
-  font-size: 0.75rem;
-  font-weight: 800;
-  line-height: 1.2;
+  font-size: 0.76rem;
+  font-weight: 760;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.objectiveRowState {
+  color: var(--chrome-cyan);
+  font-size: var(--text-xs);
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.objectiveRow[data-status="complete"] .objectiveRowState {
+  color: var(--chrome-success);
+}
+
+.objectiveRow[data-status="failed"] .objectiveRowState {
+  color: var(--chrome-alert);
+}
+
 .disclosure {
-  padding: 0.38rem 0.6rem 0.48rem;
+  padding: 0.42rem 0.65rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--outcome-accent) 26%, var(--chrome-line));
+  border-left: 3px solid var(--outcome-accent);
   border-radius: var(--chrome-radius);
-  border: 1px solid color-mix(in srgb, var(--chrome-cyan) 24%, var(--chrome-line));
-  border-left: 3px solid var(--chrome-cyan-dim);
-  background: linear-gradient(105deg, rgba(22, 47, 57, 0.74), rgba(8, 14, 21, 0.42));
-  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.025), inset -1px -1px var(--chrome-inset);
-}
-
-.disclosure + .disclosure {
-  margin-top: 0.35rem;
-}
-
-.outcome[data-status="complete"] .disclosure {
-  border-left-color: var(--chrome-gold-dim);
-}
-
-.outcome[data-status="failed"] .disclosure {
-  border-left-color: var(--chrome-alert);
+  background: linear-gradient(115deg, color-mix(in srgb, var(--outcome-accent) 8%, rgba(8, 14, 21, 0.82)), rgba(8, 14, 21, 0.55));
 }
 
 .disclosure summary {
   display: flex;
+  min-height: 2rem;
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
-  min-height: 2rem;
-  padding-top: 0.15rem;
   cursor: pointer;
   color: var(--chrome-body);
   font-size: var(--text-xs);
-  font-weight: 800;
+  font-weight: 850;
   list-style-position: inside;
   text-transform: uppercase;
 }
 
 .disclosure summary::marker {
-  color: var(--chrome-cyan);
+  color: var(--outcome-accent);
 }
 
 .disclosure summary:focus-visible {
@@ -443,18 +506,17 @@
 
 .disclosureValue {
   overflow: hidden;
-  color: var(--chrome-cyan);
+  color: var(--outcome-accent);
   font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .disclosureBody {
   padding: 0 0.65rem 0.15rem;
   color: var(--chrome-muted);
-  font-size: 0.78rem;
+  font-size: 0.79rem;
   line-height: 1.45;
 }
 
@@ -462,45 +524,48 @@
   margin: 0.15rem 0 0;
 }
 
-.sectionHeader {
-  min-height: 1.2rem;
+.section > header {
+  margin-bottom: 0.55rem;
 }
 
-.sectionHint {
-  color: var(--chrome-muted);
+.section > header > div > span {
+  color: var(--chrome-cyan);
   font-size: var(--text-xs);
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 .metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.45rem 0.6rem;
-  margin: 0.6rem 0 0;
-  padding: 0.55rem;
-  border-radius: var(--chrome-radius);
-  border: 1px solid color-mix(in srgb, var(--chrome-cyan) 26%, var(--chrome-line));
-  background: rgba(5, 12, 19, 0.48);
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
 }
 
-.metrics div,
+.metrics > div,
 .forceCard {
   min-width: 0;
-  padding: 0.45rem 0.5rem;
+  padding: 0.58rem 0.54rem;
+  border: 1px solid rgba(126, 172, 190, 0.14);
+  border-left: 2px solid color-mix(in srgb, var(--chrome-cyan) 56%, var(--chrome-line));
   border-radius: var(--chrome-radius-sm);
-  border-left: 2px solid color-mix(in srgb, var(--chrome-cyan) 48%, var(--chrome-line));
-  background: linear-gradient(105deg, rgba(37, 58, 70, 0.62), rgba(9, 16, 23, 0.2));
+  background: linear-gradient(115deg, rgba(36, 56, 68, 0.54), rgba(7, 13, 20, 0.56));
+}
+
+.metrics > div[data-tone="gold"] {
+  border-left-color: var(--chrome-gold);
+}
+
+.metrics > div[data-tone="alert"] {
+  border-left-color: var(--chrome-alert);
 }
 
 .metrics dt,
 .forceCard dt {
   overflow: hidden;
   color: var(--chrome-muted);
-  font-size: var(--text-xs);
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: var(--text-2xs);
+  font-weight: 850;
+  letter-spacing: 0.1em;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -508,41 +573,44 @@
 
 .metrics dd,
 .forceCard dd {
-  margin: 0.22rem 0 0;
+  margin: 0.32rem 0 0;
   color: var(--chrome-text);
-  font-size: 1.08rem;
+  font-size: clamp(0.94rem, 1.5vw, 1.22rem);
   font-weight: 900;
+  line-height: 1.1;
 }
 
 .forceGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.55rem;
-  margin-top: 0.6rem;
-  padding: 0.55rem;
-  border-radius: var(--chrome-radius);
-  border: 1px solid color-mix(in srgb, var(--chrome-gold) 25%, var(--chrome-line));
-  background: rgba(5, 12, 19, 0.48);
+  margin: 0;
+  padding: 0;
 }
 
 .forceCard h3 {
   display: flex;
   align-items: center;
-  gap: 0.38rem;
+  gap: 0.42rem;
   margin: 0;
   color: var(--chrome-gold);
-  font-size: var(--text-sm);
-  letter-spacing: 0.14em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.13em;
   text-transform: uppercase;
+}
+
+.forceCard[data-force="enemy"] h3,
+.forceCard[data-force="rival forces"] h3 {
+  color: var(--chrome-alert);
 }
 
 .forceMark {
   display: inline-block;
-  width: 0.52rem;
-  height: 0.52rem;
+  width: 0.48rem;
+  height: 0.48rem;
   border: 1px solid currentColor;
   background: currentColor;
-  box-shadow: 0 0 10px currentColor;
+  box-shadow: 0 0 9px currentColor;
   transform: rotate(45deg);
 }
 
@@ -554,8 +622,8 @@
 .forceCard dl {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.35rem;
-  margin: 0.5rem 0 0;
+  gap: 0.42rem;
+  margin: 0.58rem 0 0;
 }
 
 .forceCard dl > div:last-child {
@@ -563,7 +631,7 @@
 }
 
 .forceCard dd {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
 }
 
 .forceCard small {
@@ -575,22 +643,25 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 0.5rem;
-  margin-top: 0;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  min-height: 4.5rem;
+  margin-bottom: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--outcome-accent) 24%, var(--chrome-line));
 }
 
 .actions > :last-child {
   margin-left: auto;
 }
 
-.overlay[data-result="lost"] .actions {
+.overlay[data-multiplayer="false"][data-result="lost"] .actions {
   display: grid;
   grid-template-columns: max-content max-content;
-  justify-content: space-between;
+  justify-content: end;
 }
 
-.overlay[data-result="lost"] .actions > :last-child {
+.overlay[data-multiplayer="false"][data-result="lost"] .actions > :last-child {
   order: -1;
   margin-left: 0;
 }
@@ -599,203 +670,234 @@
   min-width: 8.35rem;
 }
 
-@media (max-width: 700px) {
+@keyframes result-panel-arrive {
+  from { transform: translateY(18px) scale(0.985); }
+  to { transform: translateY(0) scale(1); }
+}
+
+@keyframes result-copy-arrive {
+  from { opacity: 0.72; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes result-card-arrive {
+  from { opacity: 0.78; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 760px) {
   .overlay {
-    align-items: flex-start;
-    padding: max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right)) max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
+    padding: max(0.45rem, env(safe-area-inset-top)) max(0.45rem, env(safe-area-inset-right)) max(0.45rem, env(safe-area-inset-bottom)) max(0.45rem, env(safe-area-inset-left));
   }
 
   .panel {
     width: 100%;
     height: 100%;
     max-height: 100%;
-    gap: 0.5rem;
-    padding: 0.75rem;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 0.55rem;
+    padding: 0.7rem;
   }
 
   .header {
-    padding: 0.2rem 0.35rem 0.7rem;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 0.45rem 0.35rem 0.75rem;
+  }
+
+  .headerMeta {
+    gap: 0.4rem;
   }
 
   .headerLabel {
-    font-size: var(--text-xs);
+    letter-spacing: 0.14em;
+  }
+
+  .headerBadge {
+    padding: 0.32rem 0.42rem;
+    letter-spacing: 0.1em;
   }
 
   .title {
-    font-size: clamp(1.8rem, 9vw, 2.6rem);
+    margin-top: 0.55rem;
+    font-size: clamp(1.55rem, 8vw, 2.65rem);
+    letter-spacing: 0.025em;
   }
 
   .mission {
-    margin-top: 0.3rem;
+    margin-top: 0.42rem;
     font-size: var(--text-xs);
   }
 
-  /* The resultGrid is the only scroll region on touch layouts. */
+  .heroOutcome {
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+  }
+
+  .headerContext {
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0.65rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .headerSignal {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.8rem;
+  }
+
+  .contextGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem 0.6rem;
+  }
+
+  .contextGrid > div[data-testid="result-winner"] {
+    grid-column: 1 / -1;
+  }
+
+  .contextGrid dd {
+    font-size: 0.68rem;
+  }
+
   .resultGrid {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     overflow-x: hidden;
     overflow-y: auto;
-    padding-right: 0.1rem;
+    padding: 0.05rem 0.1rem 0.25rem 0;
   }
 
   .outcome,
   .section,
   .resultGrid > [aria-label="Battle record"],
+  .resultGrid > [aria-label="Match record"],
   .resultGrid > [aria-label="Force disposition"] {
     flex: 0 0 auto;
-    grid-column: auto;
-    grid-row: auto;
+    min-height: auto;
     overflow: visible;
-    padding: 0.7rem;
+    padding: 0.62rem;
   }
 
   .objectiveRowLabel {
     white-space: normal;
   }
 
-  .outcomeText {
-    font-size: 0.84rem;
-  }
-
-  .objectiveHeadline {
-    font-size: 0.9rem;
-  }
-
-  .disclosureBody {
-    font-size: var(--text-xs);
-  }
-
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metrics > div,
+  .forceCard {
+    padding: 0.48rem;
+  }
+
+  .forceCard dd {
+    font-size: 0.82rem;
   }
 
   .actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: 0.45rem;
+    margin-bottom: 0;
+    padding-top: 0.5rem;
   }
 
   .actions > * {
     width: 100%;
   }
+
+  .actions > :last-child {
+    margin-left: 0;
+  }
+
+  .overlay[data-multiplayer="false"][data-result="lost"] .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-@media (min-width: 701px) and (max-height: 650px) {
+@media (min-width: 761px) and (max-height: 650px) {
   .panel {
-    gap: 0.52rem;
-    padding-block: 0.85rem;
+    gap: 0.45rem;
+    padding-block: 0.7rem;
   }
 
   .header {
-    padding-bottom: 0.6rem;
+    padding-block: 0.28rem 0.65rem;
   }
 
   .title {
-    font-size: clamp(1.85rem, 5.5vh, 2.8rem);
+    font-size: clamp(1.85rem, 5.4vh, 2.9rem);
   }
 
   .mission {
-    margin-top: 0.25rem;
-    font-size: var(--text-xs);
+    margin-top: 0.35rem;
+  }
+
+  .headerSignal {
+    width: 3.25rem;
+    height: 3.25rem;
   }
 
   .resultGrid {
-    gap: 0.48rem;
+    gap: 0.5rem;
   }
 
   .outcome,
   .section {
-    padding: 0.62rem;
+    padding: 0.58rem;
   }
 
   .outcome {
-    gap: 0.35rem;
-  }
-
-  .outcomeSummary {
-    min-height: 1.9rem;
-  }
-
-  .outcomeIcon {
-    flex-basis: 1.65rem;
-    width: 1.65rem;
-    height: 1.65rem;
-    font-size: 0.95rem;
-  }
-
-  .outcomeText {
-    font-size: 0.78rem;
+    gap: 0.42rem;
   }
 
   .resultCard {
-    padding: 0.45rem 0.55rem;
+    padding: 0.55rem 0.62rem;
   }
 
   .objectiveHeadline {
-    font-size: 0.82rem;
+    margin-top: 0.35rem;
+    font-size: 0.98rem;
   }
 
   .objectiveProgress {
-    margin-top: 0.18rem;
+    margin-top: 0.24rem;
     font-size: var(--text-xs);
   }
 
   .objectiveRow {
-    padding-block: 0.28rem;
-  }
-
-  .objectiveRowLabel {
-    font-size: var(--text-xs);
-  }
-
-  .disclosure summary {
-    font-size: var(--text-xs);
-  }
-
-  .disclosureBody {
-    font-size: var(--text-xs);
-  }
-
-  .disclosure summary {
-    min-height: 1.5rem;
-    padding-top: 0.2rem;
+    padding-block: 0.34rem;
   }
 
   .metrics,
   .forceGrid {
-    margin-top: 0.3rem;
+    gap: 0.3rem;
   }
 
-  .metrics {
-    gap: 0.26rem;
-  }
-
-  .metrics div,
+  .metrics > div,
   .forceCard {
-    padding: 0.3rem;
+    padding: 0.35rem;
   }
 
   .metrics dd,
   .forceCard dd {
-    margin-top: 0.16rem;
-    font-size: 0.82rem;
-  }
-}
-
-@media (min-width: 701px) and (max-height: 650px) {
-  .resultGrid {
-    overflow-y: auto;
-    padding-right: 0.2rem;
-    scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
+    margin-top: 0.18rem;
+    font-size: 0.9rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .overlay,
   .panel,
-  .outcomeIcon {
-    scroll-behavior: auto;
-    transition: none;
+  .header,
+  .outcome,
+  .resultGrid > [aria-label="Battle record"],
+  .resultGrid > [aria-label="Match record"],
+  .resultGrid > [aria-label="Force disposition"] {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }

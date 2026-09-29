@@ -35,6 +35,7 @@
   box-sizing: border-box;
   display: flex;
   width: min(76rem, 100%);
+  height: calc(100dvh - 2rem);
   max-height: calc(100dvh - 2rem);
   min-height: 0;
   border-radius: var(--chrome-radius-lg);
@@ -78,6 +79,56 @@
 .panel > * {
   position: relative;
   z-index: 1;
+}
+
+.panel > .header,
+.panel > .summary,
+.panel > .section,
+.panel > .detail,
+.panel > .actions {
+  flex: 0 0 auto;
+}
+
+.screen:not(.operationsScreen):not(.finaleScreen) .header {
+  overflow: visible;
+  padding: 0.7rem 0.25rem 1.1rem;
+}
+
+.screen:not(.operationsScreen):not(.finaleScreen) .title {
+  line-height: 1.02;
+}
+
+.screen:not(.operationsScreen):not(.finaleScreen) .subtitle {
+  line-height: 1.35;
+}
+
+.screen:not(.operationsScreen):not(.finaleScreen) .summary strong {
+  line-height: 1.12;
+}
+
+.screen:not(.operationsScreen):not(.finaleScreen) .sectionTitle {
+  line-height: 1.08;
+}
+
+.screen:not(.operationsScreen):not(.finaleScreen) .missionTitle {
+  line-height: 1.12;
+}
+
+.screen:not(.operationsScreen) .detail {
+  padding: 1.2rem 1.25rem 1.15rem;
+}
+
+.screen:not(.operationsScreen) .detailHeader > div {
+  flex: 1 1 auto;
+}
+
+.screen:not(.operationsScreen) .detailTitle {
+  margin-top: 0.35rem;
+  overflow-wrap: anywhere;
+  line-height: 1.12;
+  padding-block: 0.04em;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .header {
@@ -417,6 +468,7 @@
 .detail {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
   min-width: 0;
   flex-direction: column;
   margin-top: 0.75rem;
@@ -550,6 +602,7 @@
 
 .actions {
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.75rem;
@@ -818,7 +871,8 @@
 
   .panel {
     width: 100%;
-    max-height: calc(100dvh - 1rem);
+    height: 100%;
+    max-height: 100%;
     padding: 0.9rem;
   }
 
@@ -827,6 +881,10 @@
     flex-direction: column;
     gap: 0.7rem;
     padding-bottom: 0.8rem;
+  }
+
+  .screen:not(.operationsScreen):not(.finaleScreen) .header {
+    padding: 0.55rem 0.15rem 0.85rem;
   }
 
   .title {
@@ -869,6 +927,10 @@
     padding: 0.75rem;
   }
 
+  .screen:not(.operationsScreen) .detail {
+    padding: 0.9rem;
+  }
+
   .sectionHeader {
     align-items: flex-start;
     flex-direction: column;
@@ -908,8 +970,8 @@
   }
 
   .operationsPanel {
-    height: calc(100dvh - 1rem);
-    max-height: calc(100dvh - 1rem);
+    height: 100%;
+    max-height: 100%;
     padding: 0.9rem;
   }
 
@@ -918,7 +980,252 @@
   }
 }
 
+/* The completed campaign record uses the same contextual finale treatment as
+   mission results. These selectors stay scoped away from the operations map
+   and incomplete campaign archive. */
+.finaleScreen .content {
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.55rem, 2vw, 1.5rem);
+}
+
+.finalePanel {
+  width: min(82rem, 100%);
+  max-height: calc(100dvh - 2rem);
+  border-color: color-mix(in srgb, var(--chrome-gold) 48%, var(--chrome-inset));
+  background:
+    linear-gradient(145deg, rgba(35, 39, 33, 0.88), rgba(7, 12, 18, 0.97)),
+    var(--texture-brushed) center / 420px 420px;
+  box-shadow:
+    inset 1px 1px color-mix(in srgb, var(--chrome-gold) 26%, var(--chrome-bevel)),
+    inset -1px -1px var(--chrome-void),
+    0 28px 84px rgba(0, 0, 0, 0.66),
+    0 0 32px color-mix(in srgb, var(--chrome-gold) 20%, transparent);
+}
+
+.finalePanel::before {
+  background:
+    linear-gradient(90deg, rgba(7, 12, 17, 0.94), rgba(7, 12, 17, 0.72) 42%, rgba(7, 12, 17, 0.16)),
+    linear-gradient(180deg, rgba(7, 12, 17, 0.05), rgba(7, 12, 17, 0.84) 94%),
+    var(--scene-art) right center / cover no-repeat;
+  opacity: 0.92;
+}
+
+.finalePanel::after {
+  height: 4px;
+  background: linear-gradient(90deg, var(--chrome-gold-dim), var(--chrome-gold) 42%, transparent 84%);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--chrome-gold) 36%, transparent);
+}
+
+.finaleHeader {
+  min-height: 11rem;
+  align-items: center;
+  padding: 1rem 0.25rem 1.35rem;
+  border-bottom-color: color-mix(in srgb, var(--chrome-gold) 38%, var(--chrome-line));
+  animation: finale-header-arrive 720ms cubic-bezier(0.18, 0.8, 0.22, 1) both;
+}
+
+.finaleHeader::after {
+  right: auto;
+  left: 0;
+  width: min(24rem, 54%);
+  height: 4px;
+  background: linear-gradient(90deg, var(--chrome-gold), transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--chrome-gold) 36%, transparent);
+}
+
+.finaleHeader .headerIdentity {
+  max-width: 58rem;
+}
+
+.finaleHeader .title {
+  color: var(--chrome-gold);
+  font-size: clamp(3.2rem, 8.2vw, 6.2rem);
+  line-height: 0.84;
+  text-shadow: 0 0 34px color-mix(in srgb, var(--chrome-gold) 33%, transparent), 0 4px 24px rgba(0, 0, 0, 0.46);
+}
+
+.finaleHeader .subtitle {
+  max-width: 46rem;
+  color: var(--chrome-gold);
+  font-size: clamp(0.75rem, 1.45vw, 0.98rem);
+  line-height: 1.4;
+}
+
+.finaleContext {
+  min-width: 14rem;
+  gap: 0.34rem;
+  padding: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--chrome-gold) 32%, var(--chrome-line));
+  border-left: 3px solid var(--chrome-gold);
+  border-radius: var(--chrome-radius);
+  background: linear-gradient(120deg, rgba(57, 48, 27, 0.76), rgba(7, 13, 19, 0.82));
+  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.035), 0 12px 28px rgba(0, 0, 0, 0.22);
+  animation: finale-header-arrive 720ms cubic-bezier(0.18, 0.8, 0.22, 1) 100ms both;
+}
+
+.finaleContext .contextSeed {
+  color: var(--chrome-gold);
+}
+
+.finaleSummary {
+  margin: 1rem 0 1.15rem;
+  animation: finale-section-arrive 620ms cubic-bezier(0.18, 0.8, 0.22, 1) 160ms both;
+}
+
+.finaleSummary > div {
+  min-height: 4.8rem;
+  padding: 0.9rem 1rem 0.75rem;
+  border-color: color-mix(in srgb, var(--chrome-gold) 42%, var(--chrome-line));
+  border-left-width: 4px;
+  background: linear-gradient(110deg, rgba(67, 57, 31, 0.8), rgba(9, 15, 20, 0.72));
+}
+
+.finaleSummary > div:nth-child(2) {
+  border-color: color-mix(in srgb, var(--chrome-cyan) 38%, var(--chrome-line));
+  border-left-color: var(--chrome-cyan);
+  background: linear-gradient(110deg, rgba(23, 55, 62, 0.82), rgba(9, 15, 20, 0.72));
+}
+
+.finaleMissionQueue {
+  animation: finale-section-arrive 620ms cubic-bezier(0.18, 0.8, 0.22, 1) 230ms both;
+}
+
+.finaleMissionQueue .sectionTitle {
+  font-size: clamp(1.55rem, 3vw, 2.1rem);
+}
+
+.finaleMissionQueue .missions {
+  gap: 0.75rem;
+}
+
+.finaleMissionQueue .missionButton {
+  min-height: 8.8rem;
+  padding: 0.95rem 0.85rem;
+  border-color: color-mix(in srgb, var(--chrome-gold) 28%, var(--chrome-line));
+  background: linear-gradient(145deg, rgba(36, 40, 34, 0.8), rgba(6, 12, 18, 0.86));
+}
+
+.finaleMissionQueue .missionButton::before {
+  opacity: 0.42;
+}
+
+.finaleMissionQueue .missionButton:hover,
+.finaleMissionQueue .missionButton.selected {
+  border-color: color-mix(in srgb, var(--chrome-gold) 78%, var(--chrome-line));
+  border-left-color: var(--chrome-gold);
+  background: linear-gradient(110deg, rgba(74, 62, 33, 0.9), rgba(7, 13, 20, 0.78));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chrome-gold) 20%, transparent), 0 16px 32px rgba(0, 0, 0, 0.27);
+}
+
+.finaleMissionQueue .missionButton:nth-child(1) { animation: finale-card-arrive 560ms cubic-bezier(0.18, 0.8, 0.22, 1) 260ms both; }
+.finaleMissionQueue .missionButton:nth-child(2) { animation: finale-card-arrive 560ms cubic-bezier(0.18, 0.8, 0.22, 1) 310ms both; }
+.finaleMissionQueue .missionButton:nth-child(3) { animation: finale-card-arrive 560ms cubic-bezier(0.18, 0.8, 0.22, 1) 360ms both; }
+.finaleMissionQueue .missionButton:nth-child(4) { animation: finale-card-arrive 560ms cubic-bezier(0.18, 0.8, 0.22, 1) 410ms both; }
+.finaleMissionQueue .missionButton:nth-child(5) { animation: finale-card-arrive 560ms cubic-bezier(0.18, 0.8, 0.22, 1) 460ms both; }
+.finaleMissionQueue .missionButton:nth-child(6) { animation: finale-card-arrive 560ms cubic-bezier(0.18, 0.8, 0.22, 1) 510ms both; }
+
+.finaleDetail {
+  border-color: color-mix(in srgb, var(--chrome-gold) 44%, var(--chrome-line));
+  border-left-color: var(--chrome-gold);
+  background: linear-gradient(110deg, rgba(31, 29, 21, 0.9), rgba(7, 13, 20, 0.74));
+  animation: finale-section-arrive 620ms cubic-bezier(0.18, 0.8, 0.22, 1) 360ms both;
+}
+
+.finaleDetail .detailBlock > span {
+  color: var(--chrome-gold);
+}
+
+.finaleDetail .detailStatus[data-tone="success"] {
+  color: var(--chrome-gold);
+}
+
+.finaleActions {
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--chrome-gold) 26%, var(--chrome-line));
+  animation: finale-section-arrive 620ms cubic-bezier(0.18, 0.8, 0.22, 1) 430ms both;
+}
+
+@keyframes finale-header-arrive {
+  from { opacity: 0.78; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes finale-section-arrive {
+  from { opacity: 0.8; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes finale-card-arrive {
+  from { opacity: 0.82; transform: translateY(12px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 600px) {
+  .finaleScreen .content {
+    align-items: center;
+    justify-content: center;
+    padding: max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right)) max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
+  }
+
+  .finalePanel {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    padding: 0.85rem;
+  }
+
+  .finaleHeader {
+    min-height: 0;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem 0 0.85rem;
+  }
+
+  .finaleHeader .title {
+    font-size: clamp(2.6rem, 14vw, 4rem);
+  }
+
+  .finaleHeader .subtitle {
+    margin-top: 0.45rem;
+    font-size: var(--text-xs);
+  }
+
+  .finaleContext {
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .finaleSummary {
+    margin: 0.8rem 0;
+  }
+
+  .finaleSummary > div {
+    min-height: 4rem;
+    padding: 0.65rem;
+  }
+
+  .finaleMissionQueue .missionButton {
+    min-height: 7.6rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .mission,
+  .finaleHeader,
+  .finaleContext,
+  .finaleSummary,
+  .finaleMissionQueue,
+  .finaleMissionQueue .missionButton:nth-child(n),
+  .finaleDetail,
+  .finaleActions {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
   .mission {
     transition: none;
   }

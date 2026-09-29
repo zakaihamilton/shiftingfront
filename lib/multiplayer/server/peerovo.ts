@@ -102,6 +102,9 @@ export async function issuePeerCredential(input: {
     body: JSON.stringify({ peerId: input.peerId, expiresInSeconds }),
   });
   const responseReceivedAtMs = Date.now();
+  if (response.status === 401 || response.status === 403) {
+    throw new PeerovoError("project_access_denied");
+  }
   if (response.status !== 201) throw new PeerovoError("ticket_unavailable");
   const payload = await json(response) as Record<string, unknown>;
   const nowSeconds = Math.floor(Date.now() / 1000);

@@ -32,27 +32,25 @@ function ObjectiveRow({ objective, optional = false }: { objective: ObjectiveRes
   );
 }
 
-export function MissionOutcome({ debrief }: { debrief: MissionDebrief }) {
+export function MissionOutcome({ debrief, draw = false }: { debrief: MissionDebrief; draw?: boolean }) {
   const primaryObjective = debrief.objective;
-  const primaryState = debrief.status === "won" ? "complete" : "failed";
-  const primaryIcon = primaryState === "complete" ? "✓" : "!";
+  const primaryState = draw ? "draw" : debrief.status === "won" ? "complete" : "failed";
+  const primaryIcon = primaryState === "complete" ? "✓" : primaryState === "draw" ? "=" : "!";
+  const objectiveHeadline = draw ? "No command HQ survived" : primaryObjective.headline;
+  const objectiveProgress = draw ? "All remaining forces were eliminated before a victor could be confirmed." : primaryObjective.progress;
+  const statusTone = primaryState === "complete" ? "success" : primaryState === "draw" ? "muted" : "alert";
 
   return (
     <section className={styles.outcome} aria-label="Outcome assessment" data-status={primaryState}>
-      <div className={styles.outcomeSummary}>
-        <span className={styles.outcomeIcon} aria-hidden="true">{primaryIcon}</span>
-        <p className={styles.outcomeText}>{debrief.outcome}</p>
-      </div>
-
       <div className={styles.resultCard} data-testid="primary-result-card" data-status={primaryState}>
         <div className={styles.resultCardHeader}>
           <p className={styles.objectiveLabel}>Primary objective</p>
-          <StatusBadge className={styles.cardStatus} tone={primaryState === "complete" ? "success" : "alert"}>
-            <span aria-hidden="true">{primaryIcon}</span>{primaryState === "complete" ? "Complete" : "Failed"}
+          <StatusBadge className={styles.cardStatus} tone={statusTone}>
+            <span aria-hidden="true">{primaryIcon}</span>{primaryState === "complete" ? "Complete" : primaryState === "draw" ? "Draw" : "Failed"}
           </StatusBadge>
         </div>
-        <p className={styles.objectiveHeadline}>{primaryObjective.headline}</p>
-        <p className={styles.objectiveProgress}>{primaryObjective.progress}</p>
+        <p className={styles.objectiveHeadline}>{objectiveHeadline}</p>
+        <p className={styles.objectiveProgress}>{objectiveProgress}</p>
       </div>
 
       {debrief.primaryObjectives.length ? (
@@ -88,20 +86,27 @@ export function MissionOutcome({ debrief }: { debrief: MissionDebrief }) {
   );
 }
 
-export function MissionBattleRecord({ debrief }: { debrief: MissionDebrief }) {
+export function MissionBattleRecord({ debrief, multiplayer = false }: { debrief: MissionDebrief; multiplayer?: boolean }) {
+  const items = multiplayer
+    ? [
+      { label: "Time", value: debrief.battle.duration },
+      { label: "Credits earned", value: debrief.battle.creditsGathered },
+      { label: "Units trained", value: debrief.battle.unitsTrained },
+      { label: "Units lost", value: debrief.forces.friendly.unitsLost, tone: "alert" as const },
+      { label: "Structures lost", value: debrief.forces.friendly.buildingsLost, tone: "alert" as const },
+    ]
+    : [
+      { label: "Time", value: debrief.battle.duration },
+      { label: "Credits", value: debrief.battle.creditsGathered },
+      { label: "Trained", value: debrief.battle.unitsTrained },
+      { label: "Built", value: debrief.battle.structuresCompleted },
+      { label: "Score", value: debrief.battle.score },
+      { label: "Medals", value: `${debrief.battle.medals} / 3`, tone: "gold" as const },
+    ];
+
   return (
-    <DossierSection className={styles.section} label="Battle record" aria-label="Battle record" data-testid="battle-record">
-      <MetricCluster
-        className={styles.metrics}
-        items={[
-          { label: "Time", value: debrief.battle.duration },
-          { label: "Credits", value: debrief.battle.creditsGathered },
-          { label: "Trained", value: debrief.battle.unitsTrained },
-          { label: "Built", value: debrief.battle.structuresCompleted },
-          { label: "Score", value: debrief.battle.score },
-          { label: "Medals", value: `${debrief.battle.medals} / 3`, tone: "gold" },
-        ]}
-      />
+    <DossierSection className={styles.section} label={multiplayer ? "Match record" : "Battle record"} aria-label={multiplayer ? "Match record" : "Battle record"} data-testid="battle-record" tabIndex={0}>
+      <MetricCluster className={styles.metrics} items={items} />
     </DossierSection>
   );
 }
@@ -119,12 +124,12 @@ export function MissionForceCard({ label, force }: { label: string; force: Force
   );
 }
 
-export function MissionForceDisposition({ debrief }: { debrief: MissionDebrief }) {
+export function MissionForceDisposition({ debrief, multiplayer = false }: { debrief: MissionDebrief; multiplayer?: boolean }) {
   return (
-    <DossierSection className={styles.section} label="Forces" aria-label="Force disposition" data-testid="force-disposition">
+    <DossierSection className={styles.section} label="Forces" aria-label="Force disposition" data-testid="force-disposition" tabIndex={0}>
       <div className={styles.forceGrid}>
-        <MissionForceCard label="Friendly" force={debrief.forces.friendly} />
-        <MissionForceCard label="Enemy" force={debrief.forces.enemy} />
+        <MissionForceCard label={multiplayer ? "Your forces" : "Friendly"} force={debrief.forces.friendly} />
+        <MissionForceCard label={multiplayer ? "Rival forces" : "Enemy"} force={debrief.forces.enemy} />
       </div>
     </DossierSection>
   );

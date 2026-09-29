@@ -53,6 +53,7 @@ export function publicError(error: unknown): string {
     server_not_configured: "Online play is not configured on this server yet.",
     rate_limit_unavailable: "Online room creation is not configured on this server yet.",
     unconfigured: "Online play is not configured on this server yet.",
+    project_access_denied: "The multiplayer service rejected this server's project credentials. Check its Peerovo project ID and API key.",
     invalid_handshake: "The room handshake could not be verified.",
     peerovo_unavailable: "Could not get a secure connection. Try again in a moment.",
     ticket_unavailable: "Could not get a secure connection. Try again in a moment.",

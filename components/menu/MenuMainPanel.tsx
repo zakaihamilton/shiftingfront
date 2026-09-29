@@ -2,7 +2,6 @@ import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
-import { useWeeklyCountdown } from "./useWeeklyCountdown";
 import styles from "./MenuMainPanel.module.css";
 
 export function MenuMainPanel({
@@ -18,15 +17,10 @@ export function MenuMainPanel({
   onOptions: () => void;
   onMultiplayer?: () => void;
 }) {
-  const { countdown } = useWeeklyCountdown();
-
   return (
     <MetalPanel as="nav" className={styles.panel} data-testid="menu-dashboard" aria-label="Main menu">
       <div className={styles.panelHeader}>
         <ConsoleLabel>Deploy</ConsoleLabel>
-        <span className={styles.status} data-testid="weekly-countdown" title="Time until current campaign expires">
-          Current campaign expires in {countdown}
-        </span>
       </div>
 
       <div className={styles.actions}>

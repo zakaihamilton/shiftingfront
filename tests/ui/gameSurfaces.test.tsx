@@ -267,6 +267,46 @@ describe("game overlay surfaces", () => {
     expect(screen.queryByText(/Mission 1/)).toBeNull();
   });
 
+  it("presents multiplayer victories, defeats, and draws with match-specific reporting", () => {
+    const match = makeFixture({ seed: 421, win: { kind: "decapitate" } });
+    match.multiplayer = true;
+    match.multiplayerOwners = [0, 1];
+    match.viewOwner = 0;
+    match.missionName = "Versus Skirmish";
+    match.factions[0]!.name = "Northwest Command";
+    match.factions[1]!.name = "Northeast Command";
+
+    const callbacks = {
+      onNextBriefing: vi.fn(),
+      onCampaignVictory: vi.fn(),
+      onRetry: vi.fn(),
+      onMenu: vi.fn(),
+    };
+    const { rerender } = render(<MissionResult state={{ ...match, result: "won", winner: 0 }} {...callbacks} />);
+
+    expect(screen.getByRole("heading", { name: "Skirmish won" })).toBeVisible();
+    expect(screen.getByTestId("result-winner")).toHaveTextContent("Northwest Command");
+    expect(screen.getByLabelText("Match record")).toBeVisible();
+    expect(screen.getByText("Units trained")).toBeVisible();
+    expect(screen.getByText("Units lost")).toBeVisible();
+    expect(screen.getByText("Structures lost")).toBeVisible();
+    expect(screen.queryByText("Score")).toBeNull();
+    expect(screen.queryByText("Medals")).toBeNull();
+    expect(screen.getByText("Your forces")).toBeVisible();
+    expect(screen.getByText("Rival forces")).toBeVisible();
+
+    rerender(<MissionResult state={{ ...match, result: "lost", winner: 1 }} {...callbacks} />);
+    expect(screen.getByRole("heading", { name: "Skirmish lost" })).toBeVisible();
+    expect(screen.getByTestId("result-winner")).toHaveTextContent("Northeast Command");
+
+    rerender(<MissionResult state={{ ...match, result: "lost", winner: null }} {...callbacks} />);
+    expect(screen.getByTestId("mission-result")).toHaveAttribute("data-outcome", "draw");
+    expect(screen.getByRole("heading", { name: "Draw" })).toBeVisible();
+    expect(screen.getByTestId("result-winner")).toHaveTextContent("Mutual elimination");
+    expect(screen.getByTestId("primary-result-card")).toHaveAttribute("data-status", "draw");
+    expect(screen.getByTestId("primary-result-card")).toHaveTextContent("No command HQ survived");
+  });
+
   it("separates required mission conditions from bonus objectives", () => {
     const state = makeFixture({ seed: 421, win: { kind: "rescue", targetCount: 1, ticks: 144 } });
     state.result = "lost";
