@@ -210,12 +210,7 @@ function prepareSmallGroupRoutes(
       Math.abs(Math.round(entity.y) - Math.round(goal.y)),
     );
     if (personalCheb <= ARRIVAL_DISTANCE || sharedCheb <= ARRIVAL_DISTANCE) {
-      if (finishFlowFieldRoute(
-        state,
-        occupancy,
-        entity,
-        isPlayerControlledOwner(state, entity.owner) ? previousCells?.get(entity.id) : undefined,
-      )) continue;
+      if (finishFlowFieldRoute(state, occupancy, entity)) continue;
       entity.routePending = true;
       continue;
     }
