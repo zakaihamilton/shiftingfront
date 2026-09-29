@@ -52,18 +52,6 @@ export type UnitView =
   | "back"
   | "back-right";
 
-/** Intro-only art; the mobile HQ is not a simulation unit. */
-export const MOBILE_HQ_DIRECTION_ART: Record<UnitView, string> = {
-  right: "/art/sprites/sleek-modular/mobile-hq/right.webp",
-  "front-right": "/art/sprites/sleek-modular/mobile-hq/front-right.webp",
-  front: "/art/sprites/sleek-modular/mobile-hq/front.webp",
-  "front-left": "/art/sprites/sleek-modular/mobile-hq/front-left.webp",
-  left: "/art/sprites/sleek-modular/mobile-hq/left.webp",
-  "back-left": "/art/sprites/sleek-modular/mobile-hq/back-left.webp",
-  back: "/art/sprites/sleek-modular/mobile-hq/back.webp",
-  "back-right": "/art/sprites/sleek-modular/mobile-hq/back-right.webp",
-};
-
 export const STRIKE_PLANE_DIRECTION_ART: Record<UnitView, string> = {
   right: "/art/sprites/sleek-modular/air-support/strike-plane-right-v1.webp",
   "front-right": AIR_SUPPORT_ART.strikePlane,

@@ -51,10 +51,6 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
     campaign: runtime.campaign,
     state: runtime.state,
     tutorial: runtime.tutorial,
-    missionIntroActive: runtime.missionIntroActive,
-    missionIntroWaiting: runtime.missionIntroWaiting,
-    missionIntroPhase: runtime.missionIntroPhase,
-    onSkipMissionIntro: runtime.onSkipMissionIntro,
     paused: runtime.paused,
     pointer,
     resultActions: {

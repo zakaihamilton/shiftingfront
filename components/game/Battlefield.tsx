@@ -32,7 +32,6 @@ export function Battlefield({
   timeRemainingTicks,
   timeLimitTicks,
   onObjectivePanelToggle,
-  defaultDirectiveExpanded,
   multiplayerPingMs,
   multiplayerHost,
   showHud = true,
@@ -67,7 +66,6 @@ export function Battlefield({
   timeRemainingTicks?: number;
   timeLimitTicks?: number;
   onObjectivePanelToggle?: () => void;
-  defaultDirectiveExpanded?: boolean;
   multiplayerPingMs?: number | null;
   multiplayerHost?: boolean;
   showHud?: boolean;
@@ -121,7 +119,6 @@ export function Battlefield({
           timeRemainingTicks={timeRemainingTicks}
           timeLimitTicks={timeLimitTicks}
           onObjectivePanelToggle={onObjectivePanelToggle}
-          defaultExpanded={defaultDirectiveExpanded}
           multiplayerPingMs={multiplayerPingMs}
           multiplayerHost={multiplayerHost}
         />

@@ -31,7 +31,6 @@ export function BattlefieldHud({
   timeRemainingTicks,
   timeLimitTicks,
   onObjectivePanelToggle,
-  defaultExpanded,
   multiplayerPingMs,
   multiplayerHost,
 }: {
@@ -50,15 +49,11 @@ export function BattlefieldHud({
   timeRemainingTicks?: number;
   timeLimitTicks?: number;
   onObjectivePanelToggle?: () => void;
-  defaultExpanded?: boolean;
   multiplayerPingMs?: number | null;
   multiplayerHost?: boolean;
 }) {
   const fullscreen = useFullscreen();
-  const [directiveExpanded, setDirectiveExpanded] = useState(() => {
-    if (defaultExpanded !== undefined) return defaultExpanded;
-    return false;
-  });
+  const [directiveExpanded, setDirectiveExpanded] = useState(false);
   const [seenDoctrine] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {

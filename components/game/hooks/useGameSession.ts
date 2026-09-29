@@ -33,20 +33,20 @@ function isBrowserReload(): boolean {
   return legacyNavigation?.type === 1;
 }
 
-export function initialMissionBoot(
+export function initialMission(
   seed: number,
   mission: number,
   resume: boolean,
   tutorial: boolean,
   fresh = false,
   slotId?: string | null,
-): { state: SimState; intro: boolean } {
-  if (tutorial) return { state: createTutorialMission(), intro: false };
+): SimState {
+  if (tutorial) return createTutorialMission();
   if (slotId && typeof window !== "undefined") {
     const isReload = isBrowserReload();
     const saved = readSave(cachedLocalStorage(), seed);
     if (isReload && saved && (resume || saved.missionIndex === mission)) {
-      return { state: saved, intro: false };
+      return saved;
     }
     const slot = readSlot(cachedLocalStorage(), slotId);
     if (slot && slot.state.seed === seed) {
@@ -62,7 +62,7 @@ export function initialMissionBoot(
       } catch {
         // Ignore URL replace errors in unsupported environments
       }
-      return { state: slot.state, intro: false };
+      return slot.state;
     }
   }
   const freshLaunchIntent = consumeFreshLaunchIntent(seed, mission);
@@ -72,20 +72,9 @@ export function initialMissionBoot(
   }
   if (!startFresh && typeof window !== "undefined") {
     const saved = readSave(cachedLocalStorage(), seed);
-    if (saved && (resume || saved.missionIndex === mission)) return { state: saved, intro: false };
+    if (saved && (resume || saved.missionIndex === mission)) return saved;
   }
-  return { state: createMission({ seed, missionIndex: mission }), intro: startFresh };
-}
-
-export function initialMission(
-  seed: number,
-  mission: number,
-  resume: boolean,
-  tutorial: boolean,
-  fresh = false,
-  slotId?: string | null,
-): SimState {
-  return initialMissionBoot(seed, mission, resume, tutorial, fresh, slotId).state;
+  return createMission({ seed, missionIndex: mission });
 }
 
 export function useGameSession({
@@ -110,7 +99,6 @@ export function useGameSession({
   saveSession,
   tutorial = false,
   suppressImplicitSavesRef,
-  onRestartMission,
   browserBackGuardEnabled = false,
   onBrowserBackLeave,
 }: MissionPersistenceParams & {
@@ -176,7 +164,6 @@ export function useGameSession({
     saveSession,
     tutorial,
     suppressImplicitSavesRef,
-    onRestartMission,
   });
   const persistNamedSlot = persistence.saveNamedSlot;
   const confirmation = useMissionConfirmation({

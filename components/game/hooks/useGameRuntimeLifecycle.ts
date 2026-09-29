@@ -21,7 +21,7 @@ export function useGameRuntimeLifecycle({
   multiplayerSession,
   interaction, feedback, audioSettings, setAudioSettings, paused, setPaused, pausedRef, pauseViewRef,
   setPauseView, setPauseNotice, activeTabRef, setActiveTab, mobilePanelOpen,
-  terminalSaveRef, campaignRecordedRef, suppressImplicitSavesRef, canvasRef, missionIntroActiveRef, battlefieldReady, onRestartMission,
+  terminalSaveRef, campaignRecordedRef, suppressImplicitSavesRef, canvasRef,
 }: {
   seed: number;
   tutorial: boolean;
@@ -50,16 +50,13 @@ export function useGameRuntimeLifecycle({
   terminalSaveRef: MutableRefObject<boolean>;
   campaignRecordedRef: MutableRefObject<boolean>;
   suppressImplicitSavesRef: MutableRefObject<() => void>;
-  missionIntroActiveRef: MutableRefObject<boolean>;
-  battlefieldReady: boolean;
-  onRestartMission: (state: SimState) => void;
 }) {
   const session = useGameSession({
     seed, stateRef, setState, commitSelection, commandPort, cmdQRef: cmdQ,
     fxRef: interaction.renderer.fxRef, clearTools: interaction.clearTools, resetInput: interaction.resetInput,
     resetCamera: interaction.resetCamera, pausedRef, setPaused, setPauseView, setPauseNotice,
     campaignRecordedRef, terminalSaveRef, settings: audioSettings, setSettings: setAudioSettings, saveSession,
-    tutorial, suppressImplicitSavesRef, onRestartMission, browserBackGuardEnabled: !tutorial && state.result === "playing",
+    tutorial, suppressImplicitSavesRef, browserBackGuardEnabled: !tutorial && state.result === "playing",
     onBrowserBackLeave: interaction.resetTransientMobileUi,
   });
 
@@ -88,12 +85,11 @@ export function useGameRuntimeLifecycle({
     if (tutorial || paused || state.result !== "playing") resetTransientMobileUi();
   }, [paused, resetTransientMobileUi, state.result, tutorial]);
 
-  useWakeLock(battlefieldReady && !paused && state.result === "playing");
+  useWakeLock(!paused && state.result === "playing");
 
   const { keys } = useGameKeyboard({
     stateRef,
     pausedRef,
-    missionIntroActiveRef,
     pauseViewRef,
     activeTabRef,
     place: interaction.place,
@@ -128,7 +124,6 @@ export function useGameRuntimeLifecycle({
     closeMobilePanel: interaction.closeMobilePanel,
     mobileToolActive: interaction.selectionMode || interaction.actions.mobileCommandState !== null,
     keyBindings: audioSettings.keyBindings,
-    enabled: battlefieldReady,
   });
 
   useGameLoop({
@@ -138,8 +133,8 @@ export function useGameRuntimeLifecycle({
     fxRef: interaction.renderer.fxRef, fxSeq: interaction.renderer.fxSeq, screenShakeRef: interaction.renderer.screenShakeRef,
     terminalSaveRef, campaignRecordedRef, saveSession, redraw: interaction.renderer.redraw,
     onAlert: feedback.onAlert, onCommandNotice: feedback.announceCommandFeedback,
-    uxRef: feedback.uxRef, suppressImplicitSavesRef, missionIntroActiveRef, keyBindings: audioSettings.keyBindings,
-    multiplayerSession, persistCampaign: !tutorial && !state.multiplayer, enabled: battlefieldReady,
+    uxRef: feedback.uxRef, suppressImplicitSavesRef, keyBindings: audioSettings.keyBindings,
+    multiplayerSession, persistCampaign: !tutorial && !state.multiplayer,
   });
 
   useGameAudioLifecycle({ seed, missionIndex: state.missionIndex, tutorial, paused, result: state.result });

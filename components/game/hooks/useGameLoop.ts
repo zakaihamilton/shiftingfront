@@ -46,7 +46,6 @@ export function useGameLoop({
   persistCampaign = true,
   uxRef: suppliedUxRef,
   suppressImplicitSavesRef,
-  missionIntroActiveRef,
   keyBindings,
   multiplayerSession,
   enabled = true,
@@ -75,7 +74,6 @@ export function useGameLoop({
   persistCampaign?: boolean;
   uxRef?: { current: import("@/lib/persist/telemetry").MissionUxTelemetry };
   suppressImplicitSavesRef?: MutableRefObject<() => void>;
-  missionIntroActiveRef?: MutableRefObject<boolean>;
   keyBindings?: import("@/lib/persist/settings").KeyBindings;
   multiplayerSession?: import("@/lib/multiplayer/session").MultiplayerSession;
   enabled?: boolean;
@@ -111,7 +109,6 @@ export function useGameLoop({
           terminalSaveRef,
           campaignRecordedRef,
           suppressImplicitSavesRef,
-          missionIntroActiveRef,
           multiplayerSession,
         },
         interaction: {
@@ -165,7 +162,6 @@ export function useGameLoop({
     multiplayerSession,
     uxRef,
     suppressImplicitSavesRef,
-    missionIntroActiveRef,
     screenShakeRef,
     enabled,
   ]);

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { skipMissionIntroIfPresent } from "./missionIntro";
+import { waitForBattlefieldReady } from "./battlefieldReady";
 
 const roomCode = "ABCDEF";
 const hostPeerId = "host-peer-e2e";
@@ -249,7 +249,7 @@ test("host starts a four-player corner skirmish after three guests verify their 
   await host.getByTestId("multiplayer-start-button").click();
   const players = [host, ...guests];
   await Promise.all(players.map((page) => expect(page.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 })));
-  await Promise.all(players.map(skipMissionIntroIfPresent));
+  await Promise.all(players.map(waitForBattlefieldReady));
   await Promise.all(players.map((page) => expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 })));
 
   const lateGuest = await context.newPage();
@@ -315,7 +315,7 @@ test("host can launch a skirmish against an AI opponent", async ({ browser }) =>
   await host.getByTestId("multiplayer-seat-toggle-1").click();
   await host.getByTestId("multiplayer-start-button").click();
   await expect(host.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 });
-  await skipMissionIntroIfPresent(host);
+  await waitForBattlefieldReady(host);
   await expect(host.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 });
   await context.close();
 });
@@ -348,6 +348,6 @@ test("AI and a human guest occupy separate seats in the same skirmish", async ({
     expect(host.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 }),
     expect(guest.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 }),
   ]);
-  await Promise.all([host, guest].map(skipMissionIntroIfPresent));
+  await Promise.all([host, guest].map(waitForBattlefieldReady));
   await context.close();
 });

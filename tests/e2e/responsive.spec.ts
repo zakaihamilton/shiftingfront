@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { skipMissionIntroIfPresent } from "./missionIntro";
+import { waitForBattlefieldReady } from "./battlefieldReady";
 import { PLACEABLE } from "../../components/game/hooks/gameActions";
 import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "../../components/game/hooks/useGameCamera";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
@@ -137,7 +137,7 @@ async function waitForBattlefield(page: import("@playwright/test").Page) {
   await page.evaluate(() => new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   }));
-  await skipMissionIntroIfPresent(page);
+  await waitForBattlefieldReady(page);
 }
 
 async function waitForCommandSidebarToSettle(

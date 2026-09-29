@@ -11,13 +11,11 @@ import { useGameInput } from "./useGameInput";
 import { useGameRenderer } from "./useGameRenderer";
 import { useGameSelection } from "./useGameSelection";
 import type { GameRuntimeFeedback } from "./useGameRuntimeFeedback";
-import type { MissionIntroPlayback } from "@/lib/render/missionIntro";
 
 const TUTORIAL_CAMERA_FOCUS_MS = 900;
 
 export function useGameRuntimeInteraction({
   state,
-  battlefieldReady,
   tutorial,
   stateRef,
   setState,
@@ -33,10 +31,8 @@ export function useGameRuntimeInteraction({
   setActiveTab,
   commandPort,
   feedback,
-  missionIntroRef,
 }: {
   state: SimState;
-  battlefieldReady: boolean;
   tutorial: boolean;
   stateRef: React.MutableRefObject<SimState>;
   setState: (state: SimState) => void;
@@ -52,7 +48,6 @@ export function useGameRuntimeInteraction({
   setActiveTab: (tab: "construction" | "production" | "selected") => void;
   commandPort: RuntimeCommandPort;
   feedback: GameRuntimeFeedback;
-  missionIntroRef?: React.MutableRefObject<MissionIntroPlayback | null>;
 }) {
   const { uxRef, announceCommandFeedback, recordCommandRejection, recordMobilePanelOpened } = feedback;
   const onSelectionTab = useCallback(() => setActiveTab("selected"), [setActiveTab]);
@@ -68,7 +63,7 @@ export function useGameRuntimeInteraction({
     announceCommandFeedback(count > 0 ? `Control group ${slot} selected.` : `Control group ${slot} is empty.`, count > 0 ? "success" : "info");
   }, [announceCommandFeedback, recallControlGroup]);
 
-  const camera = useGameCamera({ stateRef, canvasRef, hostRef, enabled: battlefieldReady });
+  const camera = useGameCamera({ stateRef, canvasRef, hostRef });
   const { camRef, panAvail, panAvailRef, hotPan, panHold, edgePanHover, applyEdgePan, focusTileAnimated, resetCamera } = camera;
 
   const tutorialFocusStageRef = useRef<typeof state.tutorialStage>(undefined);
@@ -100,7 +95,6 @@ export function useGameRuntimeInteraction({
   const renderer = useGameRenderer({
     stateRef, hostRef, canvasRef, tooltipCanvasRef, miniRef, mobileMiniRef, camRef, selected, hoverRef, cursorRef, boxRef, commandMarkerRef,
     place, repair, sell, reducedMotionOverride: audioSettings.reducedMotion, colorblindMode: audioSettings.colorblindMode,
-    missionIntroRef,
   });
 
   const resetTransientMobileUi = useCallback(() => {

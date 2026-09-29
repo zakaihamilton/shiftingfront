@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { skipMissionIntroIfPresent } from "./missionIntro";
+import { waitForBattlefieldReady } from "./battlefieldReady";
 
 async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
   const canvas = page.getByTestId("battlefield-canvas");
@@ -19,7 +19,7 @@ async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
     });
   }).toBeGreaterThan(0);
 
-  await skipMissionIntroIfPresent(page);
+  await waitForBattlefieldReady(page);
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
   return canvas;
 }

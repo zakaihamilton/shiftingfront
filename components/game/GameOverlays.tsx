@@ -23,11 +23,10 @@ export function GameOverlays({
   sidebar,
   pause,
   confirmation,
-  hideNonConfirmation = false,
-}: GameOverlayProps & { hideNonConfirmation?: boolean }) {
+}: GameOverlayProps) {
   return (
     <>
-      {!hideNonConfirmation && !paused && state.result === "playing" && !confirmation ? (
+      {!paused && state.result === "playing" && !confirmation ? (
         <>
           <MobileCommandLauncher
             open={mobilePanelOpen}
@@ -40,8 +39,8 @@ export function GameOverlays({
         </>
       ) : null}
 
-      {!hideNonConfirmation && shouldShowCommandSidebar(state.result) ? <GameSidebarSurface {...sidebar} /> : null}
-      {!hideNonConfirmation && paused && pause ? <GamePauseSurface {...pause} /> : null}
+      {shouldShowCommandSidebar(state.result) ? <GameSidebarSurface {...sidebar} /> : null}
+      {paused && pause ? <GamePauseSurface {...pause} /> : null}
       {confirmation ? <MissionConfirmation confirmation={confirmation.value} onConfirm={confirmation.onConfirm} onCancel={confirmation.onCancel} /> : null}
     </>
   );

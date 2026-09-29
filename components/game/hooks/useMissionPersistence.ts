@@ -47,7 +47,6 @@ export type MissionPersistenceParams = {
   saveSession: SaveSession;
   tutorial?: boolean;
   suppressImplicitSavesRef?: MutableRefObject<() => void>;
-  onRestartMission?: (state: SimState) => void;
 };
 
 export function useMissionPersistence({
@@ -70,7 +69,6 @@ export function useMissionPersistence({
   saveSession,
   tutorial = false,
   suppressImplicitSavesRef,
-  onRestartMission,
 }: MissionPersistenceParams) {
   const router = useRouter();
 
@@ -218,7 +216,6 @@ export function useMissionPersistence({
     setPauseView("main");
     setPauseNotice("");
     resetCamera(fresh);
-    if (!tutorial) onRestartMission?.(fresh);
     beep("select");
   }, [
     campaignRecordedRef,
@@ -237,7 +234,6 @@ export function useMissionPersistence({
     stateRef,
     terminalSaveRef,
     tutorial,
-    onRestartMission,
   ]);
 
   const deleteArchiveEntry = useCallback((entry: ArchiveEntry) => {

@@ -152,6 +152,12 @@ describe("useGameRuntime", () => {
     expect(fresh.tick).toBe(0);
   });
 
+  it("starts a fresh campaign unpaused and ready for immediate play", async () => {
+    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, fresh: true, tutorial: false });
+
+    expect(result.current.paused).toBe(false);
+  });
+
   it("resumes a fresh-flagged mission after a browser reload", () => {
     const saved = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     saved.tick = 120;
@@ -520,7 +526,6 @@ describe("mission replacement in a mounted loop", () => {
     act(() => result.current.session.confirmAction());
     expect(options.getState().result).toBe("playing");
     expect(startLoop).toHaveBeenCalledOnce();
-    act(() => result.current.onSkipMissionIntro());
     finish(2000);
     expect(JSON.parse(localStorage.getItem(TELEMETRY_KEY)!).records).toHaveLength(2);
   });
@@ -547,6 +552,7 @@ describe("mission replacement in a mounted loop", () => {
       canAdvance: vi.fn(() => true),
       queuedFramesCount: vi.fn(() => 0),
       submit: vi.fn(),
+      markIntroReady: vi.fn(),
       bindState: vi.fn(),
       drainTick: vi.fn((_s, cmds) => cmds),
     } as unknown as import("@/lib/multiplayer/session").MultiplayerSession;
@@ -559,6 +565,7 @@ describe("mission replacement in a mounted loop", () => {
       multiplayerSession: fakeSession,
     });
 
+    expect(fakeSession.markIntroReady).toHaveBeenCalledOnce();
     const options = (startLoop.mock.calls as unknown as [LoopOptions][])[0]![0];
     expect(options.isPaused!()).toBe(false);
 
