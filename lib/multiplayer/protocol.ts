@@ -209,4 +209,3 @@ export function isSimSnapshot(
         new Set(state.multiplayerEliminated).size !== state.multiplayerEliminated.length)) return false;
   return true;
 }
-
