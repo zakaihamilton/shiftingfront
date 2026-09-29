@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,8 +23,10 @@ export function changedAssetPaths(base: string, cwd = process.cwd()): string[] {
     const current = resolve(root, path);
     // Removing a URL is allowed; replacements must be published at a new URL.
     if (!existsSync(current)) continue;
-    const previous = git(["cat-file", "blob", objectId]);
-    if (!previous.equals(readFileSync(current))) changed.push(path);
+    // Hash raw bytes without filters or -w: Git writes no objects and returns
+    // only a small object ID, regardless of the asset size.
+    const currentId = git(["hash-object", "--no-filters", "--", current]).toString().trim();
+    if (currentId !== objectId) changed.push(path);
   }
   return changed.sort();
 }

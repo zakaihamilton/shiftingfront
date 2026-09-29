@@ -34,6 +34,21 @@ describe("immutable asset URL versioning", () => {
     expect(git("status", "--porcelain").toString()).toBe(before);
   });
 
+  it.each(["public/art/large-v1.webp", "public/icons/large-v1.png"])("checks unchanged and modified assets over 1 MiB at %s", (assetPath) => {
+    const { root, git } = fixture();
+    const content = Buffer.alloc(2 * 1024 * 1024, 7);
+    writeFileSync(join(root, assetPath), content);
+    git("add", ".");
+    git("-c", "user.name=Asset Test", "-c", "user.email=assets@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "large asset");
+    const base = git("rev-parse", "HEAD").toString().trim();
+    const objects = git("count-objects").toString();
+    expect(changedAssetPaths(base, root)).toEqual([]);
+    content[content.length - 1] = 8;
+    writeFileSync(join(root, assetPath), content);
+    expect(changedAssetPaths(base, root)).toEqual([assetPath]);
+    expect(git("count-objects").toString()).toBe(objects);
+  });
+
   it("rejects uncommitted byte changes under both immutable roots", () => {
     const { root, base } = fixture();
     writeFileSync(join(root, "public/art/unit-v1.webp"), Buffer.from([0, 1, 3, 255]));
@@ -60,6 +75,7 @@ describe("immutable asset URL versioning", () => {
 
   it("compares text asset bytes without Git newline normalization", () => {
     const { root, base, git } = fixture();
+    writeFileSync(join(root, ".gitattributes"), "public/art/*.obj text eol=lf\n");
     writeFileSync(join(root, "public/art/model-v1.obj"), "v 0 0 0\n");
     git("add", ".");
     git("-c", "user.name=Asset Test", "-c", "user.email=assets@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "model");
