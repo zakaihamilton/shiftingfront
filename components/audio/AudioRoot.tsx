@@ -14,7 +14,7 @@ import {
 } from "@/lib/audio/music";
 import { setSfxEnabled } from "@/lib/audio/synth";
 import { setVoiceEnabled, setVoiceVolume } from "@/lib/audio/voice";
-import { setAudioForeground, setAudioLevels } from "@/lib/audio/mixer";
+import { setAudioForeground, setAudioLevels, setGameplayAudioManaged } from "@/lib/audio/mixer";
 import { cachedLocalStorage } from "@/lib/persist/save";
 import { readSettings } from "@/lib/persist/settings";
 import { parseSeed } from "@/lib/seed/rng";
@@ -48,6 +48,7 @@ function AudioRootInner() {
   }, [pathname, seedParam, missionParam]);
 
   useEffect(() => {
+    setGameplayAudioManaged(true);
     const unlockEvents = ["pointerdown", "keydown", "touchstart"] as const;
     const unlock = () => unlockAudio();
     let documentVisible = !document.hidden;
@@ -86,6 +87,7 @@ function AudioRootInner() {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
+      setGameplayAudioManaged(false);
     };
   }, []);
 

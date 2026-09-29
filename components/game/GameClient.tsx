@@ -7,6 +7,7 @@ import { TacticalScreen } from "./TacticalScreen";
 import { APP_NAME } from "@/lib/site";
 import { PageFallback } from "@/components/ui/PageFallback";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
+import { registerGameplayAudioClient } from "@/lib/audio/mixer";
 
 export function GameClient({
   seed,
@@ -35,6 +36,7 @@ export function GameClient({
   const getPing = useCallback(() => multiplayerSession?.pingMs ?? null, [multiplayerSession]);
   const multiplayerPingMs = useSyncExternalStore(subscribeToPing, getPing, () => null);
 
+  useEffect(() => registerGameplayAudioClient(), []);
   useEffect(() => multiplayerSession?.startLatencyProbes(), [multiplayerSession]);
 
   if (!runtime.battlefieldReady) return <PageFallback>Preparing battlefield…</PageFallback>;

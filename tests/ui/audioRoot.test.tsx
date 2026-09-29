@@ -28,7 +28,11 @@ vi.mock("../../lib/audio/music", () => ({
 }));
 
 vi.mock("../../lib/audio/synth", () => ({ setSfxEnabled: vi.fn() }));
-vi.mock("../../lib/audio/mixer", () => ({ setAudioForeground, setAudioLevels: vi.fn() }));
+vi.mock("../../lib/audio/mixer", () => ({
+  setAudioForeground,
+  setAudioGameplayManaged: vi.fn(),
+  setAudioLevels: vi.fn(),
+}));
 
 import { AudioRoot } from "../../components/audio/AudioRoot";
 

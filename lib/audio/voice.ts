@@ -31,7 +31,14 @@ export function isVoiceForeground(): boolean {
   if (typeof document !== "undefined" && document.hidden) {
     return false;
   }
-  return windowActive;
+  try {
+    const audioForeground = typeof mixerModule.isAudioForeground === "function"
+      ? mixerModule.isAudioForeground()
+      : true;
+    return windowActive && audioForeground;
+  } catch {
+    return windowActive;
+  }
 }
 
 export function cancelVoiceSpeech(): void {
