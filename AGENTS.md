@@ -10,14 +10,14 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Cursor Cloud specific instructions
 
-Shifting Front is a single, fully client-side Next.js 16 + React 19 browser RTS game (Canvas 2D). There is no backend service, database, or environment variables to configure — all campaign content is generated deterministically from a 4-digit seed and persisted to `localStorage`. See `README.md` for the full command list and game details.
+Shifting Front is a Next.js 16 + React 19 browser RTS game (Canvas 2D). Campaign generation, simulation, and saves run in the browser, with deterministic 4-digit seeds and `localStorage` persistence. Campaign and tutorial play need no environment variables or external service. Online skirmishes use Next.js server routes and Peerovo credentials; see [README multiplayer configuration](README.md#online-skirmishes) for server-only environment variables and [multiplayer deployment security](docs/multiplayer-security.md) for edge rate limits. Missing multiplayer configuration or unavailable services produce a lobby error without preventing campaign or tutorial play. There is no application database.
 
 When adding or modifying units, always read and follow
 [`docs/adding-new-units.md`](docs/adding-new-units.md) before making changes.
 
 Yarn 1.22.22 is preinstalled. `jsdom@30` requires Node `^22.22.2`; nvm provides it at `$HOME/.nvm/versions/node/v22.22.2`. If `node -v` is older (the default PATH can expose 22.14.0 first), prepend that nvm bin directory before any `yarn` command.
 
-Environment install is `yarn install --frozen-lockfile` plus `yarn playwright install --with-deps chromium`. Start launches `yarn dev --hostname 0.0.0.0 --port 3000`; do not reinstall dependencies in start.
+Environment install is `yarn install --frozen-lockfile` plus `yarn playwright install --with-deps chromium webkit`. Start launches `yarn dev --hostname 0.0.0.0 --port 3000`; do not reinstall dependencies in start.
 
 Standard commands (defined in `package.json`, don't duplicate — reference there):
 

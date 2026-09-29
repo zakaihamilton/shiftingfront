@@ -1,6 +1,6 @@
 # Architecture
 
-Shifting Front is a deterministic, client-side real-time strategy game. The URL seed and mission identify a generated campaign; the browser owns the mutable simulation session and persists it locally.
+Shifting Front has a deterministic, browser-owned real-time strategy simulation. Campaign and tutorial play require no external service; multiplayer adds Next.js server routes for scoped Peerovo credentials. The URL seed and mission identify a generated campaign; the browser owns the mutable simulation session and persists it locally.
 
 ## Boundaries
 
