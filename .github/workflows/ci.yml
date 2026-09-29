@@ -83,6 +83,16 @@ jobs:
         run: |
           mkdir -p artifacts
           yarn ci:timed-performance
+      - name: Check immutable asset URL versioning
+        env:
+          ASSET_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "$ASSET_BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "Initial push has no previous commit; skipping asset comparison."
+          else
+            git fetch --no-tags --depth=1 origin "$ASSET_BASE_SHA"
+            yarn health:asset-versioning --base "$ASSET_BASE_SHA"
+          fi
       - run: yarn health:documentation
       - run: yarn health:dead-code
       - run: yarn health:duplication

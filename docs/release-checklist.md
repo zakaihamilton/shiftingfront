@@ -55,6 +55,10 @@ Shifting Front runs on Vercel production hosting. Campaign and tutorial simulati
 - [x] Service worker registers and precaches core routes (`/`, `/tutorial`, `/briefing`, `/campaign`, `/play`, `/campaign-complete`, `/load`, `/privacy`, `/terms`) and icons as a required install set, then best-effort precaches all 112 visual art assets (biomes, 3D models, sprites, portraits, terrain, textures), and dynamically discovers/caches linked Next.js static bundles with offline query-parameter routing.
 - [x] Universal social cards available at `/opengraph-image.png` and `/twitter-image.png`.
 
+### Immutable asset updates
+
+Run `yarn health:asset-versioning --base <git-ref>` against the commit before the asset changes. CI fetches the PR base or the previous push commit for the same check. Every byte change under `public/art` or `public/icons`, including recompression, requires a new pathname. Increment the filename version or use a new versioned directory, update all references and `public/sw.js` precache entries, and run the asset and service-worker tests. Additions and deletions are allowed; replacing a file at the same URL is rejected. Previously cached files refresh through new URLs, while the existing immutable headers and offline cache strategy stay in place.
+
 ### Multiplayer deployment gate
 
 Before enabling public multiplayer on Preview or Production, configure all four Vercel Firewall rules for room creation, room join, handshake validation, and peer-credential refresh at the limits in [multiplayer deployment security](multiplayer-security.md). Verify the deployed rules with `APP_URL=https://your-deployment.example ./scripts/verify-multiplayer-firewall.sh`; the check must observe at least one `429` from each route.
