@@ -168,6 +168,109 @@ describe("stateless multiplayer room credentials", () => {
       .rejects.toMatchObject({ reason: "invalid_ticket_response" });
   });
 
+  it("does not extend the accepted peer-token expiry while a response body is delayed", async () => {
+    vi.useFakeTimers();
+    const requestedAtMs = Date.now();
+    const sessionExpiresAt = requestedAtMs + 900_000;
+    const delayedExpiry = Math.floor(requestedAtMs / 1000) + 610;
+    const settings = getPeerovoSettings()!;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/v1/config")) {
+        return Response.json({ signalingAuthMode: "project-session-peerovo-v1", peerJs: { host: "signal.example.test", port: 443, path: "/", key: "peerjs", secure: true } });
+      }
+      const response = new Response(JSON.stringify({
+        projectId: settings.projectId,
+        sessionId: "session-1",
+        peerId: "peer-1",
+        peerToken: "token",
+        expiresAt: delayedExpiry,
+      }), { status: 201 });
+      vi.spyOn(response, "json").mockImplementation(async () => {
+        vi.setSystemTime(requestedAtMs + 60_000);
+        return {
+          projectId: settings.projectId,
+          sessionId: "session-1",
+          peerId: "peer-1",
+          peerToken: "token",
+          expiresAt: delayedExpiry,
+        };
+      });
+      return response;
+    }) as typeof fetch;
+
+    try {
+      await expect(issuePeerCredential({ sessionId: "session-1", peerId: "peer-1", sessionExpiresAt }))
+        .rejects.toMatchObject({ reason: "invalid_ticket_response" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rejects a peer token that expires while its response body is being read", async () => {
+    vi.useFakeTimers();
+    const requestedAtMs = Date.now();
+    const sessionExpiresAt = requestedAtMs + 900_000;
+    const expiredAt = Math.floor(requestedAtMs / 1000) + 10;
+    const settings = getPeerovoSettings()!;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/v1/config")) {
+        return Response.json({ signalingAuthMode: "project-session-peerovo-v1", peerJs: { host: "signal.example.test", port: 443, path: "/", key: "peerjs", secure: true } });
+      }
+      const response = new Response(JSON.stringify({
+        projectId: settings.projectId,
+        sessionId: "session-1",
+        peerId: "peer-1",
+        peerToken: "token",
+        expiresAt: expiredAt,
+      }), { status: 201 });
+      vi.spyOn(response, "json").mockImplementation(async () => {
+        vi.setSystemTime(requestedAtMs + 20_000);
+        return {
+          projectId: settings.projectId,
+          sessionId: "session-1",
+          peerId: "peer-1",
+          peerToken: "token",
+          expiresAt: expiredAt,
+        };
+      });
+      return response;
+    }) as typeof fetch;
+
+    try {
+      await expect(issuePeerCredential({ sessionId: "session-1", peerId: "peer-1", sessionExpiresAt }))
+        .rejects.toMatchObject({ reason: "invalid_ticket_response" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps peer-token expiry within the room session expiry", async () => {
+    vi.useFakeTimers();
+    const requestedAtMs = Date.now();
+    const sessionExpiresAt = requestedAtMs + 30_000;
+    const settings = getPeerovoSettings()!;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/v1/config")) {
+        return Response.json({ signalingAuthMode: "project-session-peerovo-v1", peerJs: { host: "signal.example.test", port: 443, path: "/", key: "peerjs", secure: true } });
+      }
+      vi.setSystemTime(requestedAtMs + 20_000);
+      return new Response(JSON.stringify({
+        projectId: settings.projectId,
+        sessionId: "session-1",
+        peerId: "peer-1",
+        peerToken: "token",
+        expiresAt: Math.floor(sessionExpiresAt / 1000) + 1,
+      }), { status: 201 });
+    }) as typeof fetch;
+
+    try {
+      await expect(issuePeerCredential({ sessionId: "session-1", peerId: "peer-1", sessionExpiresAt }))
+        .rejects.toMatchObject({ reason: "invalid_ticket_response" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("accepts the join code only in the JSON body and keeps the project key out of responses", async () => {
     const createdResponse = await createRoomRoute(new Request("https://shiftingfront.test/api/multiplayer/rooms", {
       method: "POST",

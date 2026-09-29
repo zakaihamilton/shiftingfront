@@ -2,16 +2,15 @@
 
 import dynamic from "next/dynamic";
 import { CodeInput } from "@/components/shared/CodeInput";
-import { CampaignPreviewPane } from "@/components/menu/NewGameSetup";
 import { rollSeed } from "@/components/menu/menuLaunch";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
-import type { Campaign } from "@/lib/types";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
 import type { MultiplayerLobbyModel } from "./useMultiplayerLobbyController";
 import { ownerLabel } from "./utils";
+import { SkirmishPreviewPane } from "./SkirmishPreviewPane";
 import styles from "../MultiplayerLobby.module.css";
 
 const DynamicGameClient = dynamic(() => import("@/components/game/GameClient").then((module) => module.GameClient), {
@@ -42,7 +41,7 @@ function HostSetupView({ lobby }: { lobby: LobbyModel }) {
         {lobby.error ? <p className={styles.error} role="alert">{lobby.error}</p> : null}
         {lobby.status === "Room creation failed." ? <p className={styles.status} role="status">{lobby.status}</p> : null}
       </section>
-      <CampaignPreviewPane preview={lobby.campaignPreview as Campaign | null} className={styles.hostSetupPreview} />
+      <SkirmishPreviewPane biome={lobby.skirmishBiome} className={styles.hostSetupPreview} />
     </div>
   );
 }

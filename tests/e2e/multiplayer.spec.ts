@@ -168,12 +168,27 @@ test("multiplayer menu uses a button and Escape follows host setup navigation", 
 
   await page.getByRole("button", { name: "MULTIPLAYER" }).click();
   await page.getByRole("button", { name: "Host a room" }).click();
-  const preview = page.getByTestId("campaign-info-pane");
+  const preview = page.getByTestId("multiplayer-skirmish-preview");
   await expect(preview).toBeVisible();
-  await expect(preview.getByTestId("campaign-backdrop")).toBeVisible();
-  await expect(preview.getByText("Campaign preview")).toBeVisible();
+  const backdrop = preview.getByTestId("multiplayer-skirmish-backdrop");
+  await expect(backdrop).toBeVisible();
+  await expect(preview.getByText("Skirmish preview")).toBeVisible();
+  await expect(preview.getByRole("heading", { name: "Versus Skirmish" })).toBeVisible();
+  await expect(preview).toContainText("Free-for-all");
+  await expect(preview.getByTestId("multiplayer-skirmish-details")).toContainText("80 × 80 · Four corner starts");
+  await expect(preview.getByTestId("multiplayer-skirmish-details")).toContainText("2–4");
+  await expect(preview.getByTestId("multiplayer-skirmish-details")).toContainText("Destroy enemy construction yards");
+  const initialBiome = await backdrop.getAttribute("aria-label");
+  const initialArt = await backdrop.getAttribute("style");
   await page.getByTestId("multiplayer-seed-input").fill("0421");
-  await expect(preview.getByTestId("campaign-details")).toBeVisible();
+  await expect(preview.getByTestId("multiplayer-skirmish-details")).toBeVisible();
+  await expect(backdrop).toHaveAttribute("aria-label", /skirmish backdrop$/);
+  expect(await backdrop.getAttribute("aria-label")).not.toBe(initialBiome);
+  expect(await backdrop.getAttribute("style")).not.toBe(initialArt);
+  await expect(preview).not.toContainText("Campaign preview");
+  await expect(preview.getByTestId("campaign-details")).toHaveCount(0);
+  await expect(preview).not.toContainText("Commander");
+  await expect(preview).not.toContainText("6 operations");
 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Host a room" })).toBeVisible();
