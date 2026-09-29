@@ -30,7 +30,7 @@ vi.mock("../../lib/audio/music", () => ({
 vi.mock("../../lib/audio/synth", () => ({ setSfxEnabled: vi.fn() }));
 vi.mock("../../lib/audio/mixer", () => ({
   setAudioForeground,
-  setAudioGameplayManaged: vi.fn(),
+  setGameplayAudioManaged: vi.fn(),
   setAudioLevels: vi.fn(),
 }));
 
