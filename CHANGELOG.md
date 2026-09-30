@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Multiplayer command bursts are split into shared-limit tick frames, retaining excess orders for later ticks so guests do not discard oversized frames and request resynchronization.
+- Battlefield terrain preparation and ore-depletion rebuilds use sliced atlas baking, reserve pending texture preloads, and cancel superseded work, preventing rendering from falling back to a synchronous bake.
+- Fog refreshes reuse cached terrain geometry and the blurred map skirt, avoiding periodic full surface redraws during gameplay.
+- The architecture guide now documents save content version 2 and its shared-production-queue migration.
 - Rally orders now use the produced unit's owner, keeping reinforcement movement identical across multiplayer clients.
 - Distant attack orders and enemies without a valid firing position no longer prevent building repairs.
 - Repairs also recognize incoming fire during movement orders, including between shots and after loading a save. The competent commander focuses fire on annihilation targets once its siege units reach weapon range.
@@ -17,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Browser performance checks measure full runtime-loop work and animation-frame cadence during active simulation, with separate drawing diagnostics and tighter frame budgets.
 - Application and package versions are now 1.1.4.
 - Survival waves refresh slightly faster to preserve defensive pressure after the building repair corrections.
 - **Biome semantic & visual alignment**: World names and faction names now derive after biome generation and pull from biome-matching and neutral adjective pools, preventing clashing descriptors (such as "Ash" in a Salt Marsh). The in-game Salt Marshes terrain materials, water palettes, and atmospheric lighting have been harmonized with the dark slate-blue coastal estuary concept art. Simulation replay baselines were updated to reflect the clean seed attribute reshuffling.

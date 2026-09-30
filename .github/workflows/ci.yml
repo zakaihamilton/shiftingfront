@@ -214,6 +214,7 @@ jobs:
 
   e2e:
     name: E2E (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    # Shard 1 measures active frame timing; avoid competing browser workers.
     # Shard 3 combines WebKit touch tests with desktop visual tests; serialize it to avoid input timing races.
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ matrix.shardIndex == 3 && 25 || 15 }}
@@ -256,7 +257,7 @@ jobs:
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: yarn playwright install-deps chromium webkit
-      - run: yarn test:e2e --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --workers=${{ matrix.shardIndex == 3 && 1 || 2 }}
+      - run: yarn test:e2e --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --workers=${{ (matrix.shardIndex == 1 || matrix.shardIndex == 3) && 1 || 2 }}
         env:
           CI: true
       - name: Upload E2E failure artifacts

@@ -8,6 +8,8 @@ export type MultiplayerWire = { send: (value: unknown) => void };
 export type TickFrame = { type: "tick"; protocolVersion: number; tick: number; commands: Command[] };
 export type IntroReadyMessage = { type: "intro-ready"; protocolVersion: number };
 export type IntroReleaseMessage = { type: "intro-release"; protocolVersion: number };
+/** Shared by the host scheduler and guest tick-frame validation. */
+export const MAX_COMMANDS_PER_TICK = 256;
 const MAX_MULTIPLAYER_SNAPSHOT_ENTITIES = 8_192;
 const MAX_AI_MEMORY_ENTRIES = 8_192;
 const AI_BEHAVIORS = new Set(["economy", "defense", "assault", "retreat", "regroup"]);

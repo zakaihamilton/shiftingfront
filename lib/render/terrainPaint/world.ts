@@ -25,10 +25,12 @@ const SKIRT_CORNER_SALT = 0x4b1d;
 const SKIRT_BLUR_PX = 5;
 
 let skirtCanvas: HTMLCanvasElement | null = null;
+let surfaceCaches = new WeakMap<HTMLCanvasElement, { key: string; canvas: HTMLCanvasElement }>();
 
 export function clearTerrainPaintCache(): void {
   sceneryMemo.clear();
   skirtCanvas = null;
+  surfaceCaches = new WeakMap();
 }
 
 function memoScenery(state: AtlasWorld & { tick?: number }, x: number, y: number) {
@@ -484,10 +486,38 @@ export function paintTerrainWorld(
   ctx.fillStyle = SHROUD_FILL;
   ctx.fillRect(0, 0, w, h);
 
-  paintTerrainSurface(ctx, state, cam, (x, y) => smoothFogGain(state, x, y));
+  paintCachedTerrainSurface(ctx, state, cam);
   // Tall blockers and ore stay after the shroud and remain vision-gated.
   paintShroudLayer(ctx, state, cam);
   visitVisibleTiles(ctx, state, cam, (x, y) => {
     paintCellProps(ctx, state, cam, x, y);
   });
+}
+
+function paintCachedTerrainSurface(ctx: CanvasRenderingContext2D, state: SimState, cam: Camera): void {
+  if (typeof document === "undefined") {
+    paintTerrainSurface(ctx, state, cam);
+    return;
+  }
+  const atlas = getTerrainAtlas(state);
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const key = `${atlas.key}:${atlas.canvas ? "ready" : "pending"}:${cam.x}:${cam.y}:${cam.zoom}:${w}x${h}`;
+  let cached = surfaceCaches.get(ctx.canvas);
+  if (!cached || cached.key !== key) {
+    const canvas = cached?.canvas ?? document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const surface = canvas.getContext("2d");
+    if (!surface) {
+      paintTerrainSurface(ctx, state, cam);
+      return;
+    }
+    // The shroud below supplies visibility shading. Geometry, textures, and
+    // the blurred skirt can survive fog refreshes without being repainted.
+    paintTerrainSurface(surface, state, cam);
+    cached = { key, canvas };
+    surfaceCaches.set(ctx.canvas, cached);
+  }
+  ctx.drawImage(cached.canvas, 0, 0);
 }

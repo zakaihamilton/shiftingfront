@@ -1,10 +1,71 @@
 import { describe, expect, it } from "vitest";
 import { MultiplayerSession, sanitizeCommand, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
+import { MAX_COMMANDS_PER_TICK, type TickFrame } from "@/lib/multiplayer/protocol";
 import { createSkirmish } from "@/lib/sim/api";
 import { fogAt } from "@/lib/sim/fog";
-import type { Owner } from "@/lib/types";
+import type { Command, Owner } from "@/lib/types";
 
 describe("four-player canonical multiplayer command stream", () => {
+  it("carries combined host and guest bursts across bounded ticks without losing commands or resyncing", () => {
+    const replies: unknown[] = [];
+    const guest = new MultiplayerSession("guest", 1, 42, { send: (value) => replies.push(value) });
+    const frames: TickFrame[] = [];
+    const host = new MultiplayerSession("host", 0, 42, { send() {} });
+    host.addGuest("guest-1", 1, { send: (value) => {
+      frames.push(value as TickFrame);
+      guest.receive(value);
+    } });
+
+    const submitted: Command = { type: "stop", unitIds: [1] };
+    const local: Command[] = Array.from({ length: MAX_COMMANDS_PER_TICK * 2 + 1 }, (_, i) => ({ type: "stop", unitIds: [i + 2] }));
+    const remote: Command[] = Array.from({ length: MAX_COMMANDS_PER_TICK + 1 }, (_, i) => ({ type: "stop", unitIds: [i + 1] }));
+    host.submit(submitted);
+    for (const command of remote) host.receiveFrom("guest-1", { type: "intent", command });
+
+    const applied: Command[] = [];
+    const expected = [
+      submitted, ...local,
+    ].map((command) => ({ ...command, owner: 0 })).concat(remote.map((command) => ({ ...command, owner: 1 })));
+    for (let tick = 0; applied.length < expected.length; tick++) {
+      const state = { tick } as never;
+      const commands = host.drainTick(state, tick === 0 ? local : []);
+      expect(commands.length).toBeGreaterThan(0);
+      expect(commands.length).toBeLessThanOrEqual(MAX_COMMANDS_PER_TICK);
+      expect(guest.canAdvance(state)).toBe(true);
+      expect(guest.drainTick(state, [])).toEqual(commands);
+      applied.push(...commands);
+    }
+    expect(applied).toEqual(expected);
+    expect(frames).toHaveLength(4);
+    expect(host.drainTick({ tick: 4 } as never, [])).toEqual([]);
+    expect(replies).toEqual([]);
+  });
+
+  it("rejects oversized tick frames while accepting the shared command limit", () => {
+    const guest = new MultiplayerSession("guest", 1, 42, { send() {} });
+    const command: Command = { type: "stop", unitIds: [1], owner: 0 };
+    guest.receive({ type: "tick", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: 1, commands: Array(MAX_COMMANDS_PER_TICK + 1).fill(command) });
+    expect(guest.canAdvance({ tick: 0 } as never)).toBe(false);
+    guest.receive({ type: "tick", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: 1, commands: Array(MAX_COMMANDS_PER_TICK).fill(command) });
+    expect(guest.canAdvance({ tick: 0 } as never)).toBe(true);
+  });
+
+  it("removes deferred commands from a forfeited guest while preserving the other seat's commands", () => {
+    const state = createSkirmish(42, 0, [0, 1, 2]).state;
+    const host = new MultiplayerSession("host", 0, 42, { send() {} }, [0, 1, 2]);
+    host.bindState(() => state, () => {});
+    host.addGuest("guest-1", 1, { send() {} });
+    host.addGuest("guest-2", 2, { send() {} });
+    for (let i = 0; i <= MAX_COMMANDS_PER_TICK; i++) {
+      host.receiveFrom("guest-1", { type: "intent", command: { type: "stop", unitIds: [1] } });
+    }
+    host.receiveFrom("guest-2", { type: "intent", command: { type: "stop", unitIds: [2] } });
+    expect(host.drainTick(state, [])).toHaveLength(MAX_COMMANDS_PER_TICK);
+    host.disconnectGuest("guest-1");
+    host.forfeitGuest("guest-1");
+    expect(host.drainTick(state, [])).toEqual([{ type: "stop", unitIds: [2], owner: 2 }]);
+  });
+
   it("holds ticks behind the intro-ready barrier until every human seat is ready", () => {
     const sentToGuest: unknown[] = [];
     const host = new MultiplayerSession("host", 0, 9123, { send() {} }, [0, 1]);

@@ -64,6 +64,41 @@ describe("startLoop", () => {
     vi.restoreAllMocks();
   });
 
+  it("measures simulation, hooks, and drawing work separately from the full frame interval, including while paused", () => {
+    let clock = 0;
+    let frame: FrameRequestCallback;
+    let paused = false;
+    vi.spyOn(performance, "now").mockImplementation(() => clock);
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frame = callback; return 1; });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const state = createMission({ seed: 421, missionIndex: 0 });
+    const measured = vi.fn();
+    const loop = startLoop({
+      getState: () => state,
+      setState: () => {},
+      drainCommands: () => { clock += 1; return []; },
+      step: (s) => { clock += 5; s.tick++; return { state: s, events: [] }; },
+      onTick: () => { clock += 2; },
+      onFrame: () => { clock += 7; },
+      isPaused: () => paused,
+      onFrameTiming: measured,
+    });
+
+    clock = TICK_MS * 2;
+    frame!(clock);
+    expect(state.tick).toBe(2);
+    expect(measured).toHaveBeenLastCalledWith({ workMs: 23, intervalMs: TICK_MS * 2 });
+
+    paused = true;
+    clock = TICK_MS * 3;
+    frame!(clock);
+    expect(state.tick).toBe(2);
+    const timing = measured.mock.calls[1]![0];
+    expect(timing.workMs).toBe(7);
+    expect(timing.intervalMs).toBeCloseTo(TICK_MS);
+    loop.stop();
+  });
+
   it("discards the hidden-window backlog when the window is focused again", () => {
     let now = 0;
     let nextRafId = 1;

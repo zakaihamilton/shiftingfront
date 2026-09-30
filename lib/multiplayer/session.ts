@@ -3,7 +3,7 @@ import { entityInPlayerVision, makeFog, tickFog } from "@/lib/sim/fog";
 import { evaluateObjectives } from "@/lib/sim/objectives";
 import { compactDestroyedEntities, invalidateEntityCaches } from "@/lib/sim/world";
 
-import { isSimSnapshot, sameOwners, sanitizeCommand, SKIRMISH_MATCH_SETTINGS } from "./protocol";
+import { isSimSnapshot, MAX_COMMANDS_PER_TICK, sameOwners, sanitizeCommand, SKIRMISH_MATCH_SETTINGS } from "./protocol";
 import type { MultiplayerRole, MultiplayerStatus, MultiplayerWire, IntroReadyMessage, IntroReleaseMessage, TickFrame } from "./protocol";
 
 // Retain the existing public import surface for UI and headless callers.
@@ -13,6 +13,7 @@ export type { MultiplayerRole, MultiplayerStatus, MultiplayerWire, TickFrame, In
 const RTT_PROBE_INTERVAL_MS = 2_000;
 const RTT_SAMPLE_MAX_AGE_MS = 6_000;
 const MAX_PENDING_RTT_PROBES = 8;
+const MAX_PENDING_GUEST_COMMANDS = MAX_COMMANDS_PER_TICK * 2;
 
 function monotonicNow(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -329,7 +330,7 @@ export class MultiplayerSession {
       }
       return;
     }
-    if (this.role === "guest" && message.type === "tick" && Number.isSafeInteger(message.tick) && Array.isArray(message.commands) && message.commands.length <= 256) {
+    if (this.role === "guest" && message.type === "tick" && Number.isSafeInteger(message.tick) && Array.isArray(message.commands) && message.commands.length <= MAX_COMMANDS_PER_TICK) {
       if (message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion) return;
       const tick = Number(message.tick);
       const commands = message.commands.map((command) => sanitizeCommand(command, true));
@@ -383,7 +384,7 @@ export class MultiplayerSession {
         const target = state?.entities.find((entity) => entity.id === command.targetId);
         if (!state || !target || !entityInPlayerVision(state, target, guest.owner)) return;
       }
-      if (command && this.guestCommands.length < 384) this.guestCommands.push({ owner: guest.owner, command });
+      if (command && this.guestCommands.length < MAX_PENDING_GUEST_COMMANDS) this.guestCommands.push({ owner: guest.owner, command });
       return;
     }
     if (message.type === "resume") {
@@ -479,10 +480,12 @@ export class MultiplayerSession {
   drainTick(state: SimState, localCommands: Command[]): Command[] {
     this.syncSnapshot();
     if (this.role === "host") {
+      this.localCommands.push(...localCommands);
+      const hostCommands = this.localCommands.splice(0, MAX_COMMANDS_PER_TICK);
       const commands = [
-        ...this.localCommands.splice(0).map((command) => ({ ...command, owner: this.owner } as Command)),
-        ...localCommands.map((command) => ({ ...command, owner: this.owner } as Command)),
-        ...this.guestCommands.splice(0).map(({ owner, command }) => ({ ...command, owner } as Command)),
+        ...hostCommands.map((command) => ({ ...command, owner: this.owner } as Command)),
+        ...this.guestCommands.splice(0, MAX_COMMANDS_PER_TICK - hostCommands.length)
+          .map(({ owner, command }) => ({ ...command, owner } as Command)),
       ];
       const frame: TickFrame = { type: "tick", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick + 1, commands };
       if (this.connected) this.broadcast(frame);

@@ -58,8 +58,15 @@ export type TerrainAtlas = TerrainAtlasData & {
 let grainGeneration = 0;
 const grainImages = new Map<string, HTMLImageElement>();
 let atlasCache: TerrainAtlas | null = null;
+let atlasCacheWorld: string | null = null;
 const atlasBakePromises = new Map<string, Promise<TerrainAtlas>>();
+const atlasBakeControllers = new Map<AtlasWorld, AbortController>();
+const atlasPreloadPromises = new Map<string, Promise<boolean>>();
 let atlasInvalidationGeneration = 0;
+
+function atlasWorldIdentity(state: AtlasWorld): string {
+  return `${state.seed}:${state.missionIndex ?? 0}:${state.biome}:${state.width}x${state.height}`;
+}
 
 export function terrainGrainGeneration(): number {
   return grainGeneration;
@@ -96,6 +103,10 @@ export function preloadTerrainAtlas(
 ): Promise<boolean> {
   if (typeof Image === "undefined") return Promise.resolve(true);
   if (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom")) return Promise.resolve(true);
+  const preloadKey = makeAtlasKey(state, 0);
+  const existing = atlasPreloadPromises.get(preloadKey);
+  if (existing) return existing;
+  const invalidationGeneration = atlasInvalidationGeneration;
   const biomeSrc = biomeArt(state.biome);
   const treatment = generateCampaignVisualProfile(state.seed).terrainTreatment;
   const plateSrc = TERRAIN_ART[treatment];
@@ -103,7 +114,9 @@ export function preloadTerrainAtlas(
   const loadOne = (src: string): Promise<void> => {
     return new Promise<void>((resolve) => {
       const cached = grainImages.get(src);
-      if (cached && cached.complete && cached.naturalWidth > 0) {
+      // Failed optional textures have finished too; a later visit can still
+      // bake the base terrain instead of waiting for an event that already fired.
+      if (cached && cached.complete) {
         resolve();
         return;
       }
@@ -129,13 +142,20 @@ export function preloadTerrainAtlas(
     });
   };
 
-  return Promise.all([loadOne(biomeSrc), loadOne(plateSrc)]).then(async () => {
+  const promise = Promise.all([loadOne(biomeSrc), loadOne(plateSrc)]).then(async () => {
+    if (invalidationGeneration !== atlasInvalidationGeneration) return false;
     if (typeof document !== "undefined") {
       if (options?.rowsPerChunk === undefined) bakeAndCacheTerrainAtlas(state);
       else await getTerrainAtlasAsync(state, options);
     }
     return true;
   });
+  atlasPreloadPromises.set(preloadKey, promise);
+  const clearPreload = () => {
+    if (atlasPreloadPromises.get(preloadKey) === promise) atlasPreloadPromises.delete(preloadKey);
+  };
+  void promise.then(clearPreload, clearPreload);
+  return promise;
 }
 
 function requestGrain(src: string): HTMLImageElement | null {
@@ -223,18 +243,23 @@ function bakeAndCacheTerrainAtlas(state: AtlasWorld): TerrainAtlas {
   if (atlasCache && atlasCache.key === key) return atlasCache;
   const atlas = createTerrainAtlas(state, bakeTerrainAtlasData(state));
   atlasCache = atlas;
+  atlasCacheWorld = atlasWorldIdentity(state);
   return atlas;
 }
 
 export function invalidateTerrainAtlas(): void {
   atlasCache = null;
+  atlasCacheWorld = null;
+  for (const controller of atlasBakeControllers.values()) controller.abort();
+  atlasBakeControllers.clear();
   atlasBakePromises.clear();
+  atlasPreloadPromises.clear();
   atlasInvalidationGeneration += 1;
 }
 
 export async function bakeTerrainAtlasDataAsync(
   state: AtlasWorld,
-  options: { rowsPerChunk?: number } = {},
+  options: { rowsPerChunk?: number; signal?: AbortSignal } = {},
 ): Promise<TerrainAtlasData> {
   const ctx = initAtlasBake(state, grainGeneration);
   const requestedRowsPerChunk = options.rowsPerChunk ?? 8;
@@ -242,6 +267,7 @@ export async function bakeTerrainAtlasDataAsync(
     ? Math.max(1, Math.floor(requestedRowsPerChunk))
     : 8;
   while (ctx.currentRow < ctx.rows) {
+    options.signal?.throwIfAborted();
     bakeAtlasRowSlice(ctx, rowsPerChunk);
     if (ctx.currentRow < ctx.rows) {
       await new Promise<void>((resolve) => {
@@ -265,29 +291,48 @@ export async function getTerrainAtlasAsync(
   const existing = atlasBakePromises.get(key);
   if (existing) return existing;
 
+  // Ore exhaustion can change the layout while a previous bake is yielding.
+  // Keep only the newest request for this mutable world doing work.
+  atlasBakeControllers.get(state)?.abort();
+  const controller = new AbortController();
+  atlasBakeControllers.set(state, controller);
   const invalidationGeneration = atlasInvalidationGeneration;
   const promise = (async () => {
     const baked = options?.rowsPerChunk === undefined
       ? bakeTerrainAtlasData(state)
-      : await bakeTerrainAtlasDataAsync(state, options);
+      : await bakeTerrainAtlasDataAsync(state, { ...options, signal: controller.signal });
     const atlas = createTerrainAtlas(state, baked);
     if (invalidationGeneration === atlasInvalidationGeneration && terrainAtlasKey(state) === key) {
       atlasCache = atlas;
+      atlasCacheWorld = atlasWorldIdentity(state);
     }
     return atlas;
   })();
   atlasBakePromises.set(key, promise);
-  void promise.then(
-    () => { if (atlasBakePromises.get(key) === promise) atlasBakePromises.delete(key); },
-    () => { if (atlasBakePromises.get(key) === promise) atlasBakePromises.delete(key); },
-  );
+  const clearBake = () => {
+    if (atlasBakePromises.get(key) === promise) atlasBakePromises.delete(key);
+    if (atlasBakeControllers.get(state) === controller) atlasBakeControllers.delete(state);
+  };
+  void promise.then(clearBake, clearBake);
   return promise;
 }
 
 export function getTerrainAtlas(state: AtlasWorld): TerrainAtlas {
   const key = terrainAtlasKey(state);
   if (atlasCache && atlasCache.key === key) return atlasCache;
-  if (atlasBakePromises.has(key)) {
+  const preloading = atlasPreloadPromises.has(makeAtlasKey(state, 0));
+  if (!preloading && !atlasBakePromises.has(key)
+      && typeof document !== "undefined" && typeof requestAnimationFrame === "function"
+      && !(typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))) {
+    // Live layout changes need the same responsive preparation as initial load.
+    void getTerrainAtlasAsync(state, { rowsPerChunk: 1 }).catch(() => undefined);
+  }
+  // Rendering may start while the grain textures are still loading. Reserve
+  // the atlas for that preload instead of falling back to a synchronous bake.
+  if (atlasBakePromises.has(key) || preloading) {
+    // Keep the previous terrain visible during a live rebuild. Initial loads
+    // and different missions still use the neutral pending-atlas fallback.
+    if (atlasCache && atlasCacheWorld === atlasWorldIdentity(state)) return atlasCache;
     const cols = state.width + MAP_SKIRT * 2;
     const rows = state.height + MAP_SKIRT * 2;
     return {
