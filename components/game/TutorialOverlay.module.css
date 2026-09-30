@@ -1,4 +1,6 @@
 .card {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
   position: absolute;
   z-index: 70;
   left: 50%;
@@ -69,9 +71,31 @@
   }
 }
 
-@media (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
+@media (max-width: 1023px) and (orientation: portrait) {
   .card {
-    bottom: max(4.8rem, calc(env(safe-area-inset-bottom) + 4.4rem));
-    max-height: calc(100% - 5.8rem);
+    box-sizing: border-box;
+    position: relative;
+    grid-row: 2 / 3;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    justify-self: center;
+    margin: 0.5rem 0 max(4.8rem, calc(env(safe-area-inset-bottom) + 4.4rem));
+    max-height: 45dvh;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .card {
+    box-sizing: border-box;
+    position: relative;
+    grid-row: 2 / 3;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    justify-self: center;
+    margin: 0.5rem 0;
+    width: calc(100% - 1rem);
+    max-height: 45dvh;
   }
 }

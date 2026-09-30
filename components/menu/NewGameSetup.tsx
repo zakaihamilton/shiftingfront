@@ -1,6 +1,7 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
+import { useModalFocus } from "@/components/ui/useModalFocus";
 import { biomeLabel } from "@/lib/gen/names";
 import { biomeArt } from "@/lib/gen/visualAssets";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
@@ -97,9 +98,10 @@ export function NewGameSetup({
   onBack: () => void;
 }) {
   const { countdown } = useWeeklyCountdown();
+  const dialogRef = useModalFocus(true);
   const isSynchronized = code === weeklySeed();
   return (
-    <MetalPanel as="section" className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="new-game-title" data-testid="deploy-screen">
+    <MetalPanel ref={dialogRef} tabIndex={-1} as="section" className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="new-game-title" data-testid="deploy-screen">
       <div className={styles.codePane} data-testid="campaign-code-pane">
         <div className={styles.paneTopline}>
           <ConsoleLabel>{isSynchronized ? "Weekly" : "Custom"}</ConsoleLabel>

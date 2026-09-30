@@ -28,7 +28,15 @@ export function MenuScreen() {
       <div className={styles.scene} />
       <div className={styles.vignette} />
 
-      <div className={styles.uiLayer}>
+      <div
+        className={styles.uiLayer}
+        inert={controller.view !== "main"}
+        onClickCapture={(event) => {
+          // Focus tapped openers before the dialog mounts so dismissal can
+          // restore keyboard focus in Safari.
+          if (event.target instanceof Element) event.target.closest("button")?.focus();
+        }}
+      >
         <header className={styles.topbar} aria-label="Shifting Front status">
           <div className={styles.topbarBrand}>
             <span className={styles.brandMark}>SF</span>

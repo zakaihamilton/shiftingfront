@@ -196,6 +196,8 @@ export type Entity = {
   cooldown: number;
   path: Vec2[];
   attackTarget?: number;
+  /** Last target hit, used to recognize incoming fire between weapon cooldowns. */
+  lastFiredTargetId?: number;
   carry: number;
   constructing: number;
   producing?: { kind: UnitKind; remaining: number };

@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Rally orders now use the produced unit's owner, keeping reinforcement movement identical across multiplayer clients.
+- Distant attack orders and enemies without a valid firing position no longer prevent building repairs.
+- Repairs also recognize incoming fire during movement orders, including between shots and after loading a save. The competent commander focuses fire on annihilation targets once its siege units reach weapon range.
+- Harvesters select reachable ore, recover when navigation changes block a field, and unload partial cargo when only unreachable ore remains.
+- Explicit movement takes priority over automatic unloading and support pursuit. Loaded harvesters stay with group travel orders, and Field Medics and Repair Trucks resume support after reaching their destination.
+
 ### Changed
 
+- Application and package versions are now 1.1.4.
+- Survival waves refresh slightly faster to preserve defensive pressure after the building repair corrections.
 - **Biome semantic & visual alignment**: World names and faction names now derive after biome generation and pull from biome-matching and neutral adjective pools, preventing clashing descriptors (such as "Ash" in a Salt Marsh). The in-game Salt Marshes terrain materials, water palettes, and atmospheric lighting have been harmonized with the dark slate-blue coastal estuary concept art. Simulation replay baselines were updated to reflect the clean seed attribute reshuffling.
 - Live balance gates (`minKindWinRate` 0.70, rescue 0.80, extraction 0.85, `destroyMarked`/`decapitate` 0.70). `tests/platform/docsDrift.test.ts` fails if Unreleased stops naming these floors.
 

@@ -31,8 +31,12 @@
 .confirmCopy { margin: 0.75rem 0 0; color: var(--chrome-body); font-size: 0.8rem; line-height: 1.45; }
 .confirmActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem; }
 .confirmDelete { color: var(--chrome-alert); }
-@media (max-width: 420px) {
-  .row { grid-template-columns: minmax(0, 1fr) 4rem auto auto; }
-  .operations, .export, .delete { padding-inline: 0.35rem; }
+@media (max-width: 600px) {
+  .row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem; padding-block: 0.5rem; }
+  .rowSingle { grid-template-columns: minmax(0, 1fr); }
+  .item { grid-column: 1 / -1; grid-template-columns: auto minmax(0, 1fr); }
+  .itemMeta { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 0.35rem 0.75rem; text-align: left; }
+  .itemTitle, .itemCampaign { white-space: normal; overflow-wrap: anywhere; }
+  .operations, .export, .delete { min-height: 44px; padding-inline: 0.35rem; }
   .confirmActions > * { flex: 1 1 8rem; }
 }

@@ -39,6 +39,62 @@ async function expectNoHorizontalOverflow(page: import("@playwright/test").Page)
   return dimensions;
 }
 
+test.describe("UI review regressions", () => {
+  test("keeps keyboard navigation inside new campaign and activates the focused Back button", async ({ page }) => {
+    await page.goto("/");
+    const opener = page.getByRole("button", { name: "NEW GAME", exact: true });
+    await opener.click();
+    const dialog = page.getByRole("dialog", { name: "New campaign" });
+    const code = dialog.getByLabel("Four digit campaign code");
+    await expect(code).toBeFocused();
+    await code.press("Shift+Tab");
+    await expect(dialog.getByRole("button", { name: "Start", exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(code).toBeFocused();
+    await dialog.getByRole("button", { name: "Back", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("lets players select the first tutorial target on phones and after rotation", async ({ page }) => {
+    for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto("/tutorial");
+      await waitForBattlefield(page);
+      await page.setViewportSize(viewport);
+      await waitForBattlefield(page);
+      const canvas = page.getByTestId("battlefield-canvas");
+      const bounds = await canvas.boundingBox();
+      expect(bounds).not.toBeNull();
+      const targetY = bounds!.height * Math.min(0.7, Math.max(0.44, 120 / bounds!.height));
+      await page.mouse.click(bounds!.x + bounds!.width / 2, bounds!.y + targetY - 12);
+      await expect(page.getByTestId("tutorial-overlay")).toHaveAttribute("data-stage", "move");
+    }
+  });
+
+  test("keeps phone command cards clickable with an expanded tutorial hint", async ({ page }) => {
+    for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/tutorial");
+      await waitForBattlefield(page);
+      const coach = page.getByTestId("tutorial-overlay");
+      await coach.getByText("Need a hint?", { exact: true }).click();
+      await page.getByTestId("mobile-command-toggle").click();
+      const sidebar = page.getByTestId("command-sidebar");
+      const sidebarBounds = await sidebar.boundingBox();
+      const coachBounds = await coach.boundingBox();
+      expect(sidebarBounds).not.toBeNull();
+      expect(coachBounds).not.toBeNull();
+      expect(sidebarBounds!.y + sidebarBounds!.height).toBeLessThanOrEqual(coachBounds!.y);
+      await sidebar.getByRole("button", { name: /^Barracks, 375 credits/ }).click();
+      await expect(page.getByTestId("mobile-command-toggle")).toHaveAttribute("aria-expanded", "false");
+      await expectNoHorizontalOverflow(page);
+    }
+  });
+});
+
 async function expectWelcomePreviewsBelowMenu(
   page: import("@playwright/test").Page,
   viewport: { width: number; height: number },

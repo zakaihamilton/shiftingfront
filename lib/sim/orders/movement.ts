@@ -2,7 +2,7 @@ import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
 import { terrainComponentIdsFor } from "../flowField";
 import { isAirUnit } from "../../catalog";
-import { isUnitEntity, type Entity, type Formation, type SimEvent, type SimState } from "../../types";
+import { isUnitEntity, type Entity, type Formation, type Owner, type SimEvent, type SimState } from "../../types";
 import { byId, inBounds, isStaticWalkable } from "../world";
 import { clearSupportOrder } from "../support";
 import { launchAircraft } from "../aircraft";
@@ -19,7 +19,7 @@ export function attackMoveUnits(state: SimState, ids: number[], x: number, y: nu
 /** Assigns a single unit the same normal move order used by player commands. */
 export function assignMoveDestination(state: SimState, e: Entity, x: number, y: number): void {
   if (!isUnitEntity(e)) return;
-  issueTravelOrder(state, [e.id], x, y, "move");
+  issueTravelOrder(state, [e.id], x, y, "move", undefined, e.owner);
 }
 
 function issueTravelOrder(
@@ -29,10 +29,11 @@ function issueTravelOrder(
   y: number,
   orderMode: "move" | "attackMove",
   formation?: Formation,
+  owner = commandOwner(state),
 ): SimEvent[] {
   const tx = Math.round(x);
   const ty = Math.round(y);
-  const movers = collectMovers(state, ids, orderMode === "attackMove");
+  const movers = collectMovers(state, ids, orderMode === "attackMove", owner);
   const groundMovers = movers.filter((entity) => !isAirUnit(entity.kind));
   const groundDests = destinationsForGroup(state, groundMovers, tx, ty, formation);
   const sharedFlowGoal = groundMovers.length > 1 ? { x: tx, y: ty } : undefined;
@@ -79,8 +80,7 @@ function issueTravelOrder(
   return [];
 }
 
-export function collectMovers(state: SimState, ids: number[], attackMove: boolean): Entity[] {
-  const owner = commandOwner(state);
+export function collectMovers(state: SimState, ids: number[], attackMove: boolean, owner: Owner = commandOwner(state)): Entity[] {
   const movers: Entity[] = [];
   for (const id of ids) {
     const e = byId(state, id);

@@ -1,4 +1,6 @@
 .sidebar {
+  grid-column: 2 / 3;
+  grid-row: 1 / -1;
   box-sizing: border-box;
   position: relative;
   z-index: 20;
@@ -183,6 +185,8 @@
 
 @media (max-width: 1023px) and (orientation: portrait) {
   .sidebar {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
     position: absolute;
     z-index: 55;
     top: 0;
@@ -255,6 +259,15 @@
     padding: 0.55rem;
     border: 1px solid var(--chrome-cyan-dim);
     background: color-mix(in srgb, var(--chrome-cyan) 7%, var(--chrome-steel-lo));
+  }
+
+  :global([data-tutorial="true"]) .sidebar {
+    overflow-y: auto;
+  }
+
+  :global([data-tutorial="true"]) .build {
+    flex: 0 0 auto;
+    min-height: 15rem;
   }
 }
 

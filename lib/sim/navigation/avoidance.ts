@@ -46,6 +46,13 @@ export function holdingDestination(e: Entity): boolean {
   return Math.round(e.x) === Math.round(dest.x) && Math.round(e.y) === Math.round(dest.y);
 }
 
+/** Preserve a travel order until arrival, including deferred and shared routes. */
+export function travelOrderInProgress(e: Entity, arrivalRadius = 0.1): boolean {
+  const destination = e.orderDestination;
+  if (!destination || Math.hypot(e.x - destination.x, e.y - destination.y) <= arrivalRadius) return false;
+  return e.path.length > 0 || Boolean(e.flowGoal) || Boolean(e.routePending) || !e.idle;
+}
+
 export function trySidestep(
   state: SimState,
   occupancy: Uint8Array,

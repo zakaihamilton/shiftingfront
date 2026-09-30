@@ -218,6 +218,9 @@ function normalizeState(value: unknown): SimState {
     if (entity.attackTarget !== undefined && !livingEntities.has(entity.attackTarget)) {
       delete entity.attackTarget;
     }
+    if (entity.lastFiredTargetId !== undefined && !livingEntities.has(entity.lastFiredTargetId)) {
+      delete entity.lastFiredTargetId;
+    }
     if (entity.supportTargetId !== undefined && !livingEntities.has(entity.supportTargetId)) {
       delete entity.supportTargetId;
       if (entity.supportMode === "assigned") entity.supportMode = "auto";

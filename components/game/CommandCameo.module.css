@@ -205,48 +205,45 @@
 }
 
 .captionTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  justify-items: start;
   gap: 4px;
 }
 
 .captionTop > span:first-child {
-  flex: 1 1 auto;
   min-width: 0;
   overflow: visible;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   text-overflow: clip;
   white-space: normal;
   line-height: 1.15;
 }
 
 .caption span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
 }
 
 .caption b {
-  flex: 0 0 auto;
   color: var(--chrome-gold);
   font-size: var(--text-xs);
   white-space: nowrap;
 }
 
 .status {
-  overflow: hidden;
+  overflow: visible;
   color: var(--chrome-cyan);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   font-weight: 700;
   letter-spacing: 0.03em;
   line-height: 1.2;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   text-transform: none;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .status.blocked {
@@ -256,15 +253,15 @@
 .detail {
   display: block;
   min-height: 1.15em;
-  overflow: hidden;
+  overflow: visible;
   color: var(--chrome-muted);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   letter-spacing: 0.02em;
   line-height: 1.15;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   text-transform: none;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 @media (max-width: 799px) and (orientation: landscape), (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {

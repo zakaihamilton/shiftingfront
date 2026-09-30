@@ -27,6 +27,7 @@ export function strike(
     e.ammo = Math.max(0, (e.ammo ?? 0) - 1);
   }
   if (pending) notePlayerAlert(state, e, target, pending);
+  e.lastFiredTargetId = target.id;
   const jitter = 0.85 + rng.next() * 0.3;
   const baseDamage = stats.damage * jitter * damageMultiplier(stats.weapon, armorFor(target)) * heightMultiplier(state, e, target);
   const damage = baseDamage * incomingDamageMultiplier(state, target);

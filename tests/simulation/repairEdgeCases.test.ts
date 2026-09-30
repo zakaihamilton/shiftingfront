@@ -51,7 +51,7 @@ describe("repair edge cases", () => {
     const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     addBuilding(s, 0, "constructionYard", 0, 0);
     const power = addBuilding(s, 0, "power", 4, 4);
-    const attacker = addBuilding(s, 1, "turret", 8, 8);
+    const attacker = addBuilding(s, 1, "turret", 7, 7);
     power.hp = 100;
     power.repairing = true;
     attacker.attackTarget = power.id;

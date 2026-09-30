@@ -152,8 +152,9 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   const generatedHoldLine = state.win.kind === "holdTheLine" && state.runtime?.director !== undefined;
   // A rush that abandons the yard still has to survive the timer. Scale 8
   // made those runs unwinnable for the defender and let every rush hold.
-  // Scale 3 keeps a defended yard standing while an empty one can fall.
-  const holdLinePressureScale = generatedHoldLine ? 3 : 1;
+  // With repairs paused between incoming shots, refresh survival pressure
+  // slightly faster so rushing away from the yard still carries a risk.
+  const holdLinePressureScale = generatedHoldLine ? 2.75 : 1;
   const holdLineAssaultEvery = difficulty.enemyAssaultEvery * holdLinePressureScale;
   const profile = state.runtime?.director
     ? resolveMissionProfile(state.seed, state.missionIndex, state.win.kind)

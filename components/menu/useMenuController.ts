@@ -104,6 +104,10 @@ export function useMenuController() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Let focused controls handle Enter themselves (Back, Roll, toggles,
+      // links, and the code input all have their own activation behavior).
+      if (e.defaultPrevented || (e.key === "Enter" && e.target instanceof Element && e.target.closest("button, a[href], input, summary"))) return;
+      if (view === "credits") return;
       const command = menuCommandFromKey(e, {
         typing: isEditableTarget(e.target),
         setupOpen: view === "newGame",

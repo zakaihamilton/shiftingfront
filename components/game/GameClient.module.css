@@ -25,6 +25,16 @@
   --hud-scale: 0.9;
 }
 
+.gameplayArea {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .shell[data-hud-scale="normal"] {
   --hud-scale: 1;
 }
@@ -56,6 +66,10 @@
 @media (max-width: 1023px) and (orientation: portrait) {
   .shell {
     flex-direction: column;
+  }
+
+  .gameplayArea {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

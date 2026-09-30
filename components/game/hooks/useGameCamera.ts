@@ -43,6 +43,7 @@ export function useGameCamera({
   enabled?: boolean;
 }) {
   const camRef = useRef<Camera>(createCamera());
+  const [viewportSize, setViewportSize] = useState<{ width: number; height: number } | null>(null);
   const panAvailRef = useRef<PanAvailability>({ left: false, right: false, up: false, down: false });
   const [panAvail, setPanAvail] = useState<PanAvailability>({ left: false, right: false, up: false, down: false });
   const [hotPan, setHotPan] = useState<PanDir | null>(null);
@@ -170,10 +171,15 @@ export function useGameCamera({
     }
 
     if (s) resetCamera(s);
+    setViewportSize(dimensions);
 
     const syncViewport = () => {
       const nextDimensions = renderDimensions(host);
       if (nextDimensions.width === dimensions.width && nextDimensions.height === dimensions.height) return;
+
+      cancelFocusAnimation();
+      canvas.width = nextDimensions.width;
+      canvas.height = nextDimensions.height;
 
       const currentState = stateRef.current;
       if (currentState) {
@@ -195,6 +201,7 @@ export function useGameCamera({
       }
 
       dimensions = nextDimensions;
+      setViewportSize(nextDimensions);
     };
 
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncViewport);
@@ -204,10 +211,11 @@ export function useGameCamera({
       observer?.disconnect();
       window.removeEventListener("resize", syncViewport);
     };
-  }, [camRef, canvasRef, enabled, hostRef, panAvailRef, resetCamera, setPanAvail, stateRef]);
+  }, [camRef, cancelFocusAnimation, canvasRef, enabled, hostRef, panAvailRef, resetCamera, setPanAvail, stateRef]);
 
   return {
     camRef,
+    viewportSize,
     panAvail,
     panAvailRef,
     setPanAvail,
