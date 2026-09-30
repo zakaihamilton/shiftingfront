@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import sharp from "sharp";
+import { opaquePixelBounds } from "../../lib/render/sprites";
 import { unitSprite, wreckSprite } from "../../lib/gen/svgArt";
 import { STRIKE_PLANE_IMAGE_ANCHORS, UNIT_DIRECTION_CROPS, unitViewForFacing } from "../../lib/gen/visualAssets";
 import { spriteRasterPlacement } from "../../lib/render/sprites";
@@ -22,6 +24,7 @@ const GROUND_KINDS: UnitKind[] = [
   "infantry",
   "antiArmor",
   "medic",
+  "behemoth",
 ];
 
 describe("vehicle perspective consistency", () => {
@@ -41,64 +44,49 @@ describe("vehicle perspective consistency", () => {
     }
   });
 
-  it("maintains stable ground contact baseline across all 8 perspectives (no bouncing)", () => {
-    const cWidth = 128;
-    const cHeight = 120;
-    const inset = Math.max(1, Math.round(Math.min(cWidth, cHeight) * 0.025));
-
-    for (const kind of VEHICLE_KINDS) {
-      const groundLines: number[] = [];
-      for (let facing = 0; facing < 8; facing++) {
-        const spec = unitSprite(kind, palette, { facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 });
-        expect(spec.imageCrop).toBeDefined();
-        const crop = spec.imageCrop!;
-        const refW = crop.refW ?? (crop.sourceW > 0 ? crop.sourceW : crop.w);
-        const refH = crop.refH ?? (crop.sourceH > 0 ? crop.sourceH : crop.h);
-        const scale = Math.min((cWidth - inset * 2) / refW, (cHeight - inset * 2) / refH);
-        const dh = Math.round(crop.h * scale);
-        const destY = Math.round(cHeight - dh - inset * 0.25);
-        const groundY = destY + dh;
-        groundLines.push(groundY);
-      }
-
-      const minGround = Math.min(...groundLines);
-      const maxGround = Math.max(...groundLines);
-      // All perspectives must stay firmly planted on the ground baseline within 1px
-      expect(maxGround - minGround, `${kind} ground variance must be <= 1px`).toBeLessThanOrEqual(1);
-    }
-  });
-
-  it("preserves main-branch world contact for every ground unit facing", () => {
-    const canvasW = 128;
-    const canvasH = 120;
-    const inset = Math.max(1, Math.round(Math.min(canvasW, canvasH) * 0.025));
-    const expectedCenterX = canvasW / 2;
-    const expectedGroundY = Math.round(canvasH - inset * 0.25);
-
+  it("aligns actual opaque feet/treads across every view and walker frame", async () => {
     for (const kind of GROUND_KINDS) {
-      for (const motion of kind === "infantry" || kind === "antiArmor" || kind === "medic" ? [undefined, "walk"] as const : [undefined] as const) {
+      const motions = kind === "infantry" || kind === "antiArmor" || kind === "medic"
+        ? [undefined, "walk"] as const : [undefined] as const;
+      for (const motion of motions) {
         for (let facing = 0; facing < 8; facing++) {
-          const spec = unitSprite(kind, palette, {
-            facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
-            motion,
-          });
-          // Main keeps ground art centered and bottom-aligned. This explicit
-          // invariant catches any future per-view anchor that would make a
-          // unit appear to jump when its authored facing changes.
-          expect(spec.rotation, `${kind} ${motion ?? "static"} facing ${facing} must use authored orientation`).toBeUndefined();
-          expect(spec.imageAnchorX, `${kind} ${motion ?? "static"} facing ${facing} x anchor`).toBeUndefined();
-          expect(spec.imageAnchorY, `${kind} ${motion ?? "static"} facing ${facing} y anchor`).toBeUndefined();
-          const crop = spec.imageCrop;
-          const placement = spriteRasterPlacement(
-            spec,
-            crop?.sourceW ?? 1024,
-            crop?.sourceH ?? 1024,
-            canvasW,
-            canvasH,
-            inset,
-          );
-          expect(Math.abs(placement.destX + placement.dw / 2 - expectedCenterX), `${kind} ${motion ?? "static"} facing ${facing} x contact`).toBeLessThanOrEqual(0.5);
-          expect(placement.destY + placement.dh, `${kind} ${motion ?? "static"} facing ${facing} ground contact`).toBe(expectedGroundY);
+          for (const animationFrame of motion ? [0, 1, 2, 3] as const : [0] as const) {
+            const spec = unitSprite(kind, palette, {
+              facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+              motion,
+              animationFrame,
+            });
+            const image = sharp("public" + spec.imageSrc!);
+            const metadata = await image.metadata();
+            const crop = spec.imageCrop ?? {
+              x: 0, y: 0, w: metadata.width!, h: metadata.height!,
+              sourceW: metadata.width!, sourceH: metadata.height!,
+            };
+            const { data, info } = await image
+              .extract({ left: crop.x, top: crop.y, width: crop.w, height: crop.h })
+              .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+            const bounds = opaquePixelBounds(data, info.width, info.height)!;
+            const contactInCrop = bounds.minY + bounds.height;
+            const label = kind + " " + (motion ?? "static") + " view " + facing + " frame " + animationFrame;
+            expect(spec.rotation, label).toBeUndefined();
+            expect(spec.imageAnchorY! * crop.sourceH, label)
+              .toBeCloseTo(crop.y + contactInCrop, 6);
+            for (const zoom of [0.6, 1, 2]) {
+              const canvasW = Math.round(spec.w * 2 * zoom);
+              const canvasH = Math.round(spec.h * 2 * zoom);
+              const inset = Math.max(1, Math.round(Math.min(canvasW, canvasH) * 0.025));
+              const placement = spriteRasterPlacement(spec, metadata.width!, metadata.height!,
+                canvasW, canvasH, inset);
+              const paintedContact = placement.destY + placement.dh * contactInCrop / crop.h;
+              expect(Math.abs(paintedContact - canvasH), label).toBeLessThanOrEqual(0.500001);
+              expect(Math.abs(placement.destX + placement.dw / 2 - canvasW / 2), label)
+                .toBeLessThanOrEqual(0.5);
+              // Contact correction must preserve the established reference-frame scale.
+              const scale = Math.min((canvasW - inset * 2) / (crop.refW ?? crop.sourceW),
+                (canvasH - inset * 2) / (crop.refH ?? crop.sourceH));
+              expect(placement.dh, label).toBe(Math.round(crop.h * scale));
+            }
+          }
         }
       }
     }

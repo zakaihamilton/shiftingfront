@@ -7,6 +7,8 @@ import {
 import type { Camera } from "../../iso";
 import { isTerrainAtlasBaked, terrainGrainGeneration } from "../terrainAtlas";
 import { terrainLayoutSignature } from "../terrainAtlasBake";
+import { resetUnitSpriteBlend } from "../unitSpriteBlend";
+import { resetUnitFacingBlends } from "../unitFacingBlend";
 
 const TERRAIN_RENDER_REV = "world-atlas-v32-no-feature-boundaries";
 
@@ -64,4 +66,6 @@ export function clearRendererSessionCache(): void {
   drawList.length = 0;
   entityDrawOrder.clear();
   lastReadySprite.clear();
+  resetUnitSpriteBlend();
+  resetUnitFacingBlends();
 }

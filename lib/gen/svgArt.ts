@@ -1,4 +1,5 @@
 import { BUILDING_STATS } from "../catalog";
+import { UNIT_GROUND_CONTACT_Y, UNIT_WALK_CONTACT_Y } from "./unitContactPoints";
 import {
   AIR_SUPPORT_ART,
   ANTI_AIR_TURRET_BASE_CROP,
@@ -182,10 +183,12 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
     imageSrc,
     imageTint: rasterTreatment(profile, palette),
     imageCrop,
-    // Behemoth source canvases place the actual tread contact line at y=475
-    // in a 512px frame, with transparent padding below it. Align that authored
-    // point to the simulation anchor so the tank does not hover above terrain.
-    imageAnchorY: behemoth ? 475 / 512 : undefined,
+    // Preserve the selected crop's horizontal center and scale, but align the
+    // actual feet/treads rather than the transparent bottom of the image.
+    imageAnchorX: imageCrop ? (imageCrop.x + imageCrop.w / 2) / imageCrop.sourceW : 0.5,
+    imageAnchorY: walkArt
+      ? UNIT_WALK_CONTACT_Y[kind as keyof typeof UNIT_WALK_CONTACT_Y][view][frame]
+      : UNIT_GROUND_CONTACT_Y[kind][view],
     anchorX: w / 2,
     anchorY: ground,
     pixelScale: 1,

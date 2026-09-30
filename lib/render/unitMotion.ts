@@ -4,8 +4,8 @@ export const GROUND_DUST_FILL = "rgba(140, 130, 115, 0.25)";
 export const UNIT_SHADOW_FILL = "#000";
 export const UNIT_SHADOW_ALPHA = 0.32;
 export const UNIT_SHADOW_MOVE_ALPHA = 0.36;
-export const UNIT_SHADOW_OFFSET_X = 5;
-export const UNIT_SHADOW_OFFSET_Y = 4;
+export const UNIT_SHADOW_OFFSET_X = 0;
+export const UNIT_SHADOW_OFFSET_Y = 0;
 
 export type UnitMotionOptions = {
   strideRatio?: number;
@@ -64,7 +64,9 @@ export function drawUnitShadow(
   }
 
   ctx.save();
-  ctx.translate(UNIT_SHADOW_OFFSET_X * scale, UNIT_SHADOW_OFFSET_Y * scale);
+  // Aircraft keep the directional cast shadow; ground shadows touch feet/treads.
+  ctx.translate(kind === "strikePlane" ? 5 * scale : UNIT_SHADOW_OFFSET_X * scale,
+    kind === "strikePlane" ? 4 * scale : UNIT_SHADOW_OFFSET_Y * scale);
   ctx.globalAlpha = alpha * (isMoving ? UNIT_SHADOW_MOVE_ALPHA : UNIT_SHADOW_ALPHA);
   ctx.fillStyle = UNIT_SHADOW_FILL;
 
