@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeFixture, setHeight, setTile, TILE_WATER } from "../../lib/sim/fixtures";
 import { SURFACE_CONCRETE } from "../../lib/types";
 import { createCamera } from "../../lib/iso";
-import { clearTerrainPaintCache, paintTerrainSurface } from "../../lib/render/terrainPaint/world";
+import { clearTerrainPaintCache, paintTerrainSurface, paintTerrainWorld } from "../../lib/render/terrainPaint/world";
 import { invalidateTerrainAtlas } from "../../lib/render/terrainAtlas";
 
 type DrawCall = unknown[];
@@ -22,6 +22,7 @@ function createContext(width: number, height: number, drawCalls: DrawCall[] = []
       data: new Uint8ClampedArray(imageWidth * imageHeight * 4),
     }),
     putImageData: vi.fn(),
+    createRadialGradient: () => ({ addColorStop: vi.fn() }),
     drawImage: (...args: unknown[]) => drawCalls.push(args),
     beginPath: () => pathCalls.push({ name: "beginPath", args: [] }),
     moveTo: (...args: unknown[]) => pathCalls.push({ name: "moveTo", args }),
@@ -109,5 +110,37 @@ describe("live terrain surface renderer", () => {
     );
     expect(interiorPaths.filter((call) => call.name === "arcTo")).toHaveLength(0);
     expect(interiorPaths.filter((call) => call.name === "lineTo").length).toBeGreaterThan(0);
+  });
+
+  it("reuses surface geometry across fog refreshes and rebuilds after camera or atlas changes", () => {
+    const drawCalls: DrawCall[] = [];
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(function (this: HTMLCanvasElement) {
+      return createContext(this.width, this.height, drawCalls);
+    });
+    const state = makeFixture({ width: 8, height: 8, seed: 832, win: { kind: "annihilate" } });
+    const ctx = createContext(640, 480);
+    const cam = createCamera();
+    const atlasDraws = () => drawCalls.filter((call) => call.length === 9).length;
+    paintTerrainWorld(ctx, state, cam);
+    const initial = atlasDraws();
+    expect(initial).toBeGreaterThan(0);
+
+    state.tick = 16;
+    state.fog.fill(0);
+    paintTerrainWorld(ctx, state, cam);
+    expect(atlasDraws()).toBe(initial);
+
+    cam.x += 40;
+    paintTerrainWorld(ctx, state, cam);
+    expect(atlasDraws()).toBeGreaterThan(initial);
+    const moved = atlasDraws();
+    setTile(state, 3, 3, TILE_WATER);
+    paintTerrainWorld(ctx, state, cam);
+    expect(atlasDraws()).toBeGreaterThan(moved);
+
+    const rebuilt = atlasDraws();
+    clearTerrainPaintCache();
+    paintTerrainWorld(ctx, state, cam);
+    expect(atlasDraws()).toBeGreaterThan(rebuilt);
   });
 });

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Multiplayer command bursts are split into shared-limit tick frames, retaining excess orders for later ticks so guests do not discard oversized frames and request resynchronization.
 - Battlefield terrain preparation and ore-depletion rebuilds use sliced atlas baking, reserve pending texture preloads, and cancel superseded work, preventing rendering from falling back to a synchronous bake.
+- Fog refreshes reuse cached terrain geometry and the blurred map skirt, avoiding periodic full surface redraws during gameplay.
 - The architecture guide now documents save content version 2 and its shared-production-queue migration.
 - Rally orders now use the produced unit's owner, keeping reinforcement movement identical across multiplayer clients.
 - Distant attack orders and enemies without a valid firing position no longer prevent building repairs.
