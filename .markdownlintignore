@@ -7,5 +7,7 @@ coverage
 playwright-report
 test-results
 brag-output*
+brag-output*/**
+brag-output/**
 artifacts
 .github

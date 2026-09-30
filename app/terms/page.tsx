@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ConsoleNoticeLink } from "@/components/ui/ConsoleNotice";
-import { EscapeToHome } from "@/components/ui/EscapeToHome";
-import styles from "../legal.module.css";
+import { LegalDocument } from "@/components/ui/LegalDocument";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Shifting Front",
@@ -11,16 +8,13 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <div className={styles.page}>
-      <EscapeToHome />
-      <main className={styles.container}>
-        <header className={styles.header}>
-          <div className={styles.eyebrow}>Command Desk // Protocol Verification</div>
-          <h1 className={styles.title}>Terms of Service</h1>
-          <div className={styles.lastUpdated}>Effective Date: September 14, 2026</div>
-        </header>
-
-        <section className={styles.content}>
+    <LegalDocument
+      eyebrow="Command Desk // Protocol Verification"
+      title="Terms of Service"
+      lastUpdated="Effective Date: September 14, 2026"
+      otherLinkHref="/privacy"
+      otherLinkLabel="Privacy Policy"
+    >
           <h2>1. Agreement to Terms</h2>
           <p>
             By accessing or playing Shifting Front, you agree to these Terms of Service. If you do not agree to these terms, you should discontinue use of the application.
@@ -46,21 +40,10 @@ export default function TermsPage() {
             Game progress, named save slots, and settings are stored solely in your local browser storage. We are not responsible for lost saves or lost campaign progress resulting from browser cache clearing, private browsing sessions, or device replacements.
           </p>
 
-          <h2>6. Governing Law</h2>
-          <p>
-            These terms are governed by and construed in accordance with applicable laws without regard to conflict of law principles.
-          </p>
-        </section>
-
-        <footer className={styles.footer}>
-          <ConsoleNoticeLink href="/" muted>
-            &larr; Return to Main Menu
-          </ConsoleNoticeLink>
-          <div className={styles.otherLinks}>
-            <Link href="/privacy">Privacy Policy</Link>
-          </div>
-        </footer>
-      </main>
-    </div>
+      <h2>6. Governing Law</h2>
+      <p>
+        These terms are governed by and construed in accordance with applicable laws without regard to conflict of law principles.
+      </p>
+    </LegalDocument>
   );
 }

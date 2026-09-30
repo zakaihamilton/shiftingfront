@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ConsoleNoticeLink } from "@/components/ui/ConsoleNotice";
-import { EscapeToHome } from "@/components/ui/EscapeToHome";
-import styles from "../legal.module.css";
+import { LegalDocument } from "@/components/ui/LegalDocument";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Shifting Front",
@@ -11,16 +8,13 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className={styles.page}>
-      <EscapeToHome />
-      <main className={styles.container}>
-        <header className={styles.header}>
-          <div className={styles.eyebrow}>Command Desk // Security Clearance</div>
-          <h1 className={styles.title}>Privacy Policy</h1>
-          <div className={styles.lastUpdated}>Effective Date: September 17, 2026</div>
-        </header>
-
-        <section className={styles.content}>
+    <LegalDocument
+      eyebrow="Command Desk // Security Clearance"
+      title="Privacy Policy"
+      lastUpdated="Effective Date: September 17, 2026"
+      otherLinkHref="/terms"
+      otherLinkLabel="Terms of Service"
+    >
           <h2>1. Overview</h2>
           <p>
             Shifting Front is a deterministic, client-side browser real-time strategy game. Game simulation, saves, progress, preferences, and diagnostics are stored locally in your browser. The website also uses Vercel Web Analytics to understand aggregated traffic and page views. Vercel Web Analytics does not use cookies and is designed not to identify individual visitors, but it does transmit limited page-view information to Vercel.
@@ -70,21 +64,10 @@ export default function PrivacyPage() {
             For more information, see <a href="https://vercel.com/docs/analytics/privacy-policy">Vercel&apos;s Web Analytics Privacy and Compliance documentation</a> and <a href="https://vercel.com/legal/privacy-notice">Vercel&apos;s Privacy Notice</a>.
           </p>
 
-          <h2>6. Updates to This Policy</h2>
-          <p>
-            If architectural modifications introduce new data collection, third-party services, local features, or options, this document will be updated accordingly with a revised effective date.
-          </p>
-        </section>
-
-        <footer className={styles.footer}>
-          <ConsoleNoticeLink href="/" muted>
-            &larr; Return to Main Menu
-          </ConsoleNoticeLink>
-          <div className={styles.otherLinks}>
-            <Link href="/terms">Terms of Service</Link>
-          </div>
-        </footer>
-      </main>
-    </div>
+      <h2>6. Updates to This Policy</h2>
+      <p>
+        If architectural modifications introduce new data collection, third-party services, local features, or options, this document will be updated accordingly with a revised effective date.
+      </p>
+    </LegalDocument>
   );
 }

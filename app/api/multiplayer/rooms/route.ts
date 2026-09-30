@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import { createRoom, RoomError } from "@/lib/multiplayer/server/rooms";
-import { peerovoErrorReason } from "@/lib/multiplayer/server/peerovo";
+import { createRoom } from "@/lib/multiplayer/server/rooms";
+import { multiplayerFailureResponse } from "@/lib/multiplayer/server/response";
 import { multiplayerRateLimitResponse } from "@/lib/multiplayer/server/rateLimit";
 
 export const runtime = "nodejs";
-
-function failure(error: unknown) {
-  const status = error instanceof RoomError ? error.status : 503;
-  const reason = error instanceof RoomError ? error.reason : peerovoErrorReason(error);
-  return NextResponse.json({ error: reason }, { status, headers: { "Cache-Control": "no-store" } });
-}
 
 export async function POST(request: Request) {
   const limited = await multiplayerRateLimitResponse(request, "createRoom");
@@ -25,6 +19,6 @@ export async function POST(request: Request) {
     const room = await createRoom(body.seed as number);
     return NextResponse.json(room, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    return failure(error);
+    return multiplayerFailureResponse(error);
   }
 }
