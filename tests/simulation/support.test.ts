@@ -5,6 +5,8 @@ import { issue } from "../../lib/sim/orders";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { holdSupport, tickSupport } from "../../lib/sim/support";
 import { missionDifficulty } from "../../lib/sim/difficulty";
+import { tickMovement } from "../../lib/sim/movement";
+import { resetPathBudget } from "../../lib/sim/pathBudget";
 
 describe("support units", () => {
   it("classifies support targets by reusable domain", () => {
@@ -74,7 +76,7 @@ describe("support units", () => {
     expect(harvester.hp).toBe(harvester.maxHp - 40);
   });
 
-  it("turns Stop into hold mode and resumes auto support after a move", () => {
+  it("turns Stop into hold mode and resumes auto support after completing a move", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     const medic = addUnit(state, 0, "medic", 2, 2);
     const infantry = addUnit(state, 0, "infantry", 3, 2);
@@ -84,12 +86,18 @@ describe("support units", () => {
     expect(tickSupport(state)).toEqual([]);
     expect(infantry.hp).toBe(infantry.maxHp - 20);
 
-    expect(issue(state, { type: "move", unitIds: [medic.id], x: 5, y: 5 })).toEqual([]);
+    expect(issue(state, { type: "move", unitIds: [medic.id], x: 5, y: 4 })).toEqual([]);
     expect(medic.supportMode).toBe("auto");
     expect(medic.supportTargetId).toBeUndefined();
-    expect(tickSupport(state)).toEqual([
-      expect.objectContaining({ type: "support", targetId: infantry.id }),
-    ]);
+    expect(tickSupport(state)).toEqual([]);
+    for (let i = 0; i < 100 && infantry.hp === infantry.maxHp - 20; i++) {
+      resetPathBudget(state);
+      tickMovement(state);
+      tickSupport(state);
+      state.tick += 1;
+    }
+    expect(Math.hypot(medic.x - 5, medic.y - 4)).toBeLessThanOrEqual(0.1);
+    expect(infantry.hp).toBeGreaterThan(infantry.maxHp - 20);
     expect(medic.supportTargetId).toBe(infantry.id);
   });
 

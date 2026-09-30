@@ -143,6 +143,7 @@ export function isEntity(
     typeof value.marked !== "boolean" || typeof value.idle !== "boolean"
   ) return false;
   if (value.attackTarget !== undefined && !isIntegerInRange(value.attackTarget, 0, Number.MAX_SAFE_INTEGER)) return false;
+  if (value.lastFiredTargetId !== undefined && !isIntegerInRange(value.lastFiredTargetId, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (value.producing !== undefined && (!isRecord(value.producing) || !isUnitKind(value.producing.kind) || !isNonNegativeNumber(value.producing.remaining))) return false;
   if (value.gatherX !== undefined && !isFiniteNumber(value.gatherX)) return false;
   if (value.gatherY !== undefined && !isFiniteNumber(value.gatherY)) return false;

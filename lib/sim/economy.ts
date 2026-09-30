@@ -4,10 +4,27 @@ import { TILE_RESOURCE } from "../types";
 import type { Entity, SimEvent, SimState } from "../types";
 import { tryFindPathDetailed } from "./pathBudget";
 import { routePendingFor } from "./pathfinding";
-import { at, closestApproach, dist, distToEntity, inBounds, livingView, nearest, tileAt } from "./world";
+import { at, closestApproach, distToEntity, inBounds, livingView, nearest, tileAt } from "./world";
 import { entitiesFor } from "./entities";
+import { terrainComponentIdsFor } from "./flowField";
+import { travelOrderInProgress } from "./navigation/avoidance";
 
 export const HARVEST_RANGE = 1.5;
+
+function resourceReachableFrom(state: SimState, from: Entity, x: number, y: number, components = terrainComponentIdsFor(state)): boolean {
+  if (Math.hypot(from.x - x, from.y - y) <= HARVEST_RANGE) return true;
+  const sx = Math.round(from.x);
+  const sy = Math.round(from.y);
+  const component = inBounds(state, sx, sy) ? components[sy * state.width + sx] ?? -1 : -1;
+  if (component < 0) return false;
+  // Harvesting works from adjacent cells, including ore covered by a building.
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (inBounds(state, x + dx, y + dy) && components[(y + dy) * state.width + x + dx] === component) return true;
+    }
+  }
+  return false;
+}
 
 const resourceIndex = new WeakMap<SimState, number[]>();
 const economyClaims = new WeakMap<SimState, Map<number, number>>();
@@ -68,12 +85,14 @@ export function nearestResourceNear(
 
 export function nearestResource(state: SimState, from: Entity): { x: number; y: number } | undefined {
   const list = resourceTiles(state);
+  const components = terrainComponentIdsFor(state);
   let best: { x: number; y: number } | undefined;
   let bestD2 = Infinity;
   for (const i of list) {
     if (state.resourceAmount[i]! <= 0) continue;
     const x = i % state.width;
     const y = (i - x) / state.width;
+    if (!resourceReachableFrom(state, from, x, y, components)) continue;
     const dx = from.x - x;
     const dy = from.y - y;
     const d2 = dx * dx + dy * dy;
@@ -92,6 +111,7 @@ export function bestResource(
   preferredCenter?: { x: number; y: number },
 ): { x: number; y: number } | undefined {
   const list = resourceTiles(state);
+  const components = terrainComponentIdsFor(state);
   let best: { x: number; y: number } | undefined;
   let bestScore = Infinity;
   const center = preferredCenter ?? from;
@@ -100,6 +120,7 @@ export function bestResource(
     if (state.resourceAmount[i]! <= 0) continue;
     const x = i % state.width;
     const y = (i - x) / state.width;
+    if (!resourceReachableFrom(state, from, x, y, components)) continue;
     const dCenter = Math.hypot(center.x - x, center.y - y);
     const dFrom = Math.hypot(from.x - x, from.y - y);
     const claimCount = claims.get(i) ?? 0;
@@ -130,6 +151,14 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
 
   for (const e of livingView(state)) {
     if (e.kind !== "harvester" || e.hp <= 0) continue;
+    // Explicit travel takes priority over gathering and unloading, even with a
+    // full hold or a group route that has not produced a path yet.
+    if (e.moveToHarvest) {
+      const destination = e.orderDestination;
+      const arrivalRadius = destination && resourceTileAt(state, destination.x, destination.y) ? HARVEST_RANGE : 0.1;
+      if (travelOrderInProgress(e, arrivalRadius)) continue;
+      e.moveToHarvest = undefined;
+    }
     // Harvesters use their economy assignment rather than a player group
     // flow field once the economy loop takes control of their route.
     e.flowGoal = undefined;
@@ -169,20 +198,6 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
       continue;
     }
 
-    // If the harvester is executing a player-issued move command, let it travel
-    // to its destination first before the economy loop starts looking for ore.
-    if (e.moveToHarvest && e.orderDestination) {
-      const arrived =
-        (e.path.length === 0 && !e.routePending) ||
-        dist(e, e.orderDestination) <= HARVEST_RANGE;
-      if (!arrived) {
-        // Still en route — don't touch its path or destination.
-        continue;
-      }
-      // Arrived at destination. Clear the move-first flag and let economy take over.
-      e.moveToHarvest = undefined;
-    }
-
     let gx = e.gatherX;
     let gy = e.gatherY;
 
@@ -207,6 +222,7 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
       gx === undefined ||
       gy === undefined ||
       !resourceTileAt(state, gx, gy) ||
+      !resourceReachableFrom(state, e, gx, gy) ||
       ((e.blockedTicks ?? 0) >= 6 && Math.hypot(e.x - gx, e.y - gy) > HARVEST_RANGE)
     ) {
       const preferred =
@@ -214,7 +230,16 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
           ? { x: gx, y: gy }
           : e.orderDestination ?? refineryPreference ?? { x: currentTileX, y: currentTileY };
       const n = bestResource(state, e, claims, preferred);
-      if (!n) continue;
+      if (!n) {
+        e.gatherX = undefined;
+        e.gatherY = undefined;
+        e.orderDestination = undefined;
+        e.path = [];
+        e.routePending = false;
+        e.idle = true;
+        continue;
+      }
+      if (n.x !== gx || n.y !== gy) e.path = [];
       gx = n.x;
       gy = n.y;
       e.gatherX = gx;

@@ -65,6 +65,9 @@ function clearEntityReferences(entity: Entity, removedIds: ReadonlySet<number>):
   if (entity.attackTarget !== undefined && removedIds.has(entity.attackTarget)) {
     entity.attackTarget = undefined;
   }
+  if (entity.lastFiredTargetId !== undefined && removedIds.has(entity.lastFiredTargetId)) {
+    entity.lastFiredTargetId = undefined;
+  }
   if (entity.supportTargetId !== undefined && removedIds.has(entity.supportTargetId)) {
     entity.supportTargetId = undefined;
     if (entity.supportMode === "assigned") entity.supportMode = "auto";

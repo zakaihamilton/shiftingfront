@@ -66,18 +66,21 @@ export function useGameRuntimeInteraction({
   const camera = useGameCamera({ stateRef, canvasRef, hostRef });
   const { camRef, panAvail, panAvailRef, hotPan, panHold, edgePanHover, applyEdgePan, focusTileAnimated, resetCamera } = camera;
 
-  const tutorialFocusStageRef = useRef<typeof state.tutorialStage>(undefined);
+  const tutorialStage = state.tutorialStage;
   useEffect(() => {
-    const stage = state.tutorialStage;
-    if (!tutorial || !stage || tutorialFocusStageRef.current === stage || !canvasRef.current) return;
-    if (stage === "move") { tutorialFocusStageRef.current = stage; return; }
-    const targets = tutorialTargets(state);
+    if (!tutorial || !tutorialStage || !camera.viewportSize || tutorialStage === "move") return;
+    const current = stateRef.current;
+    const targets = tutorialTargets(current);
     const target = targets[0];
-    const point = tutorialFocusPoint(state);
+    const point = tutorialFocusPoint(current);
     if (!point) return;
-    focusTileAnimated(Math.round(point.x), Math.round(point.y), state.tutorialStage === "attack" && targets.length > 1 ? 0.32 : target?.kind === "entity" ? 0.44 : 0.56, audioSettings.reducedMotion ? 0 : TUTORIAL_CAMERA_FOCUS_MS);
-    tutorialFocusStageRef.current = stage;
-  }, [audioSettings.reducedMotion, canvasRef, focusTileAnimated, state, tutorial]);
+    const preferredBias = tutorialStage === "attack" && targets.length > 1 ? 0.32 : target?.kind === "entity" ? 0.44 : 0.56;
+    const yBias = Math.min(0.7, Math.max(preferredBias, 120 / camera.viewportSize.height));
+    const duration = audioSettings.reducedMotion || tutorialStage === "select" ? 0 : TUTORIAL_CAMERA_FOCUS_MS;
+    // Wait for the canvas size, and repeat after resizes or effect replay.
+    // The first lesson target must be visible before the player learns to pan.
+    focusTileAnimated(Math.round(point.x), Math.round(point.y), yBias, duration);
+  }, [audioSettings.reducedMotion, camera.viewportSize, focusTileAnimated, stateRef, tutorial, tutorialStage]);
 
   const actions = useGameActions({ stateRef, commandPort, selected, selectedIds, onCommandNotice: announceCommandFeedback, onCommandRejection: recordCommandRejection, uxRef });
   const { place, placeKind, setPlaceKind, repair, repairMode, setRepairMode, sell, sellMode, setSellMode, mobileCommand, setMobileCommandState, resetMobileCommand, cancelMobileCommand, clearTools, issueSelectedCommand, toggleRepair, toggleSell, activateCameo } = actions;

@@ -1,7 +1,10 @@
-import { repairCostFor, repairHpPerTick } from "../catalog";
-import { isBuildingEntity, type SimEvent, type SimState } from "../types";
-import { isCombatThreat } from "./combat/grid";
+import { isAirUnit, isDefensiveTurret, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER, repairCostFor, repairHpPerTick } from "../catalog";
+import { isBuildingEntity, type Entity, type SimEvent, type SimState } from "../types";
+import { canTarget, isCombatThreat, statsFor } from "./combat/grid";
+import { heightRangeBonus, lineOfSight } from "./combat/targeting";
 import { entitiesFor } from "./entities";
+import { distToEntity, powerFor } from "./world";
+import { directFireRangeBonusAt } from "./terrainRules";
 
 export function canRepair(e: { class: string; hp: number; maxHp: number; constructing: number }): boolean {
   return e.class === "building" && e.hp > 0 && e.constructing === 0 && e.hp < e.maxHp;
@@ -9,13 +12,21 @@ export function canRepair(e: { class: string; hp: number; maxHp: number; constru
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
-function isUnderAttack(state: SimState, buildingId: number, owner: number): boolean {
-  return entitiesFor(state).some(
-    (attacker) => attacker.hp > 0
-      && attacker.owner !== owner
-      && attacker.attackTarget === buildingId
-      && isCombatThreat(state, attacker),
-  );
+function isUnderAttack(state: SimState, building: Entity): boolean {
+  return entitiesFor(state).some((attacker) => {
+    const firingAtBuilding = attacker.attackTarget === building.id ||
+      (attacker.lastFiredTargetId === building.id && attacker.cooldown > 0);
+    if (attacker.hp <= 0 || attacker.owner === building.owner || !firingAtBuilding ||
+        !isCombatThreat(state, attacker) || !canTarget(attacker, building)) return false;
+    const aircraft = attacker.class === "unit" && isAirUnit(attacker.kind);
+    if (aircraft && (attacker.flightState === "servicing" || attacker.landingRunwayId !== undefined || (attacker.ammo ?? 0) <= 0)) return false;
+    const stats = statsFor(attacker);
+    const lowPower = attacker.class === "building" && isDefensiveTurret(attacker.kind) && powerFor(state, attacker.owner) < 0;
+    const range = stats.range * (lowPower ? POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER : 1)
+      + (stats.weapon === "airStrike" ? 0 : directFireRangeBonusAt(state, attacker))
+      + heightRangeBonus(state, attacker, building);
+    return distToEntity(attacker, building) <= range && (aircraft || lineOfSight(state, attacker, building));
+  });
 }
 
 export function tickRepair(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
@@ -31,7 +42,7 @@ export function tickRepair(state: SimState, eventSink?: SimEvent[], collectEvent
       e.repairing = false;
       continue;
     }
-    if (isUnderAttack(state, e.id, e.owner)) continue;
+    if (isUnderAttack(state, e)) continue;
     const kind = e.kind;
     const restored = Math.min(repairHpPerTick(kind), e.maxHp - e.hp);
     const cost = Math.max(1, Math.round(repairCostFor(kind, restored)));

@@ -3,6 +3,7 @@ import { isUnitEntity, type Entity, type SimEvent, type SimState } from "../type
 import { tryFindPathDetailed } from "./pathBudget";
 import { routePendingFor } from "./pathfinding";
 import { byId, distToEntity, livingView } from "./world";
+import { travelOrderInProgress } from "./navigation/avoidance";
 
 export function canSupportEntity(provider: Entity, target: Entity): boolean {
   if (!isUnitEntity(provider) || !isUnitEntity(target)) return false;
@@ -29,7 +30,7 @@ export function assignSupportTarget(state: SimState, provider: Entity, target: E
   if (!canSupportEntity(provider, target)) return;
   provider.supportTargetId = target.id;
   provider.supportMode = "assigned";
-    provider.attackTarget = undefined;
+  provider.attackTarget = undefined;
   provider.flowGoal = undefined;
   provider.orderMode = "move";
   provider.orderDestination = { x: target.x, y: target.y };
@@ -69,9 +70,11 @@ export function tickSupport(state: SimState, eventSink?: SimEvent[], collectEven
     const mode = provider.supportMode ?? "auto";
     provider.supportMode = mode;
     if (provider.cooldown > 0) provider.cooldown -= 1;
-  provider.attackTarget = undefined;
+    provider.attackTarget = undefined;
 
     if (mode === "hold") continue;
+    if (mode === "auto" && provider.supportTargetId === undefined &&
+        (provider.orderMode === "move" || provider.orderMode === "attackMove") && travelOrderInProgress(provider)) continue;
 
     let target = provider.supportTargetId === undefined ? undefined : byId(state, provider.supportTargetId);
     if (target && !canSupportEntity(provider, target)) target = undefined;

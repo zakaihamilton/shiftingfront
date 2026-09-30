@@ -1,5 +1,5 @@
-import { inObjectiveZone } from "../../types";
-import { isAirUnit } from "../../catalog";
+import { inObjectiveZone, isUnitEntity } from "../../types";
+import { isAirUnit, UNIT_STATS } from "../../catalog";
 import type { Command, Entity, MissionKind, SimState } from "../../types";
 import { canRepair } from "../repair";
 import { distToEntity } from "../world";
@@ -30,6 +30,8 @@ import {
 } from "./combat";
 import { isTimedRecovery, scenarioHomeGuardSize } from "../policy";
 import type { CommanderMetrics } from "./queries";
+import { directFireRangeBonusAt } from "../terrainRules";
+import { heightRangeBonus } from "../combat/targeting";
 
 const COMMANDER_REPAIR_CREDIT_RESERVE = 0;
 const COMMANDER_YARD_REPAIR_THRESHOLD = 0.92;
@@ -56,7 +58,8 @@ function finalPushActive(state: SimState): boolean {
 const DECAPITATE_FIRE_RANGE = 4;
 
 function pushAssault(commands: Command[], state: SimState, target: Entity, unitIds: number[], kind: MissionKind): void {
-  if (kind !== "decapitate") {
+  const focusStructure = kind === "annihilate" && target.class === "building";
+  if (kind !== "decapitate" && !focusStructure) {
     commands.push({ type: "attackMove", unitIds, x: target.x, y: target.y, formation: "wedge" });
     return;
   }
@@ -64,8 +67,13 @@ function pushAssault(commands: Command[], state: SimState, target: Entity, unitI
   const far: number[] = [];
   for (const id of unitIds) {
     const unit = entitiesFor(state).find((entity) => entity.id === id);
-    if (!unit) continue;
-    if (distToEntity(unit, target) <= DECAPITATE_FIRE_RANGE) close.push(id);
+    if (!unit || !isUnitEntity(unit)) continue;
+    // Once a siege unit can fire, focus the structure rather than repeatedly
+    // walking through its footprint and giving its repair crew breathing room.
+    const range = focusStructure
+      ? UNIT_STATS[unit.kind].range + (isAirUnit(unit.kind) ? 0 : directFireRangeBonusAt(state, unit)) + heightRangeBonus(state, unit, target)
+      : DECAPITATE_FIRE_RANGE;
+    if (distToEntity(unit, target) <= range) close.push(id);
     else far.push(id);
   }
   if (far.length) commands.push({ type: "attackMove", unitIds: far, x: target.x, y: target.y, formation: "wedge" });

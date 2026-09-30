@@ -26,6 +26,7 @@ export function CreditsModal({ onBack }: { onBack: () => void }) {
   return (
     <MetalPanel
       ref={panelRef}
+      tabIndex={-1}
       className={styles.dialog}
       role="dialog"
       aria-modal="true"

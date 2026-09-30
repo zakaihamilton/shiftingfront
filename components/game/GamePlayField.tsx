@@ -1,9 +1,7 @@
 import type { PlayFieldSurfaceModel } from "./hooks/runtime/types";
-import { tutorialPrompt, tutorialTargets } from "@/lib/sim/tutorial";
 import { Battlefield } from "./Battlefield";
 import { CombatAlert } from "./CombatAlert";
 import { MissionResult } from "./MissionResult";
-import { TutorialOverlay } from "./TutorialOverlay";
 import { CommandNotice } from "./CommandNotice";
 import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "./hooks/useGameCamera";
 import { playFieldStatus } from "./playFieldStatus";
@@ -22,7 +20,6 @@ export function GamePlayField({
   campaign,
   state,
   tutorial,
-  paused = false,
   pointer,
   resultActions,
   feedback,
@@ -70,15 +67,6 @@ export function GamePlayField({
         onRetry={resultActions.onRetry}
         onMenu={resultActions.onMenu}
       />
-      {tutorial && !paused ? (
-        <TutorialOverlay
-          prompt={tutorialPrompt(state)}
-          stage={state.tutorialStage}
-          targets={tutorialTargets(state)}
-          onExit={resultActions.onExitTutorial}
-          onBack={resultActions.onBackTutorial}
-        />
-      ) : null}
     </Battlefield>
   );
 }

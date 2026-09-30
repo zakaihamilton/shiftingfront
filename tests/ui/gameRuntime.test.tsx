@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, render, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useRef } from "react";
-import { createCamera } from "../../lib/iso";
+import { StrictMode, useRef } from "react";
+import { createCamera, tileToScreen } from "../../lib/iso";
+import { heightAt } from "../../lib/sim/world";
+import { tutorialTargets } from "../../lib/sim/tutorial";
 import { makeFixture } from "../../lib/sim/fixtures";
 import { markFreshLaunchIntent } from "../../lib/persist/navigation";
 import { localStorageAdapter, readSave, saveKey, writeSave, writeSlot } from "../../lib/persist/save";
@@ -66,6 +68,46 @@ beforeEach(() => {
     unobserve() {}
   }
   vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+});
+
+it("keeps the first tutorial target centered through Strict Mode and viewport changes", async () => {
+  let runtime: ReturnType<typeof useGameRuntime>;
+  let host: HTMLDivElement;
+  function Training() {
+    runtime = useGameRuntime({ seed: 0, mission: 0, resume: false, tutorial: true });
+    return (
+      <div ref={(node) => {
+        runtime.hostRef.current = node;
+        if (node && node !== host) {
+          host = node;
+          Object.defineProperties(node, {
+            clientWidth: { configurable: true, value: 390 },
+            clientHeight: { configurable: true, value: 450 },
+          });
+        }
+      }}>
+        <canvas ref={runtime.canvasRef} />
+      </div>
+    );
+  }
+  render(<StrictMode><Training /></StrictMode>);
+
+  function expectTargetCentered(x: number, y: number) {
+    const target = tutorialTargets(runtime.state)[0]!;
+    if (target.x === undefined || target.y === undefined) throw new Error("First lesson has no positioned target");
+    const point = tileToScreen(target.x, target.y, runtime.camera.camRef.current, heightAt(runtime.state, target.x, target.y));
+    expect(point.x).toBeCloseTo(x);
+    expect(point.y).toBeCloseTo(y);
+  }
+  await waitFor(() => expectTargetCentered(195, 198));
+  act(() => {
+    Object.defineProperties(host, {
+      clientWidth: { configurable: true, value: 844 },
+      clientHeight: { configurable: true, value: 210 },
+    });
+    window.dispatchEvent(new Event("resize"));
+  });
+  await waitFor(() => expectTargetCentered(422, 120));
 });
 
 describe("useGameRenderer", () => {

@@ -1,4 +1,5 @@
 import { MetalPanel } from "@/components/ui/MetalPanel";
+import { useModalFocus } from "@/components/ui/useModalFocus";
 import { PauseOptions } from "@/components/settings/PauseOptions";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { GameSettings } from "@/lib/persist/settings";
@@ -29,8 +30,11 @@ export function MenuOptions({
   onVolumeChange: (key: AudioVolumeKey, value: number) => void;
   onBack: () => void;
 }) {
+  const dialogRef = useModalFocus(true);
   return (
     <MetalPanel
+      ref={dialogRef}
+      tabIndex={-1}
       className={settingsStyles.dialog}
       role="dialog"
       aria-modal="true"
