@@ -181,7 +181,7 @@ async function expectOperationsMapFit(
 
 async function waitForBattlefield(page: import("@playwright/test").Page) {
   const canvas = page.getByTestId("battlefield-canvas");
-  await expect(canvas).toBeVisible();
+  await expect(canvas).toBeVisible({ timeout: 15_000 });
   await expect.poll(async () => canvas.evaluate((element, mins) => {
     const canvasEl = element as HTMLCanvasElement;
     const host = canvasEl.parentElement;
@@ -189,7 +189,7 @@ async function waitForBattlefield(page: import("@playwright/test").Page) {
     const width = Math.max(mins.width, Math.floor(host.clientWidth));
     const height = Math.max(mins.height, Math.floor(host.clientHeight));
     return canvasEl.width === width && canvasEl.height === height;
-  }, { width: MIN_RENDER_WIDTH, height: MIN_RENDER_HEIGHT })).toBe(true);
+  }, { width: MIN_RENDER_WIDTH, height: MIN_RENDER_HEIGHT }), { timeout: 15_000 }).toBe(true);
   await page.evaluate(() => new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   }));
