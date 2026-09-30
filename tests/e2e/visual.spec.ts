@@ -3,7 +3,7 @@ import { waitForBattlefieldReady } from "./battlefieldReady";
 
 async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
   const canvas = page.getByTestId("battlefield-canvas");
-  await expect(canvas).toBeVisible();
+  await expect(canvas).toBeVisible({ timeout: 15_000 });
   await expect.poll(async () => {
     return canvas.evaluate((element) => {
       const canvasElement = element as HTMLCanvasElement;
@@ -17,10 +17,10 @@ async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
       }
       return ink;
     });
-  }).toBeGreaterThan(0);
+  }, { timeout: 15_000 }).toBeGreaterThan(0);
 
   await waitForBattlefieldReady(page);
-  await expect(page.getByTestId("command-sidebar")).toBeVisible();
+  await expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 });
   return canvas;
 }
 

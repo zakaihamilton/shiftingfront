@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { waitForBattlefieldReady } from "./battlefieldReady";
+import { waitForBattlefield } from "./battlefieldReady";
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, saveKey } from "../../lib/persist/save";
 import { createMission } from "../../lib/sim/api";
 import { makeBuilding, makeUnit } from "../../lib/sim/world";
@@ -7,16 +7,6 @@ import type { BuildingKind, SimState, UnitKind } from "../../lib/types";
 
 const UNIT_KINDS: UnitKind[] = ["infantry", "antiArmor", "tank", "harvester"];
 const BUILDING_KINDS: BuildingKind[] = ["power", "barracks", "refinery", "factory", "turret"];
-
-async function waitForBattlefield(page: import("@playwright/test").Page) {
-  const canvas = page.getByTestId("battlefield-canvas");
-  await expect(canvas).toBeVisible();
-  await expect.poll(() => canvas.evaluate((element) => {
-    const canvasElement = element as HTMLCanvasElement;
-    return canvasElement.width > 0 && canvasElement.height > 0;
-  })).toBe(true);
-  await waitForBattlefieldReady(page);
-}
 
 function denseLateGameState(): SimState {
   const state = createMission({ seed: 421, missionIndex: 5 });

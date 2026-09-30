@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { waitForBattlefieldReady } from "./battlefieldReady";
+import { waitForBattlefield, waitForBattlefieldReady } from "./battlefieldReady";
 import { BUILDING_KINDS, footprintOf } from "../../lib/catalog";
 import { TILE_H, tileToScreen } from "../../lib/iso";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
@@ -65,16 +65,6 @@ async function canvasInk(canvas: Locator): Promise<number> {
 
 async function nextFrame(page: Page) {
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
-}
-
-async function waitForBattlefield(page: Page) {
-  const canvas = page.getByTestId("battlefield-canvas");
-  await expect(canvas).toBeVisible();
-  await expect.poll(() => canvas.evaluate((element) => {
-    const canvasElement = element as HTMLCanvasElement;
-    return canvasElement.width > 0 && canvasElement.height > 0;
-  })).toBe(true);
-  await waitForBattlefieldReady(page);
 }
 
 async function waitForTutorialStage(coach: Locator, stage: string, timeout = 5000): Promise<void> {
