@@ -1,3 +1,4 @@
+import { getSaveRepository } from "./repository";
 import type { SimState } from "../../types";
 import { saveKey } from "./serialize";
 import {
@@ -14,7 +15,8 @@ export type SaveStorageSnapshot = {
 };
 
 export type SaveSession = {
-  write: (state: SimState, mode: SaveWriteMode) => SaveWriteStatus;
+  write: (state: SimState, mode: SaveWriteMode) => SaveWriteStatus | Promise<SaveWriteStatus>;
+  writeJournal?: (state: SimState) => boolean;
   adoptCurrent: () => void;
   markExternalChange: () => void;
   isStorageEventForSession?: (storageArea: Storage | null) => boolean;
@@ -36,6 +38,8 @@ function sameSnapshot(a: SaveStorageSnapshot, b: SaveStorageSnapshot): boolean {
  * best-effort same-thread guard and an early conflict signal for other tabs.
  */
 export function createSaveSession(storage: StorageAdapter, seed: number): SaveSession {
+  const repository = getSaveRepository();
+  if (repository?.storage === storage && repository.mode === "indexeddb") return repository.createSession(seed);
   let expected = saveStorageSnapshot(storage, seed);
   let externallyChanged = false;
 

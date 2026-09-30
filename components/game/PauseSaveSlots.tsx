@@ -20,7 +20,7 @@ export function PauseSaveSlots({
 }: {
   defaultName: string;
   slots: SlotMeta[];
-  onCommit: (name: string, overwriteId: string | null) => boolean;
+  onCommit: (name: string, overwriteId: string | null) => boolean | Promise<boolean>;
   onDelete?: (entry: ArchiveEntry) => void;
   onBack: () => void;
 }) {
@@ -52,8 +52,8 @@ export function PauseSaveSlots({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [pendingOverwrite]);
 
-  const save = (overwriteId: string | null) => {
-    if (!onCommit(name, overwriteId)) return;
+  const save = async (overwriteId: string | null) => {
+    if (!await onCommit(name, overwriteId)) return;
     setPendingOverwrite(null);
   };
 

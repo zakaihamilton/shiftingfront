@@ -63,7 +63,7 @@ export function PauseMenu({
   onResume: () => void;
   onSave: () => void;
   onLoad: () => void;
-  onCommitSave: (name: string, overwriteId: string | null) => boolean;
+  onCommitSave: (name: string, overwriteId: string | null) => boolean | Promise<boolean>;
   onLoadEntry: (entry: ArchiveEntry) => void;
   onDeleteEntry?: (entry: ArchiveEntry) => void;
   onBriefing: () => void;

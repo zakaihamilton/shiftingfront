@@ -11,9 +11,9 @@ import { useGameRuntimeState } from "./useGameRuntimeState";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
 
 /** Composition facade for the mission runtime. Rendering and simulation details live in focused hooks. */
-export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tutorial = false, multiplayerSession }: { seed: number; mission: number; resume: boolean; fresh?: boolean; slot?: string; tutorial?: boolean; multiplayerSession?: MultiplayerSession }): GameRuntime {
+export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tutorial = false, multiplayerSession, initialState }: { seed: number; mission: number; resume: boolean; fresh?: boolean; slot?: string; tutorial?: boolean; multiplayerSession?: MultiplayerSession; initialState?: import("@/lib/types").SimState }): GameRuntime {
   const durable = useGameRuntimeState({
-    seed, mission, resume, fresh, slot, tutorial,
+    seed, mission, resume, fresh, slot, tutorial, initialState,
     multiplayerOwner: multiplayerSession?.owner,
     multiplayerOwners: multiplayerSession?.owners,
     multiplayerAiOwners: multiplayerSession?.aiOwners,

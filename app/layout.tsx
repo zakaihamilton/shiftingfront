@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import { AudioRoot } from "@/components/audio/AudioRoot";
 import { TooltipLayer } from "@/components/TooltipLayer";
+import { SaveRepositoryRoot } from "@/components/shared/SaveRepositoryRoot";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { APP_DESCRIPTION, APP_NAME, APP_VIEWPORT, SITE_URL, shouldLoadVercelAnalytics } from "@/lib/site";
@@ -119,7 +120,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
         <ServiceWorkerRegister />
         <AudioRoot />
-        <ErrorBoundary>{children}</ErrorBoundary>
+        <ErrorBoundary><SaveRepositoryRoot>{children}</SaveRepositoryRoot></ErrorBoundary>
         <TooltipLayer />
         {shouldLoadVercelAnalytics() ? <Analytics /> : null}
       </body>

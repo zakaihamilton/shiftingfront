@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Multiplayer resync snapshots remain authoritative at frame boundaries, including paused terminal and forfeiture updates.
+- Protocol 5 rejects incompatible simulation builds and detects divergence with bounded canonical checksums, verified automatic repair, and clear synchronization failures.
+- Terrain atlas initialization and pixels bake in a cancellable session worker, with sliced offline/failure fallback and water-preserving grain compositing without pixel readback.
+- Campaign saves use transactional IndexedDB, revision conflicts, cross-tab refresh, validated legacy migration, and page-hide recovery journals; legacy fallback reports reduced reliability.
+
 - Multiplayer command bursts are split into shared-limit tick frames, retaining excess orders for later ticks so guests do not discard oversized frames and request resynchronization.
 - Battlefield terrain preparation and ore-depletion rebuilds use sliced atlas baking, reserve pending texture preloads, and cancel superseded work, preventing rendering from falling back to a synchronous bake.
 - Fog refreshes reuse cached terrain geometry and the blurred map skirt, avoiding periodic full surface redraws during gameplay.

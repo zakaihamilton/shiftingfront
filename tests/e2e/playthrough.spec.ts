@@ -1,3 +1,4 @@
+import { readCampaignRecord, replaceCampaignSave } from "./saveRepositoryHelpers";
 import { expect, test, type Page } from "@playwright/test";
 import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "../../components/game/hooks/useGameCamera";
 import { footprintOf, TICKS_PER_SECOND } from "../../lib/catalog";
@@ -131,13 +132,9 @@ async function pointForTile(page: Page, state: SimState, x: number, y: number) {
 }
 
 async function savedState(page: Page, persist = false): Promise<SimState | null> {
-  return page.evaluate(({ key, persist: shouldPersist }) => {
-    if (shouldPersist) window.dispatchEvent(new Event("pagehide"));
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { state?: SimState };
-    return parsed.state ?? null;
-  }, { key: saveKey(TEST_SEED), persist });
+  if (persist) await page.evaluate(async () => { window.dispatchEvent(new Event("pagehide")); await new Promise((resolve) => setTimeout(resolve, 100)); });
+  const record = await readCampaignRecord(page, TEST_SEED);
+  return record?.autosave ? JSON.parse(record.autosave).state ?? null : null;
 }
 
 async function savedEntity(page: Page, entityId: number, persist = false) {
@@ -241,14 +238,7 @@ test("persists production rally points and control groups through save/load", as
   expect(saved?.controlGroups).toEqual({ 1: [infantry!.id] });
   await page.reload();
   await waitForBattlefield(page);
-  await page.evaluate(({ key, state: savedStateValue, version, contentVersion }) => {
-    localStorage.setItem(key, JSON.stringify({
-      version,
-      contentVersion,
-      savedAt: Date.now(),
-      state: savedStateValue,
-    }));
-  }, { key: saveKey(TEST_SEED), version: SAVE_VERSION, contentVersion: SAVE_CONTENT_VERSION, state: saved });
+  await replaceCampaignSave(page, TEST_SEED, saveEnvelope(saved!));
   await page.keyboard.press("Escape");
   await loadAutosaveFromPause(page);
   await page.getByRole("button", { name: "Resume Mission" }).click();

@@ -250,4 +250,16 @@ describe("Service Worker", () => {
     await expect(worker.fetch(routeData)).rejects.toThrow("Offline and no cached response is available.");
     expect(await worker.caches.keys()).not.toContain("shiftingfront-dpl_previous");
   });
+
+  it("serves a previously fetched terrain worker bundle while offline", async () => {
+    let online = true;
+    const worker = createServiceWorker("dpl_current", async () => {
+      if (!online) throw new Error("offline");
+      return new Response("terrain worker bundle");
+    });
+    const bundle = new Request(`${APP_ORIGIN}/_next/static/chunks/terrain-worker.js`);
+    expect(await (await worker.fetch(bundle)).text()).toBe("terrain worker bundle");
+    online = false;
+    expect(await (await worker.fetch(bundle)).text()).toBe("terrain worker bundle");
+  });
 });

@@ -1,6 +1,6 @@
 import { useCallback, type MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
-import { cachedLocalStorage, type SaveSession } from "@/lib/persist/save";
+import { cachedLocalStorage, getSaveRepository, type SaveSession } from "@/lib/persist/save";
 import { recordWonCampaignProgress } from "@/lib/persist/campaign";
 import type { SimState } from "@/lib/types";
 import { MISSION_MAX } from "@/lib/seed/rng";
@@ -30,21 +30,27 @@ export function useMissionRoutes({
     if (tutorial) return true;
     const state = stateRef.current;
     if (state.multiplayer) return true;
-    if (!recordWonCampaignProgress(cachedLocalStorage(), state)) {
+    if (getSaveRepository()?.mode !== "indexeddb" && !recordWonCampaignProgress(cachedLocalStorage(), state)) {
       onSaveError("Couldn't save campaign progress. Check browser storage, then try leaving again.", leaveWithoutSave);
       return false;
     }
     const status = saveSession.write(state, "implicit");
-    if (status === "saved") return true;
-    onSaveError(status === "conflict"
-      ? "This campaign changed in another tab. Use Save Mission or Load Mission to resolve it before leaving."
-      : "Couldn't save your latest progress. Check browser storage, then try leaving again.", leaveWithoutSave);
-    return false;
+    const finish = (result: import("@/lib/persist/save").SaveWriteStatus) => {
+      if (stateRef.current !== state) return false;
+      if (result === "saved") return true;
+      onSaveError(result === "conflict"
+        ? "This campaign changed in another tab. Use Save Mission or Load Mission to resolve it before leaving."
+        : "Couldn't save your latest progress. Check browser storage, then try leaving again.", leaveWithoutSave);
+      return false;
+    };
+    return status instanceof Promise ? status.then(finish) : finish(status);
   }, [onSaveError, saveSession, stateRef, tutorial]);
 
   const navigate = useCallback((path: string) => {
     if (stateRef.current.multiplayer && path !== menuPath()) return;
-    if (prepareLeave(() => router.push(path))) router.push(path);
+    const saved = prepareLeave(() => router.push(path));
+    if (saved instanceof Promise) void saved.then((ok) => { if (ok) router.push(path); });
+    else if (saved) router.push(path);
   }, [prepareLeave, router, stateRef]);
 
   const viewMissionBriefing = useCallback(() => {

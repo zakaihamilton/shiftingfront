@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore, useState } from "react";
 import { useGameRuntime } from "./hooks/useGameRuntime";
 import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "./hooks/runtime/surfaces";
 import { TacticalScreen } from "./TacticalScreen";
+import type { SimState } from "@/lib/types";
+import { getSaveRepository } from "@/lib/persist/save";
+import { prepareInitialMission } from "./hooks/useGameSession";
+import { PageFallback } from "@/components/ui/PageFallback";
 import { APP_NAME } from "@/lib/site";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
 import { registerGameplayAudioClient } from "@/lib/audio/mixer";
 
-export function GameClient({
+function ReadyGameClient({
   seed,
   mission,
   resume,
@@ -16,6 +20,7 @@ export function GameClient({
   slot,
   tutorial = false,
   multiplayerSession,
+  initialState,
 }: {
   seed: number;
   mission: number;
@@ -24,8 +29,9 @@ export function GameClient({
   slot?: string;
   tutorial?: boolean;
   multiplayerSession?: MultiplayerSession;
+  initialState?: import("@/lib/types").SimState;
 }) {
-  const runtime = useGameRuntime({ seed, mission, resume, fresh, slot, tutorial, multiplayerSession });
+  const runtime = useGameRuntime({ seed, mission, resume, fresh, slot, tutorial, multiplayerSession, initialState });
   const surfaceCache = useMemo(() => createGameRuntimeSurfaceCache(), []);
   const surfaces = createGameRuntimeSurfaces(runtime, surfaceCache);
   const subscribeToPing = useCallback(
@@ -47,4 +53,20 @@ export function GameClient({
       multiplayerHost={multiplayerSession?.role === "host"}
     />
   );
+}
+
+export function GameClient(props: Parameters<typeof ReadyGameClient>[0]) {
+  const { seed, mission, resume, fresh, slot, tutorial, multiplayerSession } = props;
+  const repository = getSaveRepository();
+  const [boot, setBoot] = useState<{ state?: SimState; error?: Error } | null>(null);
+  useEffect(() => {
+    if (!repository || tutorial || multiplayerSession) return;
+    let active = true;
+    void prepareInitialMission({ seed, mission, resume, fresh, slot }).then((state) => { if (active) setBoot({ state }); },
+      (error) => { if (active) setBoot({ error }); });
+    return () => { active = false; };
+  }, [repository, seed, mission, resume, fresh, slot, tutorial, multiplayerSession]);
+  if (boot?.error) throw boot.error;
+  if (repository && !props.tutorial && !props.multiplayerSession && !boot) return <PageFallback>Loading mission…</PageFallback>;
+  return <ReadyGameClient {...props} initialState={boot?.state} />;
 }

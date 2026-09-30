@@ -1,3 +1,4 @@
+import { bakeTerrainInWorker, disposeTerrainWorker } from "./terrainWorkerClient";
 import { biomeArt, TERRAIN_ART } from "../gen/visualAssets";
 import { generateCampaignVisualProfile } from "../gen/visualProfile";
 import { MAP_SKIRT } from "../gen/map";
@@ -131,7 +132,6 @@ export function preloadTerrainAtlas(
       }
       const onDone = () => {
         grainGeneration += 1;
-        atlasCache = null;
         resolve();
       };
       img.addEventListener("load", onDone, { once: true });
@@ -145,8 +145,7 @@ export function preloadTerrainAtlas(
   const promise = Promise.all([loadOne(biomeSrc), loadOne(plateSrc)]).then(async () => {
     if (invalidationGeneration !== atlasInvalidationGeneration) return false;
     if (typeof document !== "undefined") {
-      if (options?.rowsPerChunk === undefined) bakeAndCacheTerrainAtlas(state);
-      else await getTerrainAtlasAsync(state, options);
+      await getTerrainAtlasAsync(state, options);
     }
     return true;
   });
@@ -166,7 +165,6 @@ function requestGrain(src: string): HTMLImageElement | null {
   img.decoding = "async";
   img.onload = () => {
     grainGeneration += 1;
-    atlasCache = null;
   };
   img.src = src;
   grainImages.set(src, img);
@@ -198,27 +196,6 @@ function overlayGrain(ctx: CanvasRenderingContext2D, state: AtlasWorld, width: n
   ctx.restore();
 }
 
-function restoreWaterPixels(ctx: CanvasRenderingContext2D, baked: TerrainAtlasData): void {
-  const cols = baked.width / baked.cell;
-  const rows = baked.height / baked.cell;
-  const image = ctx.getImageData(0, 0, baked.width, baked.height);
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      if (baked.waterCells[row * cols + col] !== 1) continue;
-      for (let ly = 0; ly < ATLAS_CELL; ly++) {
-        const py = row * ATLAS_CELL + ly;
-        for (let lx = 0; lx < ATLAS_CELL; lx++) {
-          const o = (py * baked.width + col * ATLAS_CELL + lx) * 4;
-          image.data[o] = baked.data[o] ?? 0;
-          image.data[o + 1] = baked.data[o + 1] ?? 0;
-          image.data[o + 2] = baked.data[o + 2] ?? 0;
-          image.data[o + 3] = baked.data[o + 3] ?? 255;
-        }
-      }
-    }
-  }
-  ctx.putImageData(image, 0, 0);
-}
 
 function createTerrainAtlas(state: AtlasWorld, baked: TerrainAtlasData): TerrainAtlas {
   let canvas: HTMLCanvasElement | null = null;
@@ -231,8 +208,25 @@ function createTerrainAtlas(state: AtlasWorld, baked: TerrainAtlasData): Terrain
       const image = ctx.createImageData(baked.width, baked.height);
       image.data.set(baked.data);
       ctx.putImageData(image, 0, 0);
+      // Clip overlays to ground spans. No GPU pixel readback or water rewrite.
+      ctx.save();
+      ctx.beginPath();
+      const cols = baked.width / baked.cell;
+      const rows = baked.height / baked.cell;
+      for (let row = 0; row < rows; row++) {
+        let start = -1;
+        for (let col = 0; col <= cols; col++) {
+          const ground = col < cols && baked.waterCells[row * cols + col] !== 1;
+          if (ground && start < 0) start = col;
+          if (!ground && start >= 0) {
+            ctx.rect(start * baked.cell, row * baked.cell, (col - start) * baked.cell, baked.cell);
+            start = -1;
+          }
+        }
+      }
+      ctx.clip();
       overlayGrain(ctx, state, baked.width, baked.height);
-      restoreWaterPixels(ctx, baked);
+      ctx.restore();
     }
   }
   return { ...baked, canvas };
@@ -248,6 +242,7 @@ function bakeAndCacheTerrainAtlas(state: AtlasWorld): TerrainAtlas {
 }
 
 export function invalidateTerrainAtlas(): void {
+  disposeTerrainWorker();
   atlasCache = null;
   atlasCacheWorld = null;
   for (const controller of atlasBakeControllers.values()) controller.abort();
@@ -298,9 +293,15 @@ export async function getTerrainAtlasAsync(
   atlasBakeControllers.set(state, controller);
   const invalidationGeneration = atlasInvalidationGeneration;
   const promise = (async () => {
-    const baked = options?.rowsPerChunk === undefined
-      ? bakeTerrainAtlasData(state)
-      : await bakeTerrainAtlasDataAsync(state, { ...options, signal: controller.signal });
+    const workerBake = bakeTerrainInWorker(state, grainGeneration, controller.signal);
+    let baked: TerrainAtlasData;
+    try {
+      baked = workerBake ? await workerBake : await bakeTerrainAtlasDataAsync(state, { ...options, rowsPerChunk: 1, signal: controller.signal });
+    } catch (error) {
+      controller.signal.throwIfAborted();
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      baked = await bakeTerrainAtlasDataAsync(state, { ...options, rowsPerChunk: 1, signal: controller.signal });
+    }
     const atlas = createTerrainAtlas(state, baked);
     if (invalidationGeneration === atlasInvalidationGeneration && terrainAtlasKey(state) === key) {
       atlasCache = atlas;

@@ -5,6 +5,8 @@ import { createMission } from "@/lib/sim/api";
 import { createTutorialMission } from "@/lib/sim/tutorial";
 import {
   cachedLocalStorage,
+  cachedCampaignStorage,
+  getSaveRepository,
   readSave,
   readSlot,
 } from "@/lib/persist/save";
@@ -44,11 +46,11 @@ export function initialMission(
   if (tutorial) return createTutorialMission();
   if (slotId && typeof window !== "undefined") {
     const isReload = isBrowserReload();
-    const saved = readSave(cachedLocalStorage(), seed);
+    const saved = readSave(cachedCampaignStorage(), seed);
     if (isReload && saved && (resume || saved.missionIndex === mission)) {
       return saved;
     }
-    const slot = readSlot(cachedLocalStorage(), slotId);
+    const slot = readSlot(cachedCampaignStorage(), slotId);
     if (slot && slot.state.seed === seed) {
       const error = restoreSlot(cachedLocalStorage(), slot);
       if (error) throw new Error(error);
@@ -71,10 +73,30 @@ export function initialMission(
     clearMusicPosition("mission", seed, mission);
   }
   if (!startFresh && typeof window !== "undefined") {
-    const saved = readSave(cachedLocalStorage(), seed);
+    const saved = readSave(cachedCampaignStorage(), seed);
     if (saved && (resume || saved.missionIndex === mission)) return saved;
   }
   return createMission({ seed, missionIndex: mission });
+}
+
+export async function prepareInitialMission({ seed, mission, resume, fresh = false, slot }: {
+  seed: number; mission: number; resume: boolean; fresh?: boolean; slot?: string;
+}): Promise<SimState> {
+  const repository = getSaveRepository();
+  if (slot && repository) {
+    const saved = readSave(cachedCampaignStorage(), seed);
+    if (isBrowserReload() && saved && (resume || saved.missionIndex === mission)) return saved;
+    const named = readSlot(cachedCampaignStorage(), slot);
+    if (named && named.state.seed === seed) {
+      const error = await repository.restoreSlot(named);
+      if (error) throw new Error(error);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("slot"); url.searchParams.set("resume", "1");
+      window.history.replaceState(window.history.state, "", url.toString());
+      return named.state;
+    }
+  }
+  return initialMission(seed, mission, resume, false, fresh);
 }
 
 export function useGameSession({
@@ -139,7 +161,9 @@ export function useGameSession({
   const confirmGoHome = useCallback(() => {
     if (browserBackRef.current) {
       browserBackRef.current = false;
-      if (prepareLeave(() => leaveBackRef.current())) leaveBackRef.current();
+      const saved = prepareLeave(() => leaveBackRef.current());
+      if (saved instanceof Promise) void saved.then((ok) => { if (ok) leaveBackRef.current(); });
+      else if (saved) leaveBackRef.current();
       return;
     }
     goHomeNow();
@@ -209,7 +233,8 @@ export function useGameSession({
 
   const saveNamedSlot = useCallback((name: string, overwriteId: string | null) => {
     const saved = persistNamedSlot(name, overwriteId);
-    if (saved) clearLeaveFallback();
+    if (saved instanceof Promise) void saved.then((ok) => { if (ok) clearLeaveFallback(); });
+    else if (saved) clearLeaveFallback();
     return saved;
   }, [clearLeaveFallback, persistNamedSlot]);
 

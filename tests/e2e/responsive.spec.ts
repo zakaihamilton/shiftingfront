@@ -1,3 +1,4 @@
+import { readCampaignRecord } from "./saveRepositoryHelpers";
 import { expect, test } from "@playwright/test";
 import { waitForBattlefieldReady } from "./battlefieldReady";
 import { PLACEABLE } from "../../components/game/hooks/gameActions";
@@ -240,22 +241,11 @@ async function collapseMissionDirective(page: import("@playwright/test").Page) {
 }
 
 async function persistedUnitOrder(page: import("@playwright/test").Page, unitId: number) {
-  return page.evaluate(({ key, unitId: id }) => {
-    window.dispatchEvent(new Event("pagehide"));
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as {
-      state?: {
-        entities?: Array<{
-          id: number;
-          orderMode?: string;
-          orderDestination?: { x: number; y: number };
-        }>;
-      };
-    };
-    const unit = parsed.state?.entities?.find((entity) => entity.id === id);
-    return unit ? { orderMode: unit.orderMode ?? null, orderDestination: unit.orderDestination ?? null } : null;
-  }, { key: saveKey(TEST_SEED), unitId });
+  await page.evaluate(async () => { window.dispatchEvent(new Event("pagehide")); await new Promise((resolve) => setTimeout(resolve, 100)); });
+  const record = await readCampaignRecord(page, TEST_SEED);
+  const state = record?.autosave ? JSON.parse(record.autosave).state : null;
+  const unit = state?.entities?.find((entity: { id: number }) => entity.id === unitId);
+  return unit ? { orderMode: unit.orderMode ?? null, orderDestination: unit.orderDestination ?? null } : null;
 }
 
 async function pageCamera(page: import("@playwright/test").Page, state: SimState) {
@@ -1207,10 +1197,8 @@ test.describe("mobile-first layouts", () => {
     const leavingAt = await page.evaluate(() => Date.now());
     await confirmation.getByRole("button", { name: "Leave mission" }).click();
     await expect(page).toHaveURL(/\/briefing\?seed=0421&mission=0&from=newGame/);
-    const savedAt = await page.evaluate(() => {
-      const raw = localStorage.getItem("shiftingfront:save:0421");
-      return raw ? JSON.parse(raw).savedAt as number : 0;
-    });
+    const record = await readCampaignRecord(page, TEST_SEED);
+    const savedAt = record?.autosave ? JSON.parse(record.autosave).savedAt : 0;
     expect(savedAt).toBeGreaterThanOrEqual(leavingAt);
 
     await page.goto("/briefing?seed=0421&mission=0&from=campaign");

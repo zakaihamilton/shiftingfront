@@ -8,7 +8,10 @@ import { MetalPanel } from "@/components/ui/MetalPanel";
 import { ActionRail, StatusBadge } from "@/components/ui/Dossier";
 import { RASTER_ART } from "@/lib/gen/visualAssets";
 import {
-  cachedLocalStorage,
+  cachedCampaignStorage,
+  getSaveRepository,
+  slotKey,
+  saveKey,
   exportSlot,
   importSlot,
   listArchiveEntries,
@@ -35,7 +38,7 @@ export function CampaignArchiveScreen() {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const refreshSaves = useCallback(() => {
-    const storage = cachedLocalStorage();
+    const storage = cachedCampaignStorage();
     setEntries(listArchiveEntries(storage));
     setUnreadableSaves(listUnreadableSaves(storage));
     setUnreadableSlots(listUnreadableSlots(storage));
@@ -45,6 +48,8 @@ export function CampaignArchiveScreen() {
     const frame = requestAnimationFrame(refreshSaves);
     return () => cancelAnimationFrame(frame);
   }, [refreshSaves]);
+
+  useEffect(() => getSaveRepository()?.subscribe(refreshSaves), [refreshSaves]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -57,26 +62,29 @@ export function CampaignArchiveScreen() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [router]);
 
-  const deleteEntry = useCallback((entry: ArchiveEntry) => {
-    const storage = cachedLocalStorage();
-    if (entry.kind === "slot") removeSlot(storage, entry.id);
+  const deleteEntry = useCallback(async (entry: ArchiveEntry) => {
+    const storage = cachedCampaignStorage();
+    if (getSaveRepository()) await getSaveRepository()!.remove(entry.kind === "slot" ? slotKey(entry.id) : saveKey(Number(entry.seed)));
+    else if (entry.kind === "slot") removeSlot(storage, entry.id);
     else removeSave(storage, Number(entry.seed));
     refreshSaves();
   }, [refreshSaves]);
 
-  const resetUnreadableSave = useCallback((seed: string) => {
-    removeSave(cachedLocalStorage(), Number(seed));
+  const resetUnreadableSave = useCallback(async (seed: string) => {
+    if (getSaveRepository()) await getSaveRepository()!.remove(saveKey(Number(seed)));
+    else removeSave(cachedCampaignStorage(), Number(seed));
     refreshSaves();
   }, [refreshSaves]);
 
-  const resetUnreadableSlot = useCallback((id: string) => {
-    removeSlot(cachedLocalStorage(), id);
+  const resetUnreadableSlot = useCallback(async (id: string) => {
+    if (getSaveRepository()) await getSaveRepository()!.remove(slotKey(id));
+    else removeSlot(cachedCampaignStorage(), id);
     refreshSaves();
   }, [refreshSaves]);
 
   const exportEntry = useCallback((entry: ArchiveEntry) => {
     if (entry.kind !== "slot") return;
-    const raw = exportSlot(cachedLocalStorage(), entry.id);
+    const raw = exportSlot(cachedCampaignStorage(), entry.id);
     if (!raw) {
       setPortabilityNotice({ tone: "alert", text: `Could not export ${entry.name}. The slot may be damaged.` });
       return;
@@ -99,7 +107,8 @@ export function CampaignArchiveScreen() {
     input.value = "";
     if (!file) return;
     try {
-      const result = importSlot(cachedLocalStorage(), await file.text());
+      const raw = await file.text();
+      const result = getSaveRepository() ? await getSaveRepository()!.importSlot(raw) : importSlot(cachedCampaignStorage(), raw);
       if (!result.ok) {
         setPortabilityNotice({ tone: "alert", text: "Could not import that file. It is invalid or unsupported." });
         return;

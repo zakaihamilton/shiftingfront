@@ -1,3 +1,4 @@
+import { replaceCampaignSave, savedSlotCount } from "./saveRepositoryHelpers";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { waitForBattlefield, waitForBattlefieldReady } from "./battlefieldReady";
 import { BUILDING_KINDS, footprintOf } from "../../lib/catalog";
@@ -718,8 +719,7 @@ test("exports and imports named save slots from the campaign archive", async ({ 
   await chooser.setFiles({ name: "bridgehead.json", mimeType: "application/json", buffer: Buffer.from(raw) });
 
   await expect(page.getByRole("button", { name: "Resume Bridgehead" })).toHaveCount(2);
-  const slotKeys = await page.evaluate((prefix) => Object.keys(localStorage).filter((key) => key.startsWith(prefix)), "shiftingfront:slot:");
-  expect(slotKeys).toHaveLength(2);
+  expect(await savedSlotCount(page)).toBe(2);
 });
 
 test("keeps briefing dialogue and battlefield status readable on mobile", async ({ page }) => {
@@ -995,10 +995,7 @@ test("does not expose soundtrack download controls from pause and mission result
   await page.getByRole("button", { name: "Resume Mission" }).click();
 
   const state = distinctiveSave("won");
-  await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), {
-    key: saveKey(421),
-    raw: saveEnvelope(state),
-  });
+  await replaceCampaignSave(page, 421, saveEnvelope(state));
   await page.goto("/play?seed=0421&resume=1");
   await expect(page.getByTestId("mission-result")).toBeVisible();
   await expect(page.getByRole("button", { name: "Soundtrack", exact: true })).toHaveCount(0);
@@ -1110,9 +1107,7 @@ test("offers to reset an unreadable save from the campaign archive", async ({ pa
 test("does not open an empty pause load view for an unreadable autosave", async ({ page }) => {
   await deployToBattlefield(page);
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
-  await page.evaluate(({ key }) => {
-    localStorage.setItem(key, "not valid json");
-  }, { key: saveKey(421) });
+  await replaceCampaignSave(page, 421, "not valid json");
 
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("pause-menu")).toBeVisible();
@@ -1126,9 +1121,7 @@ test("loads the last save from the pause menu", async ({ page }) => {
   const state = distinctiveSave();
   await deployToBattlefield(page);
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
-  await page.evaluate(({ key, raw }) => {
-    localStorage.setItem(key, raw);
-  }, { key: saveKey(421), raw: saveEnvelope(state) });
+  await replaceCampaignSave(page, 421, saveEnvelope(state));
 
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("pause-menu")).toBeVisible();
@@ -1142,9 +1135,7 @@ test("resumes the active mission after refreshing the window", async ({ page }) 
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
 
   const state = distinctiveSave();
-  await page.evaluate(({ key, raw }) => {
-    localStorage.setItem(key, raw);
-  }, { key: saveKey(421), raw: saveEnvelope(state) });
+  await replaceCampaignSave(page, 421, saveEnvelope(state));
 
   await page.keyboard.press("Escape");
   await loadSelectedPauseSlot(page, /Loaded the autosave/);
@@ -1160,9 +1151,7 @@ test("starts a new same-seed mission after reloading before a fresh launch", asy
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
 
   const state = distinctiveSave();
-  await page.evaluate(({ key, raw }) => {
-    localStorage.setItem(key, raw);
-  }, { key: saveKey(421), raw: saveEnvelope(state) });
+  await replaceCampaignSave(page, 421, saveEnvelope(state));
 
   await page.keyboard.press("Escape");
   await loadSelectedPauseSlot(page, /Loaded the autosave/);

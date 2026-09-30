@@ -1,6 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext } from "@playwright/test";
 import { waitForBattlefieldReady } from "./battlefieldReady";
 
+const contexts: BrowserContext[] = [];
+async function testContext(browser: Browser) {
+  const context = await browser.newContext(); contexts.push(context); return context;
+}
+test.afterEach(async ({}, info) => {
+  for (const context of contexts.splice(0)) {
+    if (info.status !== info.expectedStatus) for (const page of context.pages()) {
+      console.log("multiplayer failure page", await page.locator("body").innerText().catch(() => "closed"));
+    }
+    await context.close();
+  }
+});
 const roomCode = "ABCDEF";
 const hostPeerId = "host-peer-e2e";
 const guestPeerIds = ["guest-peer-1-e2e", "guest-peer-2-e2e", "guest-peer-3-e2e"];
@@ -37,6 +49,11 @@ async function mockPeerTransport(page: import("@playwright/test").Page, networkI
       constructor(readonly peer: string, readonly peerId: string, readonly id: string, private readonly channel: BroadcastChannel) { super(); }
       send(data: unknown) {
         if (!this.open) throw new Error("Mock data connection is closed");
+        const override = (window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean }).__SHIFTFRONT_INCOMPATIBLE__;
+        if (override && (data as { type?: string })?.type === "hello") {
+          const message = data as { settings: Record<string, unknown> };
+          data = { ...message, settings: { ...message.settings, simulationBuildId: "incompatible-e2e-build" } };
+        }
         this.channel.postMessage({ kind: "data", to: this.peer, from: this.peerId, id: this.id, data });
       }
       close() {
@@ -200,7 +217,7 @@ test("multiplayer menu uses a button and Escape follows host setup navigation", 
 
 test("host starts a four-player corner skirmish after three guests verify their seats", async ({ browser }) => {
   test.setTimeout(60_000);
-  const context = await browser.newContext();
+  const context = await testContext(browser);
   const host = await context.newPage();
   const guests = await Promise.all(guestPeerIds.map(() => context.newPage()));
   const networkId = `sf-multiplayer-${Date.now()}-${Math.random()}`;
@@ -250,6 +267,7 @@ test("host starts a four-player corner skirmish after three guests verify their 
   await expect(host.getByTestId("multiplayer-start-button")).toBeEnabled();
   await host.getByTestId("multiplayer-start-button").click();
   const players = [host, ...guests];
+  players.forEach((page) => page.on("pageerror", (error) => console.log("multiplayer page error", error.message)));
   await Promise.all(players.map((page) => expect(page.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 })));
   await Promise.all(players.map(waitForBattlefieldReady));
   await Promise.all(players.map((page) => expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 })));
@@ -312,7 +330,7 @@ test("host starts a four-player corner skirmish after three guests verify their 
 });
 
 test("host can launch a skirmish against an AI opponent", async ({ browser }) => {
-  const context = await browser.newContext();
+  const context = await testContext(browser);
   const host = await context.newPage();
   const networkId = `sf-multiplayer-ai-${Date.now()}-${Math.random()}`;
   await mockPeerTransport(host, networkId);
@@ -339,7 +357,7 @@ test("host can launch a skirmish against an AI opponent", async ({ browser }) =>
 });
 
 test("AI and a human guest occupy separate seats in the same skirmish", async ({ browser }) => {
-  const context = await browser.newContext();
+  const context = await testContext(browser);
   const host = await context.newPage();
   const guest = await context.newPage();
   const networkId = `sf-multiplayer-mixed-${Date.now()}-${Math.random()}`;
@@ -372,7 +390,7 @@ test("AI and a human guest occupy separate seats in the same skirmish", async ({
 
 
 test("cancelled join can be followed by a fresh join without stale peer callbacks", async ({ browser }) => {
-  const context = await browser.newContext();
+  const context = await testContext(browser);
   const host = await context.newPage();
   const guest = await context.newPage();
   const networkId = `sf-multiplayer-cancel-${Date.now()}-${Math.random()}`;
@@ -404,5 +422,31 @@ test("cancelled join can be followed by a fresh join without stale peer callback
     return testWindow.__SHIFTFRONT_TEST_PEERS__?.map((peer) => peer.connectCount);
   });
   expect(peers).toEqual([0, 1]);
+  await context.close();
+});
+
+
+test("mismatched builds cannot take a seat or reconnect", async ({ browser }) => {
+  const context = await testContext(browser); const host = await context.newPage(); const guest = await context.newPage();
+  const network = `sf-incompatible-${Date.now()}`;
+  await Promise.all([mockPeerTransport(host, network), mockPeerTransport(guest, network), mockPeerovo(host, "host"), mockPeerovo(guest, "guest")]);
+  await host.goto("/multiplayer"); await host.getByRole("button", { name: "Host a room" }).click();
+  await host.getByTestId("multiplayer-seed-input").fill("0421"); await host.getByRole("button", { name: "Create room" }).click();
+  await expect(host.getByTestId("multiplayer-invite-code")).toHaveText(roomCode);
+  await guest.goto("/multiplayer");
+  await guest.evaluate(() => { (window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean }).__SHIFTFRONT_INCOMPATIBLE__ = true; });
+  await guest.getByTestId("multiplayer-code-input").fill(roomCode); await guest.getByRole("button", { name: "Join room" }).click();
+  await expect(guest.locator("p[role=alert]")).toContainText("Game versions differ");
+  await expect(host.getByTestId("multiplayer-roster-seat-1")).toContainText("Open User seat");
+  await guest.evaluate(() => { (window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean }).__SHIFTFRONT_INCOMPATIBLE__ = false; });
+  await guest.getByTestId("multiplayer-code-input").fill(roomCode); await guest.getByRole("button", { name: "Join room" }).click();
+  await expect(guest.getByTestId("multiplayer-seat")).toContainText("Northeast");
+  await host.getByTestId("multiplayer-start-button").click(); await Promise.all([waitForBattlefieldReady(host), waitForBattlefieldReady(guest)]);
+  await guest.evaluate((peerId) => {
+    const testWindow = window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean; __SHIFTFRONT_TEST_PEERS__?: Array<{ connections: Record<string, Array<{ close: () => void }>> }> };
+    testWindow.__SHIFTFRONT_INCOMPATIBLE__ = true; testWindow.__SHIFTFRONT_TEST_PEERS__?.at(-1)?.connections[peerId]?.[0]?.close();
+  }, hostPeerId);
+  await expect(guest.locator("p[role=alert]")).toContainText("Game versions differ", { timeout: 15_000 });
+  await expect(host.getByText("A player disconnected. The match is paused while they reconnect (60 seconds).")).toBeVisible();
   await context.close();
 });
