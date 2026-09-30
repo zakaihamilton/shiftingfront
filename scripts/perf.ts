@@ -62,6 +62,11 @@ function issueBenchmarkDestinations(
   });
 }
 
+// Warm the JIT before measuring terrain atlas baking so the first measured
+// seed is not a cold compilation spike, matching the simulation and routing warmups.
+const atlasWarmup = createMission({ seed: 0, missionIndex: 5 });
+bakeTerrainAtlasData(atlasWarmup);
+
 const atlasSamples: Sample[] = [];
 for (const seed of [0, 421, 9999]) {
   const state = createMission({ seed, missionIndex: 5 });

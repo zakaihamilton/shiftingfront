@@ -89,4 +89,45 @@ describe("unit sprite compositing", () => {
     expect(ctx.globalAlpha).toBe(0.7);
     expect(scratchCtx.globalCompositeOperation).toBe("source-over");
   });
+
+  it("falls back to the highest-weight layer when document is undefined (SSR/headless)", () => {
+    vi.stubGlobal("document", undefined);
+    const palette = generateFactions(421)[0].palette;
+    const ctx = { drawImage: vi.fn(), globalAlpha: 1 } as unknown as CanvasRenderingContext2D;
+    const imgA = {} as HTMLCanvasElement;
+    const imgB = {} as HTMLCanvasElement;
+    const layers = [
+      { spec: unitSprite("infantry", palette, { facing: 0 }), img: imgA, weight: 0.3 },
+      { spec: unitSprite("infantry", palette, { facing: 1 }), img: imgB, weight: 0.7 },
+    ];
+    drawBlendedUnitSprites(ctx, layers, 10, 20, 32, 32, 1);
+    expect(ctx.drawImage).toHaveBeenCalledExactlyOnceWith(imgB, 10, 20, 32, 32);
+  });
+
+  it("avoids double rotation when rendering blended layers with rotation", () => {
+    const palette = generateFactions(421)[0].palette;
+    const scratchCtx = {
+      clearRect: vi.fn(), globalAlpha: 1, globalCompositeOperation: "source-over",
+      drawImage: vi.fn(), save: vi.fn(), translate: vi.fn(), rotate: vi.fn(), restore: vi.fn(),
+    };
+    const scratch = { width: 0, height: 0, getContext: () => scratchCtx };
+    vi.stubGlobal("document", { createElement: () => scratch });
+    const ctx = {
+      drawImage: vi.fn(),
+      save: vi.fn(),
+      translate: vi.fn(),
+      rotate: vi.fn(),
+      restore: vi.fn(),
+      globalAlpha: 1,
+    } as unknown as CanvasRenderingContext2D;
+    const img = {} as HTMLCanvasElement;
+    const layers = [
+      { spec: { ...unitSprite("infantry", palette, { facing: 0 }), rotation: 0.5 }, img, weight: 0.5 },
+      { spec: { ...unitSprite("infantry", palette, { facing: 1 }), rotation: 0.6 }, img, weight: 0.5 },
+    ];
+    drawBlendedUnitSprites(ctx, layers, 10, 20, 32, 32, 1);
+    // ctx itself should not rotate since rotation was already baked into scratch canvas
+    expect(ctx.rotate).not.toHaveBeenCalled();
+    expect(ctx.drawImage).toHaveBeenCalledExactlyOnceWith(scratch, 10, 20, 32, 32);
+  });
 });
