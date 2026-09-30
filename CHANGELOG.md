@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Application and package versions are now 1.1.4.
+- Survival waves refresh slightly faster to preserve defensive pressure after the building repair corrections.
 - **Biome semantic & visual alignment**: World names and faction names now derive after biome generation and pull from biome-matching and neutral adjective pools, preventing clashing descriptors (such as "Ash" in a Salt Marsh). The in-game Salt Marshes terrain materials, water palettes, and atmospheric lighting have been harmonized with the dark slate-blue coastal estuary concept art. Simulation replay baselines were updated to reflect the clean seed attribute reshuffling.
 - Live balance gates (`minKindWinRate` 0.70, rescue 0.80, extraction 0.85, `destroyMarked`/`decapitate` 0.70). `tests/platform/docsDrift.test.ts` fails if Unreleased stops naming these floors.
 
