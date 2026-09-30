@@ -28,6 +28,7 @@ export default defineConfig({
     headless: true,
   },
   projects: [
+    { name: "webkit-saves", testMatch: /persistence\.spec\.ts/, use: { ...devices["Desktop Safari"] } },
     { name: "desktop", use: { ...devices["Desktop Chrome"], launchOptions: chromiumLaunchOptions } },
     {
       name: "iphone-touch",

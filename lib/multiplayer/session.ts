@@ -1,3 +1,4 @@
+import { CHECK_HISTORY_LIMIT, STATE_CHECK_INTERVAL, stateChecksum, validChecksum } from "./checksum";
 import type { Command, Owner, SimState } from "@/lib/types";
 import { entityInPlayerVision, makeFog, tickFog } from "@/lib/sim/fog";
 import { evaluateObjectives } from "@/lib/sim/objectives";
@@ -42,6 +43,13 @@ export class MultiplayerSession {
   private frames = new Map<number, Command[]>();
   private resyncRequested = false;
   private pendingSnapshot: SimState | null = null;
+  private pendingSnapshotChecksum: string | null = null;
+  private checks = new Map<number, string>();
+  private remoteChecks = new Map<number, string>();
+  private reportedChecks = new Set<number>();
+  private installedSnapshotTick = -1;
+  private repairs = new Map<string, { at: number; tick: number; checksum: string; report: string; verified: boolean }>();
+  synchronizationNotice: string | null = null;
   private snapshotSource: (() => SimState) | null = null;
   private snapshotConsumer: ((state: SimState) => void) | null = null;
   private rttInterval: ReturnType<typeof setInterval> | null = null;
@@ -304,6 +312,7 @@ export class MultiplayerSession {
   bindState(source: () => SimState, consume: (state: SimState) => void) {
     this.snapshotSource = source;
     this.snapshotConsumer = consume;
+    this.checkState(source(), true);
   }
 
   submit(command: Command): void {
@@ -320,7 +329,15 @@ export class MultiplayerSession {
   receive(value: unknown): void {
     if (!value || typeof value !== "object" || Array.isArray(value)) return;
     const message = value as Record<string, unknown>;
-    if (this.role === "host") return;
+    if (this.role === "host" || this.statusValue === "ended") return;
+    if (message.type === "state-check") {
+      if (this.validCheck(message) && Number(message.tick) > this.installedSnapshotTick) {
+        this.remoteChecks.set(Number(message.tick), message.checksum as string);
+        this.trimChecks(this.remoteChecks);
+        this.compareCheck(Number(message.tick));
+      }
+      return;
+    }
     if (this.replyToLatencyProbe(this.sender, message)) return;
     if (this.recordLatencyResponse("host", message)) return;
     if (message.type === "intro-release") {
@@ -342,7 +359,13 @@ export class MultiplayerSession {
     }
     if (this.role === "guest" && message.type === "resync") {
       const localState = this.snapshotSource?.();
-      if (isSimSnapshot(message.state, this.seed, this.owners, this.aiOwners, localState)) this.pendingSnapshot = message.state;
+      if (message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion || !validChecksum(message.checksum)) return;
+      if (isSimSnapshot(message.state, this.seed, this.owners, this.aiOwners, localState)) {
+        this.pendingSnapshot = message.state;
+        this.pendingSnapshotChecksum = message.checksum;
+        this.synchronizationNotice = "Synchronizing with the host…";
+        this.publish();
+      }
       return;
     }
     if (this.role === "guest" && message.type === "paused") {
@@ -350,13 +373,12 @@ export class MultiplayerSession {
       return;
     }
     if (this.role === "guest" && message.type === "resumed") {
-      if (this.statusValue !== "ended") {
-        this.statusValue = "connected";
-        this.publish();
-      }
+      this.statusValue = "connected";
+      this.publish();
       return;
     }
     if (message.type === "ended") {
+      if (message.reason === "synchronization_failed") this.synchronizationNotice = "Synchronization failed. Reload all players before starting another match.";
       this.statusValue = "ended";
       this.publish();
     }
@@ -368,6 +390,35 @@ export class MultiplayerSession {
     const guest = this.guests.get(peerId);
     if (!guest?.connected || !value || typeof value !== "object" || Array.isArray(value)) return;
     const message = value as Record<string, unknown>;
+    if (message.type === "desync" && this.validCheck(message)) {
+      const tick = Number(message.tick);
+      const expected = this.checks.get(tick);
+      if (!expected || expected === message.checksum) return;
+      const previous = this.repairs.get(peerId);
+      const now = monotonicNow();
+      if (previous?.tick === tick && previous.report === message.checksum) return;
+      if (previous && previous.verified && now - previous.at < 60_000) { this.failSynchronization(); return; }
+      if (previous && (!previous.verified || tick <= previous.tick)) return;
+      const state = this.snapshotSource?.();
+      if (state) {
+        const checksum = stateChecksum(state);
+        this.repairs.set(peerId, { at: now, tick: state.tick, checksum, report: message.checksum as string, verified: false });
+        this.synchronizationNotice = "Synchronizing a player with the host…";
+        this.publish();
+        this.sendToGuest(peerId, this.snapshotMessage(state, checksum));
+      }
+      return;
+    }
+    if (message.type === "resync-check" && this.validCheck(message) && typeof message.verified === "boolean") {
+      const repair = this.repairs.get(peerId);
+      if (repair && repair.tick === message.tick && !repair.verified) {
+        if (!message.verified || repair.checksum !== message.checksum) { this.failSynchronization(); return; }
+        repair.verified = true;
+        this.synchronizationNotice = "Synchronization restored.";
+        this.publish();
+      }
+      return;
+    }
     if (this.replyToLatencyProbe(guest.sender, message)) return;
     if (this.recordLatencyResponse(peerId, message)) return;
     if (message.type === "intro-ready") {
@@ -389,7 +440,7 @@ export class MultiplayerSession {
     }
     if (message.type === "resume") {
       const state = this.snapshotSource?.();
-      if (state) this.sendToGuest(peerId, { type: "resync", state });
+      if (state) this.sendToGuest(peerId, this.snapshotMessage(state));
       return;
     }
   }
@@ -414,16 +465,23 @@ export class MultiplayerSession {
     tickFog(state);
     const snapshot = { ...state, entities: state.entities.map((entity) => ({ ...entity })) };
     this.snapshotConsumer?.(snapshot);
-    this.broadcast({ type: "resync", state: snapshot });
+    this.checks.clear();
+    this.broadcast(this.snapshotMessage(snapshot));
+    this.checkState(snapshot, true);
     this.refreshHostStatus();
     this.tryReleaseIntro();
     return guest.owner;
   }
 
-  syncSnapshot(): void {
-    if (!this.pendingSnapshot) return;
+  syncSnapshot(): boolean {
+    for (const repair of this.repairs.values()) {
+      if (!repair.verified && monotonicNow() - repair.at >= 60_000) this.failSynchronization();
+    }
+    if (!this.pendingSnapshot) return false;
     const snapshot = this.pendingSnapshot;
     this.pendingSnapshot = null;
+    const expectedChecksum = this.pendingSnapshotChecksum;
+    this.pendingSnapshotChecksum = null;
     this.resyncRequested = false;
     for (const tick of [...this.frames.keys()]) {
       if (tick <= snapshot.tick) {
@@ -434,6 +492,7 @@ export class MultiplayerSession {
     const state: SimState = {
       ...snapshot,
       viewOwner: this.owner,
+      controlGroups: local?.controlGroups ?? {},
       fog: local?.viewOwner === this.owner && local.width === snapshot.width && local.height === snapshot.height
         ? [...local.fog]
         : makeFog(snapshot.width, snapshot.height, 0),
@@ -442,11 +501,63 @@ export class MultiplayerSession {
       state.result = state.winner === null ? "lost" : state.winner === this.owner ? "won" : "lost";
     }
     tickFog(state);
+    const checksum = stateChecksum(state);
+    if (checksum !== expectedChecksum) {
+      try { this.sender.send({ type: "resync-check", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick, checksum, verified: false }); } catch {}
+      this.failSynchronization();
+      return false;
+    }
+    this.checks.clear();
+    this.remoteChecks.clear();
+    this.reportedChecks.clear();
+    this.installedSnapshotTick = state.tick;
     this.snapshotConsumer?.(state);
+    try { this.sender.send({ type: "resync-check", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick, checksum, verified: true }); } catch {}
+    this.synchronizationNotice = "Synchronization restored.";
+    this.publish();
+    return true;
+  }
+
+  private validCheck(message: Record<string, unknown>): boolean {
+    return message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion &&
+      Number.isSafeInteger(message.tick) && Number(message.tick) >= 0 && validChecksum(message.checksum);
+  }
+
+  private trimChecks(checks: Map<number, string>): void {
+    while (checks.size > CHECK_HISTORY_LIMIT) checks.delete(Math.min(...checks.keys()));
+  }
+
+  private snapshotMessage(state: SimState, checksum = stateChecksum(state)) {
+    return { type: "resync", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, state: structuredClone(state), checksum };
+  }
+
+  private compareCheck(tick: number): void {
+    const own = this.checks.get(tick);
+    const remote = this.remoteChecks.get(tick);
+    if (!own || !remote || own === remote || this.reportedChecks.has(tick)) return;
+    this.reportedChecks.add(tick);
+    while (this.reportedChecks.size > CHECK_HISTORY_LIMIT) this.reportedChecks.delete(this.reportedChecks.values().next().value!);
+    this.sender.send({ type: "desync", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick, checksum: own });
+  }
+
+  /** Capture checks after a completed tick, never from a mutable queued reference. */
+  checkState(state: SimState, force = false): void {
+    if (!force && state.tick % STATE_CHECK_INTERVAL !== 0 && state.result === "playing") return;
+    if (this.statusValue === "ended" || this.checks.has(state.tick)) return;
+    const checksum = stateChecksum(state);
+    this.checks.set(state.tick, checksum);
+    this.trimChecks(this.checks);
+    if (this.role === "host") this.broadcast({ type: "state-check", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick, checksum });
+    else this.compareCheck(state.tick);
+  }
+
+  private failSynchronization(): void {
+    this.synchronizationNotice = "Synchronization failed. Reload all players before starting another match.";
+    if (this.role === "host") this.broadcast({ type: "ended", reason: "synchronization_failed" });
+    this.end();
   }
 
   canAdvance(state: SimState): boolean {
-    this.syncSnapshot();
     if (!this.connected || !this.introReleased) return false;
     if (this.role === "host") return true;
     const nextTick = state.tick + 1;
@@ -466,7 +577,6 @@ export class MultiplayerSession {
   }
 
   queuedFramesCount(state: SimState): number {
-    this.syncSnapshot();
     if (this.role === "host") return 0;
     let count = 0;
     let tick = state.tick + 1;
@@ -478,7 +588,6 @@ export class MultiplayerSession {
   }
 
   drainTick(state: SimState, localCommands: Command[]): Command[] {
-    this.syncSnapshot();
     if (this.role === "host") {
       this.localCommands.push(...localCommands);
       const hostCommands = this.localCommands.splice(0, MAX_COMMANDS_PER_TICK);

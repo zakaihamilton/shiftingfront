@@ -76,7 +76,8 @@ function isMultiplayerAiMemory(value: unknown, aiOwners: readonly Owner[], tick:
 }
 
 export const SKIRMISH_MATCH_SETTINGS = Object.freeze({
-  protocolVersion: 4,
+  protocolVersion: 5,
+  simulationBuildId: process.env.NEXT_PUBLIC_SIMULATION_BUILD_ID ?? "headless",
   fogOfWar: true,
   victoryCondition: "constructionYardDestruction",
   maxPlayers: 4,
@@ -88,6 +89,7 @@ export function validSkirmishMatchSettings(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const settings = value as Record<string, unknown>;
   return settings.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion &&
+    settings.simulationBuildId === SKIRMISH_MATCH_SETTINGS.simulationBuildId &&
     settings.fogOfWar === SKIRMISH_MATCH_SETTINGS.fogOfWar &&
     settings.victoryCondition === SKIRMISH_MATCH_SETTINGS.victoryCondition &&
     settings.maxPlayers === SKIRMISH_MATCH_SETTINGS.maxPlayers &&

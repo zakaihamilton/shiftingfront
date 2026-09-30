@@ -70,3 +70,5 @@ export {
   type SaveWriteMode,
   type SaveWriteStatus,
 } from "./save/session";
+
+export { cachedCampaignStorage, getSaveRepository, initializeSaveRepository } from "./save/repository";

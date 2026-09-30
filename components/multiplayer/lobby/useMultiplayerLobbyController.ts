@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { DataConnection, Peer } from "peerjs";
 import type { Owner } from "@/lib/types";
-import { MultiplayerSession, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
+import { MultiplayerSession, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings, type MultiplayerStatus } from "@/lib/multiplayer/session";
 import { createCampaign } from "@/lib/gen/campaign";
 import type { Credential, LobbyMode, LobbyPlayer } from "./types";
 import { PeerLifecycle } from "./peerLifecycle";
@@ -19,6 +19,9 @@ export function useMultiplayerLobbyController() {
   const [status, setStatus] = useState("Create a room or join with a six-letter code.");
   const [gameSeed, setGameSeed] = useState<number | null>(null);
   const [session, setSession] = useState<MultiplayerSession | null>(null);
+  const subscribeSession = useCallback((listener: () => void) => session?.subscribe(listener) ?? (() => {}), [session]);
+  const sessionSnapshot = useCallback((): MultiplayerStatus => session?.status ?? "ended", [session]);
+  const sessionStatus = useSyncExternalStore<MultiplayerStatus>(subscribeSession, sessionSnapshot, () => "ended");
   const [roster, setRoster] = useState<LobbyPlayer[]>([{ owner: 0, connected: true, host: true }]);
   const [guestOwner, setGuestOwner] = useState<Owner | null>(null);
   const [lobbyRole, setLobbyRole] = useState<"host" | "guest" | null>(null);
@@ -147,8 +150,10 @@ export function useMultiplayerLobbyController() {
     return session.subscribe(() => {
       if (!mountedRef.current) return;
       setSessionRevision((revision) => revision + 1);
+      if (session.synchronizationNotice) setStatus(session.synchronizationNotice);
       if (session.status === "ended") {
-        setStatus(session.role === "guest" ? "The host ended the skirmish." : "The skirmish has ended.");
+        setStatus(session.synchronizationNotice?.startsWith("Synchronization failed") ? session.synchronizationNotice
+          : session.role === "guest" ? "The host ended the skirmish." : "The skirmish has ended.");
         destroyPeer();
       }
     });
@@ -187,6 +192,10 @@ export function useMultiplayerLobbyController() {
         if (handshakeConnectionsRef.current.has(connection)) return;
         handshakeConnectionsRef.current.add(connection);
         try {
+          if (!validSkirmishMatchSettings(message.settings)) {
+            connection.send({ type: "incompatible" });
+            throw new Error("incompatible_build");
+          }
           const peerId = connection.peer;
           const knownOwner = hostSeatsRef.current.get(peerId);
           const openUserSeat = ([1, 2, 3] as const).some((candidate) =>
@@ -216,6 +225,11 @@ export function useMultiplayerLobbyController() {
           const current = sessionRef.current;
           if (hostStartedRef.current && current) {
             if (!current.reconnectGuest(peerId, sender)) throw new Error("room_full");
+            // Re-send the roster for a tab that was reloaded while the match
+            // was running. Existing guests ignore this start frame; a fresh
+            // tab uses it to recreate its session before requesting a snapshot.
+            connection.send({ type: "start", seed: roomSeed, settings: SKIRMISH_MATCH_SETTINGS,
+              owner, owners: current.owners, aiOwners: current.aiOwners, reconnect: true });
             connection.send({ type: "reconnected" });
             setStatus("Guest reconnected. Resynchronizing the match.");
           } else {
@@ -225,7 +239,9 @@ export function useMultiplayerLobbyController() {
         } catch (handshakeError) {
           if (!isCurrentConnection()) return;
           setError(publicError(handshakeError));
-          if (connection.open) connection.close();
+          if (handshakeError instanceof Error && handshakeError.message === "incompatible_build") {
+            lifecycle.schedule(`reject:${connection.connectionId}`, () => { if (connection.open) connection.close(); }, 150);
+          } else if (connection.open) connection.close();
         } finally {
           handshakeConnectionsRef.current.delete(connection);
         }
@@ -422,6 +438,16 @@ export function useMultiplayerLobbyController() {
       if (!isCurrentConnection()) return;
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
       const message = raw as Record<string, unknown>;
+      if (message.type === "incompatible") {
+        setError("Game versions differ. Reload or update both players before joining.");
+        sessionRef.current?.end();
+        sessionRef.current = null;
+        setSession(null);
+        lifecycle.finishGuestRecovery();
+        destroyPeer();
+        setMode("choose");
+        return;
+      }
       if (message.type === "room_full") {
         lifecycle.finishGuestRecovery();
         guestConnectingRef.current = false;
@@ -453,6 +479,9 @@ export function useMultiplayerLobbyController() {
         const sender = { send: (value: unknown) => { if (connection.open) connection.send(value); } };
         const next = new MultiplayerSession("guest", owner, seedValue, sender, message.owners, message.aiOwners);
         next.armIntroBarrier();
+        if (message.reconnect === true) {
+          next.receive({ type: "intro-release", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion });
+        }
         guestOwnerRef.current = owner;
         setGuestOwner(owner);
         showBattle(next, seedValue);
@@ -474,7 +503,7 @@ export function useMultiplayerLobbyController() {
       }
       guestConnectingRef.current = false;
       lifecycle.finishGuestRecovery();
-      connection.send({ type: "hello", grant: credential.grant });
+      connection.send({ type: "hello", grant: credential.grant, settings: SKIRMISH_MATCH_SETTINGS });
     });
     connection.on("close", () => {
       if (!isCurrentConnection()) return;
@@ -580,6 +609,7 @@ export function useMultiplayerLobbyController() {
     status,
     gameSeed,
     session,
+    sessionStatus,
     roster,
     guestOwner,
     lobbyRole,

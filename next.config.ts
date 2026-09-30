@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { simulationBuildIdentity } from "./lib/multiplayer/buildIdentity";
 
 const isDev = process.env.NODE_ENV !== "production";
 function peerovoConnectSources() {
@@ -35,7 +36,7 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  env: { NEXT_PUBLIC_SIMULATION_BUILD_ID: simulationBuildIdentity(process.cwd()) },
   experimental: {
     // Next uses the TypeScript 6 API alias; `yarn typecheck` runs the TypeScript 7 CLI.
     useTypeScriptCli: false,

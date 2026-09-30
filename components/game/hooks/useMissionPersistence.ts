@@ -3,7 +3,10 @@ import { useRouter } from "next/navigation";
 import { beep } from "@/lib/audio/synth";
 import { clearMusicPosition, TUTORIAL_MUSIC_MISSION } from "@/lib/audio/music";
 import {
-  cachedLocalStorage,
+  cachedCampaignStorage,
+  getSaveRepository,
+  slotKey,
+  saveKey,
   defaultSlotName,
   hasLoadableSaves,
   listPauseLoadEntries,
@@ -118,7 +121,7 @@ export function useMissionPersistence({
       setPauseNotice(stateRef.current.multiplayer ? "Online skirmishes don't load campaign saves." : "Training isn't saved to a campaign.");
       return;
     }
-    if (!hasLoadableSaves(cachedLocalStorage(), seed)) {
+    if (!hasLoadableSaves(cachedCampaignStorage(), seed)) {
       setPauseNotice("No save slots.");
       return;
     }
@@ -132,7 +135,18 @@ export function useMissionPersistence({
       return false;
     }
     const current = stateRef.current;
-    const storage = cachedLocalStorage();
+    const storage = cachedCampaignStorage();
+    const repository = getSaveRepository();
+    if (repository) {
+      const captured = stateRef.current;
+      return repository.saveSlot({ id: overwriteId ?? undefined, name, state: current, campaign: readCampaignProgress(storage, current.seed) }, () => stateRef.current === captured).then((written) => {
+        if (stateRef.current !== captured) return false;
+        if (!written.ok) { setPauseNotice("Couldn't save. Check browser storage and try again."); return false; }
+        saveSession.adoptCurrent();
+        setPauseView("main"); setPauseNotice(`Saved “${name}”.`);
+        return true;
+      });
+    }
     const written = writeSlot(storage, {
       id: overwriteId ?? undefined,
       name,
@@ -158,7 +172,7 @@ export function useMissionPersistence({
       setPauseNotice(stateRef.current.multiplayer ? "Online skirmishes don't load campaign saves." : "Training isn't saved to a campaign.");
       return;
     }
-    const storage = cachedLocalStorage();
+    const storage = cachedCampaignStorage();
     if (entry.kind === "autosave") {
       const loaded = readSave(storage, Number(entry.seed));
       if (!loaded) {
@@ -177,6 +191,17 @@ export function useMissionPersistence({
     const slot = readSlot(storage, entry.id);
     if (!slot) {
       setPauseNotice("Couldn't load that save slot.");
+      return;
+    }
+    const repository = getSaveRepository();
+    if (repository) {
+      const captured = stateRef.current;
+      void repository.restoreSlot(slot, () => stateRef.current === captured).then((error) => {
+        if (stateRef.current !== captured) return;
+        if (error) { setPauseNotice(error); return; }
+        if (slot.state.seed === seed && slot.state.missionIndex === captured.missionIndex) applyLoadedState(slot.state, `Loaded “${slot.name}”.`);
+        else { suppressImplicitSavesRef?.current(); router.push(`/play?seed=${formatSeed(slot.state.seed)}&mission=${slot.state.missionIndex}&resume=1`); }
+      });
       return;
     }
     const error = restoreSlot(storage, slot);
@@ -202,6 +227,7 @@ export function useMissionPersistence({
     clearMusicPosition("mission", world.seed, missionIdx);
     const fresh = tutorial ? createTutorialMission() : createMission({ seed: world.seed, missionIndex: world.missionIndex });
     stateRef.current = fresh;
+    saveSession.adoptCurrent();
     terminalSaveRef.current = false;
     campaignRecordedRef.current = false;
     setState({ ...fresh, entities: [...fresh.entities] });
@@ -227,6 +253,7 @@ export function useMissionPersistence({
     pausedRef,
     resetCamera,
     resetInput,
+    saveSession,
     setPauseNotice,
     setPauseView,
     setPaused,
@@ -237,8 +264,10 @@ export function useMissionPersistence({
   ]);
 
   const deleteArchiveEntry = useCallback((entry: ArchiveEntry) => {
-    const storage = cachedLocalStorage();
-    if (entry.kind === "slot") {
+    const storage = cachedCampaignStorage();
+    if (getSaveRepository()) {
+      void getSaveRepository()!.remove(entry.kind === "slot" ? slotKey(entry.id) : saveKey(Number(entry.seed)));
+    } else if (entry.kind === "slot") {
       removeSlot(storage, entry.id);
     } else {
       removeSave(storage, Number(entry.seed));
@@ -252,8 +281,8 @@ export function useMissionPersistence({
     loadArchiveEntry,
     deleteArchiveEntry,
     defaultSlotName: () => defaultSlotName(stateRef.current),
-    listSaveSlots: () => listSlots(cachedLocalStorage()),
-    listLoadEntries: () => listPauseLoadEntries(cachedLocalStorage(), seed),
+    listSaveSlots: () => listSlots(cachedCampaignStorage()),
+    listLoadEntries: () => listPauseLoadEntries(cachedCampaignStorage(), seed),
     restartMissionNow,
   };
 }

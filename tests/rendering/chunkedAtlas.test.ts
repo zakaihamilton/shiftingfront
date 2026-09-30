@@ -49,12 +49,12 @@ describe("chunked terrain atlas baking", () => {
     expect(asyncData.data).toEqual(syncData.data);
   });
 
-  it("completes the default atlas request before returning its promise", async () => {
+  it("prepares the default atlas request without blocking the caller", async () => {
     const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
     invalidateTerrainAtlas();
 
     const atlasPromise = getTerrainAtlasAsync(state);
-    expect(isTerrainAtlasBaked(state)).toBe(true);
+    expect(isTerrainAtlasBaked(state)).toBe(false);
     const atlas = await atlasPromise;
     expect(atlas.data.length).toBeGreaterThan(0);
     expect(getTerrainAtlas(state)).toBe(atlas);

@@ -34,6 +34,8 @@ export type FrameTiming = {
 };
 
 export type LoopOptions = {
+  /** Apply pending state replacements before capturing the state for this frame. */
+  beforeFrame?: () => boolean | void;
   getState: () => SimState;
   setState: (s: SimState) => void;
   drainCommands: () => Command[];
@@ -48,6 +50,7 @@ export type LoopOptions = {
 };
 
 export function startLoop({
+  beforeFrame,
   getState,
   setState,
   drainCommands,
@@ -83,6 +86,10 @@ export function startLoop({
   const frame = (now: number) => {
     if (stopped) return;
     const startedAt = onFrameTiming ? performance.now() : 0;
+    if (beforeFrame?.()) {
+      acc = 0;
+      last = now;
+    }
     const frameMs = Math.max(0, now - last);
     const finishFrame = () => {
       onFrameTiming?.({ workMs: performance.now() - startedAt, intervalMs: frameMs });

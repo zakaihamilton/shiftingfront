@@ -7,7 +7,7 @@ import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
-import type { MultiplayerSession } from "@/lib/multiplayer/session";
+import type { MultiplayerRole, MultiplayerStatus } from "@/lib/multiplayer/session";
 import type { MultiplayerLobbyModel } from "./useMultiplayerLobbyController";
 import { ownerLabel } from "./utils";
 import { SkirmishPreviewPane } from "./SkirmishPreviewPane";
@@ -141,16 +141,16 @@ export function MultiplayerLobbyScreen({ lobby }: { lobby: LobbyModel }) {
   );
 }
 
-function MultiplayerConnectionOverlay({ session, status, onLeave }: { session: MultiplayerSession; status: string; onLeave: () => void }) {
-  const disconnected = session.status === "disconnected";
-  const ended = session.status === "ended";
+function MultiplayerConnectionOverlay({ connectionState, role, status, onLeave }: { connectionState: MultiplayerStatus; role: MultiplayerRole; status: string; onLeave: () => void }) {
+  const disconnected = connectionState === "disconnected";
+  const ended = connectionState === "ended";
   const connectionStatus = status === "Skirmish in progress" ? "Reconnecting automatically…" : status;
   const connectionTitle = connectionStatus.toLowerCase().includes("signaling")
     ? "Signaling interrupted"
     : connectionStatus.toLowerCase().includes("host")
       ? "Host connection lost"
       : "Player connection interrupted";
-  const multiplayerDialogRef = useModalFocus(disconnected || ended, session.status, "dialog");
+  const multiplayerDialogRef = useModalFocus(disconnected || ended, connectionState, "dialog");
 
   if (!disconnected && !ended) return null;
 
@@ -174,7 +174,7 @@ function MultiplayerConnectionOverlay({ session, status, onLeave }: { session: M
             ? "This skirmish can no longer continue. Return to the multiplayer menu to start or join another room."
             : connectionStatus.toLowerCase().includes("signaling")
               ? "The match is paused while your signaling connection recovers. Reconnection is automatic for up to 60 seconds."
-              : session.role === "host"
+              : role === "host"
                 ? "The match is paused while the disconnected player reconnects. Their seat is reserved for up to 60 seconds."
                 : "The match is paused while your connection to the host recovers. Reconnection is automatic for up to 60 seconds."}
         </p>
@@ -193,12 +193,12 @@ function MultiplayerConnectionOverlay({ session, status, onLeave }: { session: M
 
 export function MultiplayerBattleView({ lobby }: { lobby: LobbyModel }) {
   if (!lobby.session || lobby.gameSeed === null) return null;
-  const ended = lobby.session.status === "ended";
+  const ended = lobby.sessionStatus === "ended";
 
   return (
     <div className={styles.battle}>
       {!ended ? <DynamicGameClient seed={lobby.gameSeed} mission={0} resume={false} fresh multiplayerSession={lobby.session} /> : null}
-      <MultiplayerConnectionOverlay session={lobby.session} status={lobby.status} onLeave={lobby.endCurrentMatch} />
+      <MultiplayerConnectionOverlay connectionState={lobby.sessionStatus} role={lobby.session.role} status={lobby.status} onLeave={lobby.endCurrentMatch} />
     </div>
   );
 }

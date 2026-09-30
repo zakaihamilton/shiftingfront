@@ -6,7 +6,7 @@ import { KeybindingsModal } from "./KeybindingsModal";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
 import { useFullscreen } from "@/lib/ui/fullscreen";
-import { cachedLocalStorage, clearAllGameData } from "@/lib/persist/save";
+import { cachedLocalStorage, clearAllGameData, getSaveRepository } from "@/lib/persist/save";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
 import { feedbackIssueUrl } from "@/lib/ui/issueReport";
@@ -36,8 +36,9 @@ export function PauseOptions({ settings, onToggleSound, onToggleMusic, onToggleV
   const [resetError, setResetError] = useState("");
   const resetDialogRef = useModalFocus(confirmResetOpen, "reset-data-dialog", "dialog");
   const fullscreen = useFullscreen();
-  const handleResetAllData = () => {
-    if (!clearAllGameData(cachedLocalStorage())) {
+  const handleResetAllData = async () => {
+    const cleared = getSaveRepository() ? await getSaveRepository()!.clear() : clearAllGameData(cachedLocalStorage());
+    if (!cleared) {
       setResetError("Some data could not be cleared. Check browser storage permissions and try again.");
       return;
     }

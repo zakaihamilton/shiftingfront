@@ -66,7 +66,7 @@ The battlefield supports mouse, keyboard, and touch play. The HUD shows the comp
 
 [**Launch Shifting Front at shiftingfront.com →**](https://shiftingfront.com)
 
-No account is required. Campaign progress, named save slots, audio settings, scores, and medals are stored in the browser on your device.
+No account is required. Campaign autosaves, progress, scores, medals, and named slots use transactional IndexedDB on your device. Existing browser saves migrate automatically and remain available for recovery. Settings stay in localStorage. If IndexedDB is unavailable, a visible notice identifies legacy storage with reduced reliability. Export important named saves as JSON for backup against browser data deletion or eviction.
 
 ### Online skirmishes
 

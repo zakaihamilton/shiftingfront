@@ -96,6 +96,17 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
     presentation.reset();
   };
 
+  const replaceSynchronizedState = (state: SimState) => {
+    // A resync keeps mission telemetry and terminal presentation state, but
+    // invalidates pending persistence and visual work captured from the old
+    // state object.
+    lifecycle.sessionState = state;
+    lifecycle.commandApplied = false;
+    persistencePorts.saveSession.adoptCurrent();
+    persistence.reset();
+    presentation.reset();
+  };
+
   const controller: RuntimeController = {
     start() {
       if (started) return;
@@ -105,11 +116,15 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
         () => simRefs.stateRef.current,
         (state) => {
           simRefs.stateRef.current = state;
+          scenarioRunner = createScenarioRunner(state);
+          if (multiplayer.role === "guest") simRefs.commandQueue.current.length = 0;
+          replaceSynchronizedState(state);
           simPorts.setState({ ...state, entities: [...state.entities] });
         },
       );
       persistence.start();
       loop = startLoop({
+        beforeFrame: () => multiplayer?.syncSnapshot(),
         getState: () => simRefs.stateRef.current,
         setState: (state) => {
           simRefs.stateRef.current = state;
@@ -153,6 +168,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
     },
     onTick(state: SimState, events: SimEvent[], now: number) {
       syncSession(state);
+      multiplayer?.checkState(state);
       const localOwner = state.viewOwner ?? 0;
       const rejections = events.filter((event) => event.type === "commandRejected" && (event.owner === undefined || event.owner === localOwner));
       lifecycle.counters.commandRejections += rejections.length;

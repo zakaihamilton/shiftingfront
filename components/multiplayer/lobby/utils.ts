@@ -24,6 +24,7 @@ export function peerOptions(credential: Credential) {
 }
 
 export function publicError(error: unknown): string {
+  if (error instanceof Error && error.message === "incompatible_build") return "Game versions differ. Reload or update both players before joining.";
   const reason = error instanceof Error ? error.message : "multiplayer_unavailable";
   const messages: Record<string, string> = {
     invalid_code: "Enter a six-letter room code.",

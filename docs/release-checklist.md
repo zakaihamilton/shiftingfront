@@ -119,4 +119,7 @@ These are recurring process, not leftover launch TODOs.
 
 - **Player reports**: In-game crashes open `.github/ISSUE_TEMPLATE/crash.md` with seed, mission, version, and diagnostics. Options and Credits open the bug form. Triage [GitHub Issues](https://github.com/zakaihamilton/shiftingfront/issues).
 - **Weekly seed**: `weeklySeed()` rotates at Monday 00:00 UTC. Covered by `tests/ui/weeklyOperation.test.ts` and the menu **This Week** smoke in `tests/e2e/smoke.spec.ts`.
+- **Synchronization**: Run loop/session regressions and browser reconnect checks; mismatched protocol/build joins and reconnects must be rejected. Verify initial/terminal/120-tick checks, one verified repair, and repeated-divergence failure.
+- **Terrain worker**: Run worker/fallback byte parity, cancellation, disposal, ore-depletion rebuild, worker failure and offline checks. Preserve local loop-work p95 <33.33 ms, interval median ≤34.33 ms, interval p95 ≤50.1 ms and separate hosted-CI budgets.
+- **Transactional saves**: Run `tests/persistence/repository.test.ts` and `tests/e2e/persistence.spec.ts` in Chromium and WebKit. Verify migration, abort/quota failure, concurrent revisions, delayed writes, journal conflicts, restore, clear, and visible legacy fallback.
 - **Save archive**: Export/import is covered by `tests/persistence/saveSlots.test.ts`. Release smoke: named slot, reload the tab, export JSON, import on a fresh profile.
