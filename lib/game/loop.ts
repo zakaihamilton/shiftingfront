@@ -26,6 +26,13 @@ export type LoopHandle = {
 
 export type SimulationStep = (state: SimState, commands?: Command[]) => { state: SimState; events: SimEvent[] };
 
+export type FrameTiming = {
+  /** Synchronous loop work, including simulation, presentation, persistence, and drawing. */
+  workMs: number;
+  /** Time between animation callbacks, including browser/UI work between them. */
+  intervalMs: number;
+};
+
 export type LoopOptions = {
   getState: () => SimState;
   setState: (s: SimState) => void;
@@ -37,6 +44,7 @@ export type LoopOptions = {
   onFrame?: (now: number, state: SimState, paused: boolean, subTickAlpha: number, frameMs: number) => void;
   onTick?: (state: SimState, events: SimEvent[], now: number) => void;
   onEvents?: (events: SimEvent[]) => void;
+  onFrameTiming?: (timing: FrameTiming) => void;
 };
 
 export function startLoop({
@@ -50,6 +58,7 @@ export function startLoop({
   onFrame,
   onTick,
   onEvents,
+  onFrameTiming,
 }: LoopOptions): LoopHandle {
   let acc = 0;
   let last = performance.now();
@@ -73,16 +82,21 @@ export function startLoop({
 
   const frame = (now: number) => {
     if (stopped) return;
+    const startedAt = onFrameTiming ? performance.now() : 0;
+    const frameMs = Math.max(0, now - last);
+    const finishFrame = () => {
+      onFrameTiming?.({ workMs: performance.now() - startedAt, intervalMs: frameMs });
+      raf = requestAnimationFrame(frame);
+    };
     const paused = isPaused?.() ?? false;
     let state = getState();
     if (paused) {
       acc = 0;
       last = now;
       onFrame?.(now, state, true, 0, 0);
-      raf = requestAnimationFrame(frame);
+      finishFrame();
       return;
     }
-    const frameMs = Math.max(0, now - last);
     acc = Math.min(acc + frameMs, MAX_ACCUMULATOR_CAP_MS);
     last = now;
     const extraTicks = getExtraTicks ? getExtraTicks(state) : 0;
@@ -106,7 +120,7 @@ export function startLoop({
     if (state.result !== "playing") acc = 0;
     const subTickAlpha = state.result === "playing" ? Math.max(0, Math.min(1, acc / TICK_MS)) : 1;
     onFrame?.(now, state, false, subTickAlpha, Math.min(frameMs, 100));
-    raf = requestAnimationFrame(frame);
+    finishFrame();
   };
   raf = requestAnimationFrame(frame);
   return {

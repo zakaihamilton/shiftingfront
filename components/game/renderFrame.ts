@@ -2,6 +2,7 @@ import { cameraViewQuad, type Camera } from "@/lib/iso";
 import { renderMinimap } from "@/lib/render/minimap";
 import { renderWorld, type RenderExtras } from "@/lib/render/renderer";
 import { drawPerfHud, isPerfHudEnabled } from "@/lib/render/perfHud";
+import { isTerrainAtlasBaked } from "@/lib/render/terrainAtlas";
 import { cullFx, type FxBurst } from "@/lib/render/fx";
 import type { BuildingKind, SimState } from "@/lib/types";
 import { renderDimensions } from "./hooks/useGameCamera";
@@ -138,7 +139,8 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     drawPerfHud(worldCtx, now, worldTimings, minimapMs);
   }
   if (perfStarted > 0) {
-    canvas.dataset.perfFrameMs = (performance.now() - perfStarted).toFixed(2);
+    canvas.dataset.perfRenderMs = (performance.now() - perfStarted).toFixed(2);
+    canvas.dataset.perfTerrainReady = String(isTerrainAtlasBaked(state));
   }
 
   return { worldCtx, tooltipCtx, miniCtx, secondaryMiniCtx, fx };

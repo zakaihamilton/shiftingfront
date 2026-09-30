@@ -2,6 +2,7 @@ import { startLoop, type LoopHandle } from "@/lib/game/loop";
 import { TICKS_PER_SECOND } from "@/lib/catalog";
 import { createScenarioRunner } from "@/lib/sim/scenarioRunner";
 import { entitiesFor } from "@/lib/sim/entities";
+import { isPerfHudEnabled } from "@/lib/render/perfHud";
 import type { SimEvent, SimState } from "@/lib/types";
 import { canonicalCommandRejectionReason, type MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { createFrameCoordinator } from "./frame";
@@ -34,6 +35,7 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
   } = kernel.ports;
   let loop: LoopHandle | null = null;
   let started = false;
+  let measuredFrames = 0;
   const multiplayer = kernel.multiplayerSession ?? simRefs.multiplayerSession;
   const lifecycle = simRefs.lifecycleRef.current;
   let scenarioRunner = createScenarioRunner(simRefs.stateRef.current);
@@ -122,6 +124,14 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
         getExtraTicks: (state) => (multiplayer ? multiplayer.queuedFramesCount(state) : 0),
         onTick: controller.onTick,
         onFrame: controller.onFrame,
+        onFrameTiming: isPerfHudEnabled() ? ({ workMs, intervalMs }) => {
+          const canvas = renderRefs.canvasRef.current;
+          if (!canvas) return;
+          canvas.dataset.perfFrameMs = workMs.toFixed(2);
+          canvas.dataset.perfFrameIntervalMs = intervalMs.toFixed(2);
+          canvas.dataset.perfTick = String(simRefs.stateRef.current.tick);
+          canvas.dataset.perfFrameSequence = String(++measuredFrames);
+        } : undefined,
       });
     },
     stop() {

@@ -114,12 +114,16 @@ Performance-sensitive work should be measured with `yarn health:performance`. Th
 
 The battlefield preloads only terrain and raster sources for living entities in the current mission. Asset Bay previews and newly introduced unit types remain lazy, and the renderer's image/raster caches remain session-scoped.
 
+Battlefield terrain atlases are prepared one row per animation frame, including rebuilds after ore exhaustion changes the layout. Preloading reserves the atlas while grain textures load, so the renderer uses its pending-atlas fallback instead of triggering a synchronous bake before preparation starts. Live rebuilds keep the previous atlas visible until replacement is ready. New layout requests cancel superseded work for that world, and session disposal cancels pending bakes.
+
+With `?perf=1`, the Canvas exposes separate drawing time (`data-perf-render-ms`), complete synchronous loop work (`data-perf-frame-ms`), and animation-callback intervals (`data-perf-frame-interval-ms`). Loop work includes simulation and runtime hooks; intervals also reflect React, layout, and browser scheduling between callbacks. Browser performance tests pause the stress fixture for cold terrain preparation, then resume play for warmup and 120 distinct frame samples. Loop-work p95 must stay below 33.33 ms, frame-interval median below 34.33 ms, and frame-interval p95 at most 50 ms (plus 0.1 ms for timestamp rounding), allowing the renderer's 30 fps fallback and CI scheduling headroom.
+
 Unit-test timing is published by `yarn ci:timed-tests` as `artifacts/test-timing.json`. The pre-refactor full-suite baseline was approximately 78 seconds wall-clock, with headless balance, balance regressions, terrain, commander, and profile suites as the principal hotspots. The exhaustive `yarn test` command has no hard duration gate; the timing report is the regression signal.
 
 ## Persistence boundaries
 
 - `lib/persist/save`: versioned simulation serialization, per-seed autosaves, and named save slots.
-- `lib/persist/save/migrations.ts`: pure content-version migrations shared by autosaves and named slots. Loaders accept integer content versions from 1 through `SAVE_CONTENT_VERSION` and apply each registry step; the live registry is empty while the format is still version 1.
+- `lib/persist/save/migrations.ts`: content-version migrations shared by autosaves and named slots. Loaders accept integer content versions from 1 through `SAVE_CONTENT_VERSION` (currently 2) and apply each registry step. The version 1 → 2 migration moves per-building production queues into shared per-owner queues and selects active producers.
 - `lib/persist/campaign`: unlocks, medals, and best scores.
 - `lib/persist/settings`: audio and UI preferences.
 - `lib/persist/telemetry`: bounded local mission metrics.
@@ -128,6 +132,8 @@ Unit-test timing is published by `yarn ci:timed-tests` as `artifacts/test-timing
 Explicit save/load actions may adopt a new snapshot. Implicit autosaves refuse to overwrite a detected external change so another tab is not silently lost. Named slots store a mission snapshot plus that moment's campaign progress. The campaign archive can export one validated named-slot envelope as JSON and import it as a fresh local slot; autosaves and pause-menu controls are intentionally excluded. A slot load writes both records before replacing the active mission or navigating. If campaign writing fails, it attempts to restore the previous autosave and reports any rollback failure; localStorage does not provide multi-key transactions. A successful named-slot write is reported as saved even if updating the separate autosave fails.
 
 The multiplayer protocol module owns DOM-free wire types, versioned match settings, command sanitization, and snapshot validation, deriving recognized entity kinds from the catalogs. `MultiplayerSession` retains the compatible public exports and owns command arbitration, tick queues, resynchronization, and forfeiture. Wire recognition does not grant simulation permissions such as production availability or ownership.
+
+The host scheduler and guest validator share a 256-command tick-frame limit. Accepted commands beyond that budget remain queued for later ticks, preserving each queue's order. Guest intake is bounded to two frames of pending commands, and forfeiture removes that seat's deferred commands.
 
 The lobby controller owns screen state, roster and seat policy, handshakes, and match launch. Its `PeerLifecycle` helper owns peer creation, credential refresh, requests, tracked connections, timers, signaling recovery, and disposal. Peer creation, requests, clocks, and timers are injected, retaining the browser-test PeerFactory seam. Each room operation has a generation; disposal invalidates that generation before closing resources, and asynchronous completions and connection callbacks check it before updating the active room. Recovery retains the existing 60-second deadlines and retry intervals.
 

@@ -48,7 +48,7 @@ export function useGameRuntimeState({
   useEffect(() => {
     const sources = listMissionRasterSources(boot);
     void Promise.all([
-      preloadTerrainAtlas(boot),
+      preloadTerrainAtlas(boot, { rowsPerChunk: 1 }),
       preloadRasterSourcesAsync(sources),
     ]).catch(() => undefined);
   }, [boot, mission, seed]);
