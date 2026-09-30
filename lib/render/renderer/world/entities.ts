@@ -13,6 +13,8 @@ import {
 import { TILE_H, tileToScreen, type Camera } from "../../../iso";
 import { drawSprite, isRasterReady, rasterize } from "../../sprites";
 import { drawUnitShadow, movementDustFill, paintUnitMovementFx } from "../../unitMotion";
+import { unitFacingLayers } from "../../unitFacingBlend";
+import { drawBlendedUnitSprites, type UnitSpriteLayer } from "../../unitSpriteBlend";
 import { computeUnitDynamicTransform, updateUnitHistory } from "../../gl/unitTransformTracker";
 import { isPerfHudEnabled, type WorldPhaseTimings } from "../../perfHud";
 import {
@@ -257,6 +259,7 @@ export function renderEntityPhase(
 
     if (isScenarioTarget(state, e)) drawRescueHalo(ctx, s.x, s.y, z, timeMs);
     let img = rasterize(spec);
+    const requestedSpriteReady = !spec.imageSrc || isRasterReady(spec);
     const cacheKey = spriteCacheKey(state, e);
     if (spec.imageSrc && !isRasterReady(spec)) {
       const previous = lastReadySprite.get(cacheKey);
@@ -269,18 +272,41 @@ export function renderEntityPhase(
     }
 
     const walkBlend = isWalker && uAnim?.pose === "move" ? Math.max(0, Math.min(1, uAnim.frameBlend ?? 1)) : 1;
-    const previousWalkSpec = walkBlend < 1 && uAnim?.previousFrame !== undefined
-      ? unitSprite(e.kind as UnitKind, pal, {
+    const unitLayers: UnitSpriteLayer[] = [];
+    if (e.class === "unit" && !aircraft) {
+      const facingLayers = unitFacingLayers(e.id, facing, timeMs, isWalker ? 90 : 140,
+        requestedSpriteReady, extras.reducedMotion);
+      for (const layer of facingLayers) {
+        const layerSpec = unitSprite(e.kind as UnitKind, pal, {
           variant,
-          facing,
-          animationFrame: uAnim.previousFrame,
-          motion: "walk",
+          facing: layer.facing,
+          animationFrame: uAnim?.frame,
+          motion: uAnim?.pose === "move" ? "walk" : undefined,
           damageStage,
           profile,
-        })
-      : undefined;
-    const previousWalkImg = previousWalkSpec ? rasterize(previousWalkSpec) : undefined;
-    const previousWalkReady = Boolean(previousWalkSpec && previousWalkImg && isRasterReady(previousWalkSpec));
+        });
+        const layerImg = rasterize(layerSpec);
+        if (!isRasterReady(layerSpec)) continue;
+        const previousSpec = walkBlend < 1 && uAnim?.previousFrame !== undefined
+          ? unitSprite(e.kind as UnitKind, pal, {
+              variant,
+              facing: layer.facing,
+              animationFrame: uAnim.previousFrame,
+              motion: "walk",
+              damageStage,
+              profile,
+            })
+          : undefined;
+        const previousImg = previousSpec ? rasterize(previousSpec) : undefined;
+        const previousReady = previousSpec && previousImg && isRasterReady(previousSpec);
+        if (previousReady && walkBlend < 1) {
+          unitLayers.push({ spec: previousSpec, img: previousImg, weight: layer.weight * (1 - walkBlend) });
+        }
+        if (!previousReady || walkBlend > 0) {
+          unitLayers.push({ spec: layerSpec, img: layerImg, weight: layer.weight * (previousReady ? walkBlend : 1) });
+        }
+      }
+    }
 
     const dw = Math.round(spec.w * z);
     const dh = Math.round(spec.h * z);
@@ -325,7 +351,7 @@ export function renderEntityPhase(
       bob,
       recoilX: -dir.x * recoil * 3 * z,
       recoilY: -dir.y * recoil * 3 * z,
-      smooth: isWalker && uAnim?.pose === "move",
+      smooth: e.class === "unit",
     });
     const dx = spritePosition.dx;
     const dy = spritePosition.dy;
@@ -361,11 +387,8 @@ export function renderEntityPhase(
       drawUnitGlow(ctx, spec, img, dx, dy, dw, dh, timeMs, spriteAlpha, z);
     }
     if (spriteReady) {
-      if (previousWalkReady && previousWalkSpec && previousWalkImg && walkBlend < 1) {
-        ctx.globalAlpha = spriteAlpha * (1 - walkBlend);
-        drawSprite(ctx, previousWalkSpec, previousWalkImg, dx, dy, dw, dh);
-        ctx.globalAlpha = spriteAlpha * walkBlend;
-        drawSprite(ctx, spec, img, dx, dy, dw, dh);
+      if (unitLayers.length) {
+        drawBlendedUnitSprites(ctx, unitLayers, dx, dy, dw, dh, spriteAlpha);
       } else {
         ctx.globalAlpha = spriteAlpha;
         drawSprite(ctx, spec, img, dx, dy, dw, dh);

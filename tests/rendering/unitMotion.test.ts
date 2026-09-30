@@ -25,7 +25,7 @@ describe("unit shadows", () => {
     expect(unitShadowRadii("harvester", 1).radX).toBeLessThan(unitShadowRadii("tank", 1).radX);
   });
 
-  it("plants a single contact ellipse with the building-shadow offset", () => {
+  it("centers a contact ellipse directly beneath ground units", () => {
     const ellipse = vi.fn();
     const translate = vi.fn();
     const fills: string[] = [];
@@ -48,7 +48,9 @@ describe("unit shadows", () => {
 
     expect(ellipse).toHaveBeenCalledTimes(1);
     expect(ellipse).toHaveBeenCalledWith(40, 80, 10, 5, 0, 0, Math.PI * 2);
-    expect(translate).toHaveBeenCalledWith(UNIT_SHADOW_OFFSET_X, UNIT_SHADOW_OFFSET_Y);
+    expect(translate).toHaveBeenCalledWith(0, 0);
+    expect(UNIT_SHADOW_OFFSET_X).toBe(0);
+    expect(UNIT_SHADOW_OFFSET_Y).toBe(0);
     expect(fills).toEqual([UNIT_SHADOW_FILL]);
     expect(ctx.fillRect).not.toHaveBeenCalled();
     expect(ctx.stroke).not.toHaveBeenCalled();

@@ -2,6 +2,7 @@ import { isAirUnit, UNIT_STATS } from "../../catalog";
 import { groundHeight } from "../../sim/world";
 import { isoFacingAngle, isoHeadingAngle, screenAngleToFacing } from "../../iso";
 import { unitMovementOffset, unitWalkCycle } from "../anim";
+import { pruneUnitFacingBlends, resetUnitFacingBlends } from "../unitFacingBlend";
 import type { Entity, Facing, SimState, UnitKind } from "../../types";
 import { lerp, lerpAngle } from "./glMath";
 
@@ -123,6 +124,7 @@ function createUnitHistory(e: Entity, state: SimState, clockMs: number): UnitSta
 
 export function resetUnitTransformTracker(): void {
   historyMap.clear();
+  resetUnitFacingBlends();
 }
 
 export function updateUnitHistory(state: SimState, clockMs: number): void {
@@ -183,6 +185,7 @@ export function updateUnitHistory(state: SimState, clockMs: number): void {
       historyMap.delete(id);
     }
   }
+  pruneUnitFacingBlends(activeIds);
 }
 
 export function computeUnitDynamicTransform(
@@ -198,8 +201,8 @@ export function computeUnitDynamicTransform(
     historyMap.set(e.id, hist);
   }
 
-  const dt = Math.max(0.001, Math.min(0.1, (clockMs - hist.lastClockMs) * 0.001));
-  hist.lastClockMs = clockMs;
+  const dt = Math.max(0, Math.min(0.1, (clockMs - hist.lastClockMs) * 0.001));
+  hist.lastClockMs = Math.max(hist.lastClockMs, clockMs);
 
   const alpha = Math.max(0, Math.min(1, subTickAlpha));
   let x = lerp(hist.prevX, hist.currX, alpha);
@@ -259,7 +262,8 @@ export function computeUnitDynamicTransform(
   // Smooth angular interpolation for chassis in GL model space
   const isVehicle = e.kind === "tank" || e.kind === "harvester" || e.kind === "convoyTruck" || e.kind === "repairTruck" || e.kind === "behemoth";
   const legacyTurnSpeed = e.kind === "tank" ? 9.0 : e.kind === "behemoth" ? 6.0 : 14.0;
-  hist.yaw = lerpAngle(hist.yaw, targetYaw, Math.min(1, dt * legacyTurnSpeed));
+  hist.yaw = lerpAngle(hist.yaw, targetYaw, isAirUnit(e.kind)
+    ? Math.min(1, dt * legacyTurnSpeed) : 1 - Math.exp(-dt * legacyTurnSpeed));
 
   // Compute screen isometric target angle
   let targetScreenAngle = hist.screenAngle;
@@ -273,18 +277,16 @@ export function computeUnitDynamicTransform(
     targetScreenAngle = isoFacingAngle(e.facing);
   }
 
-  // Smooth fluid turning rate: vehicles preserve their established per-unit
-  // rates, while walkers turn responsively through intermediate facings too.
+  // Exponential response gives ground units the same turn at any frame rate.
+  // Aircraft keep their existing moving/parked response.
   const isWalker = e.kind === "infantry" || e.kind === "antiArmor" || e.kind === "medic";
   const isMoving = moveDist > 0.001 || waypointDist > 0.001;
-  const turnSpeed = isWalker
-    ? (isMoving ? 18.0 : 12.0)
-    : isMoving
-      ? (e.kind === "behemoth" ? 10.0 : e.kind === "tank" ? 14.0 : e.kind === "harvester" ? 16.0 : 20.0)
-      : (e.kind === "behemoth" ? 5.0 : e.kind === "tank" ? 8.0 : e.kind === "harvester" ? 9.0 : 12.0);
+  const turnSpeed = isAirUnit(e.kind) ? (isMoving ? 20 : 12) : isWalker ? 12 : e.kind === "behemoth" ? 6 : 8;
   const prevAngle = hist.screenAngle;
-  hist.screenAngle = lerpAngle(hist.screenAngle, targetScreenAngle, Math.min(1, dt * turnSpeed));
-  const angularVelocity = (hist.screenAngle - prevAngle) / dt;
+  hist.screenAngle = lerpAngle(hist.screenAngle, targetScreenAngle, isAirUnit(e.kind)
+    ? Math.min(1, dt * turnSpeed) : 1 - Math.exp(-dt * turnSpeed));
+  const angleStep = Math.atan2(Math.sin(hist.screenAngle - prevAngle), Math.cos(hist.screenAngle - prevAngle));
+  const angularVelocity = dt > 0 ? angleStep / dt : 0;
 
   // Determine nearest 8-way isometric facing and rotation offset
   const baseFacing = screenAngleToFacing(hist.screenAngle);

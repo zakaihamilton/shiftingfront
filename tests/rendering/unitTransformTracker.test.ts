@@ -206,11 +206,8 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
   });
 
   it.each([
-    ["tank", 14],
-    ["behemoth", 10],
-    ["strikePlane", 20],
-    ["infantry", 18],
-  ] as const)("turns %s through intermediate screen angles", (kind, turnRate) => {
+    "tank", "behemoth", "strikePlane", "infantry",
+  ] as const)("turns %s through intermediate screen angles", (kind) => {
     const state = createMission({ seed: 101, missionIndex: 0 });
     const unit = state.entities.find((e) => e.class === "unit");
     if (!unit) throw new Error("Expected unit");
@@ -224,11 +221,54 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
     const initial = computeUnitDynamicTransform(unit, state, 0, 1000);
     const next = computeUnitDynamicTransform(unit, state, 0, 1016);
     const target = Math.PI / 2;
-    const expectedStep = Math.abs(target - initial.screenAngle) * Math.min(1, 0.016 * turnRate);
 
     expect(next.screenAngle).not.toBeCloseTo(target, 4);
-    expect(Math.abs(next.screenAngle - initial.screenAngle)).toBeCloseTo(expectedStep, 3);
+    expect(next.screenAngle).toBeGreaterThan(initial.screenAngle);
+    expect(next.screenAngle - initial.screenAngle).toBeLessThan(target / 2);
     expect(Math.abs(next.rotationOffset)).toBeLessThan(Math.PI / 3);
+  });
+
+  it.each(["infantry", "antiArmor", "medic", "tank", "harvester", "repairTruck", "convoyTruck", "behemoth"] as const)(
+    "turns %s consistently at 30, 60, and 120 FPS without changing simulation state", (kind) => {
+      for (const targetFacing of [1, 2, 4, 7] as const) {
+        const results = [30, 60, 120].map((fps) => {
+          resetUnitTransformTracker();
+          const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+          const unit = addUnit(state, 0, kind, 5, 5);
+          unit.facing = 0;
+          updateUnitHistory(state, 1000);
+          computeUnitDynamicTransform(unit, state, 0, 1000);
+          unit.facing = targetFacing;
+          const before = JSON.stringify(state);
+          let transform = computeUnitDynamicTransform(unit, state, 0, 1000);
+          for (let frame = 1; frame <= fps / 2; frame++) {
+            transform = computeUnitDynamicTransform(unit, state, 0, 1000 + frame * 1000 / fps);
+          }
+          expect(JSON.stringify(state)).toBe(before);
+          expect(Math.abs(transform.screenAngle - isoFacingAngle(targetFacing))).toBeLessThan(0.16);
+          return transform.screenAngle;
+        });
+        expect(results[0]).toBeCloseTo(results[1]!, 8);
+        expect(results[1]).toBeCloseTo(results[2]!, 8);
+      }
+    },
+  );
+
+  it("does not advance a turn for repeated or older timestamps", () => {
+    const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const unit = addUnit(state, 0, "tank", 5, 5);
+    unit.facing = 0;
+    updateUnitHistory(state, 1000);
+    computeUnitDynamicTransform(unit, state, 0, 1000);
+    unit.facing = 4;
+    const first = computeUnitDynamicTransform(unit, state, 0, 1050);
+    const repeated = computeUnitDynamicTransform(unit, state, 0, 1050);
+    const older = computeUnitDynamicTransform(unit, state, 0, 1000);
+    expect(repeated.screenAngle).toBe(first.screenAngle);
+    expect(repeated.yaw).toBe(first.yaw);
+    expect(repeated.turretYaw).toBe(first.turretYaw);
+    expect(repeated.angularVelocity).toBe(0);
+    expect(older.screenAngle).toBe(first.screenAngle);
   });
 
   it("takes the shortest path across the screen-angle wrap boundary", () => {
