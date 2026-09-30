@@ -19,8 +19,9 @@ export function drawBlendedUnitSprites(
   if (totalWeight <= 0) return;
   const originalAlpha = ctx.globalAlpha;
   ctx.globalAlpha = alpha;
-  if (layers.length === 1) {
-    drawSprite(ctx, layers[0]!.spec, layers[0]!.img, dx, dy, dw, dh);
+  if (layers.length === 1 || typeof document === "undefined") {
+    const layer = layers.length === 1 ? layers[0]! : layers.reduce((a, b) => a.weight >= b.weight ? a : b);
+    drawSprite(ctx, layer.spec, layer.img, dx, dy, dw, dh);
   } else {
     blendCanvas ??= document.createElement("canvas");
     const width = Math.max(1, dw * 2);
@@ -37,7 +38,10 @@ export function drawBlendedUnitSprites(
       }
       blendCtx.globalAlpha = 1;
       blendCtx.globalCompositeOperation = "source-over";
-      drawSprite(ctx, layers[0]!.spec, blendCanvas, dx, dy, dw, dh);
+      const passSpec = layers[0]!.spec.rotation !== undefined
+        ? { ...layers[0]!.spec, rotation: undefined }
+        : layers[0]!.spec;
+      drawSprite(ctx, passSpec, blendCanvas, dx, dy, dw, dh);
     } else {
       // Preserve a visible unit if the temporary canvas cannot be allocated.
       const layer = layers.reduce((a, b) => a.weight >= b.weight ? a : b);

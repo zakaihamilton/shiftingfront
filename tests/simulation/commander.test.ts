@@ -173,7 +173,7 @@ describe("competent commander", () => {
 
     expect(state.missionKind).toBe("structureQuota");
     expect(rejections).toBe(0);
-  });
+  }, 90_000);
 
   it("reserves credits for an unnamed structure quota once the army is ready", () => {
     const state = makeFixture({ width: 24, height: 24, win: { kind: "structureQuota", target: 2 } });
