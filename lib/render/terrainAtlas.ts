@@ -281,6 +281,7 @@ export async function getTerrainAtlasAsync(
   state: AtlasWorld,
   options?: { rowsPerChunk?: number },
 ): Promise<TerrainAtlas> {
+  const fallbackRowsPerChunk = Math.max(options?.rowsPerChunk ?? 1, 4);
   const key = terrainAtlasKey(state);
   if (atlasCache && atlasCache.key === key) return atlasCache;
   const existing = atlasBakePromises.get(key);
@@ -296,11 +297,11 @@ export async function getTerrainAtlasAsync(
     const workerBake = bakeTerrainInWorker(state, grainGeneration, controller.signal);
     let baked: TerrainAtlasData;
     try {
-      baked = workerBake ? await workerBake : await bakeTerrainAtlasDataAsync(state, { ...options, rowsPerChunk: 1, signal: controller.signal });
+      baked = workerBake ? await workerBake : await bakeTerrainAtlasDataAsync(state, { ...options, rowsPerChunk: fallbackRowsPerChunk, signal: controller.signal });
     } catch (error) {
       controller.signal.throwIfAborted();
       if (error instanceof Error && error.name === "AbortError") throw error;
-      baked = await bakeTerrainAtlasDataAsync(state, { ...options, rowsPerChunk: 1, signal: controller.signal });
+      baked = await bakeTerrainAtlasDataAsync(state, { ...options, rowsPerChunk: fallbackRowsPerChunk, signal: controller.signal });
     }
     const atlas = createTerrainAtlas(state, baked);
     if (invalidationGeneration === atlasInvalidationGeneration && terrainAtlasKey(state) === key) {
