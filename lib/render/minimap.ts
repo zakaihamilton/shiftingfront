@@ -423,6 +423,16 @@ function paintMinimapOverlay(
       ctx.stroke();
     }
   }
+  for (const challenge of state.runtime?.secondary ?? []) {
+    if (challenge.priority !== "optional" || !challenge.zone || challenge.completed) continue;
+    ctx.save();
+    ctx.strokeStyle = "#e8c86a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(challenge.zone.x * sx, challenge.zone.y * sy, Math.max(3, (challenge.radius ?? 3) * sx), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
   const zone = state.runtime?.zone;
   if (zone && missionUsesObjectiveZone(state.runtime?.kind)) {
     const zx = zone.x * sx;

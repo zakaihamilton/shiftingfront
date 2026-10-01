@@ -93,7 +93,11 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
       Math.abs(Math.round(e.x) - destX),
       Math.abs(Math.round(e.y) - destY),
     );
-    if (destOccupied) continue;
+    // A returned recovery actor can occupy the shared return destination.
+    // Other actors must still extend their bounded routes while far away;
+    // only stop for the occupied final cell once they reach its perimeter.
+    const returningActor = isRecoveryReturn(state, e);
+    if (destOccupied && (!returningActor || cheb <= 1)) continue;
     if (cheb <= 1) {
       e.path = [{ x: destX, y: destY }];
       e.idle = false;
@@ -104,7 +108,7 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
     const result = tryFindPathDetailed(state, e, dest);
     if (!result) continue;
     const first = result.path[0];
-    if (first && isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && reversesPreviousStep(
+    if (first && isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && !returningActor && reversesPreviousStep(
       state.width,
       Math.round(e.x),
       Math.round(e.y),
@@ -266,7 +270,7 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
               const dx = Math.round(detourFirst.x);
               const dy = Math.round(detourFirst.y);
               const sameBlocked = dx === blockedX && dy === blockedY;
-              const reverses = isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && reversesPreviousStep(
+              const reverses = isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && !isRecoveryReturn(state, e) && reversesPreviousStep(
                 state.width,
                 Math.round(e.x),
                 Math.round(e.y),
@@ -354,6 +358,12 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
   // Positions changed during this tick are not reflected in the O(1) unitAt
   // cache used by placement and closest-approach queries.
   invalidateUnitAtCache(state);
+}
+
+/** Recovery actors may back out of a pocket while following their return route. */
+function isRecoveryReturn(state: SimState, entity: Entity): boolean {
+  return state.gameplayRulesVersion === 2 && !entity.neutral && entity.orderMode === "move" &&
+    (entity.scenarioRole === "cargo" || entity.scenarioRole === "stranded");
 }
 
 function resetPreviousCellsForNewOrders(

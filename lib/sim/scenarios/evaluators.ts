@@ -47,7 +47,7 @@ export function evaluateElimination(state: SimState, options: EliminationOptions
   }
 
   if (options.filter) {
-    const living = entitiesFor(state).filter((e) => e.hp > 0 && options.filter!(e));
+    const living = entitiesFor(state).filter((e) => e.hp > 0 && !e.optionalChallenge && options.filter!(e));
     const isComplete = living.length === 0;
     return {
       isComplete,

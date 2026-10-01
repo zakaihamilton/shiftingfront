@@ -37,7 +37,7 @@ import { applyBiomeLandmark, generateLandmarkResourceVeins, landmarkForBiome } f
 
 export function generateMap(
   seed: number,
-  mission: Pick<ReadonlyMissionDef, "index" | "win" | "mapSize" | "biome" | "profile">,
+  mission: Pick<ReadonlyMissionDef, "index" | "win" | "mapSize" | "biome" | "profile" | "gameplayRulesVersion">,
 ): GeneratedMap {
   const rng = createRng(seed, `map:${mission.index}`);
   const profile = resolveMissionProfile(seed, mission.index, mission.win.kind, mission.profile);
@@ -171,7 +171,7 @@ export function generateMap(
       height,
       salt + 37,
     );
-    carveRoute(tiles, heights, surfaces, width, height, rescueRoute, 1, salt + 29);
+    carveRoute(tiles, heights, surfaces, width, height, rescueRoute, mission.gameplayRulesVersion === 2 ? 2 : 1, salt + 29);
     scenarioRoutePlans.push(rescueRoute);
   }
   if (mission.win.kind === "extraction") {
@@ -189,7 +189,7 @@ export function generateMap(
         height,
         salt + 47 + index * 13,
       );
-      carveRoute(tiles, heights, surfaces, width, height, extractionRoute, 1, salt + 53 + index * 13);
+      carveRoute(tiles, heights, surfaces, width, height, extractionRoute, mission.gameplayRulesVersion === 2 ? 2 : 1, salt + 53 + index * 13);
       scenarioRoutePlans.push(extractionRoute);
     }
   }
@@ -234,6 +234,15 @@ export function generateMap(
     ];
     carveRoute(tiles, heights, surfaces, width, height, fallbackRoute, 1, salt + 401, false);
     routePlans.push(fallbackRoute);
+    const repairedLengths = routePlans.map(routeLength).sort((a, b) => a - b);
+    if (mission.gameplayRulesVersion === 2 && repairedLengths[1]! > repairedLengths[0]! * 1.8) {
+      const oppositeRoute: Vec2[] = [playerStart, {
+        x: Math.max(2, Math.min(width - 3, Math.round((playerStart.x + enemyStart.x) / 2 + (dy / lineLength) * offset))),
+        y: Math.max(2, Math.min(height - 3, Math.round((playerStart.y + enemyStart.y) / 2 - (dx / lineLength) * offset))),
+      }, enemyStart];
+      carveRoute(tiles, heights, surfaces, width, height, oppositeRoute, 1, salt + 403, false);
+      routePlans.push(oppositeRoute);
+    }
     distances = walkDistances(tiles, heights, width, height, playerStart);
   }
 

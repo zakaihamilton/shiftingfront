@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
 import { createCampaign } from "@/lib/gen/campaign";
 import { cachedLocalStorage } from "@/lib/persist/save";
 import { defaultSettings, readSettings, type GameSettings } from "@/lib/persist/settings";
@@ -44,11 +45,12 @@ export function useMenuController() {
 
   useEffect(() => () => window.clearTimeout(copyTimer.current), []);
 
+  const progress = useCampaignProgress(parseSeed(code) ?? 0);
   const preview = useMemo(() => {
     const seed = parseSeed(code);
     if (seed === null || code.length < 4) return null;
-    return createCampaign(seed);
-  }, [code]);
+    return createCampaign(seed, progress.gameplayRulesVersion);
+  }, [code, progress.gameplayRulesVersion]);
 
   const openNewGame = useCallback(() => {
     setCode((current) => current.length === 4 ? current : weeklySeed());

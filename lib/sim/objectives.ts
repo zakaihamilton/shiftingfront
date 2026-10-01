@@ -20,6 +20,7 @@ export type ObjectiveProgress = {
 export type SecondaryProgress = {
   id: string;
   label: string;
+  priority?: ObjectivePriority;
   completed: boolean;
   failed: boolean;
 };
@@ -27,7 +28,8 @@ export type SecondaryProgress = {
 export type ObjectivePriority = "primary" | "optional";
 
 /** Presentation classification for legacy secondary-objective records. */
-export function objectivePriorityFor(id: string): ObjectivePriority {
+export function objectivePriorityFor(id: string, priority?: ObjectivePriority): ObjectivePriority {
+  if (priority) return priority;
   return id === "yard" || id === "time" || id === "target" || id === "scenario-target" ? "primary" : "optional";
 }
 
@@ -47,7 +49,7 @@ function timeRemainingTicks(state: SimState): number | undefined {
 const DEADLINE_WARNING_SECONDS = [60, 30, 10] as const;
 
 function isOperationalEnemy(entity: Entity): boolean {
-  return !(
+  return !entity.optionalChallenge && !(
     entity.class === "unit"
     && isAirUnit(entity.kind)
     && entity.flightState === "airborne"
@@ -75,7 +77,9 @@ export function secondaryProgress(state: SimState): SecondaryProgress[] {
     );
     return {
       id: objective.id,
-      label: objective.label,
+      label: objective.kind === "secureZone" && !objective.completed
+        ? `${objective.label} · ${Math.floor((objective.progressTicks ?? 0) / TICKS_PER_SECOND)}/60s` : objective.label,
+      priority: objective.priority,
       completed,
       failed: !completed && (
         state.result === "lost"
@@ -138,7 +142,7 @@ export function objectiveProgress(state: SimState): ObjectiveProgress {
       break;
     }
     case "razeAll": {
-  const left = livingView(state).filter((e) => e.owner === 1 && e.class === "building").length;
+      const left = livingView(state).filter((e) => e.owner === 1 && !e.optionalChallenge && e.class === "building").length;
       progress = { current: left === 0 ? 1 : 0, target: 1, label: left === 0 ? "All structures down" : `Enemy buildings left ${left}` };
       break;
     }
@@ -255,7 +259,7 @@ export function evaluateObjectives(state: SimState, eventSink?: SimEvent[], coll
       break;
     }
     case "razeAll":
-      won = !livingView(state).some((e) => e.owner === 1 && e.class === "building");
+      won = !livingView(state).some((e) => e.owner === 1 && !e.optionalChallenge && e.class === "building");
       break;
     case "decapitate":
       won = !livingView(state).some((e) => e.owner === 1 && e.kind === "constructionYard");

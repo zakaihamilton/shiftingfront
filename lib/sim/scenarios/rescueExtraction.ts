@@ -1,4 +1,6 @@
 import type { GeneratedMap } from "../../gen/map";
+import { isUnitEntity } from "../../types";
+import { UNIT_STATS } from "../../catalog";
 import { clampPoint } from "../../gen/map/generator/placement";
 import { inRescueFlank, rescueFlankCenter } from "../../gen/map/generator/rescuePlacement";
 import type { Rng } from "../../seed/rng";
@@ -63,10 +65,13 @@ function rescuePointCandidates(
   reachable: Uint8Array | undefined,
 ): Vec2[] {
   const candidates: Vec2[] = [];
+  const yard = entitiesFor(state).find(entity => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
+  const recoveryDistance = Math.min(110, Math.min(map.width, map.height) * 0.55);
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
       if (reachable && reachable[y * map.width + x] !== 1) continue;
       if (!inRescueFlank(map, x, y) || !isWalkable(state, x, y) || tileInPlayerVision(state, x, y)) continue;
+      if (state.gameplayRulesVersion === 2 && yard && pointDistance({ x, y }, yard) < recoveryDistance) continue;
       candidates.push({ x, y });
     }
   }
@@ -146,7 +151,7 @@ function extractionPointCandidates(
       const point = { x, y };
       if (reachable && reachable[y * map.width + x] !== 1) continue;
       if (!isWalkable(state, x, y) || tileInPlayerVision(state, x, y)) continue;
-      if (pointDistance(point, map.playerStart) < EXTRACTION_PLAYER_BASE_CLEARANCE) continue;
+      if (pointDistance(point, map.playerStart) < (state.gameplayRulesVersion === 2 ? 90 : EXTRACTION_PLAYER_BASE_CLEARANCE)) continue;
       if (playerBuildings.some((building) => distToEntity(point, building) < EXTRACTION_PLAYER_BASE_CLEARANCE)) continue;
       if (pointDistance(point, map.enemyStart) < EXTRACTION_ENEMY_BASE_CLEARANCE) continue;
       if (enemyBuildings.some((building) => distToEntity(point, building) < EXTRACTION_ENEMY_BASE_CLEARANCE)) continue;
@@ -328,7 +333,8 @@ function returnStrandedUnitToBase(state: SimState, unit: Entity, yard: Entity | 
   }
 }
 
-function strandedUnitContacted(target: Entity, rescuers: readonly Entity[]): boolean {
+function strandedUnitContacted(target: Entity, rescuers: readonly Entity[], state?: SimState): boolean {
+  if (state?.gameplayRulesVersion === 2 && state.win.kind === "rescue" && entitiesFor(state).some(e => e.owner === 1 && e.hp > 0 && isUnitEntity(e) && UNIT_STATS[e.kind].damage > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 6)) return false;
   // Revealing a stranded unit only makes its blue contact halo visible. The
   // rescue starts when a player unit actually enters that halo.
   return rescuers.some((rescuer) => Math.hypot(rescuer.x - target.x, rescuer.y - target.y) <= RESCUE_CONTACT_RADIUS);
@@ -361,7 +367,7 @@ export function tickRescueExtraction(state: SimState): void {
       target.path = [];
       target.routePending = false;
       target.idle = true;
-      if (strandedUnitContacted(target, rescuers)) {
+      if (strandedUnitContacted(target, rescuers, state)) {
         target.neutral = false;
         returnStrandedUnitToBase(state, target, yard, runtime.zone);
         contacted.push(id);
@@ -397,11 +403,11 @@ export function tickRescueExtraction(state: SimState): void {
     e.path = [];
     e.routePending = false;
     e.idle = true;
-    if (runtime.kind === "rescue" && strandedUnitContacted(e, rescuers)) {
+    if (runtime.kind === "rescue" && strandedUnitContacted(e, rescuers, state)) {
       e.neutral = false;
       returnStrandedUnitToBase(state, e, yard, runtime.zone);
       runtime.rescued += 1;
-    } else if (runtime.kind === "extraction" && rescuers.some((rescuer) => Math.hypot(rescuer.x - e.x, rescuer.y - e.y) <= RESCUE_CONTACT_RADIUS)) {
+    } else if (runtime.kind === "extraction" && strandedUnitContacted(e, rescuers, state)) {
       e.neutral = false;
       runtime.phase = "extraction";
     }

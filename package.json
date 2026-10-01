@@ -38,6 +38,8 @@
     "inspect": "tsx scripts/inspect.ts",
     "sim": "tsx scripts/sim.ts",
     "balance": "tsx scripts/balance.ts",
+    "gameplay:report": "node --import tsx scripts/gameplayReport.ts",
+    "gameplay:engagements": "node --import tsx scripts/gameplayEngagements.ts",
     "compress-art": "tsx scripts/compress-art.ts",
     "rasterize-icons": "tsx scripts/rasterize-icons.ts",
     "calibrate-portraits": "tsx scripts/calibrate-portraits.ts",

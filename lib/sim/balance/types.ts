@@ -18,6 +18,10 @@ export type PlaytestManifestEntry = BalanceScenario & {
 };
 
 export type BalanceRunOptions = {
+  pacingCandidate?: import("./tuning").PacingCandidate;
+  gameplayRulesVersion?: import("../../types").GameplayRulesVersion;
+  /** Explicit diagnostic budget for missions without a defeat deadline. */
+  untimedHorizonTicks?: number;
   from: number;
   to: number;
   missions: number[];

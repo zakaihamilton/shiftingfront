@@ -32,7 +32,7 @@ function encodeProgress(progress: CampaignProgress): string {
   return memory.getItem(campaignKey(progress.seed))!;
 }
 function progressFor(record: CampaignRecord, state: SimState): CampaignProgress {
-  const progress = readCampaignProgress(memoryStorage(record.progress ? { [campaignKey(state.seed)]: record.progress } : {}), state.seed);
+  const progress = { ...readCampaignProgress(memoryStorage(record.progress ? { [campaignKey(state.seed)]: record.progress } : {}), state.seed), gameplayRulesVersion: state.gameplayRulesVersion ?? 1 as const };
   return state.result === "won" ? completeMission(progress, state.missionIndex, missionMedals(state), missionScore(state)) : progress;
 }
 function validatedProgress(raw: string, seed: number): string {
@@ -273,7 +273,7 @@ export class SaveRepository {
         const previousProgress = safeGetItem(this.legacy, campaignKey(captured.seed));
         const written = safeSetItem(this.legacy, saveKey(captured.seed), autosave);
         if (written && captured.result === "won") {
-          const progress = completeMission(readCampaignProgress(this.legacy, captured.seed), captured.missionIndex, missionMedals(captured), missionScore(captured));
+          const progress = completeMission({ ...readCampaignProgress(this.legacy, captured.seed), gameplayRulesVersion: captured.gameplayRulesVersion ?? 1 }, captured.missionIndex, missionMedals(captured), missionScore(captured));
           if (!writeCampaignProgress(this.legacy, progress)) {
             if (previousAutosave === null) safeRemoveItem(this.legacy, saveKey(captured.seed));
             else safeSetItem(this.legacy, saveKey(captured.seed), previousAutosave);

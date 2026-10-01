@@ -49,6 +49,11 @@ export function drawObjectiveZone(
   timeMs: number,
   heightAt: (state: SimState, x: number, y: number) => number,
 ): void {
+  for (const challenge of state.runtime?.secondary ?? []) {
+    if (challenge.priority !== "optional" || !challenge.zone || challenge.completed) continue;
+    const point = tileToScreen(challenge.zone.x, challenge.zone.y, cam, heightAt(state, Math.round(challenge.zone.x), Math.round(challenge.zone.y)));
+    drawZoneHalo(ctx, point.x, point.y, cam.zoom, timeMs, challenge.radius ?? 3, "#e8c86a");
+  }
   const runtime = state.runtime;
   const zone = runtime?.zone;
   if (!zone || !missionUsesObjectiveZone(runtime?.kind)) return;

@@ -21,7 +21,7 @@ import {
 } from "./queries";
 import { isSharedProducerKind, readSharedProductionQueue, sharedProductionQueueSize } from "../producerState";
 
-export type ArchetypeStrategy = Exclude<BalanceStrategy, "competent" | "baseline">;
+export type ArchetypeStrategy = Exclude<BalanceStrategy, "competent" | "baseline" | "behemoths" | "aircraft" | "support">;
 
 export const ARCHETYPE_STRATEGIES: readonly ArchetypeStrategy[] = ["rush", "turtle", "greed", "infantry", "vehicles"];
 

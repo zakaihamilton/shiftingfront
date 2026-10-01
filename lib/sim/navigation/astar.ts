@@ -162,7 +162,7 @@ export function findPathDetailed(
 
   const ignoreId = ignoreIdOf(from, opts);
   const avoidUnits = opts?.avoidUnits === true;
-  const maxNodes = Math.min(opts?.maxNodes ?? PATH_MAX_NODES, PATH_MAX_NODES, w * state.height);
+  const maxNodes = Math.min(opts?.maxNodes ?? PATH_MAX_NODES, w * state.height);
   const navigationRevision = state.navigationRevision ?? 0;
   const target = to as Entity;
   const targetFootprint = isBuildingEntity(target) ? footprintOf(target.kind) : undefined;

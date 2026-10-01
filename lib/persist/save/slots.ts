@@ -107,7 +107,7 @@ export function decodeSlot(raw: string): Omit<ParsedSlot, "id"> {
   if (!isCampaignProgressShape(parsed.campaign)) throw new Error("Invalid campaign progress");
   const state = decodeSavedState(migrateSaveContent(parsed.state, parsed.contentVersion));
   if (state.seed !== parsed.campaign.seed) throw new Error("Save and campaign seeds must match");
-  return { name, savedAt: parsed.savedAt, state, campaign: parsed.campaign };
+  return { name, savedAt: parsed.savedAt, state, campaign: { ...parsed.campaign, gameplayRulesVersion: state.gameplayRulesVersion ?? 1 } };
 }
 
 /** Return a validated slot envelope suitable for downloading as a JSON file. */
@@ -173,7 +173,7 @@ export function writeSlot(
       savedAt,
       name: normalizedName,
       state: encodeSavedState(state),
-      campaign,
+      campaign: { ...campaign, gameplayRulesVersion: state.gameplayRulesVersion ?? 1 },
     };
     if (!safeSetItem(storage, slotKey(slotId), JSON.stringify(payload))) return { ok: false };
     return { ok: true, id: slotId };

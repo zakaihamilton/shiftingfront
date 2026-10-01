@@ -1,3 +1,5 @@
+export type GameplayRulesVersion = 1 | 2;
+
 export type Owner = 0 | 1 | 2 | 3;
 
 export type UnitKind = "harvester" | "infantry" | "antiArmor" | "tank" | "medic" | "repairTruck" | "convoyTruck" | "strikePlane" | "behemoth";
@@ -49,7 +51,7 @@ export type MissionProfile = {
   family: MissionFamily;
   variant: MissionProfileVariant;
 };
-export type BalanceStrategy = "competent" | "baseline" | "rush" | "turtle" | "greed" | "infantry" | "vehicles";
+export type BalanceStrategy = "behemoths" | "aircraft" | "support" | "competent" | "baseline" | "rush" | "turtle" | "greed" | "infantry" | "vehicles";
 export type Formation = "line" | "column" | "wedge";
 export type Stance = "aggressive" | "defensive" | "hold";
 export type ControlGroupSlot = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
@@ -86,7 +88,11 @@ export type MultiplayerAiMemory = {
 export type SecondaryObjective = {
   id: string;
   label: string;
-  kind: "preserveYard" | "destroyTarget" | "completeBefore" | "keepUnits";
+  priority?: "primary" | "optional";
+  zone?: Vec2;
+  radius?: number;
+  progressTicks?: number;
+  kind: "secureZone" | "preserveYard" | "destroyTarget" | "completeBefore" | "keepUnits";
   target?: number;
   targetId?: number;
   completed?: boolean;
@@ -139,6 +145,7 @@ export function missionUsesObjectiveZone(kind: MissionKind | undefined): boolean
 }
 
 export type CampaignProgress = {
+  gameplayRulesVersion?: GameplayRulesVersion;
   version: 1;
   seed: number;
   tutorialComplete: boolean;
@@ -185,6 +192,8 @@ export type Facing = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type Vec2 = { x: number; y: number };
 
 export type Entity = {
+  /** Optional challenge actors are excluded from mandatory elimination objectives. */
+  optionalChallenge?: boolean;
   readonly id: number;
   owner: Owner;
   class: EntityClass;
@@ -337,6 +346,7 @@ export type WorldSetting = {
 };
 
 export type MissionDef = {
+  gameplayRulesVersion?: GameplayRulesVersion;
   index: number;
   name: string;
   briefing: BriefingLine[];
@@ -384,6 +394,7 @@ export type ReadonlyWinCategory = DeepReadonly<WinCategory>;
 
 /** Generated campaigns are immutable views; mutable state is created at the sim boundary. */
 export type Campaign = DeepReadonly<{
+  gameplayRulesVersion?: GameplayRulesVersion;
   seed: string;
   seedNumber: number;
   world: WorldSetting;
@@ -488,6 +499,7 @@ export type BuildingSpriteOptions = {
 };
 
 export type SimState = {
+  gameplayRulesVersion?: GameplayRulesVersion;
   seed: number;
   missionIndex: number;
   tick: number;

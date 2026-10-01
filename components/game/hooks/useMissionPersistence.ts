@@ -225,7 +225,7 @@ export function useMissionPersistence({
     }
     const missionIdx = tutorial ? TUTORIAL_MUSIC_MISSION : world.missionIndex;
     clearMusicPosition("mission", world.seed, missionIdx);
-    const fresh = tutorial ? createTutorialMission() : createMission({ seed: world.seed, missionIndex: world.missionIndex });
+    const fresh = tutorial ? createTutorialMission() : createMission({ seed: world.seed, missionIndex: world.missionIndex, gameplayRulesVersion: world.gameplayRulesVersion });
     stateRef.current = fresh;
     saveSession.adoptCurrent();
     terminalSaveRef.current = false;

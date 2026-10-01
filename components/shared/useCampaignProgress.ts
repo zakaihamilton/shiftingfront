@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { campaignKey, freshCampaignProgress, readCampaignProgress } from "@/lib/persist/campaign";
-import { cachedCampaignStorage, getSaveRepository, safeGetItem } from "@/lib/persist/save";
+import { cachedCampaignStorage, getSaveRepository, safeGetItem, readSave } from "@/lib/persist/save";
 import type { CampaignProgress } from "@/lib/types";
 
 const snapshots = new Map<number, { raw: string | null; progress: CampaignProgress }>();
@@ -17,10 +17,13 @@ function subscribe(onStoreChange: () => void): () => void {
 
 function clientSnapshot(seed: number): CampaignProgress {
   const storage = cachedCampaignStorage();
-  const raw = safeGetItem(storage, campaignKey(seed));
+  const stored = safeGetItem(storage, campaignKey(seed));
+  const saved = stored === null ? readSave(storage, seed) : null;
+  const raw = `${stored}:${saved?.gameplayRulesVersion ?? ""}`;
   const cached = snapshots.get(seed);
   if (cached?.raw === raw) return cached.progress;
   const progress = readCampaignProgress(storage, seed);
+  if (saved) progress.gameplayRulesVersion = saved.gameplayRulesVersion ?? 1;
   snapshots.set(seed, { raw, progress });
   return progress;
 }

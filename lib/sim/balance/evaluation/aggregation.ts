@@ -42,10 +42,17 @@ export function averageDurationByPhase(records: BalanceRecord[]): Record<Mission
   ])) as Record<MissionDirectorPhase, number>;
 }
 
+export function completionTiming(records: BalanceRecord[]) {
+  const ticks = records.filter(r => r.result === "won").map(r => r.duration).sort((a, b) => a - b);
+  const percentile = (p: number) => ticks.length ? ticks[Math.max(0, Math.ceil(ticks.length * p) - 1)]! : null;
+  return { median: percentile(0.5), p90: percentile(0.9), inTargetWindowRate: ticks.length ? ticks.filter(t => t >= 3600 && t <= 8640).length / ticks.length : 0 };
+}
+
 export function summarizeKind(records: BalanceRecord[]): BalanceKindSummary {
   const wins = records.filter((record) => record.result === "won").length;
   const losses = records.filter((record) => record.result === "lost").length;
   return {
+    completionTiming: completionTiming(records),
     samples: records.length,
     wins,
     losses,
@@ -140,6 +147,7 @@ export function summarizeBalance(records: BalanceRecord[]): BalanceSummary {
   ]));
   const strategies = [...new Set(records.map(recordStrategy))].sort();
   return {
+    completionTiming: completionTiming(records),
     samples: records.length,
     wins,
     losses,

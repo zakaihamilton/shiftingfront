@@ -63,7 +63,7 @@ export function shouldShowCommandSidebar(result: SimState["result"]): boolean {
 export function missionMedals(state: SimState): number {
   if (state.multiplayer) return 0;
   if (state.result !== "won") return 0;
-  const secondaries = secondaryProgress(state);
+  const secondaries = secondaryProgress(state).filter(objective => state.gameplayRulesVersion !== 2 || objectivePriorityFor(objective.id, objective.priority) === "optional");
   const allSecondaries = secondaries.length > 0 && secondaries.every((objective) => objective.completed);
   return 1 + (allSecondaries ? 1 : 0) + (state.losses.units[0] === 0 ? 1 : 0);
 }
@@ -82,7 +82,7 @@ function remainingTimeBonus(state: SimState): number {
 export function missionScore(state: SimState): number {
   if (state.multiplayer) return 0;
   if (state.result !== "won") return 0;
-  const completedSecondaries = secondaryProgress(state).filter((objective) => objective.completed).length;
+  const completedSecondaries = secondaryProgress(state).filter((objective) => objective.completed && (state.gameplayRulesVersion !== 2 || objectivePriorityFor(objective.id, objective.priority) === "optional")).length;
   return Math.max(
     0,
     1000 + state.creditsEarned[0] + completedSecondaries * 250 + remainingTimeBonus(state)
@@ -115,10 +115,10 @@ export function missionDebrief(state: SimState) {
   const secondary = secondaryProgress(state);
   const targetObjective = scenarioTargetObjective(state, won);
   const primaryObjectives = [
-    ...secondary.filter((item) => objectivePriorityFor(item.id) === "primary"),
+    ...secondary.filter((item) => objectivePriorityFor(item.id, item.priority) === "primary"),
     ...(targetObjective ? [targetObjective] : []),
   ];
-  const optionalObjectives = secondary.filter((item) => objectivePriorityFor(item.id) === "optional");
+  const optionalObjectives = secondary.filter((item) => objectivePriorityFor(item.id, item.priority) === "optional");
   return {
     status: won ? "won" as const : "lost" as const,
     outcome: state.multiplayer

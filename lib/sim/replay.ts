@@ -8,6 +8,7 @@ export type TimedOrder = {
 };
 
 export type ReplayOptions = {
+  gameplayRulesVersion?: import("../types").GameplayRulesVersion;
   seed: number;
   missionIndex: number;
   orders?: TimedOrder[];
@@ -50,6 +51,7 @@ export function simulationFingerprint(state: SimState): string {
   }
 
   const {
+    gameplayRulesVersion: _rules,
     fog: _fog,
     seed: _seed,
     missionIndex: _missionIndex,
@@ -66,6 +68,7 @@ export function simulationFingerprint(state: SimState): string {
     entities,
     ...dynamicState
   } = state;
+  void _rules;
   void _pathBudget;
   void _fog;
   void _seed;
@@ -84,12 +87,13 @@ export function simulationFingerprint(state: SimState): string {
   // canonical without caching mutable terrain state.
   return `${staticState}|tiles:${state.tiles.join(",")}|${JSON.stringify({
     ...dynamicState,
+    ...(state.gameplayRulesVersion === 2 ? { gameplayRulesVersion: 2 } : {}),
     entities: [...entities].sort((a, b) => a.id - b.id),
   })}`;
 }
 
 export function runReplay(options: ReplayOptions): ReplayResult {
-  const state = createMission({ seed: options.seed, missionIndex: options.missionIndex });
+  const state = createMission({ seed: options.seed, missionIndex: options.missionIndex, gameplayRulesVersion: options.gameplayRulesVersion });
   const ordersByTick = new Map<number, Command[]>();
   for (const order of options.orders ?? []) {
     if (!Number.isInteger(order.tick) || order.tick < 0) continue;

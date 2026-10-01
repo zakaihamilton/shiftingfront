@@ -131,7 +131,7 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   }
   for (const entity of active) {
     if (entity.owner === aiOwner && entity.class === "building") enemyBuildings.push(entity);
-    if (entity.owner === aiOwner && isUnitEntity(entity)) {
+    if (entity.owner === aiOwner && isUnitEntity(entity) && !entity.optionalChallenge) {
       if (isAirUnit(entity.kind)) enemyAircraft.push(entity);
       else if (UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind)) enemyUnits.push(entity);
       if (entity.kind === "harvester") hasHarvester = true;
@@ -162,11 +162,12 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   const profileContract = profile ? profileContractFor(profile) : undefined;
   const objectiveContract = objectiveContractFor(state.win.kind);
   const phase = directorPhase(state);
-  const timedScenario = state.runtime?.director !== undefined && state.missionIndex >= 4 && (
+  const recoveryRoutes = state.gameplayRulesVersion === 2 && (state.runtime?.kind === "escort" || isTimedRecovery(state.runtime?.kind ?? state.win.kind));
+  const timedScenario = state.runtime?.director !== undefined && (state.missionIndex >= 4 || recoveryRoutes) && (
     state.runtime.kind === "escort" || isTimedRecovery(state.runtime.kind)
   );
   const openingOffensive = !state.multiplayer && state.win.kind === "decapitate" && state.missionIndex < 2;
-  const timedProductionScale = state.runtime?.kind === "extraction" ? 2.5 : 2;
+  const timedProductionScale = recoveryRoutes ? 4 : state.runtime?.kind === "extraction" ? 2.5 : 2;
   const holdLineProductionScale = holdLinePressureScale;
   const productionEvery = timedScenario
     ? Math.round(difficulty.enemyProductionEvery * timedProductionScale)
@@ -263,7 +264,7 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
     aiOwner,
     opponents,
   );
-  const pressureScale = timedScenario ? 2 : (!state.multiplayer && state.win.kind === "decapitate" && state.missionIndex < 2) ? 4 : 1;
+  const pressureScale = timedScenario ? recoveryRoutes ? 4 : 2 : (!state.multiplayer && state.win.kind === "decapitate" && state.missionIndex < 2) ? 4 : 1;
   const waveEvery = Math.max(240, Math.round((holdLineAssaultEvery
     + (profileContract?.assaultEveryOffset ?? 0)
     + (objectiveContract?.assaultDelay ?? 0)) * pressureScale));

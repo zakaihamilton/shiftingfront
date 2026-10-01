@@ -21,6 +21,7 @@ import {
   runSimulationSystems,
   type SimulationTickOptions,
 } from "./pipeline";
+import { configureChallenge } from "./challenges";
 import { entitiesFor } from "./entities";
 
 export { issue, inspect };
@@ -30,9 +31,9 @@ export type TickOptions = SimulationTickOptions;
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
-export function createMission(opts: { seed: number; missionIndex: number }): SimState {
+export function createMission(opts: { seed: number; missionIndex: number; gameplayRulesVersion?: import("../types").GameplayRulesVersion }): SimState {
   assertValidSeed(opts.seed);
-  const campaign = createCampaign(opts.seed);
+  const campaign = createCampaign(opts.seed, opts.gameplayRulesVersion);
   const mission = campaign.missions[opts.missionIndex];
   if (!mission) throw new Error(`No mission ${opts.missionIndex}`);
   const map = generateMap(opts.seed, mission);
@@ -78,6 +79,7 @@ export function createMissionFromData(opts: {
     })) as SimState["factions"],
     missionName: mission.name,
   });
+  state.gameplayRulesVersion = campaign.gameplayRulesVersion ?? 1;
   return initializeMissionState(state, map, mission, rng, difficulty, opts.configureScenario !== false);
 }
 
@@ -250,7 +252,10 @@ function dirPoint(
     }
   }
 
-  if (configureScenario) configureMissionScenario(state, map, mission, rng);
+  if (configureScenario) {
+    configureMissionScenario(state, map, mission, rng);
+    configureChallenge(state, map);
+  }
 
   ensureSimulationDirector(state);
   tickFog(state);

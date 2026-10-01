@@ -335,6 +335,19 @@ describe("generated structure quotas", () => {
       }
     }
   });
+
+  it("scales force and structure targets only for new rules", () => {
+    for (let seed = 0; seed < 40; seed++) {
+      for (let index = 0; index < 6; index++) {
+        for (const kind of ["forceQuota", "structureQuota"] as const) {
+          const legacy = generateWinCategory(seed, index, kind, 1);
+          const current = generateWinCategory(seed, index, kind, 2);
+          const multiplier = kind === "forceQuota" && index === 0 ? 3 : index < 2 ? 2.1 : 1.65;
+          expect(current.target).toBe(Math.round(legacy.target! * multiplier));
+        }
+      }
+    }
+  });
 });
 
 describe("mission briefing objectives", () => {

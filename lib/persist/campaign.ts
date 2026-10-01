@@ -1,3 +1,4 @@
+import { CURRENT_GAMEPLAY_RULES, gameplayRulesVersion } from "../gameplayRules";
 import { missionMedals, missionScore } from "../sim/debrief";
 import type { CampaignProgress, SimState } from "../types";
 import { safeSetItem, type StorageAdapter } from "./save";
@@ -14,6 +15,7 @@ export function campaignKey(seed: number): string {
 export function freshCampaignProgress(seed: number): CampaignProgress {
   assertValidSeed(seed);
   return {
+    gameplayRulesVersion: CURRENT_GAMEPLAY_RULES,
     version: CAMPAIGN_PROGRESS_VERSION,
     seed,
     tutorialComplete: false,
@@ -46,6 +48,7 @@ export function normalizeCampaignProgress(value: unknown, seed: number): Campaig
   };
   return {
     ...base,
+    gameplayRulesVersion: raw.gameplayRulesVersion === 2 ? 2 : 1,
     seed,
     tutorialComplete: raw.tutorialComplete === true,
     unlockedMission,
@@ -85,7 +88,7 @@ export function recordWonCampaignProgress(storage: StorageAdapter, state: SimSta
   if (state.result !== "won") return true;
   return writeCampaignProgress(
     storage,
-    completeMission(readCampaignProgress(storage, state.seed), state.missionIndex, missionMedals(state), missionScore(state)),
+    completeMission({ ...readCampaignProgress(storage, state.seed), gameplayRulesVersion: gameplayRulesVersion(state.gameplayRulesVersion) }, state.missionIndex, missionMedals(state), missionScore(state)),
   );
 }
 

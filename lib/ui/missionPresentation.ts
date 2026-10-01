@@ -64,7 +64,7 @@ export function objectiveCardsFor(state: SimState): ObjectiveCardModel[] {
       label: objective.label,
       current: objective.completed ? 1 : 0,
       target: 1,
-      priority: objectivePriorityFor(objective.id),
+      priority: objectivePriorityFor(objective.id, objective.priority),
       status: objective.failed ? "failed" as const : objective.completed ? "complete" as const : "active" as const,
     })),
   ];
