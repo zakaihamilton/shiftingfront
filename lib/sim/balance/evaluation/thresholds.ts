@@ -46,6 +46,10 @@ export const DEFAULT_BALANCE_THRESHOLDS: BalanceThresholds = {
 
 export function checkBalance(summary: BalanceSummary, thresholds: BalanceThresholds): BalanceCheck {
   const failures: string[] = [];
+  const completionRate = summary.completionTiming?.inTargetWindowRate ?? 0;
+  if (thresholds.minCompletionWindowRate !== undefined && completionRate < thresholds.minCompletionWindowRate) {
+    failures.push(`successful completions in 5–12 minutes ${(completionRate * 100).toFixed(1)}% is below ${(thresholds.minCompletionWindowRate * 100).toFixed(1)}%`);
+  }
   if (summary.winRate < thresholds.minWinRate) {
     failures.push(`win rate ${(summary.winRate * 100).toFixed(1)}% is below ${(thresholds.minWinRate * 100).toFixed(1)}%`);
   }

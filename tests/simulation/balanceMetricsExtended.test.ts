@@ -121,6 +121,15 @@ describe("summarizeBalance", () => {
 });
 
 describe("checkBalance", () => {
+  it("optionally gates successful completions in the inclusive 5–12 minute window", () => {
+    const records = Array.from({ length: 10 }, (_, index) => makeRecord({ duration: index < 7 ? index % 2 ? 3600 : 8640 : 3599 }));
+    const thresholds = { ...DEFAULT_BALANCE_THRESHOLDS, minCompletionWindowRate: 0.7 };
+    expect(checkBalance(summarizeBalance(records), thresholds).passed).toBe(true);
+    records[0].duration = 8641;
+    expect(checkBalance(summarizeBalance(records), thresholds).failures).toContain("successful completions in 5–12 minutes 60.0% is below 70.0%");
+    expect(checkBalance(summarizeBalance(records), DEFAULT_BALANCE_THRESHOLDS).passed).toBe(true);
+    expect(checkBalance(summarizeBalance([]), thresholds).passed).toBe(false);
+  });
   it("enforces targeted mission-kind win-rate floors", () => {
     const records = Array.from({ length: 4 }, (_, index) => makeRecord({
       kind: "rescue",

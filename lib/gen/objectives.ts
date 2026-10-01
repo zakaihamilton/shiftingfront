@@ -1,6 +1,6 @@
 import { labelFor } from "../catalog";
 import { createRng, type Rng } from "../seed/rng";
-import type { BuildingKind, MissionKind, ReadonlyMissionDef, ReadonlyWinCategory, SecondaryObjective, UnitKind, WinCategory } from "../types";
+import type { BuildingKind, MissionKind, GameplayRulesVersion, ReadonlyMissionDef, ReadonlyWinCategory, SecondaryObjective, UnitKind, WinCategory } from "../types";
 import {
   CONVOY_STAGING_MINUTES,
   CONVOY_STAGING_TICKS,
@@ -120,13 +120,15 @@ export function secondaryObjectivesForMissionSeed(
   return secondaryObjectivesForMission(mission, rng);
 }
 
-export function generateWinCategory(
+function generateWinCategoryBase(
   seed: number,
   missionIndex: number,
   kind: MissionKind,
+  rules: GameplayRulesVersion = 1,
 ): WinCategory {
   const rng = createRng(seed, `win:${missionIndex}:${kind}`);
-  const minutes = baseMissionDurationMinutes(seed, missionIndex, kind);
+  // Shortening survival missions made rush-only armies pass the existing gate.
+  const minutes = rules === 2 && kind !== "holdTheLine" ? Math.min(12, 5 + missionIndex + rng.fork("pacing-v2").int(2)) : baseMissionDurationMinutes(seed, missionIndex, kind);
   const activeMinutes = activeMissionDurationMinutes(kind, minutes);
   switch (kind) {
     case "harvestQuota":
@@ -179,3 +181,17 @@ export function generateWinCategory(
 }
 
 export { pickMissionKinds } from "./missionOrder";
+
+/** Measured quota pacing for new campaigns; legacy seeded contracts stay exact. */
+export function generateWinCategory(seed: number, missionIndex: number, kind: MissionKind, rules: GameplayRulesVersion = 1): WinCategory {
+  const win = generateWinCategoryBase(seed, missionIndex, kind, rules);
+  if (rules === 2 && win.target !== undefined && ["harvestQuota", "forceQuota", "structureQuota"].includes(kind)) {
+    const multiplier = kind === "harvestQuota"
+      ? 1.5
+      : kind === "forceQuota" && missionIndex === 0
+        ? 3
+        : missionIndex < 2 ? 2.1 : 1.65;
+    return { ...win, target: Math.max(1, Math.round(win.target * multiplier)) };
+  }
+  return win;
+}

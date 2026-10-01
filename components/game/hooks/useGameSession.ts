@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { clearMusicPosition } from "@/lib/audio/music";
 import { useAudioPreferences } from "@/components/audio/useAudioPreferences";
+import { campaignKey, readCampaignProgress, writeCampaignProgress } from "@/lib/persist/campaign";
 import { createMission } from "@/lib/sim/api";
 import { createTutorialMission } from "@/lib/sim/tutorial";
 import {
@@ -8,6 +9,7 @@ import {
   cachedCampaignStorage,
   getSaveRepository,
   readSave,
+  safeGetItem,
   readSlot,
 } from "@/lib/persist/save";
 import { clearTelemetry, readTelemetry, serializeTelemetry } from "@/lib/persist/telemetry";
@@ -76,7 +78,14 @@ export function initialMission(
     const saved = readSave(cachedCampaignStorage(), seed);
     if (saved && (resume || saved.missionIndex === mission)) return saved;
   }
-  return createMission({ seed, missionIndex: mission });
+  const progress = readCampaignProgress(cachedCampaignStorage(), seed);
+  if (safeGetItem(cachedCampaignStorage(), campaignKey(seed)) === null) {
+    const previous = readSave(cachedCampaignStorage(), seed);
+    if (previous) progress.gameplayRulesVersion = previous.gameplayRulesVersion ?? 1;
+  }
+  const rules = progress.gameplayRulesVersion ?? 1;
+  if (typeof window !== "undefined") writeCampaignProgress(cachedLocalStorage(), progress);
+  return createMission({ seed, missionIndex: mission, gameplayRulesVersion: rules });
 }
 
 export async function prepareInitialMission({ seed, mission, resume, fresh = false, slot }: {

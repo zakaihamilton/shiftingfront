@@ -1,3 +1,8 @@
+import { affectedByPacingCandidate, type PacingCandidate } from "../lib/sim/balance/tuning";
+import { createCampaign } from "../lib/gen/campaign";
+import { ADVANCED_STRATEGIES } from "../lib/sim/commander/advanced";
+import { advancedDominance } from "../lib/sim/balance/evaluation/advanced";
+import { completionTiming } from "../lib/sim/balance/evaluation/aggregation";
 import { performance } from "node:perf_hooks";
 import { MAX_OPERATION_TICKS } from "../lib/gen/pacing";
 import {
@@ -51,6 +56,15 @@ const to = Number(arg("to", "99"));
 const missionArg = arg("mission", "all");
 const maxTicks = Number(arg("ticks", String(MAX_OPERATION_TICKS)));
 const strategyArg = arg("strategy", "competent");
+const rulesArg = Number(arg("rules", "1"));
+if (rulesArg !== 1 && rulesArg !== 2) throw new Error("--rules must be 1 or 2");
+const pacingGroup = arg("pacing-group", "");
+const pacingMultiplier = Number(arg("pacing-multiplier", "1"));
+if (pacingGroup && (!["routes", "quotas"].includes(pacingGroup) || ![0.75, 1, 1.25, 1.5].includes(pacingMultiplier) || rulesArg !== 2)) throw new Error("Pacing candidates require --rules 2, routes/quotas, and a multiplier of 0.75, 1, 1.25, or 1.5");
+const pacingCandidate = pacingGroup ? { group: pacingGroup, multiplier: pacingMultiplier } as PacingCandidate : undefined;
+const untimedHorizonTicks = optionalNumberArg("untimed-horizon-ticks");
+const minCompletionWindowRate = optionalNumberArg("min-completion-window-rate");
+if (minCompletionWindowRate !== undefined && (minCompletionWindowRate < 0 || minCompletionWindowRate > 1)) throw new Error("--min-completion-window-rate must be between 0 and 1");
 const details = arg("details", "false") === "true";
 const profile = arg("profile", "false") === "true";
 const profileCount = Math.max(1, Math.floor(Number(arg("profile-count", "20")) || 20));
@@ -65,29 +79,32 @@ const maxElapsedMs = Math.max(0, Number(arg("max-elapsed-ms", "0")) || 0);
 const maxWinRate = optionalNumberArg("max-win-rate");
 const missions = missionArg === "all" ? [...Array(6).keys()] : [Number(missionArg)];
 
-const supportedStrategies: readonly string[] = ["competent", "baseline", ...ARCHETYPE_STRATEGIES];
-if (strategyArg !== "archetypes" && !supportedStrategies.includes(strategyArg)) {
+const supportedStrategies: readonly string[] = ["behemoths", "aircraft", "support", "competent", "baseline", ...ARCHETYPE_STRATEGIES];
+if (strategyArg !== "archetypes" && strategyArg !== "advanced" && !supportedStrategies.includes(strategyArg)) {
   throw new Error(`Unknown strategy ${strategyArg}; use competent, baseline, ${ARCHETYPE_STRATEGIES.join(", ")}, or archetypes`);
 }
 
 async function main() {
+  const advancedSweep = strategyArg === "advanced";
   const archetypeSweep = strategyArg === "archetypes";
+  const multiStrategySweep = archetypeSweep || advancedSweep;
   const strategies: BalanceStrategy[] = archetypeSweep
     ? [...ARCHETYPE_STRATEGIES]
-    : [strategyArg as BalanceStrategy];
-  const baseOptions: Omit<BalanceRunOptions, "strategy"> = { from, to, missions, maxTicks };
-  const allScenarios = archetypeSweep || stratified
+    : advancedSweep ? ["competent", ...ADVANCED_STRATEGIES] : [strategyArg as BalanceStrategy];
+  const baseOptions: Omit<BalanceRunOptions, "strategy"> = { from, to, missions, maxTicks, gameplayRulesVersion: rulesArg as 1 | 2, untimedHorizonTicks, pacingCandidate };
+  const generatedScenarios = archetypeSweep || stratified
     ? stratifiedBalanceScenarios(from, to, 8)
     : balanceScenarios({ ...baseOptions, strategy: strategies[0] });
+  const allScenarios = pacingCandidate ? generatedScenarios.filter(s => affectedByPacingCandidate(createCampaign(s.seed, 2).missions[s.mission]!.win.kind, pacingCandidate.group)) : generatedScenarios;
   const scenarioList = shard
     ? allScenarios.filter((_, i) => i % shard.total === shard.index - 1)
-    : (archetypeSweep || stratified ? allScenarios : undefined);
+    : (archetypeSweep || stratified || pacingCandidate ? allScenarios : undefined);
   const scenarioCount = scenarioList?.length ?? allScenarios.length;
   const jobs = requestedJobs > 0 ? requestedJobs : defaultBalanceJobs(scenarioCount);
   const startedAt = performance.now();
   const deadlineAt = maxElapsedMs > 0 ? startedAt + maxElapsedMs : undefined;
   const records = [] as Awaited<ReturnType<typeof runBalanceScenarios>>;
-  if (archetypeSweep) {
+  if (multiStrategySweep) {
     const sweepRecords = await runBalanceSweepScenarios({
       ...baseOptions,
       strategies,
@@ -120,6 +137,7 @@ async function main() {
   const summary = summarizeBalance(records);
   const thresholds: BalanceThresholds = {
     ...DEFAULT_BALANCE_THRESHOLDS,
+    ...(minCompletionWindowRate === undefined ? {} : { minCompletionWindowRate }),
     minWinRate: Number(arg("min-win-rate", String(DEFAULT_BALANCE_THRESHOLDS.minWinRate))),
     ...(maxWinRate === undefined ? {} : { maxWinRate }),
     maxTimeoutRate: Number(arg("max-timeout-rate", String(DEFAULT_BALANCE_THRESHOLDS.maxTimeoutRate))),
@@ -215,7 +233,9 @@ async function main() {
       }))
     : undefined;
   console.log(JSON.stringify({
-    strategy: strategyArg,
+    pacingCandidate: pacingCandidate ?? null,
+    gameplayRulesVersion: rulesArg,
+  strategy: strategyArg,
     strategies,
     jobs,
     ...(shard ? { shard } : {}),
@@ -231,6 +251,8 @@ async function main() {
     slowestScenarioMs: slowest ? Number(slowest.scenarioMs.toFixed(2)) : 0,
     slowestScenario: slowest ? { seed: slowest.seed, mission: slowest.mission, kind: slowest.kind } : null,
   },
+  completionTiming: completionTiming(records),
+  ...(advancedSweep ? { dominance: advancedDominance(records) } : {}),
   winRate: summary.winRate,
   wins: summary.wins,
   losses: summary.losses,

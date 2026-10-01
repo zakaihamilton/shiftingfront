@@ -42,7 +42,7 @@ export function targetForProduction(state: SimState): UnitKind | undefined {
 
   const harvesters = totalUnitCount(state, "harvester") + queuedUnitCount(state, "harvester");
   const wantsExtraHarvester = readyProducers(state, "factory").length > 0 && harvesters < 2 && (
-    state.tick < 1200 || objectiveKind(state) === "harvestQuota"
+    state.gameplayRulesVersion === 2 || state.tick < 1200 || objectiveKind(state) === "harvestQuota"
   );
   if (wantsExtraHarvester) {
     return "harvester";
@@ -50,6 +50,7 @@ export function targetForProduction(state: SimState): UnitKind | undefined {
 
   const enemyTanks = enemyEntitiesView(state).filter((entity) => entity.kind === "tank").length;
   const playerAntiArmor = totalUnitCount(state, "antiArmor") + queuedUnitCount(state, "antiArmor");
+  if (state.gameplayRulesVersion === 2 && state.tick >= 2880 && OFFENSIVE_KINDS.has(objectiveKind(state)) && totalUnitCount(state, "behemoth") + queuedUnitCount(state, "behemoth") < 2 && readyProducers(state, "factory").length) return "behemoth";
   if (enemyTanks > playerAntiArmor) return "antiArmor";
 
   const desiredTanks = Math.min(4, 1 + Math.floor(state.missionIndex / 2));
@@ -165,7 +166,7 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
 
   const needsFactory = objectiveKind(state) === "forceQuota" && state.win.role === "tank"
     ? true
-    : !timedRecovery && !defensiveObjective && (state.missionIndex >= 1 || objectiveKind(state) === "harvestQuota" || OFFENSIVE_KINDS.has(objectiveKind(state)));
+    : (state.gameplayRulesVersion === 2 && timedRecovery) || !timedRecovery && !defensiveObjective && (state.missionIndex >= 1 || objectiveKind(state) === "harvestQuota" || OFFENSIVE_KINDS.has(objectiveKind(state)));
   if (needsFactory && !playerBuildingsView(state, "factory").length && !pending) {
     const factory = buildCommand(state, "factory", yard);
     if (factory) return factory;
@@ -207,6 +208,8 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
 export function planProduction(state: SimState): Command[] {
   const commands: Command[] = [];
   if (shouldSaveForStructureQuota(state)) return commands;
+  const lateHeavy = state.gameplayRulesVersion === 2 && targetForProduction(state) === "behemoth";
+  if (lateHeavy && state.credits[0] < UNIT_STATS.behemoth.cost) return commands;
   const support = supportNeed(state);
   const offensive = OFFENSIVE_KINDS.has(objectiveKind(state));
   if (offensive) {
@@ -228,7 +231,7 @@ export function planProduction(state: SimState): Command[] {
     // Recovery missions need a contact team, not an unlimited stream of
     // reinforcements. Once the force is large enough, additional units clog
     // the route and can prevent the final target from ever being contacted.
-    if (combatCount + queuedCount >= 28) return commands;
+    if (combatCount + queuedCount >= (state.gameplayRulesVersion === 2 ? 16 : 28)) return commands;
   }
   const role = state.win.role && isUnitAvailable(state.win.role, state.missionIndex)
     && (state.unitsProducedByRole[state.win.role] ?? 0) + queuedUnitCount(state, state.win.role) < (state.win.target ?? Infinity)
@@ -236,7 +239,7 @@ export function planProduction(state: SimState): Command[] {
     : undefined;
   const producers = [...readyProducers(state, "barracks"), ...readyProducers(state, "factory")]
     .sort((a, b) => {
-      const priority = role ?? support;
+      const priority = role ?? (lateHeavy ? "behemoth" : support);
       const aPriority = priority && producerFor(priority) === a.kind ? 0 : 1;
       const bPriority = priority && producerFor(priority) === b.kind ? 0 : 1;
       return aPriority - bPriority || a.id - b.id;
@@ -252,13 +255,15 @@ export function planProduction(state: SimState): Command[] {
     if (queueSize >= 3) continue;
     if (role && producerFor(role) !== producer.kind && availableCredits < UNIT_STATS[role].cost) continue;
     let desired: UnitKind | undefined;
-    if (support && producerFor(support) === producer.kind) {
+    if (lateHeavy && producer.kind === "factory") {
+      desired = "behemoth";
+    } else if (support && producerFor(support) === producer.kind) {
       desired = support;
     } else if (role && producerFor(role) === producer.kind) {
       desired = role;
     } else if (offensive && producer.kind === "factory") {
       const harvesters = totalUnitCount(state, "harvester") + queuedUnitCount(state, "harvester");
-      const wantsExtraHarvester = harvesters < 2 && state.tick < 1200;
+      const wantsExtraHarvester = harvesters < 2 && (state.gameplayRulesVersion === 2 || state.tick < 1200);
       desired = wantsExtraHarvester ? "harvester" : "tank";
     } else if (offensive && producer.kind === "barracks") {
       const antiArmorTarget = 5 + Math.floor(state.missionIndex / 2);
@@ -269,6 +274,17 @@ export function planProduction(state: SimState): Command[] {
       desired = combat && producerFor(combat) === producer.kind
         ? combat
         : producer.kind === "factory" ? "tank" : "infantry";
+    }
+    // New-rules campaigns need a second harvester before a factory can
+    // sustain quota production. A pending force-quota role used to bypass the
+    // normal harvester preference, leaving the factory on tanks until the
+    // starting economy ran dry.
+    if (
+      state.gameplayRulesVersion === 2 &&
+      producer.kind === "factory" &&
+      totalUnitCount(state, "harvester") + queuedUnitCount(state, "harvester") < 2
+    ) {
+      desired = "harvester";
     }
     if (!desired || !isUnitAvailable(desired, state.missionIndex)) continue;
     if (availableCredits < UNIT_STATS[desired].cost || powerFor(state, 0) < 0) continue;

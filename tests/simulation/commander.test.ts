@@ -99,6 +99,18 @@ describe("competent commander", () => {
     expect(commander.getMetrics().commandsByType.produce).toBeGreaterThan(0);
   });
 
+  it("builds the second harvester before a force-quota factory starts quota units", () => {
+    const state = makeFixture({ width: 24, height: 24, win: { kind: "forceQuota", role: "tank", target: 21 } });
+    state.gameplayRulesVersion = 2;
+    addBuilding(state, 0, "constructionYard", 2, 2);
+    addBuilding(state, 0, "power", 5, 2);
+    const factory = addBuilding(state, 0, "factory", 2, 5);
+    addBuilding(state, 0, "barracks", 5, 5);
+    addUnit(state, 0, "harvester", 8, 8);
+
+    expect(planProduction(state)).toContainEqual({ type: "produce", fromId: factory.id, unit: "harvester" });
+  });
+
   it("repairs a damaged command HQ without toggling an active repair", () => {
     const state = makeFixture({ width: 24, height: 24, win: { kind: "forceQuota", role: "infantry", target: 1 } });
     const yard = addBuilding(state, 0, "constructionYard", 2, 2);

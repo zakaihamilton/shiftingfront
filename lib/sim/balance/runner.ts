@@ -1,3 +1,4 @@
+import { pacingCandidateCampaign } from "./tuning";
 import { performance } from "node:perf_hooks";
 import { createCampaign } from "../../gen/campaign";
 import { generateMap, type GeneratedMap } from "../../gen/map";
@@ -5,7 +6,9 @@ import { MAX_MISSION_TICKS, MAX_OPERATION_TICKS } from "../../gen/pacing";
 import { formatSeed } from "../../seed/rng";
 import { createMissionFromData } from "../api";
 import { createScenarioRunner } from "../scenarioRunner";
+import { objectiveProgress } from "../objectives";
 import { CompetentCommander } from "../commander";
+import { AdvancedCommander, ADVANCED_STRATEGIES, type AdvancedStrategy } from "../commander/advanced";
 import { ArchetypeCommander, isArchetypeStrategy } from "../commander/archetypes";
 import { powerBreakdown } from "../world";
 import { hqThreatened } from "../director";
@@ -90,11 +93,14 @@ function runScenario(
   strategy: BalanceStrategy,
   maxTicks: number,
   deadlineAt?: number,
+  untimedHorizonTicks?: number,
 ) {
   let powerDeficit = false;
   let commandsIssued = 0;
   let commandRejections = 0;
   let firstCombatTick: number | undefined;
+  let firstDamageTick: number | undefined;
+  const objectiveHistory: NonNullable<import("./evaluation").BalanceRecord["objectiveHistory"]> = [];
   let firstPressureTick: number | undefined;
   let firstHqThreatTick: number | undefined;
   let hqHealthAtPressure: number | undefined;
@@ -119,17 +125,18 @@ function runScenario(
   let openingUnitsProducedByRole: Partial<Record<UnitKind, number>> | undefined;
   const commander = strategy === "competent"
     ? new CompetentCommander()
+    : (ADVANCED_STRATEGIES as readonly string[]).includes(strategy) ? new AdvancedCommander(strategy as AdvancedStrategy)
     : isArchetypeStrategy(strategy)
       ? new ArchetypeCommander(strategy)
       : undefined;
-  const missionHorizon = state.runtime?.deadline ?? state.win.ticks ?? MAX_MISSION_TICKS;
+  const missionHorizon = state.runtime?.deadline ?? state.win.ticks ?? untimedHorizonTicks ?? MAX_MISSION_TICKS;
   const tickLimit = Math.min(maxTicks, missionHorizon);
   // Balance telemetry is diagnostic rather than authoritative. Sampling the
   // expensive world scans at a small fixed stride keeps long replay fixtures
   // representative while avoiding a full entity scan on every tick.
   const diagnosticStride = 6;
   const openingCutoff = Math.max(1, Math.floor(missionHorizon * 0.25));
-  const collectTelemetry = strategy === "competent";
+  const collectTelemetry = strategy !== "baseline";
   const scenarioRunner = createScenarioRunner(state, { collectEvents: collectTelemetry, updateFog: false });
   scenarioRunner.run({
     maxTicks: tickLimit,
@@ -145,7 +152,12 @@ function runScenario(
       commandsIssued += commands?.length ?? 0;
     },
     onTick: (currentState, result) => {
+      if (currentState.tick % 720 === 0 || currentState.result !== "playing") {
+        const progress = objectiveProgress(currentState);
+        objectiveHistory.push({ tick: currentState.tick, current: progress.current, target: progress.target, credits: currentState.credits[0], casualties: currentState.losses.units[0], unitsProduced: currentState.unitsProduced[0] });
+      }
       for (const event of collectTelemetry ? result.events : []) {
+        if (event.type === "combat" && firstDamageTick === undefined) firstDamageTick = currentState.tick;
         if (event.type === "support" && event.owner === 0) {
           supportActions += 1;
           healedHp += event.amount;
@@ -206,6 +218,8 @@ function runScenario(
     commandRejections,
     truncated: state.result === "playing" && tickLimit < missionHorizon,
     firstCombatTick,
+    firstDamageTick,
+    objectiveHistory,
     firstPressureTick,
     firstHqThreatTick,
     hqHealthAtPressure,
@@ -297,6 +311,7 @@ export function runOne(
   map: GeneratedMap,
   sharedScenario?: SharedScenarioData,
   deadlineAt?: number,
+  untimedHorizonTicks?: number,
 ): BalanceRecordWithScenario {
   const scenarioStartedAt = performance.now();
   const definition: ReadonlyMissionDef | undefined = campaign.missions[missionIndex];
@@ -311,7 +326,7 @@ export function runOne(
   const scenario = sharedScenario?.affordances ?? scenarioAffordances(state);
   if (sharedScenario && !sharedScenario.affordances) sharedScenario.affordances = scenario;
   const mapIsValid = (sharedScenario?.mapValid ?? validMap(map)) && scenario.allTargetsReachable && scenario.materiallyFair;
-  const run = runScenario(state, map, strategy, maxTicks, deadlineAt);
+  const run = runScenario(state, map, strategy, maxTicks, deadlineAt, untimedHorizonTicks);
   const scenarioMs = performance.now() - scenarioStartedAt;
   return {
     seed: formatSeed(seed),
@@ -339,6 +354,12 @@ export function runOne(
       lossReason: state.lossReason,
     }),
     firstCombatTick: run.firstCombatTick,
+    firstCombatCommandTick: run.firstCombatTick,
+    firstDamageTick: run.firstDamageTick,
+    objectiveHistory: run.objectiveHistory,
+    unitsProducedByRole: { ...state.unitsProducedByRole },
+    runOutcome: state.result === "won" ? "won" : state.result === "lost" ? state.lossReason === "deadline" ? "deadlineLoss" : "missionLoss" : run.truncated ? "runnerTruncated" : state.runtime?.deadline === undefined && state.win.ticks === undefined ? "unfinishedUntimed" : "runnerTruncated",
+    remainingEnemies: state.result === "won" ? [] : entitiesFor(state).filter(e => e.owner === 1 && e.hp > 0 && !e.optionalChallenge).map(e => ({ id: e.id, kind: e.kind, hp: e.hp, x: e.x, y: e.y, blockedTicks: e.blockedTicks ?? 0 })),
     firstPressureTick: run.firstPressureTick,
     firstHqThreatTick: run.firstHqThreatTick,
     hqHealthAtPressure: run.hqHealthAtPressure,
@@ -391,14 +412,14 @@ export function runBalanceJob(job: BalanceRunJob, onRecord?: (record: BalanceRec
   const records: BalanceRecordWithScenario[] = [];
   for (const { seed, mission } of job.scenarios) {
     assertWithinDeadline(job.deadlineAt);
-    const campaign = campaigns.get(seed) ?? createCampaign(seed);
+    const campaign = campaigns.get(seed) ?? pacingCandidateCampaign(createCampaign(seed, job.gameplayRulesVersion), job.pacingCandidate);
     campaigns.set(seed, campaign);
     const definition = campaign.missions[mission];
     if (!definition) throw new Error(`No mission ${mission}`);
-    const mapKey = `${seed}:${mission}`;
+    const mapKey = `${seed}:${mission}:${job.gameplayRulesVersion ?? 1}:${JSON.stringify(job.pacingCandidate ?? null)}`;
     const map = maps.get(mapKey) ?? generateMap(seed, definition);
     maps.set(mapKey, map);
-    const record = runOne(seed, mission, strategy, maxTicks, campaign, map, undefined, job.deadlineAt);
+    const record = runOne(seed, mission, strategy, maxTicks, campaign, map, undefined, job.deadlineAt, job.untimedHorizonTicks);
     records.push(record);
     onRecord?.(record);
   }
@@ -414,10 +435,11 @@ export function runBalanceSweepJob(
   const records: BalanceRecordWithScenario[] = [];
   for (const { seed, mission } of job.scenarios) {
     assertWithinDeadline(job.deadlineAt);
-    const campaign = cachedValue(cache.campaigns, seed, MAX_CACHED_CAMPAIGNS_PER_WORKER, () => createCampaign(seed));
+    const candidateKey = job.pacingCandidate ? (job.pacingCandidate.group === "routes" ? 1 : 2) * 100000 + Math.round(job.pacingCandidate.multiplier * 4) * 10000 : 0;
+    const campaign = cachedValue(cache.campaigns, seed + (job.gameplayRulesVersion === 2 ? 10000 : 0) + candidateKey, MAX_CACHED_CAMPAIGNS_PER_WORKER, () => pacingCandidateCampaign(createCampaign(seed, job.gameplayRulesVersion), job.pacingCandidate));
     const definition = campaign.missions[mission];
     if (!definition) throw new Error(`No mission ${mission}`);
-    const mapKey = `${seed}:${mission}`;
+    const mapKey = `${seed}:${mission}:${job.gameplayRulesVersion ?? 1}:${JSON.stringify(job.pacingCandidate ?? null)}`;
     const map = cachedValue(cache.maps, mapKey, MAX_CACHED_MAPS_PER_WORKER, () => generateMap(seed, definition));
     const sharedScenario = cachedValue(
       cache.sharedScenarios,
@@ -435,6 +457,7 @@ export function runBalanceSweepJob(
         cloneMapForSimulation(map),
         sharedScenario,
         job.deadlineAt,
+        job.untimedHorizonTicks,
       );
       records.push(record);
       onRecord?.(record);

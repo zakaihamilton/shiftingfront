@@ -59,7 +59,7 @@ function viewsFor(state: SimState): CommanderViews {
   for (const entity of active) {
     if (entity.owner === 0 && entity.class === "building") views.playerBuildings.push(entity);
     if (entity.owner === 0 && entity.class === "unit" && !entity.neutral) views.playerUnits.push(entity);
-    if (entity.owner === 1) views.enemyEntities.push(entity);
+    if (entity.owner === 1 && !entity.optionalChallenge) views.enemyEntities.push(entity);
   }
   commanderViews.set(state, views);
   return views;

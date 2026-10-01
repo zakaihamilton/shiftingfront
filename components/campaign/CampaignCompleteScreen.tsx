@@ -15,6 +15,7 @@ import { biomeArt, RASTER_ART } from "@/lib/gen/visualAssets";
 import { formatSeed } from "@/lib/seed/rng";
 import { APP_NAME } from "@/lib/site";
 import { objectivePriorityFor } from "@/lib/sim/objectives";
+import { createMission } from "@/lib/sim/api";
 import { briefingPath } from "@/lib/navigation/routes";
 import styles from "./CampaignCompleteScreen.module.css";
 import { campaignSummary, missionMedalDisplay, missionUnlocks } from "./campaignSummary";
@@ -23,8 +24,8 @@ import { formatCampaignShareCard } from "@/lib/ui/shareCard";
 
 export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number; mode?: "record" | "operations" }) {
   const router = useRouter();
-  const campaign = useMemo(() => createCampaign(seed), [seed]);
   const progress = useCampaignProgress(seed);
+  const campaign = useMemo(() => createCampaign(seed, progress.gameplayRulesVersion), [seed, progress.gameplayRulesVersion]);
   const summary = campaignSummary(campaign, progress);
   const operations = mode === "operations";
   const finale = !operations && summary.isComplete;
@@ -64,9 +65,13 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
     ? selectedMission.index <= progress.unlockedMission
     : false;
   const selectedObjectives = selectedMission ? missionObjectives(selectedMission, campaign) : [];
-  const selectedSecondaryObjectives = selectedMission ? secondaryObjectivesForMissionSeed(seed, selectedMission) : [];
-  const selectedPrimaryObjectives = selectedSecondaryObjectives.filter((objective) => objectivePriorityFor(objective.id) === "primary");
-  const selectedOptionalObjectives = selectedSecondaryObjectives.filter((objective) => objectivePriorityFor(objective.id) === "optional");
+  const selectedSecondaryObjectives = useMemo(() => selectedMission
+    ? campaign.gameplayRulesVersion === 2
+      ? createMission({ seed, missionIndex: selectedMission.index, gameplayRulesVersion: 2 }).runtime?.secondary ?? []
+      : secondaryObjectivesForMissionSeed(seed, selectedMission)
+    : [], [seed, selectedMission, campaign.gameplayRulesVersion]);
+  const selectedPrimaryObjectives = selectedSecondaryObjectives.filter((objective) => objectivePriorityFor(objective.id, objective.priority) === "primary");
+  const selectedOptionalObjectives = selectedSecondaryObjectives.filter((objective) => objectivePriorityFor(objective.id, objective.priority) === "optional");
   const selectedUnlocks = selectedMission ? missionUnlocks(selectedMission.index, campaign.missions.length) : [];
   const selectedTimeLimit = selectedMission ? missionTimeLimitLabel(selectedMission.win) : undefined;
   const selectedLaunchLabel = selectedMissionComplete

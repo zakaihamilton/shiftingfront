@@ -26,7 +26,14 @@ export type BalanceRecord = {
   lossReason?: string;
   /** Stable classification for every non-winning balance record. */
   failureReason?: string;
+  /** Legacy alias for firstCombatCommandTick, retained for report consumers. */
   firstCombatTick?: number;
+  firstCombatCommandTick?: number;
+  firstDamageTick?: number;
+  runOutcome?: "won" | "deadlineLoss" | "missionLoss" | "runnerTruncated" | "unfinishedUntimed";
+  unitsProducedByRole?: Partial<Record<UnitKind, number>>;
+  objectiveHistory?: Array<{ tick: number; current: number; target: number; credits: number; casualties: number; unitsProduced: number }>;
+  remainingEnemies?: Array<{ id: number; kind: string; hp: number; x: number; y: number; blockedTicks: number }>;
   firstPressureTick?: number;
   firstHqThreatTick?: number;
   hqHealthAtPressure?: number;
@@ -70,6 +77,8 @@ export type BalanceRecord = {
 };
 
 export type BalanceKindSummary = {
+  /** Successful runs only; durations are in simulation ticks. */
+  completionTiming?: { median: number | null; p90: number | null; inTargetWindowRate: number };
   samples: number;
   wins: number;
   losses: number;
@@ -126,6 +135,7 @@ export type BalanceStrategySummary = BalanceKindSummary & {
 };
 
 export type BalanceSummary = {
+  completionTiming?: BalanceKindSummary["completionTiming"];
   samples: number;
   wins: number;
   losses: number;
@@ -149,6 +159,8 @@ export type BalanceSummary = {
 };
 
 export type BalanceThresholds = {
+  /** Optional pacing gate, measured among victories only. */
+  minCompletionWindowRate?: number;
   minWinRate: number;
   maxWinRate?: number;
   maxTimeoutRate: number;

@@ -105,6 +105,7 @@ function normalizeState(value: unknown): SimState {
     throw new Error("Invalid save state");
   }
   const s = value as unknown as SimState;
+  if (s.gameplayRulesVersion === undefined) s.gameplayRulesVersion = 1;
   try {
     assertValidSeed(s.seed);
   } catch {

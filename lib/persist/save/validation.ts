@@ -124,6 +124,7 @@ export function isEntity(
   options: { allowedOwners?: readonly Owner[]; maxQueueLength?: number; maxPathLength?: number } = {},
 ): value is Entity {
   if (!isRecord(value)) return false;
+  if (value.optionalChallenge !== undefined && typeof value.optionalChallenge !== "boolean") return false;
   const allowedOwners: readonly Owner[] = options.allowedOwners ?? [0, 1];
   const classIsUnit = value.class === "unit";
   const classIsBuilding = value.class === "building";
@@ -201,9 +202,14 @@ export function isWin(value: unknown): boolean {
 }
 
 function isSecondaryObjective(value: unknown): boolean {
-  if (!isRecord(value) || !isString(value.id) || !isString(value.label) || !isOneOf(value.kind, ["preserveYard", "destroyTarget", "completeBefore", "keepUnits"] as const)) return false;
+  if (!isRecord(value) || !isString(value.id) || !isString(value.label) || !isOneOf(value.kind, ["preserveYard", "destroyTarget", "completeBefore", "keepUnits", "secureZone"] as const)) return false;
   if (value.target !== undefined && !isNonNegativeNumber(value.target)) return false;
   if (value.targetId !== undefined && !isIntegerInRange(value.targetId, 0, Number.MAX_SAFE_INTEGER)) return false;
+  if (value.priority !== undefined && !isOneOf(value.priority, ["primary", "optional"] as const)) return false;
+  if (value.zone !== undefined && !isVec2(value.zone)) return false;
+  if (value.radius !== undefined && !isNonNegativeNumber(value.radius)) return false;
+  if (value.progressTicks !== undefined && !isIntegerInRange(value.progressTicks, 0, Number.MAX_SAFE_INTEGER)) return false;
+  if (value.kind === "secureZone" && (!isVec2(value.zone) || !isIntegerInRange(value.target, 1, Number.MAX_SAFE_INTEGER))) return false;
   return value.completed === undefined || typeof value.completed === "boolean";
 }
 
@@ -262,6 +268,7 @@ export function isStateShape(
   options: { multiplayer?: boolean; maxEntities?: number } = {},
 ): value is SimState {
   if (!isRecord(value)) return false;
+  if (value.gameplayRulesVersion !== undefined && value.gameplayRulesVersion !== 1 && value.gameplayRulesVersion !== 2) return false;
   const multiplayer = options.multiplayer === true;
   const ownerCount = multiplayer ? 4 : 2;
   const width = value.width;
@@ -338,6 +345,7 @@ export function isStateShape(
 }
 
 export function isCampaignProgressShape(value: unknown): value is CampaignProgress {
+  if (isRecord(value) && value.gameplayRulesVersion !== undefined && value.gameplayRulesVersion !== 1 && value.gameplayRulesVersion !== 2) return false;
   if (!isRecord(value)) return false;
   if (value.version !== 1 || !isIntegerInRange(value.seed, SEED_MIN, SEED_MAX) || typeof value.tutorialComplete !== "boolean") return false;
   if (!Number.isInteger(value.unlockedMission)) return false;

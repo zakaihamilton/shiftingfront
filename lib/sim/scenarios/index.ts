@@ -1,3 +1,4 @@
+import { tickChallenges } from "../challenges";
 import { isSupportUnit, UNIT_STATS } from "../../catalog";
 import type { Rng } from "../../seed/rng";
 import type { GeneratedMap } from "../../gen/map";
@@ -76,7 +77,7 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
     ? extractionPoints(state, map, count, reachable, rng)
     : undefined;
   const spawnScenarioPatrols = (index: number, target: Entity, center: Vec2): void => {
-    const patrolCount = kind === "rescue"
+    const patrolCount = state.gameplayRulesVersion === 2 && kind === "rescue" ? 2 : kind === "rescue"
       ? contestedRoute ? 2 : 1
       : contestedRoute ? mission.index >= 4 ? index === 0 ? 2 : 1 : 2 : index === 0 ? 1 : 0;
     for (let patrolIndex = 0; patrolIndex < patrolCount; patrolIndex++) {
@@ -147,7 +148,7 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
           undefined,
           kind === "rescue" ? (x, y) => inRescueFlank(map, x, y) : undefined,
         );
-      const target = spawnUnit(state, 0, kind === "escort" ? "convoyTruck" : "infantry", point.x, point.y);
+      const target = spawnUnit(state, 0, kind === "escort" || (kind === "extraction" && state.gameplayRulesVersion === 2) ? "convoyTruck" : "infantry", point.x, point.y);
       target.neutral = kind === "escort" || kind === "rescue" || kind === "extraction";
       target.scenarioRole = kind === "escort" ? "convoy" : kind === "rescue" ? "stranded" : "cargo";
       if (kind === "extraction") target.marked = true;
@@ -380,6 +381,7 @@ export function tickScenario(state: SimState, eventSink?: SimEvent[], collectEve
   }
 
   const yard = entitiesFor(state).find((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
+  tickChallenges(state);
   const preserve = runtime.secondary.find((objective) => objective.kind === "preserveYard");
   if (preserve) preserve.completed = !!yard;
   const timed = runtime.secondary.find((objective) => objective.kind === "completeBefore");

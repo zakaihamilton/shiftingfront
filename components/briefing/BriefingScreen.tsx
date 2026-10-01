@@ -7,6 +7,7 @@ import { ConsoleNotice } from "@/components/ui/ConsoleNotice";
 import { DocumentTitle } from "@/components/ui/DocumentTitle";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { APP_NAME } from "@/lib/site";
+import { createMission } from "@/lib/sim/api";
 import { createCampaign } from "@/lib/gen/campaign";
 import { missionObjectives } from "@/lib/gen/story";
 import { biomeArt } from "@/lib/gen/visualAssets";
@@ -23,8 +24,8 @@ import type { NavigationOrigin } from "@/lib/navigation/routes";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 
 export function BriefingScreen({ seed, mission, returnToGame = false, origin = "menu" }: { seed: number; mission: number; returnToGame?: boolean; origin?: NavigationOrigin }) {
-  const campaign = useMemo(() => createCampaign(seed), [seed]);
   const progress = useCampaignProgress(seed);
+  const campaign = useMemo(() => createCampaign(seed, progress.gameplayRulesVersion), [seed, progress.gameplayRulesVersion]);
   const def = campaign.missions[mission];
   const lines: readonly BriefingLine[] = useMemo(() => def?.briefing ?? [], [def]);
   const typewriter = useBriefingTypewriter(lines);
@@ -38,8 +39,14 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
     skipToEnd: typewriter.skipToEnd,
   });
   const objectives = useMemo(
-    () => (def ? missionObjectives(def, campaign) : []),
-    [def, campaign],
+    () => {
+      if (!def) return [];
+      const required = missionObjectives(def, campaign);
+      if (campaign.gameplayRulesVersion !== 2) return required;
+      const preview = createMission({ seed, missionIndex: mission, gameplayRulesVersion: 2 });
+      return [...required, ...(preview.runtime?.secondary ?? []).filter(o => o.priority === "optional").map(o => ({ id: o.id, text: `Optional: ${o.label}` }))];
+    },
+    [def, campaign, seed, mission],
   );
   const backLabel = returnToGame
     ? "Back to mission"
