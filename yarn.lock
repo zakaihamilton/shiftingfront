@@ -4702,10 +4702,10 @@ regexp.prototype.flags@^1.5.3, regexp.prototype.flags@^1.5.4:
     gopd "^1.2.0"
     set-function-name "^2.0.2"
 
-repnix@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/repnix/-/repnix-1.0.3.tgz#0225cd63abc1ad4ba85a5bc7372149e0f53df17a"
-  integrity sha512-XCp6ebMyMADG11jpZICHnUhZggIgfpv0pDCIF6I2EVwGK92tmJJBPl9hc20weOFwjAaPcPqj50W4SQk2oBXQlw==
+repnix@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/repnix/-/repnix-1.0.4.tgz#a9febb99b20cfbcf0077e6a6717fc57ae1973b4e"
+  integrity sha512-LUGfEDv0UxzdkXRY5OPJQW9MXllTLWCNv2qW2qyAdsLfKXn/sHojW13TasRycBCakJ8CSCNVKGEmLJ/VOzZMDA==
   dependencies:
     "@clack/prompts" "^1.7.0"
     commander "^14.0.0"
