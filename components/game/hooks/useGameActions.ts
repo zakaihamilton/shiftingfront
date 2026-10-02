@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { buildingCameoStatus, buildingLimitReached, isAirUnit, isSupportUnit, unitCameoStatus } from "@/lib/catalog";
+import { buildingCameoStatus, buildingLimitReached, isAirUnit, isSupportUnit, producerFor, unitCameoStatus } from "@/lib/catalog";
 import { beep } from "@/lib/audio/synth";
 import { voiceBarkForBeep } from "@/lib/audio/voice";
 import { groundOrders } from "@/lib/sim/orders";
+import { isSharedProducerKind, readSharedProductionQueue } from "@/lib/sim/producerState";
 import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { isPlayerSelectableUnit, type BuildingKind, type Command, type Formation, type SimState, type Stance, type UnitKind } from "@/lib/types";
@@ -246,7 +247,13 @@ export function useGameActions({
   }, [availableProducer, enqueue, notify, stateRef, uxRef]);
 
   const cancelUnit = useCallback((unit: UnitKind) => {
-    if (unitCameoStatus(stateRef.current.entities, stateRef.current.viewOwner ?? 0, unit).phase === "idle") return;
+    const state = stateRef.current;
+    const owner = state.viewOwner ?? 0;
+    const producerKind = producerFor(unit);
+    const sharedQueue = isSharedProducerKind(producerKind)
+      ? readSharedProductionQueue(state, owner, producerKind)
+      : undefined;
+    if (unitCameoStatus(state.entities, owner, unit, sharedQueue).phase === "idle") return;
     enqueue({ type: "cancelProduce", unit });
     beep("cancel");
     notify(`${unit} production cancelled.`, "info");
