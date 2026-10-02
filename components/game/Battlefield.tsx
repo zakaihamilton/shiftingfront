@@ -22,6 +22,7 @@ export function Battlefield({
   levelCount,
   missionName,
   objective,
+  survivalObjective,
   profileLabel,
   doctrineHints,
   timeRemaining,
@@ -56,6 +57,7 @@ export function Battlefield({
   levelCount: number;
   missionName: string;
   objective: string;
+  survivalObjective?: boolean;
   profileLabel?: string;
   doctrineHints?: DoctrineHint[];
   timeRemaining?: string;
@@ -109,6 +111,7 @@ export function Battlefield({
           levelCount={levelCount}
           missionName={missionName}
           objective={objective}
+          survivalObjective={survivalObjective}
           profileLabel={profileLabel}
           doctrineHints={doctrineHints}
           timeRemaining={timeRemaining}

@@ -1,5 +1,5 @@
 import { createRng, type Rng } from "../../../seed/rng";
-import type { MusicCue, MusicStyleProfile } from "../types";
+import type { MusicCue, MusicStyleName, MusicStyleProfile, MusicVoiceType } from "../types";
 import {
   applyMissionTints,
   assignmentRng,
@@ -12,6 +12,23 @@ import {
 import type { Range, StyleBlueprint } from "./types";
 import { STYLE_BLUEPRINTS } from "./blueprints";
 import { arrangementFor } from "./arrangements";
+
+const CINEMATIC_MISSION_STYLES = new Set<MusicStyleName>([
+  "neon-arpeggio",
+  "industrial-march",
+  "cinematic-tension",
+  "signal-chase",
+  "chrome-fanfare",
+  "low-orbit",
+  "foundry-stomp",
+  "night-raid",
+  "ice-protocol",
+  "orbital-drift",
+  "glass-chime",
+  "dune-cipher",
+  "choir-vector",
+  "break-wire",
+]);
 
 function rangeValue(rng: Rng, range: Range): number {
   return range[0] + rng.next() * (range[1] - range[0]);
@@ -50,7 +67,49 @@ function stylePoolFor(cue: MusicCue): readonly StyleBlueprint[] {
   if (cue === "menu") {
     return STYLE_BLUEPRINTS.filter((style) => menuStyles.includes(style.name));
   }
+  if (cue === "mission") {
+    return STYLE_BLUEPRINTS.filter((style) => CINEMATIC_MISSION_STYLES.has(style.name));
+  }
   return STYLE_BLUEPRINTS;
+}
+
+function roundVoiceType(type: MusicVoiceType): MusicVoiceType {
+  return type === "square" ? "triangle" : type;
+}
+
+function refineCinematicSound(profile: MusicStyleProfile, cue: MusicCue): MusicStyleProfile {
+  const mission = cue === "mission";
+  const softenedDetune = profile.padDetune.map((cents) => Math.max(-8, Math.min(8, cents * 0.55))) as [number, number, number, number];
+  return {
+    ...profile,
+    bassType: roundVoiceType(profile.bassType),
+    pulseType: roundVoiceType(profile.pulseType),
+    melodyType: roundVoiceType(profile.melodyType),
+    counterType: roundVoiceType(profile.counterType),
+    padType: roundVoiceType(profile.padType),
+    padDetune: softenedDetune,
+    padLfoDepth: Math.min(profile.padLfoDepth, 180),
+    padQ: Math.min(profile.padQ, 1.2),
+    delayWet: Math.min(profile.delayWet, mission ? 0.18 : 0.22),
+    delayFeedback: Math.min(profile.delayFeedback, 0.3),
+    reverbSeconds: Math.min(1.65, Math.max(0.9, profile.reverbSeconds)),
+    reverbDecay: Math.min(3.4, Math.max(2.1, profile.reverbDecay)),
+    reverbSend: Math.min(mission ? 0.2 : 0.24, Math.max(0.12, profile.reverbSend)),
+    reverbWet: Math.min(mission ? 0.18 : 0.22, Math.max(0.1, profile.reverbWet)),
+    cutoffMin: Math.min(profile.cutoffMin, mission ? 680 : 840),
+    cutoffMax: Math.min(profile.cutoffMax, mission ? 1_080 : 1_280),
+    melodyOctave: mission ? 1 : profile.melodyOctave,
+    voiceEngine: "cinematic",
+    drumKit: profile.drumKit === "chip-noise" ? "gated" : profile.drumKit,
+    drumDensity: profile.drumDensity * (mission ? 0.86 : 0.92),
+    saturationAmount: Math.min(profile.saturationAmount, 0.1),
+    drum: {
+      ...profile.drum,
+      snareNoise: Math.min(profile.drum.snareNoise, 2_100),
+      hatFrequency: Math.min(profile.drum.hatFrequency, 6_500),
+      openHatFrequency: Math.min(profile.drum.openHatFrequency, 3_400),
+    },
+  };
 }
 
 export function selectStyleBlueprint(cue: MusicCue, seed: number, missionIndex: number): StyleBlueprint {
@@ -114,7 +173,8 @@ export function createMusicStyle(cue: MusicCue, rng: Rng, seed = 0, missionIndex
     saturationAmount: Math.min(0.2, rangeValue(textureRng, blueprint.saturation) * 0.58),
     drum: { ...blueprint.drum },
   };
-  return applyMissionTints(profile, context);
+  const tinted = applyMissionTints(profile, context);
+  return refineCinematicSound(tinted, cue);
 }
 
 export function styleRng(seed: number, cue: MusicCue, missionIndex: number): Rng {

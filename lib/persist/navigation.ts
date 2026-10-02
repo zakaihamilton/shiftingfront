@@ -1,3 +1,5 @@
+import type { SimState } from "@/lib/types";
+
 const FRESH_LAUNCH_INTENT_KEY = "shiftingfront:fresh-launch";
 const BRIEFING_SKIP_INTENT_KEY = "shiftingfront:briefing-skip";
 
@@ -10,6 +12,27 @@ type BriefingSkipIntent = FreshLaunchIntent;
 
 let memoryFreshLaunchIntent: FreshLaunchIntent | null = null;
 let memoryBriefingSkipIntent: BriefingSkipIntent | null = null;
+let resultReturnSnapshot: SimState | null = null;
+
+/** Preserve a terminal result for the replay briefing's return path without replacing the campaign save. */
+export function stashResultReturnSnapshot(state: SimState): void {
+  resultReturnSnapshot = state;
+}
+
+/** Consume the preserved result only when returning to that campaign mission. */
+export function consumeResultReturnSnapshot(seed: number, mission: number): SimState | null {
+  const state = resultReturnSnapshot;
+  resultReturnSnapshot = null;
+  if (!state || state.seed !== seed || state.missionIndex !== mission || !state.result) return null;
+  return state;
+}
+
+export function clearResultReturnSnapshot(seed?: number, mission?: number): void {
+  if (!resultReturnSnapshot) return;
+  if (seed !== undefined && resultReturnSnapshot.seed !== seed) return;
+  if (mission !== undefined && resultReturnSnapshot.missionIndex !== mission) return;
+  resultReturnSnapshot = null;
+}
 
 function sessionStorageOrNull(): Storage | null {
   if (typeof window === "undefined") return null;

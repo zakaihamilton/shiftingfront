@@ -7,10 +7,10 @@ import { TooltipLayer } from "../../components/TooltipLayer";
 
 afterEach(() => cleanup());
 
-function TooltipPage({ showTarget }: { showTarget: boolean }) {
+function TooltipPage({ showTarget, tooltipText = "Open the next page" }: { showTarget: boolean; tooltipText?: string }) {
   return (
     <>
-      {showTarget ? <button data-tooltip="Open the next page">Open</button> : null}
+      {showTarget ? <button data-tooltip={tooltipText}>Open</button> : null}
       <TooltipLayer />
     </>
   );
@@ -27,6 +27,17 @@ describe("tooltip layer", () => {
     rerender(<TooltipPage showTarget={false} />);
 
     await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+  });
+
+  it("keeps explicit line breaks in tooltip text", async () => {
+    render(<TooltipPage showTarget tooltipText={"Open the next page\nUse the arrow keys to continue"} />);
+    fireEvent.pointerOver(screen.getByRole("button", { name: "Open" }));
+
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip.textContent?.split("\n")).toEqual([
+      "Open the next page",
+      "Use the arrow keys to continue",
+    ]);
   });
 
   it("dismisses the active tooltip when pointer interaction begins", async () => {

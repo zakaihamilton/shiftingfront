@@ -2,7 +2,7 @@
   position: fixed;
   z-index: 100;
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   box-sizing: border-box;
   width: max-content;
@@ -18,7 +18,7 @@
   letter-spacing: 0.12em;
   line-height: 1.35;
   text-transform: uppercase;
-  white-space: normal;
+  white-space: pre-line;
   overflow-wrap: break-word;
 }
 
@@ -28,6 +28,7 @@
 }
 
 .kbd {
+  align-self: flex-start;
   flex: none;
   display: inline-flex;
   align-items: center;
