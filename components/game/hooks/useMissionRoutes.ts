@@ -2,6 +2,7 @@ import { useCallback, type MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
 import { cachedLocalStorage, getSaveRepository, type SaveSession } from "@/lib/persist/save";
 import { recordWonCampaignProgress } from "@/lib/persist/campaign";
+import { clearResultReturnSnapshot, stashResultReturnSnapshot } from "@/lib/persist/navigation";
 import type { SimState } from "@/lib/types";
 import { MISSION_MAX } from "@/lib/seed/rng";
 import {
@@ -9,6 +10,7 @@ import {
   campaignCompletePath,
   campaignPath,
   menuPath,
+  replayBriefingPath,
   resultPrimaryPath,
   tutorialPath,
 } from "@/lib/navigation/routes";
@@ -48,6 +50,7 @@ export function useMissionRoutes({
 
   const navigate = useCallback((path: string) => {
     if (stateRef.current.multiplayer && path !== menuPath()) return;
+    clearResultReturnSnapshot();
     const saved = prepareLeave(() => router.push(path));
     if (saved instanceof Promise) void saved.then((ok) => { if (ok) router.push(path); });
     else if (saved) router.push(path);
@@ -64,10 +67,6 @@ export function useMissionRoutes({
   const backTutorial = useCallback(() => {
     navigate(menuPath());
   }, [navigate]);
-
-  const resultPrimary = useCallback(() => {
-    navigate(resultPrimaryPath(stateRef.current));
-  }, [navigate, stateRef]);
 
   const goHomeNow = useCallback(() => navigate(menuPath()), [navigate]);
   const goNextBriefing = useCallback(() => {
@@ -86,12 +85,34 @@ export function useMissionRoutes({
   }, [navigate, stateRef]);
   const goRetry = useCallback(() => {
     if (tutorial) {
-      navigate(tutorialPath());
+      router.push(tutorialPath());
       return;
     }
     const world = stateRef.current;
-    navigate(briefingPath(world.seed, world.missionIndex, false, "result"));
-  }, [navigate, stateRef, tutorial]);
+    if (world.multiplayer) return;
+    if (world.result) stashResultReturnSnapshot(world);
+    const path = replayBriefingPath(world.seed, world.missionIndex, "result");
+    if (getSaveRepository()?.mode !== "indexeddb") recordWonCampaignProgress(cachedLocalStorage(), world);
+
+    // Keep the terminal snapshot as a best-effort save; it must not trap replay behind a conflict.
+    const continueToBriefing = () => router.push(path);
+    try {
+      const status = saveSession.write(world, "implicit");
+      if (status instanceof Promise) void status.then(continueToBriefing, continueToBriefing);
+      else continueToBriefing();
+    } catch {
+      continueToBriefing();
+    }
+  }, [router, saveSession, stateRef, tutorial]);
+
+  const resultPrimary = useCallback(() => {
+    const world = stateRef.current;
+    if (world.result === "lost" && !world.multiplayer) {
+      goRetry();
+      return;
+    }
+    navigate(resultPrimaryPath(world));
+  }, [goRetry, navigate, stateRef]);
 
   return {
     router,

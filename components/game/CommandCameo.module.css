@@ -196,54 +196,63 @@
 .caption {
   display: grid;
   box-sizing: border-box;
-  min-height: calc(2.65rem * var(--hud-scale, 1));
+  grid-template-rows: auto 1.2em 1.2em;
+  flex: 0 0 auto;
+  height: auto;
+  min-height: calc(3.6em + 10px);
   overflow: hidden;
   gap: 2px;
   border-top: 1px solid var(--chrome-inset);
   background: linear-gradient(var(--chrome-steel), var(--chrome-steel-lo));
-  padding: 2px 5px 4px;
+  padding: 2px 5px 3px;
+  font-size: var(--text-xs);
+  line-height: 1.2;
 }
 
 .captionTop {
-  display: grid;
-  justify-items: start;
-  gap: 4px;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
 }
 
-.captionTop > span:first-child {
+.name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: visible;
-  overflow-wrap: normal;
-  text-overflow: clip;
-  white-space: normal;
-  line-height: 1.15;
-}
-
-.caption span {
-  overflow: visible;
+  overflow-wrap: anywhere;
   text-overflow: clip;
   white-space: normal;
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.caption > .status,
+.caption > .detail {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .caption b {
+  flex: 0 0 auto;
   color: var(--chrome-gold);
   font-size: var(--text-xs);
   white-space: nowrap;
 }
 
 .status {
-  overflow: visible;
   color: var(--chrome-cyan);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   font-weight: 700;
   letter-spacing: 0.03em;
   line-height: 1.2;
-  text-overflow: clip;
   text-transform: none;
-  white-space: normal;
 }
 
 .status.blocked {
@@ -251,26 +260,23 @@
 }
 
 .detail {
-  display: block;
-  min-height: 1.15em;
-  overflow: visible;
   color: var(--chrome-muted);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   letter-spacing: 0.02em;
-  line-height: 1.15;
-  text-overflow: clip;
+  line-height: 1.2;
   text-transform: none;
-  white-space: normal;
 }
 
 @media (max-width: 799px) and (orientation: landscape), (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
-  .caption span {
+  .name,
+  .caption b {
     font-size: var(--text-2xs);
     letter-spacing: 0.02em;
   }
 
-  .caption b {
+  .status,
+  .detail {
     font-size: var(--text-2xs);
   }
 }

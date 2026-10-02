@@ -14,7 +14,7 @@ export function isMobileDirectiveViewport(): boolean {
 }
 
 export function BattlefieldHud(props: BattlefieldHudProps) {
-  const urgency = deadlineUrgency(props.timeRemainingTicks);
+  const urgency = props.survivalObjective ? "normal" : deadlineUrgency(props.timeRemainingTicks);
   return (
     <div className={styles.status} data-testid="battlefield-status" data-urgency={urgency}>
       <BattlefieldOperationBar
@@ -28,6 +28,7 @@ export function BattlefieldHud(props: BattlefieldHudProps) {
       />
       <MissionDirectivePanel
         objective={props.objective}
+        survivalObjective={props.survivalObjective}
         doctrineHints={props.doctrineHints}
         timeRemaining={props.timeRemaining}
         convoyDeparture={props.convoyDeparture}

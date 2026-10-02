@@ -11,8 +11,9 @@ function Inner() {
   const seed = parseSeed(sp.get("seed") ?? "0000") ?? 0;
   const mission = parseMissionIndex(sp.get("mission")) ?? 0;
   const returnToGame = sp.get("return") === "game";
+  const replay = sp.get("replay") === "1";
   const origin = navigationOrigin(sp.get("from"));
-  return <BriefingScreen key={`${seed}:${mission}:${returnToGame}:${origin}`} seed={seed} mission={mission} returnToGame={returnToGame} origin={origin} />;
+  return <BriefingScreen key={`${seed}:${mission}:${returnToGame}:${replay}:${origin}`} seed={seed} mission={mission} returnToGame={returnToGame} replay={replay} origin={origin} />;
 }
 
 export default function BriefingPage() {
