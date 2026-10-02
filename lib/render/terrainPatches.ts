@@ -68,13 +68,17 @@ export function tintGroundPatches(
   tuning: TerrainVisualTuning = terrainVisualTuningFor("ash plains"),
 ): Rgb {
   const macro = fbm(mapX * tuning.macroScale, mapY * tuning.macroScale, salt + 311);
+  const broad = fbm(mapX * tuning.macroScale * 0.42, mapY * tuning.macroScale * 0.42, salt + 283);
   const detail = fbm(mapX * tuning.detailScale, mapY * tuning.detailScale, salt + 347);
-  const lowRegion = smoothstep(0.08, 0.42, 0.5 - macro) * tuning.macroStrength * 0.2;
-  const highRegion = smoothstep(0.58, 0.92, macro) * tuning.macroStrength * 0.14;
-  let out = mixRgb(color, mats.patchA, 0.045 + macro * tuning.macroStrength * 0.46);
+  const regionTone = smoothstep(0.14, 0.86, broad * 0.62 + macro * 0.38);
+  const regionalPigment = mixRgb(mats.patchB, mats.patchA, regionTone);
+  const regionalWash = 0.09 + tuning.macroStrength * 0.24 + Math.abs(broad - 0.5) * 0.06;
+  const lowRegion = smoothstep(0.08, 0.42, 0.5 - macro) * tuning.macroStrength * 0.3;
+  const highRegion = smoothstep(0.58, 0.92, macro) * tuning.macroStrength * 0.2;
+  let out = mixRgb(color, regionalPigment, regionalWash);
   out = mixRgb(out, mats.dark, lowRegion);
   out = mixRgb(out, mats.high, highRegion);
-  const fleck = smoothstep(0.44, 0.9, detail) * (0.08 + tuning.roughness * 0.42);
+  const fleck = smoothstep(0.44, 0.9, detail) * (0.09 + tuning.roughness * 0.46);
   return mixRgb(out, mats.patchB, fleck);
 }
 
