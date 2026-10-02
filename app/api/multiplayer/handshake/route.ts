@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RoomError, validateHandshake } from "@/lib/multiplayer/server/rooms";
 import { multiplayerRateLimitResponse } from "@/lib/multiplayer/server/rateLimit";
+import { isJsonObject, multiplayerJsonRequestError, readMultiplayerJsonRequest } from "@/lib/multiplayer/server/request";
 
 export const runtime = "nodejs";
 
@@ -9,7 +10,14 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   try {
-    const body = await request.json() as { hostGrant: unknown; guestGrant: unknown; guestPeerId: unknown };
+    const parsed = await readMultiplayerJsonRequest(request);
+    if (!parsed.ok) return multiplayerJsonRequestError(parsed.reason);
+    if (!isJsonObject(parsed.value)) return multiplayerJsonRequestError("invalid_request");
+    const body = {
+      hostGrant: parsed.value.hostGrant,
+      guestGrant: parsed.value.guestGrant,
+      guestPeerId: parsed.value.guestPeerId,
+    };
     return NextResponse.json(await validateHandshake(body), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const status = error instanceof RoomError ? error.status : 400;
