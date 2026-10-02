@@ -6,11 +6,10 @@ import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { DocumentTitle } from "@/components/ui/DocumentTitle";
 import { MetalPanel } from "@/components/ui/MetalPanel";
-import { ActionRail, ArtBackedCard, DossierSection, MetricCluster, StatusBadge } from "@/components/ui/Dossier";
+import { ActionRail, MetricCluster } from "@/components/ui/Dossier";
 import { createCampaign } from "@/lib/gen/campaign";
 import { missionDurationMinutesFor, missionTimeLimitLabel, secondaryObjectivesForMissionSeed } from "@/lib/gen/objectives";
-import { missionObjectives, objectiveHeadline } from "@/lib/gen/story";
-import { biomeLabel } from "@/lib/gen/names";
+import { missionObjectives } from "@/lib/gen/story";
 import { biomeArt, RASTER_ART } from "@/lib/gen/visualAssets";
 import { formatSeed } from "@/lib/seed/rng";
 import { APP_NAME } from "@/lib/site";
@@ -18,7 +17,9 @@ import { objectivePriorityFor } from "@/lib/sim/objectives";
 import { createMission } from "@/lib/sim/api";
 import { briefingPath } from "@/lib/navigation/routes";
 import styles from "./CampaignCompleteScreen.module.css";
-import { campaignSummary, missionMedalDisplay, missionUnlocks } from "./campaignSummary";
+import { campaignSummary, missionUnlocks } from "./campaignSummary";
+import { CampaignMissionQueue } from "./CampaignMissionQueue";
+import { CampaignMissionDetail } from "./CampaignMissionDetail";
 import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
 import { formatCampaignShareCard } from "@/lib/ui/shareCard";
 
@@ -74,136 +75,40 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
   const selectedOptionalObjectives = selectedSecondaryObjectives.filter((objective) => objectivePriorityFor(objective.id, objective.priority) === "optional");
   const selectedUnlocks = selectedMission ? missionUnlocks(selectedMission.index, campaign.missions.length) : [];
   const selectedTimeLimit = selectedMission ? missionTimeLimitLabel(selectedMission.win) : undefined;
+  const selectedExpectedDuration = selectedMission
+    ? `~${Math.max(1, missionDurationMinutesFor(seed, selectedMission.index, selectedMission.win.kind))} min`
+    : "";
   const selectedLaunchLabel = selectedMissionComplete
     ? `Replay mission ${selectedMissionIndex + 1}`
     : `Deploy mission ${selectedMissionIndex + 1}`;
 
   const missionQueue = (
-    <DossierSection
-      className={`${styles.section} ${finale ? styles.finaleMissionQueue : ""}`}
-      aria-labelledby="mission-record-title"
-      label={operations ? "Operations" : "Mission record"}
-      title={<h2 id="mission-record-title" className={styles.sectionTitle}>{operations ? "Select an operation" : "Six operations"}</h2>}
-      aside={<span className={styles.sectionCount}>{summary.completed}/{campaign.missions.length} complete</span>}
-    >
-      <div className={styles.missions}>
-        {campaign.missions.map((mission, index) => {
-          const medals = progress.medals[String(mission.index)] ?? 0;
-          const missionComplete = progress.completedMissions.includes(mission.index);
-          const available = mission.index <= progress.unlockedMission;
-          const status = missionComplete ? "Completed" : available ? "Available" : "Locked";
-          const action = missionComplete ? "Replay" : available ? "Deploy" : "Locked";
-          const record = missionComplete
-            ? `Best score ${progress.bestScores[String(mission.index)] ?? 0}`
-            : available
-              ? "Ready for deployment"
-              : `Complete mission ${index} first`;
-          const card = (
-            <>
-              <span className={styles.missionTopline}>
-                <span>
-                  <b className={styles.missionNumber}>{String(index + 1).padStart(2, "0")}</b>
-                  <StatusBadge
-                    className={styles.missionStatus}
-                    tone={missionComplete ? "success" : available ? "gold" : "muted"}
-                  >
-                    {status}
-                  </StatusBadge>
-                </span>
-                <span className={styles.medals} aria-label={`${medals} of 3 medals`}>{missionMedalDisplay(medals)}</span>
-              </span>
-              <span className={styles.missionTitle}>{mission.name}</span>
-              <span className={styles.missionMeta}>{biomeLabel(mission.biome)} · {mission.mapSize}×{mission.mapSize}</span>
-              {!operations ? <span className={styles.missionObjective}>{objectiveHeadline(mission.win)}</span> : null}
-              {!operations ? <span className={styles.missionRecord}>{record}</span> : null}
-              <span className={styles.missionAction}>{action}</span>
-            </>
-          );
-
-          return (
-            <button
-              key={mission.index}
-              type="button"
-              className={`${styles.mission} ${styles.missionButton} ${missionComplete ? styles.complete : available ? styles.available : styles.locked} ${selectedMissionIndex === mission.index ? styles.selected : ""}`}
-              style={{ "--mission-art": `url("${biomeArt(mission.biome)}")` } as React.CSSProperties}
-              aria-label={`${action} mission ${index + 1}: ${mission.name}`}
-              aria-pressed={selectedMissionIndex === mission.index}
-              data-testid={`mission-card-${mission.index}`}
-              data-status={missionComplete ? "completed" : available ? "available" : "locked"}
-              data-tooltip={`${action} mission ${index + 1}`}
-              onClick={() => setSelectedMissionIndex(mission.index)}
-            >
-              {card}
-            </button>
-          );
-        })}
-      </div>
-    </DossierSection>
+    <CampaignMissionQueue
+      campaign={campaign}
+      progress={progress}
+      completedCount={summary.completed}
+      operations={operations}
+      finale={finale}
+      selectedMissionIndex={selectedMissionIndex}
+      onSelectMission={setSelectedMissionIndex}
+    />
   );
 
   const missionDetail = selectedMission ? (
-    <ArtBackedCard
-      as="section"
-      className={`${styles.detail} ${finale ? styles.finaleDetail : ""}`}
-      art={biomeArt(selectedMission.biome)}
-      aria-labelledby="mission-detail-title"
-      data-testid="mission-detail"
-    >
-      <div className={styles.detailHeader}>
-        <div>
-          <ConsoleLabel>Mission detail</ConsoleLabel>
-          <h2 id="mission-detail-title" className={styles.detailTitle}>Mission {selectedMission.index + 1}{" // "}{selectedMission.name}</h2>
-        </div>
-        <StatusBadge className={styles.detailStatus} tone={selectedMissionComplete ? "success" : selectedMissionAvailable ? "gold" : "muted"}>
-          {selectedMissionComplete ? "Completed" : selectedMissionAvailable ? "Available" : "Locked"}
-        </StatusBadge>
-      </div>
-
-      <div className={styles.detailGrid}>
-        <div className={styles.detailBlock}>
-          <span>Primary objective</span>
-          <strong>{selectedObjectives[0]?.text}</strong>
-        </div>
-        <div className={styles.detailBlock}>
-          <span>Primary requirements</span>
-          <ul>
-            {selectedPrimaryObjectives.map((objective) => <li key={objective.id}>{objective.label}</li>)}
-          </ul>
-        </div>
-        {selectedOptionalObjectives.length > 0 ? (
-          <div className={styles.detailBlock}>
-            <span>Bonus objectives</span>
-            <ul>
-              {selectedOptionalObjectives.map((objective) => <li key={objective.id}>{objective.label}</li>)}
-            </ul>
-          </div>
-        ) : null}
-        <div className={styles.detailBlock}>
-          <span>{selectedTimeLimit ? "Time limit" : "Expected duration"}</span>
-          <strong>{selectedTimeLimit ?? `~${Math.max(1, missionDurationMinutesFor(seed, selectedMission.index, selectedMission.win.kind))} min`}</strong>
-        </div>
-        <div className={styles.detailBlock}>
-          <span>Campaign</span>
-          <strong>{biomeLabel(selectedMission.biome)} · {selectedMission.mapSize}×{selectedMission.mapSize}</strong>
-        </div>
-        <div className={styles.detailBlock}>
-          <span>Unlocks after completion</span>
-          <ul>
-            {selectedUnlocks.map((unlock) => <li key={unlock}>{unlock}</li>)}
-          </ul>
-        </div>
-      </div>
-
-      <div className={styles.detailActions}>
-        {selectedMissionAvailable ? (
-          <ConsoleButton onClick={() => launchMission(selectedMission.index)} data-testid="launch-selected-mission" tooltip={`${selectedLaunchLabel} from the mission detail panel`}>
-            {selectedLaunchLabel}
-          </ConsoleButton>
-        ) : (
-          <span className={styles.lockedMessage}>Complete mission {selectedMission.index} to unlock this operation.</span>
-        )}
-      </div>
-    </ArtBackedCard>
+    <CampaignMissionDetail
+      mission={selectedMission}
+      missionComplete={selectedMissionComplete}
+      missionAvailable={selectedMissionAvailable}
+      primaryObjective={selectedObjectives[0]?.text}
+      primaryRequirements={selectedPrimaryObjectives}
+      optionalObjectives={selectedOptionalObjectives}
+      timeLimit={selectedTimeLimit}
+      expectedDuration={selectedExpectedDuration}
+      unlocks={selectedUnlocks}
+      launchLabel={selectedLaunchLabel}
+      finale={finale}
+      onLaunch={() => launchMission(selectedMission.index)}
+    />
   ) : null;
 
   return (

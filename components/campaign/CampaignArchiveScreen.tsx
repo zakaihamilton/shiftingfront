@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
-import { ActionRail, StatusBadge } from "@/components/ui/Dossier";
+import { ActionRail } from "@/components/ui/Dossier";
 import { RASTER_ART } from "@/lib/gen/visualAssets";
 import {
   cachedCampaignStorage,
@@ -23,6 +23,8 @@ import {
 } from "@/lib/persist/save";
 import { MenuBackdrop } from "@/components/shared/MenuBackdrop";
 import { SaveSlotList } from "@/components/save/SaveSlotList";
+import { CampaignArchiveControls } from "./CampaignArchiveControls";
+import { CampaignArchiveRecovery } from "./CampaignArchiveRecovery";
 import styles from "./CampaignArchiveScreen.module.css";
 
 function safeExportName(value: string): string {
@@ -161,30 +163,11 @@ export function CampaignArchiveScreen() {
               <p className={styles.copy}>Resume a named save or an autosave, inspect its operations map, or remove a slot you no longer need.</p>
             </header>
 
-            <div className={styles.archiveHeader}>
-              <ConsoleLabel as="h2">Save slots</ConsoleLabel>
-              <div className={styles.archiveControls}>
-                <ConsoleButton
-                  muted
-                  className={styles.importButton}
-                  onClick={() => importInputRef.current?.click()}
-                  tooltip="Import a named save slot from a JSON file"
-                >
-                  IMPORT JSON
-                </ConsoleButton>
-                <input
-                  ref={importInputRef}
-                  className={styles.hiddenInput}
-                  type="file"
-                  accept="application/json,.json"
-                  aria-label="Import named save slot JSON"
-                  onChange={importFile}
-                />
-                <StatusBadge className={styles.archiveStatus} tone={entries.length ? "success" : "muted"}>
-                  {entries.length ? "Ready to resume" : "Archive empty"}
-                </StatusBadge>
-              </div>
-            </div>
+            <CampaignArchiveControls
+              entriesCount={entries.length}
+              importInputRef={importInputRef}
+              onImportFile={importFile}
+            />
             {portabilityNotice ? (
               <p className={portabilityNotice.tone === "success" ? styles.importNotice : styles.importError} role="status">
                 {portabilityNotice.text}
@@ -201,26 +184,12 @@ export function CampaignArchiveScreen() {
               onDelete={deleteEntry}
             />
 
-            {unreadableSaves.length || unreadableSlots.length ? (
-              <div className={styles.recovery} role="alert">
-                {unreadableSaves.length ? (
-                  <span>Damaged save{unreadableSaves.length === 1 ? "" : "s"}: {unreadableSaves.join(", ")}</span>
-                ) : null}
-                {unreadableSlots.length ? (
-                  <span>Damaged slot{unreadableSlots.length === 1 ? "" : "s"}: {unreadableSlots.join(", ")}</span>
-                ) : null}
-                {unreadableSaves.map((seed) => (
-                  <ConsoleButton key={seed} tooltip={`Remove damaged save ${seed}`} onClick={() => resetUnreadableSave(seed)}>
-                    Reset {seed}
-                  </ConsoleButton>
-                ))}
-                {unreadableSlots.map((id) => (
-                  <ConsoleButton key={id} tooltip={`Remove damaged save slot ${id}`} onClick={() => resetUnreadableSlot(id)}>
-                    Reset {id.slice(0, 8)}
-                  </ConsoleButton>
-                ))}
-              </div>
-            ) : null}
+            <CampaignArchiveRecovery
+              unreadableSaves={unreadableSaves}
+              unreadableSlots={unreadableSlots}
+              onResetSave={resetUnreadableSave}
+              onResetSlot={resetUnreadableSlot}
+            />
 
             <ActionRail className={styles.actions}>
               <ConsoleButton muted onClick={() => router.push("/")} tooltip="Return to the main menu" shortcut="Esc">
