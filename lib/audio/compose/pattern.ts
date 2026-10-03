@@ -14,8 +14,6 @@ import {
   BARS_PER_SECTION,
   VERSE_CONTOURS,
   VERSE_RHYTHMS,
-  SIGNATURE_CONTOURS,
-  SIGNATURE_RHYTHMS,
   ARP_FIGURES,
   OPEN_HAT_FIGURES,
   SECTION_ORDER,
@@ -29,7 +27,6 @@ import {
   grooveHits,
   sectionEnergy,
   isSparseCue,
-  pickDifferent,
   pickCycle,
   mixEnergy,
   placePhraseFill,
@@ -66,19 +63,6 @@ const CINEMATIC_VERSE_RHYTHMS: readonly number[][] = [
   [0, 2, 6, 8, 11, 13, 14, 15],
 ];
 
-const CINEMATIC_HOOK_CONTOURS: readonly (readonly (number | null)[])[] = [
-  [0, 2, 4, 5, 4, 2, 0],
-  [0, 2, 3, 5, 4, 2, 0],
-  [2, 4, 5, 4, 2, 0, 2],
-  [4, 2, 0, 2, 4, 5, 4],
-];
-
-const CINEMATIC_HOOK_RHYTHMS: readonly number[][] = [
-  [0, 3, 6, 8, 11, 13, 15],
-  [0, 2, 6, 9, 11, 14, 15],
-  [0, 4, 7, 9, 12, 14, 15],
-];
-
 function makeSections(): MusicSection[] {
   return SECTION_ORDER.map((name, index) => ({
     name,
@@ -92,13 +76,10 @@ function motifFrom(
   rng: Rng,
   contours: readonly (readonly (number | null)[])[],
   rhythms: readonly number[][],
-  avoid?: MusicMotif,
 ): MusicMotif {
-  const availableContours = avoid
-    ? contours.filter((candidate) => JSON.stringify(candidate) !== JSON.stringify(avoid.degrees))
-    : contours;
-  const contour = rng.pick(availableContours.length > 0 ? availableContours : contours);
-  const response = pickDifferent(rng, contours, contour);
+  const contour = rng.pick(contours);
+  const sounding = contour.filter((degree): degree is number => degree !== null);
+  const inversionAxis = (sounding[0] ?? 0) + (sounding.at(-1) ?? 0);
   const rhythm = rng.pick(rhythms);
   const accents = rng.pick([
     [0, 2],
@@ -107,14 +88,21 @@ function motifFrom(
   ]);
   return {
     degrees: [...contour],
-    response: [...response],
+    response: contour.map((degree) => degree === null ? null : inversionAxis - degree),
     rhythm: [...rhythm],
     accentSteps: [...accents],
   };
 }
 
-function signatureMotifFrom(rng: Rng): MusicMotif {
-  return motifFrom(rng, SIGNATURE_CONTOURS, SIGNATURE_RHYTHMS);
+function motifVariation(motif: MusicMotif, degreeOffset: number): MusicMotif {
+  const transpose = (degrees: readonly (number | null)[]) =>
+    degrees.map((degree) => degree === null ? null : degree + degreeOffset);
+  return {
+    degrees: transpose(motif.degrees),
+    response: transpose(motif.response),
+    rhythm: [...motif.rhythm],
+    accentSteps: [...motif.accentSteps],
+  };
 }
 
 type PhrasePlan = {
@@ -179,10 +167,8 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const verseContours = cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS;
   const verseRhythms = cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS;
   const motif = motifFrom(melodyRng, verseContours, verseRhythms);
-  const developmentMotif = motifFrom(melodyRng, verseContours, verseRhythms, motif);
-  const hook = cinematicMaterial
-    ? motifFrom(melodyRng, CINEMATIC_HOOK_CONTOURS, CINEMATIC_HOOK_RHYTHMS)
-    : signatureMotifFrom(melodyRng);
+  const developmentMotif = motifVariation(motif, 1);
+  const hook = motifVariation(motif, 2);
   const [arpFigureA, arpFigureB, arpFigureC, arpFigureD] = pickCycle(rhythmRng, ARP_FIGURES);
   const [openHatA, openHatB, openHatC, openHatD] = pickCycle(drumRng, OPEN_HAT_FIGURES);
   const sparse = isSparseCue(cue);
@@ -333,7 +319,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
           : sectionPulseStride;
       // Sixteenth-note arps read as a game-console texture. Let the drums
       // provide urgency at the peak while the fastest pulse stays musical.
-      const pulseStride = requestedPulseStride === 1 ? 2 : requestedPulseStride;
+      const pulseStride = Math.max(4, requestedPulseStride);
       for (const i of pulseStepsFor(style.pulseRole, pulseStride)) {
         const figureIndex = Math.floor(i / 2) % arpFigure.length;
         const velocity = climax
@@ -435,22 +421,28 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
       const grooveVariantNow = ((bar >= MUSIC_BARS / 2 ? style.grooveVariant + 1 : style.grooveVariant) % 3) as 0 | 1 | 2;
       const hits = grooveHits(groove, cycle % 2 as 0 | 1, grooveVariantNow);
       const density = Math.min(1, style.drumDensity * arrangement.drumDensity[sectionIndex]!);
-      const drumGain = mixEnergy(fullDrums ? 0.82 + density * 0.18 : 0.54 + density * 0.12, energy);
+      const drumGain = mixEnergy(fullDrums ? 0.82 + density * 0.18 : 0.54 + density * 0.12, energy) * (cue === "mission" ? 0.78 : 1);
       for (const step of hits.kick) drumEvent(drums, origin + step, "kick", (step === 0 ? 0.95 : 0.72) * drumGain, step === 0, drumRng);
       for (const step of hits.snare) {
         const accent = step === 4 || step === 12;
         drumEvent(drums, origin + step, "snare", (accent ? 0.9 : 0.62) * drumGain, accent, drumRng);
-        if (!sparse && !hole) drumEvent(drums, origin + step, "clap", (accent ? 0.76 : 0.48) * drumGain, accent, drumRng);
+        if (!sparse && !hole && accent && (section.name === "hook" || section.name === "climax") && phraseBar % 4 === 0) {
+          drumEvent(drums, origin + step, "clap", 0.28 * drumGain, true, drumRng);
+        }
       }
-      const hatStride = sparse
+      const requestedHatStride = sparse
         ? Math.max(2, dropHats ? 4 : arrangement.hatStride[sectionIndex]!)
         : climax ? 2 : dropHats ? 4 : arrangement.hatStride[sectionIndex]!;
+      const hatStride = cue === "mission" ? Math.max(2, requestedHatStride) : requestedHatStride;
       for (let step = 0; step < STEPS_PER_BAR; step += hatStride) {
         const offbeat = climax ? step % 2 === 1 : step % 4 === 2;
-        drumEvent(drums, origin + step, "hat", (offbeat ? 0.36 : 0.26) * drumGain, false, drumRng);
+        drumEvent(drums, origin + step, "hat", (offbeat ? 0.36 : 0.26) * drumGain * (cue === "mission" ? 0.72 : 1), false, drumRng);
       }
       if (!sparse && !hole && !dropHats) {
-        for (const step of openHatSteps) drumEvent(drums, origin + step, "openHat", 0.44 * drumGain, false, drumRng);
+        const openHatHits = cue === "mission" ? openHatSteps.slice(0, 1) : openHatSteps;
+        if (cue !== "mission" || bar % 2 === 1) {
+          for (const step of openHatHits) drumEvent(drums, origin + step, "openHat", 0.44 * drumGain * (cue === "mission" ? 0.58 : 1), false, drumRng);
+        }
       }
       if (!sparse) placeStylePercussion(drums, origin, style.name, drumGain, dropHats, drumRng);
     }
@@ -491,7 +483,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     hook,
   };
 
-  smoothMelodyLine(notes.melody);
+  smoothMelodyLine(notes.melody, cue === "mission" ? { min: 36, max: 100 } : undefined);
   notes.counter = notes.counter.filter(
     (note) => !notes.melody.some((lead) => lead.step === note.step && lead.midi === note.midi),
   );

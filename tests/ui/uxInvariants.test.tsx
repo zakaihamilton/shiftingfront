@@ -202,6 +202,7 @@ describe("UX & Ergonomics Invariants", () => {
             levelCount={6}
             missionName="Fortify"
             objective="Hold the line"
+            survivalObjective
             timeRemaining="Time remaining 05:00"
             timeRemainingTicks={5 * 60 * 12}
             timeLimitTicks={10 * 60 * 12}

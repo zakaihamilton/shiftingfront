@@ -8,6 +8,7 @@ export type BattlefieldHudProps = {
   levelCount: number;
   missionName: string;
   objective: string;
+  survivalObjective?: boolean;
   profileLabel?: string;
   doctrineHints?: DoctrineHint[];
   timeRemaining?: string;
@@ -30,6 +31,7 @@ export type BattlefieldOperationBarProps = Pick<
 export type MissionDirectiveProps = Pick<
   BattlefieldHudProps,
   | "objective"
+  | "survivalObjective"
   | "doctrineHints"
   | "timeRemaining"
   | "convoyDeparture"

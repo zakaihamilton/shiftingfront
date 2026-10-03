@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useSyncExternalStore, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore, useState } from "react";
 import { useGameRuntime } from "./hooks/useGameRuntime";
 import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "./hooks/runtime/surfaces";
 import { TacticalScreen } from "./TacticalScreen";
@@ -59,10 +59,18 @@ export function GameClient(props: Parameters<typeof ReadyGameClient>[0]) {
   const { seed, mission, resume, fresh, slot, tutorial, multiplayerSession } = props;
   const repository = getSaveRepository();
   const [boot, setBoot] = useState<{ state?: SimState; error?: Error } | null>(null);
+  const bootRequestRef = useRef<{ key: string; promise: Promise<SimState> } | null>(null);
   useEffect(() => {
     if (!repository || tutorial || multiplayerSession) return;
     let active = true;
-    void prepareInitialMission({ seed, mission, resume, fresh, slot }).then((state) => { if (active) setBoot({ state }); },
+    const key = JSON.stringify([seed, mission, resume, fresh, slot ?? null]);
+    if (bootRequestRef.current?.key !== key) {
+      bootRequestRef.current = {
+        key,
+        promise: prepareInitialMission({ seed, mission, resume, fresh, slot }),
+      };
+    }
+    void bootRequestRef.current.promise.then((state) => { if (active) setBoot({ state }); },
       (error) => { if (active) setBoot({ error }); });
     return () => { active = false; };
   }, [repository, seed, mission, resume, fresh, slot, tutorial, multiplayerSession]);

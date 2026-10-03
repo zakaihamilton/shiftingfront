@@ -23,26 +23,16 @@ export function playKick(audio: AudioGraphContext, g: MusicGraph, time: number, 
     const click = audio.createOscillator();
     const clickGain = audio.createGain();
     click.type = industrial ? "sawtooth" : "triangle";
-    click.frequency.setValueAtTime(Math.max(drum.kickStart * (chip ? 4 : 8), chip ? 900 : 1400), time);
+    click.frequency.setValueAtTime(Math.max(320, Math.min(900, drum.kickStart * (chip ? 3 : 2.5))), time);
     click.frequency.exponentialRampToValueAtTime(220, time + (chip ? 0.01 : 0.018));
     clickGain.gain.setValueAtTime(0.0001, time);
-    clickGain.gain.exponentialRampToValueAtTime((industrial ? 0.16 : chip ? 0.08 : 0.1) * velocity, time + 0.002);
+    clickGain.gain.exponentialRampToValueAtTime((industrial ? 0.07 : chip ? 0.05 : 0.055) * velocity, time + 0.002);
     clickGain.gain.exponentialRampToValueAtTime(0.0001, time + (chip ? 0.014 : 0.022));
     click.connect(clickGain);
     clickGain.connect(g.rhythmBus);
     click.start(time);
     click.stop(time + 0.03);
   }
-  playNoise(
-    audio,
-    g.rhythmBus,
-    time,
-    (chip ? 0.14 : industrial ? 0.14 : analog ? 0.05 : 0.06) * velocity,
-    drum.snareNoise * (chip ? 2.2 : 1.45),
-    chip ? 0.012 : analog ? 0.01 : 0.018,
-    "highpass",
-    drum.noisePan,
-  );
 }
 
 export function playSnare(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, accent: boolean): void {
@@ -51,9 +41,17 @@ export function playSnare(audio: AudioGraphContext, g: MusicGraph, time: number,
   const analog = kit === "analog-808";
   const chip = kit === "chip-noise";
   const industrial = kit === "industrial";
-  const dry = (accent ? 0.16 : 0.085) * velocity * (chip ? 0.7 : 1);
-  playNoise(audio, g.rhythmBus, time, dry * (analog ? 0.7 : industrial ? 1.2 : 1), drum.snareNoise, accent ? (chip ? 0.04 : 0.07) : (chip ? 0.028 : 0.05), "bandpass", drum.noisePan);
-  playNoise(audio, g.rhythmBus, time, dry * (analog ? 0.26 : 0.35), drum.snareNoise * 2.2, chip ? 0.018 : 0.035, "highpass", drum.noisePan);
+  const dry = (accent ? 0.12 : 0.065) * velocity * (chip ? 0.7 : 1);
+  playNoise(
+    audio,
+    g.rhythmBus,
+    time,
+    dry * (analog ? 0.5 : industrial ? 0.72 : 0.62),
+    Math.min(drum.snareNoise, 2_100),
+    accent ? 0.035 : 0.022,
+    "bandpass",
+    drum.noisePan,
+  );
   if (!chip) {
     const body = audio.createOscillator();
     const bodyGain = audio.createGain();
@@ -69,15 +67,12 @@ export function playSnare(audio: AudioGraphContext, g: MusicGraph, time: number,
     body.start(time);
     body.stop(time + bodyLen + 0.03);
   }
-  playNoise(audio, g.reverbSend, time, dry * (chip ? 0.16 : 0.4), drum.snareNoise * 0.84, accent ? 0.14 : 0.1, "bandpass", drum.noisePan);
 }
 
 export function playClap(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, accent: boolean): void {
   const drum = g.style.drum;
-  const gain = (accent ? 0.1 : 0.06) * velocity;
-  playNoise(audio, g.rhythmBus, time, gain, drum.snareNoise * 0.76, accent ? 0.085 : 0.06, "bandpass", drum.noisePan + 0.08);
-  playNoise(audio, g.rhythmBus, time + 0.014, gain * 0.72, drum.snareNoise * 1.03, accent ? 0.07 : 0.045, "bandpass", drum.noisePan - 0.08);
-  playNoise(audio, g.reverbSend, time, gain * 0.42, drum.snareNoise * 0.66, accent ? 0.12 : 0.08, "bandpass", drum.noisePan);
+  const gain = (accent ? 0.055 : 0.035) * velocity;
+  playNoise(audio, g.rhythmBus, time, gain, Math.min(drum.snareNoise * 0.7, 1_800), accent ? 0.04 : 0.028, "bandpass", drum.noisePan + 0.04);
 }
 
 export function playHat(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, open: boolean): void {
@@ -85,13 +80,13 @@ export function playHat(audio: AudioGraphContext, g: MusicGraph, time: number, v
   const kit = g.style.drumKit;
   const chip = kit === "chip-noise";
   const industrial = kit === "industrial";
-  const duration = open ? (chip ? 0.08 : 0.17) : chip ? 0.016 : 0.027;
+  const duration = open ? (chip ? 0.07 : 0.12) : chip ? 0.014 : 0.022;
   playNoise(
     audio,
     g.rhythmBus,
     time,
-    (open ? 0.07 : 0.038) * velocity * (industrial ? 1.1 : 1),
-    open ? drum.openHatFrequency : drum.hatFrequency,
+    (open ? 0.045 : 0.022) * velocity * (industrial ? 1.05 : 1),
+    Math.min(open ? drum.openHatFrequency : drum.hatFrequency, open ? 3_400 : 6_200),
     duration,
     industrial && !open ? "bandpass" : open ? "bandpass" : "highpass",
     open ? drum.noisePan + 0.12 : drum.noisePan - 0.08,
@@ -118,23 +113,21 @@ export function playImpact(audio: AudioGraphContext, g: MusicGraph, time: number
   const drum = g.style.drum;
   const oscillator = audio.createOscillator();
   const envelope = audio.createGain();
-  oscillator.type = "sawtooth";
+  oscillator.type = "sine";
   oscillator.frequency.setValueAtTime(drum.impactStart, time);
-  oscillator.frequency.exponentialRampToValueAtTime(drum.impactEnd, time + 0.34);
+  oscillator.frequency.exponentialRampToValueAtTime(drum.impactEnd, time + 0.28);
   envelope.gain.setValueAtTime(0.0001, time);
-  envelope.gain.exponentialRampToValueAtTime(0.42 * velocity, time + 0.008);
-  envelope.gain.exponentialRampToValueAtTime(0.0001, time + 0.42);
+  envelope.gain.exponentialRampToValueAtTime(0.24 * velocity, time + 0.012);
+  envelope.gain.exponentialRampToValueAtTime(0.0001, time + 0.36);
   oscillator.connect(envelope);
   envelope.connect(g.fxBus);
   oscillator.start(time);
-  oscillator.stop(time + 0.46);
-  playNoise(audio, g.fxBus, time, 0.1 * velocity, drum.impactStart * 8.3, 0.16, "bandpass", drum.noisePan);
-  playNoise(audio, g.reverbSend, time, 0.06 * velocity, drum.impactStart * 6.5, 0.28, "bandpass", drum.noisePan);
+  oscillator.stop(time + 0.4);
 }
 
 export function playRim(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number): void {
   const drum = g.style.drum;
-  playNoise(audio, g.rhythmBus, time, 0.08 * velocity, 1800, 0.028, "bandpass", drum.noisePan + 0.16);
+  playNoise(audio, g.rhythmBus, time, 0.04 * velocity, 1_400, 0.02, "bandpass", drum.noisePan + 0.12);
   const body = audio.createOscillator();
   const bodyGain = audio.createGain();
   body.type = "triangle";
@@ -151,5 +144,5 @@ export function playRim(audio: AudioGraphContext, g: MusicGraph, time: number, v
 
 export function playShaker(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number): void {
   const drum = g.style.drum;
-  playNoise(audio, g.rhythmBus, time, 0.05 * velocity, 6800, 0.022, "highpass", drum.noisePan * -1);
+  playNoise(audio, g.rhythmBus, time, 0.025 * velocity, 5_600, 0.018, "highpass", drum.noisePan * -1);
 }
