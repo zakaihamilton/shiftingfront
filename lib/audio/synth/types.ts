@@ -14,7 +14,8 @@ export type SfxKind =
   | "smallArms"
   | "antiArmor"
   | "cannon"
-  | "turret"
+  | "airStrike"
+  | "antiAir"
   | "impact"
   | "impactFlesh"
   | "impactMetal"
@@ -48,7 +49,8 @@ export const DEFAULT_INTERVALS: Partial<Record<SfxKind, number>> = {
   smallArms: 0.045,
   antiArmor: 0.1,
   cannon: 0.12,
-  turret: 0.08,
+  airStrike: 0.18,
+  antiAir: 0.08,
   impact: 0.04,
   impactFlesh: 0.04,
   impactMetal: 0.04,

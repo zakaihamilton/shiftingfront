@@ -755,7 +755,8 @@ describe("generated audio", () => {
       playSfx("smallArms", { pan: -0.8 });
       playSfx("antiArmor");
       playSfx("cannon", { pan: 0.8 });
-      playSfx("turret");
+      playSfx("airStrike");
+      playSfx("antiAir");
       playSfx("impact");
       playSfx("impactFlesh");
       playSfx("impactMetal");
