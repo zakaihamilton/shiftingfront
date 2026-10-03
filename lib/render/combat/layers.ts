@@ -1,7 +1,7 @@
-import { footprintOf } from "../../catalog";
+import { ammoEffectForWeapon, footprintOf } from "../../catalog";
 import { buildingSprite, rubbleSprite, unitSprite, wreckSprite } from "../../gen/assets";
 import { generateVisualProfile } from "../../gen/visualProfile";
-import { fxProgress, isBuildingKind, isUnitKind, type FxBurst } from "../fx";
+import { FX_DURATION, fxProgress, isBuildingKind, isUnitKind, type FxBurst } from "../fx";
 import { TILE_H, tileToScreen, type Camera } from "../../iso";
 import { drawSprite, rasterize } from "../sprites";
 import type { Facing, SimState, SpriteSpec } from "../../types";
@@ -55,7 +55,11 @@ function drawDestructionFx(
   reducedMotion: boolean,
 ): void {
   const z = cam.zoom;
-  const progress = fxProgress(burst, nowMs);
+  const impactAtMs = burst.impactAtMs;
+  const destructionStartMs = impactAtMs ?? burst.bornMs;
+  const waitMs = impactAtMs === undefined ? 0 : Math.max(0, impactAtMs - burst.bornMs);
+  const destructionDurationMs = Math.max(1, burst.durationMs - waitMs);
+  const progress = clamp01((nowMs - destructionStartMs) / destructionDurationMs);
   const magnitude = burst.magnitude ?? 1;
   const variant = burst.variant ?? burst.id;
   const isBuilding = burst.entityClass === "building";
@@ -63,6 +67,19 @@ function drawDestructionFx(
   const groundY = screen.y + (TILE_H / 2) * z;
   const facing = (variant % 8) as Facing;
   const spec = destructionSprite(state, burst, facing);
+
+  if (impactAtMs !== undefined && nowMs < impactAtMs) {
+    if (spec) {
+      const dw = spec.w * z;
+      const dh = spec.h * z;
+      const ax = (spec.anchorX ?? spec.w / 2) * z;
+      const ay = (spec.anchorY ?? spec.h) * z;
+      const image = rasterize(spec);
+      ctx.globalAlpha = 1;
+      drawSprite(ctx, spec, image, screen.x - ax, groundY - ay, dw, dh);
+    }
+    return;
+  }
 
   if (spec && progress < DESTRUCTION_SPRITE_END) {
     const collapse = smoothstep(progress / (isOrganicUnit ? 0.66 : DESTRUCTION_SPRITE_END));
@@ -203,7 +220,7 @@ export function drawFxLayer(
 
   if (layer === "ground") {
     for (const burst of fx) {
-      if (burst.kind !== "scorch") continue;
+      if (burst.kind !== "scorch" || burst.bornMs > nowMs) continue;
       const p = fxProgress(burst, nowMs);
       const s = position(burst);
       if (!visible(s)) continue;
@@ -232,7 +249,7 @@ export function drawFxLayer(
       ctx.restore();
     }
     for (const burst of fx) {
-      if (burst.kind !== "rubble" && burst.kind !== "wreck") continue;
+      if ((burst.kind !== "rubble" && burst.kind !== "wreck") || burst.bornMs > nowMs) continue;
       const p = fxProgress(burst, nowMs);
       const s = position(burst);
       if (!visible(s)) continue;
@@ -253,7 +270,12 @@ export function drawFxLayer(
   }
 
   for (const burst of fx) {
-    if (burst.kind === "rubble" || burst.kind === "wreck" || burst.kind === "scorch") continue;
+    if (
+      burst.bornMs > nowMs ||
+      burst.kind === "rubble" ||
+      burst.kind === "wreck" ||
+      burst.kind === "scorch"
+    ) continue;
     const p = fxProgress(burst, nowMs);
     const s = position(burst);
     if (!visible(s)) continue;
@@ -269,37 +291,99 @@ export function drawFxLayer(
     }
 
     if (burst.kind === "muzzle") {
-      if (reducedMotion) {
-        ctx.globalAlpha = 0.32 * fade;
-        ctx.fillStyle = "#fff2b2";
-        ctx.fillRect(Math.round(s.x - 2 * z), Math.round(s.y + 2 * z), Math.max(2, 4 * z), Math.max(2, 3 * z));
+      const ammoEffect = burst.ammoEffect ?? ammoEffectForWeapon(burst.weapon ?? "cannon");
+      const muzzleFade = Math.max(0, 1 - (nowMs - burst.bornMs) / FX_DURATION.muzzle);
+      if (ammoEffect === "bomb") {
+        // Strike planes release bombs without a ground-level muzzle flash.
         ctx.restore();
         continue;
       }
-      const radius = (5 + magnitude * 8) * z * (0.8 + fade * 0.35);
+      if (reducedMotion) {
+        ctx.globalAlpha = 0.32 * muzzleFade;
+        ctx.fillStyle = ammoEffect === "missile" ? "#ff9b56" : "#fff2b2";
+        const size = ammoEffect === "missile" ? 6 : 4;
+        ctx.fillRect(Math.round(s.x - size * z / 2), Math.round(s.y + 2 * z), Math.max(2, size * z), Math.max(2, 3 * z));
+        ctx.restore();
+        continue;
+      }
+      const radius = (ammoEffect === "bullet" ? 3 : 5 + magnitude * 7) * z * (0.8 + muzzleFade * 0.35);
       ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = 0.85 * fade;
-      ctx.fillStyle = burst.weapon === "antiArmor" ? "#ff9b56" : "#fff2b2";
+      ctx.globalAlpha = 0.85 * muzzleFade;
+      ctx.fillStyle = ammoEffect === "missile" ? "#ff9b56" : "#fff2b2";
       ctx.beginPath();
-      ctx.ellipse(s.x, s.y + 4 * z, radius * 0.48, radius * 0.32, 0, 0, Math.PI * 2);
+      ctx.ellipse(s.x, s.y + 4 * z, radius * (ammoEffect === "bullet" ? 0.34 : 0.48), radius * 0.32, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = "#fff7d6";
       ctx.lineWidth = Math.max(1, z);
-      for (let i = 0; i < 5; i++) {
-        const angle = phase + (i / 5) * Math.PI * 2;
+      const rays = ammoEffect === "bullet" ? 3 : 5;
+      for (let i = 0; i < rays; i++) {
+        const angle = phase + (i / rays) * Math.PI * 2;
         ctx.beginPath();
         ctx.moveTo(s.x, s.y + 4 * z);
-        ctx.lineTo(s.x + Math.cos(angle) * radius, s.y + 4 * z + Math.sin(angle) * radius * 0.58);
+        ctx.lineTo(s.x + Math.cos(angle) * radius * (ammoEffect === "bullet" ? 0.72 : 1), s.y + 4 * z + Math.sin(angle) * radius * 0.58);
         ctx.stroke();
+      }
+      if (ammoEffect === "missile") {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = 0.32 * muzzleFade;
+        ctx.fillStyle = "#858a84";
+        ctx.beginPath();
+        ctx.ellipse(s.x - 4 * z, s.y + 7 * z, 5 * z, 2.8 * z, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
       ctx.restore();
       continue;
     }
 
     if (burst.kind === "impact") {
+      const ammoEffect = burst.ammoEffect ?? ammoEffectForWeapon(burst.weapon ?? "cannon");
       const metal = burst.targetDomain === "vehicle";
       const structure = burst.targetDomain === "building";
       const radius = (4 + magnitude * 13 + p * 8) * z;
+      if (ammoEffect === "missile" || ammoEffect === "shell" || ammoEffect === "bomb") {
+        const scale = ammoEffect === "bomb" ? 1.32 : ammoEffect === "shell" ? 0.78 : 1;
+        const blastRadius = radius * scale;
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = (reducedMotion ? 0.24 : 0.62) * fade;
+        ctx.fillStyle = p < 0.24 ? "#fff0a3" : "#e56b32";
+        ctx.beginPath();
+        ctx.ellipse(s.x, s.y + 7 * z, blastRadius * (0.5 + p * 0.22), blastRadius * (0.28 + p * 0.12), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = (reducedMotion ? 0.24 : 0.72) * fade;
+        ctx.strokeStyle = metal ? "#ffd18b" : structure ? "#e5a35d" : "#d09a68";
+        ctx.lineWidth = Math.max(1, (1 + magnitude * 0.8) * z);
+        ctx.beginPath();
+        ctx.ellipse(s.x, s.y + 8 * z, blastRadius * (0.54 + p * 0.42), blastRadius * (0.2 + p * 0.16), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        if (!reducedMotion) {
+          const count = ammoEffect === "bomb" ? 10 : ammoEffect === "shell" ? 6 : 8;
+          for (let i = 0; i < count; i++) {
+            const angle = phase + (i / count) * Math.PI * 2;
+            const travel = blastRadius * (0.35 + ((((burst.variant ?? burst.id) >>> (i % 16)) & 3) * 0.18));
+            ctx.globalAlpha = fade * (i % 2 ? 0.68 : 0.9);
+            ctx.fillStyle = i % 2 ? "#ffbd68" : "#ffe7a1";
+            ctx.fillRect(
+              Math.round(s.x + Math.cos(angle) * travel - z),
+              Math.round(s.y + 7 * z + Math.sin(angle) * travel * 0.42 - p * 7 * z),
+              Math.max(1, 2 * z),
+              Math.max(1, 2 * z),
+            );
+          }
+          if (ammoEffect !== "shell") {
+            ctx.globalAlpha = 0.26 * fade;
+            ctx.fillStyle = "#47433c";
+            for (let i = 0; i < 3; i++) {
+              const drift = (i - 1) * blastRadius * 0.24;
+              ctx.beginPath();
+              ctx.ellipse(s.x + drift, s.y - (5 + p * 15 + i * 2) * z, (3 + p * 4) * z, (2 + p * 2) * z, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+        ctx.restore();
+        continue;
+      }
       ctx.globalAlpha = (reducedMotion ? 0.28 : 0.68) * fade;
       ctx.strokeStyle = metal ? "#d8f2ff" : structure ? "#f1b66d" : "#d7c0a1";
       ctx.lineWidth = Math.max(1, (1 + magnitude) * z);
