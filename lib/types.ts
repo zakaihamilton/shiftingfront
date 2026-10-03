@@ -61,6 +61,8 @@ export type OrderMode = "move" | "attackMove" | "attack";
 export type LossReason = "yardDestroyed" | "deadline" | "objectiveTargetLost";
 export type MissionDirectorPhase = "opening" | "pressure" | "finale";
 export type WeaponType = "smallArms" | "antiArmor" | "cannon" | "airStrike" | "antiAir";
+/** Visual ammunition style used by a unit or structure's attack effect. */
+export type AmmoEffect = "bullet" | "missile" | "shell" | "bomb" | "beam";
 export type ArmorType = "light" | "heavy" | "structure";
 export type TutorialStage = "select" | "move" | "build" | "produce" | "attack" | "repair" | "complete";
 export type AiBehavior = "economy" | "defense" | "assault" | "retreat" | "regroup";
