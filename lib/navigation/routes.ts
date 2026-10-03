@@ -15,6 +15,9 @@ export function briefingPath(seed: number, mission: number, returnToGame = false
   const params = [returnToGame ? "return=game" : "", origin ? `from=${origin}` : ""].filter(Boolean);
   return params.length ? `${path}&${params.join("&")}` : path;
 }
+export function replayBriefingPath(seed: number, mission: number, origin: "campaign" | "result"): string {
+  return `${briefingPath(seed, mission, false, origin)}&replay=1`;
+}
 export function briefingBackPath(seed: number, mission: number, returnToGame: boolean, origin: NavigationOrigin): string {
   if (returnToGame || origin === "result") return playResumePath(seed, mission);
   if (origin === "newGame") return `/?seed=${formatSeed(seed)}`;
