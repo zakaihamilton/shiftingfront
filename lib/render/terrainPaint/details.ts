@@ -3,7 +3,13 @@ import type { BiomeName, SimState } from "../../types";
 import type { SceneryWorld } from "../../gen/map";
 import { fogAt } from "../../sim/fog";
 import { biomeMaterials, fogTerrainGain, oreCrystalCluster, tileVariant } from "../terrainAtlas";
-import { propMaterialsFor, terrainVisualTuningFor, type BiomeMaterials } from "../terrainMaterials";
+import {
+  artSalt,
+  propMaterialsFor,
+  terrainRegionMaterialsFor,
+  terrainVisualTuningFor,
+  type BiomeMaterials,
+} from "../terrainMaterials";
 import { tileToScreen, type Camera } from "../../iso";
 import {
   blockerPropPrims,
@@ -92,14 +98,20 @@ export function drawBlockerProp(
   z: number,
 ): void {
   const v = tileVariant(state.seed, x, y);
-  const mats = biomeMaterials(state.biome);
   const kind = blockerPropKind(state.biome, v);
+  const mats = terrainRegionMaterialsFor(
+    propMaterialsFor(biomeMaterials(state.biome), terrainVisualTuningFor(state.biome)),
+    state.biome,
+    x,
+    y,
+    artSalt(state),
+  );
   const ox = ((v % 7) - 3) * z * 0.4;
   const oy = ((Math.floor(v / 11) % 5) - 2) * z * 0.2;
   ctx.save();
   ctx.globalAlpha *= terrainPropLightGain(state, x, y);
   ctx.translate(sx + ox, sy + TILE_H * z * 0.42 + oy);
-  paintBlocker(ctx, kind, propMaterialsFor(mats, terrainVisualTuningFor(state.biome)), z, v, state.biome);
+  paintBlocker(ctx, kind, mats, z, v, state.biome);
   ctx.restore();
 }
 
@@ -122,15 +134,24 @@ export function drawOreCrystals(
 ): void {
   const cluster = oreCrystalCluster(state, x, y);
   if (!cluster) return;
-  const mats = propMaterialsFor(biomeMaterials(state.biome), terrainVisualTuningFor(state.biome));
+  const baseMats = propMaterialsFor(biomeMaterials(state.biome), terrainVisualTuningFor(state.biome));
+  const mats = terrainRegionMaterialsFor(
+    baseMats,
+    state.biome,
+    x,
+    y,
+    artSalt(state),
+  );
   const s = tileToScreen(x, y, cam, elev);
   const gemDark = rgbMix(mats.ore, mats.dark, 0.42);
   const gem = rgbMix(mats.ore, mats.light, 0.38);
-  const gemHi = rgbMix(mats.light, { r: 255, g: 246, b: 210 }, 0.42);
+  // Keep the deposit's dark outline and bright glint stable while its facets
+  // inherit the local regional palette.
+  const gemHi = rgbMix(baseMats.light, { r: 255, g: 246, b: 210 }, 0.42);
   ctx.save();
   ctx.translate(s.x, s.y);
   const alpha = ctx.globalAlpha * cluster.intensity * terrainPropLightGain(state, x, y);
-  ctx.fillStyle = rgbOf(mats.dark);
+  ctx.fillStyle = rgbOf(baseMats.dark);
   for (const burst of cluster.bursts) {
     ctx.globalAlpha = alpha * 0.32;
     ctx.beginPath();
