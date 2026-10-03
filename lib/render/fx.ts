@@ -1,6 +1,7 @@
-import { BUILDING_KINDS, UNIT_KINDS, UNIT_STATS } from "../catalog";
+import { BUILDING_KINDS, BUILDING_STATS, UNIT_KINDS, UNIT_STATS, ammoEffectForWeapon } from "../catalog";
 import type {
   BuildingKind,
+  AmmoEffect,
   EntityClass,
   Owner,
   SimEvent,
@@ -8,6 +9,7 @@ import type {
   UnitKind,
   WeaponType,
 } from "../types";
+import { groundHeight, heightAt } from "../sim/world";
 
 export type FxKind =
   | "muzzle"
@@ -39,6 +41,13 @@ export type FxBurst = {
   variant?: number;
   magnitude?: number;
   weapon?: WeaponType;
+  ammoEffect?: AmmoEffect;
+  /** Flight snapshot carried by muzzle bursts so shots survive target changes. */
+  projectileDurationMs?: number;
+  sourceElev?: number;
+  targetElev?: number;
+  /** Delayed presentation time for a destruction caused by an in-flight shot. */
+  impactAtMs?: number;
   targetDomain?: FxTargetDomain;
   sourceX?: number;
   sourceY?: number;
@@ -120,6 +129,42 @@ export function weaponFxMagnitude(weapon: WeaponType): number {
   return 0.48;
 }
 
+function ammoEffectForAttacker(kind: UnitKind | BuildingKind, weapon: WeaponType): AmmoEffect {
+  const configured = isUnitKind(kind) ? UNIT_STATS[kind].ammoEffect : BUILDING_STATS[kind].ammoEffect;
+  return configured ?? ammoEffectForWeapon(weapon);
+}
+
+function projectileFlightDurationMs(effect: AmmoEffect, distance: number): number {
+  const ticks = effect === "bullet"
+    ? 1.2 + Math.min(0.4, distance * 0.04)
+    : effect === "missile"
+      ? 4.4 + Math.min(1.5, distance * 0.16)
+      : effect === "bomb"
+        ? 3.3 + Math.min(1.1, distance * 0.12)
+        : effect === "beam"
+          ? 2.4
+          : 2.4 + Math.min(0.8, distance * 0.08);
+  return ticks * (1000 / 12);
+}
+
+function combatEntityElevation(state: SimState, kind: UnitKind | BuildingKind, x: number, y: number): number {
+  if (isUnitKind(kind)) {
+    const ground = groundHeight(state, x, y);
+    return ground + (UNIT_STATS[kind].domain === "air" ? 5 : 0);
+  }
+  if (isBuildingKind(kind)) return heightAt(state, x, y);
+  return elevationAt(state, x, y);
+}
+
+function destroyedEntityKey(event: Extract<SimEvent, { type: "destroyed" }>): string {
+  return `${event.owner}:${event.kind}:${event.x}:${event.y}`;
+}
+
+function splashRadiusForAttacker(kind: UnitKind | BuildingKind): number {
+  if (isUnitKind(kind)) return UNIT_STATS[kind].splashRadius;
+  return BUILDING_STATS[kind].combat?.splashRadius ?? 0;
+}
+
 function elevationAt(state: SimState, x: number, y: number): number {
   const tx = Math.max(0, Math.min(state.width - 1, Math.round(x)));
   const ty = Math.max(0, Math.min(state.height - 1, Math.round(y)));
@@ -155,21 +200,52 @@ export function burstsFromEvents(
   const bursts: FxBurst[] = [];
   let id = nextId;
   const push = (input: BurstInput) => bursts.push(makeBurst(id++, input));
+  const destructionImpactTimes = new Map<string, number>();
+
+  for (const destroyed of events) {
+    if (destroyed.type !== "destroyed") continue;
+    let nearestHit: { distance: number; impactAtMs: number } | undefined;
+    for (const hit of events) {
+      if (hit.type !== "combat" || hit.owner === destroyed.owner) continue;
+      const distance = Math.hypot(destroyed.x - hit.targetX, destroyed.y - hit.targetY);
+      const directHit = hit.targetOwner === destroyed.owner && hit.targetKind === destroyed.kind && distance < 0.001;
+      const splashRadius = splashRadiusForAttacker(hit.attackerKind);
+      const splashHit = splashRadius > 0 && distance <= splashRadius;
+      if (!directHit && !splashHit) continue;
+      if (nearestHit && distance >= nearestHit.distance) continue;
+      const effect = ammoEffectForAttacker(hit.attackerKind, hit.weapon);
+      const flightMs = projectileFlightDurationMs(effect, Math.hypot(hit.x - hit.targetX, hit.y - hit.targetY));
+      nearestHit = { distance, impactAtMs: nowMs + flightMs };
+    }
+    if (nearestHit) destructionImpactTimes.set(destroyedEntityKey(destroyed), nearestHit.impactAtMs);
+  }
 
   for (const event of events) {
     if (event.type === "combat") {
       const magnitude = weaponFxMagnitude(event.weapon);
+      const ammoEffect = ammoEffectForAttacker(event.attackerKind, event.weapon);
+      const distance = Math.hypot(event.targetX - event.x, event.targetY - event.y);
+      const flightMs = projectileFlightDurationMs(ammoEffect, distance);
+      const sourceElev = combatEntityElevation(state, event.attackerKind, event.x, event.y);
+      const targetElev = combatEntityElevation(state, event.targetKind, event.targetX, event.targetY);
       push({
         kind: "muzzle",
         x: event.x,
         y: event.y,
-        elev: elevationAt(state, event.x, event.y),
+        elev: sourceElev,
         bornMs: nowMs,
+        durationMs: Math.max(FX_DURATION.muzzle, flightMs),
         entityKind: event.attackerKind,
         entityClass: entityClassOf(event.attackerKind),
         owner: event.owner,
         magnitude,
         weapon: event.weapon,
+        ammoEffect,
+        projectileDurationMs: flightMs,
+        sourceX: event.x,
+        sourceY: event.y,
+        sourceElev,
+        targetElev,
         targetDomain: fxTargetDomain(event.targetKind),
         targetX: event.targetX,
         targetY: event.targetY,
@@ -178,13 +254,14 @@ export function burstsFromEvents(
         kind: "impact",
         x: event.targetX,
         y: event.targetY,
-        elev: elevationAt(state, event.targetX, event.targetY),
-        bornMs: nowMs,
+        elev: targetElev,
+        bornMs: nowMs + flightMs,
         entityKind: event.targetKind,
         entityClass: entityClassOf(event.targetKind),
         owner: event.targetOwner,
         magnitude,
         weapon: event.weapon,
+        ammoEffect,
         targetDomain: fxTargetDomain(event.targetKind),
         sourceX: event.x,
         sourceY: event.y,
@@ -244,18 +321,27 @@ export function burstsFromEvents(
     const entityClass = entityClassOf(event.kind);
     const targetDomain = fxTargetDomain(event.kind);
     const magnitude = entityClass === "building" ? 1.2 : targetDomain === "vehicle" ? 0.9 : 0.62;
+    const impactAtMs = destructionImpactTimes.get(destroyedEntityKey(event));
     const base = {
       x: event.x,
       y: event.y,
       elev: elevationAt(state, event.x, event.y),
-      bornMs: nowMs,
+      bornMs: impactAtMs ?? nowMs,
       entityKind: event.kind,
       entityClass,
       owner: event.owner,
       targetDomain,
       magnitude,
     } satisfies Omit<BurstInput, "kind">;
-    push({ ...base, kind: "destruction" });
+    const destruction = impactAtMs === undefined
+      ? base
+      : {
+          ...base,
+          bornMs: nowMs,
+          durationMs: impactAtMs - nowMs + FX_DURATION.destruction,
+          impactAtMs,
+        };
+    push({ ...destruction, kind: "destruction" });
     push({ ...base, kind: "scorch", magnitude: magnitude * 1.15 });
     if (entityClass === "building") {
       push({ ...base, kind: "rubble" });
