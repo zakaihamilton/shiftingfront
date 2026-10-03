@@ -38,7 +38,7 @@ export function ProductionCameos({
           && ownerCredits >= UNIT_STATS[unit].cost && !!producer && power >= 0;
         const disabled = cameo.phase === "idle" && !canBuy;
         const blocker = disabled ? productionBlockerCopy(state, unit, power, producer) : undefined;
-        const recommendation = supportRecommendationText(state, unit);
+        const recommendation = unitRecommendationText(state, unit);
         return (
           <CommandCameo
             key={unit}
@@ -64,7 +64,9 @@ export function ProductionCameos({
   );
 }
 
-export function supportRecommendationText(state: SimState, unit: UnitKind): string | undefined {
+export function unitRecommendationText(state: SimState, unit: UnitKind): string | undefined {
+  if (unit === "infantry") return "Line infantry · effective vs light units";
+  if (unit === "antiArmor") return "Rocket launcher · effective vs heavy armor";
   if (unit !== "medic" && unit !== "repairTruck") return undefined;
   const domain = unit === "medic" ? "human" : "vehicle";
   const wounded = state.entities.filter((entity) =>

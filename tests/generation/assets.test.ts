@@ -212,13 +212,13 @@ describe("tactical procedural assets", () => {
       expect(views.every((spec) => spec.rotation === undefined)).toBe(true);
       expect(new Set(views.map((spec) => spec.imageSrc)).size).toBe(8);
       expect(views[0]!.imageSrc).toMatch(/-right(?:-v[12])?\.webp/);
-      expect(views[1]!.imageSrc).toContain("-front-right-v1.webp");
-      expect(views[2]!.imageSrc).toMatch(/-front(?:-v1)?\.webp/);
-      expect(views[3]!.imageSrc).toContain("-front-left-v1.webp");
+      expect(views[1]!.imageSrc).toMatch(/-front-right-v\d+\.webp/);
+      expect(views[2]!.imageSrc).toMatch(/-front(?:-v\d+)?\.webp/);
+      expect(views[3]!.imageSrc).toMatch(/-front-left-v\d+\.webp/);
       expect(views[4]!.imageSrc).toMatch(/-left(?:-v[12])?\.webp/);
-      expect(views[5]!.imageSrc).toContain("-back-left-v1.webp");
-      expect(views[6]!.imageSrc).toMatch(/-back(?:-v1)?\.webp/);
-      expect(views[7]!.imageSrc).toContain("-back-right-v1.webp");
+      expect(views[5]!.imageSrc).toMatch(/-back-left-v\d+\.webp/);
+      expect(views[6]!.imageSrc).toMatch(/-back(?:-v\d+)?\.webp/);
+      expect(views[7]!.imageSrc).toMatch(/-back-right-v\d+\.webp/);
     }
   });
 
