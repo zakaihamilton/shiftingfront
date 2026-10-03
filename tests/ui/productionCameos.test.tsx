@@ -153,7 +153,7 @@ describe("production cameo availability", () => {
     expect(tank).toHaveAttribute("aria-keyshortcuts", "Alt+4");
   });
 
-  it("reserves the training detail row before a unit is queued", () => {
+  it("shows tactical role details before a unit is queued", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     render(
       <ProductionCameos
@@ -171,7 +171,11 @@ describe("production cameo availability", () => {
     const detail = infantry.querySelector('[class*="detail"]');
 
     expect(detail).toBeInTheDocument();
-    expect(detail?.textContent).toBe("\u00a0");
+    expect(detail?.textContent).toBe("Line infantry · effective vs light units");
+
+    const antiArmor = screen.getByRole("button", { name: /Anti-armor, 160 credits/ });
+    expect(antiArmor.querySelector('[class*="detail"]')?.textContent)
+      .toBe("Rocket launcher · effective vs heavy armor");
   });
 
   it("shows Option labels for cameo shortcuts on Mac", () => {
