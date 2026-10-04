@@ -105,8 +105,12 @@ describe("animation helpers", () => {
     infantry.attackTarget = 9;
     expect(unitPose(infantry)).toBe("attack");
     infantry.cooldown = UNIT_STATS.infantry.cooldown;
-    expect(unitAnim(infantry, 12).frame).toBe(2);
+    expect(unitAnim(infantry, 12).frame).toBe(0);
     expect(unitAnim(infantry, 12).recoil).toBeGreaterThan(0);
+    for (const age of [1, 2, 3] as const) {
+      infantry.cooldown = UNIT_STATS.infantry.cooldown - age;
+      expect(unitAnim(infantry, 12).frame).toBe(age);
+    }
     infantry.cooldown = 0;
     expect(unitAnim(infantry, 12).frame).toBe(0);
 

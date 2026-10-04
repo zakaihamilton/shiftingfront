@@ -50,6 +50,8 @@ export function drawUnitShadow(
   options?: {
     rotation?: number;
     stridePhase?: number;
+    lightDirection?: { x: number; y: number };
+    shadowDepth?: number;
   },
 ): void {
   const { radX: baseRadX, radY: baseRadY } = unitShadowRadii(kind, scale);
@@ -64,6 +66,19 @@ export function drawUnitShadow(
   }
 
   ctx.save();
+  if (options?.lightDirection && kind !== "strikePlane") {
+    const light = options.lightDirection;
+    const length = isWalker ? 9 : kind === "behemoth" ? 16 : 12;
+    // Several translucent ellipses soften the cast edge without Canvas shadowBlur.
+    ctx.fillStyle = "#101b26";
+    for (let step = 3; step > 0; step--) {
+      ctx.globalAlpha = alpha * (0.035 + (options.shadowDepth ?? 0.08) * 0.16);
+      ctx.beginPath();
+      ctx.ellipse(cx + light.x * length * scale * step / 3, groundY + light.y * length * scale * step / 3,
+        radX * (1 + step * 0.08), radY * (1 + step * 0.06), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
   // Aircraft keep the directional cast shadow; ground shadows touch feet/treads.
   ctx.translate(kind === "strikePlane" ? 5 * scale : UNIT_SHADOW_OFFSET_X * scale,
     kind === "strikePlane" ? 4 * scale : UNIT_SHADOW_OFFSET_Y * scale);

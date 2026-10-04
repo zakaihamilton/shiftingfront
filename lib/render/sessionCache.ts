@@ -12,9 +12,15 @@ import { clearTerrainPaintCache } from "./terrainPaint/world";
 import { clearTerrainAtmosphereCache } from "./terrainAtmosphere";
 import { clearTerrainLightCache } from "./terrainLighting";
 import { clearRendererSessionCache } from "./renderer/cache";
+import { clearUnitLighting } from "./unitLighting";
+import { clearUnitTrails } from "./unitTrails";
+import { clearUnitWeaponSockets } from "./unitVehicleLayers";
 
 /** Releases per-mission render state when the browser leaves a game session. */
 export function clearRenderSessionCaches(): void {
+  clearUnitLighting();
+  clearUnitTrails();
+  clearUnitWeaponSockets();
   clearSpriteCache();
   clearVisualProfileCache();
   clearEntityVisibilityCache();

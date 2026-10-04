@@ -3,6 +3,7 @@ import type { CatalogAsset } from "@/lib/gen/assetCatalog";
 import type { Facing, FactionVisualProfile } from "@/lib/types";
 import { AssetPreviewControls } from "./AssetPreviewControls";
 import styles from "./AssetPreview.module.css";
+import type { UnitPose } from "@/lib/render/anim";
 
 export type AssetPreviewControlProps = {
   selected: CatalogAsset;
@@ -16,6 +17,10 @@ export type AssetPreviewControlProps = {
   onConstruction: (stage: 0 | 1 | 2 | 3) => void;
   onDamage: (stage: 0 | 1 | 2) => void;
   onDesignFamily: (value: FactionVisualProfile["designFamily"]) => void;
+  pose?: UnitPose;
+  turretFacing?: Facing;
+  onPose?: (pose: UnitPose) => void;
+  onTurretFacing?: (dir: Facing) => void;
 };
 
 export type AssetPreviewProps = AssetPreviewControlProps & {

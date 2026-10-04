@@ -102,7 +102,7 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
     expect(dyn.turretYaw).toBeCloseTo(expected, 1);
   });
 
-  it("turns the rendered chassis toward a stationary attack target", () => {
+  it("aims the turret at a stationary target while keeping the chassis facing", () => {
     const state = createMission({ seed: 101, missionIndex: 0 });
     const unit = state.entities.find((e) => e.class === "unit");
     if (!unit) throw new Error("Expected unit");
@@ -121,7 +121,8 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
       dyn = computeUnitDynamicTransform(unit, state, 0, t, byId);
     }
 
-    expect(dyn.baseFacing).toBe(2);
+    expect(dyn.baseFacing).toBe(0);
+    expect(dyn.turretYaw).toBeCloseTo(0, 3);
     expect(dyn.rotationOffset).toBeCloseTo(0, 1);
   });
 

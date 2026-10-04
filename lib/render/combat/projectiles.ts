@@ -5,6 +5,7 @@ import { entityElev } from "../renderPicking";
 import { turretAimMap, turretTargetInRange, turretTargetPoint } from "../renderStructures";
 import { distToEntity } from "../../sim/world";
 import { isBuildingEntity, type Entity, type Facing, type SimState, type UnitKind } from "../../types";
+import { unitWeaponSockets } from "../unitVehicleLayers";
 
 export function drawCombatProjectiles(
   ctx: CanvasRenderingContext2D,
@@ -53,6 +54,8 @@ export function drawCombatProjectiles(
       const muzzle = e.class === "building" ? 18 : e.kind === "infantry" ? 14 : e.kind === "behemoth" ? 28 : 20;
       ax = a.x + dir.x * muzzle * z;
       ay = a.y + 6 * z + dir.y * muzzle * z;
+      const socket = unitWeaponSockets.get(e.id);
+      if (socket) { ax = socket.x; ay = socket.y; }
     }
     const bx = b.x;
     const by = b.y + 9 * z;

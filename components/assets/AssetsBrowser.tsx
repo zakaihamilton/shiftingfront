@@ -21,6 +21,8 @@ export function AssetsBrowser({
     selected,
     facing,
     playing,
+    pose,
+    turretFacing,
     construction,
     damage,
     designFamily,
@@ -31,6 +33,8 @@ export function AssetsBrowser({
     setAssetFilter,
     setFacing,
     setPlaying,
+    setPose,
+    setTurretFacing,
     setConstruction,
     setDamage,
     setDesignFamily,
@@ -43,6 +47,8 @@ export function AssetsBrowser({
     profile,
     facing,
     playing,
+    pose,
+    turretFacing,
     construction,
     damage,
   });
@@ -66,6 +72,10 @@ export function AssetsBrowser({
           canvasRef={canvasRef}
           facing={facing}
           playing={playing}
+          pose={pose}
+          turretFacing={turretFacing}
+          onPose={setPose}
+          onTurretFacing={setTurretFacing}
           construction={construction}
           damage={damage}
           designFamily={designFamily}

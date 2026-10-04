@@ -44,6 +44,7 @@ export type FxBurst = {
   sourceY?: number;
   targetX?: number;
   targetY?: number;
+  sourceEntityId?: number;
 };
 
 export const FX_DURATION: Record<FxKind, number> = {
@@ -161,6 +162,8 @@ export function burstsFromEvents(
       const magnitude = weaponFxMagnitude(event.weapon);
       push({
         kind: "muzzle",
+        sourceEntityId: state.entities.find(entity => entity.owner === event.owner && entity.kind === event.attackerKind &&
+          Math.hypot(entity.x - event.x, entity.y - event.y) < 0.4)?.id,
         x: event.x,
         y: event.y,
         elev: elevationAt(state, event.x, event.y),
