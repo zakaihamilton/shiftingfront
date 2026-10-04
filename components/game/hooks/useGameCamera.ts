@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import {
   cameraPanBounds,
   clampCamera,
@@ -158,7 +158,7 @@ export function useGameCamera({
 
   useEffect(() => () => cancelFocusAnimation(), [cancelFocusAnimation]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled) return;
     const s = stateRef.current;
     const canvas = canvasRef.current;

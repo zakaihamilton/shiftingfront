@@ -14,6 +14,11 @@ export function SaveRepositoryRoot({ children }: { children: ReactNode }) {
         setNotice(repository.notice); setReady(true);
         unsubscribe = repository.subscribe(() => setNotice(repository.notice));
       }
+    }).catch(() => {
+      if (active) {
+        setNotice("Using legacy browser saves. Save recovery and multi-tab protection are reduced; export important saves as a backup.");
+        setReady(true);
+      }
     });
     return () => { active = false; unsubscribe?.(); };
   }, []);

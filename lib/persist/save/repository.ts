@@ -9,6 +9,7 @@ import type { SaveSession, SaveWriteStatus } from "./session";
 import { isCampaignProgressShape } from "./validation";
 
 export const SAVE_DATABASE_NAME = "shiftingfront-saves";
+const SAVE_REPOSITORY_INITIALIZATION_TIMEOUT_MS = 5_000;
 const JOURNAL_PREFIX = "shiftingfront:journal:";
 type CampaignRecord = { seed: number; revision: number; autosave: string | null; progress: string | null };
 type SlotRecord = { id: string; revision: number; raw: string };
@@ -69,6 +70,11 @@ export class SaveRepository {
   get notice(): string | null { return this.mode === "legacy" ? "Using legacy browser saves. Save recovery and multi-tab protection are reduced; export important saves as a backup." : null; }
   subscribe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
   private publish(): void { for (const listener of this.listeners) listener(); }
+  private fallBackToLegacy(): void {
+    this.db?.close();
+    this.db = null;
+    this.mode = "legacy";
+  }
   private enqueue<T>(work: () => Promise<T>): Promise<T> {
     const generation = this.generation;
     const next = this.queue.then(() => {
@@ -80,7 +86,21 @@ export class SaveRepository {
   }
   async initialize(): Promise<void> {
     if (this.initPromise) return this.initPromise;
-    this.initPromise = this.open();
+    this.initPromise = new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        resolve();
+      };
+      const timeout = setTimeout(() => {
+        this.fallBackToLegacy();
+        finish();
+      }, SAVE_REPOSITORY_INITIALIZATION_TIMEOUT_MS);
+
+      void this.open().catch(() => this.fallBackToLegacy()).finally(finish);
+    });
     return this.initPromise;
   }
   private async open(): Promise<void> {
@@ -110,7 +130,7 @@ export class SaveRepository {
         this.channel.onmessage = ({ data }) => { if (data?.type === "committed") void this.refresh().catch(() => undefined); };
       }
     } catch {
-      this.db?.close(); this.db = null; this.mode = "legacy";
+      this.fallBackToLegacy();
     }
   }
   private async transaction<T>(stores: string[], work: (tx: IDBTransaction) => Promise<T>): Promise<T> {
