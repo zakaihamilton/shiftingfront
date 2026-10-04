@@ -166,14 +166,20 @@ export const UNIT_DIRECTION_ART: Record<UnitKind, Record<UnitView, string>> = {
   behemoth: {
     "front-right": "/art/sprites/sleek-modular/behemoth-front-right-v1.webp",
     front: "/art/sprites/sleek-modular/behemoth-front-v1.webp",
-    right: "/art/sprites/sleek-modular/behemoth-right-v1.webp",
+    right: "/art/sprites/sleek-modular/behemoth-right-v2.webp",
     "front-left": "/art/sprites/sleek-modular/behemoth-front-left-v1.webp",
     "back-left": "/art/sprites/sleek-modular/behemoth-back-left-v1.webp",
     back: "/art/sprites/sleek-modular/behemoth-back-v1.webp",
-    left: "/art/sprites/sleek-modular/behemoth-left-v1.webp",
+    left: "/art/sprites/sleek-modular/behemoth-left-v2.webp",
     "back-right": "/art/sprites/sleek-modular/behemoth-back-right-v1.webp",
   },
 };
+
+/** Prior Behemoth profiles stay available to clients with cached v1 manifests. */
+export const RETIRED_UNIT_DIRECTION_ART = [
+  "/art/sprites/sleek-modular/behemoth-left-v1.webp",
+  "/art/sprites/sleek-modular/behemoth-right-v1.webp",
+] as const;
 
 /** Generated four-frame walk cycles for units with visible legs and feet. */
 export const UNIT_WALK_CYCLE_ART: Record<WalkerKind, Record<UnitView, string>> = {
