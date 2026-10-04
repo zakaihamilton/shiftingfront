@@ -1,4 +1,4 @@
-import { useCallback, useRef, useSyncExternalStore, type MutableRefObject, type RefObject } from "react";
+import { useCallback, useLayoutEffect, useRef, useSyncExternalStore, type MutableRefObject, type RefObject } from "react";
 import type { Camera } from "@/lib/iso";
 import type { FxBurst } from "@/lib/render/fx";
 import type { RenderExtras } from "@/lib/render/renderer";
@@ -136,6 +136,10 @@ export function useGameRenderer({
       : renderCostAverageRef.current * 0.75 + renderCost * 0.25;
     lastRenderedAtRef.current = currentNow;
   }, [boxRef, camRef, canvasRef, colorblindMode, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, place, reducedMotion, repair, selected, sell, stateRef, tooltipCanvasRef]);
+
+  useLayoutEffect(() => {
+    redraw(performance.now(), 0);
+  }, [redraw]);
 
   return { extrasRef, fxRef, fxSeq, screenShakeRef, redraw };
 }
