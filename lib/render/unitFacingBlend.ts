@@ -52,7 +52,7 @@ export function unitFacingLayers(
 
 export function pruneUnitFacingBlends(activeIds: Set<number>): void {
   for (const id of transitions.keys()) {
-    if (!activeIds.has(id)) transitions.delete(id);
+    if (!activeIds.has(id >= 0 ? id : -id - 1)) transitions.delete(id);
   }
 }
 

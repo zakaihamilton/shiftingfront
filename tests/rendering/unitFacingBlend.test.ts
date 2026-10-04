@@ -76,7 +76,8 @@ describe("unit sprite compositing", () => {
       drawImage: vi.fn(() => samples.push({ alpha: scratchCtx.globalAlpha, operation: scratchCtx.globalCompositeOperation })),
     };
     const scratch = { width: 0, height: 0, getContext: () => scratchCtx };
-    vi.stubGlobal("document", { createElement: () => scratch });
+    const retained = { width: 0, height: 0, getContext: () => ({ drawImage: vi.fn() }) };
+    vi.stubGlobal("document", { createElement: vi.fn().mockReturnValueOnce(scratch).mockReturnValue(retained) });
     const ctx = { drawImage: vi.fn(), globalAlpha: 0.7 } as unknown as CanvasRenderingContext2D;
     const layers = [0, 1, 2, 3].map((frame) => ({
       spec: unitSprite("infantry", palette, { facing: frame < 2 ? 0 : 1, animationFrame: (frame & 1) as 0 | 1, motion: "walk" }),
@@ -88,6 +89,10 @@ describe("unit sprite compositing", () => {
     expect(ctx.drawImage).toHaveBeenCalledExactlyOnceWith(scratch, 10.25, 20.5, 38, 42);
     expect(ctx.globalAlpha).toBe(0.7);
     expect(scratchCtx.globalCompositeOperation).toBe("source-over");
+    drawBlendedUnitSprites(ctx, layers, 12.5, 25, 38, 42, 0.6);
+    expect(samples).toHaveLength(4);
+    expect(ctx.drawImage).toHaveBeenLastCalledWith(retained, 12.5, 25, 38, 42);
+    expect(ctx.globalAlpha).toBe(0.7);
   });
 
   it("falls back to the highest-weight layer when document is undefined (SSR/headless)", () => {

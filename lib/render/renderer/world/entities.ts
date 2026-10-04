@@ -11,11 +11,16 @@ import {
   unitAnim,
 } from "../../anim";
 import { TILE_H, tileToScreen, type Camera } from "../../../iso";
-import { drawSprite, isRasterReady, rasterize } from "../../sprites";
+import { drawSprite, isRasterReady, rasterize, spriteContentBounds } from "../../sprites";
 import { drawUnitShadow, movementDustFill, paintUnitMovementFx } from "../../unitMotion";
 import { unitFacingLayers } from "../../unitFacingBlend";
 import { drawBlendedUnitSprites, type UnitSpriteLayer } from "../../unitSpriteBlend";
 import { computeUnitDynamicTransform, updateUnitHistory } from "../../gl/unitTransformTracker";
+import { terrainLightRigForBiome } from "../../terrainLighting";
+import { drawUnitGroundLights, litUnitRaster, unitLights, unitLightStrength } from "../../unitLighting";
+import { drawUnitTrails, updateUnitTrails } from "../../unitTrails";
+import { activeUnitSupport, activeUnitGathering, drawUnitWorkFx, unitBodyMotion } from "../../unitPresentation";
+import { drawLayeredVehicle, unitWeaponSockets } from "../../unitVehicleLayers";
 import { isPerfHudEnabled, type WorldPhaseTimings } from "../../perfHud";
 import {
   AIR_UNIT_RENDER_ELEVATION,
@@ -192,6 +197,11 @@ export function renderEntityPhase(
   drawList.forEach((e, index) => entityDrawOrder.set(e.id, index));
 
   drawFxLayer(ctx, state, cam, extras.fx, timeMs, "ground", extras.reducedMotion);
+  unitWeaponSockets.clear();
+  drawUnitTrails(ctx, state, cam, updateUnitTrails(state, dynCache, timeMs, extras.reducedMotion), timeMs);
+  const lightRig = terrainLightRigForBiome(state.seed, state.biome);
+  const lights = unitLights(state, cam, extras.fx ?? [], timeMs, extras.reducedMotion);
+  drawUnitGroundLights(ctx, lights);
 
   const z = cam.zoom;
   const cullPad = Math.max(128, 140 * z);
@@ -209,7 +219,10 @@ export function renderEntityPhase(
     let cx = e.x;
     let cy = e.y;
     let elev = entityElev(state, e);
-    const uAnim = e.class === "unit" ? unitAnim(e, state.tick, clock) : null;
+    const supportTarget = e.supportTargetId !== undefined ? entityById.get(e.supportTargetId) : undefined;
+    const uAnim = e.class === "unit" ? unitAnim(e, state.tick, clock, activeUnitSupport(e, supportTarget)) : null;
+    if (uAnim?.pose === "work" && e.kind === "harvester" && !activeUnitGathering(state, e)) uAnim.pose = "idle";
+    if (uAnim && extras.reducedMotion && (uAnim.pose === "idle" || uAnim.pose === "work")) uAnim.frame = uAnim.pose === "work" ? 1 : 0;
     const bAnim = e.class === "building"
       ? buildingAnim(e, state.tick, clock, isSharedProducerKind(e.kind) ? activeProducingIds.has(e.id) : Boolean(e.producing))
       : null;
@@ -236,6 +249,7 @@ export function renderEntityPhase(
     const groundS = aircraft && dyn ? tileToScreen(cx, cy, cam, dyn.z) : s;
     const isWalker = e.class === "unit" && (e.kind === "infantry" || e.kind === "medic" || e.kind === "antiArmor");
     const isVehicle = e.class === "unit" && !isWalker;
+    const motion = isWalker ? uAnim?.pose === "move" ? "walk" : uAnim?.pose === "attack" ? "fire" : uAnim?.pose === "work" && e.kind === "medic" ? "treat" : "idle" : undefined;
 
     const facing = dyn ? dyn.baseFacing : resolveFacing(state, e, entityById, e.class === "unit" ? { x: cx, y: cy } : undefined);
     const variant = entityVariant(state, e);
@@ -245,7 +259,7 @@ export function renderEntityPhase(
           variant,
           facing,
           animationFrame: uAnim?.frame,
-          motion: uAnim?.pose === "move" ? "walk" : undefined,
+          motion,
           damageStage,
           profile,
         })
@@ -281,7 +295,7 @@ export function renderEntityPhase(
           variant,
           facing: layer.facing,
           animationFrame: uAnim?.frame,
-          motion: uAnim?.pose === "move" ? "walk" : undefined,
+          motion,
           damageStage,
           profile,
         });
@@ -314,7 +328,7 @@ export function renderEntityPhase(
     const ay = ((spec.anchorY ?? spec.h) / spec.h) * dh;
 
     const dir = facingVector(facing);
-    const recoil = uAnim?.recoil ?? 0;
+    const recoil = extras.reducedMotion ? 0 : (dyn?.recoil ?? uAnim?.recoil ?? 0);
     const groundX = groundS.x;
     const groundY = groundS.y + (TILE_H / 2) * z;
     // tileToScreen returns the tile's top vertex. Every unit's logical world
@@ -335,6 +349,8 @@ export function renderEntityPhase(
         uAnim?.pose === "move",
         {
           stridePhase: isWalker && dyn ? (uAnim?.stridePhase ?? dyn.stridePhase) : undefined,
+          lightDirection: { x: lightRig.directionX, y: lightRig.directionY },
+          shadowDepth: lightRig.occlusionStrength,
         },
       );
     }
@@ -386,16 +402,41 @@ export function renderEntityPhase(
     if (spriteReady && isExtractableUnit(state, e)) {
       drawUnitGlow(ctx, spec, img, dx, dy, dw, dh, timeMs, spriteAlpha, z);
     }
-    if (spriteReady) {
+    const body = dyn && uAnim ? unitBodyMotion(e, uAnim, dyn, timeMs, extras.reducedMotion) : undefined;
+    ctx.save();
+    if (body && (body.lift !== 0 || body.lean !== 0 || body.scaleY !== 1)) {
+      ctx.translate(groundX, spriteGroundY + body.lift * z);
+      if (Math.abs(body.lean) > 0.003) ctx.rotate(body.lean);
+      ctx.scale(1, body.scaleY);
+      ctx.translate(-groundX, -spriteGroundY);
+    }
+    const flash = unitLightStrength(lights, groundX, spriteGroundY - 12 * z);
+    const layered = spriteReady && dyn && (e.kind === "tank" || e.kind === "behemoth")
+      ? drawLayeredVehicle(ctx, { id: e.id, kind: e.kind, base: spec, hullFacing: facing, turretYaw: dyn.turretYaw,
+          x: groundX, groundY: spriteGroundY, zoom: z, time: timeMs, alpha: spriteAlpha,
+          recoil, reducedMotion: Boolean(extras.reducedMotion), rig: lightRig, flash, travel: dyn.travel, moving: dyn.moveSpeed > 0.025 }) : false;
+    if (spriteReady && !layered) {
       if (unitLayers.length) {
-        drawBlendedUnitSprites(ctx, unitLayers, dx, dy, dw, dh, spriteAlpha);
+        drawBlendedUnitSprites(ctx, unitLayers.map(layer => ({ ...layer, img: litUnitRaster(layer.img, lightRig, flash,
+          isVehicle && !aircraft && dyn && dyn.moveSpeed > 0.025 && !extras.reducedMotion
+            ? { phase: dyn.travel * 3, tracked: e.kind === "harvester" || e.kind === "tank" || e.kind === "behemoth", side: facing === 0 || facing === 4 } : undefined) })), dx, dy, dw, dh, spriteAlpha);
       } else {
         ctx.globalAlpha = spriteAlpha;
-        drawSprite(ctx, spec, img, dx, dy, dw, dh);
+        drawSprite(ctx, spec, e.class === "unit" ? litUnitRaster(img, lightRig, flash) : img, dx, dy, dw, dh);
       }
       ctx.globalAlpha = 1;
     }
     if (spriteReady && e.class !== "building") {
+      if (isWalker && e.attackTarget !== undefined) {
+        const bounds = spriteContentBounds(img);
+        if (bounds) {
+          const side = facing === 0 || facing === 1 || facing === 7 ? 0.96 : facing === 3 || facing === 4 || facing === 5 ? 0.04 : 0.5;
+          const px = dx + (bounds.minX + bounds.width * side) / img.width * dw;
+          const py = dy + (bounds.minY + bounds.height * 0.35) / img.height * dh;
+          const t = ctx.getTransform();
+          unitWeaponSockets.set(e.id, { x: t.a * px + t.c * py + t.e, y: t.b * px + t.d * py + t.f });
+        }
+      }
       drawDamageOverlay(
         ctx,
         spec,
@@ -408,6 +449,14 @@ export function renderEntityPhase(
         e.id,
         spriteAlpha,
       );
+    }
+    ctx.restore();
+    if (spriteReady && e.class === "unit") {
+      const targetPosition = supportTarget ? tileToScreen(supportTarget.x, supportTarget.y, cam, entityElev(state, supportTarget)) : undefined;
+      drawUnitWorkFx(ctx, e, supportTarget, groundX, spriteGroundY, z, timeMs, Boolean(extras.reducedMotion), {
+        state, alpha: spriteAlpha,
+        gathering: activeUnitGathering(state, e), targetScreen: targetPosition ? { x: targetPosition.x, y: targetPosition.y + TILE_H/2*z } : undefined,
+      });
     }
 
     if (bAnim) drawBuildingFx(ctx, e, s, z, bAnim, state);

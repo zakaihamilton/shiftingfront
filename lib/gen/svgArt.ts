@@ -1,5 +1,6 @@
 import { BUILDING_STATS } from "../catalog";
 import { UNIT_GROUND_CONTACT_Y, UNIT_WALK_CONTACT_Y } from "./unitContactPoints";
+import { UNIT_ACTION_ART, type UnitAction } from "./unitAnimationAssets";
 import {
   AIR_SUPPORT_ART,
   ANTI_AIR_TURRET_BASE_CROP,
@@ -168,13 +169,15 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
   const walkArt = options.motion === "walk" && (kind === "infantry" || kind === "antiArmor" || kind === "medic")
     ? UNIT_WALK_CYCLE_ART[kind]
     : undefined;
-  const imageSrc = walkArt?.[view] ?? UNIT_DIRECTION_ART[kind][view];
-  const imageCrop = walkArt ? unitWalkFrameCrop(frame) : UNIT_DIRECTION_CROPS[kind]?.[view];
+  const actionArt = options.motion && options.motion !== "walk" && (kind === "infantry" || kind === "antiArmor" || kind === "medic")
+    ? UNIT_ACTION_ART[kind][options.motion as UnitAction] : undefined;
+  const imageSrc = actionArt?.[view] ?? walkArt?.[view] ?? UNIT_DIRECTION_ART[kind][view];
+  const imageCrop = walkArt || actionArt ? unitWalkFrameCrop(frame) : UNIT_DIRECTION_CROPS[kind]?.[view];
   // Raster units are bottom-aligned inside their logical frame. The rotation
   // pivot must be the contact point at the feet/base, not the visual center.
   const ground = h;
   return {
-    id: `unit:directional-v1:${kind}:${facing}:${view}:${palette.primary}:${visualKey(profile)}:${variant}:${walkArt ? "walk" : "static"}:${frame}:${dmg}`,
+    id: `unit:directional-v1:${kind}:${facing}:${view}:${palette.primary}:${visualKey(profile)}:${variant}:${actionArt ? options.motion : walkArt ? "walk" : "static"}:${frame}:${dmg}`,
     kind: "unit",
     w,
     h,
@@ -186,7 +189,7 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
     // Preserve the selected crop's horizontal center and scale, but align the
     // actual feet/treads rather than the transparent bottom of the image.
     imageAnchorX: imageCrop ? (imageCrop.x + imageCrop.w / 2) / imageCrop.sourceW : 0.5,
-    imageAnchorY: walkArt
+    imageAnchorY: actionArt ? (Math.floor(frame / 2) * 512 + 500) / 1024 : walkArt
       ? UNIT_WALK_CONTACT_Y[kind as keyof typeof UNIT_WALK_CONTACT_Y][view][frame]
       : UNIT_GROUND_CONTACT_Y[kind][view],
     anchorX: w / 2,

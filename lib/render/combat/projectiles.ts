@@ -6,6 +6,9 @@ import { turretAimMap, turretTargetInRange, turretTargetPoint } from "../renderS
 import { distToEntity } from "../../sim/world";
 import { isBuildingEntity, isUnitEntity, type AmmoEffect, type Entity, type Facing, type SimState } from "../../types";
 import type { FxBurst } from "../fx";
+import { unitWeaponSockets } from "../unitVehicleLayers";
+
+const launchOffsets = new WeakMap<FxBurst, { x: number; y: number }>();
 
 function ammoEffectFor(entity: Entity): AmmoEffect {
   if (isBuildingEntity(entity)) {
@@ -207,6 +210,17 @@ export function drawCombatProjectileBursts(
       ay = source.y + 6 * z + dy / distance * muzzle * z;
     }
 
+    // Preserve the authored muzzle at launch, then keep the shot's source fixed
+    // even when its firing unit moves or the camera pans and zooms.
+    let offset = launchOffsets.get(burst);
+    if (!offset) {
+      const socket = burst.sourceEntityId !== undefined ? unitWeaponSockets.get(burst.sourceEntityId) : undefined;
+      offset = { x: ((socket?.x ?? ax) - source.x) / z, y: ((socket?.y ?? ay) - source.y) / z };
+      launchOffsets.set(burst, offset);
+    }
+    ax = source.x + offset.x * z;
+    ay = source.y + offset.y * z;
+
     const bx = target.x;
     const by = target.y + 9 * z;
     const px = ax + (bx - ax) * progress;
@@ -275,6 +289,8 @@ export function drawCombatProjectiles(
       const muzzle = e.kind === "infantry" ? 14 : e.kind === "behemoth" ? 28 : 20;
       ax = a.x + dir.x * muzzle * z;
       ay = a.y + 6 * z + dir.y * muzzle * z;
+      const socket = unitWeaponSockets.get(e.id);
+      if (socket) { ax = socket.x; ay = socket.y; }
     }
     const bx = b.x;
     const by = b.y + 9 * z;

@@ -5,6 +5,7 @@ import { FX_DURATION, fxProgress, isBuildingKind, isUnitKind, type FxBurst } fro
 import { TILE_H, tileToScreen, type Camera } from "../../iso";
 import { drawSprite, rasterize } from "../sprites";
 import type { Facing, SimState, SpriteSpec } from "../../types";
+import { unitWeaponSockets } from "../unitVehicleLayers";
 
 const DESTRUCTION_SPRITE_END = 0.58;
 const DESTRUCTION_BLAST_END = 0.84;
@@ -204,6 +205,8 @@ export function drawFxLayer(
   if (!fx?.length) return;
   const z = cam.zoom;
   const position = (burst: FxBurst) => {
+    const socket = burst.kind === "muzzle" && burst.sourceEntityId !== undefined ? unitWeaponSockets.get(burst.sourceEntityId) : undefined;
+    if (socket) return { x: socket.x, y: socket.y - 4 * z };
     let cx = burst.x;
     let cy = burst.y;
     if (burst.entityClass === "building" && isBuildingKind(burst.entityKind)) {

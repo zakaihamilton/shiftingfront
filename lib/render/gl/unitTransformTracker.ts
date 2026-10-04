@@ -5,6 +5,7 @@ import { unitMovementOffset, unitWalkCycle } from "../anim";
 import { pruneUnitFacingBlends, resetUnitFacingBlends } from "../unitFacingBlend";
 import type { Entity, Facing, SimState, UnitKind } from "../../types";
 import { lerp, lerpAngle } from "./glMath";
+import { TICK_MS } from "../../game/loop";
 
 export type UnitDynamicTransform = {
   x: number;
@@ -34,6 +35,10 @@ export type UnitDynamicTransform = {
   scaleY: number;
   /** Normalized aircraft altitude used for smooth runway transitions. */
   airborneMix: number;
+  moveSpeed: number;
+  travel: number;
+  suspensionY: number;
+  chassisLean: number;
 };
 
 type UnitStateHistory = {
@@ -48,6 +53,10 @@ type UnitStateHistory = {
   turretYaw: number;
   stridePhase: number;
   lastClockMs: number;
+  speed: number;
+  travel: number;
+  suspensionY: number;
+  chassisLean: number;
   flightState: "airborne" | "servicing";
   flightTransition?: AircraftFlightTransition;
 };
@@ -104,7 +113,7 @@ export function unitRenderPosition(e: Entity, clockMs: number): UnitRenderPositi
 }
 
 function createUnitHistory(e: Entity, state: SimState, clockMs: number): UnitStateHistory {
-  const initialYaw = e.facing !== undefined ? (e.facing / 8) * Math.PI * 2 - Math.PI / 4 : -Math.PI / 4;
+  const initialYaw = e.facing !== undefined ? (e.facing / 8) * Math.PI * 2 - Math.PI / 2 : -Math.PI / 2;
   const initialScreenAngle = e.facing !== undefined ? isoFacingAngle(e.facing) : 0;
   return {
     id: e.id,
@@ -118,6 +127,10 @@ function createUnitHistory(e: Entity, state: SimState, clockMs: number): UnitSta
     turretYaw: initialYaw,
     stridePhase: 0,
     lastClockMs: clockMs,
+    speed: 0,
+    travel: 0,
+    suspensionY: 0,
+    chassisLean: 0,
     flightState: e.flightState === "servicing" ? "servicing" : "airborne",
   };
 }
@@ -167,6 +180,7 @@ export function updateUnitHistory(state: SimState, clockMs: number): void {
         }
         hist.currX = e.x;
         hist.currY = e.y;
+        if (tickGap > 0 && tickGap <= 2 && jump <= 2) hist.travel += jump;
         hist.lastUpdateTick = state.tick;
       }
       if (e.kind === "strikePlane" && hist.flightTransition?.kind === "takeoff") {
@@ -249,18 +263,28 @@ export function computeUnitDynamicTransform(
   const waypointDist = Math.hypot(waypointDx, waypointDy);
 
   let targetYaw = hist.yaw;
+  const independentTurret = e.kind === "tank" || e.kind === "behemoth";
   if (moveDist > 0.005) {
     targetYaw = Math.atan2(moveDy, moveDx) - Math.PI / 4;
-  } else if (attackDist > 0.005) {
+  } else if (attackDist > 0.005 && !independentTurret) {
     targetYaw = Math.atan2(attackDy, attackDx) - Math.PI / 4;
   } else if (waypointDist > 0.005) {
     targetYaw = Math.atan2(waypointDy, waypointDx) - Math.PI / 4;
   } else if (e.facing !== undefined) {
-    targetYaw = (e.facing / 8) * Math.PI * 2 - Math.PI / 4;
+    targetYaw = (e.facing / 8) * Math.PI * 2 - Math.PI / 2;
   }
 
   // Smooth angular interpolation for chassis in GL model space
   const isVehicle = e.kind === "tank" || e.kind === "harvester" || e.kind === "convoyTruck" || e.kind === "repairTruck" || e.kind === "behemoth";
+  const targetSpeed = moveDist / (TICK_MS * 0.001);
+  const speedResponse = 1 - Math.exp(-dt * 8);
+  const nextSpeed = lerp(hist.speed, targetSpeed, speedResponse);
+  const acceleration = dt > 0 ? (nextSpeed - hist.speed) / dt : 0;
+  hist.speed = nextSpeed;
+  const heavy = e.kind === "behemoth";
+  const settle = 1 - Math.exp(-dt * (heavy ? 4 : 7));
+  hist.suspensionY = lerp(hist.suspensionY, isVehicle ? Math.max(-0.8, Math.min(0.8, acceleration * -0.035)) : 0, settle);
+  hist.chassisLean = lerp(hist.chassisLean, isVehicle ? Math.max(-0.045, Math.min(0.045, acceleration * 0.0018)) : 0, settle);
   const legacyTurnSpeed = e.kind === "tank" ? 9.0 : e.kind === "behemoth" ? 6.0 : 14.0;
   hist.yaw = lerpAngle(hist.yaw, targetYaw, isAirUnit(e.kind)
     ? Math.min(1, dt * legacyTurnSpeed) : 1 - Math.exp(-dt * legacyTurnSpeed));
@@ -269,7 +293,7 @@ export function computeUnitDynamicTransform(
   let targetScreenAngle = hist.screenAngle;
   if (moveDist > 0.005) {
     targetScreenAngle = isoHeadingAngle(moveDx, moveDy);
-  } else if (attackDist > 0.005) {
+  } else if (attackDist > 0.005 && !independentTurret) {
     targetScreenAngle = isoHeadingAngle(attackDx, attackDy);
   } else if (waypointDist > 0.005) {
     targetScreenAngle = isoHeadingAngle(waypointDx, waypointDy);
@@ -393,5 +417,9 @@ export function computeUnitDynamicTransform(
     scaleX,
     scaleY,
     airborneMix,
+    moveSpeed: hist.speed,
+    travel: hist.travel,
+    suspensionY: hist.suspensionY,
+    chassisLean: hist.chassisLean,
   };
 }

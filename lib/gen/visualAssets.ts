@@ -1,5 +1,6 @@
 import { isHiddenObjectiveAsset, type AnimFrame, type BiomeName, type BuildingKind, type Entity, type Facing, type SimState, type SpriteCrop, type UnitKind } from "../types";
 import { fogAt } from "../sim/fog";
+import { unitAnimationSources } from "./unitAnimationAssets";
 
 export type RasterArtKey = "menu" | "victory" | "defeat" | BiomeName;
 export type TextureArtKey = "brushed" | "worn" | "crt";
@@ -323,6 +324,7 @@ export function listTacticalRasterSources(): string[] {
   for (const views of Object.values(UNIT_WALK_CYCLE_ART)) {
     srcs.push(...Object.values(views));
   }
+  for (const kind of Object.keys(UNIT_DIRECTION_ART) as UnitKind[]) srcs.push(...unitAnimationSources(kind));
   return srcs;
 }
 
@@ -346,6 +348,7 @@ export function listMissionRasterSources(
     if (!directional) continue;
     if (entity.kind === "strikePlane") sources.add(TEXTURE_ART.worn);
     for (const source of Object.values(directional)) sources.add(source);
+    for (const source of unitAnimationSources(entity.kind as UnitKind)) sources.add(source);
     if (entity.kind === "infantry" || entity.kind === "antiArmor" || entity.kind === "medic") {
       for (const source of Object.values(UNIT_WALK_CYCLE_ART[entity.kind])) sources.add(source);
     }
