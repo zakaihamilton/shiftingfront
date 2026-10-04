@@ -108,6 +108,7 @@ export function createGuestLobbyController(options: {
         const owner = Number(message.owner) as Owner;
         refs.owner.current = owner;
         options.setGuestOwner(owner);
+        lifecycle.finishGuestRecovery();
         options.setMode("waiting");
         options.setStatus(`${ownerLabel(owner)} is reserved. Waiting for the host to start.`);
         return;
@@ -130,13 +131,14 @@ export function createGuestLobbyController(options: {
         }
         refs.owner.current = owner;
         options.setGuestOwner(owner);
+        lifecycle.finishGuestRecovery();
         options.showBattle(next, seedValue);
         return;
       }
       if (message.type === "reconnected") {
+        lifecycle.finishGuestRecovery();
         refs.session.current?.attach({ send: (value: unknown) => { if (connection.open) connection.send(value); } });
         connection.send({ type: "resume" });
-        lifecycle.clearTimer("guest-disconnect");
         options.setStatus("Reconnected. Resynchronizing the match.");
         return;
       }
@@ -148,7 +150,6 @@ export function createGuestLobbyController(options: {
         return;
       }
       refs.connecting.current = false;
-      lifecycle.finishGuestRecovery();
       connection.send({ type: "hello", grant: credential.grant, settings: SKIRMISH_MATCH_SETTINGS });
     });
     connection.on("close", () => {
@@ -165,7 +166,7 @@ export function createGuestLobbyController(options: {
             refs.session.current.end();
             options.setStatus("The host left. The skirmish has ended.");
           }
-        }, 60_000);
+        }, Math.max(0, lifecycle.guestRetryUntil - Date.now()));
       } else {
         options.setStatus("Host connection lost. Retrying for 60 seconds…");
       }

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DataConnection, Peer } from "peerjs";
 import { PeerLifecycle, type PeerLifecycleCallbacks } from "@/components/multiplayer/lobby/peerLifecycle";
 import type { Credential } from "@/components/multiplayer/lobby/types";
+import { createGuestLobbyController, createGuestRecoveryAction, type GuestLobbyRefs } from "@/components/multiplayer/lobby/guestController";
+import { MultiplayerSession } from "@/lib/multiplayer/session";
 
 class FakePeer extends EventEmitter {
   open = false;
@@ -10,16 +12,20 @@ class FakePeer extends EventEmitter {
   options = { token: "old", config: { iceServers: [] as RTCIceServer[] } };
   destroy = vi.fn(() => this.emit("close"));
   reconnect = vi.fn();
+  connect = vi.fn(() => new FakeConnection().connection);
   get peer(): Peer { return this as unknown as Peer; }
 }
 class FakeConnection extends EventEmitter {
+  open = false;
+  send = vi.fn();
   close = vi.fn(() => this.emit("close"));
   get connection(): DataConnection { return this as unknown as DataConnection; }
 }
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => { resolve = done; });
-  return { promise, resolve };
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
 }
 function credential(): Credential {
   return {
@@ -189,6 +195,24 @@ describe("room peer lifecycle", () => {
     expect(retry.expired).not.toHaveBeenCalled();
   });
 
+  it.each([false, true])("does not expire a recovered guest after a pending refresh settles (failed=%s)", async (failed) => {
+    const { peer, lifecycle, callbacks, request } = fixture();
+    const ticket = { ...credential(), peerExpiresAt: 0 };
+    await lifecycle.start(ticket, "guest", lifecycle.operation, callbacks);
+    const pending = deferred<unknown>();
+    request.mockReturnValueOnce(pending.promise);
+    const retry = { canRetry: () => true, connect: vi.fn(), expired: vi.fn() };
+    lifecycle.retryGuest(ticket, peer.peer, retry, 1200);
+    await vi.advanceTimersByTimeAsync(1200);
+    lifecycle.finishGuestRecovery();
+    if (failed) pending.reject(new Error("offline"));
+    else pending.resolve({ peerToken: "new", peerExpiresAt: 999999, iceServers: [] });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(retry.connect).not.toHaveBeenCalled();
+    expect(retry.expired).not.toHaveBeenCalled();
+    lifecycle.dispose();
+  });
+
   it("expires guest retries at the original recovery deadline", async () => {
     const { peer, lifecycle, callbacks, request } = fixture();
     await lifecycle.start({ ...credential(), peerExpiresAt: 0 }, "guest", lifecycle.operation, callbacks);
@@ -198,6 +222,56 @@ describe("room peer lifecycle", () => {
     await vi.advanceTimersByTimeAsync(61_200);
     expect(retry.expired).toHaveBeenCalledOnce();
     expect(retry.connect).not.toHaveBeenCalled();
+    lifecycle.dispose();
+  });
+
+  it.each([false, true])("expires repeated failed guest connections at the first disconnect deadline (match=%s)", async (inMatch) => {
+    const { peer, lifecycle, callbacks } = fixture();
+    const ticket = credential();
+    await lifecycle.start(ticket, "guest", lifecycle.operation, callbacks);
+    const session = inMatch ? new MultiplayerSession("guest", 1, 421, { send() {} }) : null;
+    const refs: GuestLobbyRefs = {
+      mounted: { current: true }, connection: { current: null }, owner: { current: null },
+      connecting: { current: false }, session: { current: session }, beginConnection: { current: () => undefined },
+    };
+    const options = {
+      lifecycle, refs, destroyPeer: vi.fn(() => lifecycle.dispose()), setMode: vi.fn(),
+      setStatus: vi.fn(), setError: vi.fn(),
+    };
+    const recovery = createGuestRecoveryAction(options);
+    const controller = createGuestLobbyController({
+      ...options, joinCode: ticket.code, setGuestOwner: vi.fn(), setSession: vi.fn(), showBattle: vi.fn(),
+      startPeer: async () => peer.peer, scheduleGuestRetry: recovery,
+    });
+    refs.beginConnection.current = controller.beginGuestConnection;
+    controller.beginGuestConnection(ticket, peer.peer);
+    refs.connection.current!.close();
+    const deadline = lifecycle.guestRetryUntil;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await vi.advanceTimersByTimeAsync(20_000);
+      refs.connection.current!.close();
+      expect(lifecycle.guestRetryUntil).toBe(deadline);
+    }
+    await vi.advanceTimersByTimeAsync(20_000);
+    if (inMatch) expect(session!.status).toBe("ended");
+    else {
+      expect(options.destroyPeer).toHaveBeenCalledOnce();
+      expect(options.setMode).toHaveBeenCalledWith("choose");
+    }
+    lifecycle.dispose();
+  });
+
+  it("starts a new guest recovery window only after the previous connection is accepted", async () => {
+    const { lifecycle, callbacks } = fixture();
+    await lifecycle.start(credential(), "guest", lifecycle.operation, callbacks);
+    lifecycle.beginGuestRecovery();
+    const firstDeadline = lifecycle.guestRetryUntil;
+    await vi.advanceTimersByTimeAsync(20_000);
+    lifecycle.beginGuestRecovery();
+    expect(lifecycle.guestRetryUntil).toBe(firstDeadline);
+    lifecycle.finishGuestRecovery();
+    lifecycle.beginGuestRecovery();
+    expect(lifecycle.guestRetryUntil).toBe(firstDeadline + 20_000);
     lifecycle.dispose();
   });
 });
