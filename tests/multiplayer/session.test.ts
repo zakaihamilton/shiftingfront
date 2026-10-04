@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MultiplayerSession, sanitizeCommand, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
 import { MAX_COMMANDS_PER_TICK, type TickFrame } from "@/lib/multiplayer/protocol";
 import { createSkirmish } from "@/lib/sim/api";
@@ -7,6 +7,8 @@ import { fogAt } from "@/lib/sim/fog";
 import type { Command, Owner } from "@/lib/types";
 
 describe("four-player canonical multiplayer command stream", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("carries combined host and guest bursts across bounded ticks without losing commands or resyncing", () => {
     const replies: unknown[] = [];
     const guest = new MultiplayerSession("guest", 1, 42, { send: (value) => replies.push(value) });
@@ -325,6 +327,35 @@ describe("four-player canonical multiplayer command stream", () => {
     // Disconnect clears active samples
     host.disconnectGuest("guest-1");
     expect(host.pingMs).toBeNull();
+
+    stop();
+  });
+
+  it("notifies ping subscribers when a measurement returns after a peer reconnects", () => {
+    vi.useFakeTimers();
+    const host = new MultiplayerSession("host", 0, 8123, { send() {} }, [0, 1]);
+    const replyToHost = (value: unknown) => host.receiveFrom("guest-1", value);
+    const replyToGuest = (value: unknown) => replyToHost({
+      type: "pong",
+      protocolVersion: 5,
+      id: (value as { id: number }).id,
+    });
+    host.addGuest("guest-1", 1, { send: replyToGuest });
+    let notifications = 0;
+    host.subscribePing(() => { notifications++; });
+
+    const stop = host.startLatencyProbes();
+    expect(typeof host.pingMs).toBe("number");
+    expect(notifications).toBe(1);
+
+    host.disconnectGuest("guest-1");
+    expect(host.pingMs).toBeNull();
+    expect(notifications).toBe(2);
+
+    host.reconnectGuest("guest-1", { send: replyToGuest });
+    vi.advanceTimersByTime(2_000);
+    expect(typeof host.pingMs).toBe("number");
+    expect(notifications).toBe(3);
 
     stop();
   });
