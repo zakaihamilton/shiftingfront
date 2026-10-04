@@ -6,7 +6,7 @@ import type { SaveSession } from "@/lib/persist/save";
 import type { GameSettings } from "@/lib/persist/settings";
 import type { SimState } from "@/lib/types";
 import type { PauseView } from "@/lib/ui/shortcuts";
-import { clearRenderSessionCaches } from "@/lib/render/sessionCache";
+import { acquireRenderSessionCacheLease } from "@/lib/render/sessionCache";
 import { useGameAudioLifecycle } from "./useGameAudioLifecycle";
 import { useGameKeyboard } from "./useGameKeyboard";
 import { useGameLoop } from "./useGameLoop";
@@ -138,7 +138,7 @@ export function useGameRuntimeLifecycle({
   });
 
   useGameAudioLifecycle({ seed, missionIndex: state.missionIndex, tutorial, paused, result: state.result });
-  useEffect(() => () => clearRenderSessionCaches(), []);
+  useEffect(() => acquireRenderSessionCacheLease(), []);
 
   return { session, openPauseMenu, onExitTutorial };
 }

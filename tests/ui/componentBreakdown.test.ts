@@ -493,6 +493,7 @@ describe("production and overlay helpers", () => {
     const hold = makeFixture({ win: { kind: "holdTheLine", ticks: 120 } });
     expect(playFieldStatus(hold)).toMatchObject({
       objective: "Hold 00:10 remaining",
+      survivalObjective: true,
       timeRemaining: undefined,
     });
 
@@ -506,7 +507,10 @@ describe("production and overlay helpers", () => {
       required: 1,
       secondary: [],
     };
-    expect(playFieldStatus(timed).timeRemaining).toBe("Time remaining 00:10");
+    expect(playFieldStatus(timed)).toMatchObject({
+      survivalObjective: false,
+      timeRemaining: "Time remaining 00:10",
+    });
   });
 
   it("shows the escort total limit separately from convoy departure", () => {

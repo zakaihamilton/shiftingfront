@@ -114,14 +114,14 @@ export const UNIT_DIRECTION_ART: Record<UnitKind, Record<UnitView, string>> = {
     "back-right": "/art/sprites/sleek-modular/infantry-back-right-v1.webp",
   },
   antiArmor: {
-    "front-right": "/art/sprites/sleek-modular/anti-armor-front-right-v1.webp",
-    front: "/art/sprites/sleek-modular/anti-armor-front.webp",
-    right: "/art/sprites/sleek-modular/anti-armor-right.webp",
-    "front-left": "/art/sprites/sleek-modular/anti-armor-front-left-v1.webp",
-    "back-left": "/art/sprites/sleek-modular/anti-armor-back-left-v1.webp",
-    back: "/art/sprites/sleek-modular/anti-armor-back.webp",
-    left: "/art/sprites/sleek-modular/anti-armor-left.webp",
-    "back-right": "/art/sprites/sleek-modular/anti-armor-back-right-v1.webp",
+    "front-right": "/art/sprites/sleek-modular/anti-armor-front-right-v2.webp",
+    front: "/art/sprites/sleek-modular/anti-armor-front-v2.webp",
+    right: "/art/sprites/sleek-modular/anti-armor-right-v2.webp",
+    "front-left": "/art/sprites/sleek-modular/anti-armor-front-left-v2.webp",
+    "back-left": "/art/sprites/sleek-modular/anti-armor-back-left-v2.webp",
+    back: "/art/sprites/sleek-modular/anti-armor-back-v2.webp",
+    left: "/art/sprites/sleek-modular/anti-armor-left-v2.webp",
+    "back-right": "/art/sprites/sleek-modular/anti-armor-back-right-v2.webp",
   },
   tank: {
     "front-right": "/art/sprites/sleek-modular/tank-front-right-v1.webp",
@@ -167,14 +167,20 @@ export const UNIT_DIRECTION_ART: Record<UnitKind, Record<UnitView, string>> = {
   behemoth: {
     "front-right": "/art/sprites/sleek-modular/behemoth-front-right-v1.webp",
     front: "/art/sprites/sleek-modular/behemoth-front-v1.webp",
-    right: "/art/sprites/sleek-modular/behemoth-right-v1.webp",
+    right: "/art/sprites/sleek-modular/behemoth-right-v2.webp",
     "front-left": "/art/sprites/sleek-modular/behemoth-front-left-v1.webp",
     "back-left": "/art/sprites/sleek-modular/behemoth-back-left-v1.webp",
     back: "/art/sprites/sleek-modular/behemoth-back-v1.webp",
-    left: "/art/sprites/sleek-modular/behemoth-left-v1.webp",
+    left: "/art/sprites/sleek-modular/behemoth-left-v2.webp",
     "back-right": "/art/sprites/sleek-modular/behemoth-back-right-v1.webp",
   },
 };
+
+/** Prior Behemoth profiles stay available to clients with cached v1 manifests. */
+export const RETIRED_UNIT_DIRECTION_ART = [
+  "/art/sprites/sleek-modular/behemoth-left-v1.webp",
+  "/art/sprites/sleek-modular/behemoth-right-v1.webp",
+] as const;
 
 /** Generated four-frame walk cycles for units with visible legs and feet. */
 export const UNIT_WALK_CYCLE_ART: Record<WalkerKind, Record<UnitView, string>> = {
@@ -189,14 +195,14 @@ export const UNIT_WALK_CYCLE_ART: Record<WalkerKind, Record<UnitView, string>> =
     "back-right": "/art/sprites/sleek-modular/walk-cycle/infantry-back-right-walk-v1.webp",
   },
   antiArmor: {
-    front: "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-walk-v1.webp",
-    "front-right": "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-right-walk-v1.webp",
-    right: "/art/sprites/sleek-modular/walk-cycle/anti-armor-right-walk-v1.webp",
-    "front-left": "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-left-walk-v1.webp",
-    left: "/art/sprites/sleek-modular/walk-cycle/anti-armor-left-walk-v1.webp",
-    "back-left": "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-left-walk-v1.webp",
-    back: "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-walk-v1.webp",
-    "back-right": "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-right-walk-v1.webp",
+    front: "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-walk-v2.webp",
+    "front-right": "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-right-walk-v2.webp",
+    right: "/art/sprites/sleek-modular/walk-cycle/anti-armor-right-walk-v2.webp",
+    "front-left": "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-left-walk-v2.webp",
+    left: "/art/sprites/sleek-modular/walk-cycle/anti-armor-left-walk-v2.webp",
+    "back-left": "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-left-walk-v2.webp",
+    back: "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-walk-v2.webp",
+    "back-right": "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-right-walk-v2.webp",
   },
   medic: {
     front: "/art/sprites/sleek-modular/walk-cycle/medic-front-walk-v1.webp",

@@ -21,6 +21,7 @@ import {
   listMissionRasterSources,
   AIR_SUPPORT_ART,
   ANTI_AIR_TURRET_BASE_CROP,
+  RETIRED_UNIT_DIRECTION_ART,
   SPRITE_ART,
   TEXTURE_ART,
   STRIKE_PLANE_DIRECTION_ART,
@@ -212,13 +213,13 @@ describe("tactical procedural assets", () => {
       expect(views.every((spec) => spec.rotation === undefined)).toBe(true);
       expect(new Set(views.map((spec) => spec.imageSrc)).size).toBe(8);
       expect(views[0]!.imageSrc).toMatch(/-right(?:-v[12])?\.webp/);
-      expect(views[1]!.imageSrc).toContain("-front-right-v1.webp");
-      expect(views[2]!.imageSrc).toMatch(/-front(?:-v1)?\.webp/);
-      expect(views[3]!.imageSrc).toContain("-front-left-v1.webp");
+      expect(views[1]!.imageSrc).toMatch(/-front-right-v\d+\.webp/);
+      expect(views[2]!.imageSrc).toMatch(/-front(?:-v\d+)?\.webp/);
+      expect(views[3]!.imageSrc).toMatch(/-front-left-v\d+\.webp/);
       expect(views[4]!.imageSrc).toMatch(/-left(?:-v[12])?\.webp/);
-      expect(views[5]!.imageSrc).toContain("-back-left-v1.webp");
-      expect(views[6]!.imageSrc).toMatch(/-back(?:-v1)?\.webp/);
-      expect(views[7]!.imageSrc).toContain("-back-right-v1.webp");
+      expect(views[5]!.imageSrc).toMatch(/-back-left-v\d+\.webp/);
+      expect(views[6]!.imageSrc).toMatch(/-back(?:-v\d+)?\.webp/);
+      expect(views[7]!.imageSrc).toMatch(/-back-right-v\d+\.webp/);
     }
   });
 
@@ -318,6 +319,7 @@ describe("tactical procedural assets", () => {
     const used = new Set([
       ...Object.values(SPRITE_ART).map((src) => basename(src)),
       ...Object.values(UNIT_DIRECTION_ART).flatMap((views) => Object.values(views).map((src) => basename(src))),
+      ...RETIRED_UNIT_DIRECTION_ART.map((src) => basename(src)),
     ]);
     const dir = resolve(process.cwd(), "public/art/sprites/sleek-modular");
     for (const file of readdirSync(dir).filter((name) => name.endsWith(".webp"))) {

@@ -44,12 +44,19 @@ function endpoint(settings: PeerovoSettings, path: string): string {
   return new URL(path, `${settings.apiUrl}/`).toString();
 }
 
-async function request(url: string, init?: RequestInit): Promise<Response> {
+async function request<T>(
+  url: string,
+  consume: (response: Response, responseReceivedAtMs: number) => Promise<T>,
+  init?: RequestInit,
+): Promise<T> {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), API_TIMEOUT_MS);
   try {
-    return await fetch(url, { ...init, cache: "no-store", redirect: "error", signal: abort.signal });
-  } catch {
+    const response = await fetch(url, { ...init, cache: "no-store", redirect: "error", signal: abort.signal });
+    return await consume(response, Date.now());
+  } catch (error) {
+    if (abort.signal.aborted) throw new PeerovoError("request_failed");
+    if (error instanceof PeerovoError) throw error;
     throw new PeerovoError("request_failed");
   } finally {
     clearTimeout(timer);
@@ -72,13 +79,14 @@ function validPeerJs(value: unknown): value is PeerJsSettings {
 export async function fetchPeerJsSettings(): Promise<PeerJsSettings> {
   const settings = getPeerovoSettings();
   if (!settings) throw new PeerovoError("unconfigured");
-  const response = await request(endpoint(settings, "/v1/config"));
-  if (!response.ok) throw new PeerovoError("config_unavailable");
-  const payload = await json(response) as { signalingAuthMode?: unknown; peerJs?: unknown };
-  if (payload.signalingAuthMode !== "project-session-peerovo-v1" || !validPeerJs(payload.peerJs)) {
-    throw new PeerovoError("invalid_config");
-  }
-  return payload.peerJs;
+  return request(endpoint(settings, "/v1/config"), async (response) => {
+    if (!response.ok) throw new PeerovoError("config_unavailable");
+    const payload = await json(response) as { signalingAuthMode?: unknown; peerJs?: unknown };
+    if (payload.signalingAuthMode !== "project-session-peerovo-v1" || !validPeerJs(payload.peerJs)) {
+      throw new PeerovoError("invalid_config");
+    }
+    return payload.peerJs;
+  });
 }
 
 export async function issuePeerCredential(input: {
@@ -96,35 +104,38 @@ export async function issuePeerCredential(input: {
   if (expiresInSeconds < 1) throw new PeerovoError("session_near_expiry");
 
   const path = `/v1/projects/${encodeURIComponent(settings.projectId)}/sessions/${encodeURIComponent(input.sessionId)}/peers`;
-  const response = await request(endpoint(settings, path), {
+  const ticket = await request(endpoint(settings, path), async (response, responseReceivedAtMs) => {
+    if (response.status === 401 || response.status === 403) {
+      throw new PeerovoError("project_access_denied");
+    }
+    if (response.status !== 201) throw new PeerovoError("ticket_unavailable");
+    const payload = await json(response) as Record<string, unknown>;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    // Capture the response time before reading its body so a slow stream cannot
+    // extend the accepted credential lifetime. Allow a small clock-boundary skew.
+    const latestAllowedExpiry = Math.floor(responseReceivedAtMs / 1000) + expiresInSeconds + 5;
+    if (payload.projectId !== settings.projectId || payload.sessionId !== input.sessionId || payload.peerId !== input.peerId ||
+        typeof payload.peerToken !== "string" || payload.peerToken.length === 0 || payload.peerToken.length > 2048 ||
+        !Number.isInteger(payload.expiresAt) || Number(payload.expiresAt) <= nowSeconds ||
+        Number(payload.expiresAt) > latestAllowedExpiry ||
+        Number(payload.expiresAt) > Math.floor(input.sessionExpiresAt / 1000)) {
+      throw new PeerovoError("invalid_ticket_response");
+    }
+    return { peerToken: payload.peerToken, expiresAt: Number(payload.expiresAt) };
+  }, {
     method: "POST",
     headers: { Authorization: `Bearer ${settings.projectApiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ peerId: input.peerId, expiresInSeconds }),
   });
-  const responseReceivedAtMs = Date.now();
-  if (response.status === 401 || response.status === 403) {
-    throw new PeerovoError("project_access_denied");
-  }
-  if (response.status !== 201) throw new PeerovoError("ticket_unavailable");
-  const payload = await json(response) as Record<string, unknown>;
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  // Capture the response time before reading its body so a slow stream cannot
-  // extend the accepted credential lifetime. Allow a small clock-boundary skew.
-  const latestAllowedExpiry = Math.floor(responseReceivedAtMs / 1000) + expiresInSeconds + 5;
-  if (payload.projectId !== settings.projectId || payload.sessionId !== input.sessionId || payload.peerId !== input.peerId ||
-      typeof payload.peerToken !== "string" || payload.peerToken.length === 0 || payload.peerToken.length > 2048 ||
-      !Number.isInteger(payload.expiresAt) || Number(payload.expiresAt) <= nowSeconds ||
-      Number(payload.expiresAt) > latestAllowedExpiry ||
-      Number(payload.expiresAt) > Math.floor(input.sessionExpiresAt / 1000)) {
-    throw new PeerovoError("invalid_ticket_response");
-  }
 
   const icePath = `/v1/projects/${encodeURIComponent(settings.projectId)}/sessions/${encodeURIComponent(input.sessionId)}/peers/${encodeURIComponent(input.peerId)}/ice-config`;
-  const iceResponse = await request(endpoint(settings, icePath), { headers: { Authorization: `Bearer ${payload.peerToken}` } });
-  if (!iceResponse.ok) throw new PeerovoError("ice_config_unavailable");
-  const icePayload = await json(iceResponse) as { iceServers?: unknown };
-  if (!Array.isArray(icePayload.iceServers)) throw new PeerovoError("invalid_ice_config");
-  return { peerToken: payload.peerToken, expiresAt: Number(payload.expiresAt), iceServers: icePayload.iceServers };
+  const iceServers = await request(endpoint(settings, icePath), async (response) => {
+    if (!response.ok) throw new PeerovoError("ice_config_unavailable");
+    const icePayload = await json(response) as { iceServers?: unknown };
+    if (!Array.isArray(icePayload.iceServers)) throw new PeerovoError("invalid_ice_config");
+    return icePayload.iceServers;
+  }, { headers: { Authorization: `Bearer ${ticket.peerToken}` } });
+  return { ...ticket, iceServers };
 }
 
 export function peerovoErrorReason(error: unknown): string {

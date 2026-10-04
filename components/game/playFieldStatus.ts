@@ -26,6 +26,7 @@ export function playFieldStatus(state: SimState, campaign?: Campaign) {
     : undefined;
   return {
     objective: objective.label,
+    survivalObjective: state.win.kind === "holdTheLine",
     secondary: secondaryProgress(state).map((item) => `${item.completed ? "✓" : "○"} ${item.label}`),
     briefingObjectives: multiplayer ? MULTIPLAYER_DIRECTIVES : mission && campaign ? missionObjectives(mission, campaign) : [],
     objectiveProgress: objective,

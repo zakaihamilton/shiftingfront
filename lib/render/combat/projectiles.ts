@@ -1,11 +1,235 @@
-import { BUILDING_STATS, isAirUnit, UNIT_STATS } from "../../catalog";
+import { BUILDING_STATS, UNIT_STATS, ammoEffectForWeapon } from "../../catalog";
 import { animClock, facingVector } from "../anim";
 import { tileToScreen, type Camera } from "../../iso";
 import { entityElev } from "../renderPicking";
 import { turretAimMap, turretTargetInRange, turretTargetPoint } from "../renderStructures";
 import { distToEntity } from "../../sim/world";
-import { isBuildingEntity, type Entity, type Facing, type SimState, type UnitKind } from "../../types";
+import { isBuildingEntity, isUnitEntity, type AmmoEffect, type Entity, type Facing, type SimState } from "../../types";
+import type { FxBurst } from "../fx";
 import { unitWeaponSockets } from "../unitVehicleLayers";
+
+const launchOffsets = new WeakMap<FxBurst, { x: number; y: number }>();
+
+function ammoEffectFor(entity: Entity): AmmoEffect {
+  if (isBuildingEntity(entity)) {
+    const stats = BUILDING_STATS[entity.kind];
+    return stats.ammoEffect ?? ammoEffectForWeapon(stats.weapon ?? "cannon");
+  }
+  if (isUnitEntity(entity)) {
+    const stats = UNIT_STATS[entity.kind];
+    return stats.ammoEffect ?? ammoEffectForWeapon(stats.weapon);
+  }
+  return "shell";
+}
+
+function flightDuration(effect: AmmoEffect, distance: number): number {
+  if (effect === "bullet") return 1.2 + Math.min(0.4, distance * 0.04);
+  if (effect === "missile") return 4.4 + Math.min(1.5, distance * 0.16);
+  if (effect === "bomb") return 3.3 + Math.min(1.1, distance * 0.12);
+  if (effect === "beam") return 2.4;
+  return 2.4 + Math.min(0.8, distance * 0.08);
+}
+
+function drawProjectile(
+  ctx: CanvasRenderingContext2D,
+  effect: AmmoEffect,
+  x: number,
+  y: number,
+  angle: number,
+  originX: number,
+  originY: number,
+  progress: number,
+  zoom: number,
+  alpha: number,
+): void {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const scale = Math.max(0.72, zoom);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  if (effect === "bullet") {
+    const trail = (8 + progress * 8) * zoom;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = "rgba(255, 212, 125, 0.62)";
+    ctx.lineWidth = Math.max(1, 1.2 * zoom);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(x - c * trail, y - s * trail);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.fillStyle = "#fff4c2";
+    ctx.beginPath();
+    ctx.ellipse(x, y, Math.max(1.2, 2 * zoom), Math.max(1, 1.25 * zoom), angle, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  if (effect === "beam") {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = "rgba(89, 225, 255, 0.3)";
+    ctx.lineWidth = Math.max(3, 7 * zoom);
+    ctx.beginPath();
+    ctx.moveTo(originX, originY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.strokeStyle = "#b9f5ff";
+    ctx.lineWidth = Math.max(1, 2 * zoom);
+    ctx.beginPath();
+    ctx.moveTo(originX, originY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+
+  if (effect === "missile") {
+    ctx.globalCompositeOperation = "source-over";
+    // Short smoke puffs follow the rocket, replacing the old battlefield-long laser line.
+    for (let i = 1; i <= 4; i++) {
+      const back = 5 + i * 5;
+      ctx.globalAlpha = alpha * (0.32 - i * 0.045);
+      ctx.fillStyle = i % 2 ? "#737b78" : "#a5a8a0";
+      ctx.beginPath();
+      ctx.ellipse(-back * scale, Math.sin(progress * 8 + i) * scale, (2.1 + i * 0.55) * scale, (1.5 + i * 0.35) * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = "rgba(255, 113, 42, 0.8)";
+    ctx.beginPath();
+    ctx.moveTo(-2 * scale, -2.4 * scale);
+    ctx.lineTo(-11 * scale, 0);
+    ctx.lineTo(-2 * scale, 2.4 * scale);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#c9ceca";
+    ctx.beginPath();
+    ctx.moveTo(-5 * scale, -2.2 * scale);
+    ctx.lineTo(3.4 * scale, -1.5 * scale);
+    ctx.lineTo(6 * scale, 0);
+    ctx.lineTo(3.4 * scale, 1.5 * scale);
+    ctx.lineTo(-5 * scale, 2.2 * scale);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#fff0b0";
+    ctx.fillRect(2 * scale, -0.55 * scale, 2.4 * scale, 1.1 * scale);
+    ctx.restore();
+    return;
+  }
+
+  if (effect === "bomb") {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "rgba(22, 29, 30, 0.24)";
+    ctx.beginPath();
+    ctx.ellipse(0, 5 * scale, 5 * scale, 1.8 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#46504d";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 5.5 * scale, 2.25 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#bdc2b3";
+    ctx.fillRect(-2.8 * scale, -1.2 * scale, 3.2 * scale, 0.75 * scale);
+    ctx.fillStyle = "#d58a4a";
+    ctx.beginPath();
+    ctx.moveTo(-5 * scale, 0);
+    ctx.lineTo(-7.4 * scale, -1.6 * scale);
+    ctx.lineTo(-6.7 * scale, 0);
+    ctx.lineTo(-7.4 * scale, 1.6 * scale);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // Shells retain a compact tracer and a hot, rounded projectile head.
+  ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = "rgba(255, 159, 70, 0.42)";
+  ctx.lineWidth = Math.max(2, 4 * zoom);
+  ctx.beginPath();
+  ctx.moveTo(-13 * scale, 0);
+  ctx.lineTo(-3 * scale, 0);
+  ctx.stroke();
+  ctx.fillStyle = "#ffb34d";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 3.3 * scale, 2.5 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff2bd";
+  ctx.beginPath();
+  ctx.arc(1.2 * scale, 0, 1.15 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Draws each shot from its launch-time source and target snapshot. */
+export function drawCombatProjectileBursts(
+  ctx: CanvasRenderingContext2D,
+  cam: Camera,
+  fx: FxBurst[] | undefined,
+  nowMs: number,
+): void {
+  if (!fx?.length) return;
+  const z = cam.zoom;
+  for (const burst of fx) {
+    const duration = burst.projectileDurationMs;
+    if (
+      burst.kind !== "muzzle" ||
+      duration === undefined ||
+      burst.sourceX === undefined ||
+      burst.sourceY === undefined ||
+      burst.targetX === undefined ||
+      burst.targetY === undefined
+    ) continue;
+    const age = nowMs - burst.bornMs;
+    if (age < 0 || age >= duration) continue;
+    const progress = Math.max(0, Math.min(1, age / duration));
+    const source = tileToScreen(burst.sourceX, burst.sourceY, cam, burst.sourceElev ?? burst.elev);
+    const target = tileToScreen(burst.targetX, burst.targetY, cam, burst.targetElev ?? burst.elev);
+    const dx = target.x - source.x;
+    const dy = target.y - source.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 0.001) continue;
+
+    let ax: number;
+    let ay: number;
+    if (burst.entityKind === "turret" || burst.entityKind === "antiAirTurret") {
+      const mountX = source.x + 1.67 * z;
+      const mountY = source.y + 15.34 * z;
+      const aim = Math.atan2(target.y + 6 * z - mountY, target.x - mountX);
+      ax = mountX + Math.cos(aim) * 24 * z;
+      ay = mountY + Math.sin(aim) * 24 * z;
+    } else {
+      const muzzle = burst.entityKind === "infantry" ? 14 : burst.entityKind === "behemoth" ? 28 : burst.entityClass === "building" ? 18 : 20;
+      ax = source.x + dx / distance * muzzle * z;
+      ay = source.y + 6 * z + dy / distance * muzzle * z;
+    }
+
+    // Preserve the authored muzzle at launch, then keep the shot's source fixed
+    // even when its firing unit moves or the camera pans and zooms.
+    let offset = launchOffsets.get(burst);
+    if (!offset) {
+      const socket = burst.sourceEntityId !== undefined ? unitWeaponSockets.get(burst.sourceEntityId) : undefined;
+      offset = { x: ((socket?.x ?? ax) - source.x) / z, y: ((socket?.y ?? ay) - source.y) / z };
+      launchOffsets.set(burst, offset);
+    }
+    ax = source.x + offset.x * z;
+    ay = source.y + offset.y * z;
+
+    const bx = target.x;
+    const by = target.y + 9 * z;
+    const px = ax + (bx - ax) * progress;
+    const py = ay + (by - ay) * progress;
+    const angle = Math.atan2(by - ay, bx - ax);
+    const effect = burst.ammoEffect ?? ammoEffectForWeapon(burst.weapon ?? "cannon");
+    drawProjectile(ctx, effect, px, py, angle, ax, ay, progress, z, 0.55 + (1 - progress) * 0.35);
+  }
+}
 
 export function drawCombatProjectiles(
   ctx: CanvasRenderingContext2D,
@@ -15,9 +239,15 @@ export function drawCombatProjectiles(
   entityById: Map<number, Entity>,
   facingFor: (state: SimState, e: Entity) => Facing,
   clockMs?: number,
+  projectileBursts?: FxBurst[],
 ): void {
+  if (projectileBursts !== undefined) {
+    drawCombatProjectileBursts(ctx, cam, projectileBursts, clockMs ?? animClock(state.tick));
+    return;
+  }
   const z = cam.zoom;
   const t = animClock(state.tick, clockMs);
+  const tickProgress = (t % 80) / 80;
   for (const e of drawList) {
     if (e.attackTarget === undefined || e.cooldown <= 0) continue;
     const target = entityById.get(e.attackTarget);
@@ -25,22 +255,26 @@ export function drawCombatProjectiles(
     const buildingCombat = isBuildingEntity(e) ? BUILDING_STATS[e.kind].combat : undefined;
     const isTurret = buildingCombat !== undefined;
     if (isTurret && !turretTargetInRange(e, target)) continue;
-    if (e.class === "unit") {
-      const range = UNIT_STATS[e.kind as UnitKind].range;
+    if (isUnitEntity(e)) {
+      const range = UNIT_STATS[e.kind].range;
       // Combat can leave a target assigned while the unit is chasing it, or
-      // for the death/cleanup frame. Never render that stale lock as a
-      // screen-spanning projectile.
+      // for the death/cleanup frame. Never render a stale lock as a projectile.
       if (range <= 0 || target.owner === e.owner || target.neutral || distToEntity(e, target) > range) continue;
     }
-    const maxCooldown = e.class === "unit" ? UNIT_STATS[e.kind as UnitKind].cooldown : buildingCombat?.cooldown ?? 0;
-    if (maxCooldown <= 0 || e.cooldown < maxCooldown - 3) continue;
-    const facing = facingFor(state, e);
-    const dir = facingVector(facing);
+    const maxCooldown = isUnitEntity(e) ? UNIT_STATS[e.kind].cooldown : buildingCombat?.cooldown ?? 0;
+    if (maxCooldown <= 0) continue;
+
+    const effect = ammoEffectFor(e);
+    const age = maxCooldown - e.cooldown;
     const a = tileToScreen(e.x, e.y, cam, entityElev(state, e));
     const targetPoint = isTurret ? turretTargetPoint(e, target) : { x: target.x, y: target.y };
     const b = tileToScreen(targetPoint.x, targetPoint.y, cam, entityElev(state, target));
-    const age = maxCooldown - e.cooldown;
-    const u = Math.max(0, Math.min(1, (age + (t % 80) / 80) / 2.4));
+    const distance = Math.hypot(target.x - e.x, target.y - e.y);
+    const duration = flightDuration(effect, distance);
+    // Cooldowns advance in whole ticks, so keep the endpoint visible through
+    // the first rendered frame after a fractional travel duration.
+    if (age > Math.ceil(duration)) continue;
+    const u = Math.max(0, Math.min(1, (age + tickProgress) / duration));
     let ax: number;
     let ay: number;
     if (isTurret) {
@@ -51,7 +285,8 @@ export function drawCombatProjectiles(
       ax = mountX + Math.cos(angle) * 24 * z;
       ay = mountY + Math.sin(angle) * 24 * z;
     } else {
-      const muzzle = e.class === "building" ? 18 : e.kind === "infantry" ? 14 : e.kind === "behemoth" ? 28 : 20;
+      const dir = facingVector(facingFor(state, e));
+      const muzzle = e.kind === "infantry" ? 14 : e.kind === "behemoth" ? 28 : 20;
       ax = a.x + dir.x * muzzle * z;
       ay = a.y + 6 * z + dir.y * muzzle * z;
       const socket = unitWeaponSockets.get(e.id);
@@ -61,76 +296,7 @@ export function drawCombatProjectiles(
     const by = b.y + 9 * z;
     const px = ax + (bx - ax) * u;
     const py = ay + (by - ay) * u;
-    const anti = e.kind === "antiArmor" || e.kind === "antiAirTurret";
-    const airStrike = e.class === "unit" && isAirUnit(e.kind);
-    const isSuper = e.kind === "behemoth";
-    const heavy = e.kind === "tank" || e.kind === "turret" || e.kind === "antiAirTurret" || isSuper;
-    const coreWidth = Math.max(1, Math.round(z * (isSuper ? 4.5 : heavy ? 3 : anti ? 2 : 1)));
-    const glowWidth = coreWidth + Math.max(2, Math.round((isSuper ? 7 : heavy ? 5 : 3) * z));
-    const coreColor = isSuper ? "#fff2a8" : airStrike ? "#ffcc72" : anti ? "#ff8b3d" : heavy ? "#ffe08a" : "#f6d06c";
-    const glowColor = isSuper ? "rgba(255, 175, 45, 0.48)" : airStrike ? "rgba(255, 185, 76, 0.36)" : anti ? "rgba(255, 90, 40, 0.32)" : "rgba(255, 213, 106, 0.34)";
-    ctx.save();
-    ctx.lineCap = "round";
-    ctx.globalAlpha = 0.55 + (1 - u) * 0.35;
-    ctx.strokeStyle = glowColor;
-    ctx.lineWidth = glowWidth;
-    ctx.beginPath();
-    ctx.moveTo(Math.round(ax), Math.round(ay));
-    ctx.lineTo(Math.round(px), Math.round(py));
-    ctx.stroke();
-    ctx.strokeStyle = coreColor;
-    ctx.lineWidth = coreWidth;
-    ctx.beginPath();
-    ctx.moveTo(Math.round(ax), Math.round(ay));
-    ctx.lineTo(Math.round(px), Math.round(py));
-    ctx.stroke();
-    if (anti) {
-      for (let i = 1; i <= 3; i++) {
-        const trail = Math.max(0, u - i * 0.045);
-        const tx = ax + (bx - ax) * trail;
-        const ty = ay + (by - ay) * trail;
-        ctx.globalAlpha = 0.22 * (1 - i / 4);
-        ctx.fillStyle = "#9aa09a";
-        ctx.beginPath();
-        ctx.ellipse(tx, ty, (2 + i) * z, (1.2 + i * 0.55) * z, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    ctx.globalAlpha = 0.55 + (1 - u) * 0.35;
-    ctx.fillStyle = heavy ? "#fff4c4" : "#fff0a0";
-    const shell = heavy ? 5 : 3;
-    ctx.fillRect(Math.round(px - shell / 2), Math.round(py - shell / 2), shell, shell);
-    if (age < 1) {
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = "#fff8d0";
-      ctx.beginPath();
-      ctx.arc(ax, ay, Math.max(2, 3 * z), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = anti ? "#ff8b3d" : "#fff4c4";
-      ctx.lineWidth = Math.max(1, z);
-      for (let i = 0; i < 5; i++) {
-        const ang = (i / 5) * Math.PI * 2 + facing * 0.3;
-        ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(ax + Math.cos(ang) * 8 * z, ay + Math.sin(ang) * 5 * z);
-        ctx.stroke();
-      }
-    }
-    if (u > 0.72) {
-      const burst = (u - 0.72) / 0.28;
-      ctx.globalAlpha = 0.85 * (1 - burst);
-      for (let i = 0; i < 6; i++) {
-        const ang = (i / 6) * Math.PI * 2 + e.id;
-        const rad = (4 + burst * 10) * z;
-        ctx.fillStyle = i % 2 ? "#ffe08a" : "#a54b25";
-        ctx.fillRect(
-          Math.round(bx + Math.cos(ang) * rad - 2),
-          Math.round(by + Math.sin(ang) * rad * 0.5 - 2),
-          Math.max(2, 3 * z),
-          Math.max(2, 3 * z),
-        );
-      }
-    }
-    ctx.restore();
+    const angle = Math.atan2(by - ay, bx - ax);
+    drawProjectile(ctx, effect, px, py, angle, ax, ay, u, z, 0.55 + (1 - u) * 0.35);
   }
 }

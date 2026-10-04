@@ -1,5 +1,5 @@
 // Shifting Front Service Worker — Offline PWA Cache (Complete Runtime Precache)
-const CACHE_NAME = "shiftingfront-v5";
+const CACHE_NAME = "shiftingfront-v6";
 const requestedDeploymentId = new URL(self.location.href).searchParams.get("dpl");
 const DEPLOYMENT_ID = requestedDeploymentId && /^[a-zA-Z0-9_-]{1,80}$/.test(requestedDeploymentId)
   ? requestedDeploymentId
@@ -7,6 +7,7 @@ const DEPLOYMENT_ID = requestedDeploymentId && /^[a-zA-Z0-9_-]{1,80}$/.test(requ
 const ACTIVE_CACHE_NAME = DEPLOYMENT_ID
   ? `shiftingfront-${DEPLOYMENT_ID}`
   : CACHE_NAME;
+const RUNTIME_PRECACHE_MANIFEST = "/_next/static/offline-precache.json";
 
 const CORE_PRECACHE = [
   "/",
@@ -223,14 +224,14 @@ const PRECACHE_URLS = [
   "/art/sprites/sleek-modular/air-support/strike-plane-front-right-v1.webp",
   "/art/sprites/sleek-modular/air-support/strike-plane-left-v1.webp",
   "/art/sprites/sleek-modular/air-support/strike-plane-right-v1.webp",
-  "/art/sprites/sleek-modular/anti-armor-back-left-v1.webp",
-  "/art/sprites/sleek-modular/anti-armor-back-right-v1.webp",
-  "/art/sprites/sleek-modular/anti-armor-back.webp",
-  "/art/sprites/sleek-modular/anti-armor-front-left-v1.webp",
-  "/art/sprites/sleek-modular/anti-armor-front-right-v1.webp",
-  "/art/sprites/sleek-modular/anti-armor-front.webp",
-  "/art/sprites/sleek-modular/anti-armor-left.webp",
-  "/art/sprites/sleek-modular/anti-armor-right.webp",
+  "/art/sprites/sleek-modular/anti-armor-back-left-v2.webp",
+  "/art/sprites/sleek-modular/anti-armor-back-right-v2.webp",
+  "/art/sprites/sleek-modular/anti-armor-back-v2.webp",
+  "/art/sprites/sleek-modular/anti-armor-front-left-v2.webp",
+  "/art/sprites/sleek-modular/anti-armor-front-right-v2.webp",
+  "/art/sprites/sleek-modular/anti-armor-front-v2.webp",
+  "/art/sprites/sleek-modular/anti-armor-left-v2.webp",
+  "/art/sprites/sleek-modular/anti-armor-right-v2.webp",
   "/art/sprites/sleek-modular/barracks-v2.webp",
   "/art/sprites/sleek-modular/behemoth-back-left-v1.webp",
   "/art/sprites/sleek-modular/behemoth-back-right-v1.webp",
@@ -239,7 +240,9 @@ const PRECACHE_URLS = [
   "/art/sprites/sleek-modular/behemoth-front-right-v1.webp",
   "/art/sprites/sleek-modular/behemoth-front-v1.webp",
   "/art/sprites/sleek-modular/behemoth-left-v1.webp",
+  "/art/sprites/sleek-modular/behemoth-left-v2.webp",
   "/art/sprites/sleek-modular/behemoth-right-v1.webp",
+  "/art/sprites/sleek-modular/behemoth-right-v2.webp",
   "/art/sprites/sleek-modular/construction-yard-v2.webp",
   "/art/sprites/sleek-modular/convoy-truck-back-left-v1.webp",
   "/art/sprites/sleek-modular/convoy-truck-back-right-v1.webp",
@@ -304,14 +307,14 @@ const PRECACHE_URLS = [
   "/art/sprites/sleek-modular/turret-v2.webp",
 
   // Walk cycle sprites
-  "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-left-walk-v1.webp",
-  "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-right-walk-v1.webp",
-  "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-walk-v1.webp",
-  "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-left-walk-v1.webp",
-  "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-right-walk-v1.webp",
-  "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-walk-v1.webp",
-  "/art/sprites/sleek-modular/walk-cycle/anti-armor-left-walk-v1.webp",
-  "/art/sprites/sleek-modular/walk-cycle/anti-armor-right-walk-v1.webp",
+  "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-left-walk-v2.webp",
+  "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-right-walk-v2.webp",
+  "/art/sprites/sleek-modular/walk-cycle/anti-armor-back-walk-v2.webp",
+  "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-left-walk-v2.webp",
+  "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-right-walk-v2.webp",
+  "/art/sprites/sleek-modular/walk-cycle/anti-armor-front-walk-v2.webp",
+  "/art/sprites/sleek-modular/walk-cycle/anti-armor-left-walk-v2.webp",
+  "/art/sprites/sleek-modular/walk-cycle/anti-armor-right-walk-v2.webp",
   "/art/sprites/sleek-modular/walk-cycle/infantry-back-left-walk-v1.webp",
   "/art/sprites/sleek-modular/walk-cycle/infantry-back-right-walk-v1.webp",
   "/art/sprites/sleek-modular/walk-cycle/infantry-back-walk-v1.webp",
@@ -371,13 +374,31 @@ async function precacheUrl(cache, url, { required, discover }) {
   }
 }
 
+async function precacheRuntime(cache) {
+  // The build manifest includes dynamic imports, CSS, fonts, and worker bundles.
+  // Fetch it fresh so a new installation cannot reuse a previous build's list.
+  const response = await fetch(RUNTIME_PRECACHE_MANIFEST, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Failed to load runtime precache manifest: ${response.status}`);
+  const urls = await response.json();
+  if (!Array.isArray(urls) || urls.length === 0 || urls.some((url) => {
+    if (typeof url !== "string" || !url.startsWith("/_next/static/")) return true;
+    const parsed = new URL(url, self.location.href);
+    return parsed.origin !== self.location.origin || !parsed.pathname.startsWith("/_next/static/")
+      || parsed.search !== "" || parsed.hash !== "" || !/\.(?:js|css|woff2?)$/.test(parsed.pathname);
+  })) throw new Error("Invalid runtime precache manifest");
+  await Promise.all(urls.map((url) => precacheUrl(cache, url, { required: true, discover: false })));
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(ACTIVE_CACHE_NAME)
       .then(async (cache) => {
         await Promise.all(
-          CORE_PRECACHE.map((url) => precacheUrl(cache, url, { required: true, discover: true })),
+          [
+            precacheRuntime(cache),
+            ...CORE_PRECACHE.map((url) => precacheUrl(cache, url, { required: true, discover: true })),
+          ],
         );
         const core = new Set(CORE_PRECACHE);
         await Promise.allSettled(
