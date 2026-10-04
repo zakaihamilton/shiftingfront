@@ -15,6 +15,7 @@ type CampaignRecord = { seed: number; revision: number; autosave: string | null;
 type SlotRecord = { id: string; revision: number; raw: string };
 type MigrationRecord = { key: string; raw: string; unreadable?: boolean; sourceKey?: string };
 type Journal = { revision: number; autosave: string; progress: string; savedAt: number };
+type SaveOutcome = { status: SaveWriteStatus; revision?: number };
 
 function request<T>(value: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error); });
@@ -269,9 +270,11 @@ export class SaveRepository {
         let captured: SimState;
         try { captured = decodeSave(encode(state)).state; } catch { return Promise.resolve("failed" as const); }
         const token = generation;
-        const next = writes.then(() => token !== generation ? "conflict" as const : this.save(captured, mode === "implicit" ? revision : undefined, () => token === generation)).then((status) => {
-          if (status === "saved" && token === generation) { revision = this.revisions.get(seed) ?? revision; external = false; }
-          return status;
+        const next = writes.then(() => token !== generation ? { status: "conflict" as const } : this.saveWithRevision(captured, mode === "implicit" ? revision : undefined, () => token === generation)).then((outcome) => {
+          // A refresh may already include another tab's later commit. Only adopt
+          // the revision written by this operation, so the next autosave conflicts.
+          if (outcome.status === "saved" && token === generation) { revision = outcome.revision ?? revision; external = false; }
+          return outcome.status;
         });
         writes = next.catch(() => undefined);
         return next;
@@ -282,12 +285,15 @@ export class SaveRepository {
     };
   }
   save(state: SimState, expectedRevision?: number, isCurrent: () => boolean = () => true): Promise<SaveWriteStatus> {
+    return this.saveWithRevision(state, expectedRevision, isCurrent).then((outcome) => outcome.status);
+  }
+  private saveWithRevision(state: SimState, expectedRevision?: number, isCurrent: () => boolean = () => true): Promise<SaveOutcome> {
     // Capture before queueing: simulation keeps mutating its original object.
     let autosave: string;
-    try { autosave = encode(state); } catch { return Promise.resolve("failed"); }
+    try { autosave = encode(state); } catch { return Promise.resolve({ status: "failed" }); }
     const captured = decodeSave(autosave).state;
-    return this.enqueue(async () => {
-      if (!isCurrent()) return "conflict";
+    return this.enqueue<SaveOutcome>(async () => {
+      if (!isCurrent()) return { status: "conflict" };
       if (this.mode === "legacy") {
         const previousAutosave = safeGetItem(this.legacy, saveKey(captured.seed));
         const previousProgress = safeGetItem(this.legacy, campaignKey(captured.seed));
@@ -299,22 +305,22 @@ export class SaveRepository {
             else safeSetItem(this.legacy, saveKey(captured.seed), previousAutosave);
             if (previousProgress === null) safeRemoveItem(this.legacy, campaignKey(captured.seed));
             else safeSetItem(this.legacy, campaignKey(captured.seed), previousProgress);
-            return "failed";
+            return { status: "failed" };
           }
         }
-        this.publish(); return written ? "saved" : "failed";
+        this.publish(); return { status: written ? "saved" : "failed" };
       }
-      const status = await this.transaction(["campaigns"], async (tx) => {
+      const outcome = await this.transaction<SaveOutcome>(["campaigns"], async (tx) => {
         const store = tx.objectStore("campaigns");
         const record: CampaignRecord = await request(store.get(captured.seed)) ?? { seed: captured.seed, revision: 0, autosave: null, progress: null };
-        if (!isCurrent()) return "conflict" as const;
-        if (expectedRevision !== undefined && record.revision !== expectedRevision) return "conflict" as const;
+        if (!isCurrent()) return { status: "conflict" };
+        if (expectedRevision !== undefined && record.revision !== expectedRevision) return { status: "conflict" };
         store.put({ ...record, revision: record.revision + 1, autosave, progress: encodeProgress(progressFor(record, captured)) });
-        return "saved" as const;
+        return { status: "saved", revision: record.revision + 1 };
       });
-      if (status === "saved") await this.committed();
-      return status;
-    }).catch(() => "failed");
+      if (outcome.status === "saved") await this.committed();
+      return outcome;
+    }).catch(() => ({ status: "failed" }));
   }
   saveSlot(input: { id?: string; name: string; state: SimState; campaign: CampaignProgress }, isCurrent: () => boolean = () => true): Promise<SlotWriteResult> {
     const temp = memoryStorage();
