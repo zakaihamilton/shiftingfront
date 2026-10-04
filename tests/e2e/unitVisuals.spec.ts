@@ -11,12 +11,13 @@ test("Asset Bay changes a paused tank's turret without moving its hull", async (
     const c=element as HTMLCanvasElement,ctx=c.getContext("2d")!;
     return { upper: Array.from(ctx.getImageData(0,0,c.width,c.height-45).data), lower: Array.from(ctx.getImageData(0,c.height-45,c.width,45).data) };
   });
-  // All directional layers must be loaded, including a view not used initially.
-  await page.waitForFunction(async () => {
-    const images=await Promise.all(["hull","turret","barrel"].map(part=>new Promise<HTMLImageElement>(resolve=>{
-      const image=new Image();image.onload=()=>resolve(image);image.src=`/art/sprites/sleek-modular/animations/tank-right-${part}-v1.webp`;
-    })));
-    return images.every(image=>image.naturalWidth>0);
+  // Wait for incoming views too, so decoding latency cannot masquerade as an aim bug.
+  await page.evaluate(async () => {
+    const views = ["right", "front-right", "front", "front-left", "left", "back-left", "back", "back-right"];
+    await Promise.all(views.flatMap(view => ["hull", "turret", "barrel"].map(part => new Promise<void>((resolve, reject) => {
+      const image = new Image(); image.onload = () => resolve(); image.onerror = () => reject(new Error("Tank part failed to load"));
+      image.src = `/art/sprites/sleek-modular/animations/tank-${view}-${part}-v1.webp`;
+    }))));
   });
   const before = await pixels();
   await page.getByText("Turret aim", { exact: true }).locator("..").getByRole("button", { name: "W", exact: true }).click();
