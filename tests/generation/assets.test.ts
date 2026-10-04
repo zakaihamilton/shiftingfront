@@ -21,6 +21,7 @@ import {
   listMissionRasterSources,
   AIR_SUPPORT_ART,
   ANTI_AIR_TURRET_BASE_CROP,
+  RETIRED_UNIT_DIRECTION_ART,
   SPRITE_ART,
   TEXTURE_ART,
   STRIKE_PLANE_DIRECTION_ART,
@@ -318,6 +319,7 @@ describe("tactical procedural assets", () => {
     const used = new Set([
       ...Object.values(SPRITE_ART).map((src) => basename(src)),
       ...Object.values(UNIT_DIRECTION_ART).flatMap((views) => Object.values(views).map((src) => basename(src))),
+      ...RETIRED_UNIT_DIRECTION_ART.map((src) => basename(src)),
     ]);
     const dir = resolve(process.cwd(), "public/art/sprites/sleek-modular");
     for (const file of readdirSync(dir).filter((name) => name.endsWith(".webp"))) {
