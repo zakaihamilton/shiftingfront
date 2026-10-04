@@ -1,7 +1,7 @@
 import type { SimState } from "../types";
 import { fogAt } from "../sim/fog";
 import { TILE_H, tileToScreen, type Camera } from "../iso";
-import { fxProgress, type FxBurst } from "./fx";
+import { FX_DURATION, type FxBurst } from "./fx";
 import type { TerrainLightRig } from "./terrainLighting";
 import { spriteContentBounds } from "./sprites";
 
@@ -16,14 +16,16 @@ export function unitLights(state: SimState, cam: Camera, bursts: readonly FxBurs
   const lights: UnitLight[] = [];
   for (let i = bursts.length - 1; i >= 0 && lights.length < MAX_UNIT_LIGHTS; i--) {
     const burst = bursts[i]!;
-    if (burst.bornMs > now || now >= burst.bornMs + burst.durationMs) continue;
+    const born = burst.kind === "destruction" ? burst.impactAtMs ?? burst.bornMs : burst.bornMs;
+    const duration = burst.kind === "muzzle" ? Math.min(FX_DURATION.muzzle, burst.durationMs) : burst.bornMs + burst.durationMs - born;
+    if (born > now || now >= born + duration || (burst.kind === "muzzle" && burst.ammoEffect === "bomb")) continue;
     if (!["muzzle", "explosion", "destruction", "repair"].includes(burst.kind)) continue;
     if (fogAt(state, Math.round(burst.x), Math.round(burst.y)) !== 2) continue;
     const p = tileToScreen(burst.x, burst.y, cam, burst.elev);
     const large = burst.kind === "explosion" || burst.kind === "destruction";
     lights.push({ x: p.x, y: p.y + TILE_H / 2 * cam.zoom,
       radius: (large ? 90 : burst.kind === "repair" ? 32 : 44) * cam.zoom,
-      strength: (1 - fxProgress(burst, now)) * (large ? 0.55 : 0.35) * (reducedMotion ? 0.25 : 1),
+      strength: (1 - (now - born) / duration) * (large ? 0.55 : 0.35) * (reducedMotion ? 0.25 : 1),
       color: burst.kind === "repair" ? "170,225,255" : "255,205,125" });
   }
   return lights;

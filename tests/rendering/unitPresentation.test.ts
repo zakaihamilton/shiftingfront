@@ -108,6 +108,11 @@ describe("unit presentation", () => {
     const lights=unitLights(state,cam,Array.from({length:20},(_,id)=>({...burst,id})),50);
     expect(lights).toHaveLength(MAX_UNIT_LIGHTS);
     expect(unitLights(state,cam,[burst],200)).toHaveLength(0);
+    expect(unitLights(state,cam,[{...burst,durationMs:600}],200)).toHaveLength(0);
+    expect(unitLights(state,cam,[{...burst,ammoEffect:"bomb"}],50)).toHaveLength(0);
+    const destruction: FxBurst = {...burst,kind:"destruction",impactAtMs:300,durationMs:900};
+    expect(unitLights(state,cam,[destruction],100)).toHaveLength(0);
+    expect(unitLights(state,cam,[destruction],350)).toHaveLength(1);
     expect(unitLights(state,cam,[{...burst,bornMs:100}],50)).toHaveLength(0);
     state.fog[fogIndex(state,2,2)!]=0; expect(unitLights(state,cam,[burst],50)).toHaveLength(0);
     expect(unitLightStrength(lights,lights[0]!.x+10000,lights[0]!.y)).toBe(0);
