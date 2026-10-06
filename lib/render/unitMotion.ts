@@ -18,6 +18,18 @@ export type UnitMotionOptions = {
   footPlantSide?: -1 | 1;
 };
 
+type UnitShadowOptions = {
+  rotation?: number;
+  stridePhase?: number;
+  lightDirection?: { x: number; y: number };
+  shadowDepth?: number;
+};
+
+type UnitShadowRaster = { canvas: HTMLCanvasElement; originX: number; originY: number };
+
+const MAX_UNIT_SHADOW_RASTERS = 128;
+const unitShadowRasters = new Map<string, UnitShadowRaster>();
+
 export function movementDustFill(biome: BiomeName): string {
   if (biome === "tundra grid") return "rgba(174, 207, 211, 0.2)";
   if (biome === "volcanic shelf") return "rgba(117, 76, 65, 0.28)";
@@ -39,7 +51,7 @@ export function unitShadowRadii(kind: UnitKind, scale: number): { radX: number; 
  * Draw a planted isometric contact shadow under a unit.
  * Rendered underneath the unit before drawing sprite geometry.
  */
-export function drawUnitShadow(
+function paintUnitShadow(
   ctx: CanvasRenderingContext2D,
   kind: UnitKind,
   cx: number,
@@ -47,12 +59,7 @@ export function drawUnitShadow(
   scale: number,
   alpha: number = 1,
   isMoving: boolean = false,
-  options?: {
-    rotation?: number;
-    stridePhase?: number;
-    lightDirection?: { x: number; y: number };
-    shadowDepth?: number;
-  },
+  options?: UnitShadowOptions,
 ): void {
   const { radX: baseRadX, radY: baseRadY } = unitShadowRadii(kind, scale);
   const isWalker = kind === "infantry" || kind === "medic" || kind === "antiArmor";
@@ -89,6 +96,74 @@ export function drawUnitShadow(
   ctx.ellipse(cx, groundY, radX, radY, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+}
+
+function unitShadowRaster(
+  kind: UnitKind,
+  scale: number,
+  alpha: number,
+  options?: UnitShadowOptions,
+): UnitShadowRaster | null {
+  if (typeof document === "undefined") return null;
+  const light = options?.lightDirection;
+  const key = `${kind}:${scale}:${alpha}:${light?.x ?? 0}:${light?.y ?? 0}:${options?.shadowDepth ?? 0.08}`;
+  const cached = unitShadowRasters.get(key);
+  if (cached) {
+    unitShadowRasters.delete(key);
+    unitShadowRasters.set(key, cached);
+    return cached;
+  }
+
+  const { radX, radY } = unitShadowRadii(kind, scale);
+  const hasCastShadow = Boolean(light && kind !== "strikePlane");
+  const castLength = hasCastShadow
+    ? kind === "infantry" || kind === "medic" || kind === "antiArmor" ? 9 : kind === "behemoth" ? 16 : 12
+    : 0;
+  const offsetX = light && hasCastShadow ? light.x * castLength * scale : kind === "strikePlane" ? 5 * scale : 0;
+  const offsetY = light && hasCastShadow ? light.y * castLength * scale : kind === "strikePlane" ? 4 * scale : 0;
+  const boundsX = Math.abs(offsetX) + radX * (hasCastShadow ? 1.24 : 1);
+  const boundsY = Math.abs(offsetY) + radY * (hasCastShadow ? 1.18 : 1);
+  const pad = 2;
+  const originX = boundsX + pad;
+  const originY = boundsY + pad;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(boundsX * 2 + pad * 2);
+  canvas.height = Math.ceil(boundsY * 2 + pad * 2);
+  const rasterCtx = canvas.getContext("2d");
+  if (!rasterCtx) return null;
+  paintUnitShadow(rasterCtx, kind, originX, originY, scale, alpha, false, options);
+
+  if (unitShadowRasters.size >= MAX_UNIT_SHADOW_RASTERS) {
+    unitShadowRasters.delete(unitShadowRasters.keys().next().value!);
+  }
+  const raster = { canvas, originX, originY };
+  unitShadowRasters.set(key, raster);
+  return raster;
+}
+
+export function drawUnitShadow(
+  ctx: CanvasRenderingContext2D,
+  kind: UnitKind,
+  cx: number,
+  groundY: number,
+  scale: number,
+  alpha: number = 1,
+  isMoving: boolean = false,
+  options?: UnitShadowOptions,
+): void {
+  // Stationary units share the same small set of shadow shapes. Reuse a
+  // raster to avoid rebuilding several ellipses for every unit each frame.
+  if (!isMoving && ctx.canvas && typeof document !== "undefined") {
+    const raster = unitShadowRaster(kind, scale, alpha, options);
+    if (raster) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.drawImage(raster.canvas, cx - raster.originX, groundY - raster.originY);
+      ctx.restore();
+      return;
+    }
+  }
+  paintUnitShadow(ctx, kind, cx, groundY, scale, alpha, isMoving, options);
 }
 
 function strideRatioFromOptions(frame: AnimFrame, options: UnitMotionOptions): number {
