@@ -4,7 +4,7 @@ The multiplayer API is stateless and does not provide an in-process rate-limit f
 
 After the rate-limit check, each route reads JSON through a bounded stream reader. Bodies larger than 8 KiB are rejected with `413`, including requests without a `Content-Length` header.
 
-On non-Vercel deployments, requests whose host is `localhost`, `127.0.0.1`, or `[::1]` skip the edge check so multiplayer works when a production build is served locally. Requests to other hosts still require the shared external limiter and fail closed when it is not configured.
+On non-Vercel production deployments, loopback requests skip the edge check only when `MULTIPLAYER_LOOPBACK_RATE_LIMIT_BYPASS=true` is set in the server environment. Use this only when serving a production build locally; do not set it on a publicly reachable deployment. Without this opt-in, non-Vercel production requests require the shared external limiter and fail closed when it is not configured. The loopback hostname is request-controlled, so it must not enable the bypass on its own.
 
 Suggested Vercel Firewall rules for Preview and Production:
 

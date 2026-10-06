@@ -13,6 +13,7 @@ export type MultiplayerRateLimitRuntime = {
   production: boolean;
   vercel: boolean;
   externalLimiterConfigured: boolean;
+  localLoopbackBypass?: boolean;
 };
 export type MultiplayerRateLimitOutcome = "allowed" | "limited" | "unavailable";
 
@@ -21,6 +22,7 @@ function runtimeFromEnvironment(): MultiplayerRateLimitRuntime {
     production: process.env.NODE_ENV === "production",
     vercel: process.env.VERCEL === "1",
     externalLimiterConfigured: process.env.MULTIPLAYER_EDGE_RATE_LIMIT_CONFIGURED === "true",
+    localLoopbackBypass: process.env.MULTIPLAYER_LOOPBACK_RATE_LIMIT_BYPASS === "true",
   };
 }
 
@@ -32,7 +34,7 @@ function isLoopbackRequest(request: Request): boolean {
   }
 }
 
-/** Uses shared edge counters in production while allowing non-Vercel loopback requests for local runs. */
+/** Uses shared edge counters in production; local production runs can explicitly opt into loopback access. */
 export async function checkMultiplayerRateLimit(
   request: Request,
   key: MultiplayerRateLimitKey,
@@ -40,7 +42,7 @@ export async function checkMultiplayerRateLimit(
   check: typeof checkRateLimit = checkRateLimit,
 ): Promise<MultiplayerRateLimitOutcome> {
   if (!runtime.production) return "allowed";
-  if (!runtime.vercel && isLoopbackRequest(request)) return "allowed";
+  if (!runtime.vercel && runtime.localLoopbackBypass && isLoopbackRequest(request)) return "allowed";
   if (!runtime.vercel) return runtime.externalLimiterConfigured ? "allowed" : "unavailable";
 
   try {
