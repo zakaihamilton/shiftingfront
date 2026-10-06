@@ -10,8 +10,6 @@ export const APP_VIEWPORT: Viewport = {
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 export const SITE_URL =

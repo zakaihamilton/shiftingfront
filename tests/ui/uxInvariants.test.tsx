@@ -252,11 +252,11 @@ describe("UX & Ergonomics Invariants", () => {
       expect(onCenter).toHaveBeenCalledTimes(3);
     });
 
-    it("enforces PWA edge-to-edge coverage and browser zoom prevention invariants in layout viewport", () => {
+    it("keeps PWA edge-to-edge coverage without restricting browser zoom in layout viewport", () => {
       expect(APP_VIEWPORT.width).toBe("device-width");
       expect(APP_VIEWPORT.initialScale).toBe(1);
-      expect(APP_VIEWPORT.maximumScale).toBe(1);
-      expect(APP_VIEWPORT.userScalable).toBe(false);
+      expect(APP_VIEWPORT.maximumScale).toBeUndefined();
+      expect(APP_VIEWPORT.userScalable).toBeUndefined();
       expect(APP_VIEWPORT.viewportFit).toBe("cover");
     });
   });
