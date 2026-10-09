@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Optional challenge descriptions no longer expose map coordinates for supply outposts or forward ore zones.
 - Multiplayer resync snapshots remain authoritative at frame boundaries, including paused terminal and forfeiture updates.
 - Protocol 5 rejects incompatible simulation builds and detects divergence with bounded canonical checksums, verified automatic repair, and clear synchronization failures.
 - Terrain atlas initialization and pixels bake in a cancellable session worker, with sliced offline/failure fallback and water-preserving grain compositing without pixel readback.
@@ -27,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Browser performance checks measure full runtime-loop work and animation-frame cadence during active simulation, with separate drawing diagnostics and tighter frame budgets.
-- Application and package versions are now 1.1.5.
+- Application and package versions are now 1.1.6.
 - Survival waves refresh slightly faster to preserve defensive pressure after the building repair corrections.
 - **Biome semantic & visual alignment**: World names and faction names now derive after biome generation and pull from biome-matching and neutral adjective pools, preventing clashing descriptors (such as "Ash" in a Salt Marsh). The in-game Salt Marshes terrain materials, water palettes, and atmospheric lighting have been harmonized with the dark slate-blue coastal estuary concept art. Simulation replay baselines were updated to reflect the clean seed attribute reshuffling.
 - Live balance gates (`minKindWinRate` 0.70, rescue 0.80, extraction 0.85, `destroyMarked`/`decapitate` 0.70). `tests/platform/docsDrift.test.ts` fails if Unreleased stops naming these floors.
