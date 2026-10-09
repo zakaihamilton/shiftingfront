@@ -205,13 +205,13 @@
 }
 
 .objective[data-status="complete"] {
-  border-left-color: var(--chrome-success);
   border-color: color-mix(in srgb, var(--chrome-success) 36%, var(--chrome-inset));
+  border-left-color: var(--chrome-success);
 }
 
 .objective[data-status="failed"] {
-  border-left-color: var(--chrome-alert);
   border-color: color-mix(in srgb, var(--chrome-alert) 48%, var(--chrome-inset));
+  border-left-color: var(--chrome-alert);
 }
 
 .objectivePriority,
@@ -629,16 +629,14 @@
 
   .status {
     font-size: var(--text-xs);
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: 0.75rem;
   }
 
   .profile {
     font-size: var(--text-2xs);
   }
 
-  .status {
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-    gap: 0.75rem;
-  }
 
   .operationTicks {
     gap: 2px;
@@ -695,6 +693,7 @@
 
   .objective {
     text-align: left;
+    padding: 0.42rem 0.5rem;
   }
 
   .seed,
@@ -712,15 +711,13 @@
     grid-row: 1;
     grid-column: 1;
     min-width: 0;
+    padding: 0.25rem 0.4rem 0.3rem;
   }
 
   .level::before {
     display: none;
   }
 
-  .operationBar {
-    padding: 0.25rem 0.4rem 0.3rem;
-  }
 
   .operationFoot {
     display: block;
@@ -730,9 +727,6 @@
     margin-top: 0.38rem;
   }
 
-  .objective {
-    padding: 0.42rem 0.5rem;
-  }
 
   .objective > strong {
     font-size: var(--text-xs);

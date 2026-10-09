@@ -851,7 +851,6 @@
   }
 
   .operationsBody > .detail {
-    border-left: 0;
     border: 1px solid color-mix(in srgb, var(--chrome-cyan) 42%, var(--chrome-line));
     border-left: 3px solid var(--chrome-cyan);
     padding: 1rem;

@@ -46,8 +46,9 @@ export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyB
 
   return (
     <DialogPortal>
-      <div className={styles.modalBackdrop} onClick={onClose}>
-        <MetalPanel ref={dialogRef} tabIndex={-1} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="keybinds-title" onClick={(event) => event.stopPropagation()}>
+      <div className={styles.modalBackdrop}>
+        <button type="button" className={styles.backdropDismiss} tabIndex={-1} aria-label="Close keybindings dialog" onClick={onClose} />
+        <MetalPanel ref={dialogRef} tabIndex={-1} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="keybinds-title">
           <ConsoleLabel>Field Configuration</ConsoleLabel>
           <h2 id="keybinds-title" className={styles.title}>Keybindings</h2>
           <p className={styles.subtitle}>Click a command, then press any key to reassign it. Press Escape to cancel.</p>
