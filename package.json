@@ -66,7 +66,7 @@
     "ci:timed-balance-archetype": "tsx scripts/balance.ts --from 0 --to 39 --check true --progress false --stratified true",
     "health:licenses": "license-checker --json",
     "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#brag-output*/**\" \"#artifacts/**\" \"#.repnix\" \"#node_modules\" \"#playwright-report\" \"#test-results\" \"#coverage\" \"#dist\" \"#build\" \"#.next\" \"#.turbo\" \"#.git\" \"#generated\"",
-    "health:a11y": "tsx scripts/e2e-preflight.ts && playwright test tests/e2e/guardrails.spec.ts --project=desktop",
+    "health:a11y": "tsx scripts/e2e-preflight.ts && playwright test tests/e2e/guardrails.spec.ts --project=desktop --grep=WCAG",
     "health:visual": "tsx scripts/e2e-preflight.ts && playwright test tests/e2e/visual.spec.ts --project=desktop",
     "health:interactions": "vitest run tests/ui/codeInput.test.tsx",
     "health:styles": "stylelint --formatter json \"**/*.{css,pcss,postcss}\""

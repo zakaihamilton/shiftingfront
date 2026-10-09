@@ -222,6 +222,7 @@ describe("CampaignArchiveScreen", () => {
 
     render(<CampaignArchiveScreen />);
     const file = new File([raw!], "portable.json", { type: "application/json" });
+    Object.defineProperty(file, "text", { value: async () => raw });
     fireEvent.change(screen.getByLabelText("Import named save slot JSON"), { target: { files: [file] } });
 
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Imported save as a new named slot."));
