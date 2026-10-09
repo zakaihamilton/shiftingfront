@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Optional challenge descriptions no longer expose map coordinates for supply outposts or forward ore zones.
+- Next.js and Sharp were updated to patched versions for high-severity security advisories.
 - Multiplayer resync snapshots remain authoritative at frame boundaries, including paused terminal and forfeiture updates.
 - Protocol 5 rejects incompatible simulation builds and detects divergence with bounded canonical checksums, verified automatic repair, and clear synchronization failures.
 - Terrain atlas initialization and pixels bake in a cancellable session worker, with sliced offline/failure fallback and water-preserving grain compositing without pixel readback.
