@@ -1599,10 +1599,10 @@
   resolved "https://registry.yarnpkg.com/@vercel/analytics/-/analytics-2.0.1.tgz#d7d7bd37af7cfbeea95db5f132ae4889f4d26407"
   integrity sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g==
 
-"@vercel/firewall@^1.2.5":
-  version "1.2.5"
-  resolved "https://registry.yarnpkg.com/@vercel/firewall/-/firewall-1.2.5.tgz#d573497e34eade6d877a0c0a47f3446460d2c3e8"
-  integrity sha512-rylXD6sfUgJMtYGuILXZZPy1af2aLQbRIAQf5nr2vI84PdGNaPEu19VvMG05KOXZ2qwfwf99OsM8brO9VzN8Gg==
+"@vercel/firewall@^1.2.6":
+  version "1.2.6"
+  resolved "https://registry.yarnpkg.com/@vercel/firewall/-/firewall-1.2.6.tgz#7b16c2346dd7342c7af9e8229c10de4bdf3f155c"
+  integrity sha512-89ybsa2rnVNdw6RI3jGOVvqUJaBj6Umm4IagC1o3PKtr/MXxBKOLek+yyUgF0csA0O5W+dzcpdIhKxVXhgVVtA==
 
 "@vitest/coverage-v8@5.0.2":
   version "5.0.2"
