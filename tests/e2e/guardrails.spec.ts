@@ -16,6 +16,8 @@ test("home page has no WCAG A/AA violations", async ({page}) => {
 });
 
 test("home page matches the reviewed desktop and mobile layouts", async ({page}) => {
+  test.skip(process.platform !== "darwin" && process.env.RUN_VISUAL_REGRESSION !== "1",
+    "Reviewed snapshots run in the macOS visual-regression job.");
   for (const size of sizes) {
     await page.setViewportSize({width: size.width, height: size.height});
     await page.goto("/");

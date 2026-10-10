@@ -16,6 +16,7 @@ export default defineConfig({
   // Keep file-level execution serialized with fullyParallel: false, and allow
   // 2 file-level workers to utilize both runner vCPUs.
   fullyParallel: false,
+  testIgnore: process.env.PLAYWRIGHT_SKIP_PERFORMANCE === "1" ? /performance\.spec\.ts/ : undefined,
   workers: 2,
   retries: process.env.CI ? 2 : 0,
   reporter: "line",
