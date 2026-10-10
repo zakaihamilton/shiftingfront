@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { APP_VIEWPORT } from "../../lib/site";
@@ -220,7 +221,8 @@ describe("UX & Ergonomics Invariants", () => {
       }
     });
 
-    it("enables camera center affordance on SelectionIdentity with keyboard and touch support", () => {
+    it("enables camera center affordance on SelectionIdentity with keyboard and touch support", async () => {
+      const user = userEvent.setup();
       const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
       const unit = addUnit(state, 0, "tank", 5, 5);
       const onCenter = vi.fn();
@@ -236,19 +238,18 @@ describe("UX & Ergonomics Invariants", () => {
       );
 
       const nameButton = screen.getByRole("button", { name: "Tank" });
-      expect(nameButton).toHaveAttribute("tabindex", "0");
+      await user.tab();
+      expect(document.activeElement).toBe(nameButton);
       expect(nameButton).toHaveAttribute("data-shortcut", "Space");
 
-      // Clicking centers camera
-      fireEvent.click(nameButton);
+      // Pointer activation centers the camera.
+      await user.click(nameButton);
       expect(onCenter).toHaveBeenCalledTimes(1);
 
-      // Pressing Enter centers camera
-      fireEvent.keyDown(nameButton, { key: "Enter" });
+      // Native button behavior activates with Enter and Space.
+      await user.keyboard("{Enter}");
       expect(onCenter).toHaveBeenCalledTimes(2);
-
-      // Pressing Space centers camera
-      fireEvent.keyDown(nameButton, { key: " " });
+      await user.keyboard(" ");
       expect(onCenter).toHaveBeenCalledTimes(3);
     });
 
