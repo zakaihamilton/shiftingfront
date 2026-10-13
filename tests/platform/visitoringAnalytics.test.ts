@@ -12,6 +12,10 @@ describe("Visitoring Analytics integration", () => {
     expect(shouldLoadVisitoring({ NEXT_PUBLIC_DISABLE_ANALYTICS: "1" })).toBe(false);
     expect(shouldLoadVisitoring({ PLAYWRIGHT_PORT: "3100" })).toBe(false);
     expect(shouldLoadVisitoring({ VERCEL: "1", NODE_ENV: "production" })).toBe(true);
+    expect(shouldLoadVisitoring({ NODE_ENV: "production" })).toBe(false);
+    expect(shouldLoadVisitoring({ NODE_ENV: "development" })).toBe(false);
+    expect(shouldLoadVisitoring({ NODE_ENV: "test" })).toBe(false);
+    expect(shouldLoadVisitoring({ NODE_ENV: "test", NEXT_PUBLIC_VISITORING_SITE_KEY: "vk_test" })).toBe(true);
   });
 
   it("wraps the app with VisitoringProvider behind shouldLoadVisitoring in RootLayout", () => {
