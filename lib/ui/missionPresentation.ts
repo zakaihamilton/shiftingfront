@@ -13,6 +13,7 @@ export type ObjectiveCardModel = {
   current: number;
   target: number;
   showCount?: boolean;
+  showProgressBar?: boolean;
   status: ObjectiveCardStatus;
   priority?: ObjectivePriority;
   primary?: boolean;
@@ -54,7 +55,8 @@ export function objectiveCardsFor(state: SimState): ObjectiveCardModel[] {
       label: objectiveCardLabel(primary),
       current: primary.current,
       target: primary.target,
-      showCount: state.win.kind !== "holdTheLine",
+      showCount: state.win.kind !== "holdTheLine" && state.win.kind !== "annihilate" && state.win.kind !== "razeAll",
+      showProgressBar: state.win.kind !== "annihilate" && state.win.kind !== "razeAll",
       status: primaryFailed ? "failed" : primaryComplete ? "complete" : "active",
       priority: "primary",
       primary: true,

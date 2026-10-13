@@ -38,9 +38,11 @@ export function MissionDirectiveContent({
             {primaryCard.showCount !== false ? (
               <span className={styles.objectiveCount}>{Math.min(primaryCard.current, primaryCard.target)} / {primaryCard.target}</span>
             ) : null}
-            <span className={styles.objectiveBar} aria-hidden="true">
-              <span style={{ width: `${Math.round(Math.max(0, Math.min(1, primaryCard.current / primaryCard.target)) * 100)}%` }} />
-            </span>
+            {primaryCard.showProgressBar !== false ? (
+              <span className={styles.objectiveBar} aria-hidden="true">
+                <span style={{ width: `${Math.round(Math.max(0, Math.min(1, primaryCard.current / primaryCard.target)) * 100)}%` }} />
+              </span>
+            ) : null}
           </span>
         ) : null}
       </div>
