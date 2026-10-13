@@ -481,7 +481,7 @@ describe("production and overlay helpers", () => {
     const unit = addUnit(state, 0, "infantry", 2, 2);
     addUnit(state, 1, "tank", 8, 8);
     expect(playFieldStatus(state)).toMatchObject({
-      objective: "Hostiles left 1",
+      objective: "Enemy forces remaining: 1",
       secondary: [],
     });
     const overlay = gameOverlayModel({ state, selectedIds: [unit.id] });
