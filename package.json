@@ -77,7 +77,8 @@
     "next": "16.3.8",
     "peerjs": "^1.5.5",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "visitoring": "^0.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

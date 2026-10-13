@@ -5994,6 +5994,11 @@ validate-npm-package-license@^3.0.1:
     spdx-correct "^3.0.0"
     spdx-expression-parse "^3.0.0"
 
+visitoring@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/visitoring/-/visitoring-0.1.0.tgz#a1b26bf9279ad239f659937cd2780ce2e24d5c03"
+  integrity sha512-AzaFrOphyYmZmpuOS4n2YGUUDhXVQ2Z5eUSVvX+3I10v0sObipEA/FDuFLrtG9i85iGVh5J3m/pO27lE3XiS9Q==
+
 vite@^8.2.1:
   version "8.3.1"
   resolved "https://registry.yarnpkg.com/vite/-/vite-8.3.1.tgz#aa1099a4ccaf104a8c32492951497fa1781d9fce"
