@@ -31,10 +31,12 @@ export function shouldLoadVercelAnalytics(
   return env.VERCEL === "1";
 }
 
+/** In local test environments and CI runners without public network, avoid loading external analytics trackers. */
 export function shouldLoadVisitoring(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): boolean {
-  return Boolean(env.NEXT_PUBLIC_VISITORING_SITE_KEY || VISITORING_SITE_KEY);
+  if (env.NEXT_PUBLIC_DISABLE_ANALYTICS === "1" || env.PLAYWRIGHT_PORT) return false;
+  return Boolean(env.NEXT_PUBLIC_VISITORING_SITE_KEY) || env.VERCEL === "1" || env.NODE_ENV !== "production";
 }
 
 const theme = Number.parseInt(APP_THEME_COLOR.slice(1), 16);

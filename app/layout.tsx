@@ -8,7 +8,15 @@ import { SaveRepositoryRoot } from "@/components/shared/SaveRepositoryRoot";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 import { VisitoringProvider } from "visitoring";
-import { APP_DESCRIPTION, APP_NAME, APP_VIEWPORT, SITE_URL, VISITORING_SITE_KEY, shouldLoadVercelAnalytics } from "@/lib/site";
+import {
+  APP_DESCRIPTION,
+  APP_NAME,
+  APP_VIEWPORT,
+  SITE_URL,
+  VISITORING_SITE_KEY,
+  shouldLoadVercelAnalytics,
+  shouldLoadVisitoring,
+} from "@/lib/site";
 import styles from "./layout.module.css";
 
 const barlowCondensed = localFont({
@@ -122,9 +130,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ServiceWorkerRegister />
         <AudioRoot />
         <ErrorBoundary>
-          <VisitoringProvider siteKey={VISITORING_SITE_KEY}>
+          {shouldLoadVisitoring() ? (
+            <VisitoringProvider siteKey={VISITORING_SITE_KEY}>
+              <SaveRepositoryRoot>{children}</SaveRepositoryRoot>
+            </VisitoringProvider>
+          ) : (
             <SaveRepositoryRoot>{children}</SaveRepositoryRoot>
-          </VisitoringProvider>
+          )}
         </ErrorBoundary>
         <TooltipLayer />
         {shouldLoadVercelAnalytics() ? <Analytics /> : null}
