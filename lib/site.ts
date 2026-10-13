@@ -21,11 +21,20 @@ export const APP_VERSION = "1.1.6";
 export const APP_REPO_URL = "https://github.com/zakaihamilton/shiftingfront";
 export const APP_ISSUES_URL = "https://github.com/zakaihamilton/shiftingfront/issues";
 
+export const VISITORING_SITE_KEY =
+  process.env.NEXT_PUBLIC_VISITORING_SITE_KEY || "vk_Zp_7kjAOxdkBW4N3QKeXSc1gIiibCloq";
+
 /** `/_vercel/insights` only exists on Vercel. Local `next start` (including Playwright) 404s it. */
 export function shouldLoadVercelAnalytics(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): boolean {
   return env.VERCEL === "1";
+}
+
+export function shouldLoadVisitoring(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): boolean {
+  return Boolean(env.NEXT_PUBLIC_VISITORING_SITE_KEY || VISITORING_SITE_KEY);
 }
 
 const theme = Number.parseInt(APP_THEME_COLOR.slice(1), 16);
