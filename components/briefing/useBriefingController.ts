@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { clearMusicPosition } from "@/lib/audio/music";
-import { clearBriefingSkippedIntent, markBriefingSkippedIntent, markFreshLaunchIntent } from "@/lib/persist/navigation";
+import { clearBriefingSkippedIntent, clearResultReturnSnapshot, markBriefingSkippedIntent, markFreshLaunchIntent } from "@/lib/persist/navigation";
 import { formatSeed } from "@/lib/seed/rng";
 import { briefingCommandFromKey, isEditableTarget } from "@/lib/ui/shortcuts";
 import { briefingBackPath, type NavigationOrigin } from "@/lib/navigation/routes";
@@ -26,6 +26,7 @@ export function useBriefingController({
   const router = useRouter();
 
   const launch = useCallback(() => {
+    clearResultReturnSnapshot(seed, mission);
     if (!returnToGame) {
       markFreshLaunchIntent(seed, mission);
       clearMusicPosition("mission", seed, mission);

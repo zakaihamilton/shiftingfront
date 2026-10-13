@@ -3,6 +3,7 @@ import { filterGeneratedAssets, listGeneratedAssets, type AssetCategoryFilter } 
 import { generateVisualProfile } from "@/lib/gen/visualProfile";
 import { assetsCommandFromKey, isEditableTarget } from "@/lib/ui/shortcuts";
 import type { Facing, FactionVisualProfile } from "@/lib/types";
+import type { UnitPose } from "@/lib/render/anim";
 
 export function useAssetsBrowser(onClose: () => void) {
   const assets = useMemo(() => listGeneratedAssets(), []);
@@ -12,6 +13,8 @@ export function useAssetsBrowser(onClose: () => void) {
   const visibleAssets = useMemo(() => filterGeneratedAssets(assets, assetFilter), [assets, assetFilter]);
   const [facing, setFacing] = useState<Facing>(0);
   const [playing, setPlaying] = useState(true);
+  const [pose, setPose] = useState<UnitPose>("idle");
+  const [turretFacing, setTurretFacing] = useState<Facing>(0);
   const [construction, setConstruction] = useState<0 | 1 | 2 | 3>(3);
   const [damage, setDamage] = useState<0 | 1 | 2>(0);
   const [designFamily, setDesignFamily] = useState<FactionVisualProfile["designFamily"]>(0);
@@ -21,6 +24,8 @@ export function useAssetsBrowser(onClose: () => void) {
   const selectAsset = (id: string) => {
     setSelectedId(id);
     setFacing(0);
+    setPose("idle");
+    setTurretFacing(0);
     setConstruction(3);
     setDamage(0);
     setPlaying(true);
@@ -54,6 +59,8 @@ export function useAssetsBrowser(onClose: () => void) {
       if (!nextId || nextId === selectedId) return;
       setSelectedId(nextId);
       setFacing(0);
+      setPose("idle");
+      setTurretFacing(0);
       setConstruction(3);
       setDamage(0);
       setPlaying(true);
@@ -68,6 +75,8 @@ export function useAssetsBrowser(onClose: () => void) {
     assetFilter,
     facing,
     playing,
+    pose,
+    turretFacing,
     construction,
     damage,
     designFamily,
@@ -77,6 +86,8 @@ export function useAssetsBrowser(onClose: () => void) {
     setAssetFilter,
     setFacing,
     setPlaying,
+    setPose,
+    setTurretFacing,
     setConstruction,
     setDamage,
     setDesignFamily,

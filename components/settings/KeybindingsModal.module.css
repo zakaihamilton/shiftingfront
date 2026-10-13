@@ -1,5 +1,6 @@
 .modalBackdrop { position: fixed; inset: 0; z-index: 999; background: rgba(4, 7, 12, 0.85); backdrop-filter: blur(6px); display: flex; align-items: flex-start; justify-content: safe center; padding: 1rem; box-sizing: border-box; overflow-y: auto; }
-.dialog { width: 100%; max-width: 520px; margin-block: auto; max-height: 90vh; display: flex; flex-direction: column; gap: 1.25rem; background: var(--chrome-steel-deep); border: 1px solid var(--chrome-steel-mid); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85); padding: 1.75rem 1.5rem; box-sizing: border-box; overflow-y: auto; }
+.backdropDismiss { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: default; }
+.dialog { position: relative; z-index: 1; width: 100%; max-width: 520px; margin-block: auto; max-height: 90vh; display: flex; flex-direction: column; gap: 1.25rem; background: var(--chrome-steel-deep); border: 1px solid var(--chrome-steel-mid); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85); padding: 1.75rem 1.5rem; box-sizing: border-box; overflow-y: auto; }
 .title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--chrome-text); margin: 0; }
 .subtitle { font-family: var(--font-ui); font-size: 0.88rem; color: var(--chrome-muted); margin: 0; }
 .list { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.5rem 0; }

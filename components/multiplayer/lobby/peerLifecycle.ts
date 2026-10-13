@@ -76,12 +76,14 @@ export class PeerLifecycle {
   }
 
   beginGuestRecovery(): void {
-    this.guestRetryUntil = this.dependencies.now() + 60_000;
+    if (!this.guestRetryUntil) this.guestRetryUntil = this.dependencies.now() + 60_000;
   }
 
   finishGuestRecovery(): void {
     this.guestRetryUntil = 0;
     this.clearTimer("guest-retry");
+    this.clearTimer("guest-disconnect");
+    this.clearTimer("guest-expiry");
   }
 
   async refreshCredential(credential: Credential, peer: Peer): Promise<boolean> {
@@ -103,10 +105,18 @@ export class PeerLifecycle {
       callbacks.expired();
       return;
     }
+    if (!this.timers.has("guest-expiry")) {
+      this.schedule("guest-expiry", () => {
+        if (!this.owns(peer) || !this.guestRetryUntil) return;
+        this.clearTimer("guest-retry");
+        callbacks.expired();
+      }, this.guestRetryUntil - this.dependencies.now());
+    }
     this.schedule("guest-retry", () => {
       if (!this.owns(peer) || peer.disconnected || !callbacks.canRetry()) return;
+      if (this.dependencies.now() >= this.guestRetryUntil) { callbacks.expired(); return; }
       void this.prepareGuestRetry(credential, peer, callbacks);
-    }, delay);
+    }, Math.min(delay, this.guestRetryUntil - this.dependencies.now()));
   }
 
   private async prepareGuestRetry(credential: Credential, peer: Peer, callbacks: GuestRetryCallbacks): Promise<void> {
@@ -114,9 +124,14 @@ export class PeerLifecycle {
     try {
       if (credential.peerExpiresAt * 1000 < this.dependencies.now() + 30_000 &&
           !await this.refreshCredential(credential, peer)) return;
+      if (!this.guestRetryUntil) return;
+      if (this.isCurrent(operation) && this.owns(peer) && this.dependencies.now() >= this.guestRetryUntil) {
+        callbacks.expired();
+        return;
+      }
       if (this.isCurrent(operation) && this.owns(peer) && !peer.disconnected && callbacks.canRetry()) callbacks.connect();
     } catch {
-      if (this.isCurrent(operation) && this.owns(peer)) this.retryGuest(credential, peer, callbacks);
+      if (this.isCurrent(operation) && this.owns(peer) && this.guestRetryUntil) this.retryGuest(credential, peer, callbacks);
     }
   }
 

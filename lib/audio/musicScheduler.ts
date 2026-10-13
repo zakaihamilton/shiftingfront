@@ -64,15 +64,15 @@ export function applyIntensityAt(audio: AudioGraphContext, g: MusicGraph, value:
     node.gain.setTargetAtTime(target, t, ramp);
   };
   set(g.master, masterGain(value, isDucked));
-  set(g.bassBus, value === "calm" ? 0.9 : value === "critical" ? 1.06 : 0.96);
-  set(g.rhythmBus, value === "calm" ? 0.7 : value === "critical" ? 1.02 : 0.84);
-  set(g.harmonyBus, value === "calm" ? 0.74 : value === "critical" ? 0.86 : 0.8);
-  set(g.pulseBus, value === "calm" ? 0.74 : value === "critical" ? 0.96 : 0.84);
-  set(g.leadBus, value === "calm" ? 0.9 : value === "critical" ? 1.04 : 0.98);
-  set(g.counterBus, value === "calm" ? 0.38 : value === "critical" ? 0.66 : 0.5);
-  set(g.fxBus, value === "critical" ? 0.7 : value === "engaged" ? 0.46 : 0.28);
+  set(g.bassBus, value === "calm" ? 0.92 : value === "critical" ? 1.02 : 0.98);
+  set(g.rhythmBus, value === "calm" ? 0.52 : value === "critical" ? 0.78 : 0.66);
+  set(g.harmonyBus, value === "calm" ? 0.84 : value === "critical" ? 0.9 : 0.87);
+  set(g.pulseBus, value === "calm" ? 0.52 : value === "critical" ? 0.68 : 0.6);
+  set(g.leadBus, value === "calm" ? 0.98 : value === "critical" ? 1.1 : 1.05);
+  set(g.counterBus, value === "calm" ? 0.24 : value === "critical" ? 0.38 : 0.3);
+  set(g.fxBus, value === "critical" ? 0.26 : value === "engaged" ? 0.18 : 0.12);
   g.highpass.frequency.setTargetAtTime(value === "critical" ? 48 : 38, t, ramp);
-  g.padFilter.frequency.setTargetAtTime(value === "critical" ? 1_300 : value === "engaged" ? 1_000 : 820, t, ramp);
+  g.padFilter.frequency.setTargetAtTime(value === "critical" ? 1_100 : value === "engaged" ? 900 : 720, t, ramp);
   g.padBase = padGainFor(value);
   set(g.padGain, g.padBase);
 }
@@ -111,8 +111,12 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
   const section = p.sections[Math.floor(bar / BARS_PER_SECTION)]?.name;
   if (index % STEPS_PER_BAR === 0) {
     retunePad(audio, g, p, bar, t);
-    if (bar % BARS_PER_SECTION === BARS_PER_SECTION - 1 && bar < p.bars - 1) playTransition(audio, g, t + stepDuration * 5, stepDuration * 9, true);
-    if (bar % BARS_PER_SECTION === 0 && bar > 0) playTransition(audio, g, t, stepDuration * 3, false);
+    if (bar % BARS_PER_SECTION === BARS_PER_SECTION - 1 && bar < p.bars - 1) {
+      playTransition(audio, g, t + stepDuration * 5, stepDuration * 9, true, p.padRoot[(bar + 1) % p.bars] ?? p.rootHz);
+    }
+    if (bar % BARS_PER_SECTION === 0 && bar > 0) {
+      playTransition(audio, g, t, stepDuration * 3, false, p.padRoot[bar % p.bars] ?? p.rootHz);
+    }
   }
 
   const isBreakdown = section === "breakdown";

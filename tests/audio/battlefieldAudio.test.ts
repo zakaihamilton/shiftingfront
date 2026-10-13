@@ -47,13 +47,12 @@ function combatEvent(overrides: Partial<Extract<SimEvent, { type: "combat" }>> =
 }
 
 describe("battlefield audio mapping", () => {
-  it("maps fire cues by attacker kind with weapon fallback", () => {
-    expect(fireSfxFor("infantry", "smallArms")).toBe("smallArms");
-    expect(fireSfxFor("antiArmor", "antiArmor")).toBe("antiArmor");
-    expect(fireSfxFor("tank", "cannon")).toBe("cannon");
-    expect(fireSfxFor("turret", "cannon")).toBe("turret");
-    expect(fireSfxFor("harvester", "smallArms")).toBe("smallArms");
-    expect(fireSfxFor("power", "cannon")).toBe("cannon");
+  it("maps every weapon type to a distinct firing cue", () => {
+    const weapons: WeaponType[] = ["smallArms", "antiArmor", "cannon", "airStrike", "antiAir"];
+    const cues = weapons.map(fireSfxFor);
+
+    expect(cues).toEqual(["smallArms", "antiArmor", "cannon", "airStrike", "antiAir"]);
+    expect(new Set(cues).size).toBe(weapons.length);
   });
 
   it("maps impact and destruction cues by target domain", () => {
@@ -78,11 +77,6 @@ describe("battlefield audio mapping", () => {
   it("maps support cues by provider", () => {
     expect(supportSfxFor("medic")).toBe("heal");
     expect(supportSfxFor("repairTruck")).toBe("repair");
-  });
-
-  it("covers every weapon fallback", () => {
-    const weapons: WeaponType[] = ["smallArms", "antiArmor", "cannon"];
-    expect(weapons.map((weapon) => fireSfxFor("objective", weapon))).toEqual(["smallArms", "antiArmor", "cannon"]);
   });
 
   it("delays impacts to follow their projectile weight", () => {
@@ -110,13 +104,15 @@ describe("battlefield audio dispatch", () => {
     expect(duck).toHaveBeenCalled();
   });
 
-  it("plays distinct fire cues for infantry, tanks, turrets, and anti-armor", () => {
+  it("plays weapon-specific cues across unit and building attackers", () => {
     dispatchBattlefieldAudio(
       [
         combatEvent({ attackerKind: "infantry", weapon: "smallArms", targetKind: "tank" }),
         combatEvent({ attackerKind: "antiArmor", weapon: "antiArmor", targetKind: "tank", x: 6.5, y: 6.5 }),
         combatEvent({ attackerKind: "tank", weapon: "cannon", targetKind: "power", x: 7, y: 7 }),
         combatEvent({ attackerKind: "turret", weapon: "cannon", targetKind: "harvester", x: 8, y: 8 }),
+        combatEvent({ attackerKind: "strikePlane", weapon: "airStrike", targetKind: "power", x: 8.5, y: 8.5 }),
+        combatEvent({ attackerKind: "antiAirTurret", weapon: "antiAir", targetKind: "strikePlane", x: 9, y: 9 }),
       ],
       onScreenCamera(),
       800,
@@ -125,7 +121,9 @@ describe("battlefield audio dispatch", () => {
     expect(play).toHaveBeenCalledWith("smallArms", expect.objectContaining({ gain: expect.any(Number) }));
     expect(play).toHaveBeenCalledWith("antiArmor", expect.objectContaining({ gain: expect.any(Number) }));
     expect(play).toHaveBeenCalledWith("cannon", expect.objectContaining({ gain: expect.any(Number) }));
-    expect(play).toHaveBeenCalledWith("turret", expect.objectContaining({ gain: expect.any(Number) }));
+    expect(play).toHaveBeenCalledWith("airStrike", expect.objectContaining({ gain: expect.any(Number) }));
+    expect(play).toHaveBeenCalledWith("antiAir", expect.objectContaining({ gain: expect.any(Number) }));
+    expect(play.mock.calls.filter(([kind]) => kind === "cannon")).toHaveLength(2);
     expect(play).toHaveBeenCalledWith("impactMetal", expect.any(Object));
     expect(play).toHaveBeenCalledWith("impact", expect.any(Object));
   });

@@ -49,6 +49,33 @@ describe("transactional save repository", () => {
     expect(await b.write(state(), "explicit")).toBe("saved");
     expect(await a.write(state(), "implicit")).toBe("conflict");
   });
+  it.each(["implicit", "explicit"] as const)("keeps its own %s commit revision when another tab writes before refresh", async (mode) => {
+    const first = await open(); const second = await open(first.storage, first.factory);
+    const session = first.repository.createSession(421);
+    const refreshable = first.repository as unknown as { refresh(): Promise<void> };
+    const refresh = refreshable.refresh.bind(first.repository);
+    let release!: () => void; let entered!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const refreshing = new Promise<void>((resolve) => { entered = resolve; });
+    vi.spyOn(refreshable, "refresh").mockImplementationOnce(async () => {
+      entered(); await gate; await refresh();
+    });
+    const current = state(); current.tick = 10;
+    const writing = session.write(current, mode);
+    await refreshing;
+    try {
+      const newer = state(); newer.tick = 80;
+      expect(await second.repository.save(newer)).toBe("saved");
+    } finally { release(); }
+    expect(await writing).toBe("saved");
+    expect(readSave(first.repository.storage, 421)?.tick).toBe(80);
+    current.tick = 20;
+    expect(await session.write(current, "implicit")).toBe("conflict");
+    expect(readSave(second.repository.storage, 421)?.tick).toBe(80);
+    expect(await session.write(current, "explicit")).toBe("saved");
+    current.tick = 30;
+    expect(await session.write(current, "implicit")).toBe("saved");
+  });
   it("commits terminal progress and autosave together", async () => {
     const { repository } = await open(); const won = state(); won.result = "won";
     expect(await repository.save(won)).toBe("saved");

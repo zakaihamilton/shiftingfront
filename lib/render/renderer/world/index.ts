@@ -81,7 +81,7 @@ export function renderWorld(
   }
 
   const timeMs = animClock(state.tick, clock);
-  drawCombatEffects(ctx, state, cam, drawList, entityById, (st: SimState, ent: Entity) => resolveFacing(st, ent, entityById), clock);
+  drawCombatEffects(ctx, state, cam, drawList, entityById, (st: SimState, ent: Entity) => resolveFacing(st, ent, entityById), clock, extras.fx ?? []);
   drawFxLayer(ctx, state, cam, extras.fx, timeMs, "burst", extras.reducedMotion);
   drawSelectBox(ctx, extras.selectBox);
   drawCommandMarker(ctx, state, cam, extras.commandMarker, timeMs, extras.reducedMotion);

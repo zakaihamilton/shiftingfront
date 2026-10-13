@@ -30,7 +30,7 @@ export function MissionConfirmation({
         <ConsoleLabel as="h2" id="mission-confirmation-title">{confirmation.title}</ConsoleLabel>
         <p className={styles.copy}>{confirmation.message}</p>
         <div className={styles.actions}>
-          <ConsoleButton muted autoFocus onClick={onCancel}>Cancel</ConsoleButton>
+          <ConsoleButton muted onClick={onCancel}>Cancel</ConsoleButton>
           <ConsoleButton onClick={onConfirm}>{confirmation.confirmLabel}</ConsoleButton>
         </div>
       </MetalPanel>

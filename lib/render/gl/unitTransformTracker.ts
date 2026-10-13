@@ -5,6 +5,7 @@ import { unitMovementOffset, unitWalkCycle } from "../anim";
 import { pruneUnitFacingBlends, resetUnitFacingBlends } from "../unitFacingBlend";
 import type { Entity, Facing, SimState, UnitKind } from "../../types";
 import { lerp, lerpAngle } from "./glMath";
+import { TICK_MS } from "../../game/loop";
 
 export type UnitDynamicTransform = {
   x: number;
@@ -34,6 +35,28 @@ export type UnitDynamicTransform = {
   scaleY: number;
   /** Normalized aircraft altitude used for smooth runway transitions. */
   airborneMix: number;
+  moveSpeed: number;
+  travel: number;
+  suspensionY: number;
+  chassisLean: number;
+};
+
+type StaticUnitTransformKey = {
+  kind: UnitKind;
+  x: number;
+  y: number;
+  facing?: Facing;
+  flightState?: Entity["flightState"];
+  width: number;
+  height: number;
+  yaw: number;
+  screenAngle: number;
+  turretYaw: number;
+  speed: number;
+  travel: number;
+  suspensionY: number;
+  chassisLean: number;
+  stridePhase: number;
 };
 
 type UnitStateHistory = {
@@ -48,8 +71,15 @@ type UnitStateHistory = {
   turretYaw: number;
   stridePhase: number;
   lastClockMs: number;
+  speed: number;
+  travel: number;
+  suspensionY: number;
+  chassisLean: number;
   flightState: "airborne" | "servicing";
   flightTransition?: AircraftFlightTransition;
+  staticTransformKey?: StaticUnitTransformKey;
+  staticTransformHeights?: number[];
+  staticTransform?: UnitDynamicTransform;
 };
 
 type AircraftFlightTransition = {
@@ -72,6 +102,75 @@ export type UnitRenderPosition = {
 };
 
 const historyMap = new Map<number, UnitStateHistory>();
+
+function angularDistance(a: number, b: number): number {
+  return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+}
+
+function isSettledStaticTransform(e: Entity, hist: UnitStateHistory): boolean {
+  if (
+    !e.idle ||
+    e.path.length > 0 ||
+    e.attackTarget !== undefined ||
+    e.orderDestination !== undefined ||
+    e.flowGoal !== undefined ||
+    e.cooldown > 0 ||
+    e.gatherX !== undefined ||
+    hist.flightTransition !== undefined ||
+    hist.prevX !== hist.currX ||
+    hist.prevY !== hist.currY ||
+    e.x !== hist.currX ||
+    e.y !== hist.currY ||
+    Math.abs(hist.speed) > 0.025 ||
+    Math.abs(hist.suspensionY) > 0.001 ||
+    Math.abs(hist.chassisLean) > 0.001
+  ) return false;
+
+  const targetYaw = e.facing !== undefined
+    ? (e.facing / 8) * Math.PI * 2 - Math.PI / 2
+    : hist.yaw;
+  const targetScreenAngle = e.facing !== undefined ? isoFacingAngle(e.facing) : hist.screenAngle;
+  if (
+    angularDistance(hist.yaw, targetYaw) > 0.001 ||
+    angularDistance(hist.screenAngle, targetScreenAngle) > 0.001 ||
+    angularDistance(hist.turretYaw, targetYaw) > 0.001
+  ) return false;
+
+  return true;
+}
+
+function matchesStaticTransformKey(
+  e: Entity,
+  state: SimState,
+  hist: UnitStateHistory,
+  key: StaticUnitTransformKey,
+): boolean {
+  return key.kind === e.kind && key.x === e.x && key.y === e.y && key.facing === e.facing &&
+    key.flightState === e.flightState && key.width === state.width && key.height === state.height &&
+    key.yaw === hist.yaw && key.screenAngle === hist.screenAngle && key.turretYaw === hist.turretYaw &&
+    key.speed === hist.speed && key.travel === hist.travel && key.suspensionY === hist.suspensionY &&
+    key.chassisLean === hist.chassisLean && key.stridePhase === hist.stridePhase;
+}
+
+function staticTransformKey(e: Entity, state: SimState, hist: UnitStateHistory): StaticUnitTransformKey {
+  return {
+    kind: e.kind as UnitKind,
+    x: e.x,
+    y: e.y,
+    facing: e.facing,
+    flightState: e.flightState,
+    width: state.width,
+    height: state.height,
+    yaw: hist.yaw,
+    screenAngle: hist.screenAngle,
+    turretYaw: hist.turretYaw,
+    speed: hist.speed,
+    travel: hist.travel,
+    suspensionY: hist.suspensionY,
+    chassisLean: hist.chassisLean,
+    stridePhase: hist.stridePhase,
+  };
+}
 
 function aircraftTransitionPosition(
   e: Entity,
@@ -104,7 +203,7 @@ export function unitRenderPosition(e: Entity, clockMs: number): UnitRenderPositi
 }
 
 function createUnitHistory(e: Entity, state: SimState, clockMs: number): UnitStateHistory {
-  const initialYaw = e.facing !== undefined ? (e.facing / 8) * Math.PI * 2 - Math.PI / 4 : -Math.PI / 4;
+  const initialYaw = e.facing !== undefined ? (e.facing / 8) * Math.PI * 2 - Math.PI / 2 : -Math.PI / 2;
   const initialScreenAngle = e.facing !== undefined ? isoFacingAngle(e.facing) : 0;
   return {
     id: e.id,
@@ -118,6 +217,10 @@ function createUnitHistory(e: Entity, state: SimState, clockMs: number): UnitSta
     turretYaw: initialYaw,
     stridePhase: 0,
     lastClockMs: clockMs,
+    speed: 0,
+    travel: 0,
+    suspensionY: 0,
+    chassisLean: 0,
     flightState: e.flightState === "servicing" ? "servicing" : "airborne",
   };
 }
@@ -167,6 +270,7 @@ export function updateUnitHistory(state: SimState, clockMs: number): void {
         }
         hist.currX = e.x;
         hist.currY = e.y;
+        if (tickGap > 0 && tickGap <= 2 && jump <= 2) hist.travel += jump;
         hist.lastUpdateTick = state.tick;
       }
       if (e.kind === "strikePlane" && hist.flightTransition?.kind === "takeoff") {
@@ -203,6 +307,14 @@ export function computeUnitDynamicTransform(
 
   const dt = Math.max(0, Math.min(0.1, (clockMs - hist.lastClockMs) * 0.001));
   hist.lastClockMs = Math.max(hist.lastClockMs, clockMs);
+
+  if (
+    hist.staticTransform &&
+    hist.staticTransformKey &&
+    hist.staticTransformHeights === state.heights &&
+    isSettledStaticTransform(e, hist) &&
+    matchesStaticTransformKey(e, state, hist, hist.staticTransformKey)
+  ) return hist.staticTransform;
 
   const alpha = Math.max(0, Math.min(1, subTickAlpha));
   let x = lerp(hist.prevX, hist.currX, alpha);
@@ -249,18 +361,28 @@ export function computeUnitDynamicTransform(
   const waypointDist = Math.hypot(waypointDx, waypointDy);
 
   let targetYaw = hist.yaw;
+  const independentTurret = e.kind === "tank" || e.kind === "behemoth";
   if (moveDist > 0.005) {
     targetYaw = Math.atan2(moveDy, moveDx) - Math.PI / 4;
-  } else if (attackDist > 0.005) {
+  } else if (attackDist > 0.005 && !independentTurret) {
     targetYaw = Math.atan2(attackDy, attackDx) - Math.PI / 4;
   } else if (waypointDist > 0.005) {
     targetYaw = Math.atan2(waypointDy, waypointDx) - Math.PI / 4;
   } else if (e.facing !== undefined) {
-    targetYaw = (e.facing / 8) * Math.PI * 2 - Math.PI / 4;
+    targetYaw = (e.facing / 8) * Math.PI * 2 - Math.PI / 2;
   }
 
   // Smooth angular interpolation for chassis in GL model space
   const isVehicle = e.kind === "tank" || e.kind === "harvester" || e.kind === "convoyTruck" || e.kind === "repairTruck" || e.kind === "behemoth";
+  const targetSpeed = moveDist / (TICK_MS * 0.001);
+  const speedResponse = 1 - Math.exp(-dt * 8);
+  const nextSpeed = lerp(hist.speed, targetSpeed, speedResponse);
+  const acceleration = dt > 0 ? (nextSpeed - hist.speed) / dt : 0;
+  hist.speed = nextSpeed;
+  const heavy = e.kind === "behemoth";
+  const settle = 1 - Math.exp(-dt * (heavy ? 4 : 7));
+  hist.suspensionY = lerp(hist.suspensionY, isVehicle ? Math.max(-0.8, Math.min(0.8, acceleration * -0.035)) : 0, settle);
+  hist.chassisLean = lerp(hist.chassisLean, isVehicle ? Math.max(-0.045, Math.min(0.045, acceleration * 0.0018)) : 0, settle);
   const legacyTurnSpeed = e.kind === "tank" ? 9.0 : e.kind === "behemoth" ? 6.0 : 14.0;
   hist.yaw = lerpAngle(hist.yaw, targetYaw, isAirUnit(e.kind)
     ? Math.min(1, dt * legacyTurnSpeed) : 1 - Math.exp(-dt * legacyTurnSpeed));
@@ -269,7 +391,7 @@ export function computeUnitDynamicTransform(
   let targetScreenAngle = hist.screenAngle;
   if (moveDist > 0.005) {
     targetScreenAngle = isoHeadingAngle(moveDx, moveDy);
-  } else if (attackDist > 0.005) {
+  } else if (attackDist > 0.005 && !independentTurret) {
     targetScreenAngle = isoHeadingAngle(attackDx, attackDy);
   } else if (waypointDist > 0.005) {
     targetScreenAngle = isoHeadingAngle(waypointDx, waypointDy);
@@ -366,7 +488,7 @@ export function computeUnitDynamicTransform(
     }
   }
 
-  return {
+  const transform: UnitDynamicTransform = {
     x,
     y,
     z,
@@ -393,5 +515,19 @@ export function computeUnitDynamicTransform(
     scaleX,
     scaleY,
     airborneMix,
+    moveSpeed: hist.speed,
+    travel: hist.travel,
+    suspensionY: hist.suspensionY,
+    chassisLean: hist.chassisLean,
   };
+  if (isSettledStaticTransform(e, hist)) {
+    hist.staticTransformKey = staticTransformKey(e, state, hist);
+    hist.staticTransformHeights = state.heights;
+    hist.staticTransform = transform;
+  } else {
+    hist.staticTransformKey = undefined;
+    hist.staticTransformHeights = undefined;
+    hist.staticTransform = undefined;
+  }
+  return transform;
 }

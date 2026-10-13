@@ -69,11 +69,11 @@ export function configureChallenge(state: SimState, map: GeneratedMap): void {
       guard.optionalChallenge = true;
       guard.stance = "hold";
       challenge = { id: "bonus-outpost", kind: "destroyTarget", priority: "optional", targetId: target.id,
-        zone: { x: target.x, y: target.y }, label: `Destroy the supply outpost at ${target.x}, ${target.y}` };
+        zone: { x: target.x, y: target.y }, label: "Destroy the supply outpost" };
     } else {
       challenge = { id: "bonus-ore", kind: "secureZone", priority: "optional", zone: { x: point.x, y: point.y },
         radius: 3, target: CHALLENGE_HOLD_TICKS, progressTicks: 0,
-        label: `Secure forward ore at ${point.x}, ${point.y} for 60 seconds` };
+        label: "Secure forward ore for 60 seconds" };
     }
     state.runtime.secondary = [{ id: "yard", kind: "preserveYard", priority: "primary", label: "Keep the Command HQ standing" }, challenge];
     return;

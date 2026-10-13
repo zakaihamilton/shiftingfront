@@ -2,6 +2,12 @@ import type { MusicIntensity, MusicPattern, MusicSectionName, MusicStem, MusicVo
 import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { ATTACK_S, notePan } from "./musicGraph";
 import { getNoiseBuffer } from "./musicGraph";
+import { cinematicWave } from "./cinematicWaves";
+
+function cinematicWaveRole(voice: MusicStem): "bass" | "pulse" | "lead" | "harmony" {
+  if (voice === "bass" || voice === "pulse" || voice === "melody") return voice === "melody" ? "lead" : voice;
+  return "harmony";
+}
 
 export function playSynthTone(
   audio: AudioGraphContext,
@@ -30,7 +36,7 @@ export function playSynthTone(
   const pwm = engine === "pwm";
   const fm = engine === "fm-bell";
   const cinematic = engine === "cinematic";
-  const cleanType = cinematic && type === "square" ? (bass ? "triangle" : "sawtooth") : type;
+  const cleanType = cinematic && type !== "sine" ? "triangle" : type;
   const attack = Math.min(
     chip ? 0.002 : cinematic ? (lead ? 0.035 : harmony ? 0.028 : bass ? 0.012 : 0.018) : lead ? 0.02 : harmony ? 0.014 : bass ? (acid ? 0.008 : 0.004) : pulse ? 0.003 : ATTACK_S,
     duration * 0.22,
@@ -87,6 +93,7 @@ export function playSynthTone(
   pan.pan.linearRampToValueAtTime(panTarget, time + Math.min(0.18, Math.max(0.03, duration * 0.25)));
 
   oscA.type = acid ? "sawtooth" : pwm ? (cleanType === "square" ? "sawtooth" : cleanType) : fm ? (cleanType === "sine" || cleanType === "triangle" ? cleanType : "sine") : cleanType;
+  if (cinematic) oscA.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice)));
   const glide = acid && bass
     ? Math.min(0.08, duration * 0.45)
     : cinematic && bass
@@ -97,7 +104,7 @@ export function playSynthTone(
 
   envelope.gain.setValueAtTime(0.0001, time);
   envelope.gain.exponentialRampToValueAtTime(peak, time + Math.max(0.003, attack));
-  if (pulse || chip) {
+  if (chip || (pulse && !cinematic)) {
     envelope.gain.exponentialRampToValueAtTime(0.0001, time + Math.max(0.04, duration * (chip ? 0.55 : 0.7)));
   } else {
     envelope.gain.setTargetAtTime(0.0001, Math.max(time + attack, end - release), Math.max(0.014, release * 0.4));
@@ -121,10 +128,15 @@ export function playSynthTone(
   } else if (!chip) {
     const oscB = audio.createOscillator();
     const oscBGain = audio.createGain();
-    oscB.type = pwm ? (cleanType === "sawtooth" ? "triangle" : cleanType === "square" ? "sawtooth" : cleanType) : cleanType === "sawtooth" ? "triangle" : cleanType === "square" ? "sawtooth" : "triangle";
+    oscB.type = cinematic
+      ? cleanType === "sine" ? "triangle" : "sawtooth"
+      : pwm
+        ? (cleanType === "sawtooth" ? "triangle" : cleanType === "square" ? "sawtooth" : cleanType)
+        : cleanType === "sawtooth" ? "triangle" : cleanType === "square" ? "sawtooth" : "triangle";
     oscB.frequency.setValueAtTime(freq * (bass ? 1.004 : 1.01), time);
-    oscB.detune.setValueAtTime(cinematic ? (lead ? 6 : pulse ? -4 : -3) : lead ? 10 : pulse ? -8 : -5, time);
-    oscBGain.gain.setValueAtTime(pwm ? 0.2 : cinematic ? 0.22 : 0.28, time);
+    oscB.detune.setValueAtTime(cinematic ? (lead ? 4 : pulse ? -3 : -2) : lead ? 10 : pulse ? -8 : -5, time);
+    oscBGain.gain.setValueAtTime(pwm ? 0.2 : cinematic ? (lead ? 0.18 : 0.16) : 0.28, time);
+    if (cinematic) oscB.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice)));
     if (pwm) {
       const pwmGain = audio.createGain();
       const pwmLfo = audio.createOscillator();
@@ -166,6 +178,7 @@ export function playSynthTone(
     const oscSub = audio.createOscillator();
     const subGain = audio.createGain();
     oscSub.type = bass ? "sine" : lead ? g.style.counterType : "triangle";
+    if (cinematic) oscSub.setPeriodicWave(cinematicWave(audio, bass ? "bass" : "harmony"));
     oscSub.frequency.setValueAtTime(freq * (bass || lead ? 0.5 : 0.25), time);
     subGain.gain.setValueAtTime(bass ? (acid ? 0.34 : 0.4) : lead ? 0.14 : 0.16, time);
     oscSub.connect(subGain);
@@ -218,24 +231,32 @@ export function playNoise(
   source.stop(time + duration + 0.025);
 }
 
-export function playTransition(audio: AudioGraphContext, g: MusicGraph, time: number, duration: number, rising: boolean): void {
-  const source = audio.createBufferSource();
+export function playTransition(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  time: number,
+  duration: number,
+  rising: boolean,
+  rootFrequency = g.padOscA.frequency.value,
+): void {
+  const oscillator = audio.createOscillator();
   const filter = audio.createBiquadFilter();
   const envelope = audio.createGain();
-  source.buffer = getNoiseBuffer(audio);
-  filter.type = "bandpass";
-  filter.Q.setValueAtTime(0.8, time);
-  filter.frequency.setValueAtTime(rising ? 220 : 4200, time);
-  filter.frequency.exponentialRampToValueAtTime(rising ? 4200 : 220, time + duration);
+  const root = Math.max(30, rootFrequency);
+  filter.type = "lowpass";
+  filter.Q.setValueAtTime(0.5, time);
+  filter.frequency.setValueAtTime(1_100, time);
+  oscillator.type = "triangle";
+  oscillator.frequency.setValueAtTime(root * (rising ? 2 : 4), time);
+  oscillator.frequency.exponentialRampToValueAtTime(root * (rising ? 4 : 2), time + duration);
   envelope.gain.setValueAtTime(0.0001, time);
-  envelope.gain.exponentialRampToValueAtTime(0.085, time + duration * 0.72);
+  envelope.gain.exponentialRampToValueAtTime(0.028, time + duration * 0.72);
   envelope.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-  source.connect(filter);
+  oscillator.connect(filter);
   filter.connect(envelope);
   envelope.connect(g.fxBus);
-  envelope.connect(g.reverbSend);
-  source.start(time);
-  source.stop(time + duration + 0.03);
+  oscillator.start(time);
+  oscillator.stop(time + duration + 0.03);
 }
 
 export function retunePad(audio: AudioGraphContext, g: MusicGraph, p: MusicPattern, bar: number, time: number): void {

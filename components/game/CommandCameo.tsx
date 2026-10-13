@@ -14,6 +14,7 @@ export function CommandCameo({
   cost,
   disabled,
   disabledReason,
+  statusLabel,
   detail,
   active,
   tutorialFocus,
@@ -28,6 +29,7 @@ export function CommandCameo({
   cost: number;
   disabled?: boolean;
   disabledReason?: string;
+  statusLabel?: string;
   detail?: string;
   active?: boolean;
   tutorialFocus?: string;
@@ -41,14 +43,18 @@ export function CommandCameo({
   const busy = cameo.phase !== "idle";
   const showCount = cameo.queued > 1 || cameo.phase === "waiting";
   const cancellable = busy || active;
-  const role = isUnitKind(kind) ? ` · ${UNIT_STATS[kind].armor} armor · ${UNIT_STATS[kind].weapon} weapon` : "";
+  const visibleStatus = busy
+    ? cameo.phase === "waiting" ? `Queue ${cameo.queued}` : `${Math.round(cameo.ratio * 100)}% ready`
+    : disabledReason ? statusLabel ?? "Unavailable" : "Ready";
+  const role = isUnitKind(kind) ? `${UNIT_STATS[kind].armor} armor · ${UNIT_STATS[kind].weapon} weapon` : undefined;
   const tooltip = [
-    `${labelFor(kind)}${role} · ${cost} credits`,
+    `${labelFor(kind)} · ${cost} credits`,
+    role,
     busy ? (cameo.phase === "waiting" ? `${cameo.queued} in queue` : `${Math.round(cameo.ratio * 100)}% complete`) : undefined,
     detail?.trim() || undefined,
     cancellable ? "Right-click or use Cancel" : undefined,
-    disabledReason,
-  ].filter((part): part is string => Boolean(part)).join(" · ");
+    ...(disabledReason?.split(" · ") ?? []),
+  ].filter((part): part is string => Boolean(part)).join("\n");
   const ariaLabel = [
     `${labelFor(kind)}, ${cost} credits`,
     busy ? (cameo.phase === "waiting" ? `${cameo.queued} in queue` : `${Math.round(cameo.ratio * 100)} percent complete`) : undefined,
@@ -94,13 +100,13 @@ export function CommandCameo({
         </span>
         <span className={styles.caption}>
           <span className={styles.captionTop}>
-            <span data-testid={`cameo-label-${kind}`}>{labelFor(kind)}</span>
+            <span className={styles.name} data-testid={`cameo-label-${kind}`}>{labelFor(kind)}</span>
             <b>{cost}</b>
           </span>
-          <span className={cx(styles.status, disabledReason && styles.blocked)}>
-            {disabledReason ?? (busy ? cameo.phase === "waiting" ? `Queue ${cameo.queued}` : `${Math.round(cameo.ratio * 100)}% ready` : "Ready")}
+          <span className={cx(styles.status, disabledReason && styles.blocked)} data-testid={`cameo-status-${kind}`}>
+            {visibleStatus}
           </span>
-          <span className={styles.detail}>{detail ?? "\u00a0"}</span>
+          <span className={styles.detail} data-testid={`cameo-detail-${kind}`}>{detail ?? "\u00a0"}</span>
         </span>
       </button>
       {cancellable && onContextMenu ? (

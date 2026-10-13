@@ -1,5 +1,5 @@
 import { isUnitEntity } from "../types";
-import type { ArmorType, BuildingKind, CombatTargetDomain, Entity, SupportRole, UnitDomain, UnitKind, WeaponType } from "../types";
+import type { AmmoEffect, ArmorType, BuildingKind, CombatTargetDomain, Entity, SupportRole, UnitDomain, UnitKind, WeaponType } from "../types";
 
 export const UNIT_KINDS: UnitKind[] = [
   "harvester",
@@ -25,6 +25,8 @@ export type UnitStats = {
   carryMax: number;
   armor: ArmorType;
   weapon: WeaponType;
+  /** Visual ammunition style for this unit's attacks. */
+  ammoEffect?: AmmoEffect;
   splashRadius: number;
   suppression: number;
   domain: UnitDomain;
@@ -86,6 +88,7 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
     carryMax: 0,
     armor: "light",
     weapon: "smallArms",
+    ammoEffect: "bullet",
     splashRadius: 0,
     suppression: 8,
     domain: "human",
@@ -106,6 +109,7 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
     carryMax: 0,
     armor: "light",
     weapon: "antiArmor",
+    ammoEffect: "missile",
     splashRadius: 0,
     suppression: 14,
     domain: "human",
@@ -126,6 +130,7 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
     carryMax: 0,
     armor: "heavy",
     weapon: "cannon",
+    ammoEffect: "shell",
     splashRadius: 1,
     suppression: 12,
     domain: "vehicle",
@@ -214,6 +219,7 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
     carryMax: 0,
     armor: "light",
     weapon: "airStrike",
+    ammoEffect: "bomb",
     splashRadius: 0.75,
     suppression: 16,
     domain: "air",
@@ -236,6 +242,7 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
     carryMax: 0,
     armor: "heavy",
     weapon: "cannon",
+    ammoEffect: "shell",
     splashRadius: 2.2,
     suppression: 40,
     domain: "vehicle",
@@ -245,6 +252,13 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
 
 /** Compatibility view containing only simulation statistics. */
 export const UNIT_STATS: Record<UnitKind, UnitStats> = UNIT_DEFINITIONS;
+
+export function ammoEffectForWeapon(weapon: WeaponType): AmmoEffect {
+  if (weapon === "smallArms") return "bullet";
+  if (weapon === "antiArmor" || weapon === "antiAir") return "missile";
+  if (weapon === "airStrike") return "bomb";
+  return "shell";
+}
 
 /** Compatibility view for UI and generated copy. */
 export const UNIT_LABELS: Record<UnitKind, string> = Object.fromEntries(

@@ -12,6 +12,8 @@ import { isoDiamondPath } from "./isoDiamond";
 
 const SLAB_RUST = { r: 117, g: 81, b: 59 };
 const SLAB_RUST_LIGHT = { r: 189, g: 130, b: 88 };
+const MAX_CONCRETE_SLAB_RASTERS = 512;
+const concreteSlabRasters = new Map<string, HTMLCanvasElement>();
 
 function mixTone(
   a: { r: number; g: number; b: number },
@@ -34,7 +36,7 @@ function slabBit(v: number, shift: number, mod: number): number {
   return ((v >>> shift) % mod + mod) % mod;
 }
 
-export function drawConcreteSlab(
+function paintConcreteSlab(
   ctx: CanvasRenderingContext2D,
   sx: number,
   sy: number,
@@ -122,6 +124,58 @@ export function drawConcreteSlab(
   }
 
   ctx.restore();
+  ctx.restore();
+}
+
+function concreteSlabRaster(
+  tw: number,
+  th: number,
+  z: number,
+  variant: number,
+  alpha: number,
+): { canvas: HTMLCanvasElement; pad: number } | null {
+  if (typeof document === "undefined") return null;
+  const key = `${tw}:${th}:${z}:${variant >>> 0}:${alpha}`;
+  const cached = concreteSlabRasters.get(key);
+  if (cached) {
+    concreteSlabRasters.delete(key);
+    concreteSlabRasters.set(key, cached);
+    return { canvas: cached, pad: 2 };
+  }
+
+  const pad = 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(tw) + pad * 2;
+  canvas.height = Math.ceil(th) + pad * 2;
+  const rasterCtx = canvas.getContext("2d");
+  if (!rasterCtx) return null;
+  paintConcreteSlab(rasterCtx, pad + tw / 2, pad, tw, th, z, variant, alpha);
+  if (concreteSlabRasters.size >= MAX_CONCRETE_SLAB_RASTERS) {
+    concreteSlabRasters.delete(concreteSlabRasters.keys().next().value!);
+  }
+  concreteSlabRasters.set(key, canvas);
+  return { canvas, pad };
+}
+
+export function drawConcreteSlab(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  tw: number,
+  th: number,
+  z: number,
+  variant: number,
+  alpha: number,
+): void {
+  const raster = concreteSlabRaster(tw, th, z, variant, alpha);
+  if (!raster) {
+    paintConcreteSlab(ctx, sx, sy, tw, th, z, variant, alpha);
+    return;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.drawImage(raster.canvas, sx - tw / 2 - raster.pad, sy - raster.pad);
   ctx.restore();
 }
 

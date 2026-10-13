@@ -1,4 +1,4 @@
-import type { ArmorType, BuildingKind, CombatTargetDomain, Entity, WeaponType } from "../types";
+import type { AmmoEffect, ArmorType, BuildingKind, CombatTargetDomain, Entity, WeaponType } from "../types";
 import { UNIT_DEFINITIONS } from "./units";
 
 export const BUILDING_KINDS: BuildingKind[] = [
@@ -24,6 +24,8 @@ export type BuildingStats = {
   footprint: Footprint;
   armor: ArmorType;
   weapon?: WeaponType;
+  /** Visual ammunition style for this structure's attacks. */
+  ammoEffect?: AmmoEffect;
   combat?: {
     damage: number;
     range: number;
@@ -130,6 +132,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingKind, BuildingDefinition> = {
     footprint: { w: 1, h: 1 },
     armor: "structure",
     weapon: "cannon",
+    ammoEffect: "shell",
     combat: {
       damage: 9,
       range: 5.5,
@@ -166,6 +169,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingKind, BuildingDefinition> = {
     footprint: { w: 1, h: 1 },
     armor: "structure",
     weapon: "antiAir",
+    ammoEffect: "missile",
     combat: {
       damage: 14,
       range: 8,

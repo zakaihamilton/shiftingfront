@@ -76,11 +76,18 @@ export function playLayeredSfx(
       playNoise({ duration: 0.32, gain: 0.2 * gain, pan, frequency: 240, type: "lowpass" });
       break;
     }
-    case "turret": {
-      playNoise({ duration: 0.018, gain: 0.11 * gain, pan, frequency: jitter(3400, 0.08), type: "highpass", q: 0.7 });
-      playTone({ frequency: jitter(480, 0.05), endFrequency: 90, duration: 0.08, type: "square", gain: 0.16 * gain, pan, cutoff: 2400, drive: 2.1 });
-      playNoise({ duration: 0.09, gain: 0.13 * gain, pan, frequency: jitter(1500, 0.08), type: "bandpass", q: 1.3 });
-      playTone({ frequency: jitter(70, 0.04), endFrequency: 32, duration: 0.14, type: "sine", gain: 0.1 * gain, pan, cutoff: 500 });
+    case "airStrike": {
+      playNoise({ duration: 0.25, gain: 0.13 * gain, pan, frequency: jitter(3200, 0.08), endFrequency: 520, type: "bandpass", q: 0.9 });
+      playTone({ frequency: jitter(760, 0.05), endFrequency: 180, duration: 0.3, type: "sine", gain: 0.1 * gain, pan, cutoff: 1500 });
+      playNoise({ duration: 0.12, gain: 0.08 * gain, pan, frequency: 280, type: "lowpass", delay: 0.16 });
+      break;
+    }
+    case "antiAir": {
+      for (const delay of [0, 0.045, 0.09]) {
+        playNoise({ duration: 0.014, gain: 0.1 * gain, pan, frequency: jitter(5200, 0.08), type: "highpass", q: 0.8, delay });
+        playTone({ frequency: jitter(920, 0.06), endFrequency: 300, duration: 0.045, type: "square", gain: 0.09 * gain, pan, cutoff: 3000, delay });
+      }
+      playNoise({ duration: 0.1, gain: 0.07 * gain, pan, frequency: 1700, type: "bandpass", q: 1.4 });
       break;
     }
     case "impactFlesh":

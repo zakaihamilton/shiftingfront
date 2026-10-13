@@ -22,11 +22,11 @@ function peerovoConnectSources() {
 const peerovoSources = peerovoConnectSources();
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com https://visitoring.vercel.app`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  `connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com${peerovoSources ? ` ${peerovoSources}` : ""}`,
+  `connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com https://visitoring.vercel.app${peerovoSources ? ` ${peerovoSources}` : ""}`,
   "worker-src 'self'",
   "media-src 'self'",
   "object-src 'none'",

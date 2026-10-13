@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { runInNewContext } from "node:vm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { serviceWorkerScriptUrl } from "@/lib/pwa/serviceWorkerUrl";
 
 const APP_ORIGIN = "https://www.shiftingfront.com";
@@ -42,7 +42,7 @@ type ServiceWorkerEvent = {
   waitUntil?: (promise: Promise<unknown>) => void;
 };
 
-function createServiceWorker(deploymentId: string, fetchImpl: (request: Request) => Promise<Response>) {
+function createServiceWorker(deploymentId: string, fetchImpl: (request: Request | string, init?: RequestInit) => Promise<Response>) {
   const listeners = new Map<string, (event: ServiceWorkerEvent) => void>();
   const storedCaches = new Map<string, MemoryCache>();
   const caches = {
@@ -60,7 +60,7 @@ function createServiceWorker(deploymentId: string, fetchImpl: (request: Request)
   const self = {
     location: new URL(`${APP_ORIGIN}/sw.js?dpl=${deploymentId}`),
     addEventListener: (type: string, listener: (event: ServiceWorkerEvent) => void) => listeners.set(type, listener),
-    skipWaiting: async () => undefined,
+    skipWaiting: vi.fn(async () => undefined),
     clients: { claim: async () => undefined },
   };
 
@@ -68,6 +68,12 @@ function createServiceWorker(deploymentId: string, fetchImpl: (request: Request)
 
   return {
     caches,
+    skipWaiting: self.skipWaiting,
+    async install() {
+      let lifetime: Promise<unknown> = Promise.resolve();
+      listeners.get("install")?.({ waitUntil: (promise: Promise<unknown>) => { lifetime = promise; } });
+      await lifetime;
+    },
     async activate() {
       let lifetime: Promise<unknown> = Promise.resolve();
       listeners.get("activate")?.({ waitUntil: (promise: Promise<unknown>) => { lifetime = promise; } });
@@ -190,7 +196,7 @@ describe("Service Worker", () => {
     const swPath = resolve(process.cwd(), "public/sw.js");
     const content = readFileSync(swPath, "utf-8");
 
-    expect(content).toContain('const CACHE_NAME = "shiftingfront-v5"');
+    expect(content).toContain('const CACHE_NAME = "shiftingfront-v6"');
     expect(content).toContain("CORE_PRECACHE");
     expect(content).toContain("required: true");
     expect(content).toContain('url.hostname === "localhost"');
@@ -261,5 +267,43 @@ describe("Service Worker", () => {
     expect(await (await worker.fetch(bundle)).text()).toBe("terrain worker bundle");
     online = false;
     expect(await (await worker.fetch(bundle)).text()).toBe("terrain worker bundle");
+  });
+
+  it("installs lazy battlefield code, styles, fonts and workers before the first offline launch", async () => {
+    const assets = ["/_next/static/chunks/game-lazy.js", "/_next/static/css/game-lazy.css",
+      "/_next/static/media/font.woff2", "/_next/static/chunks/terrain-worker.js",
+      "/_next/static/chunks/app/[seed]/page.js"];
+    let online = true;
+    const worker = createServiceWorker("dpl_current", async (input, init) => {
+      if (!online) throw new Error("offline");
+      const path = typeof input === "string" ? input : new URL(input.url).pathname;
+      if (path === "/_next/static/offline-precache.json") {
+        expect(init?.cache).toBe("no-store");
+        return Response.json(assets);
+      }
+      if (assets.includes(path)) return new Response(path);
+      return new Response("<html>menu</html>", { headers: { "Content-Type": "text/html" } });
+    });
+    await worker.install();
+    expect(worker.skipWaiting).toHaveBeenCalledOnce();
+    online = false;
+    for (const path of assets) expect(await (await worker.fetch(new Request(`${APP_ORIGIN}${path}`))).text()).toBe(path);
+  });
+
+  it("does not activate an incomplete runtime precache", async () => {
+    const worker = createServiceWorker("dpl_current", async (input) => {
+      if (input === "/_next/static/offline-precache.json") return Response.json(["/_next/static/chunks/missing.js"]);
+      if (input === "/_next/static/chunks/missing.js") return new Response("missing", { status: 404 });
+      return new Response("asset");
+    });
+    await expect(worker.install()).rejects.toThrow("Failed to precache /_next/static/chunks/missing.js: 404");
+    expect(worker.skipWaiting).not.toHaveBeenCalled();
+  });
+
+  it.each(["https://other.example/chunk.js", "/_next/static/../../outside.js", "/_next/static/%2e%2e/outside.js"])("rejects runtime manifests escaping the static directory (%s)", async (url) => {
+    const worker = createServiceWorker("dpl_current", async (input) =>
+      input === "/_next/static/offline-precache.json" ? Response.json([url]) : new Response("asset"));
+    await expect(worker.install()).rejects.toThrow("Invalid runtime precache manifest");
+    expect(worker.skipWaiting).not.toHaveBeenCalled();
   });
 });

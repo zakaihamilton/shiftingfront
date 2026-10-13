@@ -52,7 +52,11 @@
 .centerable:focus-visible {
   color: var(--chrome-focus);
   text-decoration: underline;
-  outline: none;
+}
+
+.centerable:focus-visible {
+  outline: 2px solid var(--chrome-focus);
+  outline-offset: 2px;
 }
 
 .portrait {
@@ -87,6 +91,13 @@
 }
 
 .name {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
   position: relative;
   display: block;
   color: var(--chrome-text);

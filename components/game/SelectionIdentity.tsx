@@ -48,33 +48,44 @@ export function SelectionIdentity({
     : selected.marked && selected.class === "unit"
       ? "Cargo — return to extraction zone"
       : "";
+  const selectionLabel = labelFor(selected.kind);
+  const selectionTooltip = [
+    selectionLabel,
+    isUnitKind(selected.kind)
+      ? " · " + UNIT_STATS[selected.kind].armor + " armor · " + UNIT_STATS[selected.kind].weapon + " weapon"
+      : "",
+    onCenter ? " · Click to center camera" : "",
+  ].join("");
   return (
     <div className={cx(styles.row, selected.class === "unit" && styles.unitRow)}>
       <div className={styles.portrait}>
         <SpritePreview kind={selected.kind} palette={palette} profile={profile} />
       </div>
       <div>
-        <strong
-          className={cx(styles.name, onCenter && styles.centerable)}
-          data-testid="selected-kind"
-          data-tooltip={`${labelFor(selected.kind)}${isUnitKind(selected.kind) ? ` · ${UNIT_STATS[selected.kind].armor} armor · ${UNIT_STATS[selected.kind].weapon} weapon` : ""}${onCenter ? " · Click to center camera" : ""}`}
-          data-shortcut={SHORTCUT.center}
-          role={onCenter ? "button" : undefined}
-          tabIndex={onCenter ? 0 : undefined}
-          onClick={onCenter ? () => {
-            triggerHaptic("tap");
-            onCenter();
-          } : undefined}
-          onKeyDown={onCenter ? (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
+        {onCenter ? (
+          <button
+            type="button"
+            className={cx(styles.name, styles.centerable)}
+            data-testid="selected-kind"
+            data-tooltip={selectionTooltip}
+            data-shortcut={SHORTCUT.center}
+            onClick={() => {
               triggerHaptic("tap");
               onCenter();
-            }
-          } : undefined}
-        >
-          {labelFor(selected.kind)}
-        </strong>
+            }}
+          >
+            {selectionLabel}
+          </button>
+        ) : (
+          <strong
+            className={styles.name}
+            data-testid="selected-kind"
+            data-tooltip={selectionTooltip}
+            data-shortcut={SHORTCUT.center}
+          >
+            {selectionLabel}
+          </strong>
+        )}
         <span className={styles.stat} data-tooltip={healthText}>{healthText}</span>
         {selected.neutral ? (
           <span className={styles.warning} data-testid="selected-status" data-tooltip={warningText}>{warningText}</span>

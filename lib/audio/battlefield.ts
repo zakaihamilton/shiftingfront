@@ -5,15 +5,16 @@ import { duckMusic } from "./mixer";
 import { spatialAudioForWorld } from "./spatial";
 import { playSfx, type SfxKind } from "./synth";
 
-export function fireSfxFor(attackerKind: UnitKind | BuildingKind, weapon: WeaponType): SfxKind {
-  if (attackerKind === "infantry") return "smallArms";
-  if (attackerKind === "antiArmor") return "antiArmor";
-  if (attackerKind === "tank" || attackerKind === "behemoth") return "cannon";
-  if (attackerKind === "turret" || attackerKind === "antiAirTurret") return "turret";
-  if (attackerKind === "strikePlane") return "cannon";
-  if (weapon === "smallArms") return "smallArms";
-  if (weapon === "antiArmor") return "antiArmor";
-  return "cannon";
+const FIRE_SFX_BY_WEAPON: Record<WeaponType, SfxKind> = {
+  smallArms: "smallArms",
+  antiArmor: "antiArmor",
+  cannon: "cannon",
+  airStrike: "airStrike",
+  antiAir: "antiAir",
+};
+
+export function fireSfxFor(weapon: WeaponType): SfxKind {
+  return FIRE_SFX_BY_WEAPON[weapon];
 }
 
 export function impactSfxFor(targetKind: UnitKind | BuildingKind): SfxKind {
@@ -54,7 +55,7 @@ export function dispatchBattlefieldAudio(
     if (event.type === "combat") {
       const shot = spatialAudioForWorld(event.x, event.y, camera, screenWidth, screenHeight);
       if (shot.audible) {
-        playSfx(fireSfxFor(event.attackerKind, event.weapon), {
+        playSfx(fireSfxFor(event.weapon), {
           pan: shot.pan,
           gain: shot.gain,
         });
