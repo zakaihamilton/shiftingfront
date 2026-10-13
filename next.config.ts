@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import type { webpack as NextWebpack } from "next/dist/compiled/webpack/webpack";
 import { simulationBuildIdentity } from "./lib/multiplayer/buildIdentity";
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -37,6 +38,42 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   env: { NEXT_PUBLIC_SIMULATION_BUILD_ID: simulationBuildIdentity(process.cwd()) },
+  webpack(config, { dev, isServer, webpack }) {
+    if (!dev && !isServer) {
+      config.plugins.push({
+        apply(compiler: NextWebpack.Compiler) {
+          compiler.hooks.thisCompilation.tap(
+            "OfflinePrecacheManifestPlugin",
+            (compilation: NextWebpack.Compilation) => {
+              compilation.hooks.processAssets.tap(
+                {
+                  name: "OfflinePrecacheManifestPlugin",
+                  stage: webpack.Compilation.PROCESS_ASSETS_STAGE_REPORT,
+                },
+                () => {
+                  const assets = Object.keys(compilation.assets)
+                    .filter((asset) => /^static\/.+\.(?:js|css|woff2?)$/.test(asset))
+                    .sort()
+                    .map((asset) => `/_next/${asset}`);
+
+                  if (assets.length === 0) {
+                    throw new Error("No built runtime assets found for offline precache.");
+                  }
+
+                  compilation.emitAsset(
+                    "static/offline-precache.json",
+                    new webpack.sources.RawSource(JSON.stringify(assets)),
+                  );
+                },
+              );
+            },
+          );
+        },
+      });
+    }
+
+    return config;
+  },
   experimental: {
     // Next uses the TypeScript 6 API alias; `yarn typecheck` runs the TypeScript 7 CLI.
     useTypeScriptCli: false,
