@@ -73,7 +73,7 @@
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
-    "@vercel/firewall": "^1.2.5",
+    "@vercel/firewall": "^1.2.6",
     "next": "16.4.1",
     "peerjs": "^1.5.5",
     "react": "19.3.0",
