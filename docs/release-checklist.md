@@ -10,34 +10,34 @@ Before cutting a release or publishing a production build, run the local verific
 
 ```bash
 # 1. Type check
-yarn typecheck
+pnpm typecheck
 
 # 2. Linting
-yarn lint
+pnpm lint
 
 # 3. Unit & simulation tests
-yarn test:fast
+pnpm test:fast
 
 # 4. Invariants & determinism suite
-yarn health:invariants
+pnpm health:invariants
 
 # 5. Performance health (CI health job; p95 25 ms, p99 25 ms local / 40 ms CI)
-yarn health:performance
+pnpm health:performance
 
 # 6. Markdown documentation
-yarn health:documentation
+pnpm health:documentation
 
 # 7. Dependency vulnerability audit
-yarn health:audit
+pnpm health:audit
 
 # 8. Visual regression test suite
-yarn test:visual
+pnpm test:visual
 
 # 9. Production Next.js build
-yarn build
+pnpm build
 ```
 
-Ensure all gates pass with 0 errors and 0 warnings. `yarn health:balance` runs on CI and nightly; run it locally when changing the commander or `DEFAULT_BALANCE_THRESHOLDS`.
+Ensure all gates pass with 0 errors and 0 warnings. `pnpm health:balance` runs on CI and nightly; run it locally when changing the commander or `DEFAULT_BALANCE_THRESHOLDS`.
 
 ---
 
@@ -57,7 +57,7 @@ Shifting Front runs on Vercel production hosting. Campaign and tutorial simulati
 
 ### Immutable asset updates
 
-Run `yarn health:asset-versioning --base <git-ref>` against the commit before the asset changes. CI fetches the PR base or the previous push commit for the same check. Every byte change under `public/art` or `public/icons`, including recompression, requires a new pathname. Increment the filename version or use a new versioned directory, update all references and `public/sw.js` precache entries, and run the asset and service-worker tests. Additions and deletions are allowed; replacing a file at the same URL is rejected. Previously cached files refresh through new URLs, while the existing immutable headers and offline cache strategy stay in place.
+Run `pnpm health:asset-versioning --base <git-ref>` against the commit before the asset changes. CI fetches the PR base or the previous push commit for the same check. Every byte change under `public/art` or `public/icons`, including recompression, requires a new pathname. Increment the filename version or use a new versioned directory, update all references and `public/sw.js` precache entries, and run the asset and service-worker tests. Additions and deletions are allowed; replacing a file at the same URL is rejected. Previously cached files refresh through new URLs, while the existing immutable headers and offline cache strategy stay in place.
 
 ### Multiplayer deployment gate
 

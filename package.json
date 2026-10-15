@@ -21,7 +21,7 @@
   ],
   "private": true,
   "license": "MIT",
-  "packageManager": "yarn@1.22.22",
+  "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=24.0.0 <25"
   },
@@ -34,7 +34,7 @@
     "test": "vitest run",
     "test:fast": "vitest run --exclude tests/simulation/allSeeds --exclude tests/simulation/headlessBalance --exclude tests/simulation/balanceRegressions --exclude tests/simulation/terrain.test.ts --exclude tests/simulation/commander.test.ts --exclude tests/simulation/commanderGenerated.test.ts --exclude tests/generation/profile.test.ts --exclude tests/generation/profileMapValidity",
     "test:watch": "vitest",
-    "verify:fast": "yarn typecheck && yarn lint && yarn test:fast",
+    "verify:fast": "pnpm typecheck && pnpm lint && pnpm test:fast",
     "inspect": "tsx scripts/inspect.ts",
     "sim": "tsx scripts/sim.ts",
     "balance": "tsx scripts/balance.ts",
@@ -52,7 +52,7 @@
     "health:asset-versioning": "tsx scripts/asset-versioning.ts",
     "health:dead-code": "knip",
     "health:duplication": "jscpd app components lib scripts",
-    "health:coverage": "VITEST_COVERAGE=1 yarn test:fast --coverage",
+    "health:coverage": "VITEST_COVERAGE=1 pnpm test:fast --coverage",
     "health:invariants": "vitest run tests/simulation/allSeeds tests/simulation/terrain.test.ts tests/simulation/commander.test.ts tests/simulation/commanderGenerated.test.ts",
     "health:performance": "tsx scripts/perf.ts",
     "health:balance": "tsx scripts/balance.ts --from 0 --to 39 --check true --progress false",
