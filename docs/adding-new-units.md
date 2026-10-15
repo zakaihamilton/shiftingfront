@@ -209,7 +209,7 @@ When adding an aircraft:
 
 ## Verification
 
-Before publishing art changes, run `yarn health:asset-versioning --base <git-ref>`
+Before publishing art changes, run `pnpm health:asset-versioning --base <git-ref>`
 against the commit before those changes (the PR base in CI). The check includes
 uncommitted edits, allows additions and deletions, and rejects changed bytes at
 existing paths under `public/art` and `public/icons`. Previously cached assets
@@ -218,17 +218,17 @@ refresh through new URLs; changing cache headers cannot evict an old cached URL.
 Run the focused checks first:
 
 ```bash
-yarn test tests/generation/assets.test.ts tests/platform/serviceWorker.test.ts
-yarn typecheck
-yarn lint
-yarn health:documentation
+pnpm test tests/generation/assets.test.ts tests/platform/serviceWorker.test.ts
+pnpm typecheck
+pnpm lint
+pnpm health:documentation
 ```
 
 For a gameplay unit that changes simulation or UI behavior, also run:
 
 ```bash
-yarn test
-yarn build
+pnpm test
+pnpm build
 ```
 
 Manual Asset Bay acceptance criteria:

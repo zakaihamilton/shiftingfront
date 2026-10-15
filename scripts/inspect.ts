@@ -6,7 +6,7 @@ import { createMission, inspect } from "../lib/sim/api";
 const raw = process.argv[2] ?? "0000";
 const seed = parseSeed(raw);
 if (seed === null) {
-  console.error("Usage: yarn inspect 0421");
+  console.error("Usage: pnpm inspect 0421");
   process.exit(1);
 }
 

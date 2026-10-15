@@ -41,7 +41,7 @@ export default defineConfig({
     { name: "android-touch", testMatch: /responsive\.spec\.ts/, use: { ...devices["Pixel 5"], launchOptions: chromiumLaunchOptions } },
   ],
   webServer: {
-    command: `NEXT_PUBLIC_DISABLE_ANALYTICS=1 NEXT_PUBLIC_E2E_MUTE_MUSIC=1 NEXT_PUBLIC_E2E_MUTE_SFX=1 NEXT_PUBLIC_E2E_MULTIPLAYER=1 yarn build && PORT=${port} HOSTNAME=127.0.0.1 yarn start`,
+    command: `NEXT_PUBLIC_DISABLE_ANALYTICS=1 NEXT_PUBLIC_E2E_MUTE_MUSIC=1 NEXT_PUBLIC_E2E_MUTE_SFX=1 NEXT_PUBLIC_E2E_MULTIPLAYER=1 pnpm build && PORT=${port} HOSTNAME=127.0.0.1 pnpm start`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,

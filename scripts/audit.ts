@@ -21,19 +21,15 @@ type AuditAdvisory = {
   cves: string[];
 };
 
-type AuditAdvisoryEvent = {
-  type: "auditAdvisory";
-  data: {
-    advisory: AuditAdvisory;
-    resolution: { path: string; dev: boolean };
-  };
+type PnpmAdvisory = AuditAdvisory & {
+  findings?: Array<{ version: string; paths: string[] }>;
 };
 
-type AuditSummaryEvent = {
-  type: "auditSummary";
-  data: {
-    vulnerabilities: Record<Severity, number>;
-    totalDependencies: number;
+type PnpmAuditReport = {
+  advisories?: Record<string, PnpmAdvisory>;
+  metadata?: {
+    vulnerabilities?: Record<Severity, number>;
+    totalDependencies?: number;
   };
 };
 
@@ -57,12 +53,10 @@ if (!(levelArg in SEVERITY_RANK)) {
   process.exit(1);
 }
 
-const groupsArg = parseArg("groups", "dependencies");
 const asJson = process.argv.includes("--json");
 
 function runAudit(): { stdout: string; stderr: string; exitCode: number | null; error?: Error } {
-  const args = ["audit", "--json", `--groups=${groupsArg}`];
-  const result = spawnSync("yarn", args, {
+  const result = spawnSync("pnpm", ["audit", "--json", "--prod"], {
     encoding: "utf8",
     maxBuffer: 20 * 1024 * 1024,
   });
@@ -77,42 +71,39 @@ function runAudit(): { stdout: string; stderr: string; exitCode: number | null; 
 
 export function evaluateAuditOutput(stdout: string, threshold: Severity) {
   const thresholdRank = SEVERITY_RANK[threshold];
-  const advisories: Array<{ advisory: AuditAdvisory; path: string; dev: boolean }> = [];
-  let summary: Record<Severity, number> | null = null;
-  let totalDependencies = 0;
-
-  const lines = stdout.split("\n");
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    try {
-      const parsed = JSON.parse(line) as { type?: string; data?: unknown };
-      if (parsed.type === "auditAdvisory" && parsed.data) {
-        const item = parsed as AuditAdvisoryEvent;
-        advisories.push({
-          advisory: item.data.advisory,
-          path: item.data.resolution.path,
-          dev: item.data.resolution.dev,
-        });
-      } else if (parsed.type === "auditSummary" && parsed.data) {
-        const item = parsed as AuditSummaryEvent;
-        summary = item.data.vulnerabilities;
-        totalDependencies = item.data.totalDependencies;
-      }
-    } catch {
-      // Ignore non-JSON lines (e.g. yarn output banners)
-    }
+  let report: PnpmAuditReport;
+  try {
+    report = JSON.parse(stdout) as PnpmAuditReport;
+  } catch {
+    return { advisories: [], failingAdvisories: [], summary: null, totalDependencies: 0 };
   }
 
+  const advisories = Object.values(report.advisories ?? {}).flatMap((item) =>
+    (item.findings ?? []).flatMap((finding) =>
+      finding.paths.map((path) => ({
+        advisory: {
+          id: item.id,
+          title: item.title,
+          module_name: item.module_name,
+          severity: item.severity,
+          url: item.url,
+          recommendation: item.recommendation ?? "",
+          patched_versions: item.patched_versions ?? "",
+          cves: item.cves ?? [],
+        },
+        path,
+        dev: false,
+      })),
+    ),
+  );
+
+  const summary = report.metadata?.vulnerabilities ?? null;
+  const totalDependencies = report.metadata?.totalDependencies ?? 0;
   const failingAdvisories = advisories.filter(
     (item) => SEVERITY_RANK[item.advisory.severity] >= thresholdRank,
   );
 
-  return {
-    advisories,
-    failingAdvisories,
-    summary,
-    totalDependencies,
-  };
+  return { advisories, failingAdvisories, summary, totalDependencies };
 }
 
 function main() {
@@ -120,7 +111,7 @@ function main() {
   const { stdout } = audit;
 
   if (audit.error || audit.exitCode === null || !stdout.trim()) {
-    console.error("Yarn audit could not complete; treating the dependency check as failed.");
+    console.error("pnpm audit could not complete; treating the dependency check as failed.");
     if (audit.error) console.error(audit.error.message);
     if (audit.stderr.trim()) console.error(audit.stderr.trim());
     process.exit(1);
@@ -128,7 +119,7 @@ function main() {
 
   const result = evaluateAuditOutput(stdout, levelArg);
   if (!result.summary) {
-    console.error("Yarn audit output did not include a summary; treating the dependency check as failed.");
+    console.error("pnpm audit output did not include a summary; treating the dependency check as failed.");
     if (audit.stderr.trim()) console.error(audit.stderr.trim());
     process.exit(1);
   }
@@ -140,12 +131,9 @@ function main() {
   }
 
   console.log(`[audit] Scanned ${result.totalDependencies} dependencies with threshold level: ${levelArg.toUpperCase()}`);
-
-  if (result.summary) {
-    console.log(
-      `[audit] Summary: ${result.summary.critical} critical, ${result.summary.high} high, ${result.summary.moderate} moderate, ${result.summary.low} low, ${result.summary.info} info`,
-    );
-  }
+  console.log(
+    `[audit] Summary: ${result.summary.critical} critical, ${result.summary.high} high, ${result.summary.moderate} moderate, ${result.summary.low} low, ${result.summary.info} info`,
+  );
 
   if (result.failingAdvisories.length > 0) {
     console.error(`\nFound ${result.failingAdvisories.length} advisory(ies) at or above ${levelArg.toUpperCase()} severity:\n`);

@@ -95,7 +95,7 @@ describe("immutable asset URL versioning", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(checkAssetVersioning([])).toBe(1);
     expect(checkAssetVersioning(["--base"])).toBe(1);
-    expect(error).toHaveBeenCalledWith("Usage: yarn health:asset-versioning --base <git-ref>");
+    expect(error).toHaveBeenCalledWith("Usage: pnpm health:asset-versioning --base <git-ref>");
   });
 
   it("reports a failing exit code and names changed asset paths", () => {
@@ -118,7 +118,7 @@ describe("immutable asset URL versioning", () => {
     const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
     expect(workflow).toContain("github.event.pull_request.base.sha || github.event.before");
     expect(workflow).toContain('git fetch --no-tags --depth=1 origin "$ASSET_BASE_SHA"');
-    expect(workflow).toContain('yarn health:asset-versioning --base "$ASSET_BASE_SHA"');
+    expect(workflow).toContain('pnpm health:asset-versioning --base "$ASSET_BASE_SHA"');
     expect(workflow).toContain('"0000000000000000000000000000000000000000"');
   });
 });

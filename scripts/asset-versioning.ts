@@ -33,7 +33,7 @@ export function changedAssetPaths(base: string, cwd = process.cwd()): string[] {
 
 export function checkAssetVersioning(args: string[]): number {
   if (args.length !== 2 || args[0] !== "--base" || !args[1]) {
-    console.error("Usage: yarn health:asset-versioning --base <git-ref>");
+    console.error("Usage: pnpm health:asset-versioning --base <git-ref>");
     return 1;
   }
   try {

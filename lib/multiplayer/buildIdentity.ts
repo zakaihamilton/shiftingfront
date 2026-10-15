@@ -14,7 +14,7 @@ const IDENTITY_PATHS = [
   "lib/multiplayer/checksum.ts",
   "lib/persist/save/validation.ts",
   "lib/persist/utils.ts",
-  "yarn.lock",
+  "pnpm-lock.yaml",
 ] as const;
 
 export function simulationBuildIdentity(root: string): string {
@@ -24,7 +24,7 @@ export function simulationBuildIdentity(root: string): string {
     if (!existsSync(absolute)) return;
     if (statSync(absolute).isDirectory()) {
       for (const child of readdirSync(absolute).sort()) visit(`${relative}/${child}`);
-    } else if (/\.(ts|tsx)$/.test(relative) || relative === "yarn.lock") files.push(relative);
+    } else if (/\.(ts|tsx)$/.test(relative) || relative === "pnpm-lock.yaml") files.push(relative);
   };
   for (const path of IDENTITY_PATHS) visit(path);
   const hash = createHash("sha256");

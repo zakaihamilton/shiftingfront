@@ -22,7 +22,7 @@ async function main() {
   } catch (error) {
     await browser?.close().catch(() => undefined);
     console.error("Playwright preflight failed: the configured browser could not launch.");
-    console.error("Install browsers with `yarn playwright install chromium webkit`. PLAYWRIGHT_CHROME_PATH overrides Chromium only.");
+    console.error("Install browsers with `pnpm playwright install chromium webkit`. PLAYWRIGHT_CHROME_PATH overrides Chromium only.");
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   }
