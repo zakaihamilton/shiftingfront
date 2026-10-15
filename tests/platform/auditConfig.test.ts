@@ -22,48 +22,26 @@ describe("vulnerability audit configuration", () => {
     expect(pkg.scripts["health:audit"]).toContain("scripts/audit.ts");
   });
 
-  it("parses yarn audit output and applies severity thresholds", () => {
-    const mockOutput = [
-      JSON.stringify({
-        type: "auditAdvisory",
-        data: {
-          resolution: { path: "sample-pkg", dev: false },
-          advisory: {
-            id: 1,
-            title: "Sample Low Risk",
-            module_name: "sample-pkg",
-            severity: "low",
-            url: "https://example.com/advisory",
-            recommendation: "Upgrade",
-            patched_versions: ">=1.0.1",
-            cves: [],
-          },
+  it("parses pnpm audit output and applies severity thresholds", () => {
+    const mockOutput = JSON.stringify({
+      advisories: {
+        "1": {
+          id: 1, title: "Sample Low Risk", module_name: "sample-pkg", severity: "low",
+          url: "https://example.com/advisory", recommendation: "Upgrade", patched_versions: ">=1.0.1", cves: [],
+          findings: [{ version: "1.0.0", paths: ["sample-pkg"] }],
         },
-      }),
-      JSON.stringify({
-        type: "auditAdvisory",
-        data: {
-          resolution: { path: "critical-pkg", dev: false },
-          advisory: {
-            id: 2,
-            title: "Sample Critical RCE",
-            module_name: "critical-pkg",
-            severity: "critical",
-            url: "https://example.com/advisory/critical",
-            recommendation: "Upgrade immediately",
-            patched_versions: ">=2.0.0",
-            cves: ["CVE-2026-0001"],
-          },
+        "2": {
+          id: 2, title: "Sample Critical RCE", module_name: "critical-pkg", severity: "critical",
+          url: "https://example.com/advisory/critical", recommendation: "Upgrade immediately",
+          patched_versions: ">=2.0.0", cves: ["CVE-2026-0001"],
+          findings: [{ version: "1.0.0", paths: ["critical-pkg > vulnerable-dep"] }],
         },
-      }),
-      JSON.stringify({
-        type: "auditSummary",
-        data: {
-          vulnerabilities: { info: 0, low: 1, moderate: 0, high: 0, critical: 1 },
-          totalDependencies: 25,
-        },
-      }),
-    ].join("\n");
+      },
+      metadata: {
+        totalDependencies: 25,
+        vulnerabilities: { info: 0, low: 1, moderate: 0, high: 0, critical: 1 },
+      },
+    });
 
     const criticalEval = evaluateAuditOutput(mockOutput, "critical");
     expect(criticalEval.advisories.length).toBe(2);
@@ -75,5 +53,6 @@ describe("vulnerability audit configuration", () => {
 
     const highEval = evaluateAuditOutput(mockOutput, "high");
     expect(highEval.failingAdvisories.length).toBe(1);
+    expect(highEval.totalDependencies).toBe(25);
   });
 });

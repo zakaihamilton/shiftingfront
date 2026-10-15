@@ -9,10 +9,10 @@ import sharp from "sharp";
  * Directional sprites keep their dimensions because their crop metadata is
  * source-size coupled.
  *
- *   yarn compress-art --dry-run
- *   yarn compress-art portraits
- *   yarn compress-art sprites terrain
- *   yarn compress-art all
+ *   pnpm compress-art --dry-run
+ *   pnpm compress-art portraits
+ *   pnpm compress-art sprites terrain
+ *   pnpm compress-art all
  */
 const ART_ROOT = join(process.cwd(), "public/art");
 

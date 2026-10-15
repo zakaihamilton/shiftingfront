@@ -75,7 +75,7 @@ const nextConfig: NextConfig = {
     return config;
   },
   experimental: {
-    // Next uses the TypeScript 6 API alias; `yarn typecheck` runs the TypeScript 7 CLI.
+    // Next uses the TypeScript 6 API alias; `pnpm typecheck` runs the TypeScript 7 CLI.
     useTypeScriptCli: false,
   },
   reactCompiler: true,

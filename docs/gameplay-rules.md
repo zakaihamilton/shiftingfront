@@ -45,12 +45,12 @@ baseline covers all six missions for seeds 0000–0039; held-out validation uses
 minutes without adding a gameplay deadline.
 
 ```sh
-yarn balance --from 0 --to 39 --rules 2 --ticks 25920 --untimed-horizon-ticks 25920 --details true --check true --min-completion-window-rate 0.70 --progress false
-yarn balance --from 40 --to 79 --rules 2 --ticks 25920 --untimed-horizon-ticks 25920 --details true --check true --min-completion-window-rate 0.70 --progress false
-yarn balance --from 0 --to 39 --rules 2 --strategy archetypes --stratified true --details true --check true --progress false
-yarn balance --from 0 --to 39 --rules 2 --strategy advanced --details true --progress false
-yarn gameplay:engagements
-yarn gameplay:report --baseline legacy.json --current current.json --validation validation.json --advanced advanced.json
+pnpm balance --from 0 --to 39 --rules 2 --ticks 25920 --untimed-horizon-ticks 25920 --details true --check true --min-completion-window-rate 0.70 --progress false
+pnpm balance --from 40 --to 79 --rules 2 --ticks 25920 --untimed-horizon-ticks 25920 --details true --check true --min-completion-window-rate 0.70 --progress false
+pnpm balance --from 0 --to 39 --rules 2 --strategy archetypes --stratified true --details true --check true --progress false
+pnpm balance --from 0 --to 39 --rules 2 --strategy advanced --details true --progress false
+pnpm gameplay:engagements
+pnpm gameplay:report --baseline legacy.json --current current.json --validation validation.json --advanced advanced.json
 ```
 
 The advanced sweep includes competent combined arms, Behemoth, aircraft and

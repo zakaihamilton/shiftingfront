@@ -87,7 +87,7 @@ The application is preconfigured with iframe frame-ancestor permissions for `htt
 
 ### Promotional Artwork Assets
 
-Generated automatically via `yarn generate-promo`:
+Generated automatically via `pnpm generate-promo`:
 
 - **itch.io Cover Image**: `630 x 500` PNG at `docs/press/itch-cover-630x500.png` and `public/promo/itch-cover.png`.
 - **Header Banner**: `1920 x 1080` PNG at `docs/press/banner-1920x1080.png`.

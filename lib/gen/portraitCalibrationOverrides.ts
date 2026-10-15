@@ -2,7 +2,7 @@ import type { PortraitMouthCalibration } from "./portraitCalibration";
 
 // Keep only intentional hand-tuned exceptions here. Generated values for every
 // shipped asset live in portraitCalibration.generated.ts and are refreshed by
-// `yarn calibrate-portraits --write`.
+// `pnpm calibrate-portraits --write`.
 const calibration = (
   cy: number,
   options: Partial<PortraitMouthCalibration["clip"] & PortraitMouthCalibration["talkOffset"]> = {},

@@ -9,7 +9,7 @@ import { APP_THEME_RGB } from "../lib/site";
  * PWA PNGs. Uses the `sharp` already hoisted by Next; it is not a runtime app
  * dependency.
  *
- *   yarn rasterize-icons
+ *   pnpm rasterize-icons
  */
 const ROOT = process.cwd();
 const SOURCE = join(ROOT, "app/icon-source.png");
