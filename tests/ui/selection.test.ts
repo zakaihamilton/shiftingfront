@@ -29,7 +29,7 @@ describe("harvester selection", () => {
     const truck = addUnit(s, 0, "repairTruck", 5, 5);
     const cam = createCamera();
     const pos = tileToScreen(truck.x, truck.y, cam, heightAt(s, 5, 5));
-    const nearEdge = pickEntity(s, pos.x + 36, pos.y - 12, cam);
+    const nearEdge = pickEntity(s, pos.x + 36, pos.y + 20, cam);
     expect(nearEdge?.id).toBe(truck.id);
   });
 
@@ -87,7 +87,7 @@ describe("harvester selection", () => {
     const truck = addUnit(s, 0, "convoyTruck", 5, 5);
     const cam = createCamera();
     const pos = tileToScreen(truck.x, truck.y, cam, heightAt(s, 5, 5));
-    const nearEdge = pickEntity(s, pos.x + 36, pos.y - 12, cam);
+    const nearEdge = pickEntity(s, pos.x + 36, pos.y + 20, cam);
     expect(nearEdge?.id).toBe(truck.id);
   });
 
@@ -184,9 +184,9 @@ describe("harvester selection", () => {
   it("keeps the marquee anchor attached while horizontal edge-pan reveals another unit", () => {
     const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     setHeight(s, 5, 5, 0);
-    setHeight(s, 9, 1, 0);
+    setHeight(s, 9, 5, 0);
     const first = addUnit(s, 0, "infantry", 5, 5);
-    const revealed = addUnit(s, 0, "infantry", 9, 1);
+    const revealed = addUnit(s, 0, "infantry", 9, 5);
     const cam = { x: 300, y: 200, zoom: 1 };
     const firstPoint = tileToScreen(first.x, first.y, cam, 0);
     const box = {
@@ -205,9 +205,9 @@ describe("harvester selection", () => {
   it("keeps the marquee anchor attached while vertical edge-pan reveals another unit", () => {
     const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     setHeight(s, 5, 5, 0);
-    setHeight(s, 5, 9, 0);
+    setHeight(s, 5, 6, 0);
     const first = addUnit(s, 0, "infantry", 5, 5);
-    const revealed = addUnit(s, 0, "infantry", 5, 9);
+    const revealed = addUnit(s, 0, "infantry", 5, 6);
     const cam = { x: 300, y: 200, zoom: 1 };
     const firstPoint = tileToScreen(first.x, first.y, cam, 0);
     const box = {
@@ -218,7 +218,7 @@ describe("harvester selection", () => {
       anchor: selectionProjectionPoint({ x: firstPoint.x - 150, y: firstPoint.y - 20 }, cam),
     };
 
-    cam.y -= 100;
+    cam.y -= 40;
 
     expect(selectionIdsInBox(s, cam, box, false)).toEqual([first.id, revealed.id]);
   });
@@ -227,7 +227,7 @@ describe("harvester selection", () => {
 describe("same-type on-screen selection", () => {
   it("selects visible units of the same kind and skips off-screen, enemy, and other kinds", () => {
     const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
-    const cam = createCamera();
+    const cam = { x: 0, y: 0, zoom: 1 };
     const viewport = { width: 500, height: 400 };
     const tank = addUnit(s, 0, "tank", 5, 5);
     const nearby = addUnit(s, 0, "tank", 6, 5);

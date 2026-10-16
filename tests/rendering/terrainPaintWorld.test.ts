@@ -106,7 +106,7 @@ describe("live terrain surface renderer", () => {
     paintTerrainSurface(
       createContext(640, 480, [], interiorPaths),
       interiorState,
-      { x: 320, y: -784, zoom: 1 },
+      { x: -40 * 64, y: -40 * 64, zoom: 1 },
     );
     expect(interiorPaths.filter((call) => call.name === "arcTo")).toHaveLength(0);
     expect(interiorPaths.filter((call) => call.name === "lineTo").length).toBeGreaterThan(0);
