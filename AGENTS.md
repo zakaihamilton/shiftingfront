@@ -15,7 +15,7 @@ Shifting Front is a Next.js 16 + React 19 browser RTS game (Canvas 2D). Campaign
 When adding or modifying units, always read and follow
 [`docs/adding-new-units.md`](docs/adding-new-units.md) before making changes.
 
-pnpm 10.33.0 is pinned in `package.json`. `jsdom@30` requires Node `^22.22.2`; nvm provides it at `$HOME/.nvm/versions/node/v22.22.2`. If `node -v` is older (the default PATH can expose 22.14.0 first), prepend that nvm bin directory before any `pnpm` command.
+pnpm 10.33.0 is pinned in `package.json`. Use Node `24.22.0` from `.nvmrc`; `package.json` supports Node `>=24.0.0 <25`. If Node 24.22.0 is installed through nvm, run `nvm use` before any `pnpm` command. The lockfile currently resolves `jsdom@26.1.0`.
 
 Environment install is `pnpm install --frozen-lockfile` plus `pnpm exec playwright install --with-deps chromium webkit`. Start launches `pnpm dev --hostname 0.0.0.0 --port 3000`; do not reinstall dependencies in start.
 
