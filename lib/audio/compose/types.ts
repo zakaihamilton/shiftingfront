@@ -80,7 +80,7 @@ export type MusicSectionName =
   | "escalation"
   | "climax"
   | "turnaround";
-export type MusicStem = "bass" | "pulse" | "harmony" | "melody" | "counter";
+export type MusicStem = "bass" | "pulse" | "harmony" | "melody" | "counter" | "guitar";
 export type MusicDrumKind = "kick" | "snare" | "clap" | "hat" | "openHat" | "tom" | "impact" | "rim" | "shaker";
 
 export type MusicDrumProfile = {

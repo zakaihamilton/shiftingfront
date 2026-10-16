@@ -4,10 +4,12 @@ import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { ATTACK_S, notePan } from "./musicGraph";
 import { getNoiseBuffer } from "./musicGraph";
 import type { MusicWaveformName } from "./musicState";
-import { cinematicWave } from "./cinematicWaves";
+import { cinematicWave, type CinematicWaveRole } from "./cinematicWaves";
 
-function cinematicWaveRole(voice: MusicStem): "bass" | "pulse" | "lead" | "harmony" {
+function cinematicWaveRole(voice: MusicStem): CinematicWaveRole {
   if (voice === "bass" || voice === "pulse" || voice === "melody") return voice === "melody" ? "lead" : voice;
+  if (voice === "harmony") return "piano";
+  if (voice === "guitar") return "guitar";
   return "harmony";
 }
 
@@ -32,6 +34,8 @@ export function playSynthTone(
   const bass = voice === "bass";
   const pulse = voice === "pulse";
   const harmony = voice === "harmony";
+  const piano = harmony;
+  const guitar = voice === "guitar";
   const lead = voice === "melody";
   const chip = engine === "chip";
   const acid = engine === "acid-res";
@@ -40,19 +44,19 @@ export function playSynthTone(
   const cinematic = engine === "cinematic";
   const cleanType = cinematic && type !== "sine" ? "triangle" : type;
   const attack = Math.min(
-    chip ? 0.002 : cinematic ? (lead ? 0.035 : harmony ? 0.028 : bass ? 0.012 : 0.018) : lead ? 0.02 : harmony ? 0.014 : bass ? (acid ? 0.008 : 0.004) : pulse ? 0.003 : ATTACK_S,
+    chip ? 0.002 : piano ? 0.004 : guitar ? 0.006 : cinematic ? (lead ? 0.035 : harmony ? 0.028 : bass ? 0.012 : 0.018) : lead ? 0.02 : harmony ? 0.014 : bass ? (acid ? 0.008 : 0.004) : pulse ? 0.003 : ATTACK_S,
     duration * 0.22,
   );
   const release = Math.min(
-    chip ? 0.04 : cinematic ? (bass ? 0.16 : pulse ? 0.08 : lead ? 0.38 : harmony ? 0.22 : 0.28) : bass ? (acid ? 0.11 : 0.07) : pulse ? 0.045 : lead ? (fm ? 0.32 : 0.22) : harmony ? 0.16 : 0.18,
+    chip ? 0.04 : piano ? 0.18 : guitar ? 0.14 : cinematic ? (bass ? 0.16 : pulse ? 0.08 : lead ? 0.38 : harmony ? 0.22 : 0.28) : bass ? (acid ? 0.11 : 0.07) : pulse ? 0.045 : lead ? (fm ? 0.32 : 0.22) : harmony ? 0.16 : 0.18,
     duration * (chip ? 0.35 : pulse ? 0.55 : 0.4),
   );
   const end = time + Math.max(duration, attack + release + 0.02);
-  const peak = Math.max(0.006, velocity * (accent ? 0.24 : harmony ? 0.12 : pulse ? (cinematic ? 0.12 : 0.14) : chip ? 0.17 : cinematic ? 0.2 : 0.22));
+  const peak = Math.max(0.006, velocity * (accent ? 0.24 : piano ? 0.2 : guitar ? 0.18 : harmony ? 0.12 : pulse ? (cinematic ? 0.12 : 0.14) : chip ? 0.17 : cinematic ? 0.2 : 0.22));
 
   filter.type = "lowpass";
   filter.Q.setValueAtTime(
-    acid ? (bass ? 8.5 : 5.5) : cinematic ? (bass ? 1.05 : 0.72) : bass ? 1.8 : lead || pulse ? 1.2 : 1.05,
+    acid ? (bass ? 8.5 : 5.5) : piano ? 0.9 : guitar ? 0.75 : cinematic ? (bass ? 1.05 : 0.72) : bass ? 1.8 : lead || pulse ? 1.2 : 1.05,
     time,
   );
   const startCut = Math.max(220, cutoff * (
@@ -60,13 +64,17 @@ export function playSynthTone(
       ? (accent ? 4.6 : 3.4)
       : cinematic
         ? (accent ? 2.15 : 1.65)
-        : bass
-          ? (accent ? 3.1 : 2.5)
-          : accent
-            ? 2.2
-            : pulse
-              ? 2.4
-              : 1.7
+        : piano
+          ? (accent ? 2.1 : 1.65)
+          : guitar
+            ? (accent ? 2.5 : 1.95)
+            : bass
+              ? (accent ? 3.1 : 2.5)
+              : accent
+                ? 2.2
+                : pulse
+                  ? 2.4
+                  : 1.7
   ));
   const endCut = Math.max(
     bass ? 90 : 140,
@@ -75,11 +83,15 @@ export function playSynthTone(
         ? (bass ? 0.18 : 0.42)
         : cinematic
           ? (bass ? 0.34 : pulse ? 0.72 : 0.88)
-          : bass
-            ? 0.26
-            : pulse
-              ? 1.1
-              : 0.82
+          : piano
+            ? 0.72
+            : guitar
+              ? 0.68
+              : bass
+                ? 0.26
+                : pulse
+                  ? 1.1
+                  : 0.82
     ),
   );
   filter.frequency.setValueAtTime(startCut, time);
@@ -88,7 +100,7 @@ export function playSynthTone(
     time + Math.min(acid ? 0.28 : cinematic ? 0.24 : 0.16, duration * (acid ? 0.8 : cinematic ? 0.72 : 0.55)),
   );
   const panCenter = notePan(voice);
-  const panWidth = bass ? 0.02 : pulse ? 0.07 : lead ? 0.08 : harmony ? 0.025 : 0.05;
+  const panWidth = bass ? 0.02 : guitar ? 0.12 : piano ? 0.045 : pulse ? 0.07 : lead ? 0.08 : harmony ? 0.025 : 0.05;
   const panMotion = Math.sin(freq * 0.013 + duration * 4.7) * panWidth;
   const panTarget = Math.max(-0.82, Math.min(0.82, panCenter + panMotion));
   pan.pan.setValueAtTime(panCenter, time);
@@ -97,13 +109,17 @@ export function playSynthTone(
   if (cinematic) {
     oscA.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice)));
   } else {
-    const waveformName: MusicWaveformName = lead
-      ? "brass"
-      : pulse
-        ? "glass"
-        : voice === "counter"
-          ? "reed"
-          : "warm";
+    const waveformName: MusicWaveformName = guitar
+      ? "guitar"
+      : piano
+        ? "piano"
+        : lead
+          ? "brass"
+          : pulse
+            ? "glass"
+            : voice === "counter"
+              ? "reed"
+              : "warm";
     const voiceWaveform = !acid && !pwm && !fm && !chip ? g.waveforms?.[waveformName] : undefined;
     if (voiceWaveform && typeof oscA.setPeriodicWave === "function") {
       oscA.setPeriodicWave(voiceWaveform);
@@ -121,7 +137,12 @@ export function playSynthTone(
 
   envelope.gain.setValueAtTime(0.0001, time);
   envelope.gain.exponentialRampToValueAtTime(peak, time + Math.max(0.003, attack));
-  if (chip || (pulse && !cinematic)) {
+  if (piano || guitar) {
+    const bodyLevel = Math.max(0.0001, peak * (piano ? 0.22 : 0.14));
+    envelope.gain.setTargetAtTime(bodyLevel, time + attack, piano ? 0.08 : 0.055);
+    const releaseAt = Math.max(time + attack + 0.025, time + duration * 0.62);
+    envelope.gain.setTargetAtTime(0.0001, releaseAt, piano ? 0.09 : 0.065);
+  } else if (chip || (pulse && !cinematic)) {
     envelope.gain.exponentialRampToValueAtTime(0.0001, time + Math.max(0.04, duration * (chip ? 0.55 : 0.7)));
   } else {
     envelope.gain.setTargetAtTime(0.0001, Math.max(time + attack, end - release), Math.max(0.014, release * 0.4));
@@ -151,8 +172,8 @@ export function playSynthTone(
         ? (cleanType === "sawtooth" ? "triangle" : cleanType === "square" ? "sawtooth" : cleanType)
         : cleanType === "sawtooth" ? "triangle" : cleanType === "square" ? "sawtooth" : "triangle";
     oscB.frequency.setValueAtTime(freq * (bass ? 1.004 : 1.01), time);
-    oscB.detune.setValueAtTime(cinematic ? (lead ? 4 : pulse ? -3 : -2) : lead ? 10 : pulse ? -8 : -5, time);
-    oscBGain.gain.setValueAtTime(pwm ? 0.2 : cinematic ? (lead ? 0.18 : 0.16) : 0.28, time);
+    oscB.detune.setValueAtTime(cinematic ? (lead ? 4 : guitar ? 5 : pulse ? -3 : -2) : guitar ? 7 : lead ? 10 : pulse ? -8 : -5, time);
+    oscBGain.gain.setValueAtTime(pwm ? 0.2 : cinematic ? (lead ? 0.18 : guitar ? 0.12 : piano ? 0.08 : 0.16) : 0.28, time);
     if (cinematic) oscB.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice)));
     if (pwm) {
       const pwmGain = audio.createGain();
@@ -191,7 +212,7 @@ export function playSynthTone(
     oscB.stop(end + 0.04);
   }
 
-  if (!pulse && !harmony && !chip && !fm) {
+  if (!pulse && !harmony && !guitar && !chip && !fm) {
     const oscSub = audio.createOscillator();
     const subGain = audio.createGain();
     oscSub.type = bass ? "sine" : lead ? g.style.counterType : "triangle";
@@ -212,7 +233,8 @@ export function playSynthTone(
   voiceHighpass.connect(envelope);
   envelope.connect(pan);
   pan.connect(dest);
-  if (lead || harmony || voice === "counter") envelope.connect(g.reverbSend);
+  if (lead || voice === "counter") envelope.connect(g.reverbSend);
+  if (guitar) playNoise(audio, g.guitarBus, time, velocity * (accent ? 0.01 : 0.007), 3_200, 0.012, "highpass", panCenter + 0.12);
 
   oscA.start(time);
   oscA.stop(end + 0.04);

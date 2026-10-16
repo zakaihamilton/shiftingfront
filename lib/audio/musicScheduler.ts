@@ -68,6 +68,8 @@ export function applyIntensityAt(audio: AudioGraphContext, g: MusicGraph, value:
   set(g.bassBus, value === "calm" ? 0.92 : value === "critical" ? 1.02 : 0.98);
   set(g.rhythmBus, value === "calm" ? 0.52 : value === "critical" ? 0.78 : 0.66);
   set(g.harmonyBus, value === "calm" ? 0.84 : value === "critical" ? 0.9 : 0.87);
+  set(g.pianoBus, value === "calm" ? 0.72 : value === "critical" ? 0.94 : 0.84);
+  set(g.guitarBus, value === "calm" ? 0.62 : value === "critical" ? 0.96 : 0.82);
   set(g.pulseBus, value === "calm" ? 0.52 : value === "critical" ? 0.68 : 0.6);
   set(g.leadBus, value === "calm" ? 0.98 : value === "critical" ? 1.1 : 1.05);
   set(g.counterBus, value === "calm" ? 0.24 : value === "critical" ? 0.38 : 0.3);
@@ -126,6 +128,7 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
   schedulePadGate(audio, g, t, stepDuration, index, section, value);
   const stemVoices: Array<[MusicStem, MusicVoiceType, number]> = [
     ["bass", p.bassType, Math.min(p.cutoff, 620)],
+    ["guitar", p.style.padType, Math.min(p.cutoff + 260, 1_500)],
     ["pulse", p.arpType, Math.min(p.cutoff + 180, 1600)],
     ["harmony", p.style.padType, Math.min(p.cutoff + 120, 1200)],
     ["counter", p.counterType, p.cutoff],

@@ -38,13 +38,14 @@ export function masterGain(value: MusicIntensity = "calm", isDucked = false): nu
   return MASTER_GAIN * INTENSITY_MULTIPLIER[value] * (isDucked ? DUCK_RATIO : 1);
 }
 
-export function layerMultiplier(layer: "bass" | "pulse" | "harmony" | "counter" | "melody" | "drums", value: MusicIntensity = "calm"): number {
-  if (value === "critical") return layer === "drums" ? 1.08 : layer === "harmony" ? 0.94 : layer === "counter" ? 0.86 : 1.02;
-  if (value === "engaged") return layer === "drums" ? 1.02 : layer === "harmony" ? 0.82 : layer === "counter" ? 0.72 : 1;
+export function layerMultiplier(layer: "bass" | "pulse" | "harmony" | "counter" | "melody" | "guitar" | "drums", value: MusicIntensity = "calm"): number {
+  if (value === "critical") return layer === "drums" ? 1.08 : layer === "guitar" ? 1.14 : layer === "harmony" ? 0.94 : layer === "counter" ? 0.86 : 1.02;
+  if (value === "engaged") return layer === "drums" ? 1.02 : layer === "guitar" ? 1.08 : layer === "harmony" ? 0.82 : layer === "counter" ? 0.72 : 1;
   if (layer === "drums") return 0.88;
   if (layer === "counter") return 0.62;
   if (layer === "harmony") return 0.7;
   if (layer === "pulse") return 0.9;
+  if (layer === "guitar") return 0.78;
   return 1;
 }
 
@@ -87,6 +88,8 @@ function createMusicWaveforms(audio: AudioGraphContext): Partial<Record<MusicWav
     brass: [1, 0.38, 0.62, 0.25, 0.36, 0.18, 0.22, 0.12, 0.13],
     reed: [1, 0.16, 0.44, 0.1, 0.28, 0.08, 0.18, 0.06, 0.11],
     glass: [1, 0.12, 0.42, 0.08, 0.31, 0.055, 0.22, 0.035, 0.14],
+    piano: [1, 0.58, 0.32, 0.16, 0.075, 0.032, 0.012],
+    guitar: [1, 0.4, 0.25, 0.16, 0.095, 0.052, 0.026, 0.012],
   };
   const result: Partial<Record<MusicWaveformName, PeriodicWave>> = {};
   for (const [name, partials] of Object.entries(profiles) as [MusicWaveformName, readonly number[]][]) {
@@ -136,6 +139,7 @@ export function indexPattern(p: MusicPattern): PatternIndex {
     harmony: indexNoteLane(p.notes.harmony),
     melody: indexNoteLane(p.notes.melody),
     counter: indexNoteLane(p.notes.counter),
+    guitar: indexNoteLane(p.notes.guitar),
   };
   const drums = new Map<number, MusicDrumEvent[]>();
   for (const event of p.drums) {
@@ -147,7 +151,7 @@ export function indexPattern(p: MusicPattern): PatternIndex {
   for (const [level, layer] of Object.entries(p.intensityLayers ?? {})) {
     if (!layer) continue;
     const indexedLayer: IntensityPatternIndex = { notes: {}, drums: new Map() };
-    for (const stem of ["bass", "pulse", "harmony", "melody", "counter"] as const) {
+    for (const stem of ["bass", "pulse", "harmony", "melody", "counter", "guitar"] as const) {
       const lane = layer.notes[stem];
       if (lane?.length) indexedLayer.notes[stem] = indexNoteLane(lane);
     }
@@ -164,8 +168,9 @@ export function indexPattern(p: MusicPattern): PatternIndex {
 export function stemBus(g: MusicGraph, stem: MusicStem): GainNode {
   if (stem === "bass") return g.bassBus;
   if (stem === "pulse") return g.pulseBus;
-  if (stem === "harmony") return g.harmonyBus;
+  if (stem === "harmony") return g.pianoBus;
   if (stem === "melody") return g.leadBus;
+  if (stem === "guitar") return g.guitarBus;
   return g.counterBus;
 }
 
@@ -174,6 +179,7 @@ export function notePan(stem: MusicStem): number {
   if (stem === "harmony") return 0.04;
   if (stem === "melody") return 0.3;
   if (stem === "counter") return -0.12;
+  if (stem === "guitar") return 0.16;
   return 0;
 }
 
@@ -205,6 +211,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   const bassBus = createBus(audio, bassDuck, 0.94);
   const rhythmBus = createBus(audio, master, 0.62);
   const harmonyBus = createBus(audio, master, 0.82);
+  const pianoBus = createBus(audio, master, 0.72);
+  const guitarBus = createBus(audio, master, 0.64);
   const pulseBus = createBus(audio, master, 0.56);
   const leadBus = createBus(audio, master, 0.94);
   const counterBus = createBus(audio, master, 0.28);
@@ -244,6 +252,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   pulseBus.connect(reverbSend);
   leadBus.connect(reverbSend);
   counterBus.connect(reverbSend);
+  pianoBus.connect(reverbSend);
+  guitarBus.connect(reverbSend);
 
   const padGain = audio.createGain();
   const padFilter = audio.createBiquadFilter();
@@ -327,6 +337,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
     bassBus,
     rhythmBus,
     harmonyBus,
+    pianoBus,
+    guitarBus,
     pulseBus,
     leadBus,
     counterBus,
@@ -375,7 +387,7 @@ export function disconnectGraph(g: MusicGraph): void {
   for (const node of [
     g.padFilter, g.padGain, g.padGate, g.padLfoGain, g.padReverbFilter, g.padReverbGate, g.padReverbSend,
     ...g.padReverbVoices, g.delay, g.delayFeedback, g.delayWet,
-    g.reverb, g.reverbFilter, g.reverbSend, g.reverbWet, g.bassBus, g.bassDuck, g.rhythmBus, g.harmonyBus,
+    g.reverb, g.reverbFilter, g.reverbSend, g.reverbWet, g.bassBus, g.bassDuck, g.rhythmBus, g.harmonyBus, g.pianoBus, g.guitarBus,
     g.pulseBus, g.leadBus, g.counterBus, g.fxBus, g.highpass, g.saturation,
     g.delayFilter,
     g.compressor, g.master,

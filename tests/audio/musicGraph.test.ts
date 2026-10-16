@@ -13,11 +13,11 @@ describe("layered music graph", () => {
     expect(index.notes.harmony.get(first!.step)).toContainEqual(first);
   });
 
-  it("routes harmony to the dedicated harmony bus and keeps it below the lead", () => {
-    const harmonyBus = {} as GainNode;
-    const graph = { harmonyBus } as MusicGraph;
+  it("routes piano to its own bus and keeps it below the lead", () => {
+    const pianoBus = {} as GainNode;
+    const graph = { pianoBus } as MusicGraph;
 
-    expect(stemBus(graph, "harmony")).toBe(harmonyBus);
+    expect(stemBus(graph, "harmony")).toBe(pianoBus);
     expect(layerMultiplier("harmony", "calm")).toBeLessThan(layerMultiplier("melody", "calm"));
     expect(layerMultiplier("harmony", "critical")).toBeGreaterThan(layerMultiplier("harmony", "calm"));
   });

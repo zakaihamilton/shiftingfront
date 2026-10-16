@@ -151,10 +151,12 @@ function makeIntensityLayers(
   cue: MusicCue,
 ): Partial<Record<Exclude<MusicIntensity, "calm">, MusicIntensityLayer>> {
   if (cue !== "mission") return {};
-  const engaged: MusicIntensityLayer = { notes: { counter: [] }, drums: [] };
-  const critical: MusicIntensityLayer = { notes: { counter: [] }, drums: [] };
+  const engaged: MusicIntensityLayer = { notes: { counter: [], guitar: [] }, drums: [] };
+  const critical: MusicIntensityLayer = { notes: { counter: [], harmony: [] }, drums: [] };
   const engagedCounter = engaged.notes.counter!;
   const criticalCounter = critical.notes.counter!;
+  const engagedGuitar = engaged.notes.guitar!;
+  const criticalPiano = critical.notes.harmony!;
   const sectionAt = (step: number) => sections[Math.floor(step / (STEPS_PER_BAR * BARS_PER_SECTION))];
 
   for (const lead of notes.melody) {
@@ -167,6 +169,18 @@ function makeIntensityLayers(
     if (lead.accent || (lead.step % 8 === 0 && lead.step % 32 === 0)) {
       noteEvent(criticalCounter, lead.step, lead.midi + 12, Math.min(lead.duration, 3), lead.velocity * 0.24, !!lead.accent);
     }
+  }
+
+  for (const strum of notes.guitar) {
+    const section = sectionAt(strum.step);
+    if (!section || section.energy < 0.62 || !strum.accent) continue;
+    noteEvent(engagedGuitar, strum.step, strum.midi + 12, Math.min(strum.duration, 2), strum.velocity * 0.24, true);
+  }
+
+  for (const chord of notes.harmony) {
+    const section = sectionAt(chord.step);
+    if (!section || section.energy < 0.72 || !chord.accent) continue;
+    noteEvent(criticalPiano, chord.step, chord.midi + 12, Math.min(chord.duration, 2), chord.velocity * 0.2, true);
   }
 
   const hasDrum = (step: number, kind: MusicDrumEvent["kind"]) =>
@@ -276,6 +290,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     harmony: [],
     melody: [],
     counter: [],
+    guitar: [],
   };
   const drums: MusicDrumEvent[] = [];
   const padRoot: number[] = [];
@@ -365,22 +380,38 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     padFifth.push(midiToHz(padVoicing[2]));
     padSeventh.push(midiToHz(padVoicing[3]));
 
-    const harmonyStride = sparse
-      ? 4
-      : hookSection || section.name === "escalation"
-        ? 2
-        : 4;
-    const useHarmony = !intro && !breakdown && !hole && !dropTexture && phraseBar % harmonyStride === 0;
-    if (useHarmony) {
+    const pianoSteps = intro
+      ? phraseBar >= 8 && phraseBar % 4 === 0 ? [0] : []
+      : breakdown
+        ? phraseBar % 4 === 0 ? [0] : []
+        : hookSection || section.name === "escalation" ? [0, 8] : [0];
+    for (const pianoStep of pianoSteps) {
       placeHarmony(
         notes.harmony,
         origin,
-        climax ? padVoicing : padVoicing.slice(0, 3),
-        0,
-        climax ? 4 : 3,
-        mixEnergy(climax ? 0.24 : hookSection ? 0.2 : sparse ? 0.12 : 0.16, energy),
-        phraseBar === 0,
+        padVoicing.slice(0, 3),
+        pianoStep,
+        2,
+        mixEnergy(hookSection ? 0.28 : 0.22, energy),
+        pianoStep === 0 && phraseBar % 4 === 0,
       );
+    }
+
+    if (!sparse && !intro && !breakdown && !dropTexture) {
+      const guitarSteps = hookSection || section.name === "escalation" ? [1, 5, 9, 13] : [5, 13];
+      const guitarChord = padVoicing.slice(1, 4).map((midi) => midi + 12);
+      for (const guitarStep of guitarSteps) {
+        guitarChord.forEach((midi, chordIndex) => {
+          noteEvent(
+            notes.guitar,
+            origin + guitarStep + chordIndex,
+            midi,
+            2,
+            mixEnergy((hookSection ? 0.25 : 0.19) * (1 - chordIndex * 0.12), energy),
+            chordIndex === 0 && guitarStep % 8 === 1,
+          );
+        });
+      }
     }
 
     const sectionBassStride = arrangement.bassStrides[sectionIndex]!;

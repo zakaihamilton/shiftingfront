@@ -22,7 +22,7 @@ export type PatternIndex = {
   intensityLayers?: Partial<Record<Exclude<MusicIntensity, "calm">, IntensityPatternIndex>>;
 };
 
-export type MusicWaveformName = "warm" | "brass" | "reed" | "glass";
+export type MusicWaveformName = "warm" | "brass" | "reed" | "glass" | "piano" | "guitar";
 
 export type MusicGraph = {
   style: MusicStyleProfile;
@@ -34,6 +34,8 @@ export type MusicGraph = {
   bassBus: GainNode;
   rhythmBus: GainNode;
   harmonyBus: GainNode;
+  pianoBus: GainNode;
+  guitarBus: GainNode;
   pulseBus: GainNode;
   leadBus: GainNode;
   counterBus: GainNode;
