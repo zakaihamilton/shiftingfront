@@ -54,7 +54,7 @@ jobs:
           pnpm ci:timed-tests --maxWorkers=2 --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
       - name: Upload test timing report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: test-timing-${{ github.run_id }}-shard-${{ matrix.shardIndex }}
           path: artifacts/
@@ -105,7 +105,7 @@ jobs:
       - run: pnpm health:audit
       - name: Upload health timing reports
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: health-timing-${{ github.run_id }}
           path: artifacts/
@@ -140,7 +140,7 @@ jobs:
           pnpm ci:timed-balance > artifacts/balance-timing.json
       - name: Upload balance timing reports
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: balance-timing-${{ github.run_id }}
           path: artifacts/
@@ -217,7 +217,7 @@ jobs:
           pnpm ci:timed-balance-archetype --strategy "${{ matrix.strategy }}" --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} > "artifacts/balance-archetype-${{ matrix.strategy }}-shard-${{ matrix.shardIndex }}-timing.json"
       - name: Upload archetype timing report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: archetype-timing-${{ github.run_id }}-${{ matrix.strategy }}-shard-${{ matrix.shardIndex }}
           path: artifacts/
@@ -278,7 +278,7 @@ jobs:
           PLAYWRIGHT_SKIP_PERFORMANCE: "1"
       - name: Upload E2E failure artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: e2e-failure-${{ github.run_id }}-shard-${{ matrix.shardIndex }}
           path: test-results/
@@ -333,7 +333,7 @@ jobs:
       - run: pnpm test:e2e tests/e2e/performance.spec.ts --project=desktop --workers=1
       - name: Upload frame timing diagnostics
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: battlefield-performance-${{ github.run_id }}
           path: test-results/
@@ -360,7 +360,7 @@ jobs:
           RUN_VISUAL_REGRESSION: "1"
       - name: Upload visual failure artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ui-visual-guardrails-${{ github.run_id }}
           path: test-results/
