@@ -11,6 +11,7 @@ import {
   SCHEDULER_MS,
   stemBus,
   indexPattern,
+  syncGraphStyle,
 } from "./musicGraph";
 import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { playSynthTone, playTransition, retunePad, schedulePadGate, syncDelay } from "./musicSynth";
@@ -327,10 +328,10 @@ export function applyPattern(next: MusicPattern): void {
       setTransitioning(false);
       return;
     }
-    activeGraph.style = next.style;
+    const t = audio.currentTime;
+    syncGraphStyle(audio, activeGraph, next, t);
     activeGraph.index = indexPattern(next);
     setStep(0);
-    const t = audio.currentTime;
     prewarmMusicSamples(audio, next.style.drumKit, next.style.drum);
     applyIntensityAt(audio, activeGraph, intensity, t, ducked);
     syncDelay(audio, activeGraph, next);

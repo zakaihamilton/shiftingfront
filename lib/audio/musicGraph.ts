@@ -165,6 +165,25 @@ export function indexPattern(p: MusicPattern): PatternIndex {
   return { notes, drums, intensityLayers };
 }
 
+export function syncGraphStyle(audio: AudioGraphContext, g: MusicGraph, p: MusicPattern, time = audio.currentTime): void {
+  const t = Math.max(time, audio.currentTime);
+  g.style = p.style;
+  g.saturation.curve = createSaturationCurve(p.style.saturationAmount);
+  g.reverb.buffer = createImpulseResponse(audio, p.style.reverbSeconds, p.style.reverbDecay);
+  g.reverbFilter.frequency.setTargetAtTime(Math.min(4_000, Math.max(1_400, p.cutoff * 2.6)), t, 0.04);
+  g.reverbSend.gain.setTargetAtTime(p.style.reverbSend, t, 0.04);
+  g.delayFilter.frequency.setTargetAtTime(Math.min(3_800, Math.max(1_300, p.cutoff * 2.2)), t, 0.04);
+  g.delayFeedback.gain.setTargetAtTime(p.style.delayFeedback, t, 0.04);
+  g.padFilter.Q.setTargetAtTime(p.style.padQ, t, 0.04);
+  g.padReverbFilter.frequency.setTargetAtTime(Math.min(p.cutoff, 960), t, 0.04);
+  g.padReverbFilter.Q.setTargetAtTime(p.style.padQ, t, 0.04);
+  g.padLfo.frequency.setTargetAtTime(p.style.padLfoRate, t, 0.04);
+  g.padLfoGain.gain.setTargetAtTime(p.style.padLfoDepth, t, 0.04);
+  [g.padOscA, g.padOscB, g.padOscC, g.padOscD].forEach((oscillator, index) => {
+    oscillator.detune.setTargetAtTime(p.style.padDetune[index]!, t, 0.04);
+  });
+}
+
 export function stemBus(g: MusicGraph, stem: MusicStem): GainNode {
   if (stem === "bass") return g.bassBus;
   if (stem === "pulse") return g.pulseBus;
