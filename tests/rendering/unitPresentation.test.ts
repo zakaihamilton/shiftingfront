@@ -118,7 +118,7 @@ describe("unit presentation", () => {
     expect(unitLightStrength(lights,lights[0]!.x+10000,lights[0]!.y)).toBe(0);
   });
   it("resolves independent turret directions without rotating raster views", () => {
-    for(let facing=0;facing<8;facing++)expect(vehicleTurretFacing(facing/8*Math.PI*2-Math.PI/2)).toBe(facing);
+    for(let facing=0;facing<8;facing++)expect(vehicleTurretFacing(facing/8*Math.PI*2-Math.PI/4)).toBe(facing);
     expect(UNIT_STATS.tank.cooldown).toBeGreaterThan(0);
   });
   it("ships eight complete layered views and four planted frames per action", async () => {

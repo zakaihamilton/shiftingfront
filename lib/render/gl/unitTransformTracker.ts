@@ -387,7 +387,7 @@ export function computeUnitDynamicTransform(
   hist.yaw = lerpAngle(hist.yaw, targetYaw, isAirUnit(e.kind)
     ? Math.min(1, dt * legacyTurnSpeed) : 1 - Math.exp(-dt * legacyTurnSpeed));
 
-  // Compute screen isometric target angle
+  // Compute screen-space target angle in the orthographic battlefield.
   let targetScreenAngle = hist.screenAngle;
   if (moveDist > 0.005) {
     targetScreenAngle = isoHeadingAngle(moveDx, moveDy);
@@ -410,7 +410,7 @@ export function computeUnitDynamicTransform(
   const angleStep = Math.atan2(Math.sin(hist.screenAngle - prevAngle), Math.cos(hist.screenAngle - prevAngle));
   const angularVelocity = dt > 0 ? angleStep / dt : 0;
 
-  // Determine nearest 8-way isometric facing and rotation offset
+  // Determine nearest 8-way compass facing and rotation offset.
   const baseFacing = screenAngleToFacing(hist.screenAngle);
   const nominalAngle = isoFacingAngle(baseFacing);
 

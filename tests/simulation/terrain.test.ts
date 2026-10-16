@@ -10,13 +10,17 @@ import type { BuildingKind } from "../../lib/types";
 import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../lib/types";
 import { cameraViewQuad, createCamera, TILE_H, tileToScreen } from "../../lib/iso";
 import {
+  cameraFocusPoint,
   cameraPanBounds,
   canPan,
   clampCamera,
+  focusCameraAtTile,
   MINIMAP_DRAG_THRESHOLD,
+  minimapMapRect,
   minimapPoint,
   panAvailability,
-  panCameraByMinimapDelta,
+  panCamera,
+  panInputForDirection,
 } from "../../lib/render/camera";
 import { visibleTileRange } from "../../lib/render/terrainPaint";
 
@@ -360,7 +364,7 @@ function waterComponentSizes(map: ReturnType<typeof generateMap>): number[] {
 }
 
 describe("minimap camera view", () => {
-  it("projects screen corners around the focused isometric tile", () => {
+  it("projects screen corners around the focused top-down tile", () => {
     const cam = createCamera();
     cam.zoom = 1;
     const w = 640;
@@ -378,78 +382,135 @@ describe("minimap camera view", () => {
     const xs = quad.map((p) => p.x);
     const ys = quad.map((p) => p.y);
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(8);
-    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(8);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(7);
   });
 });
 
 describe("minimap camera interaction", () => {
+  it("keeps square map tiles square inside the wider radar viewport", () => {
+    expect(minimapMapRect(224, 160, 48, 48)).toEqual({ x: 32, y: 0, width: 160, height: 160 });
+    expect(minimapPoint(16, 80, 224, 160, 48, 48)).toEqual({ x: 0, y: 23.5 });
+    expect(minimapPoint(208, 80, 224, 160, 48, 48)).toEqual({ x: 47, y: 23.5 });
+  });
+
   it("maps pointer coordinates into clamped map space", () => {
-    expect(minimapPoint(-4, 120, 200, 100, 48, 64)).toEqual({ x: 0, y: 64 });
-    expect(minimapPoint(100, 50, 200, 100, 48, 64)).toEqual({ x: 24, y: 32 });
-    expect(minimapPoint(240, -20, 200, 100, 48, 64)).toEqual({ x: 48, y: 0 });
+    expect(minimapPoint(-4, 120, 200, 100, 48, 64)).toEqual({ x: 0, y: 63 });
+    expect(minimapPoint(100, 50, 200, 100, 48, 64)).toEqual({ x: 23.5, y: 31.5 });
+    expect(minimapPoint(240, -20, 200, 100, 48, 64)).toEqual({ x: 47, y: 0 });
   });
 
   it("translates the camera by the same map-space drag delta", () => {
     const cam = createCamera();
     cam.x = 500;
     cam.y = 300;
-    panCameraByMinimapDelta(cam, 2, 1);
-    expect(cam.x).toBe(468);
-    expect(cam.y).toBe(252);
+    panCamera(cam, { space: "map", dx: 2, dy: 1 });
+    expect(cam.x).toBe(372);
+    expect(cam.y).toBe(236);
     expect(MINIMAP_DRAG_THRESHOLD).toBeGreaterThan(0);
   });
 
   it("clamps minimap drag movement to camera bounds", () => {
     const cam = createCamera();
-    const bounds = cameraPanBounds(cam, 48, 48, 640, 480);
-    panCameraByMinimapDelta(cam, 10_000, -10_000, bounds);
-    expect(cam.x).toBeGreaterThanOrEqual(bounds.minX);
-    expect(cam.x).toBeLessThanOrEqual(bounds.maxX);
-    expect(cam.y).toBeGreaterThanOrEqual(bounds.minY);
-    expect(cam.y).toBeLessThanOrEqual(bounds.maxY);
+    const bounds = cameraPanBounds(48, 48, 640, 480);
+    focusCameraAtTile(cam, 20, 20, bounds);
+    panCamera(cam, { space: "map", dx: 10_000, dy: -10_000 }, bounds);
+    const focus = cameraFocusPoint(cam, bounds);
+    expect(focus.x).toBeCloseTo(47);
+    expect(focus.y).toBeCloseTo(0);
   });
 });
 
 describe("camera pan bounds", () => {
-  it("hides further panning once the camera sits on a bound", () => {
+  it("clamps the ground focus to each map edge and updates direction availability", () => {
     const cam = createCamera();
     cam.zoom = 1;
-    const bounds = cameraPanBounds(cam, 48, 48, 640, 480);
-    expect(bounds.minX).toBeLessThan(bounds.maxX);
-    expect(bounds.minY).toBeLessThan(bounds.maxY);
-    cam.x = bounds.maxX;
-    cam.y = bounds.maxY;
-    clampCamera(cam, bounds);
+    const bounds = cameraPanBounds(48, 48, 640, 480);
+
+    focusCameraAtTile(cam, 0, 0, bounds);
+    expect(cameraFocusPoint(cam, bounds).x).toBeCloseTo(0);
+    expect(cameraFocusPoint(cam, bounds).y).toBeCloseTo(0);
     expect(canPan(cam, bounds, "left")).toBe(false);
-    expect(canPan(cam, bounds, "up")).toBe(false);
     expect(canPan(cam, bounds, "right")).toBe(true);
+    expect(canPan(cam, bounds, "up")).toBe(false);
     expect(canPan(cam, bounds, "down")).toBe(true);
-    cam.x = bounds.minX;
-    cam.y = bounds.minY;
+
+    focusCameraAtTile(cam, 47, 47, bounds);
+    expect(cameraFocusPoint(cam, bounds).x).toBeCloseTo(47);
+    expect(cameraFocusPoint(cam, bounds).y).toBeCloseTo(47);
     expect(canPan(cam, bounds, "right")).toBe(false);
     expect(canPan(cam, bounds, "down")).toBe(false);
     expect(canPan(cam, bounds, "left")).toBe(true);
     expect(canPan(cam, bounds, "up")).toBe(true);
   });
 
-  it("locks all directions when the map already fits the view", () => {
+  it("keeps small maps pannable by focus point even when the viewport is larger", () => {
     const cam = createCamera();
     cam.zoom = 1;
-    const bounds = cameraPanBounds(cam, 4, 4, 2000, 1600, 0);
-    clampCamera(cam, bounds);
+    const bounds = cameraPanBounds(4, 4, 2000, 1600);
+    focusCameraAtTile(cam, 2, 2, bounds);
     const avail = panAvailability(cam, bounds);
-    expect(avail.left).toBe(false);
-    expect(avail.right).toBe(false);
-    expect(avail.up).toBe(false);
-    expect(avail.down).toBe(false);
+    expect(avail.left).toBe(true);
+    expect(avail.right).toBe(true);
+    expect(avail.up).toBe(true);
+    expect(avail.down).toBe(true);
+  });
+
+  it("moves directional controls along flat minimap axes", () => {
+    const bounds = cameraPanBounds(48, 48, 640, 480);
+    const cases = [
+      { dir: "left" as const, dx: -1, dy: 0 },
+      { dir: "right" as const, dx: 1, dy: 0 },
+      { dir: "up" as const, dx: 0, dy: -1 },
+      { dir: "down" as const, dx: 0, dy: 1 },
+    ];
+
+    for (const { dir, dx, dy } of cases) {
+      const cam = createCamera();
+      focusCameraAtTile(cam, 24, 24, bounds);
+      const start = cameraFocusPoint(cam, bounds);
+      const input = panInputForDirection(dir, 40, cam.zoom);
+
+      expect(input.space).toBe("map");
+      expect(Math.sign(input.dx)).toBe(dx);
+      expect(Math.sign(input.dy)).toBe(dy);
+      panCamera(cam, input, bounds);
+      const moved = cameraFocusPoint(cam, bounds);
+      if (dx) {
+        expect(Math.sign(moved.x - start.x)).toBe(dx);
+        expect(moved.y).toBeCloseTo(start.y);
+      } else {
+        expect(moved.x).toBeCloseTo(start.x);
+        expect(Math.sign(moved.y - start.y)).toBe(dy);
+      }
+    }
+  });
+
+  it("clamps direct screen movement and focus after viewport dimensions change", () => {
+    const cam = createCamera();
+    const originalBounds = cameraPanBounds(32, 32, 640, 480);
+    focusCameraAtTile(cam, 16, 16, originalBounds);
+    panCamera(cam, { space: "screen", dx: 100_000, dy: -100_000 }, originalBounds);
+    const focus = cameraFocusPoint(cam, originalBounds);
+    expect(focus.x).toBeGreaterThanOrEqual(0);
+    expect(focus.x).toBeLessThanOrEqual(31);
+    expect(focus.y).toBeGreaterThanOrEqual(0);
+    expect(focus.y).toBeLessThanOrEqual(31);
+
+    const resizedBounds = cameraPanBounds(32, 32, 1200, 700);
+    clampCamera(cam, resizedBounds);
+    const resizedFocus = cameraFocusPoint(cam, resizedBounds);
+    expect(resizedFocus.x).toBeGreaterThanOrEqual(0);
+    expect(resizedFocus.x).toBeLessThanOrEqual(31);
+    expect(resizedFocus.y).toBeGreaterThanOrEqual(0);
+    expect(resizedFocus.y).toBeLessThanOrEqual(31);
   });
 });
 
 describe("visible tile range", () => {
   it("includes on-screen tiles and excludes far-off map cells", () => {
     const cam = createCamera();
-    cam.x = 400;
-    cam.y = 80;
+    cam.x = 0;
+    cam.y = 0;
     cam.zoom = 1;
     const range = visibleTileRange(cam, 800, 600, 48, 48);
     const onScreen = tileToScreen(8, 8, cam);

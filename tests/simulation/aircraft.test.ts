@@ -31,7 +31,7 @@ describe("air support", () => {
     expect(plane.hp).toBe(180);
     expect(plane.x).toBeCloseTo(3.5);
     expect(plane.y).toBeCloseTo(2.5);
-    expect(plane.facing).toBe(1);
+    expect(plane.facing).toBe(0);
   });
 
   it("accepts manual landing and automatically returns after a finite sortie", () => {

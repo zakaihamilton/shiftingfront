@@ -6,10 +6,10 @@ export function isoDiamondPath(
   h: number,
 ): void {
   ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x + w / 2, y + h / 2);
-  ctx.lineTo(x, y + h);
-  ctx.lineTo(x - w / 2, y + h / 2);
+  ctx.moveTo(x - w / 2, y);
+  ctx.lineTo(x + w / 2, y);
+  ctx.lineTo(x + w / 2, y + h);
+  ctx.lineTo(x - w / 2, y + h);
   ctx.closePath();
 }
 
@@ -22,10 +22,10 @@ export function isoDiamondVertices(
   h: number,
 ): readonly [{ x: number; y: number }, { x: number; y: number }, { x: number; y: number }, { x: number; y: number }] {
   return [
-    { x, y },
-    { x: x + w / 2, y: y + h / 2 },
-    { x, y: y + h },
-    { x: x - w / 2, y: y + h / 2 },
+    { x: x - w / 2, y },
+    { x: x + w / 2, y },
+    { x: x + w / 2, y: y + h },
+    { x: x - w / 2, y: y + h },
   ];
 }
 

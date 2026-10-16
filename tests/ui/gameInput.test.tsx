@@ -4,11 +4,12 @@ import { act, renderHook } from "@testing-library/react";
 import { useRef, type PointerEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createCamera, TILE_H, tileToScreen } from "../../lib/iso";
-import { cameraPanBounds, panAvailability } from "../../lib/render/camera";
+import { cameraFocusPoint, cameraPanBounds, focusCameraAtTile, panAvailability } from "../../lib/render/camera";
 import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { heightAt } from "../../lib/sim/world";
 import type { BuildingKind, Command, SimState } from "../../lib/types";
 import { useGameInput } from "../../components/game/hooks/useGameInput";
+import { useMinimapInteraction } from "../../components/game/hooks/useMinimapInteraction";
 import { useTouchGestures } from "../../components/game/hooks/useTouchGestures";
 import { voiceBarkForBeep } from "../../lib/audio/voice";
 
@@ -196,6 +197,7 @@ describe("trackpad and mouse wheel camera panning", () => {
     const canvas = testCanvas();
     const { result } = renderInput(canvas, { width: 40, height: 40 });
     const camera = result.current.camRef.current;
+    focusCameraAtTile(camera, 20, 20, cameraPanBounds(40, 40, canvas.width, canvas.height));
     const start = { x: camera.x, y: camera.y };
 
     let event: WheelEvent;
@@ -208,7 +210,7 @@ describe("trackpad and mouse wheel camera panning", () => {
     expect(event!.defaultPrevented).toBe(true);
     expect(result.current.panAvailRef.current).toEqual(panAvailability(
       camera,
-      cameraPanBounds(camera, result.current.stateRef.current.width, result.current.stateRef.current.height, canvas.width, canvas.height),
+      cameraPanBounds(result.current.stateRef.current.width, result.current.stateRef.current.height, canvas.width, canvas.height),
     ));
   });
 
@@ -216,6 +218,7 @@ describe("trackpad and mouse wheel camera panning", () => {
     const canvas = testCanvas();
     const { result } = renderInput(canvas, { width: 40, height: 40 });
     const camera = result.current.camRef.current;
+    focusCameraAtTile(camera, 20, 20, cameraPanBounds(40, 40, canvas.width, canvas.height));
     const start = { x: camera.x, y: camera.y };
 
     act(() => {
@@ -231,16 +234,15 @@ describe("trackpad and mouse wheel camera panning", () => {
     const canvas = testCanvas();
     const { result } = renderInput(canvas, { width: 40, height: 40 });
     const camera = result.current.camRef.current;
-    const bounds = cameraPanBounds(camera, 40, 40, canvas.width, canvas.height);
-    camera.x = bounds.maxX;
-    camera.y = bounds.minY;
+    const bounds = cameraPanBounds(40, 40, canvas.width, canvas.height);
+    focusCameraAtTile(camera, 0, 0, bounds);
 
     act(() => {
-      dispatchWheel(canvas, { deltaX: -1000, deltaY: 1000 });
+      dispatchWheel(canvas, { deltaX: -1000, deltaY: -1000 });
     });
 
-    expect(camera.x).toBe(bounds.maxX);
-    expect(camera.y).toBe(bounds.minY);
+    expect(cameraFocusPoint(camera, bounds).x).toBeCloseTo(0);
+    expect(cameraFocusPoint(camera, bounds).y).toBeCloseTo(0);
   });
 
   it("consumes wheel input without panning while paused or after play ends", () => {
@@ -284,6 +286,50 @@ describe("trackpad and mouse wheel camera panning", () => {
     expect(camera).toMatchObject(start);
     expect(ctrlEvent!.defaultPrevented).toBe(false);
     expect(metaEvent!.defaultPrevented).toBe(false);
+  });
+});
+
+describe("minimap camera navigation", () => {
+  function renderMinimapInteraction() {
+    const state = makeFixture({ width: 40, height: 40, win: { kind: "annihilate" } });
+    const camera = createCamera();
+    const battlefield = testCanvas();
+    const minimap = testCanvas();
+    const bounds = cameraPanBounds(state.width, state.height, battlefield.width, battlefield.height);
+    focusCameraAtTile(camera, 20, 20, bounds);
+    const { result } = renderHook(() => useMinimapInteraction({
+      stateRef: { current: state },
+      canvasRef: { current: battlefield },
+      camRef: { current: camera },
+    }));
+    return { camera, bounds, minimap, result };
+  }
+
+  it("focuses a clicked minimap tile through the bounded camera controller", () => {
+    const { camera, bounds, minimap, result } = renderMinimapInteraction();
+    const event = pointerEvent(minimap, { clientX: 10, clientY: 20 });
+
+    act(() => {
+      result.current.onMinimapPointerDown(event);
+      result.current.onMinimapPointerUp(pointerEvent(minimap, { type: "pointerup", clientX: 10, clientY: 20 }));
+    });
+
+    expect(cameraFocusPoint(camera, bounds).x).toBeCloseTo(0);
+    expect(cameraFocusPoint(camera, bounds).y).toBeCloseTo(0);
+  });
+
+  it("drags the camera by the minimap map-space delta", () => {
+    const { camera, bounds, minimap, result } = renderMinimapInteraction();
+    const before = cameraFocusPoint(camera, bounds);
+
+    act(() => {
+      result.current.onMinimapPointerDown(pointerEvent(minimap, { clientX: 410, clientY: 320 }));
+      result.current.onMinimapPointerMove(pointerEvent(minimap, { type: "pointermove", clientX: 426, clientY: 332 }));
+      result.current.onMinimapPointerUp(pointerEvent(minimap, { type: "pointerup", clientX: 426, clientY: 332 }));
+    });
+
+    expect(cameraFocusPoint(camera, bounds).x).toBeGreaterThan(before.x);
+    expect(cameraFocusPoint(camera, bounds).y).toBeGreaterThan(before.y);
   });
 });
 
@@ -377,6 +423,32 @@ describe("touch gesture lifecycle", () => {
 
     expect(result.current.endTouch(touch(1, { clientX: 100, clientY: 100 }), { x: 100, y: 100 })).toBe(true);
     expect(result.current.endTouch(touch(2, { clientX: 240, clientY: 220 }), { x: 240, y: 220 })).toBe(false);
+  });
+
+  it("clamps touch dragging when it tries to pan beyond the battlefield", () => {
+    const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    const cam = createCamera();
+    const bounds = cameraPanBounds(state.width, state.height, 800, 600);
+    focusCameraAtTile(cam, 0, 0, bounds);
+    const selectionModeRef = { current: false };
+    const boxRef = { current: null };
+    const { result } = renderHook(() => useTouchGestures({
+      camRef: { current: cam },
+      stateRef: { current: state },
+      selectionModeRef,
+      boxRef,
+      issueContextOrder: vi.fn(),
+    }));
+    const canvas = testCanvas();
+    const touch = (overrides: Partial<PointerEvent<HTMLCanvasElement>> = {}) => pointerEvent(canvas, { pointerType: "touch", ...overrides });
+
+    act(() => {
+      result.current.beginTouch(touch(), { x: 100, y: 100 });
+      result.current.moveTouch(touch({ clientX: 1_100, clientY: 1_100 }), { x: 1_100, y: 1_100 });
+    });
+
+    expect(cameraFocusPoint(cam, bounds).x).toBeCloseTo(0);
+    expect(cameraFocusPoint(cam, bounds).y).toBeCloseTo(0);
   });
 });
 

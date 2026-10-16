@@ -70,7 +70,7 @@ export function useTouchGestures({
   const moveTouch = useCallback((e: PointerEvent<HTMLCanvasElement>, p: { x: number; y: number }): boolean => {
     const s = stateRef.current;
     const bounds = s
-      ? cameraPanBounds(camRef.current, s.width, s.height, e.currentTarget.width, e.currentTarget.height)
+      ? cameraPanBounds(s.width, s.height, e.currentTarget.width, e.currentTarget.height)
       : undefined;
     touchPoints.current.set(e.pointerId, p);
     if (touchPoints.current.size >= 2) {
@@ -100,7 +100,7 @@ export function useTouchGestures({
       const distance = Math.hypot(p.x - pan.start.x, p.y - pan.start.y);
       if (distance > 10) pan.moved = true;
       if (pan.moved) {
-        panCamera(camRef.current, p.x - pan.last.x, p.y - pan.last.y, bounds);
+        panCamera(camRef.current, { space: "screen", dx: p.x - pan.last.x, dy: p.y - pan.last.y }, bounds);
         pan.last = p;
       }
     }

@@ -70,13 +70,13 @@ export function terrainLightRigFor(
   const colors = accentColors(resolvedProfile.terrainAccent);
   const familyContrast = resolvedProfile.family === 1 ? 0.96 : resolvedProfile.family === 2 ? 0.99 : 1;
   const rig: TerrainLightRig = {
-    // Light arrives from the upper-left of the isometric diamond. Keeping this
+    // Light arrives from the upper-left of the square tile grid. Keeping this
     // direction stable makes cliffs, props, and tile materials read as one scene.
     directionX: 0.72,
     directionY: 0.58,
-    ambient: 0.88 * familyContrast,
-    keyStrength: 0.13 * familyContrast,
-    occlusionStrength: 0.08,
+    ambient: 0.85 * familyContrast,
+    keyStrength: 0.15 * familyContrast,
+    occlusionStrength: 0.1,
     keyColor: colors.key,
     atmosphereColor: colors.atmosphere,
     phase: hash01(seed ^ 0x6d2b79f5) * Math.PI * 2,
@@ -135,7 +135,7 @@ export function terrainEdgeDarkening(rig: TerrainLightRig, fx: number, fy: numbe
 
 /**
  * Estimate a soft surface response from the height changes toward the two
- * visible isometric faces and the pixel's position inside its tile.
+ * east/south height changes and the pixel's position inside its tile.
  */
 export function terrainLightFactor(
   rig: TerrainLightRig,

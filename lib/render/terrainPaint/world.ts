@@ -1,6 +1,4 @@
-import { cliffFaces } from "../../gen/assets";
-import { MAP_SKIRT, isMountainScenery, skirtAlpha } from "../../gen/map";
-import { generateCampaignVisualProfile } from "../../gen/visualProfile";
+import { MAP_SKIRT, isMountainScenery, outsideDist, skirtAlpha } from "../../gen/map";
 import type { SimState } from "../../types";
 import { SURFACE_CONCRETE, TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../types";
 import { HEIGHT_STEP, TILE_H, TILE_W, expandIsoDiamond, screenToTile, tileToScreen, type Camera } from "../../iso";
@@ -8,14 +6,13 @@ import { fogAt } from "../../sim/fog";
 import { biomeMaterials, fogTerrainGain, getTerrainAtlas, tileVariant, type AtlasWorld, type TerrainAtlas } from "../terrainAtlas";
 import { SceneryMemo } from "../sceneryMemo";
 import { drawConcreteSlab } from "../terrainPlates";
-import { isoDiamondPath, roundedIsoDiamondPath, type IsoDiamondCornerRadii } from "../isoDiamond";
+import { isoDiamondPath, isoDiamondVertices, roundedIsoDiamondPath, type IsoDiamondCornerRadii } from "../isoDiamond";
 import { paintShroudOverlay, paintShroudMaskTile, drawAtlasDiamond } from "./tile";
 import { smoothFogGain, drawBlockerProp, drawOreCrystals } from "./details";
 import { drawTerrainScatter } from "./scatter";
 import { SHROUD_FILL, SHROUD_RGB, TERRAIN_COVER } from "./constants";
-import { drawElevationFaces, fillElevationPoly, fillElevationRamp, softElevationRampStops } from "./cliffs";
-import { terrainLightRigForBiome } from "../terrainLighting";
-import { hash2, terrainVisualTuningFor } from "../terrainMaterials";
+import { artSalt, hash2 } from "../terrainMaterials";
+import { shorelineWarp } from "../terrainAtlasSurfaces";
 
 const sceneryMemo = new SceneryMemo();
 const SKIRT_COVER = 1.14;
@@ -23,6 +20,7 @@ const SKIRT_CORNER_RADIUS_MIN = 0.08;
 const SKIRT_CORNER_RADIUS_RANGE = 0.08;
 const SKIRT_CORNER_SALT = 0x4b1d;
 const SKIRT_BLUR_PX = 5;
+const COASTLINE_EDGE_SEGMENTS = 16;
 
 let skirtCanvas: HTMLCanvasElement | null = null;
 let surfaceCaches = new WeakMap<HTMLCanvasElement, { key: string; canvas: HTMLCanvasElement }>();
@@ -74,64 +72,65 @@ function skirtRenderTarget(ctx: CanvasRenderingContext2D): { canvas: HTMLCanvasE
   return { canvas: skirtCanvas, ctx: target };
 }
 
-function wetBankColors(
-  base: ReturnType<typeof cliffFaces>,
-  mats: ReturnType<typeof biomeMaterials>,
-  waterE: boolean,
-  waterS: boolean,
-): ReturnType<typeof cliffFaces> {
-  const wet = `rgb(${Math.max(0, mats.waterDeep.r - 6)},${Math.max(0, mats.waterDeep.g - 4)},${Math.min(255, mats.waterDeep.b + 4)})`;
-  return {
-    south: waterS ? wet : base.south,
-    east: waterE ? wet : base.east,
-    southInk: base.southInk,
-    eastInk: base.eastInk,
-  };
+type ScreenPoint = { x: number; y: number };
+
+function shorelineEdgePoints(
+  start: ScreenPoint,
+  end: ScreenPoint,
+  startMap: ScreenPoint,
+  endMap: ScreenPoint,
+  center: ScreenPoint,
+  zoom: number,
+  salt: number,
+  waterCell: boolean,
+): ScreenPoint[] {
+  const points: ScreenPoint[] = [];
+  const midX = (start.x + end.x) * 0.5;
+  const midY = (start.y + end.y) * 0.5;
+  const normalX = center.x - midX;
+  const normalY = center.y - midY;
+  const normalLength = Math.hypot(normalX, normalY) || 1;
+  const inwardX = normalX / normalLength;
+  const inwardY = normalY / normalLength;
+  const waterSign = waterCell ? -1 : 1;
+
+  for (let step = 0; step <= COASTLINE_EDGE_SEGMENTS; step++) {
+    const t = step / COASTLINE_EDGE_SEGMENTS;
+    const x = start.x + (end.x - start.x) * t;
+    const y = start.y + (end.y - start.y) * t;
+    const mapX = startMap.x + (endMap.x - startMap.x) * t;
+    const mapY = startMap.y + (endMap.y - startMap.y) * t;
+    // Fade the scallop to zero with a flat tangent so the matching edge on
+    // the neighboring land or water cell meets at the shared tile corner.
+    const edgeFade = Math.sin(Math.PI * t) ** 2;
+    const offset = shorelineWarp(mapX, mapY, salt)
+      * Math.min(TILE_W, TILE_H) * zoom * edgeFade * waterSign;
+    points.push({ x: x + inwardX * offset, y: y + inwardY * offset });
+  }
+  return points;
 }
 
-function paintElevationGapBridges(
+function drawShorelineFoam(
   ctx: CanvasRenderingContext2D,
-  s: { x: number; y: number },
-  eastS: { x: number; y: number },
-  southS: { x: number; y: number },
-  tw: number,
-  th: number,
-  dropE: number,
-  dropS: number,
-  colors: ReturnType<typeof cliffFaces>,
+  edges: readonly (readonly ScreenPoint[] | null)[],
+  mats: ReturnType<typeof biomeMaterials>,
+  zoom: number,
 ): void {
-  // Atlas cells meet at their top elevation. When the neighbor is lower,
-  // that neighbor's diamond is translated down by the height step, leaving
-  // a thin uncovered parallelogram beside the inset cliff face. Paint only
-  // that gap; the face and the atlas remain responsible for the visible art.
-  if (dropE > 0) {
-    const points = [
-      s.x + tw / 2, s.y + th / 2,
-      s.x, s.y + th,
-      eastS.x - tw / 2, eastS.y + th / 2,
-      eastS.x, eastS.y,
-    ];
-    if (dropE === 1) {
-      const [fromColor, toColor] = softElevationRampStops(colors.east);
-      fillElevationRamp(ctx, points, s, eastS, fromColor, toColor);
-    } else {
-      fillElevationPoly(ctx, 0, 0, points, colors.east);
-    }
+  if (!edges.some(Boolean)) return;
+  ctx.save();
+  ctx.globalAlpha *= 0.6;
+  ctx.strokeStyle = `rgb(${mats.waterHi.r},${mats.waterHi.g},${mats.waterHi.b})`;
+  ctx.lineWidth = Math.max(1.25, Math.min(TILE_H * zoom * 0.075, 3 * zoom));
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  for (const edge of edges) {
+    if (!edge || edge.length < 2) continue;
+    ctx.moveTo(edge[0]!.x, edge[0]!.y);
+    for (let i = 1; i < edge.length; i++) ctx.lineTo(edge[i]!.x, edge[i]!.y);
   }
-  if (dropS > 0) {
-    const points = [
-      s.x - tw / 2, s.y + th / 2,
-      s.x, s.y + th,
-      southS.x + tw / 2, southS.y + th / 2,
-      southS.x, southS.y,
-    ];
-    if (dropS === 1) {
-      const [fromColor, toColor] = softElevationRampStops(colors.south);
-      fillElevationRamp(ctx, points, s, southS, fromColor, toColor);
-    } else {
-      fillElevationPoly(ctx, 0, 0, points, colors.south);
-    }
-  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 function paintCell(
@@ -142,7 +141,6 @@ function paintCell(
   x: number,
   y: number,
   waterPass: boolean,
-  gainAt?: (x: number, y: number) => number,
 ): void {
   const scenery = memoScenery(state, x, y);
   const water = scenery.kind === TILE_WATER;
@@ -157,60 +155,65 @@ function paintCell(
   ctx.save();
   ctx.globalAlpha *= skirtAlpha(x, y, state.width, state.height);
   const concrete = inMap && state.surfaces[y * state.width + x] === SURFACE_CONCRETE;
-  const cover = expandIsoDiamond(s.x, s.y, tw, th, skirt ? SKIRT_COVER : concrete ? 1 : water ? WATER_COVER : TERRAIN_COVER);
-  const cornerRadii = skirt ? skirtCornerRadii(state, x, y, tw, th) : null;
+  const northSc = memoScenery(state, x, y - 1);
+  const eastSc = memoScenery(state, x + 1, y);
+  const southSc = memoScenery(state, x, y + 1);
+  const westSc = memoScenery(state, x - 1, y);
+  const shorelineSalt = artSalt(state);
+  const neighbors = [northSc, eastSc, southSc, westSc];
+  const coastEdges = neighbors.map((neighbor) => water !== (neighbor.kind === TILE_WATER));
+  const shorelineEnabled = !skirt || outsideDist(x, y, state.width, state.height) <= 8;
+  const coastalCell = shorelineEnabled && coastEdges.some(Boolean);
+  const cover = expandIsoDiamond(
+    s.x,
+    s.y,
+    tw,
+    th,
+    skirt && !coastalCell ? SKIRT_COVER : concrete ? 1 : water || coastalCell ? WATER_COVER : TERRAIN_COVER,
+  );
+  const cornerRadii = skirt && !coastalCell ? skirtCornerRadii(state, x, y, tw, th) : null;
+  const vertices = isoDiamondVertices(cover.x, cover.y, cover.w, cover.h);
+  const center = { x: cover.x, y: cover.y + cover.h / 2 };
+  const mapEdgeEnds = [
+    [{ x: x - 0.5, y: y - 0.5 }, { x: x + 0.5, y: y - 0.5 }],
+    [{ x: x + 0.5, y: y - 0.5 }, { x: x + 0.5, y: y + 0.5 }],
+    [{ x: x + 0.5, y: y + 0.5 }, { x: x - 0.5, y: y + 0.5 }],
+    [{ x: x - 0.5, y: y + 0.5 }, { x: x - 0.5, y: y - 0.5 }],
+  ] as const;
+  const shorelineEdges = coastEdges.map((isCoast, edge) => {
+    if (!isCoast || !shorelineEnabled) return null;
+    const [startMap, endMap] = mapEdgeEnds[edge]!;
+    return shorelineEdgePoints(
+      vertices[edge]!,
+      vertices[(edge + 1) % vertices.length]!,
+      startMap,
+      endMap,
+      center,
+      z,
+      shorelineSalt,
+      water,
+    );
+  });
   const paintSurfacePath = () => {
     if (cornerRadii) {
       roundedIsoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h, cornerRadii);
-    } else {
-      isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
+      return;
     }
-  };
-  const eastSc = memoScenery(state, x + 1, y);
-  const southSc = memoScenery(state, x, y + 1);
-  const eastS = tileToScreen(x + 1, y, cam, eastSc.elev);
-  const southS = tileToScreen(x, y + 1, cam, southSc.elev);
-  const dropE = water ? 0 : Math.max(0, elev - eastSc.elev);
-  const dropS = water ? 0 : Math.max(0, elev - southSc.elev);
-  const gain = gainAt?.(x, y) ?? 1;
-  const faceColors = wetBankColors(
-    cliffFaces(state.biome, elev, generateCampaignVisualProfile(state.seed)),
-    biomeMaterials(state.biome),
-    eastSc.kind === TILE_WATER,
-    southSc.kind === TILE_WATER,
-  );
-  const tuning = terrainVisualTuningFor(state.biome);
-
-  if (!water && (elev >= 2 || dropE > 0 || dropS > 0)) {
-    ctx.save();
-    ctx.globalAlpha = Math.min(0.25, 0.05 + tuning.shadowDepth * 0.32 + elev * 0.025 + (dropE + dropS) * 0.03) * gain;
-    ctx.fillStyle = "#071014";
+    if (!shorelineEdges.some(Boolean)) {
+      isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
+      return;
+    }
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + th * 0.58 + HEIGHT_STEP * z * 0.1, tw * 0.44, th * 0.16, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-  if (dropE > 0 || dropS > 0) {
-    ctx.save();
-    paintElevationGapBridges(ctx, s, eastS, southS, tw, th, dropE, dropS, faceColors);
-    drawElevationFaces(
-      ctx,
-      s.x,
-      s.y,
-      tw,
-      th,
-      HEIGHT_STEP * z,
-      dropE,
-      dropS,
-      tileVariant(state.seed, x, y),
-      faceColors,
-      x,
-      y,
-      terrainLightRigForBiome(state.seed, state.biome),
-    );
-    ctx.restore();
-  }
-
+    ctx.moveTo(shorelineEdges[0]?.[0]?.x ?? vertices[0]!.x, shorelineEdges[0]?.[0]?.y ?? vertices[0]!.y);
+    for (let edge = 0; edge < vertices.length; edge++) {
+      const points = shorelineEdges[edge]
+        ?? [vertices[edge]!, vertices[(edge + 1) % vertices.length]!];
+      for (let point = 1; point < points.length; point++) {
+        ctx.lineTo(points[point]!.x, points[point]!.y);
+      }
+    }
+    ctx.closePath();
+  };
   ctx.save();
   paintSurfacePath();
   ctx.clip();
@@ -231,6 +234,7 @@ function paintCell(
     ctx.fill();
   }
   ctx.restore();
+  if (!water && coastalCell) drawShorelineFoam(ctx, shorelineEdges, biomeMaterials(state.biome), z);
   ctx.restore();
 }
 
@@ -286,13 +290,11 @@ export function visibleTileRange(
 ): { x0: number; y0: number; x1: number; y1: number } {
   const marginX = TILE_W * cam.zoom * 2;
   const marginY = TILE_H * cam.zoom * 2;
-  const elevLift = 4 * HEIGHT_STEP * cam.zoom;
-  const cliffDrop = TILE_H * cam.zoom * 6;
   const samples = [
-    screenToTile(-marginX, -marginY - elevLift, cam),
-    screenToTile(screenW + marginX, -marginY - elevLift, cam),
-    screenToTile(screenW + marginX, screenH + marginY + cliffDrop, cam),
-    screenToTile(-marginX, screenH + marginY + cliffDrop, cam),
+    screenToTile(-marginX, -marginY, cam),
+    screenToTile(screenW + marginX, -marginY, cam),
+    screenToTile(screenW + marginX, screenH + marginY, cam),
+    screenToTile(-marginX, screenH + marginY, cam),
   ];
   let minX = Infinity;
   let maxX = -Infinity;
@@ -327,13 +329,8 @@ function visitVisibleTiles(
   const x1 = range.x1;
   const y1 = range.y1;
   if (x0 >= x1 || y0 >= y1) return;
-  const depth0 = x0 + y0;
-  const depth1 = (x1 - 1) + (y1 - 1);
-  for (let depth = depth0; depth <= depth1; depth++) {
-    const xs = Math.max(x0, depth - (y1 - 1));
-    const xe = Math.min(x1 - 1, depth - y0);
-    for (let x = xs; x <= xe; x++) {
-      const y = depth - x;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
       const elev = memoScenery(state, x, y).elev;
       const s = tileToScreen(x, y, cam, elev);
       if (s.x < -margin || s.y < -margin || s.x > w + margin || s.y > h + margin) continue;
@@ -396,33 +393,32 @@ function paintShroudLayer(
   ctx.restore();
 }
 
-// Water must stay within its own diamond. Unlike land, it should not expand
-// across shared cell edges where the neighboring tile may be dry ground.
+// Water stays within its square cell. Unlike land, it does not expand across
+// shared cell edges where the neighboring tile may be dry ground.
 export const WATER_COVER = 1;
 
 export function paintTerrainSurface(
   ctx: CanvasRenderingContext2D,
   state: AtlasWorld,
   cam: Camera,
-  gainAt?: (x: number, y: number) => number,
 ): void {
   const atlas = getTerrainAtlas(state);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   const skirtTarget = skirtRenderTarget(ctx);
   const paintSkirt = (target: CanvasRenderingContext2D) => {
-    // The decorative skirt sits behind the playable map. In particular, a
-    // low-elevation skirt-water diamond must not paint over the lower edge of
+    // The decorative skirt sits behind the playable map. In particular,
+    // low-elevation skirt water must not paint over the lower edge of
     // a higher playable tile just because water is rendered in its own pass.
     visitVisibleTiles(target, state, cam, (x, y) => {
       const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
       if (inMap || memoScenery(state, x, y).kind !== TILE_WATER) return;
-      paintCell(target, state, cam, atlas, x, y, true, gainAt);
+      paintCell(target, state, cam, atlas, x, y, true);
     });
     visitVisibleTiles(target, state, cam, (x, y) => {
       const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
       if (inMap) return;
-      paintCell(target, state, cam, atlas, x, y, false, gainAt);
+      paintCell(target, state, cam, atlas, x, y, false);
     });
   };
 
@@ -437,18 +433,17 @@ export function paintTerrainSurface(
     paintSkirt(ctx);
   }
 
-  // Paint water before land. Water is level 0, so drawing it after the land
-  // pass makes its diamond cover the lower part of neighboring elevated land
-  // and cliff faces, including neighbors earlier in isometric depth order.
+  // Paint water before land so shoreline land coverage consistently sits over
+  // the water edge, independent of the tile's elevation.
   visitVisibleTiles(ctx, state, cam, (x, y) => {
     const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
     if (!inMap) return;
-    paintCell(ctx, state, cam, atlas, x, y, true, gainAt);
+    paintCell(ctx, state, cam, atlas, x, y, true);
   });
   visitVisibleTiles(ctx, state, cam, (x, y) => {
     const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
     if (!inMap) return;
-    paintCell(ctx, state, cam, atlas, x, y, false, gainAt);
+    paintCell(ctx, state, cam, atlas, x, y, false);
   });
   // Low scatter sits with the atlas so the shroud darkens unexplored clutter.
   visitVisibleTiles(ctx, state, cam, (x, y) => {

@@ -202,11 +202,7 @@ export function lerpAngle(a: number, b: number, t: number): number {
   return a + diff * t;
 }
 
-/**
- * Creates an orthographic camera View-Projection matrix that projects 3D world coordinates
- * (where +X is right-down tile axis, +Y is left-down tile axis, and +Z is elevation up)
- * directly into WebGL clip space matching the 2D canvas isometric view.
- */
+/** Creates an orthographic matrix matching the square, top-down Canvas tile grid. */
 export function createIsoViewProjMatrix(
   out: Mat4,
   screenW: number,
@@ -219,22 +215,20 @@ export function createIsoViewProjMatrix(
   mat4Ortho(ortho, 0, screenW, screenH, 0, -3000, 3000);
 
   const view = mat4Create();
-  // Pixel mapping:
-  // sx = (x - y) * 32 * zoom + camX
-  // sy = (x + y) * 16 * zoom + camY - z * 22 * zoom
-  // depth = (x + y) * 10 - z * 20
-  view[0] = 32 * zoom;
-  view[1] = 16 * zoom;
-  view[2] = 10;
+  // Pixel mapping: map X moves right, map Y moves down, and altitude only
+  // affects depth so it does not skew the battlefield's ground plane.
+  view[0] = 64 * zoom;
+  view[1] = 0;
+  view[2] = 0;
   view[3] = 0;
 
-  view[4] = -32 * zoom;
-  view[5] = 16 * zoom;
-  view[6] = 10;
+  view[4] = 0;
+  view[5] = 64 * zoom;
+  view[6] = 0;
   view[7] = 0;
 
   view[8] = 0;
-  view[9] = -22 * zoom;
+  view[9] = 0;
   view[10] = -20;
   view[11] = 0;
 

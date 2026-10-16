@@ -211,7 +211,7 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
           spawned.y = spot.y;
           spawned.assignedRunwayId = e.id;
           spawned.flightState = "servicing";
-          spawned.facing = state.multiplayer ? (([1, 3, 5, 7] as const)[spawned.owner] ?? 1) : (spawned.owner === 0 ? 1 : 5);
+          spawned.facing = state.multiplayer ? (([0, 2, 4, 6] as const)[spawned.owner] ?? 0) : (spawned.owner === 0 ? 0 : 4);
           spawned.serviceTicks = 0;
           spawned.ammo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo ?? 0;
           spawned.maxAmmo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo;

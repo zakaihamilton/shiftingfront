@@ -74,16 +74,16 @@ export function paintWaterFx(
     ctx.save();
     isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
     ctx.clip();
-    const n: [number, number] = [s.x, s.y];
-    const e: [number, number] = [s.x + tw / 2, s.y + th / 2];
-    const so: [number, number] = [s.x, s.y + th];
-    const we: [number, number] = [s.x - tw / 2, s.y + th / 2];
+    const nw: [number, number] = [s.x - tw / 2, s.y];
+    const ne: [number, number] = [s.x + tw / 2, s.y];
+    const se: [number, number] = [s.x + tw / 2, s.y + th];
+    const sw: [number, number] = [s.x - tw / 2, s.y + th];
     const mid = [s.x, s.y + th * 0.5] as const;
     const edges: Array<[number, [number, number], [number, number]]> = [
-      [1, n, e],
-      [2, e, so],
-      [4, so, we],
-      [8, we, n],
+      [1, nw, ne],
+      [2, ne, se],
+      [4, se, sw],
+      [8, sw, nw],
     ];
     ctx.save();
     ctx.fillStyle = foamFill;

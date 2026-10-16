@@ -1,4 +1,4 @@
-import { HEIGHT_STEP, TILE_H, TILE_W, screenToGroundTile, tileToScreen, type Camera } from "../iso";
+import { TILE_H, TILE_W, screenToGroundTile, tileToScreen, type Camera } from "../iso";
 import { buildingAt, groundHeight, heightAt } from "../sim/world";
 import { fogAt } from "../sim/fog";
 import { isHiddenObjectiveAsset, isBuildingEntity, type Entity, type SimState } from "../types";
@@ -18,15 +18,15 @@ export function entityElev(state: SimState, e: Entity): number {
     : heightAt(state, Math.round(e.x), Math.round(e.y));
 }
 
-function pointInDiamond(px: number, py: number, x: number, y: number, w: number, h: number): boolean {
-  return diamondDistance(px, py, x, y, w, h) <= 1.02;
+function pointInTile(px: number, py: number, x: number, y: number, w: number, h: number): boolean {
+  return Math.abs(px - x) <= w / 2 && py >= y && py <= y + h;
 }
 
-/** Normalized distance from a point to the center of a projected tile. */
-function diamondDistance(px: number, py: number, x: number, y: number, w: number, h: number): number {
+/** Normalized distance from a point to the center of a square projected tile. */
+function tileDistance(px: number, py: number, x: number, y: number, w: number, h: number): number {
   const cx = x;
   const cy = y + h / 2;
-  return Math.abs(px - cx) / (w / 2) + Math.abs(py - cy) / (h / 2);
+  return Math.hypot((px - cx) / (w / 2), (py - cy) / (h / 2));
 }
 
 export function pickTile(
@@ -35,8 +35,7 @@ export function pickTile(
   sy: number,
   cam: Camera,
 ): { x: number; y: number } | null {
-  const maxElev = 3;
-  const g = screenToGroundTile(sx, sy + maxElev * HEIGHT_STEP * cam.zoom, cam);
+  const g = screenToGroundTile(sx, sy, cam);
   const cx = Math.round(g.x);
   const cy = Math.round(g.y);
   let best: { x: number; y: number } | null = null;
@@ -52,10 +51,10 @@ export function pickTile(
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
       const elev = heightAt(state, x, y);
-      const s = tileToScreen(x, y, cam, elev);
-      if (!pointInDiamond(sx, sy, s.x, s.y, tw, th)) continue;
-      const distance = diamondDistance(sx, sy, s.x, s.y, tw, th);
-      const depth = (x + y) * 16 + elev;
+      const s = tileToScreen(x, y, cam);
+      if (!pointInTile(sx, sy, s.x, s.y, tw, th)) continue;
+      const distance = tileDistance(sx, sy, s.x, s.y, tw, th);
+      const depth = y * 16 + elev;
       if (
         distance < bestDistance - 1e-9 ||
         (Math.abs(distance - bestDistance) <= 1e-9 && depth >= bestDepth)

@@ -57,7 +57,7 @@ describe("glMath 3D math and isometric utilities", () => {
     expect(Math.abs(mid) < 0.0001 || Math.abs(mid - Math.PI * 2) < 0.0001).toBe(true);
   });
 
-  it("creates valid isometric View-Projection matrices", () => {
+  it("creates valid top-down orthographic View-Projection matrices", () => {
     const vp = mat4Create();
     createIsoViewProjMatrix(vp, 800, 600, 400, 300, 1.0);
     expect(vp.some((val) => isNaN(val))).toBe(false);

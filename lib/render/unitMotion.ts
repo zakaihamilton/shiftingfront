@@ -48,7 +48,7 @@ export function unitShadowRadii(kind: UnitKind, scale: number): { radX: number; 
 }
 
 /**
- * Draw a planted isometric contact shadow under a unit.
+ * Draw a planted oval contact shadow under a unit.
  * Rendered underneath the unit before drawing sprite geometry.
  */
 function paintUnitShadow(

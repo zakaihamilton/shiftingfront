@@ -110,7 +110,7 @@ export function drawBlockerProp(
   const oy = ((Math.floor(v / 11) % 5) - 2) * z * 0.2;
   ctx.save();
   ctx.globalAlpha *= terrainPropLightGain(state, x, y);
-  ctx.translate(sx + ox, sy + TILE_H * z * 0.42 + oy);
+  ctx.translate(sx + ox, sy + TILE_H * z * 0.5 + oy);
   paintBlocker(ctx, kind, mats, z, v, state.biome);
   ctx.restore();
 }

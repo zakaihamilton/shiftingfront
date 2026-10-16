@@ -72,6 +72,23 @@ test.describe("visual regression", () => {
     });
   });
 
+  test("shows the sculpted shoreline on the battlefield", async ({ page }) => {
+    await page.goto("/play?seed=0315&mission=0");
+    const canvas = await waitForBattlefieldCanvas(page);
+
+    await page.keyboard.press("Escape");
+    const pauseMenu = page.getByTestId("pause-menu");
+    await expect(pauseMenu).toBeVisible();
+    await pauseMenu.evaluate((element) => {
+      (element as HTMLElement).style.visibility = "hidden";
+    });
+    await expect(pauseMenu).toBeHidden();
+
+    await expect(canvas).toHaveScreenshot("battlefield-shoreline-seed-0315-m0.png", {
+      maxDiffPixelRatio: 0.05,
+    });
+  });
+
   test("matches tutorial coaching interface snapshot", async ({ page }) => {
     await page.goto("/tutorial");
     const overlay = page.getByTestId("tutorial-overlay");

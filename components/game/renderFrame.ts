@@ -5,7 +5,7 @@ import { drawPerfHud, isPerfHudEnabled } from "@/lib/render/perfHud";
 import { isTerrainAtlasBaked } from "@/lib/render/terrainAtlas";
 import { cullFx, type FxBurst } from "@/lib/render/fx";
 import type { BuildingKind, SimState } from "@/lib/types";
-import { renderDimensions } from "./hooks/useGameCamera";
+import { renderDimensions } from "./renderDimensions";
 import { selectionBoxScreen, type SelectionBox } from "./hooks/selectionBox";
 
 type Point = { x: number; y: number };

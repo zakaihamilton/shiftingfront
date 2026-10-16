@@ -34,6 +34,15 @@ import {
 } from "./terrainLighting";
 
 export const WATER_SHORE_MAX = 8;
+export const SHORELINE_MAX_DISPLACEMENT = 0.24;
+export const SHORELINE_WET_SAND_WIDTH = 0.18;
+export const SHORELINE_FOAM_WIDTH = 0.12;
+export const SHORELINE_BLEND_HALF_WIDTH = 0.04;
+
+function smoothstep(edge0: number, edge1: number, value: number): number {
+  const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
 
 export type TerrainMaterialContext = {
   scenery?: { kind: number; elev: number };
@@ -97,6 +106,44 @@ export function landEdgeDistFromMask(fx: number, fy: number, mask: number): numb
   if ((mask & 16) === 0) dist = Math.min(dist, Math.hypot(1 - fx, fy));
   if ((mask & 32) === 0) dist = Math.min(dist, Math.hypot(fx, 1 - fy));
   return dist;
+}
+
+function waterEdgeDistFromMask(fx: number, fy: number, mask: number): number {
+  let dist = WATER_SHORE_MAX;
+  if ((mask & 2) !== 0) dist = Math.min(dist, 1 - fx);
+  if ((mask & 8) !== 0) dist = Math.min(dist, fx);
+  if ((mask & 4) !== 0) dist = Math.min(dist, 1 - fy);
+  if ((mask & 1) !== 0) dist = Math.min(dist, fy);
+  if ((mask & 128) !== 0) dist = Math.min(dist, Math.hypot(1 - fx, 1 - fy));
+  if ((mask & 64) !== 0) dist = Math.min(dist, Math.hypot(fx, fy));
+  if ((mask & 16) !== 0) dist = Math.min(dist, Math.hypot(1 - fx, fy));
+  if ((mask & 32) !== 0) dist = Math.min(dist, Math.hypot(fx, 1 - fy));
+  return dist;
+}
+
+/** Signed distance to the local water/land edge: positive is water, negative is land. */
+export function signedShoreDistanceFromMask(
+  fx: number,
+  fy: number,
+  waterMask: number,
+  waterCell: boolean,
+): number {
+  return waterCell
+    ? landEdgeDistFromMask(fx, fy, waterMask)
+    : -waterEdgeDistFromMask(fx, fy, waterMask);
+}
+
+/** Smooth world-space shoreline warp, capped at a quarter tile. */
+export function shorelineWarp(mapX: number, mapY: number, salt: number): number {
+  const broad = fbm(mapX * 0.42, mapY * 0.42, salt + 211);
+  const detail = fbm(mapX * 1.15, mapY * 1.15, salt + 223);
+  const offset = ((broad - 0.5) * (SHORELINE_MAX_DISPLACEMENT * 1.5)
+    + (detail - 0.5) * (SHORELINE_MAX_DISPLACEMENT * 0.5)) * 3.2;
+  return Math.max(-SHORELINE_MAX_DISPLACEMENT, Math.min(SHORELINE_MAX_DISPLACEMENT, offset));
+}
+
+export function warpedShoreDistance(distance: number, mapX: number, mapY: number, salt: number): number {
+  return distance + shorelineWarp(mapX, mapY, salt);
 }
 
 export function bilinearFromNeighborhood(
@@ -194,8 +241,13 @@ export function sampleTerrainMaterial(
     const dist = waterPixelDist(state, mapX, mapY);
     color = tintWater(mats, dist, mapX, mapY, salt);
   } else if (surface === SURFACE_CONCRETE) {
-    color = mixRgb(CONCRETE_STEEL, CONCRETE_STEEL_DARK, 0.05 + micro * 0.08);
-    color = mixRgb(color, CONCRETE_STEEL_LIGHT, 0.04 + hash2(x, y, salt) * 0.05);
+    const plateGrain = fbm(mapX * 0.72, mapY * 0.72, salt + 131);
+    const grit = hash2(Math.floor(mapX * 6), Math.floor(mapY * 6), salt + 149);
+    const edgeDistance = Math.min(fx, 1 - fx, fy, 1 - fy);
+    const bevel = smoothstep(0.018, 0.075, edgeDistance);
+    const edgeShade = (1 - bevel) * 0.12;
+    color = mixRgb(CONCRETE_STEEL, CONCRETE_STEEL_DARK, 0.035 + micro * 0.055 + grit * 0.025 + edgeShade);
+    color = mixRgb(color, CONCRETE_STEEL_LIGHT, 0.025 + plateGrain * 0.055 + (1 - fx) * 0.018);
   } else if (surface === SURFACE_ROAD) {
     color = mixRgb(mats.road, mats.dark, 0.16 + grain * 0.22);
     color = mixRgb(color, mats.light, 0.06 + micro * 0.08);

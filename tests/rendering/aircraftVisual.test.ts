@@ -34,6 +34,6 @@ describe("aircraft world rendering", () => {
     expect(renderDepthOf(plane, { x: plane.x, y: plane.y, airborneMix: 0.5 }))
       .toBeGreaterThan(depthOf(runway));
     expect(renderDepthOf(plane, { x: plane.x, y: plane.y, airborneMix: 1 }))
-      .toBe(plane.x + plane.y);
+      .toBe(plane.y);
   });
 });

@@ -1,4 +1,4 @@
-import { HEIGHT_STEP, TILE_H, TILE_W, tileToScreen, type Camera } from "@/lib/iso";
+import { TILE_H, TILE_W, tileToScreen, type Camera } from "@/lib/iso";
 import { footprintOf } from "@/lib/catalog";
 import type { CinemaScene } from "./scene";
 
@@ -29,11 +29,10 @@ function cinemaCameraAtZoom(
   offset: { x: number; y: number },
   zoom: number,
 ): Camera {
-  const elev = smoothElevAt(scene.map, target.x, target.y);
   return {
     zoom,
-    x: Math.round(w / 2 - (target.x - target.y) * (TILE_W / 2) * zoom + offset.x),
-    y: Math.round(h / 2 - (target.x + target.y) * (TILE_H / 2) * zoom + elev * HEIGHT_STEP * zoom + offset.y),
+    x: Math.round(w / 2 - target.x * TILE_W * zoom + offset.x),
+    y: Math.round(h / 2 - target.y * TILE_H * zoom - (TILE_H / 2) * zoom + offset.y),
   };
 }
 

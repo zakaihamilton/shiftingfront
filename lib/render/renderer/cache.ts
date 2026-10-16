@@ -10,7 +10,7 @@ import { terrainLayoutSignature } from "../terrainAtlasBake";
 import { resetUnitSpriteBlend } from "../unitSpriteBlend";
 import { resetUnitFacingBlends } from "../unitFacingBlend";
 
-const TERRAIN_RENDER_REV = "world-atlas-v32-no-feature-boundaries";
+const TERRAIN_RENDER_REV = "world-atlas-v33-orthographic-square-tiles";
 
 export type TerrainRenderCache = {
   canvas: HTMLCanvasElement;

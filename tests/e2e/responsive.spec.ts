@@ -2,7 +2,7 @@ import { readCampaignRecord } from "./saveRepositoryHelpers";
 import { expect, test } from "@playwright/test";
 import { waitForBattlefieldReady } from "./battlefieldReady";
 import { PLACEABLE } from "../../components/game/hooks/gameActions";
-import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "../../components/game/hooks/useGameCamera";
+import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "../../components/game/renderDimensions";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { TILE_H, tileToScreen } from "../../lib/iso";
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, SLOT_VERSION, saveKey, slotKey } from "../../lib/persist/save";
@@ -265,7 +265,7 @@ async function pageCamera(page: import("@playwright/test").Page, state: SimState
     y: dimensions.height / 3 - anchor.y,
     zoom: 1,
   };
-  clampCamera(camera, cameraPanBounds(camera, state.width, state.height, dimensions.width, dimensions.height));
+  clampCamera(camera, cameraPanBounds(state.width, state.height, dimensions.width, dimensions.height));
   return { dimensions, bounds, camera };
 }
 

@@ -2,34 +2,16 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
 import {
   cameraPanBounds,
   clampCamera,
+  focusCameraAtTile,
   panAvailability,
   type PanAvailability,
   type PanDir,
 } from "@/lib/render/camera";
-import { createCamera, tileToScreen, type Camera } from "@/lib/iso";
+import { createCamera, type Camera } from "@/lib/iso";
 import { heightAt } from "@/lib/sim/world";
 import type { SimState } from "@/lib/types";
+import { renderDimensions } from "../renderDimensions";
 import { useMinimapInteraction } from "./useMinimapInteraction";
-
-export const MIN_RENDER_WIDTH = 1;
-export const MIN_RENDER_HEIGHT = 1;
-const MAX_TOUCH_RENDER_PIXELS = 1_500_000;
-
-export function renderDimensions(host: HTMLElement): { width: number; height: number } {
-  const width = Math.max(MIN_RENDER_WIDTH, Math.floor(host.clientWidth));
-  const height = Math.max(MIN_RENDER_HEIGHT, Math.floor(host.clientHeight));
-  const isTouchDevice = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
-  const pixelCount = width * height;
-  if (!isTouchDevice || pixelCount <= MAX_TOUCH_RENDER_PIXELS) return { width, height };
-
-  // Keep the canvas and its CSS box at the same aspect ratio while reducing
-  // work on high-resolution touch screens.
-  const scale = Math.sqrt(MAX_TOUCH_RENDER_PIXELS / pixelCount);
-  return {
-    width: Math.max(1, Math.round(width * scale)),
-    height: Math.max(1, Math.round(height * scale)),
-  };
-}
 
 export function useGameCamera({
   stateRef,
@@ -77,12 +59,11 @@ export function useGameCamera({
     const world = stateRef.current;
     const canvas = canvasRef.current;
     if (!world || !canvas) return;
-    const elev = heightAt(world, tx, ty);
-    const p = tileToScreen(tx, ty, { x: 0, y: 0, zoom: camRef.current.zoom }, elev);
-    camRef.current.x = canvas.width / 2 - p.x;
-    camRef.current.y = canvas.height * yBias - p.y;
-    const bounds = cameraPanBounds(camRef.current, world.width, world.height, canvas.width, canvas.height);
-    clampCamera(camRef.current, bounds);
+    const bounds = cameraPanBounds(world.width, world.height, canvas.width, canvas.height);
+    focusCameraAtTile(camRef.current, tx, ty, bounds, {
+      elevation: heightAt(world, tx, ty),
+      yBias,
+    });
   }, [canvasRef, cancelFocusAnimation, stateRef]);
 
   const focusTileAnimated = useCallback((tx: number, ty: number, yBias = 0.5, durationMs = 480) => {
@@ -95,15 +76,12 @@ export function useGameCamera({
     }
 
     cancelFocusAnimation();
-    const elev = heightAt(world, tx, ty);
-    const p = tileToScreen(tx, ty, { x: 0, y: 0, zoom: camRef.current.zoom }, elev);
-    const target = {
-      x: canvas.width / 2 - p.x,
-      y: canvas.height * yBias - p.y,
-      zoom: camRef.current.zoom,
-    };
-    const bounds = cameraPanBounds(target, world.width, world.height, canvas.width, canvas.height);
-    clampCamera(target, bounds);
+    const target = { ...camRef.current };
+    const bounds = cameraPanBounds(world.width, world.height, canvas.width, canvas.height);
+    focusCameraAtTile(target, tx, ty, bounds, {
+      elevation: heightAt(world, tx, ty),
+      yBias,
+    });
     const startX = camRef.current.x;
     const startY = camRef.current.y;
     const startedAt = performance.now();
@@ -114,6 +92,7 @@ export function useGameCamera({
         : 1 - Math.pow(-2 * progress + 2, 3) / 2;
       camRef.current.x = startX + (target.x - startX) * eased;
       camRef.current.y = startY + (target.y - startY) * eased;
+      clampCamera(camRef.current, bounds);
       if (progress < 1) {
         focusAnimationRef.current = requestAnimationFrame(animate);
         return;
@@ -144,12 +123,11 @@ export function useGameCamera({
     const cy = s.entities.find((e) => e.owner === (s.viewOwner ?? 0) && e.kind === "constructionYard");
     const canvas = canvasRef.current;
     if (cy && canvas) {
-      const elev = heightAt(s, cy.x, cy.y);
-      const p = tileToScreen(cy.x, cy.y, { x: 0, y: 0, zoom: camRef.current.zoom }, elev);
-      camRef.current.x = canvas.width / 2 - p.x;
-      camRef.current.y = canvas.height / 3 - p.y;
-      const bounds = cameraPanBounds(camRef.current, s.width, s.height, canvas.width, canvas.height);
-      clampCamera(camRef.current, bounds);
+      const bounds = cameraPanBounds(s.width, s.height, canvas.width, canvas.height);
+      focusCameraAtTile(camRef.current, cy.x, cy.y, bounds, {
+        elevation: heightAt(s, cy.x, cy.y),
+        yBias: 1 / 3,
+      });
       const avail = panAvailability(camRef.current, bounds);
       panAvailRef.current = avail;
       setPanAvail(avail);
@@ -188,7 +166,6 @@ export function useGameCamera({
         camRef.current.x += (nextDimensions.width - dimensions.width) / 2;
         camRef.current.y += (nextDimensions.height - dimensions.height) / 2;
         const bounds = cameraPanBounds(
-          camRef.current,
           currentState.width,
           currentState.height,
           nextDimensions.width,

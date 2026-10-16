@@ -348,7 +348,7 @@ function createSkirmishArena(seed: number, campaign: ReadonlyCampaign, owners: O
   state.aiState = undefined;
   state.aiContacts = {};
 
-  const facing = [1, 3, 5, 7] as const;
+  const facing = [0, 2, 4, 6] as const;
   for (const owner of owners) {
     for (const [kind, x, y] of SKIRMISH_STARTING_BUILDINGS) {
       const point = rotateSkirmishPoint(x, y, owner);

@@ -27,30 +27,22 @@ describe("animation helpers", () => {
     expect(toFacing(0, -1)).toBe(6);
   });
 
-  it("uses isometric screen angles for muzzle facing vectors", () => {
+  it("uses full orthographic screen angles for muzzle facing vectors", () => {
     const dir = facingVector(1);
     const angle = isoFacingAngle(1);
     expect(dir.x).toBeCloseTo(Math.cos(angle), 8);
-    expect(dir.y).toBeCloseTo(Math.sin(angle) * 0.52, 8);
+    expect(dir.y).toBeCloseTo(Math.sin(angle), 8);
   });
 
-  it("maps isometric tile deltas accurately to screen-isometric facings", () => {
-    // East: +X, -Y in tile coords -> straight East on screen
-    expect(toIsometricFacing(1, -1)).toBe(0);
-    // South-East: +X in tile coords -> South-East on screen
-    expect(toIsometricFacing(1, 0)).toBe(1);
-    // South: +X, +Y in tile coords -> straight South on screen
-    expect(toIsometricFacing(1, 1)).toBe(2);
-    // South-West: +Y in tile coords -> South-West on screen
-    expect(toIsometricFacing(0, 1)).toBe(3);
-    // West: -X, +Y in tile coords -> straight West on screen
-    expect(toIsometricFacing(-1, 1)).toBe(4);
-    // North-West: -X in tile coords -> North-West on screen
-    expect(toIsometricFacing(-1, 0)).toBe(5);
-    // North: -X, -Y in tile coords -> straight North on screen
-    expect(toIsometricFacing(-1, -1)).toBe(6);
-    // North-East: -Y in tile coords -> North-East on screen
-    expect(toIsometricFacing(0, -1)).toBe(7);
+  it("maps map deltas directly to orthographic compass facings", () => {
+    expect(toIsometricFacing(1, 0)).toBe(0);
+    expect(toIsometricFacing(1, 1)).toBe(1);
+    expect(toIsometricFacing(0, 1)).toBe(2);
+    expect(toIsometricFacing(-1, 1)).toBe(3);
+    expect(toIsometricFacing(-1, 0)).toBe(4);
+    expect(toIsometricFacing(-1, -1)).toBe(5);
+    expect(toIsometricFacing(0, -1)).toBe(6);
+    expect(toIsometricFacing(1, -1)).toBe(7);
   });
 
   it("cycles four frames without leaving the range", () => {

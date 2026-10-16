@@ -1,20 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 import { createCamera } from "../../lib/iso";
 import { makeFixture } from "../../lib/sim/fixtures";
-import { cameraPanBounds, EDGE_PAN_DELAY_MS, type PanDir } from "../../lib/render/camera";
+import {
+  cameraFocusPoint,
+  cameraPanBounds,
+  focusCameraAtTile,
+  panAvailability,
+  EDGE_PAN_DELAY_MS,
+  type PanDir,
+} from "../../lib/render/camera";
 import { createFrameCoordinator } from "../../components/game/hooks/runtime/frame";
 
 import { defaultKeyBindings, type KeyBindings } from "../../lib/persist/settings";
 
 const ref = <T,>(current: T) => ({ current });
 
-function makeFrameCoordinator(keys: Record<string, boolean> = {}, keyBindings?: KeyBindings) {
+function makeFrameCoordinator(
+  keys: Record<string, boolean> = {},
+  keyBindings?: KeyBindings,
+  initialFocus: { x: number; y: number } = { x: 24, y: 24 },
+) {
   const camera = createCamera();
   const canvas = { width: 640, height: 480 } as HTMLCanvasElement;
-  const bounds = cameraPanBounds(camera, 48, 48, canvas.width, canvas.height);
-  camera.x = (bounds.minX + bounds.maxX) / 2;
-  camera.y = (bounds.minY + bounds.maxY) / 2;
-  const panAvailability = ref({ left: true, right: true, up: true, down: true });
+  const bounds = cameraPanBounds(48, 48, canvas.width, canvas.height);
+  focusCameraAtTile(camera, initialFocus.x, initialFocus.y, bounds);
+  const panAvailabilityRef = ref(panAvailability(camera, bounds));
   const edgePanHover = ref<{ dir: PanDir; startedAt: number } | null>(null);
   const panHold = ref<PanDir | null>(null);
   const setPanAvailability = vi.fn();
@@ -25,24 +35,55 @@ function makeFrameCoordinator(keys: Record<string, boolean> = {}, keyBindings?: 
     keys: ref(keys),
     edgePanHover,
     panHold,
-    panAvailabilityRef: panAvailability,
+    panAvailabilityRef,
     keyBindingsRef: keyBindings ? ref(keyBindings) : undefined,
     setPanAvailability,
     applyEdgePan,
   });
-  return { camera, bounds, coordinator, edgePanHover, panHold, setPanAvailability };
+  return { camera, bounds, coordinator, edgePanHover, panHold, setPanAvailability, applyEdgePan };
 }
 
+const focus = (frame: ReturnType<typeof makeFrameCoordinator>) => cameraFocusPoint(frame.camera, frame.bounds);
+
 describe("runtime frame coordinator", () => {
-  it("clamps keyboard pan and publishes availability changes", () => {
-    const frame = makeFrameCoordinator({ d: true, w: true });
+  it("moves keyboard directions along flat minimap axes", () => {
+    const rightFrame = makeFrameCoordinator({ d: true });
+    const upFrame = makeFrameCoordinator({ w: true });
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    const rightStart = focus(rightFrame);
+    const upStart = focus(upFrame);
 
-    frame.coordinator.onFrame(state, 0, false, 10_000);
+    rightFrame.coordinator.onFrame(state, 0, false, 16);
+    upFrame.coordinator.onFrame(state, 0, false, 16);
 
-    expect(frame.camera.x).toBe(frame.bounds.minX);
-    expect(frame.camera.y).toBe(frame.bounds.maxY);
-    expect(frame.setPanAvailability).toHaveBeenCalled();
+    expect(focus(rightFrame).x).toBeGreaterThan(rightStart.x);
+    expect(focus(rightFrame).y).toBeCloseTo(rightStart.y);
+    expect(focus(upFrame).x).toBeCloseTo(upStart.x);
+    expect(focus(upFrame).y).toBeLessThan(upStart.y);
+  });
+
+  it("does not pan upward when the minimap top edge is unavailable", () => {
+    const frame = makeFrameCoordinator({ w: true }, undefined, { x: 24, y: 0 });
+    const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    const before = focus(frame);
+
+    frame.coordinator.onFrame(state, 0, false, 16);
+
+    expect(focus(frame)).toEqual(before);
+    expect(frame.setPanAvailability).not.toHaveBeenCalled();
+  });
+
+  it("blocks an edge direction when the matching minimap direction is unavailable", () => {
+    const frame = makeFrameCoordinator({}, undefined, { x: 24, y: 0 });
+    const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    frame.edgePanHover.current = { dir: "up", startedAt: 0 };
+    const before = focus(frame);
+
+    frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 1, false, 16);
+
+    expect(focus(frame)).toEqual(before);
+    expect(frame.panHold.current).toBeNull();
+    expect(frame.applyEdgePan).toHaveBeenLastCalledWith(null);
   });
 
   it("supports remapped camera pan keybindings", () => {
@@ -53,26 +94,37 @@ describe("runtime frame coordinator", () => {
     };
     const frame = makeFrameCoordinator({ l: true, k: true }, customBindings);
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    const before = focus(frame);
 
-    frame.coordinator.onFrame(state, 0, false, 10_000);
+    frame.coordinator.onFrame(state, 0, false, 16);
 
-    expect(frame.camera.x).toBe(frame.bounds.minX);
-    expect(frame.camera.y).toBe(frame.bounds.maxY);
+    expect(focus(frame).x).toBeGreaterThan(before.x);
+    expect(focus(frame).y).toBeLessThan(before.y);
+  });
+
+  it("publishes changed direction availability after reaching a map edge", () => {
+    const frame = makeFrameCoordinator({ d: true }, undefined, { x: 46.9, y: 24 });
+    const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+
+    frame.coordinator.onFrame(state, 0, false, 100);
+
+    expect(focus(frame).x).toBe(47);
+    expect(frame.setPanAvailability).toHaveBeenCalledWith(expect.objectContaining({ right: false }));
   });
 
   it("waits for the edge-pan delay and clears edge state while paused", () => {
     const frame = makeFrameCoordinator();
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     frame.edgePanHover.current = { dir: "left", startedAt: 0 };
-    const before = frame.camera.x;
+    const before = focus(frame);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS - 1, false, 16);
     expect(frame.panHold.current).toBeNull();
-    expect(frame.camera.x).toBe(before);
+    expect(focus(frame)).toEqual(before);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 1, false, 16);
     expect(frame.panHold.current).toBe("left");
-    expect(frame.camera.x).toBeGreaterThan(before);
+    expect(focus(frame).x).toBeLessThan(before.x);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 2, true, 16);
     expect(frame.edgePanHover.current).toBeNull();
@@ -83,40 +135,65 @@ describe("runtime frame coordinator", () => {
     const frame = makeFrameCoordinator();
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     frame.edgePanHover.current = { dir: "right", startedAt: 0 };
-    const before = frame.camera.x;
+    const before = focus(frame);
 
     frame.coordinator.onFrame(state, 0, false, 0);
     frame.coordinator.onFrame(state, 1_000, false, 100);
 
-    expect(frame.camera.x).toBeLessThan(before);
-    expect(frame.camera.x).toBeGreaterThan(before - 600);
+    expect(focus(frame).x).toBeGreaterThan(before.x);
+    expect(focus(frame).x - before.x).toBeCloseTo(600 / 64, 1);
   });
 
-  it("moves both camera axes for a diagonal edge hold", () => {
+  it("moves along both minimap axes for a diagonal edge hold", () => {
     const frame = makeFrameCoordinator();
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     frame.edgePanHover.current = { dir: "down-right", startedAt: 0 };
-    const before = { x: frame.camera.x, y: frame.camera.y };
+    const before = focus(frame);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 1, false, 16);
 
-    expect(frame.camera.x).toBeLessThan(before.x);
-    expect(frame.camera.y).toBeLessThan(before.y);
+    expect(focus(frame).x).toBeGreaterThan(before.x);
+    expect(focus(frame).y).toBeGreaterThan(before.y);
   });
 
   it("eases into edge scrolling instead of jumping to full speed", () => {
     const frame = makeFrameCoordinator();
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     frame.edgePanHover.current = { dir: "left", startedAt: 0 };
-    const before = frame.camera.x;
+    const before = focus(frame);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 1, false, 16);
-    const firstStep = frame.camera.x - before;
+    const firstStep = before.x - focus(frame).x;
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 17, false, 16);
-    const secondStep = frame.camera.x - before - firstStep;
+    const secondStep = before.x - focus(frame).x - firstStep;
 
     expect(firstStep).toBeGreaterThan(0);
     expect(secondStep).toBeGreaterThan(firstStep);
-    expect(secondStep).toBeLessThan(600 * 16 / 1000);
+    expect(secondStep).toBeLessThan(18.75 * 16 / 1000);
+  });
+
+  it("merges matching keyboard and edge input without exceeding the pan speed", () => {
+    const keyboard = makeFrameCoordinator({ d: true });
+    const combined = makeFrameCoordinator({ d: true });
+    const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    combined.edgePanHover.current = { dir: "right", startedAt: 0 };
+    const keyboardStart = focus(keyboard);
+    const combinedStart = focus(combined);
+
+    keyboard.coordinator.onFrame(state, 1_000, false, 1_000);
+    combined.coordinator.onFrame(state, 1_000, false, 1_000);
+
+    expect(focus(combined).x - combinedStart.x).toBeCloseTo(focus(keyboard).x - keyboardStart.x, 5);
+  });
+
+  it("cancels opposing keyboard and edge directions", () => {
+    const frame = makeFrameCoordinator({ d: true });
+    const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    frame.edgePanHover.current = { dir: "left", startedAt: 0 };
+    const before = focus(frame);
+
+    frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 1, false, 16);
+
+    expect(focus(frame)).toEqual(before);
   });
 });

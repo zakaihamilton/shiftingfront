@@ -88,6 +88,8 @@ export function CommandSidebar({
           onPointerUp={onMinimapPointerUp}
           isDragging={isMinimapDragging}
           ping={minimapPing}
+          mapWidth={state.width}
+          mapHeight={state.height}
         />
       </div>
 

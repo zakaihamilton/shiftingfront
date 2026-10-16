@@ -61,7 +61,7 @@ export const STRIKE_PLANE_DIRECTION_ART: Record<UnitView, string> = {
   left: "/art/sprites/sleek-modular/air-support/strike-plane-left-v1.webp",
   // The authored rear diagonal files are named from the aircraft's view, so
   // their screen-left/screen-right placement is the opposite of the logical
-  // isometric facing used by the game.
+  // compass facing used by the game.
   "back-left": "/art/sprites/sleek-modular/air-support/strike-plane-back-right-v1.webp",
   back: "/art/sprites/sleek-modular/air-support/strike-plane-back-v1.webp",
   "back-right": "/art/sprites/sleek-modular/air-support/strike-plane-back-left-v1.webp",

@@ -31,25 +31,25 @@ describe("facingFor", () => {
     expect(unit.facing).toBe(6);
   });
 
-  it("faces toward a distant waypoint using correct screen-isometric perspective", () => {
+  it("faces toward a distant waypoint using the top-down map axes", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     const unit = addUnit(state, 0, "infantry", 4, 4);
     unit.facing = 0;
-    // Moving along tile +Y moves south-west on screen (Facing 3)
+    // Moving along tile +Y moves straight south on screen (Facing 2)
     unit.path = [{ x: 4, y: 8 }];
     const entityById = new Map(state.entities.map((entity) => [entity.id, entity]));
 
-    expect(facingFor(state, unit, entityById)).toBe(3);
-    expect(unit.facing).toBe(0);
-
-    // Moving along tile (+4, +4) moves straight south on screen (Facing 2)
-    unit.path = [{ x: 8, y: 8 }];
     expect(facingFor(state, unit, entityById)).toBe(2);
     expect(unit.facing).toBe(0);
 
-    // Moving along tile (+4, -4) moves straight east on screen (Facing 0)
+    // Moving along tile (+4, +4) moves south-east on screen (Facing 1)
+    unit.path = [{ x: 8, y: 8 }];
+    expect(facingFor(state, unit, entityById)).toBe(1);
+    expect(unit.facing).toBe(0);
+
+    // Moving along tile (+4, -4) moves north-east on screen (Facing 7)
     unit.path = [{ x: 8, y: 0 }];
-    expect(facingFor(state, unit, entityById)).toBe(0);
+    expect(facingFor(state, unit, entityById)).toBe(7);
     expect(unit.facing).toBe(0);
   });
 });

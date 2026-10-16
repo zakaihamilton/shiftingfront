@@ -15,9 +15,9 @@ export function constructionStage(e: Entity): 0 | 1 | 2 | 3 {
 export function depthOf(e: Entity): number {
   if (e.class === "building") {
     const fp = footprintOf(e.kind as BuildingKind);
-    return e.x + fp.w - 1 + (e.y + fp.h - 1);
+    return e.y + fp.h - 1;
   }
-  return e.x + e.y;
+  return e.y;
 }
 
 // Aircraft that are parked or still in the runway transition must remain above
@@ -31,7 +31,7 @@ export function renderDepthOf(
   e: Entity,
   position?: { x: number; y: number; airborneMix?: number },
 ): number {
-  const depth = e.class === "unit" && position ? position.x + position.y : depthOf(e);
+  const depth = e.class === "unit" && position ? position.y : depthOf(e);
   const aircraftOnRunway = e.class === "unit" && e.kind === "strikePlane" && (
     e.flightState === "servicing" ||
     (position?.airborneMix !== undefined && position.airborneMix < 1)

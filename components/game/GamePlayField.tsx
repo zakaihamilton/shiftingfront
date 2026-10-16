@@ -3,7 +3,7 @@ import { Battlefield } from "./Battlefield";
 import { CombatAlert } from "./CombatAlert";
 import { MissionResult } from "./MissionResult";
 import { CommandNotice } from "./CommandNotice";
-import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "./hooks/useGameCamera";
+import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "./renderDimensions";
 import { playFieldStatus } from "./playFieldStatus";
 
 export type GamePlayFieldProps = PlayFieldSurfaceModel & {

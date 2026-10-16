@@ -10,12 +10,18 @@ import {
 import { oreVeinAt } from "../terrainOre";
 import { applyBiomeGroundPattern } from "../terrainPatches";
 import {
+  SHORELINE_BLEND_HALF_WIDTH,
+  SHORELINE_FOAM_WIDTH,
+  SHORELINE_MAX_DISPLACEMENT,
+  SHORELINE_WET_SAND_WIDTH,
   WATER_SHORE_MAX,
   bilinearFromNeighborhood,
   clampShore,
   landEdgeDistFromMask,
   readShoreCell,
+  signedShoreDistanceFromMask,
   tintWater,
+  warpedShoreDistance,
 } from "../terrainAtlasSurfaces";
 import {
   CONCRETE_CELL_CLASS,
@@ -33,6 +39,53 @@ import {
   organicEdgeBlendStrength,
   organicEdgeMask,
 } from "./organicEdges";
+
+const SHORELINE_RENDER_REACH = SHORELINE_MAX_DISPLACEMENT + SHORELINE_WET_SAND_WIDTH + SHORELINE_FOAM_WIDTH;
+
+function smoothstep(edge0: number, edge1: number, value: number): number {
+  const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+function adjacentLandColor(
+  colors: Float32Array,
+  classes: Uint8Array,
+  cols: number,
+  rows: number,
+  col: number,
+  row: number,
+  waterMask: number,
+): { r: number; g: number; b: number } | null {
+  const neighbors: Array<[number, number, number]> = [
+    [0, -1, 1],
+    [1, 0, 2],
+    [0, 1, 4],
+    [-1, 0, 8],
+    [1, -1, 16],
+    [-1, 1, 32],
+    [-1, -1, 64],
+    [1, 1, 128],
+  ];
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let count = 0;
+  for (const [dx, dy, bit] of neighbors) {
+    if ((waterMask & bit) !== 0) continue;
+    const nx = col + dx;
+    const ny = row + dy;
+    if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+    const cellIndex = ny * cols + nx;
+    if (classes[cellIndex] === WATER_CELL_CLASS) continue;
+    const colorIndex = cellIndex * 3;
+    r += colors[colorIndex] ?? 0;
+    g += colors[colorIndex + 1] ?? 0;
+    b += colors[colorIndex + 2] ?? 0;
+    count += 1;
+  }
+  if (count === 0) return null;
+  return { r: r / count, g: g / count, b: b / count };
+}
 
 export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): boolean {
   const {
@@ -98,7 +151,12 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
       const bCornerDelta = southeastB - southB - eastB + baseB;
       const cellDist = clampShore(shoreDist[row * cols + col] ?? WATER_SHORE_MAX);
       const resourceAmount = same === ORE_CELL_CLASS ? resourceAt(state, gx, gy) : 0;
-      const waterMask = same === WATER_CELL_CLASS ? sceneryGrid.waterNeighbors[row * cols + col] ?? 0 : 0;
+      const waterMask = sceneryGrid.waterNeighbors[row * cols + col] ?? 0;
+      const isWater = same === WATER_CELL_CLASS;
+      const shoreCandidate = isWater ? cellDist <= 1 : waterMask !== 0;
+      const shoreLandColor = isWater && shoreCandidate
+        ? adjacentLandColor(colors, classes, cols, rows, col, row, waterMask)
+        : null;
       const westEdgeValid = same === GROUND_CELL_CLASS
         && col > 0
         && classes[row * cols + col - 1] === GROUND_CELL_CLASS;
@@ -267,25 +325,24 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
           let r: number;
           let g: number;
           let b: number;
+          let shoreDistance = Number.POSITIVE_INFINITY;
           let materialEdgeStrength = 0;
           let materialEdgeR = baseR;
           let materialEdgeG = baseG;
           let materialEdgeB = baseB;
           if (same === WATER_CELL_CLASS) {
-            const wet = tintWater(
-              mats,
-              Math.min(
-                bilinearFromNeighborhood(pixelFractions[lx]!, pixelFractions[ly]!, n00, n10, n20, n01, cellDist, n21, n02, n12, n22),
-                landEdgeDistFromMask(pixelFractions[lx]!, pixelFractions[ly]!, waterMask),
-              ),
-              mapX,
-              mapY,
-              salt,
+            shoreDistance = Math.min(
+              bilinearFromNeighborhood(pixelFractions[lx]!, pixelFractions[ly]!, n00, n10, n20, n01, cellDist, n21, n02, n12, n22),
+              landEdgeDistFromMask(pixelFractions[lx]!, pixelFractions[ly]!, waterMask),
             );
+            const wet = tintWater(mats, shoreDistance, mapX, mapY, salt);
             r = wet.r;
             g = wet.g;
             b = wet.b;
           } else {
+            if (shoreCandidate) {
+              shoreDistance = signedShoreDistanceFromMask(pixelFractions[lx]!, pixelFractions[ly]!, waterMask, false);
+            }
             if (groundBilinear) {
               r = baseR + rEastDelta * fx + rSouthDelta * fy + rCornerDelta * fx * fy;
               g = baseG + gEastDelta * fx + gSouthDelta * fy + gCornerDelta * fx * fy;
@@ -462,6 +519,31 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
             r += (targetR - r) * materialEdgeStrength;
             g += (targetG - g) * materialEdgeStrength;
             b += (targetB - b) * materialEdgeStrength;
+          }
+          if (shoreCandidate && Math.abs(shoreDistance) <= SHORELINE_RENDER_REACH) {
+            const warpedDistance = warpedShoreDistance(shoreDistance, mapX, mapY, salt);
+            const landColor = isWater
+              ? shoreLandColor ?? mats.shore
+              : { r, g, b };
+            const waterColor = isWater
+              ? { r, g, b }
+              : tintWater(mats, Math.max(0, warpedDistance), mapX, mapY, salt);
+            const wetSandStrength = warpedDistance < 0
+              ? 1 - smoothstep(0, SHORELINE_WET_SAND_WIDTH, -warpedDistance)
+              : 0;
+            const wetLand = mixRgb(landColor, mats.shore, wetSandStrength * 0.72);
+            const waterStrength = smoothstep(
+              -SHORELINE_BLEND_HALF_WIDTH,
+              SHORELINE_BLEND_HALF_WIDTH,
+              warpedDistance,
+            );
+            const shoreline = mixRgb(wetLand, waterColor, waterStrength);
+            const foamStrength = (1 - smoothstep(0, SHORELINE_FOAM_WIDTH, Math.abs(warpedDistance)))
+              * (0.24 + Math.abs(warpedDistance - shoreDistance) * 0.22);
+            const foamed = mixRgb(shoreline, mats.waterHi, foamStrength);
+            r = foamed.r;
+            g = foamed.g;
+            b = foamed.b;
           }
           const px = col * ATLAS_CELL + lx;
           const grainScale = same === CONCRETE_CELL_CLASS ? 5 : same === WATER_CELL_CLASS ? 3 : same === GROUND_CELL_CLASS ? 11 : 13;
