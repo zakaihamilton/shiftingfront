@@ -15,6 +15,7 @@ import {
 import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { playSynthTone, playTransition, retunePad, schedulePadGate, syncDelay } from "./musicSynth";
 import { playKick, playSnare, playClap, playHat, playTom, playImpact, playRim, playShaker } from "./musicDrums";
+import { prewarmMusicSamples } from "./musicSamples";
 import {
   intensity,
   pendingIntensity,
@@ -73,6 +74,8 @@ export function applyIntensityAt(audio: AudioGraphContext, g: MusicGraph, value:
   set(g.fxBus, value === "critical" ? 0.7 : value === "engaged" ? 0.46 : 0.28);
   g.highpass.frequency.setTargetAtTime(value === "critical" ? 48 : 38, t, ramp);
   g.padFilter.frequency.setTargetAtTime(value === "critical" ? 1_300 : value === "engaged" ? 1_000 : 820, t, ramp);
+  g.reverbWet.gain.setTargetAtTime(g.style.reverbWet * (value === "critical" ? 0.78 : value === "engaged" ? 0.92 : 1.08), t, ramp);
+  g.delayWet.gain.setTargetAtTime(g.style.delayWet * (value === "critical" ? 0.82 : value === "engaged" ? 1.04 : 0.9), t, ramp);
   g.padBase = padGainFor(value);
   set(g.padGain, g.padBase);
 }
@@ -124,9 +127,17 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
     ["counter", p.counterType, p.cutoff],
     ["melody", p.melodyType, p.cutoff + 360],
   ];
+  const activeLayers = value === "critical"
+    ? ["engaged", "critical"] as const
+    : value === "engaged"
+      ? ["engaged"] as const
+      : [];
   for (const [stem, voice, cutoff] of stemVoices) {
-    const events = g.index.notes[stem].get(index);
-    if (!events) continue;
+    const events = [...(g.index.notes[stem].get(index) ?? [])];
+    for (const layerName of activeLayers) {
+      events.push(...(g.index.intensityLayers?.[layerName]?.notes[stem]?.get(index) ?? []));
+    }
+    if (events.length === 0) continue;
     for (const event of events) {
       const duration = Math.max(stepDuration * event.duration, stepDuration * (stem === "pulse" ? 0.55 : 0.7));
       playSynthTone(audio, g, stemBus(g, stem), midiToHz(event.midi), t, duration, voice, event.velocity * layerMultiplier(stem === "pulse" ? "pulse" : stem, value), cutoff, stem, !!event.accent);
@@ -136,23 +147,27 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
     }
   }
 
-  for (const event of g.index.drums.get(index) ?? []) {
+  const drumEvents = [...(g.index.drums.get(index) ?? [])];
+  for (const layerName of activeLayers) {
+    drumEvents.push(...(g.index.intensityLayers?.[layerName]?.drums.get(index) ?? []));
+  }
+  for (const event of drumEvents) {
     if (value === "calm" && isBreakdown && (event.kind === "tom" || event.kind === "impact")) continue;
     const velocity = event.velocity * layerMultiplier("drums", value);
     if (event.kind === "kick") {
-      playKick(audio, g, t, velocity);
+      playKick(audio, g, t, velocity, p.style);
       if (event.accent && index % STEPS_PER_BAR === 0) {
         duckPad(audio, g, t);
         duckBass(audio, g, t);
       }
-    } else if (event.kind === "snare") playSnare(audio, g, t, velocity, !!event.accent);
-    else if (event.kind === "clap") playClap(audio, g, t, velocity, !!event.accent);
-    else if (event.kind === "hat") playHat(audio, g, t, velocity, false);
-    else if (event.kind === "openHat") playHat(audio, g, t, velocity, true);
-    else if (event.kind === "tom") playTom(audio, g, t, velocity);
-    else if (event.kind === "rim") playRim(audio, g, t, velocity);
-    else if (event.kind === "shaker") playShaker(audio, g, t, velocity);
-    else playImpact(audio, g, t, velocity);
+    } else if (event.kind === "snare") playSnare(audio, g, t, velocity, !!event.accent, p.style);
+    else if (event.kind === "clap") playClap(audio, g, t, velocity, !!event.accent, p.style);
+    else if (event.kind === "hat") playHat(audio, g, t, velocity, false, p.style);
+    else if (event.kind === "openHat") playHat(audio, g, t, velocity, true, p.style);
+    else if (event.kind === "tom") playTom(audio, g, t, velocity, p.style);
+    else if (event.kind === "rim") playRim(audio, g, t, velocity, p.style);
+    else if (event.kind === "shaker") playShaker(audio, g, t, velocity, p.style);
+    else playImpact(audio, g, t, velocity, p.style);
   }
 }
 
@@ -305,11 +320,14 @@ export function applyPattern(next: MusicPattern): void {
       setTransitioning(false);
       return;
     }
+    activeGraph.style = next.style;
     activeGraph.index = indexPattern(next);
     setStep(0);
-    syncDelay(audio, activeGraph, next);
-    retunePad(audio, activeGraph, next, 0, audio.currentTime);
     const t = audio.currentTime;
+    prewarmMusicSamples(audio, next.style.drumKit, next.style.drum);
+    applyIntensityAt(audio, activeGraph, intensity, t, ducked);
+    syncDelay(audio, activeGraph, next);
+    retunePad(audio, activeGraph, next, 0, t);
     setNextNoteTime(t + 0.07);
     activeGraph.master.gain.cancelScheduledValues(t);
     activeGraph.master.gain.setValueAtTime(0.001, t);

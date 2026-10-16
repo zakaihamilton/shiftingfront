@@ -174,6 +174,11 @@ export type MusicNoteEvent = {
   accent?: boolean;
 };
 
+export type MusicIntensityLayer = {
+  notes: Partial<Record<MusicStem, MusicNoteEvent[]>>;
+  drums: MusicDrumEvent[];
+};
+
 export type MusicDrumEvent = {
   step: number;
   kind: MusicDrumKind;
@@ -238,6 +243,8 @@ export type MusicPattern = {
   sections: MusicSection[];
   notes: Record<MusicStem, MusicNoteEvent[]>;
   drums: MusicDrumEvent[];
+  /** Extra phrase-aligned parts revealed during combat pressure. */
+  intensityLayers: Partial<Record<Exclude<MusicIntensity, "calm">, MusicIntensityLayer>>;
   bass: (number | null)[];
   arp: (number | null)[];
   melody: (number | null)[];

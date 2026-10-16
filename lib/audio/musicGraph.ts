@@ -6,10 +6,13 @@ import {
   type MusicStem,
 } from "./compose";
 import { AUDIO_SAMPLE_RATE } from "./constants";
+import { prewarmMusicSamples } from "./musicSamples";
 import type {
   AudioGraphContext,
   MusicGraph,
+  IntensityPatternIndex,
   PatternIndex,
+  MusicWaveformName,
 } from "./musicState";
 import { noiseBuf, setNoiseBuf } from "./musicState";
 
@@ -76,6 +79,24 @@ function createImpulseResponse(audio: AudioGraphContext, seconds: number, decay:
   return impulse;
 }
 
+function createMusicWaveforms(audio: AudioGraphContext): Partial<Record<MusicWaveformName, PeriodicWave>> {
+  if (typeof audio.createPeriodicWave !== "function") return {};
+  const profiles: Record<MusicWaveformName, readonly number[]> = {
+    warm: [1, 0.42, 0.2, 0.12, 0.075, 0.05, 0.034, 0.022, 0.014],
+    brass: [1, 0.38, 0.62, 0.25, 0.36, 0.18, 0.22, 0.12, 0.13],
+    reed: [1, 0.16, 0.44, 0.1, 0.28, 0.08, 0.18, 0.06, 0.11],
+    glass: [1, 0.12, 0.42, 0.08, 0.31, 0.055, 0.22, 0.035, 0.14],
+  };
+  const result: Partial<Record<MusicWaveformName, PeriodicWave>> = {};
+  for (const [name, partials] of Object.entries(profiles) as [MusicWaveformName, readonly number[]][]) {
+    const real = new Float32Array(partials.length + 1);
+    const imag = new Float32Array(partials.length + 1);
+    for (let index = 0; index < partials.length; index++) imag[index + 1] = partials[index]!;
+    result[name] = audio.createPeriodicWave(real, imag);
+  }
+  return result;
+}
+
 export function getNoiseBuffer(audio: AudioGraphContext): AudioBuffer {
   if (noiseBuf && noiseBuf.sampleRate === audio.sampleRate) return noiseBuf;
   const buf = audio.createBuffer(1, Math.max(1, Math.floor(audio.sampleRate * 0.8)), audio.sampleRate);
@@ -121,7 +142,22 @@ export function indexPattern(p: MusicPattern): PatternIndex {
     if (events) events.push(event);
     else drums.set(event.step, [event]);
   }
-  return { notes, drums };
+  const intensityLayers: NonNullable<PatternIndex["intensityLayers"]> = {};
+  for (const [level, layer] of Object.entries(p.intensityLayers ?? {})) {
+    if (!layer) continue;
+    const indexedLayer: IntensityPatternIndex = { notes: {}, drums: new Map() };
+    for (const stem of ["bass", "pulse", "harmony", "melody", "counter"] as const) {
+      const lane = layer.notes[stem];
+      if (lane?.length) indexedLayer.notes[stem] = indexNoteLane(lane);
+    }
+    for (const event of layer.drums) {
+      const events = indexedLayer.drums.get(event.step);
+      if (events) events.push(event);
+      else indexedLayer.drums.set(event.step, [event]);
+    }
+    intensityLayers[level as "engaged" | "critical"] = indexedLayer;
+  }
+  return { notes, drums, intensityLayers };
 }
 
 export function stemBus(g: MusicGraph, stem: MusicStem): GainNode {
@@ -146,6 +182,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   const saturation = audio.createWaveShaper();
   const compressor = audio.createDynamicsCompressor();
   const now = audio.currentTime;
+  const waveforms = createMusicWaveforms(audio);
+  prewarmMusicSamples(audio, p.style.drumKit, p.style.drum);
 
   highpass.type = "highpass";
   highpass.frequency.setValueAtTime(38, now);
@@ -240,6 +278,12 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   padOscB.type = p.style.padType;
   padOscC.type = p.style.padType;
   padOscD.type = p.style.padType;
+  const padWaveform = waveforms.warm;
+  if (padWaveform) {
+    for (const oscillator of [padOscA, padOscB, padOscC, padOscD]) {
+      if (typeof oscillator.setPeriodicWave === "function") oscillator.setPeriodicWave(padWaveform);
+    }
+  }
   padOscA.frequency.setValueAtTime(p.padRoot[0] ?? p.rootHz, now);
   padOscB.frequency.setValueAtTime((p.padThird[0] ?? (p.padRoot[0] ?? p.rootHz) * 1.25) * 1.002, now);
   padOscC.frequency.setValueAtTime((p.padFifth[0] ?? p.rootHz * 1.5) * 0.998, now);
@@ -279,6 +323,7 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
 
   return {
     style: p.style,
+    waveforms,
     master,
     highpass,
     saturation,

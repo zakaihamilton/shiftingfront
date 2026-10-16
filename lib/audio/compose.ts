@@ -19,6 +19,7 @@ export {
   type MusicDrumKind,
   type MusicNoteEvent,
   type MusicDrumEvent,
+  type MusicIntensityLayer,
   type MusicMotif,
   type MusicSection,
   type MusicTheme,

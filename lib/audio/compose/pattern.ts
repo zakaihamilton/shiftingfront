@@ -7,7 +7,9 @@ import {
   type MusicStem,
   type MusicNoteEvent,
   type MusicDrumEvent,
+  type MusicIntensityLayer,
   type MusicTheme,
+  type MusicIntensity,
   MUSIC_BARS,
   MUSIC_STEPS,
   STEPS_PER_BAR,
@@ -36,11 +38,13 @@ import {
   chordToneMidi,
   noteEvent,
   drumEvent,
+  drumEventUnique,
   legacyNotes,
   legacyHits,
 } from "./helpers";
 import { bassRiffsFor, createMusicStyle, styleRng } from "./styles";
 import { musicMissionContext } from "./missionContext";
+import { missionMotifPalette } from "./missionThemes";
 import {
   placeStylePercussion,
   placeHarmony,
@@ -117,6 +121,79 @@ function signatureMotifFrom(rng: Rng): MusicMotif {
   return motifFrom(rng, SIGNATURE_CONTOURS, SIGNATURE_RHYTHMS);
 }
 
+function developMotif(motif: MusicMotif, pass: number): MusicMotif {
+  if (pass <= 0) return motif;
+  const vary = (values: readonly (number | null)[], direction: number) => values.map((value, index) => {
+    if (value === null || index === 0 || index === values.length - 1) return value;
+    return (index + pass) % 3 === 0 ? value + direction : value;
+  });
+  const direction = pass % 2 === 1 ? 1 : -1;
+  const rhythm = [...motif.rhythm];
+  const rhythmIndex = 1 + ((pass * 2) % Math.max(1, rhythm.length - 2));
+  if (rhythm.length > 2) {
+    const shift = pass % 2 === 1 ? 1 : -1;
+    const next = Math.max(0, Math.min(STEPS_PER_BAR - 1, rhythm[rhythmIndex]! + shift));
+    const occupied = new Set(rhythm.filter((_, index) => index !== rhythmIndex));
+    if (!occupied.has(next)) rhythm[rhythmIndex] = next;
+  }
+  return {
+    ...motif,
+    degrees: vary(motif.degrees, direction),
+    response: vary(motif.response, -direction),
+    rhythm,
+  };
+}
+
+function makeIntensityLayers(
+  notes: Record<MusicStem, MusicNoteEvent[]>,
+  drums: MusicDrumEvent[],
+  sections: readonly MusicSection[],
+  cue: MusicCue,
+): Partial<Record<Exclude<MusicIntensity, "calm">, MusicIntensityLayer>> {
+  if (cue !== "mission") return {};
+  const engaged: MusicIntensityLayer = { notes: { counter: [] }, drums: [] };
+  const critical: MusicIntensityLayer = { notes: { counter: [] }, drums: [] };
+  const engagedCounter = engaged.notes.counter!;
+  const criticalCounter = critical.notes.counter!;
+  const sectionAt = (step: number) => sections[Math.floor(step / (STEPS_PER_BAR * BARS_PER_SECTION))];
+
+  for (const lead of notes.melody) {
+    const section = sectionAt(lead.step);
+    if (!section || section.energy < 0.64) continue;
+    const beat = lead.step % STEPS_PER_BAR;
+    if (lead.accent || beat === 0 || beat === 8) {
+      noteEvent(engagedCounter, lead.step, lead.midi - 12, Math.min(lead.duration, 3), lead.velocity * 0.3, !!lead.accent);
+    }
+    if (lead.accent || (lead.step % 8 === 0 && lead.step % 32 === 0)) {
+      noteEvent(criticalCounter, lead.step, lead.midi + 12, Math.min(lead.duration, 3), lead.velocity * 0.24, !!lead.accent);
+    }
+  }
+
+  const hasDrum = (step: number, kind: MusicDrumEvent["kind"]) =>
+    drums.some((event) => event.step === step && event.kind === kind);
+  for (let bar = 0; bar < MUSIC_BARS; bar++) {
+    const section = sections[Math.floor(bar / BARS_PER_SECTION)];
+    if (!section || section.energy < 0.58) continue;
+    const origin = bar * STEPS_PER_BAR;
+    if (bar % 4 === 3 && !hasDrum(origin + 14, "shaker")) {
+      drumEvent(engaged.drums, origin + 14, "shaker", 0.2);
+    }
+    if (bar % 2 === 1) {
+      if (!hasDrum(origin + 6, "hat") && !hasDrum(origin + 6, "openHat")) {
+        drumEventUnique(critical.drums, origin + 6, "openHat", 0.3);
+      }
+      if (!hasDrum(origin + 14, "hat") && !hasDrum(origin + 14, "openHat")) {
+        drumEventUnique(critical.drums, origin + 14, "openHat", 0.34, true);
+      }
+    }
+    if (bar % 8 === 7) {
+      if (!hasDrum(origin + 12, "tom")) drumEventUnique(critical.drums, origin + 12, "tom", 0.42);
+      if (!hasDrum(origin + 14, "tom")) drumEventUnique(critical.drums, origin + 14, "tom", 0.5, true);
+    }
+  }
+  return { engaged, critical };
+}
+
 type PhrasePlan = {
   textureDropBar: number | null;
   miniFillBar: number | null;
@@ -171,18 +248,22 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     ? harmonyRng.intRange(33, 40)
     : harmonyRng.intRange(36, 46);
   const groove = style.groove;
+  const context = musicMissionContext(seed, missionIndex);
+  const missionPalette = cue === "mission" ? missionMotifPalette(context.missionKind) : undefined;
   const progressions = progressionsFor(scalePick.name, style.progressionVariant);
   const [progressionA, progressionB, progressionC, progressionD] = pickCycle(harmonyRng, progressions);
   const bassRiffs = bassRiffsFor(style.bassRiffFamily);
   const [bassRiffA, bassRiffB, bassRiffC, bassRiffD] = pickCycle(harmonyRng, bassRiffs);
   const cinematicMaterial = style.voiceEngine === "cinematic";
-  const verseContours = cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS;
-  const verseRhythms = cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS;
+  const verseContours = missionPalette?.verseContours ?? (cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS);
+  const verseRhythms = missionPalette?.verseRhythms ?? (cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS);
   const motif = motifFrom(melodyRng, verseContours, verseRhythms);
   const developmentMotif = motifFrom(melodyRng, verseContours, verseRhythms, motif);
-  const hook = cinematicMaterial
-    ? motifFrom(melodyRng, CINEMATIC_HOOK_CONTOURS, CINEMATIC_HOOK_RHYTHMS)
-    : signatureMotifFrom(melodyRng);
+  const hook = missionPalette
+    ? motifFrom(melodyRng, missionPalette.hookContours, missionPalette.hookRhythms)
+    : cinematicMaterial
+      ? motifFrom(melodyRng, CINEMATIC_HOOK_CONTOURS, CINEMATIC_HOOK_RHYTHMS)
+      : signatureMotifFrom(melodyRng);
   const [arpFigureA, arpFigureB, arpFigureC, arpFigureD] = pickCycle(rhythmRng, ARP_FIGURES);
   const [openHatA, openHatB, openHatC, openHatD] = pickCycle(drumRng, OPEN_HAT_FIGURES);
   const sparse = isSparseCue(cue);
@@ -201,7 +282,6 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const padThird: number[] = [];
   const padFifth: number[] = [];
   const padSeventh: number[] = [];
-  const context = musicMissionContext(seed, missionIndex);
   let previousMelodyMidi: number | null = null;
   let previousPadVoicing: readonly number[] | null = null;
 
@@ -247,6 +327,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     if (dropPulse) usePulse = false;
     const phraseSlot = phraseBar % 4;
     const response = phraseSlot === 1 || phraseSlot === 3;
+    const phrasePass = Math.floor(phraseBar / 4);
     const restBar = section.name === "breakdown" && phraseSlot === 3;
     const useHookLead =
       hookSection ||
@@ -353,12 +434,14 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     }
 
     const stepShift = bar % 2 === 1 ? style.rhythmShift + arrangement.rhythmOffset : arrangement.rhythmOffset;
+    const phraseStepShift = (stepShift + [0, 0, 1, -1][phrasePass]! + STEPS_PER_BAR) % STEPS_PER_BAR;
     if (useMelody) {
-      const lead = useHookLead
+      const baseLead = useHookLead
         ? hook
         : section.name === "development" || (phraseBar >= 8 && !intro)
           ? developmentMotif
           : motif;
+      const lead = developMotif(baseLead, phrasePass);
       const velocity = mixEnergy(climax ? 0.96 : hookSection ? 0.86 : 0.74, energy);
       const durationFor = (index: number, sounding: number) => {
         if (useHookLead) return index === sounding - 1 ? (cinematicMaterial ? 5 : 3) : cinematicMaterial ? 4 : 4;
@@ -380,7 +463,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
         null,
         phraseEnd,
         previousMelodyMidi,
-        hookSection ? 0 : stepShift,
+        phraseStepShift,
       );
     }
 
@@ -388,7 +471,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
       previousMelodyMidi = placeMelody(
         notes.melody,
         origin,
-        motif,
+        developMotif(motif, phrasePass),
         false,
         rootMidi,
         scalePick.notes,
@@ -401,16 +484,17 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
         null,
         false,
         previousMelodyMidi,
-        stepShift + 2,
+        phraseStepShift + 2,
       );
     }
 
     if (useCounter) {
-      const lead = useHookLead
+      const baseLead = useHookLead
         ? hook
         : section.name === "development" || (phraseBar >= 8 && !intro)
           ? developmentMotif
           : motif;
+      const lead = developMotif(baseLead, phrasePass);
       const interval = climax ? 5 : hookSection ? 2 : 5;
       const counterOctave = 1;
       placeCounter(
@@ -425,7 +509,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
         variant,
         counterOctave,
         interval,
-        stepShift,
+        phraseStepShift,
         climax ? 4 : 2,
         mixEnergy(climax ? 0.38 : 0.18 + style.counterChance * 0.14, energy),
       );
@@ -496,6 +580,8 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     (note) => !notes.melody.some((lead) => lead.step === note.step && lead.midi === note.midi),
   );
 
+  const intensityLayers = makeIntensityLayers(notes, drums, sections, cue);
+
   return {
     cue,
     seed,
@@ -521,6 +607,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     sections,
     notes,
     drums,
+    intensityLayers,
     bass: legacyNotes(notes.bass),
     arp: legacyNotes(notes.pulse),
     melody: legacyNotes(notes.melody),

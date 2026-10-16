@@ -2,6 +2,7 @@ import type { MusicIntensity, MusicPattern, MusicSectionName, MusicStem, MusicVo
 import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { ATTACK_S, notePan } from "./musicGraph";
 import { getNoiseBuffer } from "./musicGraph";
+import type { MusicWaveformName } from "./musicState";
 
 export function playSynthTone(
   audio: AudioGraphContext,
@@ -86,7 +87,19 @@ export function playSynthTone(
   pan.pan.setValueAtTime(panCenter, time);
   pan.pan.linearRampToValueAtTime(panTarget, time + Math.min(0.18, Math.max(0.03, duration * 0.25)));
 
-  oscA.type = acid ? "sawtooth" : pwm ? (cleanType === "square" ? "sawtooth" : cleanType) : fm ? (cleanType === "sine" || cleanType === "triangle" ? cleanType : "sine") : cleanType;
+  const waveformName: MusicWaveformName = lead
+    ? "brass"
+    : pulse
+      ? "glass"
+      : voice === "counter"
+        ? "reed"
+        : "warm";
+  const voiceWaveform = !acid && !pwm && !fm && !chip ? g.waveforms?.[waveformName] : undefined;
+  if (voiceWaveform && typeof oscA.setPeriodicWave === "function") {
+    oscA.setPeriodicWave(voiceWaveform);
+  } else {
+    oscA.type = acid ? "sawtooth" : pwm ? (cleanType === "square" ? "sawtooth" : cleanType) : fm ? (cleanType === "sine" || cleanType === "triangle" ? cleanType : "sine") : cleanType;
+  }
   const glide = acid && bass
     ? Math.min(0.08, duration * 0.45)
     : cinematic && bass
