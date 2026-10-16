@@ -92,7 +92,7 @@ Configure edge rate limits before exposing multiplayer routes. See [multiplayer 
 
 ## Run locally
 
-Shifting Front is an open-source browser game. To run it from source, you need [Node.js](https://nodejs.org/) `22.22.2` or newer and pnpm 10.33.0 (pinned in `package.json`).
+Shifting Front is an open-source browser game. To run it from source, use [Node.js](https://nodejs.org/) `24.22.0` from `.nvmrc` (the supported range is Node 24, as declared in `package.json`) and pnpm 10.33.0 (pinned in `package.json`).
 
 ```bash
 pnpm install --frozen-lockfile

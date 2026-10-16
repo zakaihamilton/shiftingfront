@@ -39,7 +39,7 @@ preserving the HQ alone does not qualify for that medal under rules 2.
 
 ## Reproducing diagnostics
 
-Use the project's supported Node version before running Yarn commands. A full
+Use the project's pinned Node version before running pnpm commands. A full
 baseline covers all six missions for seeds 0000–0039; held-out validation uses
 0040–0079. The explicit horizon below allows untimed missions to run for 36
 minutes without adding a gameplay deadline.

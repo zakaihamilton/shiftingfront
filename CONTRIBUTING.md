@@ -4,7 +4,7 @@ Thank you for your interest in contributing to **Shifting Front**!
 
 ## Environment Prerequisites
 
-- **Node.js**: `>=22.22.2` (use `nvm use 22.22.2` if installed via NVM)
+- **Node.js**: `24.22.0` from `.nvmrc` (the supported range is Node 24, as declared in `package.json`; run `nvm use` to select the pinned version)
 - **pnpm**: `10.33.0` (pinned in `package.json`)
 
 ## Development Workflow

@@ -13,6 +13,32 @@ function unreleasedSection(changelog: string): string {
 }
 
 describe("docs and process drift", () => {
+  it("uses .nvmrc as the supported Node version across package, workflows, and setup docs", () => {
+    const nodeVersion = readFileSync(resolve(process.cwd(), ".nvmrc"), "utf-8").trim();
+    const pkg = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf-8")) as {
+      engines?: { node?: string };
+    };
+    const engineRange = pkg.engines?.node;
+
+    expect(nodeVersion).toBe("24.22.0");
+    expect(engineRange).toBe(">=24.0.0 <25");
+    expect(nodeVersion.startsWith("24.")).toBe(true);
+
+    for (const workflow of ["ci.yml", "nightly.yml", "release.yml"]) {
+      const content = readFileSync(resolve(process.cwd(), ".github/workflows", workflow), "utf-8");
+      const setupNodeSteps = content.match(/\buses:[ \t]+actions\/setup-node@/g) ?? [];
+      const nodeVersionFiles = content.match(/^\s+node-version-file:\s*\.nvmrc\s*$/gm) ?? [];
+      expect(setupNodeSteps.length).toBeGreaterThan(0);
+      expect(nodeVersionFiles).toHaveLength(setupNodeSteps.length);
+      expect(content).not.toMatch(/^\s+node-version:\s*\S+/m);
+    }
+
+    for (const doc of ["README.md", "CONTRIBUTING.md", "AGENTS.md"]) {
+      const content = readFileSync(resolve(process.cwd(), doc), "utf-8");
+      expect(content).toContain(nodeVersion);
+    }
+  });
+
   it("keeps APP_VERSION aligned with package.json", () => {
     const pkg = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf-8")) as { version: string };
     expect(APP_VERSION).toBe(pkg.version);
