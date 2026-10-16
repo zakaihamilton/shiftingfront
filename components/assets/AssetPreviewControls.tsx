@@ -23,6 +23,10 @@ export function AssetPreviewControls({
   onConstruction,
   onDamage,
   onDesignFamily,
+  pose = "idle",
+  turretFacing = 0,
+  onPose,
+  onTurretFacing,
 }: AssetPreviewControlProps) {
   const showFacing = selected.category === "unit" || (selected.category === "building" && selected.kind === "turret");
   const showAnim = selected.category === "unit" || selected.category === "building";
@@ -62,6 +66,26 @@ export function AssetPreviewControls({
         >
           {playing ? "Pause animation" : "Play animation"}
         </ConsoleButton>
+      ) : null}
+      {selected.category === "unit" && onPose ? (
+        <div className={styles.group}>
+          <ConsoleLabel>Action</ConsoleLabel>
+          <div className={styles.chips}>
+            {(["idle", "move", "attack", "work"] as const).filter(action => (action !== "work" || ["medic", "repairTruck", "harvester"].includes(selected.kind)) && (action !== "attack" || ["infantry", "antiArmor", "tank", "behemoth", "strikePlane"].includes(selected.kind))).map(action => (
+              <AssetChip key={action} active={pose === action} tooltip={`Preview ${action}`} onClick={() => onPose(action)}>
+                {{ idle: "Idle", move: "Moving", attack: "Firing", work: "Working" }[action]}
+              </AssetChip>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {selected.category === "unit" && ["tank", "behemoth"].includes(selected.kind) && onTurretFacing ? (
+        <div className={styles.group}>
+          <ConsoleLabel>Turret aim</ConsoleLabel>
+          <div className={styles.compass}>{FACINGS.map(dir => (
+            <AssetChip key={dir} active={turretFacing === dir} tooltip={`Aim ${FACING_LABELS[dir]}`} onClick={() => onTurretFacing(dir)}>{FACING_LABELS[dir]}</AssetChip>
+          ))}</div>
+        </div>
       ) : null}
 
       {selected.category === "unit" || selected.category === "building" ? (

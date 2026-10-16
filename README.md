@@ -92,11 +92,11 @@ Configure edge rate limits before exposing multiplayer routes. See [multiplayer 
 
 ## Run locally
 
-Shifting Front is an open-source browser game. To run it from source, you need [Node.js](https://nodejs.org/) `22.22.2` or newer and [Yarn 1](https://classic.yarnpkg.com/).
+Shifting Front is an open-source browser game. To run it from source, use [Node.js](https://nodejs.org/) `24.22.0` from `.nvmrc` (the supported range is Node 24, as declared in `package.json`) and pnpm 10.33.0 (pinned in `package.json`).
 
 ```bash
-yarn install --frozen-lockfile
-yarn dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000), choose **New Game**, enter a 4-digit code, and launch the briefing. Use **Tutorial** for a guided training range with no time limit.
@@ -105,19 +105,19 @@ Open [http://localhost:3000](http://localhost:3000), choose **New Game**, enter 
 
 | Command | Purpose |
 | --- | --- |
-| `yarn dev` | Start the development server. |
-| `yarn build && yarn start` | Build and serve the production app. |
-| `yarn test` | Run the full Vitest suite. |
-| `yarn verify:fast` | Recommended local pre-push check: type checking, linting, and the fast test tier. |
-| `yarn test:e2e` | Run the Playwright browser smoke tests. |
-| `yarn test:visual` | Run Playwright visual regression tests. |
-| `yarn health:audit` | Audit dependencies for security vulnerabilities. |
-| `yarn inspect 0421` | Inspect a generated campaign as JSON. |
-| `yarn sim --seed 0421 --mission 0 --ticks 200` | Run a mission through the headless simulation. |
+| `pnpm dev` | Start the development server. |
+| `pnpm build && pnpm start` | Build and serve the production app. |
+| `pnpm test` | Run the full Vitest suite. |
+| `pnpm verify:fast` | Recommended local pre-push check: type checking, linting, and the fast test tier. |
+| `pnpm test:e2e` | Run the Playwright browser smoke tests. |
+| `pnpm test:visual` | Run Playwright visual regression tests. |
+| `pnpm health:audit` | Audit dependencies for security vulnerabilities. |
+| `pnpm inspect 0421` | Inspect a generated campaign as JSON. |
+| `pnpm sim --seed 0421 --mission 0 --ticks 200` | Run a mission through the headless simulation. |
 
 See [`package.json`](package.json) for the complete script catalog, including health, balance, performance, and asset tooling.
 
-For browser tests, install the required Playwright browsers once with `yarn playwright install chromium webkit`.
+For browser tests, install the required Playwright browsers once with `pnpm exec playwright install chromium webkit`.
 
 ## For contributors
 

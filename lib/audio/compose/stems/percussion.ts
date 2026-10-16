@@ -12,13 +12,13 @@ export function placeStylePercussion(
 ): void {
   if (name === "break-wire" || name === "disco-command" || name === "dune-cipher") {
     if (!dropHats) {
-      for (const step of [2, 6, 10, 14]) drumEvent(drums, origin + step, "shaker", 0.28 * drumGain, false, rng);
+      for (const step of [6, 14]) drumEvent(drums, origin + step, "shaker", 0.16 * drumGain, false, rng);
     }
   }
   if (name === "break-wire" || name === "dune-cipher") {
-    for (const step of [3, 11]) drumEvent(drums, origin + step, "rim", 0.34 * drumGain, false, rng);
+    drumEvent(drums, origin + 11, "rim", 0.22 * drumGain, false, rng);
   }
   if (name === "disco-command") {
-    drumEvent(drums, origin + 10, "rim", 0.3 * drumGain, false, rng);
+    drumEvent(drums, origin + 10, "rim", 0.2 * drumGain, false, rng);
   }
 }

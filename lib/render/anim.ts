@@ -145,9 +145,9 @@ export function unitPose(e: Entity): UnitPose {
   return "idle";
 }
 
-export function unitAnim(e: Entity, tick: number, clockMs?: number): UnitAnim {
+export function unitAnim(e: Entity, tick: number, clockMs?: number, supporting = false): UnitAnim {
   const t = animClock(tick, clockMs);
-  const pose = unitPose(e);
+  const pose = supporting && !e.path.length ? "work" : unitPose(e);
   const kind = e.kind as UnitKind;
 
   if (pose === "move") {
@@ -169,14 +169,14 @@ export function unitAnim(e: Entity, tick: number, clockMs?: number): UnitAnim {
       footPlantSide: offset.footPlantSide,
       stridePhase: cycle.phase,
       strideRatio: offset.strideRatio,
-      recoil: 0,
+      recoil: e.attackTarget !== undefined ? attackRecoil(e) : 0,
     };
   }
   if (pose === "attack") {
     const recoil = attackRecoil(e);
     return {
       pose,
-      frame: recoil > 0 ? 2 : 0,
+      frame: recoil > 0 ? Math.min(3, Math.floor((1 - recoil) * 4)) as AnimFrame : 0,
       bobY: 0,
       stridePhase: 0,
       strideRatio: 0,
@@ -196,7 +196,7 @@ export function unitAnim(e: Entity, tick: number, clockMs?: number): UnitAnim {
   }
   return {
     pose: "idle",
-    frame: 0,
+    frame: animFrame(t, 900, 4, e.id),
     bobY: 0,
     stridePhase: 0,
     strideRatio: 0,

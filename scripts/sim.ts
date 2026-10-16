@@ -11,7 +11,7 @@ function arg(name: string, fallback?: string): string | undefined {
 const seedRaw = arg("seed", "0000")!;
 const seed = parseSeed(seedRaw);
 if (seed === null) {
-  console.error("Usage: yarn sim --seed 0421 --mission 0 --ticks 200");
+  console.error("Usage: pnpm sim --seed 0421 --mission 0 --ticks 200");
   process.exit(1);
 }
 

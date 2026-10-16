@@ -13,7 +13,7 @@ import {
   readSlot,
 } from "@/lib/persist/save";
 import { clearTelemetry, readTelemetry, serializeTelemetry } from "@/lib/persist/telemetry";
-import { consumeFreshLaunchIntent } from "@/lib/persist/navigation";
+import { consumeFreshLaunchIntent, consumeResultReturnSnapshot } from "@/lib/persist/navigation";
 import { restoreSlot } from "@/lib/persist/save/restore";
 import type { SaveSession } from "@/lib/persist/save";
 import type { GameSettings } from "@/lib/persist/settings";
@@ -75,6 +75,10 @@ export function initialMission(
     clearMusicPosition("mission", seed, mission);
   }
   if (!startFresh && typeof window !== "undefined") {
+    if (resume) {
+      const resultState = consumeResultReturnSnapshot(seed, mission);
+      if (resultState) return resultState;
+    }
     const saved = readSave(cachedCampaignStorage(), seed);
     if (saved && (resume || saved.missionIndex === mission)) return saved;
   }
@@ -104,6 +108,10 @@ export async function prepareInitialMission({ seed, mission, resume, fresh = fal
       window.history.replaceState(window.history.state, "", url.toString());
       return named.state;
     }
+  }
+  if (resume) {
+    const resultState = consumeResultReturnSnapshot(seed, mission);
+    if (resultState) return resultState;
   }
   return initialMission(seed, mission, resume, false, fresh);
 }

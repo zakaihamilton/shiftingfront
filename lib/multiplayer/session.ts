@@ -1,32 +1,21 @@
-import { CHECK_HISTORY_LIMIT, STATE_CHECK_INTERVAL, stateChecksum, validChecksum } from "./checksum";
+import { MultiplayerLatency } from "./session/latency";
+import { MultiplayerSynchronization } from "./session/synchronization";
 import type { Command, Owner, SimState } from "@/lib/types";
-import { entityInPlayerVision, makeFog, tickFog } from "@/lib/sim/fog";
+import { entityInPlayerVision, tickFog } from "@/lib/sim/fog";
 import { evaluateObjectives } from "@/lib/sim/objectives";
 import { compactDestroyedEntities, invalidateEntityCaches } from "@/lib/sim/world";
 
-import { isSimSnapshot, MAX_COMMANDS_PER_TICK, sameOwners, sanitizeCommand, SKIRMISH_MATCH_SETTINGS } from "./protocol";
+import { MAX_COMMANDS_PER_TICK, sameOwners, sanitizeCommand, SKIRMISH_MATCH_SETTINGS } from "./protocol";
 import type { MultiplayerRole, MultiplayerStatus, MultiplayerWire, IntroReadyMessage, IntroReleaseMessage, TickFrame } from "./protocol";
 
 // Retain the existing public import surface for UI and headless callers.
 export { sanitizeCommand, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "./protocol";
 export type { MultiplayerRole, MultiplayerStatus, MultiplayerWire, TickFrame, IntroReadyMessage, IntroReleaseMessage } from "./protocol";
 
-const RTT_PROBE_INTERVAL_MS = 2_000;
-const RTT_SAMPLE_MAX_AGE_MS = 6_000;
-const MAX_PENDING_RTT_PROBES = 8;
 const MAX_PENDING_GUEST_COMMANDS = MAX_COMMANDS_PER_TICK * 2;
-
-function monotonicNow(): number {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
-}
-
-function validProbeId(value: unknown): value is number {
-  return Number.isSafeInteger(value) && Number(value) > 0;
-}
 
 type GuestSeat = { peerId: string; owner: Owner; sender: MultiplayerWire; connected: boolean };
 type GuestIntent = { owner: Owner; command: Command };
-type RttSample = { milliseconds: number; measuredAt: number };
 
 export class MultiplayerSession {
   readonly owner: Owner;
@@ -41,21 +30,11 @@ export class MultiplayerSession {
   private guestCommands: GuestIntent[] = [];
   private guests = new Map<string, GuestSeat>();
   private frames = new Map<number, Command[]>();
-  private resyncRequested = false;
-  private pendingSnapshot: SimState | null = null;
-  private pendingSnapshotChecksum: string | null = null;
-  private checks = new Map<number, string>();
-  private remoteChecks = new Map<number, string>();
-  private reportedChecks = new Set<number>();
-  private installedSnapshotTick = -1;
-  private repairs = new Map<string, { at: number; tick: number; checksum: string; report: string; verified: boolean }>();
+  private latency!: MultiplayerLatency;
+  private synchronization!: MultiplayerSynchronization;
   synchronizationNotice: string | null = null;
   private snapshotSource: (() => SimState) | null = null;
   private snapshotConsumer: ((state: SimState) => void) | null = null;
-  private rttInterval: ReturnType<typeof setInterval> | null = null;
-  private nextProbeId = 0;
-  private pendingRttProbes = new Map<string, Map<number, number>>();
-  private rttSamples = new Map<string, RttSample>();
   private lastPublishedPingMs: number | null = null;
   private introBarrierArmed = false;
   private introReleasedValue = true;
@@ -82,6 +61,30 @@ export class MultiplayerSession {
         aiOwners.some((aiOwner) => aiOwner === 0 || aiOwner === owner || !this.owners.includes(aiOwner))) {
       throw new Error("Invalid multiplayer roster");
     }
+    this.latency = new MultiplayerLatency({
+      status: () => this.statusValue,
+      peers: () => this.role === "host"
+        ? [...this.guests.values()].filter((guest) => guest.connected).map((guest) => ({ peerId: guest.peerId, sender: guest.sender }))
+        : [{ peerId: "host", sender: this.sender }],
+      onChange: () => this.publishPing(),
+    });
+    this.synchronization = new MultiplayerSynchronization({
+      role: this.role,
+      owner: this.owner,
+      seed: this.seed,
+      owners: this.owners,
+      aiOwners: this.aiOwners,
+      sender: () => this.sender,
+      status: () => this.statusValue,
+      broadcast: (value) => this.broadcast(value),
+      sendToPeer: (peerId, value) => this.sendToGuest(peerId, value),
+      publish: () => this.publish(),
+      end: () => this.end(),
+      setNotice: (notice) => { this.synchronizationNotice = notice; },
+      installTick: (tick) => {
+        for (const frameTick of [...this.frames.keys()]) if (frameTick <= tick) this.frames.delete(frameTick);
+      },
+    });
   }
 
   get status(): MultiplayerStatus { return this.statusValue; }
@@ -91,89 +94,12 @@ export class MultiplayerSession {
     return this.role === "guest" || this.guests.size > 0;
   }
   get pingMs(): number | null {
-    if (!this.connected) return null;
-    const now = monotonicNow();
-    const peerIds = this.role === "host"
-      ? [...this.guests.values()].filter((guest) => guest.connected).map((guest) => guest.peerId)
-      : ["host"];
-    const samples = peerIds
-      .map((peerId) => this.rttSamples.get(peerId))
-      .filter((sample): sample is RttSample => sample !== undefined && now - sample.measuredAt <= RTT_SAMPLE_MAX_AGE_MS);
-    if (samples.length === 0) return null;
-    return Math.round(samples.reduce((total, sample) => total + sample.milliseconds, 0) / samples.length);
+    return this.latency.pingMs;
   }
 
   /** Start lightweight peer-to-peer RTT probes while the battlefield is mounted. */
   startLatencyProbes(): () => void {
-    this.stopLatencyProbes(false);
-    if (this.statusValue === "ended") return () => undefined;
-    const probe = () => {
-      if (this.statusValue === "ended") return;
-      if (this.connected) {
-        if (this.role === "host") {
-          for (const guest of this.guests.values()) {
-            if (guest.connected) this.sendLatencyProbe(guest.peerId, guest.sender);
-          }
-        } else {
-          this.sendLatencyProbe("host", this.sender);
-        }
-      }
-      // Re-render once an older measurement expires, even if no pong arrives.
-      this.publishPing();
-    };
-    probe();
-    this.rttInterval = setInterval(probe, RTT_PROBE_INTERVAL_MS);
-    return () => this.stopLatencyProbes();
-  }
-
-  private stopLatencyProbes(publish = true): void {
-    if (this.rttInterval !== null) clearInterval(this.rttInterval);
-    this.rttInterval = null;
-    this.pendingRttProbes.clear();
-    this.rttSamples.clear();
-    if (publish) this.publishPing();
-  }
-
-  private sendLatencyProbe(peerId: string, sender: MultiplayerWire): void {
-    const now = monotonicNow();
-    const id = ++this.nextProbeId;
-    const pending = this.pendingRttProbes.get(peerId) ?? new Map<number, number>();
-    for (const [pendingId, sentAt] of pending) {
-      if (now - sentAt > RTT_SAMPLE_MAX_AGE_MS) pending.delete(pendingId);
-    }
-    pending.set(id, now);
-    while (pending.size > MAX_PENDING_RTT_PROBES) {
-      const oldestId = pending.keys().next().value;
-      if (oldestId === undefined) break;
-      pending.delete(oldestId);
-    }
-    this.pendingRttProbes.set(peerId, pending);
-    try {
-      sender.send({ type: "ping", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, id });
-    } catch {
-      pending.delete(id);
-    }
-  }
-
-  private replyToLatencyProbe(sender: MultiplayerWire, message: Record<string, unknown>): boolean {
-    if (message.type !== "ping") return false;
-    if (message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion && validProbeId(message.id)) {
-      sender.send({ type: "pong", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, id: message.id });
-    }
-    return true;
-  }
-
-  private recordLatencyResponse(peerId: string, message: Record<string, unknown>): boolean {
-    if (message.type !== "pong") return false;
-    if (message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion || !validProbeId(message.id)) return true;
-    const pending = this.pendingRttProbes.get(peerId);
-    const sentAt = pending?.get(message.id);
-    if (sentAt === undefined) return true;
-    pending!.delete(message.id);
-    const receivedAt = monotonicNow();
-    this.rttSamples.set(peerId, { milliseconds: Math.max(0, Math.round(receivedAt - sentAt)), measuredAt: receivedAt });
-    this.publishPing();
-    return true;
+    return this.latency.start();
   }
 
   subscribe(listener: () => void): () => void {
@@ -281,10 +207,7 @@ export class MultiplayerSession {
     if (this.role !== "host" || this.statusValue === "ended") return;
     const next: MultiplayerStatus = [...this.guests.values()].some((guest) => !guest.connected) ? "disconnected" : "connected";
     if (next === this.statusValue) return;
-    if (next === "connected") {
-      this.pendingRttProbes.clear();
-      this.rttSamples.clear();
-    }
+    if (next === "connected") this.latency.clearSamples();
     this.statusValue = next;
     this.publish();
     this.broadcast({ type: next === "disconnected" ? "paused" : "resumed" });
@@ -303,8 +226,7 @@ export class MultiplayerSession {
     if (this.statusValue === "ended") return;
     if (this.statusValue === "disconnected") return;
     this.statusValue = "disconnected";
-    this.pendingRttProbes.clear();
-    this.rttSamples.clear();
+    this.latency.clearSamples();
     this.publish();
     if (this.role === "host") this.broadcast({ type: "paused" });
   }
@@ -312,7 +234,7 @@ export class MultiplayerSession {
   bindState(source: () => SimState, consume: (state: SimState) => void) {
     this.snapshotSource = source;
     this.snapshotConsumer = consume;
-    this.checkState(source(), true);
+    this.synchronization.bindState(source, consume);
   }
 
   submit(command: Command): void {
@@ -330,16 +252,8 @@ export class MultiplayerSession {
     if (!value || typeof value !== "object" || Array.isArray(value)) return;
     const message = value as Record<string, unknown>;
     if (this.role === "host" || this.statusValue === "ended") return;
-    if (message.type === "state-check") {
-      if (this.validCheck(message) && Number(message.tick) > this.installedSnapshotTick) {
-        this.remoteChecks.set(Number(message.tick), message.checksum as string);
-        this.trimChecks(this.remoteChecks);
-        this.compareCheck(Number(message.tick));
-      }
-      return;
-    }
-    if (this.replyToLatencyProbe(this.sender, message)) return;
-    if (this.recordLatencyResponse("host", message)) return;
+    if (this.synchronization.receiveGuest(message)) return;
+    if (this.latency.receive("host", this.sender, message)) return;
     if (message.type === "intro-release") {
       if (this.introBarrierArmed && message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion) {
         this.introReleasedValue = true;
@@ -354,17 +268,6 @@ export class MultiplayerSession {
       if (commands.every(Boolean)) {
         this.frames.set(tick, commands as Command[]);
         while (this.frames.size > 256) this.frames.delete(Math.min(...this.frames.keys()));
-      }
-      return;
-    }
-    if (this.role === "guest" && message.type === "resync") {
-      const localState = this.snapshotSource?.();
-      if (message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion || !validChecksum(message.checksum)) return;
-      if (isSimSnapshot(message.state, this.seed, this.owners, this.aiOwners, localState)) {
-        this.pendingSnapshot = message.state;
-        this.pendingSnapshotChecksum = message.checksum;
-        this.synchronizationNotice = "Synchronizing with the host…";
-        this.publish();
       }
       return;
     }
@@ -390,37 +293,8 @@ export class MultiplayerSession {
     const guest = this.guests.get(peerId);
     if (!guest?.connected || !value || typeof value !== "object" || Array.isArray(value)) return;
     const message = value as Record<string, unknown>;
-    if (message.type === "desync" && this.validCheck(message)) {
-      const tick = Number(message.tick);
-      const expected = this.checks.get(tick);
-      if (!expected || expected === message.checksum) return;
-      const previous = this.repairs.get(peerId);
-      const now = monotonicNow();
-      if (previous?.tick === tick && previous.report === message.checksum) return;
-      if (previous && previous.verified && now - previous.at < 60_000) { this.failSynchronization(); return; }
-      if (previous && (!previous.verified || tick <= previous.tick)) return;
-      const state = this.snapshotSource?.();
-      if (state) {
-        const checksum = stateChecksum(state);
-        this.repairs.set(peerId, { at: now, tick: state.tick, checksum, report: message.checksum as string, verified: false });
-        this.synchronizationNotice = "Synchronizing a player with the host…";
-        this.publish();
-        this.sendToGuest(peerId, this.snapshotMessage(state, checksum));
-      }
-      return;
-    }
-    if (message.type === "resync-check" && this.validCheck(message) && typeof message.verified === "boolean") {
-      const repair = this.repairs.get(peerId);
-      if (repair && repair.tick === message.tick && !repair.verified) {
-        if (!message.verified || repair.checksum !== message.checksum) { this.failSynchronization(); return; }
-        repair.verified = true;
-        this.synchronizationNotice = "Synchronization restored.";
-        this.publish();
-      }
-      return;
-    }
-    if (this.replyToLatencyProbe(guest.sender, message)) return;
-    if (this.recordLatencyResponse(peerId, message)) return;
+    if (this.synchronization.receiveHost(peerId, message)) return;
+    if (this.latency.receive(peerId, guest.sender, message)) return;
     if (message.type === "intro-ready") {
       if (this.introBarrierArmed && message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion) {
         this.readyGuests.add(peerId);
@@ -439,8 +313,7 @@ export class MultiplayerSession {
       return;
     }
     if (message.type === "resume") {
-      const state = this.snapshotSource?.();
-      if (state) this.sendToGuest(peerId, this.snapshotMessage(state));
+      this.synchronization.sendSnapshotToPeer(peerId);
       return;
     }
   }
@@ -453,8 +326,7 @@ export class MultiplayerSession {
     if (!guest || !state) return null;
     this.guests.delete(peerId);
     this.readyGuests.delete(peerId);
-    this.pendingRttProbes.delete(peerId);
-    this.rttSamples.delete(peerId);
+    this.latency.removePeer(peerId);
     this.guestCommands = this.guestCommands.filter((intent) => intent.owner !== guest.owner);
     state.multiplayerOwners = (state.multiplayerOwners ?? [0, guest.owner]).filter((owner) => owner !== guest.owner);
     for (const entity of state.entities) if (entity.owner === guest.owner) entity.hp = 0;
@@ -465,8 +337,8 @@ export class MultiplayerSession {
     tickFog(state);
     const snapshot = { ...state, entities: state.entities.map((entity) => ({ ...entity })) };
     this.snapshotConsumer?.(snapshot);
-    this.checks.clear();
-    this.broadcast(this.snapshotMessage(snapshot));
+    this.synchronization.clearLocalChecks();
+    this.broadcast(this.synchronization.snapshotMessage(snapshot));
     this.checkState(snapshot, true);
     this.refreshHostStatus();
     this.tryReleaseIntro();
@@ -474,87 +346,12 @@ export class MultiplayerSession {
   }
 
   syncSnapshot(): boolean {
-    for (const repair of this.repairs.values()) {
-      if (!repair.verified && monotonicNow() - repair.at >= 60_000) this.failSynchronization();
-    }
-    if (!this.pendingSnapshot) return false;
-    const snapshot = this.pendingSnapshot;
-    this.pendingSnapshot = null;
-    const expectedChecksum = this.pendingSnapshotChecksum;
-    this.pendingSnapshotChecksum = null;
-    this.resyncRequested = false;
-    for (const tick of [...this.frames.keys()]) {
-      if (tick <= snapshot.tick) {
-        this.frames.delete(tick);
-      }
-    }
-    const local = this.snapshotSource?.();
-    const state: SimState = {
-      ...snapshot,
-      viewOwner: this.owner,
-      controlGroups: local?.controlGroups ?? {},
-      fog: local?.viewOwner === this.owner && local.width === snapshot.width && local.height === snapshot.height
-        ? [...local.fog]
-        : makeFog(snapshot.width, snapshot.height, 0),
-    };
-    if (state.result !== "playing" || (state.multiplayerOwners && !state.multiplayerOwners.includes(this.owner))) {
-      state.result = state.winner === null ? "lost" : state.winner === this.owner ? "won" : "lost";
-    }
-    tickFog(state);
-    const checksum = stateChecksum(state);
-    if (checksum !== expectedChecksum) {
-      try { this.sender.send({ type: "resync-check", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick, checksum, verified: false }); } catch {}
-      this.failSynchronization();
-      return false;
-    }
-    this.checks.clear();
-    this.remoteChecks.clear();
-    this.reportedChecks.clear();
-    this.installedSnapshotTick = state.tick;
-    this.snapshotConsumer?.(state);
-    try { this.sender.send({ type: "resync-check", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick, checksum, verified: true }); } catch {}
-    this.synchronizationNotice = "Synchronization restored.";
-    this.publish();
-    return true;
-  }
-
-  private validCheck(message: Record<string, unknown>): boolean {
-    return message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion &&
-      Number.isSafeInteger(message.tick) && Number(message.tick) >= 0 && validChecksum(message.checksum);
-  }
-
-  private trimChecks(checks: Map<number, string>): void {
-    while (checks.size > CHECK_HISTORY_LIMIT) checks.delete(Math.min(...checks.keys()));
-  }
-
-  private snapshotMessage(state: SimState, checksum = stateChecksum(state)) {
-    return { type: "resync", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, state: structuredClone(state), checksum };
-  }
-
-  private compareCheck(tick: number): void {
-    const own = this.checks.get(tick);
-    const remote = this.remoteChecks.get(tick);
-    if (!own || !remote || own === remote || this.reportedChecks.has(tick)) return;
-    this.reportedChecks.add(tick);
-    while (this.reportedChecks.size > CHECK_HISTORY_LIMIT) this.reportedChecks.delete(this.reportedChecks.values().next().value!);
-    this.sender.send({ type: "desync", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick, checksum: own });
+    return this.synchronization.syncSnapshot();
   }
 
   /** Capture checks after a completed tick, never from a mutable queued reference. */
   checkState(state: SimState, force = false): void {
-    if (!force && state.tick % STATE_CHECK_INTERVAL !== 0 && state.result === "playing") return;
-    if (this.statusValue === "ended" || this.checks.has(state.tick)) return;
-    const checksum = stateChecksum(state);
-    this.checks.set(state.tick, checksum);
-    this.trimChecks(this.checks);
-    if (this.role === "host") this.broadcast({ type: "state-check", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick, checksum });
-    else this.compareCheck(state.tick);
-  }
-
-  private failSynchronization(): void {
-    this.synchronizationNotice = "Synchronization failed. Reload all players before starting another match.";
-    if (this.role === "host") this.broadcast({ type: "ended", reason: "synchronization_failed" });
-    this.end();
+    this.synchronization.checkState(state, force);
   }
 
   canAdvance(state: SimState): boolean {
@@ -562,18 +359,8 @@ export class MultiplayerSession {
     if (this.role === "host") return true;
     const nextTick = state.tick + 1;
     if (this.frames.has(nextTick)) return true;
-    if ([...this.frames.keys()].some((tick) => tick > nextTick)) this.requestResync();
+    if ([...this.frames.keys()].some((tick) => tick > nextTick)) this.synchronization.requestResync();
     return false;
-  }
-
-  private requestResync(): void {
-    if (this.role !== "guest" || this.resyncRequested) return;
-    this.resyncRequested = true;
-    try {
-      this.sender.send({ type: "resume" });
-    } catch {
-      this.resyncRequested = false;
-    }
   }
 
   queuedFramesCount(state: SimState): number {
@@ -610,7 +397,7 @@ export class MultiplayerSession {
     if (this.statusValue === "ended") return;
     if (this.role === "host") this.broadcast({ type: "ended" });
     this.statusValue = "ended";
-    this.stopLatencyProbes(false);
+    this.latency.stop(false);
     this.publish();
   }
 }

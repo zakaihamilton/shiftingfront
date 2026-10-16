@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { joinRoom } from "@/lib/multiplayer/server/rooms";
 import { multiplayerFailureResponse } from "@/lib/multiplayer/server/response";
 import { multiplayerRateLimitResponse } from "@/lib/multiplayer/server/rateLimit";
+import { isJsonObject, multiplayerJsonRequestError, readMultiplayerJsonRequest } from "@/lib/multiplayer/server/request";
 
 export const runtime = "nodejs";
 
@@ -10,14 +11,11 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   try {
-    let body: { code?: unknown };
-    try {
-      body = await request.json() as { code?: unknown };
-    } catch {
-      return NextResponse.json({ error: "invalid_request" }, { status: 400, headers: { "Cache-Control": "no-store" } });
-    }
+    const parsed = await readMultiplayerJsonRequest(request);
+    if (!parsed.ok) return multiplayerJsonRequestError(parsed.reason);
+    if (!isJsonObject(parsed.value)) return multiplayerJsonRequestError("invalid_request");
 
-    const room = await joinRoom(body.code);
+    const room = await joinRoom(parsed.value.code);
     return NextResponse.json(room, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return multiplayerFailureResponse(error);

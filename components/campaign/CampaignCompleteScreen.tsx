@@ -15,7 +15,7 @@ import { formatSeed } from "@/lib/seed/rng";
 import { APP_NAME } from "@/lib/site";
 import { objectivePriorityFor } from "@/lib/sim/objectives";
 import { createMission } from "@/lib/sim/api";
-import { briefingPath } from "@/lib/navigation/routes";
+import { briefingPath, replayBriefingPath } from "@/lib/navigation/routes";
 import styles from "./CampaignCompleteScreen.module.css";
 import { campaignSummary, missionUnlocks } from "./campaignSummary";
 import { CampaignMissionQueue } from "./CampaignMissionQueue";
@@ -55,8 +55,10 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [router]);
 
-  const launchMission = (missionIndex: number) => {
-    router.push(briefingPath(seed, missionIndex, false, "campaign"));
+  const launchMission = (missionIndex: number, replay = false) => {
+    router.push(replay
+      ? replayBriefingPath(seed, missionIndex, "campaign")
+      : briefingPath(seed, missionIndex, false, "campaign"));
   };
   const selectedMission = campaign.missions[selectedMissionIndex];
   const selectedMissionComplete = selectedMission
@@ -107,7 +109,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
       unlocks={selectedUnlocks}
       launchLabel={selectedLaunchLabel}
       finale={finale}
-      onLaunch={() => launchMission(selectedMission.index)}
+      onLaunch={() => launchMission(selectedMission.index, selectedMissionComplete)}
     />
   ) : null;
 

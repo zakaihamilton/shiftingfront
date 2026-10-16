@@ -42,6 +42,7 @@ export function GamePlayField({
       levelCount={state.multiplayer ? 1 : campaign.missions.length}
       missionName={state.missionName}
       objective={status.objective}
+      survivalObjective={status.survivalObjective}
       profileLabel={tutorial ? undefined : status.profileLabel}
       doctrineHints={tutorial ? undefined : status.doctrineHints}
       timeRemaining={tutorial ? undefined : status.timeRemaining}

@@ -4,8 +4,8 @@ Thank you for your interest in contributing to **Shifting Front**!
 
 ## Environment Prerequisites
 
-- **Node.js**: `>=22.22.2` (use `nvm use 22.22.2` if installed via NVM)
-- **Yarn**: `1.22.22`
+- **Node.js**: `24.22.0` from `.nvmrc` (the supported range is Node 24, as declared in `package.json`; run `nvm use` to select the pinned version)
+- **pnpm**: `10.33.0` (pinned in `package.json`)
 
 ## Development Workflow
 
@@ -14,13 +14,13 @@ Thank you for your interest in contributing to **Shifting Front**!
    ```bash
    git clone https://github.com/zakaihamilton/shiftingfront.git
    cd shiftingfront
-   yarn install --frozen-lockfile
+   pnpm install --frozen-lockfile
    ```
 
 2. Start the development server:
 
    ```bash
-   yarn dev
+   pnpm dev
    ```
 
    Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -33,29 +33,29 @@ Before submitting a Pull Request, ensure that all quality gates pass cleanly:
 # Recommended local pre-push check (typecheck, lint, fast tests).
 # verify:fast is not a substitute for health:invariants or health:balance
 # when changing the commander, maps, or DEFAULT_BALANCE_THRESHOLDS.
-yarn verify:fast
+pnpm verify:fast
 
 # Determinism & simulation invariants
-yarn health:invariants
+pnpm health:invariants
 
 # Dead code analysis
-yarn health:dead-code
+pnpm health:dead-code
 
 # Markdown documentation linting
-yarn health:documentation
+pnpm health:documentation
 
 # Dependency vulnerability audit
-yarn health:audit
+pnpm health:audit
 
 # Visual regression tests
-yarn test:visual
+pnpm test:visual
 
-# CI also runs yarn health:performance. Simulation p95 stays 25 ms; p99 is
+# CI also runs pnpm health:performance. Simulation p95 stays 25 ms; p99 is
 # 25 ms locally and 40 ms on GitHub-hosted 2-vCPU runners after warmup.
-yarn health:performance
+pnpm health:performance
 
 # Full Next.js production build
-yarn build
+pnpm build
 ```
 
 ## Reporting issues

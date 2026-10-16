@@ -23,7 +23,7 @@ import { useBriefingTypewriter } from "./useBriefingTypewriter";
 import type { NavigationOrigin } from "@/lib/navigation/routes";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 
-export function BriefingScreen({ seed, mission, returnToGame = false, origin = "menu" }: { seed: number; mission: number; returnToGame?: boolean; origin?: NavigationOrigin }) {
+export function BriefingScreen({ seed, mission, returnToGame = false, replay = false, origin = "menu" }: { seed: number; mission: number; returnToGame?: boolean; replay?: boolean; origin?: NavigationOrigin }) {
   const progress = useCampaignProgress(seed);
   const campaign = useMemo(() => createCampaign(seed, progress.gameplayRulesVersion), [seed, progress.gameplayRulesVersion]);
   const def = campaign.missions[mission];
@@ -57,6 +57,7 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
         : origin === "result"
           ? "Back to result"
           : "Back to menu";
+  const completedReplay = replay && progress.completedMissions.includes(mission);
 
   if (!def) {
     return (
@@ -65,7 +66,7 @@ export function BriefingScreen({ seed, mission, returnToGame = false, origin = "
       </ConsoleNotice>
     );
   }
-  if (!returnToGame && mission > progress.unlockedMission) {
+  if (!returnToGame && !completedReplay && mission > progress.unlockedMission) {
     return (
       <ConsoleNotice
         eyebrow="Operation sealed"

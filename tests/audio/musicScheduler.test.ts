@@ -91,6 +91,7 @@ function createMockAudioContext(currentTime = 0) {
     buffer: null,
     connect: vi.fn(),
     disconnect: vi.fn(),
+    setPeriodicWave: vi.fn(),
     start: vi.fn(),
     stop: vi.fn(),
   });
@@ -101,6 +102,7 @@ function createMockAudioContext(currentTime = 0) {
     createGain: () => node(),
     createBiquadFilter: () => node(),
     createOscillator: () => node(),
+    createPeriodicWave: (real: Float32Array, imag: Float32Array) => ({ real, imag }) as unknown as PeriodicWave,
     createBufferSource: () => node(),
     createWaveShaper: () => node(),
     createDelay: () => node(),

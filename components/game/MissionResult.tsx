@@ -96,7 +96,7 @@ export function MissionResult({
             </dl>
           </aside>
         </header>
-        <div className={styles.resultGrid} role="region" aria-label="Mission results" tabIndex={0}>
+        <div className={styles.resultGrid} role="region" aria-label="Mission results">
           <MissionOutcome debrief={debrief} draw={draw} />
           <MissionBattleRecord debrief={debrief} multiplayer={state.multiplayer === true} />
           <MissionForceDisposition debrief={debrief} multiplayer={state.multiplayer === true} />

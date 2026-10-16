@@ -349,6 +349,47 @@ describe("game lifecycle hooks", () => {
     expect(router.push).toHaveBeenCalledWith("/tutorial");
   });
 
+  it("allows replay after a terminal autosave conflict", async () => {
+    const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+    state.result = "won";
+    const saveSession = {
+      write: vi.fn(() => Promise.resolve("conflict" as const)),
+      adoptCurrent: vi.fn(),
+      markExternalChange: vi.fn(),
+    };
+    const onSaveError = vi.fn();
+    const { result } = renderHook(() => useMissionRoutes({
+      stateRef: { current: state },
+      saveSession,
+      onSaveError,
+    }));
+
+    act(() => result.current.goRetry());
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/briefing?seed=0421&mission=0&from=result&replay=1"));
+
+    expect(saveSession.write).toHaveBeenCalledWith(state, "implicit");
+    expect(onSaveError).not.toHaveBeenCalled();
+  });
+
+  it("keeps the failed-mission primary action available after a save conflict", async () => {
+    const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+    state.result = "lost";
+    const onSaveError = vi.fn();
+    const { result } = renderHook(() => useMissionRoutes({
+      stateRef: { current: state },
+      saveSession: {
+        write: vi.fn(() => Promise.resolve("conflict" as const)),
+        adoptCurrent: vi.fn(),
+        markExternalChange: vi.fn(),
+      },
+      onSaveError,
+    }));
+
+    act(() => result.current.resultPrimary());
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/briefing?seed=0421&mission=0&from=result&replay=1"));
+    expect(onSaveError).not.toHaveBeenCalled();
+  });
+
   it("opens save and load slot panels and restores a named slot in place", () => {
     const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     const stateRef = { current: state };

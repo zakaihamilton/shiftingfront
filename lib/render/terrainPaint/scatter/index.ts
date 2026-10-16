@@ -2,7 +2,14 @@ import { TILE_H } from "../../../iso";
 import { terrainFeatureAt, type TerrainFeatureSample } from "../../../gen/map";
 import type { BiomeName, SurfaceKind } from "../../../types";
 import { biomeMaterials } from "../../terrainAtlas";
-import { mixRgb, propMaterialsFor, terrainVisualTuningFor, type BiomeMaterials } from "../../terrainMaterials";
+import {
+  artSalt,
+  mixRgb,
+  propMaterialsFor,
+  terrainRegionMaterialsFor,
+  terrainVisualTuningFor,
+  type BiomeMaterials,
+} from "../../terrainMaterials";
 import { terrainPropLightGain } from "../../terrainLighting";
 import type { ScatterItem, ScatterWorld } from "./types";
 import { scatterForTile } from "./distribution";
@@ -133,7 +140,13 @@ export function drawTerrainScatter(
   if (items.length === 0) return;
   const feature = terrainFeatureAt(state, x, y);
   const mats = featurePropMaterials(
-    propMaterialsFor(biomeMaterials(state.biome), terrainVisualTuningFor(state.biome)),
+    terrainRegionMaterialsFor(
+      propMaterialsFor(biomeMaterials(state.biome), terrainVisualTuningFor(state.biome)),
+      state.biome,
+      x,
+      y,
+      artSalt(state),
+    ),
     feature,
   );
   ctx.save();

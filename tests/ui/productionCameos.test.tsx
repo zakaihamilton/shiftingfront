@@ -29,6 +29,109 @@ describe("production cameo availability", () => {
     expect(productionBlockerText(state, "tank", -1, producer)).toBe("Need 425 more credits · Restore power");
   });
 
+  it("uses the first actionable compact blocker while preserving all full reasons", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    state.credits[0] = 0;
+    render(
+      <ProductionCameos
+        state={state}
+        palette={state.factions[0].palette}
+        profile={generateVisualProfile(state.seed, 0)}
+        power={-1}
+        availableProducer={() => undefined}
+        onQueueUnit={vi.fn()}
+        onCancelUnit={vi.fn()}
+      />,
+    );
+
+    const tank = screen.getByRole("button", { name: /Tank, 425 credits/ });
+    expect(screen.getByTestId("cameo-status-tank")).toHaveTextContent("Needs plant");
+    expect(tank).toHaveAttribute("aria-label", expect.stringContaining("Build a Vehicle Plant"));
+    expect(tank).toHaveAttribute("aria-label", expect.stringContaining("Need 425 more credits"));
+    expect(tank).toHaveAttribute("aria-label", expect.stringContaining("Restore power"));
+    expect(tank.parentElement).toHaveAttribute(
+      "data-tooltip",
+      expect.stringContaining("Build a Vehicle Plant\nNeed 425 more credits\nRestore power"),
+    );
+  });
+
+  it("summarizes a producer still under construction", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    addBuilding(state, 0, "factory", 4, 4, 20);
+    render(
+      <ProductionCameos
+        state={state}
+        palette={state.factions[0].palette}
+        profile={generateVisualProfile(state.seed, 0)}
+        power={0}
+        availableProducer={() => undefined}
+        onQueueUnit={vi.fn()}
+        onCancelUnit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("cameo-status-tank")).toHaveTextContent("Finish plant");
+  });
+
+  it("summarizes a full producer queue and prioritizes credits over power", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    addBuilding(state, 0, "factory", 4, 4);
+    const producer = state.entities.find((entity) => entity.kind === "factory");
+    state.credits[0] = 0;
+    render(
+      <ProductionCameos
+        state={state}
+        palette={state.factions[0].palette}
+        profile={generateVisualProfile(state.seed, 0)}
+        power={-1}
+        availableProducer={() => producer}
+        onQueueUnit={vi.fn()}
+        onCancelUnit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("cameo-status-tank")).toHaveTextContent("Need 425 cr");
+  });
+
+  it("summarizes a power-only blocker", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    addBuilding(state, 0, "factory", 4, 4);
+    const producer = state.entities.find((entity) => entity.kind === "factory");
+    render(
+      <ProductionCameos
+        state={state}
+        palette={state.factions[0].palette}
+        profile={generateVisualProfile(state.seed, 0)}
+        power={-1}
+        availableProducer={() => producer}
+        onQueueUnit={vi.fn()}
+        onCancelUnit={vi.fn()}
+      />,
+    );
+
+    const tank = screen.getByRole("button", { name: /Tank, 425 credits/ });
+    expect(screen.getByTestId("cameo-status-tank")).toHaveTextContent("Low power");
+    expect(tank).toHaveAttribute("aria-label", expect.stringContaining("Restore power"));
+  });
+
+  it("summarizes a producer at capacity", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    addBuilding(state, 0, "factory", 4, 4);
+    render(
+      <ProductionCameos
+        state={state}
+        palette={state.factions[0].palette}
+        profile={generateVisualProfile(state.seed, 0)}
+        power={0}
+        availableProducer={() => undefined}
+        onQueueUnit={vi.fn()}
+        onCancelUnit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("cameo-status-tank")).toHaveTextContent("Slot busy");
+  });
+
   it("keeps unavailable units visible and puts the next step in the tooltip", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     render(
@@ -50,7 +153,7 @@ describe("production cameo availability", () => {
     expect(tank).toHaveAttribute("aria-keyshortcuts", "Alt+4");
   });
 
-  it("reserves the training detail row before a unit is queued", () => {
+  it("shows tactical role details before a unit is queued", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     render(
       <ProductionCameos
@@ -68,7 +171,11 @@ describe("production cameo availability", () => {
     const detail = infantry.querySelector('[class*="detail"]');
 
     expect(detail).toBeInTheDocument();
-    expect(detail?.textContent).toBe("\u00a0");
+    expect(detail?.textContent).toBe("Line infantry · effective vs light units");
+
+    const antiArmor = screen.getByRole("button", { name: /Anti-armor, 160 credits/ });
+    expect(antiArmor.querySelector('[class*="detail"]')?.textContent)
+      .toBe("Rocket launcher · effective vs heavy armor");
   });
 
   it("shows Option labels for cameo shortcuts on Mac", () => {

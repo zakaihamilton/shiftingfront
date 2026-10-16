@@ -15,21 +15,21 @@ Shifting Front is a Next.js 16 + React 19 browser RTS game (Canvas 2D). Campaign
 When adding or modifying units, always read and follow
 [`docs/adding-new-units.md`](docs/adding-new-units.md) before making changes.
 
-Yarn 1.22.22 is preinstalled. `jsdom@30` requires Node `^22.22.2`; nvm provides it at `$HOME/.nvm/versions/node/v22.22.2`. If `node -v` is older (the default PATH can expose 22.14.0 first), prepend that nvm bin directory before any `yarn` command.
+pnpm 10.33.0 is pinned in `package.json`. Use Node `24.22.0` from `.nvmrc`; `package.json` supports Node `>=24.0.0 <25`. If Node 24.22.0 is installed through nvm, run `nvm use` before any `pnpm` command. The lockfile currently resolves `jsdom@26.1.0`.
 
-Environment install is `yarn install --frozen-lockfile` plus `yarn playwright install --with-deps chromium webkit`. Start launches `yarn dev --hostname 0.0.0.0 --port 3000`; do not reinstall dependencies in start.
+Environment install is `pnpm install --frozen-lockfile` plus `pnpm exec playwright install --with-deps chromium webkit`. Start launches `pnpm dev --hostname 0.0.0.0 --port 3000`; do not reinstall dependencies in start.
 
 Standard commands (defined in `package.json`, don't duplicate — reference there):
 
-- `yarn dev` — Next.js dev server on port 3000 (this is the app; run it to test the UI).
-- `yarn test` — Vitest unit suite, headless, no browser needed (hundreds of tests; check the run output for the current count).
-- `yarn build` — production build.
-- `yarn test:e2e` — Playwright. Its `webServer` runs `yarn build && PORT=3100 ... yarn start`, so it builds and serves its own production server on port 3100 (independent of the port-3000 dev server); it needs the Chromium installed during environment install.
-- `yarn inspect <seed>` / `yarn sim --seed <seed> --mission <n> --ticks <n>` — headless CLIs via `tsx`.
+- `pnpm dev` — Next.js dev server on port 3000 (this is the app; run it to test the UI).
+- `pnpm test` — Vitest unit suite, headless, no browser needed (hundreds of tests; check the run output for the current count).
+- `pnpm build` — production build.
+- `pnpm test:e2e` — Playwright. Its `webServer` runs `pnpm build && PORT=3100 ... pnpm start`, so it builds and serves its own production server on port 3100 (independent of the port-3000 dev server); it needs the Chromium installed during environment install.
+- `pnpm inspect <seed>` / `pnpm sim --seed <seed> --mission <n> --ticks <n>` — headless CLIs via `tsx`.
 
 Non-obvious caveats:
 
-- `yarn lint` is clean on a checkout.
+- `pnpm lint` is clean on a checkout.
 - Welcome **TUTORIAL** opens `/tutorial` on seed `0000` with no time limit. Briefing/play smoke tests in `tests/e2e/smoke.spec.ts` launch a campaign from New Game → briefing; a separate smoke case covers menu → **TUTORIAL** → Exit Training → menu.
 - To manually reach the battlefield: New Game → enter a seed (or use ROLL) → Launch → briefing → Launch. The seed field is split into individual digit inputs, so ROLL is the most reliable way to seed it in automated/browser testing.
 - Open the Cloud Agent browser at `http://localhost:3000` (not `http://127.0.0.1:3000`). Next.js HMR origin checks can leave 127.0.0.1 unhydrated.

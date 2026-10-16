@@ -222,6 +222,7 @@ describe("CampaignArchiveScreen", () => {
 
     render(<CampaignArchiveScreen />);
     const file = new File([raw!], "portable.json", { type: "application/json" });
+    Object.defineProperty(file, "text", { value: async () => raw });
     fireEvent.change(screen.getByLabelText("Import named save slot JSON"), { target: { files: [file] } });
 
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Imported save as a new named slot."));
@@ -251,6 +252,17 @@ describe("BriefingScreen", () => {
     expect(screen.queryByText("Tactical profile")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Launch" }));
     expect(router.push).toHaveBeenCalledWith("/play?seed=0421&mission=0&fresh=1");
+  });
+
+  it("does not let a replay URL unlock an incomplete mission", () => {
+    const progress = freshCampaignProgress(421);
+    progress.unlockedMission = 0;
+    progress.completedMissions = [];
+    writeCampaignProgress(localStorageAdapter(), progress);
+
+    render(<BriefingScreen seed={421} mission={1} replay />);
+
+    expect(screen.getByText(/Mission locked/)).toBeVisible();
   });
 });
 
@@ -296,7 +308,7 @@ describe("CampaignCompleteScreen", () => {
     expect(router.push).toHaveBeenCalledWith("/briefing?seed=0421&mission=1&from=campaign");
     fireEvent.click(screen.getByTestId("mission-card-0"));
     fireEvent.click(screen.getByTestId("launch-selected-mission"));
-    expect(router.push).toHaveBeenCalledWith("/briefing?seed=0421&mission=0&from=campaign");
+    expect(router.push).toHaveBeenCalledWith("/briefing?seed=0421&mission=0&from=campaign&replay=1");
   });
 
   it("deploys the first operation to briefing without training", () => {

@@ -15,6 +15,7 @@ import type {
   MusicWaveformName,
 } from "./musicState";
 import { noiseBuf, setNoiseBuf } from "./musicState";
+import { cinematicWave } from "./cinematicWaves";
 
 export type { AudioGraphContext, MusicGraph, PatternIndex };
 
@@ -202,12 +203,12 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
 
   const bassDuck = createBus(audio, master, 1);
   const bassBus = createBus(audio, bassDuck, 0.94);
-  const rhythmBus = createBus(audio, master, 0.76);
-  const harmonyBus = createBus(audio, master, 0.72);
-  const pulseBus = createBus(audio, master, 0.74);
-  const leadBus = createBus(audio, master, 0.8);
-  const counterBus = createBus(audio, master, 0.38);
-  const fxBus = createBus(audio, master, 0.34);
+  const rhythmBus = createBus(audio, master, 0.62);
+  const harmonyBus = createBus(audio, master, 0.82);
+  const pulseBus = createBus(audio, master, 0.56);
+  const leadBus = createBus(audio, master, 0.94);
+  const counterBus = createBus(audio, master, 0.28);
+  const fxBus = createBus(audio, master, 0.2);
 
   const reverb = audio.createConvolver();
   const reverbFilter = audio.createBiquadFilter();
@@ -215,7 +216,7 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   const reverbWet = audio.createGain();
   reverb.buffer = createImpulseResponse(audio, p.style.reverbSeconds, p.style.reverbDecay);
   reverbFilter.type = "lowpass";
-  reverbFilter.frequency.setValueAtTime(Math.min(5600, Math.max(1800, p.cutoff * 2.8)), now);
+  reverbFilter.frequency.setValueAtTime(Math.min(4000, Math.max(1400, p.cutoff * 2.6)), now);
   reverbFilter.Q.setValueAtTime(0.32, now);
   reverbSend.gain.setValueAtTime(p.style.reverbSend, now);
   reverbWet.gain.setValueAtTime(p.style.reverbWet, now);
@@ -230,7 +231,7 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   const delayFeedback = audio.createGain();
   const delayWet = audio.createGain();
   delayFilter.type = "lowpass";
-  delayFilter.frequency.setValueAtTime(Math.min(5200, Math.max(1600, p.cutoff * 2.4)), now);
+  delayFilter.frequency.setValueAtTime(Math.min(3_800, Math.max(1_300, p.cutoff * 2.2)), now);
   delayFilter.Q.setValueAtTime(0.42, now);
   delayFeedback.gain.setValueAtTime(p.style.delayFeedback, now);
   delayWet.gain.setValueAtTime(p.style.delayWet, now);
@@ -274,16 +275,11 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   padGain.gain.setValueAtTime(PAD_GAIN, now);
   padGate.gain.setValueAtTime(0.02, now);
   padReverbGate.gain.setValueAtTime(0.02, now);
-  padOscA.type = p.style.padType;
-  padOscB.type = p.style.padType;
-  padOscC.type = p.style.padType;
-  padOscD.type = p.style.padType;
-  const padWaveform = waveforms.warm;
-  if (padWaveform) {
-    for (const oscillator of [padOscA, padOscB, padOscC, padOscD]) {
-      if (typeof oscillator.setPeriodicWave === "function") oscillator.setPeriodicWave(padWaveform);
-    }
-  }
+  const padWave = cinematicWave(audio, "pad");
+  padOscA.setPeriodicWave(padWave);
+  padOscB.setPeriodicWave(padWave);
+  padOscC.setPeriodicWave(padWave);
+  padOscD.setPeriodicWave(padWave);
   padOscA.frequency.setValueAtTime(p.padRoot[0] ?? p.rootHz, now);
   padOscB.frequency.setValueAtTime((p.padThird[0] ?? (p.padRoot[0] ?? p.rootHz) * 1.25) * 1.002, now);
   padOscC.frequency.setValueAtTime((p.padFifth[0] ?? p.rootHz * 1.5) * 0.998, now);

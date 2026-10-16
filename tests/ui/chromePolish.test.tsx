@@ -84,6 +84,27 @@ describe("product chrome", () => {
     expect(screen.getByTestId("mission-phase")).toHaveTextContent("Extraction phase");
   });
 
+  it("shows survival time as neutral progress instead of a critical deadline", () => {
+    render(
+      <BattlefieldHud
+        seed={421}
+        levelNumber={1}
+        levelCount={6}
+        missionName="Hold the Line"
+        objective="Hold the line"
+        survivalObjective
+        timeRemainingTicks={9 * 12}
+        timeLimitTicks={10 * 60 * 12}
+      />,
+    );
+
+    const timer = screen.getByTestId("time-remaining");
+    expect(timer).toHaveAttribute("data-urgency", "normal");
+    expect(timer).toHaveTextContent("Hold for 00:09");
+    expect(timer).toHaveAttribute("data-tooltip", "Survive until the timer reaches 00:00 to complete the primary objective.");
+    expect(timer.querySelector('[aria-hidden="true"] span')).toHaveStyle({ width: "99%" });
+  });
+
   it("renders the primary progress counter only once in the mission directive", () => {
     const state = makeFixture({ win: { kind: "harvestQuota", target: 2 } });
     render(

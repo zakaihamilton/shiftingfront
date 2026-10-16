@@ -10,7 +10,7 @@ import type { SceneryWorld } from "../gen/map";
 export const hash2 = hashNoise;
 
 export const ATLAS_CELL = 8;
-export const TERRAIN_ATLAS_REV = "world-atlas-v21-no-feature-boundaries";
+export const TERRAIN_ATLAS_REV = "world-atlas-v22-regional-color-drift";
 export const CONCRETE_STEEL = { r: 89, g: 104, b: 117 };
 export const CONCRETE_STEEL_LIGHT = { r: 154, g: 171, b: 186 };
 export const CONCRETE_STEEL_DARK = { r: 38, g: 50, b: 61 };
@@ -287,7 +287,7 @@ export function fbm(x: number, y: number, salt: number): number {
   return valueNoise(x, y, salt) * 0.55 + valueNoise(x * 2, y * 2, salt + 17) * 0.3 + valueNoise(x * 4, y * 4, salt + 31) * 0.15;
 }
 
-export function artSalt(state: AtlasWorld): number {
+export function artSalt(state: Pick<AtlasWorld, "seed" | "missionIndex">): number {
   return mixSeed(state.seed, `terrain-art:${state.missionIndex ?? 0}`) || 1;
 }
 
@@ -395,6 +395,50 @@ export function propMaterialsFor(mats: BiomeMaterials, tuning?: TerrainVisualTun
   byContrast.set(cacheKey, muted);
   propMaterialMemo.set(mats, byContrast);
   return muted;
+}
+
+/**
+ * Give ground details the local color character of the terrain beneath them.
+ * The broad fields keep color changes coherent across neighboring tiles, and
+ * the smaller field adds enough drift that large areas do not share one tint.
+ */
+export function terrainRegionMaterialsFor(
+  mats: BiomeMaterials,
+  biome: BiomeName,
+  x: number,
+  y: number,
+  salt: number,
+): BiomeMaterials {
+  const tuning = terrainVisualTuningFor(biome);
+  const broad = fbm(x * tuning.macroScale * 0.38, y * tuning.macroScale * 0.38, salt + 641);
+  const local = fbm(x * tuning.macroScale * 0.92, y * tuning.macroScale * 0.92, salt + 683);
+  const region = broad * 0.62 + local * 0.38;
+  const tileGrain = hash2(x, y, salt + 719);
+  const pigmentBlend = Math.max(0, Math.min(1, (region + (tileGrain - 0.5) * 0.12 - 0.16) / 0.68));
+  const pigment = mixRgb(mats.patchB, mats.patchA, pigmentBlend * pigmentBlend * (3 - 2 * pigmentBlend));
+  const strength = 0.09 + Math.abs(region - 0.5) * 0.2 + Math.abs(tileGrain - 0.5) * 0.06 + tuning.macroStrength * 0.05;
+  const brightness = 0.93 + broad * 0.1 + tileGrain * 0.04;
+  const shift = (color: Rgb, tintAmount = 1): Rgb =>
+    mixRgb(scaleRgb(color, brightness), pigment, strength * tintAmount);
+
+  return {
+    ...mats,
+    low: shift(mats.low, 0.62),
+    mid: shift(mats.mid, 0.78),
+    high: shift(mats.high, 0.64),
+    light: shift(mats.light, 0.42),
+    dark: shift(mats.dark, 0.38),
+    waterDeep: shift(mats.waterDeep, 0.3),
+    waterMid: shift(mats.waterMid, 0.42),
+    waterHi: shift(mats.waterHi, 0.3),
+    shore: shift(mats.shore, 0.62),
+    road: shift(mats.road, 0.42),
+    concrete: shift(mats.concrete, 0.28),
+    ore: shift(mats.ore, 0.24),
+    blocked: shift(mats.blocked, 0.72),
+    patchA: shift(mats.patchA, 0.38),
+    patchB: shift(mats.patchB, 0.38),
+  };
 }
 
 export function terrainColors(biome: BiomeName): {

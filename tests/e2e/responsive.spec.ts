@@ -486,6 +486,7 @@ test.describe("short-height layouts", () => {
   test("keeps battlefield pause controls usable at 1280x600", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 600 });
     await page.goto("/play?seed=0421&mission=0");
+    await waitForBattlefield(page);
     await expect(page.getByTestId("command-sidebar")).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
@@ -705,6 +706,7 @@ test.describe("mobile-first layouts", () => {
     test(`keeps the battlefield usable at ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await page.goto("/play?seed=0421&mission=0");
+      await waitForBattlefield(page);
       await expect(page.getByTestId("battlefield-canvas")).toBeVisible();
       await expectNoHorizontalOverflow(page);
 
@@ -898,6 +900,7 @@ test.describe("mobile-first layouts", () => {
   test("keeps the compact mobile launcher focused on commands", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/play?seed=0421&mission=0");
+    await waitForBattlefield(page);
 
     await expect(page.getByTestId("mobile-pause")).toHaveCount(0);
     await expect(page.getByTestId("mobile-command-launcher")).toBeVisible();

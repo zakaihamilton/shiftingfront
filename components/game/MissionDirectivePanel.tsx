@@ -8,6 +8,7 @@ import styles from "./Battlefield.module.css";
 
 export function MissionDirectivePanel({
   objective,
+  survivalObjective,
   doctrineHints,
   timeRemaining,
   convoyDeparture,
@@ -22,7 +23,9 @@ export function MissionDirectivePanel({
   const fullscreen = useFullscreen();
   const [directiveExpanded, setDirectiveExpanded] = useState(false);
   const timerRatio = timeLimitTicks && timeRemainingTicks !== undefined
-    ? Math.max(0, Math.min(1, timeRemainingTicks / timeLimitTicks))
+    ? Math.max(0, Math.min(1, survivalObjective
+      ? (timeLimitTicks - timeRemainingTicks) / timeLimitTicks
+      : timeRemainingTicks / timeLimitTicks))
     : undefined;
   const timerGlyph = urgency === "critical" ? "‼" : urgency === "urgent" ? "!" : urgency === "watch" ? "◒" : "◷";
   const timerLabel = urgency === "critical" ? "Critical deadline"
@@ -31,7 +34,12 @@ export function MissionDirectivePanel({
         : "Time remaining";
   const timerValue = timeRemaining?.replace(/^Time remaining\s*/, "")
     ?? (timeRemainingTicks === undefined ? "" : formatMissionClockFromTicks(Math.max(0, timeRemainingTicks)));
-  const timerText = urgency === "normal" ? `Time remaining ${timerValue}` : `Time remaining ${timerValue} · ${timerLabel}`;
+  const timerText = survivalObjective
+    ? `Hold for ${timerValue}`
+    : urgency === "normal" ? `Time remaining ${timerValue}` : `Time remaining ${timerValue} · ${timerLabel}`;
+  const timerTooltip = survivalObjective
+    ? "Survive until the timer reaches 00:00 to complete the primary objective."
+    : "Time left to complete the primary objective. The mission fails at 00:00.";
   const toggleDirective = () => {
     triggerHaptic("tap");
     setDirectiveExpanded((expanded) => !expanded);
@@ -41,7 +49,7 @@ export function MissionDirectivePanel({
   // clock only while the objective details that already contain it are hidden.
   const showTimerReadout = timeRemaining !== undefined || (!directiveExpanded && timeRemainingTicks !== undefined);
   const timerReadout = showTimerReadout ? (
-    <div className={styles.timeRemaining} data-testid="time-remaining" data-placement={directiveExpanded ? "body" : "collapsed"} data-urgency={urgency} data-tooltip="Time left to complete the primary objective. The mission fails at 00:00.">
+    <div className={styles.timeRemaining} data-testid="time-remaining" data-placement={directiveExpanded ? "body" : "collapsed"} data-urgency={urgency} data-tooltip={timerTooltip}>
       <span className={styles.timerGlyph} aria-hidden="true">{timerGlyph}</span>
       <span>{timerText}</span>
       {timerRatio !== undefined ? <span className={styles.timerBar} aria-hidden="true"><span style={{ width: `${Math.round(timerRatio * 100)}%` }} /></span> : null}
