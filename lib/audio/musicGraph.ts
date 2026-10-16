@@ -20,7 +20,7 @@ export type { AudioGraphContext, MusicGraph, PatternIndex };
 
 export const SAMPLE_RATE = AUDIO_SAMPLE_RATE;
 export const MASTER_GAIN = 0.082;
-export const PAD_GAIN = 0.09;
+export const PAD_GAIN = 0.05;
 export const DUCK_RATIO = 0.34;
 export const CROSSFADE_S = 0.55;
 export const SCHEDULE_AHEAD_S = 0.22;
@@ -272,8 +272,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   padReverbFilter.frequency.setValueAtTime(Math.min(p.cutoff, 960), now);
   padReverbFilter.Q.setValueAtTime(p.style.padQ, now);
   padGain.gain.setValueAtTime(PAD_GAIN, now);
-  padGate.gain.setValueAtTime(1, now);
-  padReverbGate.gain.setValueAtTime(1, now);
+  padGate.gain.setValueAtTime(0.02, now);
+  padReverbGate.gain.setValueAtTime(0.02, now);
   padOscA.type = p.style.padType;
   padOscB.type = p.style.padType;
   padOscC.type = p.style.padType;

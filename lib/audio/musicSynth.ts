@@ -1,3 +1,4 @@
+import { STEPS_PER_BAR } from "./compose";
 import type { MusicIntensity, MusicPattern, MusicSectionName, MusicStem, MusicVoiceType } from "./compose";
 import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { ATTACK_S, notePan } from "./musicGraph";
@@ -275,19 +276,17 @@ export function schedulePadGate(
 ): void {
   const t = Math.max(time, audio.currentTime);
   const level = value === "critical" ? 1 : value === "engaged" ? 0.82 : 0.7;
-  const sustain = section === "intro" || section === "breakdown";
-  if (sustain) {
-    g.padGate.gain.setTargetAtTime(level * 0.92, t, 0.05);
-    g.padReverbGate.gain.setTargetAtTime(level * 0.92, t, 0.05);
-    return;
-  }
-  if (stepIndex % 2 !== 0) return;
-  const eighth = stepDuration * 2;
+  const sparseSection = section === "intro" || section === "breakdown";
+  const intervalSteps = sparseSection ? STEPS_PER_BAR : STEPS_PER_BAR / 2;
+  if (stepIndex % intervalSteps !== 0) return;
+  const interval = stepDuration * intervalSteps;
+  const pulseLevel = level * (sparseSection ? 0.32 : 0.48);
   for (const gate of [g.padGate, g.padReverbGate]) {
-    gate.gain.setValueAtTime(0.03, t);
-    gate.gain.linearRampToValueAtTime(level, t + Math.max(0.004, stepDuration * 0.08));
-    gate.gain.setValueAtTime(level, t + eighth * 0.42);
-    gate.gain.linearRampToValueAtTime(0.03, t + eighth * 0.9);
+    gate.gain.cancelScheduledValues(t);
+    gate.gain.setValueAtTime(0.02, t);
+    gate.gain.linearRampToValueAtTime(pulseLevel, t + Math.max(0.012, stepDuration * 0.18));
+    gate.gain.setValueAtTime(pulseLevel, t + interval * 0.3);
+    gate.gain.linearRampToValueAtTime(0.02, t + interval * 0.65);
   }
 }
 
