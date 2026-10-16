@@ -117,6 +117,17 @@ function motifFrom(
   };
 }
 
+function transposeMotif(motif: MusicMotif, degreeOffset: number): MusicMotif {
+  const transpose = (degrees: readonly (number | null)[]) =>
+    degrees.map((degree) => degree === null ? null : degree + degreeOffset);
+  return {
+    degrees: transpose(motif.degrees),
+    response: transpose(motif.response),
+    rhythm: [...motif.rhythm],
+    accentSteps: [...motif.accentSteps],
+  };
+}
+
 function signatureMotifFrom(rng: Rng): MusicMotif {
   return motifFrom(rng, SIGNATURE_CONTOURS, SIGNATURE_RHYTHMS);
 }
@@ -269,12 +280,20 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const bassRiffs = bassRiffsFor(style.bassRiffFamily);
   const [bassRiffA, bassRiffB, bassRiffC, bassRiffD] = pickCycle(harmonyRng, bassRiffs);
   const cinematicMaterial = style.voiceEngine === "cinematic";
-  const verseContours = missionPalette?.verseContours ?? (cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS);
-  const verseRhythms = missionPalette?.verseRhythms ?? (cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS);
+  const verseContours = missionPalette
+    ? [...missionPalette.verseContours, ...missionPalette.hookContours]
+    : cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS;
+  const verseRhythms = missionPalette
+    ? [...missionPalette.verseRhythms, ...missionPalette.hookRhythms]
+    : cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS;
   const motif = motifFrom(melodyRng, verseContours, verseRhythms);
-  const developmentMotif = motifFrom(melodyRng, verseContours, verseRhythms, motif);
-  const hook = missionPalette
-    ? motifFrom(melodyRng, missionPalette.hookContours, missionPalette.hookRhythms)
+  // Keep one recognizable mission phrase through the score, changing its
+  // scale-degree center in development and hook sections instead of replacing its shape.
+  const developmentMotif = cue === "mission"
+    ? transposeMotif(motif, 1)
+    : motifFrom(melodyRng, verseContours, verseRhythms, motif);
+  const hook = cue === "mission"
+    ? transposeMotif(motif, 2)
     : cinematicMaterial
       ? motifFrom(melodyRng, CINEMATIC_HOOK_CONTOURS, CINEMATIC_HOOK_RHYTHMS)
       : signatureMotifFrom(melodyRng);
@@ -380,11 +399,9 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     padFifth.push(midiToHz(padVoicing[2]));
     padSeventh.push(midiToHz(padVoicing[3]));
 
-    const pianoSteps = intro
-      ? phraseBar >= 8 && phraseBar % 4 === 0 ? [0] : []
-      : breakdown
-        ? phraseBar % 4 === 0 ? [0] : []
-        : hookSection || section.name === "escalation" ? [0, 8] : [0];
+    const pianoSteps = intro || breakdown
+      ? []
+      : hookSection || section.name === "escalation" ? [0, 8] : [0];
     for (const pianoStep of pianoSteps) {
       placeHarmony(
         notes.harmony,
@@ -399,7 +416,11 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
 
     if (!sparse && !intro && !breakdown && !dropTexture) {
       const guitarSteps = hookSection || section.name === "escalation" ? [1, 5, 9, 13] : [5, 13];
-      const guitarChord = padVoicing.slice(1, 4).map((midi) => midi + 12);
+      const guitarChord = padVoicing.slice(1, 4).map((midi) => {
+        let guitarMidi = midi + 12;
+        while (guitarMidi > 100) guitarMidi -= 12;
+        return guitarMidi;
+      });
       for (const guitarStep of guitarSteps) {
         guitarChord.forEach((midi, chordIndex) => {
           noteEvent(
@@ -612,7 +633,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     hook,
   };
 
-  smoothMelodyLine(notes.melody, cue === "mission" ? { min: 36, max: 100 } : undefined);
+  smoothMelodyLine(notes.melody, cue === "mission" ? { min: 36, max: 100 } : { min: 0, max: 127 });
   notes.counter = notes.counter.filter(
     (note) => !notes.melody.some((lead) => lead.step === note.step && lead.midi === note.midi),
   );
