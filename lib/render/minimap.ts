@@ -11,11 +11,12 @@ import {
 } from "../types";
 import { fogAt } from "../sim/fog";
 import { footprintOf } from "../catalog";
+import { TILE_H, TILE_W } from "../iso";
 import { minimapMapRect } from "./camera";
 import { atlasPixelAtTile, atlasRectForTile, fogTerrainGain, getTerrainAtlas, isTerrainAtlasBaked, terrainColors } from "./terrainAtlas";
 import type { ColorblindMode } from "../persist/settings";
 
-const MINIMAP_RENDER_REV = "world-atlas-v16-isometric-projection";
+const MINIMAP_RENDER_REV = "world-atlas-v17-isometric-projection";
 export const MINIMAP_OVERLAY_TICK_SHIFT = 1;
 const MINIMAP_FOG_COLOR = { r: 7, g: 15, b: 21 };
 const MINIMAP_SAMPLE_WEIGHTS = [1, 2, 3, 4, 3, 2, 1];
@@ -514,8 +515,19 @@ export function minimapViewRect(
   const maxTileX = Math.max(...view.map((point) => point.x));
   const minTileY = Math.min(...view.map((point) => point.y));
   const maxTileY = Math.max(...view.map((point) => point.y));
-  const widthTiles = maxTileX - minTileX;
-  const heightTiles = maxTileY - minTileY;
+  const boundsWidth = maxTileX - minTileX;
+  const boundsHeight = maxTileY - minTileY;
+  // An isometric viewport's axis-aligned map bounds are always square, even
+  // when the visible screen is a wide rectangle. Preserve the visible map
+  // area while giving the radar window the same aspect ratio as the battlefield.
+  const horizontalEdge = Math.hypot(view[1]!.x - view[0]!.x, view[1]!.y - view[0]!.y);
+  const verticalEdge = Math.hypot(view[3]!.x - view[0]!.x, view[3]!.y - view[0]!.y);
+  const viewportAspect = horizontalEdge > 0 && verticalEdge > 0
+    ? (horizontalEdge / verticalEdge) * (TILE_W / TILE_H)
+    : 1;
+  const visibleMapArea = boundsWidth * boundsHeight;
+  const widthTiles = Math.sqrt(visibleMapArea * viewportAspect);
+  const heightTiles = Math.sqrt(visibleMapArea / viewportAspect);
   const width = (widthTiles / mapWidth) * mapRect.width;
   const height = (heightTiles / mapHeight) * mapRect.height;
   const centerTileX = (minTileX + maxTileX) / 2;

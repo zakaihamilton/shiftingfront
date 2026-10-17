@@ -17,7 +17,7 @@ import {
   WATER_COVER,
 } from "../../lib/render/terrainPaint";
 import { hash } from "../../lib/gen/tilePalette";
-import { generateMap, terrainFeatureAt } from "../../lib/gen/map";
+import { MAP_SKIRT, generateMap, terrainFeatureAt } from "../../lib/gen/map";
 import { tileSprite, tileSpriteId } from "../../lib/gen/assets";
 import { TERRAIN_ART } from "../../lib/gen/visualAssets";
 import { generateCampaignVisualProfile } from "../../lib/gen/visualProfile";
@@ -47,6 +47,12 @@ import {
   type TerrainAtlasData,
 } from "../../lib/render/terrainAtlas";
 import {
+  SHORELINE_MAX_DISPLACEMENT,
+  shorelineWarp,
+  signedShoreDistanceFromMask,
+  warpedShoreDistance,
+} from "../../lib/render/terrainAtlasSurfaces";
+import {
   oreGlint,
   oreSparkle,
   paintWaterFx,
@@ -56,6 +62,7 @@ import {
   visibleFxTileCoords,
   waterFxNeedsClip,
 } from "../../lib/render/terrainWeather";
+import { paintTerrainWeather } from "../../lib/render/terrainWeather/weather";
 import {
   drawCactus,
   drawCinder,
@@ -216,6 +223,48 @@ describe("seeded terrain atlas", () => {
     const generated = generateMap(832, { index: 0, win: { kind: "annihilate" }, mapSize: 48, biome: "ash plains" });
     const world = { ...generated, seed: 832, missionIndex: 0 };
     expect(sampleTerrainMaterial(world, 4, 4)).toEqual(sampleTerrainMaterial(world, 4, 4));
+  });
+
+  it("warps the shore deterministically and continuously across water/land seams", () => {
+    const salt = 832;
+    const waterDistance = signedShoreDistanceFromMask(0.99, 0.5, 0xfd, true);
+    const landDistance = signedShoreDistanceFromMask(0.01, 0.5, 0x08, false);
+    const waterEdge = warpedShoreDistance(waterDistance, 0.99, 0.5, salt);
+    const landEdge = warpedShoreDistance(landDistance, 1.01, 0.5, salt);
+    const warp = shorelineWarp(1.25, -0.75, salt);
+
+    expect(waterDistance).toBeCloseTo(0.01, 5);
+    expect(landDistance).toBeCloseTo(-0.01, 5);
+    expect(Math.abs(waterEdge - landEdge)).toBeLessThan(0.05);
+    expect(warp).toBe(shorelineWarp(1.25, -0.75, salt));
+    expect(Math.abs(warp)).toBeLessThanOrEqual(SHORELINE_MAX_DISPLACEMENT);
+    expect(signedShoreDistanceFromMask(0.5, 0.5, 0xff, true)).toBe(8);
+    expect(signedShoreDistanceFromMask(0.5, 0.5, 0, false)).toBe(-8);
+  });
+
+  it("keeps shoreline treatment local and leaves interior water colors unchanged", () => {
+    const nearShore = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed: 832 });
+    const remoteShore = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed: 832 });
+    for (let y = 2; y <= 4; y++) {
+      for (let x = 2; x <= 4; x++) {
+        setTile(nearShore, x, y, TILE_WATER);
+        setTile(remoteShore, x, y, TILE_WATER);
+      }
+      for (let x = 7; x <= 9; x++) setTile(remoteShore, x, y + 5, TILE_WATER);
+    }
+
+    const atlas = bakeTerrainAtlasData(nearShore);
+    const sameSeedAtlas = bakeTerrainAtlasData(nearShore);
+    const movedShoreAtlas = bakeTerrainAtlasData(remoteShore);
+    const atlasCols = atlas.width / ATLAS_CELL;
+    const waterCellIndex = (3 + MAP_SKIRT) * atlasCols + (3 + MAP_SKIRT);
+    const landCellIndex = (5 + MAP_SKIRT) * atlasCols + (5 + MAP_SKIRT);
+
+    expect(atlas.data).toEqual(sameSeedAtlas.data);
+    expect(atlas.waterCells[waterCellIndex]).toBe(1);
+    expect(atlas.waterCells[landCellIndex]).toBe(0);
+    expect(atlasPixelAtTile(atlas, 3, 3)).toEqual(atlasPixelAtTile(movedShoreAtlas, 3, 3));
+    expect(atlasLocalPixel(atlas, 5, 0, 4, 4)).toEqual(atlasLocalPixel(movedShoreAtlas, 5, 0, 4, 4));
   });
 
   it("keeps derived prop materials matte without erasing biome identity", () => {
@@ -773,6 +822,35 @@ describe("terrain weather and water motion", () => {
     expect(weatherParticleAt(832, "glass desert", 4, 1200, 640, 360).rotation).not.toBeNaN();
   });
 
+  it("renders a warm glow for ember weather particles", () => {
+    const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" }, seed: 832 });
+    state.biome = "volcanic shelf";
+    const compositingModes: GlobalCompositeOperation[] = [];
+    const ctx = new Proxy({
+      canvas: { width: 640, height: 360 },
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      ellipse: vi.fn(),
+      fill: vi.fn(),
+      translate: vi.fn(),
+      rotate: vi.fn(),
+      globalAlpha: 1,
+      fillStyle: "",
+      globalCompositeOperation: "source-over",
+    } as unknown as CanvasRenderingContext2D, {
+      set(target, property, value) {
+        if (property === "globalCompositeOperation") compositingModes.push(value as GlobalCompositeOperation);
+        return Reflect.set(target, property, value);
+      },
+    });
+
+    paintTerrainWeather(ctx, state, createCamera(), 0);
+
+    expect(compositingModes).toContain("screen");
+    expect(ctx.ellipse).toHaveBeenCalled();
+  });
+
   it("culls water and ore FX to the visible tile range", () => {
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" }, seed: 832 });
     for (let y = 0; y < state.height; y++) {
@@ -852,7 +930,7 @@ describe("terrain scroll cache key", () => {
     const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" }, seed: 832 });
     const cam = createCamera();
     const a = terrainContentKey(state, cam, 640, 360);
-    expect(a).toContain("world-atlas-v34-isometric-projection");
+    expect(a).toContain("world-atlas-v35-isometric-projection");
     cam.x += 40;
     cam.y -= 18;
     expect(terrainContentKey(state, cam, 640, 360)).toBe(a);
@@ -884,6 +962,7 @@ describe("minimap classification", () => {
     focusCameraAtTile(cam, 24, 24, bounds);
     const viewRect = () => minimapViewRect(cameraViewQuad(cam, 640, 480), 224, 160, 48, 48)!;
     const before = viewRect();
+    expect(before.width / before.height).toBeCloseTo(640 / 480, 5);
 
     panCamera(cam, panInputForDirection("right", 40, cam.zoom), bounds);
 
