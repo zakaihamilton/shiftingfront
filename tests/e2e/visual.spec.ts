@@ -61,26 +61,30 @@ test.describe("visual regression", () => {
   });
 
   test("matches tactical battlefield canvas snapshot on initial deployment", async ({ page }) => {
-    await page.addInitScript(() => {
-      // Keep the simulation and render effects on their initial frame so this
-      // snapshot doesn't depend on startup timing or animated weather.
-      const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
-      window.requestAnimationFrame = (callback) => nativeRequestAnimationFrame(() => callback(0));
-    });
     await page.goto("/play?seed=0421&mission=0");
     const canvas = await waitForBattlefieldCanvas(page);
 
-    // Pause as soon as the battlefield mounts so the initial snapshot does not
-    // depend on how long it takes the renderer to paint its first frame.
+    // Pause before the first mission tick so the initial snapshot stays at the
+    // same simulation state on every runner.
     await page.keyboard.press("Escape");
     const pauseMenu = page.getByTestId("pause-menu");
     await expect(pauseMenu).toBeVisible();
-    await waitForBattlefieldInk(canvas);
     // Keep the game paused and hide only the overlay so the battlefield stays still.
     await pauseMenu.evaluate((element) => {
       (element as HTMLElement).style.visibility = "hidden";
     });
     await expect(pauseMenu).toBeHidden();
+
+    // Redraw once at a fixed render timestamp to pin weather and unit animation
+    // without changing the paused simulation state.
+    await page.evaluate(() => {
+      const fixedTimeMs = 10_000;
+      Object.defineProperty(window.performance, "now", { configurable: true, value: () => fixedTimeMs });
+      const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) => nativeRequestAnimationFrame(() => callback(fixedTimeMs));
+    });
+    await page.evaluate(() => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve())));
+    await waitForBattlefieldInk(canvas);
 
     await expect(canvas).toHaveScreenshot("battlefield-seed-0421-m0.png", {
       maxDiffPixelRatio: 0.05,
