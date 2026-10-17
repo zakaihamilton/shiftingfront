@@ -115,7 +115,7 @@ async function tutorialTargetPoint(
     y: dimensions.height * focusYBias - focusAnchor.y,
     zoom: 1,
   };
-  clampCamera(camera, cameraPanBounds(camera, world.width, world.height, dimensions.width, dimensions.height));
+  clampCamera(camera, cameraPanBounds(world.width, world.height, dimensions.width, dimensions.height));
 
   const targetX = Math.round(target.x);
   const targetY = Math.round(target.y);
@@ -188,7 +188,7 @@ async function battlefieldEntityGeometry(page: Page, state: SimState, entity: En
     y: dimensions.height / 3 - yardAnchor.y,
     zoom: 1,
   };
-  clampCamera(camera, cameraPanBounds(camera, state.width, state.height, dimensions.width, dimensions.height));
+  clampCamera(camera, cameraPanBounds(state.width, state.height, dimensions.width, dimensions.height));
 
   const footprint = isBuildingEntity(entity) ? footprintOf(entity.kind) : undefined;
   const x = footprint ? entity.x + (footprint.w - 1) / 2 : entity.x;

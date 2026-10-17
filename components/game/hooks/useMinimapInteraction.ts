@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState, type RefObject } from "react";
 import {
   cameraPanBounds,
-  clampCamera,
+  focusCameraAtTile,
   minimapPoint,
   MINIMAP_DRAG_THRESHOLD,
-  panCameraByMinimapDelta,
+  panCamera,
 } from "@/lib/render/camera";
-import { tileToScreen, TILE_H, type Camera } from "@/lib/iso";
+import type { Camera } from "@/lib/iso";
 import { heightAt } from "@/lib/sim/world";
 import type { SimState } from "@/lib/types";
 
@@ -56,12 +56,8 @@ export function useMinimapInteraction({
     const point = minimapPointFromEvent(e);
     const tx = Math.max(0, Math.min(s.width - 1, Math.floor(point.x)));
     const ty = Math.max(0, Math.min(s.height - 1, Math.floor(point.y)));
-    const elev = heightAt(s, tx, ty);
-    const anchor = tileToScreen(tx, ty, { x: 0, y: 0, zoom: camRef.current.zoom }, elev);
-    camRef.current.x = canvas.width / 2 - anchor.x;
-    camRef.current.y = canvas.height / 2 - anchor.y - (TILE_H * camRef.current.zoom) / 2;
-    const bounds = cameraPanBounds(camRef.current, s.width, s.height, canvas.width, canvas.height);
-    clampCamera(camRef.current, bounds);
+    const bounds = cameraPanBounds(s.width, s.height, canvas.width, canvas.height);
+    focusCameraAtTile(camRef.current, tx, ty, bounds, { elevation: heightAt(s, tx, ty) });
   }, [cancelCameraFocus, canvasRef, camRef, minimapPointFromEvent, stateRef]);
 
   const onMinimapPointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -94,13 +90,16 @@ export function useMinimapInteraction({
       setIsMinimapDragging(true);
     }
     const point = minimapPointFromEvent(e);
-    const bounds = cameraPanBounds(camRef.current, s.width, s.height, canvas.width, canvas.height);
+    const bounds = cameraPanBounds(s.width, s.height, canvas.width, canvas.height);
     camRef.current.x = drag.startCameraX;
     camRef.current.y = drag.startCameraY;
-    panCameraByMinimapDelta(
+    panCamera(
       camRef.current,
-      point.x - drag.startPointerX,
-      point.y - drag.startPointerY,
+      {
+        space: "map",
+        dx: point.x - drag.startPointerX,
+        dy: point.y - drag.startPointerY,
+      },
       bounds,
     );
   }, [camRef, canvasRef, minimapPointFromEvent, stateRef]);

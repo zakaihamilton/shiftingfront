@@ -11,10 +11,12 @@ import {
 } from "../types";
 import { fogAt } from "../sim/fog";
 import { footprintOf } from "../catalog";
+import { TILE_H, TILE_W } from "../iso";
+import { minimapMapRect } from "./camera";
 import { atlasPixelAtTile, atlasRectForTile, fogTerrainGain, getTerrainAtlas, isTerrainAtlasBaked, terrainColors } from "./terrainAtlas";
 import type { ColorblindMode } from "../persist/settings";
 
-const MINIMAP_RENDER_REV = "world-atlas-v9-incremental-visible-detail";
+const MINIMAP_RENDER_REV = "world-atlas-v17-isometric-projection";
 export const MINIMAP_OVERLAY_TICK_SHIFT = 1;
 const MINIMAP_FOG_COLOR = { r: 7, g: 15, b: 21 };
 const MINIMAP_SAMPLE_WEIGHTS = [1, 2, 3, 4, 3, 2, 1];
@@ -108,6 +110,9 @@ export function invalidateMinimap(): void {
 }
 
 function paintMinimapTerrain(ctx: CanvasRenderingContext2D, state: SimState, w: number, h: number): void {
+  const mapRect = minimapMapRect(w, h, state.width, state.height);
+  const cellW = mapRect.width / state.width;
+  const cellH = mapRect.height / state.height;
   // The full terrain atlas carries the battlefield's per-tile edge shading.
   // Scaling it into the radar makes those seams read as an unintended grid,
   // so sample one interior color per tile and scale a low-resolution raster
@@ -152,16 +157,13 @@ function paintMinimapTerrain(ctx: CanvasRenderingContext2D, state: SimState, w: 
     }
   }
 
-  const colors = terrainColors(state.biome);
-  ctx.fillStyle = colors.low;
+  ctx.fillStyle = `rgb(${MINIMAP_FOG_COLOR.r},${MINIMAP_FOG_COLOR.g},${MINIMAP_FOG_COLOR.b})`;
   ctx.fillRect(0, 0, w, h);
-  const cellW = w / state.width;
-  const cellH = h / state.height;
   for (let y = 0; y < state.height; y++) {
     for (let x = 0; x < state.width; x++) {
       const [r, g, b] = minimapCellColor(atlas, state, x, y);
       ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(x * cellW, y * cellH, cellW, cellH);
+      ctx.fillRect(mapRect.x + x * cellW, mapRect.y + y * cellH, cellW, cellH);
     }
   }
 }
@@ -174,8 +176,9 @@ function paintMinimapVisibleTerrain(
   h: number,
 ): void {
   if (!atlas.canvas) return;
-  const cellW = w / state.width;
-  const cellH = h / state.height;
+  const mapRect = minimapMapRect(w, h, state.width, state.height);
+  const cellW = mapRect.width / state.width;
+  const cellH = mapRect.height / state.height;
   ctx.save();
   // Visible terrain should retain the atlas texture. The smoothed sample
   // raster underneath handles the shrouded bands, while nearest-neighbour
@@ -184,7 +187,7 @@ function paintMinimapVisibleTerrain(
   for (let y = 0; y < state.height; y++) {
     for (let x = 0; x < state.width; x++) {
       if (fogAt(state, x, y) === 2) {
-        drawMinimapVisibleTile(ctx, atlas, state, x, y, cellW, cellH);
+        drawMinimapVisibleTile(ctx, atlas, state, x, y, cellW, cellH, mapRect.x, mapRect.y);
       }
     }
   }
@@ -199,10 +202,12 @@ function paintMinimapVisibleTile(
   y: number,
   cellW: number,
   cellH: number,
+  offsetX: number,
+  offsetY: number,
 ): void {
-  ctx.clearRect(x * cellW, y * cellH, cellW, cellH);
+  ctx.clearRect(offsetX + x * cellW, offsetY + y * cellH, cellW, cellH);
   if (!atlas.canvas || fogAt(state, x, y) !== 2) return;
-  drawMinimapVisibleTile(ctx, atlas, state, x, y, cellW, cellH);
+  drawMinimapVisibleTile(ctx, atlas, state, x, y, cellW, cellH, offsetX, offsetY);
 }
 
 function drawMinimapVisibleTile(
@@ -213,6 +218,8 @@ function drawMinimapVisibleTile(
   y: number,
   cellW: number,
   cellH: number,
+  offsetX: number,
+  offsetY: number,
 ): void {
   if (!atlas.canvas) return;
   const rect = atlasRectForTile(x, y, state.width);
@@ -223,8 +230,8 @@ function drawMinimapVisibleTile(
     rect.sy + inset,
     Math.max(1, rect.sw - inset * 2),
     Math.max(1, rect.sh - inset * 2),
-    x * cellW,
-    y * cellH,
+    offsetX + x * cellW,
+    offsetY + y * cellH,
     cellW,
     cellH,
   );
@@ -283,12 +290,13 @@ function updateMinimapTerrainLayer(
   }
   sampleCtx.putImageData(image, 0, 0);
 
-  const cellW = w / state.width;
-  const cellH = h / state.height;
+  const mapRect = minimapMapRect(w, h, state.width, state.height);
+  const cellW = mapRect.width / state.width;
+  const cellH = mapRect.height / state.height;
   visibleCtx.save();
   visibleCtx.imageSmoothingEnabled = false;
   for (const cell of changed) {
-    paintMinimapVisibleTile(visibleCtx, atlas, state, cell.x, cell.y, cellW, cellH);
+    paintMinimapVisibleTile(visibleCtx, atlas, state, cell.x, cell.y, cellW, cellH, mapRect.x, mapRect.y);
   }
   visibleCtx.restore();
   return true;
@@ -302,10 +310,23 @@ function composeMinimapTerrain(
   h: number,
 ): void {
   ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = `rgb(${MINIMAP_FOG_COLOR.r},${MINIMAP_FOG_COLOR.g},${MINIMAP_FOG_COLOR.b})`;
+  ctx.fillRect(0, 0, w, h);
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(layer.sampleCanvas, 0, 0, state.width, state.height, 0, 0, w, h);
+  const mapRect = minimapMapRect(w, h, state.width, state.height);
+  ctx.drawImage(
+    layer.sampleCanvas,
+    0,
+    0,
+    state.width,
+    state.height,
+    mapRect.x,
+    mapRect.y,
+    mapRect.width,
+    mapRect.height,
+  );
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(layer.visibleCanvas, 0, 0, w, h);
   ctx.restore();
@@ -393,14 +414,17 @@ function paintMinimapOverlay(
   selectedIds: ReadonlySet<number>,
   mode: ColorblindMode = "none",
 ): void {
-  const sx = w / state.width;
-  const sy = h / state.height;
+  const mapRect = minimapMapRect(w, h, state.width, state.height);
+  const sx = mapRect.width / state.width;
+  const sy = mapRect.height / state.height;
+  const mapX = (x: number) => mapRect.x + (x + 0.5) * sx;
+  const mapY = (y: number) => mapRect.y + (y + 0.5) * sy;
   const targetIds = new Set(state.runtime?.targetIds ?? []);
   for (const e of state.entities) {
     if (e.hp <= 0) continue;
     if (!minimapEntityVisible(state, e)) continue;
-    const x = e.x * sx;
-    const y = e.y * sy;
+    const x = mapX(e.x);
+    const y = mapY(e.y);
     ctx.fillStyle = entityColor(e, state, mode);
     const size = e.class === "building" ? 6 : 3;
     ctx.fillRect(x - size / 2, y - size / 2, size, size);
@@ -429,14 +453,14 @@ function paintMinimapOverlay(
     ctx.strokeStyle = "#e8c86a";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(challenge.zone.x * sx, challenge.zone.y * sy, Math.max(3, (challenge.radius ?? 3) * sx), 0, Math.PI * 2);
+    ctx.arc(mapX(challenge.zone.x), mapY(challenge.zone.y), Math.max(3, (challenge.radius ?? 3) * sx), 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
   const zone = state.runtime?.zone;
   if (zone && missionUsesObjectiveZone(state.runtime?.kind)) {
-    const zx = zone.x * sx;
-    const zy = zone.y * sy;
+    const zx = mapX(zone.x);
+    const zy = mapY(zone.y);
     const radiusX = Math.max(3, OBJECTIVE_ZONE_RADIUS * sx);
     const radiusY = Math.max(3, OBJECTIVE_ZONE_RADIUS * sy);
     ctx.fillStyle = "rgba(232, 200, 106, 0.08)";
@@ -455,27 +479,67 @@ function paintMinimapOverlay(
     ctx.lineTo(zx, zy + 3);
     ctx.stroke();
   }
-  if (view.length >= 2) {
+  const viewRect = minimapViewRect(view, w, h, state.width, state.height);
+  if (viewRect) {
     ctx.save();
     ctx.beginPath();
-    for (let i = 0; i < view.length; i++) {
-      const p = view[i]!;
-      const px = p.x * sx;
-      const py = p.y * sy;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
+    ctx.rect(mapRect.x, mapRect.y, mapRect.width, mapRect.height);
+    ctx.clip();
     ctx.fillStyle = "rgba(143, 249, 242, 0.08)";
-    ctx.fill();
+    ctx.fillRect(viewRect.x, viewRect.y, viewRect.width, viewRect.height);
     ctx.strokeStyle = "#f4ffff";
     ctx.lineWidth = 2;
-    ctx.lineJoin = "round";
     ctx.shadowColor = "rgba(143, 249, 242, 0.55)";
     ctx.shadowBlur = 4;
-    ctx.stroke();
+    ctx.strokeRect(viewRect.x, viewRect.y, viewRect.width, viewRect.height);
     ctx.restore();
   }
+  // Keep the square map boundary readable even when unexplored fog makes the
+  // terrain and the letterboxed radar background nearly the same color.
+  ctx.strokeStyle = "rgba(143, 249, 242, 0.3)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(mapRect.x + 0.5, mapRect.y + 0.5, Math.max(0, mapRect.width - 1), Math.max(0, mapRect.height - 1));
+}
+
+/** Show the axis-aligned map-space bounds of the isometric viewport on the minimap. */
+export function minimapViewRect(
+  view: { x: number; y: number }[],
+  w: number,
+  h: number,
+  mapWidth: number,
+  mapHeight: number,
+): { x: number; y: number; width: number; height: number } | null {
+  if (view.length < 4) return null;
+  const mapRect = minimapMapRect(w, h, mapWidth, mapHeight);
+  const minTileX = Math.min(...view.map((point) => point.x));
+  const maxTileX = Math.max(...view.map((point) => point.x));
+  const minTileY = Math.min(...view.map((point) => point.y));
+  const maxTileY = Math.max(...view.map((point) => point.y));
+  const boundsWidth = maxTileX - minTileX;
+  const boundsHeight = maxTileY - minTileY;
+  // An isometric viewport's axis-aligned map bounds are always square, even
+  // when the visible screen is a wide rectangle. Preserve the visible map
+  // area while giving the radar window the same aspect ratio as the battlefield.
+  const horizontalEdge = Math.hypot(view[1]!.x - view[0]!.x, view[1]!.y - view[0]!.y);
+  const verticalEdge = Math.hypot(view[3]!.x - view[0]!.x, view[3]!.y - view[0]!.y);
+  const viewportAspect = horizontalEdge > 0 && verticalEdge > 0
+    ? (horizontalEdge / verticalEdge) * (TILE_W / TILE_H)
+    : 1;
+  const visibleMapArea = boundsWidth * boundsHeight;
+  const widthTiles = Math.sqrt(visibleMapArea * viewportAspect);
+  const heightTiles = Math.sqrt(visibleMapArea / viewportAspect);
+  const width = (widthTiles / mapWidth) * mapRect.width;
+  const height = (heightTiles / mapHeight) * mapRect.height;
+  const centerTileX = (minTileX + maxTileX) / 2;
+  const centerTileY = (minTileY + maxTileY) / 2;
+  const centerX = mapRect.x + ((centerTileX + 0.5) / mapWidth) * mapRect.width;
+  const centerY = mapRect.y + ((centerTileY + 0.5) / mapHeight) * mapRect.height;
+  return {
+    x: centerX - width / 2,
+    y: centerY - height / 2,
+    width,
+    height,
+  };
 }
 
 function selectedKey(selectedIds: ReadonlySet<number> | undefined): string {
@@ -490,8 +554,9 @@ export function minimapCacheKeys(
   selectedIds?: ReadonlySet<number>,
   mode: ColorblindMode = "none",
 ): { terrainKey: string; overlayKey: string } {
-  const viewKey = view.length
-    ? `${view[0]!.x.toFixed(2)},${view[0]!.y.toFixed(2)}:${view[2] ? `${view[2].x.toFixed(2)},${view[2].y.toFixed(2)}` : ""}`
+  const viewRect = minimapViewRect(view, w, h, state.width, state.height);
+  const viewKey = viewRect
+    ? `${viewRect.x.toFixed(2)},${viewRect.y.toFixed(2)},${viewRect.width.toFixed(2)},${viewRect.height.toFixed(2)}`
     : "";
   const palKey = `${state.factions[0]?.palette.primary ?? ""}:${state.factions[1]?.palette.primary ?? ""}`;
   const selectedKeyValue = selectedKey(selectedIds);

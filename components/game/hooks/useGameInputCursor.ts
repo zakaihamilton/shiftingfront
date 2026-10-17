@@ -78,8 +78,8 @@ export function useGameInputCursor(options: {
     if (deltaX === 0 && deltaY === 0) return;
 
     cancelCameraFocus();
-    const bounds = cameraPanBounds(camRef.current, state.width, state.height, canvas.width, canvas.height);
-    panCamera(camRef.current, -deltaX, -deltaY, bounds);
+    const bounds = cameraPanBounds(state.width, state.height, canvas.width, canvas.height);
+    panCamera(camRef.current, { space: "screen", dx: -deltaX, dy: -deltaY }, bounds);
     const nextAvailability = panAvailability(camRef.current, bounds);
     panAvailRef.current = nextAvailability;
     setPanAvailability(nextAvailability);

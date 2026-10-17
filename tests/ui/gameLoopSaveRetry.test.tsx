@@ -12,7 +12,7 @@ vi.mock("@/lib/audio/music", () => ({ pauseMusic: vi.fn(), setMusicIntensity: vi
 vi.mock("@/lib/audio/synth", () => ({ playSfx: vi.fn() }));
 vi.mock("@/lib/persist/campaign", () => ({ completeMission: vi.fn(), readCampaignProgress: vi.fn(), writeCampaignProgress: vi.fn() }));
 vi.mock("@/lib/persist/telemetry", () => ({ recordTelemetry: vi.fn(), telemetryFromMission: vi.fn() }));
-vi.mock("@/lib/render/camera", () => ({ cameraPanBounds: vi.fn(), clampCamera: vi.fn(), panAvailability: vi.fn(), panCamera: vi.fn(), panOffset: vi.fn(), EDGE_PAN_DELAY_MS: 120 }));
+vi.mock("@/lib/render/camera", () => ({ cameraPanBounds: vi.fn(), clampCamera: vi.fn(), panAvailability: vi.fn(), panCamera: vi.fn(), panInputForDirection: vi.fn(), capPanInput: vi.fn((input: unknown) => input), EDGE_PAN_DELAY_MS: 120 }));
 vi.mock("@/lib/render/fx", () => ({ burstsFromEvents: vi.fn(() => ({ bursts: [], nextId: 1 })) }));
 vi.mock("@/lib/sim/debrief", () => ({ missionMedals: vi.fn(), missionScore: vi.fn() }));
 vi.mock("@/lib/ui/copy", () => ({ commandRejectionMessage: vi.fn() }));

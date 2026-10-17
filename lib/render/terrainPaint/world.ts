@@ -1,5 +1,5 @@
 import { cliffFaces } from "../../gen/assets";
-import { MAP_SKIRT, isMountainScenery, skirtAlpha } from "../../gen/map";
+import { MAP_SKIRT, isMountainScenery, outsideDist, skirtAlpha } from "../../gen/map";
 import { generateCampaignVisualProfile } from "../../gen/visualProfile";
 import type { SimState } from "../../types";
 import { SURFACE_CONCRETE, TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../types";
@@ -8,14 +8,15 @@ import { fogAt } from "../../sim/fog";
 import { biomeMaterials, fogTerrainGain, getTerrainAtlas, tileVariant, type AtlasWorld, type TerrainAtlas } from "../terrainAtlas";
 import { SceneryMemo } from "../sceneryMemo";
 import { drawConcreteSlab } from "../terrainPlates";
-import { isoDiamondPath, roundedIsoDiamondPath, type IsoDiamondCornerRadii } from "../isoDiamond";
+import { isoDiamondPath, isoDiamondVertices, roundedIsoDiamondPath, type IsoDiamondCornerRadii } from "../isoDiamond";
 import { paintShroudOverlay, paintShroudMaskTile, drawAtlasDiamond } from "./tile";
 import { smoothFogGain, drawBlockerProp, drawOreCrystals } from "./details";
 import { drawTerrainScatter } from "./scatter";
 import { SHROUD_FILL, SHROUD_RGB, TERRAIN_COVER } from "./constants";
 import { drawElevationFaces, fillElevationPoly, fillElevationRamp, softElevationRampStops } from "./cliffs";
 import { terrainLightRigForBiome } from "../terrainLighting";
-import { hash2, terrainVisualTuningFor } from "../terrainMaterials";
+import { artSalt, hash2, terrainVisualTuningFor } from "../terrainMaterials";
+import { shorelineWarp } from "../terrainAtlasSurfaces";
 
 const sceneryMemo = new SceneryMemo();
 const SKIRT_COVER = 1.14;
@@ -23,6 +24,7 @@ const SKIRT_CORNER_RADIUS_MIN = 0.08;
 const SKIRT_CORNER_RADIUS_RANGE = 0.08;
 const SKIRT_CORNER_SALT = 0x4b1d;
 const SKIRT_BLUR_PX = 5;
+const COASTLINE_EDGE_SEGMENTS = 16;
 
 let skirtCanvas: HTMLCanvasElement | null = null;
 let surfaceCaches = new WeakMap<HTMLCanvasElement, { key: string; canvas: HTMLCanvasElement }>();
@@ -35,6 +37,65 @@ export function clearTerrainPaintCache(): void {
 
 function memoScenery(state: AtlasWorld & { tick?: number }, x: number, y: number) {
   return sceneryMemo.sample(state, x, y);
+}
+
+type ScreenPoint = { x: number; y: number };
+
+function shorelineEdgePoints(
+  start: ScreenPoint,
+  end: ScreenPoint,
+  startMap: ScreenPoint,
+  endMap: ScreenPoint,
+  center: ScreenPoint,
+  zoom: number,
+  salt: number,
+  waterCell: boolean,
+): ScreenPoint[] {
+  const points: ScreenPoint[] = [];
+  const midX = (start.x + end.x) * 0.5;
+  const midY = (start.y + end.y) * 0.5;
+  const normalX = center.x - midX;
+  const normalY = center.y - midY;
+  const normalLength = Math.hypot(normalX, normalY) || 1;
+  const inwardX = normalX / normalLength;
+  const inwardY = normalY / normalLength;
+  const waterSign = waterCell ? -1 : 1;
+
+  for (let step = 0; step <= COASTLINE_EDGE_SEGMENTS; step++) {
+    const t = step / COASTLINE_EDGE_SEGMENTS;
+    const x = start.x + (end.x - start.x) * t;
+    const y = start.y + (end.y - start.y) * t;
+    const mapX = startMap.x + (endMap.x - startMap.x) * t;
+    const mapY = startMap.y + (endMap.y - startMap.y) * t;
+    const edgeFade = Math.sin(Math.PI * t) ** 2;
+    const offset = shorelineWarp(mapX, mapY, salt)
+      * Math.min(TILE_W, TILE_H) * zoom * edgeFade * waterSign;
+    points.push({ x: x + inwardX * offset, y: y + inwardY * offset });
+  }
+  return points;
+}
+
+function drawShorelineFoam(
+  ctx: CanvasRenderingContext2D,
+  edges: readonly (readonly ScreenPoint[] | null)[],
+  mats: ReturnType<typeof biomeMaterials>,
+  zoom: number,
+): void {
+  if (!edges.some(Boolean)) return;
+  ctx.save();
+  ctx.globalAlpha *= 0.6;
+  ctx.strokeStyle = `rgb(${mats.waterHi.r},${mats.waterHi.g},${mats.waterHi.b})`;
+  ctx.lineWidth = Math.max(1.25, Math.min(TILE_H * zoom * 0.075, 3 * zoom));
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  for (const edge of edges) {
+    if (!edge || edge.length < 2) continue;
+    ctx.moveTo(edge[0]!.x, edge[0]!.y);
+    for (let i = 1; i < edge.length; i++) ctx.lineTo(edge[i]!.x, edge[i]!.y);
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 function skirtCornerRadii(
@@ -157,17 +218,63 @@ function paintCell(
   ctx.save();
   ctx.globalAlpha *= skirtAlpha(x, y, state.width, state.height);
   const concrete = inMap && state.surfaces[y * state.width + x] === SURFACE_CONCRETE;
-  const cover = expandIsoDiamond(s.x, s.y, tw, th, skirt ? SKIRT_COVER : concrete ? 1 : water ? WATER_COVER : TERRAIN_COVER);
-  const cornerRadii = skirt ? skirtCornerRadii(state, x, y, tw, th) : null;
+  const northSc = memoScenery(state, x, y - 1);
+  const eastSc = memoScenery(state, x + 1, y);
+  const southSc = memoScenery(state, x, y + 1);
+  const westSc = memoScenery(state, x - 1, y);
+  const neighbors = [northSc, eastSc, southSc, westSc];
+  const coastEdges = neighbors.map((neighbor) => water !== (neighbor.kind === TILE_WATER));
+  const shorelineEnabled = !skirt || outsideDist(x, y, state.width, state.height) <= 8;
+  const coastalCell = shorelineEnabled && coastEdges.some(Boolean);
+  const cover = expandIsoDiamond(
+    s.x,
+    s.y,
+    tw,
+    th,
+    skirt && !coastalCell ? SKIRT_COVER : concrete ? 1 : water || coastalCell ? WATER_COVER : TERRAIN_COVER,
+  );
+  const cornerRadii = skirt && !coastalCell ? skirtCornerRadii(state, x, y, tw, th) : null;
+  const vertices = isoDiamondVertices(cover.x, cover.y, cover.w, cover.h);
+  const center = { x: cover.x, y: cover.y + cover.h / 2 };
+  const mapEdgeEnds = [
+    [{ x: x - 0.5, y: y - 0.5 }, { x: x + 0.5, y: y - 0.5 }],
+    [{ x: x + 0.5, y: y - 0.5 }, { x: x + 0.5, y: y + 0.5 }],
+    [{ x: x + 0.5, y: y + 0.5 }, { x: x - 0.5, y: y + 0.5 }],
+    [{ x: x - 0.5, y: y + 0.5 }, { x: x - 0.5, y: y - 0.5 }],
+  ] as const;
+  const shorelineEdges = coastEdges.map((isCoast, edge) => {
+    if (!isCoast || !shorelineEnabled) return null;
+    const [startMap, endMap] = mapEdgeEnds[edge]!;
+    return shorelineEdgePoints(
+      vertices[edge]!,
+      vertices[(edge + 1) % vertices.length]!,
+      startMap,
+      endMap,
+      center,
+      z,
+      artSalt(state),
+      water,
+    );
+  });
   const paintSurfacePath = () => {
     if (cornerRadii) {
       roundedIsoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h, cornerRadii);
     } else {
-      isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
+      if (!shorelineEdges.some(Boolean)) {
+        isoDiamondPath(ctx, cover.x, cover.y, cover.w, cover.h);
+        return;
+      }
+      ctx.beginPath();
+      ctx.moveTo(shorelineEdges[0]?.[0]?.x ?? vertices[0]!.x, shorelineEdges[0]?.[0]?.y ?? vertices[0]!.y);
+      for (let edge = 0; edge < vertices.length; edge++) {
+        const points = shorelineEdges[edge] ?? [vertices[edge]!, vertices[(edge + 1) % vertices.length]!];
+        for (let point = 1; point < points.length; point++) {
+          ctx.lineTo(points[point]!.x, points[point]!.y);
+        }
+      }
+      ctx.closePath();
     }
   };
-  const eastSc = memoScenery(state, x + 1, y);
-  const southSc = memoScenery(state, x, y + 1);
   const eastS = tileToScreen(x + 1, y, cam, eastSc.elev);
   const southS = tileToScreen(x, y + 1, cam, southSc.elev);
   const dropE = water ? 0 : Math.max(0, elev - eastSc.elev);
@@ -231,6 +338,7 @@ function paintCell(
     ctx.fill();
   }
   ctx.restore();
+  if (!water && coastalCell) drawShorelineFoam(ctx, shorelineEdges, biomeMaterials(state.biome), z);
   ctx.restore();
 }
 

@@ -1,16 +1,34 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { waitForBattlefieldReady } from "./battlefieldReady";
 
 async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
   const canvas = page.getByTestId("battlefield-canvas");
   await expect(canvas).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 });
+  await expect.poll(async () => {
+    const directions = await Promise.all(
+      (["up", "right", "down", "left"] as const).map((dir) => page.getByTestId(`scroll-arrow-${dir}`).isVisible()),
+    );
+    return directions.some(Boolean);
+  }, { timeout: 15_000 }).toBe(true);
+  await waitForBattlefieldInk(canvas);
+  return canvas;
+}
+
+async function waitForBattlefieldInk(canvas: Locator): Promise<void> {
   await expect.poll(async () => {
     return canvas.evaluate((element) => {
       const canvasElement = element as HTMLCanvasElement;
       if (canvasElement.width <= 0 || canvasElement.height <= 0) return 0;
       const context = canvasElement.getContext("2d");
       if (!context) return 0;
-      const { data } = context.getImageData(0, 0, Math.min(100, canvasElement.width), Math.min(100, canvasElement.height));
+      const sampleWidth = Math.min(100, canvasElement.width);
+      const sampleHeight = Math.min(100, canvasElement.height);
+      const { data } = context.getImageData(
+        Math.floor((canvasElement.width - sampleWidth) / 2),
+        Math.floor((canvasElement.height - sampleHeight) / 2),
+        sampleWidth,
+        sampleHeight,
+      );
       let ink = 0;
       for (let i = 0; i < data.length; i += 4) {
         ink += (data[i] ?? 0) + (data[i + 1] ?? 0) + (data[i + 2] ?? 0);
@@ -18,10 +36,6 @@ async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
       return ink;
     });
   }, { timeout: 15_000 }).toBeGreaterThan(0);
-
-  await waitForBattlefieldReady(page);
-  await expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 });
-  return canvas;
 }
 
 test.describe("visual regression", () => {
@@ -57,7 +71,8 @@ test.describe("visual regression", () => {
     await page.goto("/play?seed=0421&mission=0");
     const canvas = await waitForBattlefieldCanvas(page);
 
-    // Pause the simulation to ensure rendering is completely frozen for snapshotting.
+    // Pause before the first mission tick so the initial snapshot stays at the
+    // same simulation state on every runner.
     await page.keyboard.press("Escape");
     const pauseMenu = page.getByTestId("pause-menu");
     await expect(pauseMenu).toBeVisible();
@@ -66,6 +81,17 @@ test.describe("visual regression", () => {
       (element as HTMLElement).style.visibility = "hidden";
     });
     await expect(pauseMenu).toBeHidden();
+
+    // Redraw once at a fixed render timestamp to pin weather and unit animation
+    // without changing the paused simulation state.
+    await page.evaluate(() => {
+      const fixedTimeMs = 10_000;
+      Object.defineProperty(window.performance, "now", { configurable: true, value: () => fixedTimeMs });
+      const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) => nativeRequestAnimationFrame(() => callback(fixedTimeMs));
+    });
+    await page.evaluate(() => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve())));
+    await waitForBattlefieldInk(canvas);
 
     await expect(canvas).toHaveScreenshot("battlefield-seed-0421-m0.png", {
       maxDiffPixelRatio: 0.05,
