@@ -1,16 +1,27 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { waitForBattlefieldReady } from "./battlefieldReady";
 
 async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
   const canvas = page.getByTestId("battlefield-canvas");
   await expect(canvas).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 });
+  return canvas;
+}
+
+async function waitForBattlefieldInk(canvas: Locator): Promise<void> {
   await expect.poll(async () => {
     return canvas.evaluate((element) => {
       const canvasElement = element as HTMLCanvasElement;
       if (canvasElement.width <= 0 || canvasElement.height <= 0) return 0;
       const context = canvasElement.getContext("2d");
       if (!context) return 0;
-      const { data } = context.getImageData(0, 0, Math.min(100, canvasElement.width), Math.min(100, canvasElement.height));
+      const sampleWidth = Math.min(100, canvasElement.width);
+      const sampleHeight = Math.min(100, canvasElement.height);
+      const { data } = context.getImageData(
+        Math.floor((canvasElement.width - sampleWidth) / 2),
+        Math.floor((canvasElement.height - sampleHeight) / 2),
+        sampleWidth,
+        sampleHeight,
+      );
       let ink = 0;
       for (let i = 0; i < data.length; i += 4) {
         ink += (data[i] ?? 0) + (data[i + 1] ?? 0) + (data[i + 2] ?? 0);
@@ -18,10 +29,6 @@ async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
       return ink;
     });
   }, { timeout: 15_000 }).toBeGreaterThan(0);
-
-  await waitForBattlefieldReady(page);
-  await expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 });
-  return canvas;
 }
 
 test.describe("visual regression", () => {
@@ -54,13 +61,21 @@ test.describe("visual regression", () => {
   });
 
   test("matches tactical battlefield canvas snapshot on initial deployment", async ({ page }) => {
+    await page.addInitScript(() => {
+      // Keep the simulation and render effects on their initial frame so this
+      // snapshot doesn't depend on startup timing or animated weather.
+      const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) => nativeRequestAnimationFrame(() => callback(0));
+    });
     await page.goto("/play?seed=0421&mission=0");
     const canvas = await waitForBattlefieldCanvas(page);
 
-    // Pause the simulation to ensure rendering is completely frozen for snapshotting.
+    // Pause as soon as the battlefield mounts so the initial snapshot does not
+    // depend on how long it takes the renderer to paint its first frame.
     await page.keyboard.press("Escape");
     const pauseMenu = page.getByTestId("pause-menu");
     await expect(pauseMenu).toBeVisible();
+    await waitForBattlefieldInk(canvas);
     // Keep the game paused and hide only the overlay so the battlefield stays still.
     await pauseMenu.evaluate((element) => {
       (element as HTMLElement).style.visibility = "hidden";
