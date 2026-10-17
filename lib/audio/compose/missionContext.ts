@@ -189,21 +189,43 @@ export function applyMissionTints(style: MusicStyleProfile, ctx: MusicMissionCon
     next.delayWet = Math.min(0.5, next.delayWet + 0.05);
   }
 
-  if (kind === "harvestQuota" || kind === "forceQuota" || kind === "structureQuota") {
-    next.drumDensity *= 0.92;
-    next.tempoBias -= 1;
-  } else if (kind === "holdTheLine") {
-    next.drumDensity *= 0.98;
-  } else if (kind === "sabotage" || kind === "destroyMarked") {
-    next.tempoBias += 2;
-    next.drumDensity = Math.min(1, next.drumDensity * 1.06);
-  } else if (kind === "razeAll" || kind === "annihilate" || kind === "decapitate") {
-    next.tempoBias += 3;
-    next.drumDensity = Math.min(1, next.drumDensity * 1.12);
-  } else if (kind === "escort" || kind === "rescue" || kind === "extraction") {
+  if (kind === "harvestQuota") {
+    next.tempoBias -= 3;
+    next.drumDensity *= 0.78;
+    next.reverbWet = Math.min(0.46, next.reverbWet + 0.02);
+  } else if (kind === "forceQuota") {
+    next.tempoBias += 1;
     next.drumDensity *= 0.96;
-    next.reverbWet = Math.min(0.46, next.reverbWet + 0.03);
     next.counterChance = Math.min(1, next.counterChance + 0.08);
+  } else if (kind === "structureQuota") {
+    next.tempoBias -= 1;
+    next.drumDensity *= 0.82;
+    next.cutoffMin *= 0.94;
+    next.cutoffMax *= 0.94;
+  } else if (kind === "holdTheLine") {
+    next.tempoBias -= 3;
+    next.drumDensity *= 0.84;
+    next.reverbSeconds = Math.min(2.1, next.reverbSeconds + 0.18);
+    next.reverbWet = Math.min(0.48, next.reverbWet + 0.04);
+  } else if (kind === "sabotage") {
+    next.tempoBias += 4;
+    next.swing = Math.min(0.055, next.swing + 0.008);
+    next.drumDensity = Math.min(1, next.drumDensity * 1.1);
+    next.delayFeedback = Math.min(0.55, next.delayFeedback + 0.03);
+  } else if (kind === "destroyMarked") {
+    next.tempoBias += 3;
+    next.drumDensity = Math.min(1, next.drumDensity * 1.08);
+    next.cutoffMax = Math.min(2400, next.cutoffMax * 1.08);
+  } else if (kind === "razeAll" || kind === "annihilate" || kind === "decapitate") {
+    next.tempoBias += kind === "razeAll" ? 4 : 5;
+    next.drumDensity = Math.min(1, next.drumDensity * 1.18);
+    next.saturationAmount = Math.min(0.2, next.saturationAmount + 0.025);
+    next.drum.kickTail = Math.max(0.1, next.drum.kickTail - 0.025);
+  } else if (kind === "escort" || kind === "rescue" || kind === "extraction") {
+    next.tempoBias += kind === "escort" ? 0 : 1;
+    next.drumDensity *= kind === "extraction" ? 0.9 : 0.82;
+    next.reverbWet = Math.min(0.48, next.reverbWet + 0.06);
+    next.counterChance = Math.min(1, next.counterChance + 0.16);
   }
   return next;
 }

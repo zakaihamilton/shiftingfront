@@ -11,10 +11,12 @@ import {
   SCHEDULER_MS,
   stemBus,
   indexPattern,
+  syncGraphStyle,
 } from "./musicGraph";
 import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { playSynthTone, playTransition, retunePad, schedulePadGate, syncDelay } from "./musicSynth";
 import { playKick, playSnare, playClap, playHat, playTom, playImpact, playRim, playShaker } from "./musicDrums";
+import { prewarmMusicSamples } from "./musicSamples";
 import {
   intensity,
   pendingIntensity,
@@ -67,12 +69,16 @@ export function applyIntensityAt(audio: AudioGraphContext, g: MusicGraph, value:
   set(g.bassBus, value === "calm" ? 0.92 : value === "critical" ? 1.02 : 0.98);
   set(g.rhythmBus, value === "calm" ? 0.52 : value === "critical" ? 0.78 : 0.66);
   set(g.harmonyBus, value === "calm" ? 0.84 : value === "critical" ? 0.9 : 0.87);
+  set(g.pianoBus, value === "calm" ? 0.72 : value === "critical" ? 0.94 : 0.84);
+  set(g.guitarBus, value === "calm" ? 0.62 : value === "critical" ? 0.96 : 0.82);
   set(g.pulseBus, value === "calm" ? 0.52 : value === "critical" ? 0.68 : 0.6);
   set(g.leadBus, value === "calm" ? 0.98 : value === "critical" ? 1.1 : 1.05);
   set(g.counterBus, value === "calm" ? 0.24 : value === "critical" ? 0.38 : 0.3);
   set(g.fxBus, value === "critical" ? 0.26 : value === "engaged" ? 0.18 : 0.12);
   g.highpass.frequency.setTargetAtTime(value === "critical" ? 48 : 38, t, ramp);
   g.padFilter.frequency.setTargetAtTime(value === "critical" ? 1_100 : value === "engaged" ? 900 : 720, t, ramp);
+  g.reverbWet.gain.setTargetAtTime(g.style.reverbWet * (value === "critical" ? 0.78 : value === "engaged" ? 0.92 : 1.08), t, ramp);
+  g.delayWet.gain.setTargetAtTime(g.style.delayWet * (value === "critical" ? 0.82 : value === "engaged" ? 1.04 : 0.9), t, ramp);
   g.padBase = padGainFor(value);
   set(g.padGain, g.padBase);
 }
@@ -123,14 +129,23 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
   schedulePadGate(audio, g, t, stepDuration, index, section, value);
   const stemVoices: Array<[MusicStem, MusicVoiceType, number]> = [
     ["bass", p.bassType, Math.min(p.cutoff, 620)],
+    ["guitar", p.style.padType, Math.min(p.cutoff + 260, 1_500)],
     ["pulse", p.arpType, Math.min(p.cutoff + 180, 1600)],
     ["harmony", p.style.padType, Math.min(p.cutoff + 120, 1200)],
     ["counter", p.counterType, p.cutoff],
     ["melody", p.melodyType, p.cutoff + 360],
   ];
+  const activeLayers = value === "critical"
+    ? ["engaged", "critical"] as const
+    : value === "engaged"
+      ? ["engaged"] as const
+      : [];
   for (const [stem, voice, cutoff] of stemVoices) {
-    const events = g.index.notes[stem].get(index);
-    if (!events) continue;
+    const events = [...(g.index.notes[stem].get(index) ?? [])];
+    for (const layerName of activeLayers) {
+      events.push(...(g.index.intensityLayers?.[layerName]?.notes[stem]?.get(index) ?? []));
+    }
+    if (events.length === 0) continue;
     for (const event of events) {
       const duration = Math.max(stepDuration * event.duration, stepDuration * (stem === "pulse" ? 0.55 : 0.7));
       playSynthTone(audio, g, stemBus(g, stem), midiToHz(event.midi), t, duration, voice, event.velocity * layerMultiplier(stem === "pulse" ? "pulse" : stem, value), cutoff, stem, !!event.accent);
@@ -140,23 +155,27 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
     }
   }
 
-  for (const event of g.index.drums.get(index) ?? []) {
+  const drumEvents = [...(g.index.drums.get(index) ?? [])];
+  for (const layerName of activeLayers) {
+    drumEvents.push(...(g.index.intensityLayers?.[layerName]?.drums.get(index) ?? []));
+  }
+  for (const event of drumEvents) {
     if (value === "calm" && isBreakdown && (event.kind === "tom" || event.kind === "impact")) continue;
     const velocity = event.velocity * layerMultiplier("drums", value);
     if (event.kind === "kick") {
-      playKick(audio, g, t, velocity);
+      playKick(audio, g, t, velocity, p.style);
       if (event.accent && index % STEPS_PER_BAR === 0) {
         duckPad(audio, g, t);
         duckBass(audio, g, t);
       }
-    } else if (event.kind === "snare") playSnare(audio, g, t, velocity, !!event.accent);
-    else if (event.kind === "clap") playClap(audio, g, t, velocity, !!event.accent);
-    else if (event.kind === "hat") playHat(audio, g, t, velocity, false);
-    else if (event.kind === "openHat") playHat(audio, g, t, velocity, true);
-    else if (event.kind === "tom") playTom(audio, g, t, velocity);
-    else if (event.kind === "rim") playRim(audio, g, t, velocity);
-    else if (event.kind === "shaker") playShaker(audio, g, t, velocity);
-    else playImpact(audio, g, t, velocity);
+    } else if (event.kind === "snare") playSnare(audio, g, t, velocity, !!event.accent, p.style);
+    else if (event.kind === "clap") playClap(audio, g, t, velocity, !!event.accent, p.style);
+    else if (event.kind === "hat") playHat(audio, g, t, velocity, false, p.style);
+    else if (event.kind === "openHat") playHat(audio, g, t, velocity, true, p.style);
+    else if (event.kind === "tom") playTom(audio, g, t, velocity, p.style);
+    else if (event.kind === "rim") playRim(audio, g, t, velocity, p.style);
+    else if (event.kind === "shaker") playShaker(audio, g, t, velocity, p.style);
+    else playImpact(audio, g, t, velocity, p.style);
   }
 }
 
@@ -309,11 +328,14 @@ export function applyPattern(next: MusicPattern): void {
       setTransitioning(false);
       return;
     }
+    const t = audio.currentTime;
+    syncGraphStyle(audio, activeGraph, next, t);
     activeGraph.index = indexPattern(next);
     setStep(0);
+    prewarmMusicSamples(audio, next.style.drumKit, next.style.drum);
+    applyIntensityAt(audio, activeGraph, intensity, t, ducked);
     syncDelay(audio, activeGraph, next);
-    retunePad(audio, activeGraph, next, 0, audio.currentTime);
-    const t = audio.currentTime;
+    retunePad(audio, activeGraph, next, 0, t);
     setNextNoteTime(t + 0.07);
     activeGraph.master.gain.cancelScheduledValues(t);
     activeGraph.master.gain.setValueAtTime(0.001, t);

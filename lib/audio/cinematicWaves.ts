@@ -1,12 +1,14 @@
 import type { AudioGraphContext } from "./musicState";
 
-export type CinematicWaveRole = "bass" | "pulse" | "lead" | "harmony" | "pad";
+export type CinematicWaveRole = "bass" | "pulse" | "lead" | "harmony" | "piano" | "guitar" | "pad";
 
 const HARMONICS: Record<CinematicWaveRole, readonly number[]> = {
   bass: [1, 0.16, 0.045],
   pulse: [1, 0.24, 0.085, 0.028],
   lead: [1, 0.34, 0.14, 0.065, 0.028, 0.011],
   harmony: [1, 0.2, 0.065, 0.02],
+  piano: [1, 0.58, 0.32, 0.16, 0.075, 0.032, 0.012],
+  guitar: [1, 0.4, 0.25, 0.16, 0.095, 0.052, 0.026, 0.012],
   pad: [1, 0.18, 0.052, 0.016],
 };
 

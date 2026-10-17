@@ -6,10 +6,13 @@ import {
   type MusicStem,
 } from "./compose";
 import { AUDIO_SAMPLE_RATE } from "./constants";
+import { prewarmMusicSamples } from "./musicSamples";
 import type {
   AudioGraphContext,
   MusicGraph,
+  IntensityPatternIndex,
   PatternIndex,
+  MusicWaveformName,
 } from "./musicState";
 import { noiseBuf, setNoiseBuf } from "./musicState";
 import { cinematicWave } from "./cinematicWaves";
@@ -18,7 +21,7 @@ export type { AudioGraphContext, MusicGraph, PatternIndex };
 
 export const SAMPLE_RATE = AUDIO_SAMPLE_RATE;
 export const MASTER_GAIN = 0.082;
-export const PAD_GAIN = 0.09;
+export const PAD_GAIN = 0.05;
 export const DUCK_RATIO = 0.34;
 export const CROSSFADE_S = 0.55;
 export const SCHEDULE_AHEAD_S = 0.22;
@@ -35,13 +38,14 @@ export function masterGain(value: MusicIntensity = "calm", isDucked = false): nu
   return MASTER_GAIN * INTENSITY_MULTIPLIER[value] * (isDucked ? DUCK_RATIO : 1);
 }
 
-export function layerMultiplier(layer: "bass" | "pulse" | "harmony" | "counter" | "melody" | "drums", value: MusicIntensity = "calm"): number {
-  if (value === "critical") return layer === "drums" ? 1.08 : layer === "harmony" ? 0.94 : layer === "counter" ? 0.86 : 1.02;
-  if (value === "engaged") return layer === "drums" ? 1.02 : layer === "harmony" ? 0.82 : layer === "counter" ? 0.72 : 1;
+export function layerMultiplier(layer: "bass" | "pulse" | "harmony" | "counter" | "melody" | "guitar" | "drums", value: MusicIntensity = "calm"): number {
+  if (value === "critical") return layer === "drums" ? 1.08 : layer === "guitar" ? 1.14 : layer === "harmony" ? 0.94 : layer === "counter" ? 0.86 : 1.02;
+  if (value === "engaged") return layer === "drums" ? 1.02 : layer === "guitar" ? 1.08 : layer === "harmony" ? 0.82 : layer === "counter" ? 0.72 : 1;
   if (layer === "drums") return 0.88;
   if (layer === "counter") return 0.62;
   if (layer === "harmony") return 0.7;
   if (layer === "pulse") return 0.9;
+  if (layer === "guitar") return 0.78;
   return 1;
 }
 
@@ -75,6 +79,26 @@ function createImpulseResponse(audio: AudioGraphContext, seconds: number, decay:
     }
   }
   return impulse;
+}
+
+function createMusicWaveforms(audio: AudioGraphContext): Partial<Record<MusicWaveformName, PeriodicWave>> {
+  if (typeof audio.createPeriodicWave !== "function") return {};
+  const profiles: Record<MusicWaveformName, readonly number[]> = {
+    warm: [1, 0.42, 0.2, 0.12, 0.075, 0.05, 0.034, 0.022, 0.014],
+    brass: [1, 0.38, 0.62, 0.25, 0.36, 0.18, 0.22, 0.12, 0.13],
+    reed: [1, 0.16, 0.44, 0.1, 0.28, 0.08, 0.18, 0.06, 0.11],
+    glass: [1, 0.12, 0.42, 0.08, 0.31, 0.055, 0.22, 0.035, 0.14],
+    piano: [1, 0.58, 0.32, 0.16, 0.075, 0.032, 0.012],
+    guitar: [1, 0.4, 0.25, 0.16, 0.095, 0.052, 0.026, 0.012],
+  };
+  const result: Partial<Record<MusicWaveformName, PeriodicWave>> = {};
+  for (const [name, partials] of Object.entries(profiles) as [MusicWaveformName, readonly number[]][]) {
+    const real = new Float32Array(partials.length + 1);
+    const imag = new Float32Array(partials.length + 1);
+    for (let index = 0; index < partials.length; index++) imag[index + 1] = partials[index]!;
+    result[name] = audio.createPeriodicWave(real, imag);
+  }
+  return result;
 }
 
 export function getNoiseBuffer(audio: AudioGraphContext): AudioBuffer {
@@ -115,6 +139,7 @@ export function indexPattern(p: MusicPattern): PatternIndex {
     harmony: indexNoteLane(p.notes.harmony),
     melody: indexNoteLane(p.notes.melody),
     counter: indexNoteLane(p.notes.counter),
+    guitar: indexNoteLane(p.notes.guitar),
   };
   const drums = new Map<number, MusicDrumEvent[]>();
   for (const event of p.drums) {
@@ -122,14 +147,49 @@ export function indexPattern(p: MusicPattern): PatternIndex {
     if (events) events.push(event);
     else drums.set(event.step, [event]);
   }
-  return { notes, drums };
+  const intensityLayers: NonNullable<PatternIndex["intensityLayers"]> = {};
+  for (const [level, layer] of Object.entries(p.intensityLayers ?? {})) {
+    if (!layer) continue;
+    const indexedLayer: IntensityPatternIndex = { notes: {}, drums: new Map() };
+    for (const stem of ["bass", "pulse", "harmony", "melody", "counter", "guitar"] as const) {
+      const lane = layer.notes[stem];
+      if (lane?.length) indexedLayer.notes[stem] = indexNoteLane(lane);
+    }
+    for (const event of layer.drums) {
+      const events = indexedLayer.drums.get(event.step);
+      if (events) events.push(event);
+      else indexedLayer.drums.set(event.step, [event]);
+    }
+    intensityLayers[level as "engaged" | "critical"] = indexedLayer;
+  }
+  return { notes, drums, intensityLayers };
+}
+
+export function syncGraphStyle(audio: AudioGraphContext, g: MusicGraph, p: MusicPattern, time = audio.currentTime): void {
+  const t = Math.max(time, audio.currentTime);
+  g.style = p.style;
+  g.saturation.curve = createSaturationCurve(p.style.saturationAmount);
+  g.reverb.buffer = createImpulseResponse(audio, p.style.reverbSeconds, p.style.reverbDecay);
+  g.reverbFilter.frequency.setTargetAtTime(Math.min(4_000, Math.max(1_400, p.cutoff * 2.6)), t, 0.04);
+  g.reverbSend.gain.setTargetAtTime(p.style.reverbSend, t, 0.04);
+  g.delayFilter.frequency.setTargetAtTime(Math.min(3_800, Math.max(1_300, p.cutoff * 2.2)), t, 0.04);
+  g.delayFeedback.gain.setTargetAtTime(p.style.delayFeedback, t, 0.04);
+  g.padFilter.Q.setTargetAtTime(p.style.padQ, t, 0.04);
+  g.padReverbFilter.frequency.setTargetAtTime(Math.min(p.cutoff, 960), t, 0.04);
+  g.padReverbFilter.Q.setTargetAtTime(p.style.padQ, t, 0.04);
+  g.padLfo.frequency.setTargetAtTime(p.style.padLfoRate, t, 0.04);
+  g.padLfoGain.gain.setTargetAtTime(p.style.padLfoDepth, t, 0.04);
+  [g.padOscA, g.padOscB, g.padOscC, g.padOscD].forEach((oscillator, index) => {
+    oscillator.detune.setTargetAtTime(p.style.padDetune[index]!, t, 0.04);
+  });
 }
 
 export function stemBus(g: MusicGraph, stem: MusicStem): GainNode {
   if (stem === "bass") return g.bassBus;
   if (stem === "pulse") return g.pulseBus;
-  if (stem === "harmony") return g.harmonyBus;
+  if (stem === "harmony") return g.pianoBus;
   if (stem === "melody") return g.leadBus;
+  if (stem === "guitar") return g.guitarBus;
   return g.counterBus;
 }
 
@@ -138,6 +198,7 @@ export function notePan(stem: MusicStem): number {
   if (stem === "harmony") return 0.04;
   if (stem === "melody") return 0.3;
   if (stem === "counter") return -0.12;
+  if (stem === "guitar") return 0.16;
   return 0;
 }
 
@@ -147,6 +208,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   const saturation = audio.createWaveShaper();
   const compressor = audio.createDynamicsCompressor();
   const now = audio.currentTime;
+  const waveforms = createMusicWaveforms(audio);
+  prewarmMusicSamples(audio, p.style.drumKit, p.style.drum);
 
   highpass.type = "highpass";
   highpass.frequency.setValueAtTime(38, now);
@@ -167,6 +230,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   const bassBus = createBus(audio, bassDuck, 0.94);
   const rhythmBus = createBus(audio, master, 0.62);
   const harmonyBus = createBus(audio, master, 0.82);
+  const pianoBus = createBus(audio, master, 0.72);
+  const guitarBus = createBus(audio, master, 0.64);
   const pulseBus = createBus(audio, master, 0.56);
   const leadBus = createBus(audio, master, 0.94);
   const counterBus = createBus(audio, master, 0.28);
@@ -206,6 +271,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   pulseBus.connect(reverbSend);
   leadBus.connect(reverbSend);
   counterBus.connect(reverbSend);
+  pianoBus.connect(reverbSend);
+  guitarBus.connect(reverbSend);
 
   const padGain = audio.createGain();
   const padFilter = audio.createBiquadFilter();
@@ -235,8 +302,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   padReverbFilter.frequency.setValueAtTime(Math.min(p.cutoff, 960), now);
   padReverbFilter.Q.setValueAtTime(p.style.padQ, now);
   padGain.gain.setValueAtTime(PAD_GAIN, now);
-  padGate.gain.setValueAtTime(1, now);
-  padReverbGate.gain.setValueAtTime(1, now);
+  padGate.gain.setValueAtTime(0.02, now);
+  padReverbGate.gain.setValueAtTime(0.02, now);
   const padWave = cinematicWave(audio, "pad");
   padOscA.setPeriodicWave(padWave);
   padOscB.setPeriodicWave(padWave);
@@ -281,6 +348,7 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
 
   return {
     style: p.style,
+    waveforms,
     master,
     highpass,
     saturation,
@@ -288,6 +356,8 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
     bassBus,
     rhythmBus,
     harmonyBus,
+    pianoBus,
+    guitarBus,
     pulseBus,
     leadBus,
     counterBus,
@@ -336,7 +406,7 @@ export function disconnectGraph(g: MusicGraph): void {
   for (const node of [
     g.padFilter, g.padGain, g.padGate, g.padLfoGain, g.padReverbFilter, g.padReverbGate, g.padReverbSend,
     ...g.padReverbVoices, g.delay, g.delayFeedback, g.delayWet,
-    g.reverb, g.reverbFilter, g.reverbSend, g.reverbWet, g.bassBus, g.bassDuck, g.rhythmBus, g.harmonyBus,
+    g.reverb, g.reverbFilter, g.reverbSend, g.reverbWet, g.bassBus, g.bassDuck, g.rhythmBus, g.harmonyBus, g.pianoBus, g.guitarBus,
     g.pulseBus, g.leadBus, g.counterBus, g.fxBus, g.highpass, g.saturation,
     g.delayFilter,
     g.compressor, g.master,

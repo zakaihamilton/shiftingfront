@@ -26,10 +26,10 @@ vi.mock("../../lib/audio/musicDrums", () => ({
 import { scheduleStep } from "../../lib/audio/musicScheduler";
 
 describe("harmony scheduling", () => {
-  it("schedules generated harmony events on the harmony bus", () => {
+  it("schedules generated piano events on the piano bus", () => {
     const pattern = composeMusic(421, "mission", 3);
     const harmonyEvent = pattern.notes.harmony[0]!;
-    const harmonyBus = {} as GainNode;
+    const pianoBus = {} as GainNode;
     const gainNode = { gain: {
       value: 0.09,
       cancelScheduledValues: vi.fn(),
@@ -41,7 +41,9 @@ describe("harmony scheduling", () => {
       index: indexPattern(pattern),
       bassBus: {},
       pulseBus: {},
-      harmonyBus,
+      harmonyBus: {},
+      pianoBus,
+      guitarBus: {},
       leadBus: {},
       counterBus: {},
       master: {},
@@ -57,7 +59,7 @@ describe("harmony scheduling", () => {
     expect(playSynthTone).toHaveBeenCalledWith(
       expect.anything(),
       graph,
-      harmonyBus,
+      pianoBus,
       expect.any(Number),
       expect.any(Number),
       expect.any(Number),

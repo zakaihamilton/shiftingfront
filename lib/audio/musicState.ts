@@ -11,13 +11,22 @@ import {
 
 export type AudioGraphContext = AudioContext | OfflineAudioContext;
 
-export type PatternIndex = {
-  notes: Record<MusicStem, Map<number, MusicNoteEvent[]>>;
+export type IntensityPatternIndex = {
+  notes: Partial<Record<MusicStem, Map<number, MusicNoteEvent[]>>>;
   drums: Map<number, MusicDrumEvent[]>;
 };
 
+export type PatternIndex = {
+  notes: Record<MusicStem, Map<number, MusicNoteEvent[]>>;
+  drums: Map<number, MusicDrumEvent[]>;
+  intensityLayers?: Partial<Record<Exclude<MusicIntensity, "calm">, IntensityPatternIndex>>;
+};
+
+export type MusicWaveformName = "warm" | "brass" | "reed" | "glass" | "piano" | "guitar";
+
 export type MusicGraph = {
   style: MusicStyleProfile;
+  waveforms?: Partial<Record<MusicWaveformName, PeriodicWave>>;
   master: GainNode;
   highpass: BiquadFilterNode;
   saturation: WaveShaperNode;
@@ -25,6 +34,8 @@ export type MusicGraph = {
   bassBus: GainNode;
   rhythmBus: GainNode;
   harmonyBus: GainNode;
+  pianoBus: GainNode;
+  guitarBus: GainNode;
   pulseBus: GainNode;
   leadBus: GainNode;
   counterBus: GainNode;
