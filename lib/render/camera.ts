@@ -109,7 +109,7 @@ export function focusCameraAtTile(
 ): void {
   const anchor = tileToScreen(tileX, tileY, { x: 0, y: 0, zoom: cam.zoom }, options.elevation ?? 0);
   cam.x = bounds.viewportWidth / 2 - anchor.x;
-  cam.y = bounds.viewportHeight * (options.yBias ?? 0.5) - anchor.y - (TILE_H / 2) * cam.zoom;
+  cam.y = bounds.viewportHeight * (options.yBias ?? 0.5) - anchor.y;
   clampCamera(cam, bounds);
 }
 
