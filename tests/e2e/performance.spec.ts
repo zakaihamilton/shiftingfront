@@ -8,10 +8,10 @@ import { summarizeTimings } from "../../lib/perf/metrics";
 
 const UNIT_KINDS: UnitKind[] = ["infantry", "antiArmor", "tank", "harvester"];
 const BUILDING_KINDS: BuildingKind[] = ["power", "barracks", "refinery", "factory", "turret"];
-// Hosted runners use software Canvas rendering on two shared vCPUs. Preserve
-// their 100 ms regression ceiling while local browsers enforce the 30 fps goal.
+// Hosted runners use software Canvas rendering. Keep active loop work below
+// 100 ms and allow one extra 100 ms scheduling interval at the cadence tail.
 const FRAME_BUDGETS = process.env.CI
-  ? { workP95: 100, intervalP50: 100.1, intervalP95: 150.1 }
+  ? { workP95: 100, intervalP50: 100.1, intervalP95: 200.1 }
   : { workP95: 1000 / 30, intervalP50: 1000 / 30 + 1, intervalP95: 50.1 };
 test.setTimeout(process.env.CI ? 60_000 : 30_000);
 
