@@ -2,13 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
 import { createCampaign } from "@/lib/gen/campaign";
-import { cachedLocalStorage } from "@/lib/persist/save";
+import {
+  cachedCampaignStorage,
+  cachedLocalStorage,
+  getSaveRepository,
+  listSaves,
+  type SaveMeta,
+} from "@/lib/persist/save";
 import { defaultSettings, readSettings, type GameSettings } from "@/lib/persist/settings";
 import { formatSeed, parseSeed } from "@/lib/seed/rng";
 import { isEditableTarget, menuCommandFromKey } from "@/lib/ui/shortcuts";
 import { useAudioPreferences } from "@/components/audio/useAudioPreferences";
 import type { MenuView } from "./MenuOverlay";
-import { tutorialPath } from "@/lib/navigation/routes";
+import { playResumePath, tutorialPath } from "@/lib/navigation/routes";
 import { menuLaunchPath, rollSeed, weeklySeed } from "./menuLaunch";
 
 export function useMenuController() {
@@ -17,6 +23,7 @@ export function useMenuController() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [view, setView] = useState<MenuView>("main");
+  const [resumeSave, setResumeSave] = useState<SaveMeta | null>(null);
   const [settings, setSettings] = useState<GameSettings>(() => defaultSettings());
   const inputRef = useRef<HTMLInputElement>(null);
   const copyTimer = useRef(0);
@@ -43,6 +50,21 @@ export function useMenuController() {
     router.prefetch?.("/play");
   }, [router]);
 
+  const refreshResumeSave = useCallback(() => {
+    setResumeSave(listSaves(cachedCampaignStorage())[0] ?? null);
+  }, []);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(refreshResumeSave);
+    const unsubscribe = getSaveRepository()?.subscribe(refreshResumeSave);
+    window.addEventListener("storage", refreshResumeSave);
+    return () => {
+      cancelAnimationFrame(frame);
+      unsubscribe?.();
+      window.removeEventListener("storage", refreshResumeSave);
+    };
+  }, [refreshResumeSave]);
+
   useEffect(() => () => window.clearTimeout(copyTimer.current), []);
 
   const progress = useCampaignProgress(parseSeed(code) ?? 0);
@@ -62,6 +84,10 @@ export function useMenuController() {
   const openOptions = useCallback(() => setView("options"), []);
   const openCredits = useCallback(() => setView("credits"), []);
   const openLoadMission = useCallback(() => router.push("/load"), [router]);
+  const resumeCampaign = useCallback(() => {
+    if (!resumeSave) return;
+    router.push(playResumePath(Number(resumeSave.seed), resumeSave.missionIndex));
+  }, [resumeSave, router]);
   const openMultiplayer = useCallback(() => router.push("/multiplayer"), [router]);
   const openTutorial = useCallback(() => router.push(tutorialPath()), [router]);
 
@@ -140,12 +166,14 @@ export function useMenuController() {
     settings,
     inputRef,
     preview,
+    resumeSave,
     previewLine: preview
       ? `${preview.world.name} · ${preview.factions[0].name} vs ${preview.factions[1].name}`
       : "Enter a 4-digit campaign code — or roll a random campaign",
     openNewGame,
     openTutorial,
     openLoadMission,
+    resumeCampaign,
     openMultiplayer,
     openOptions,
     openCredits,

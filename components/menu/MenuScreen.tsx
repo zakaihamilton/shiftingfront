@@ -53,6 +53,8 @@ export function MenuScreen() {
           <div className={styles.commandColumn}>
             <MenuHero />
             <MenuMainPanel
+              resumeSave={controller.resumeSave}
+              onResumeCampaign={controller.resumeCampaign}
               onNewGame={controller.openNewGame}
               onTutorial={controller.openTutorial}
               onLoadMission={controller.openLoadMission}
