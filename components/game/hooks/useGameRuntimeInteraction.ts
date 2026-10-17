@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { TILE_H } from "@/lib/iso";
 import { tutorialFocusPoint, tutorialTargets } from "@/lib/sim/tutorial";
 import type { SimState } from "@/lib/types";
 import type { GameSettings } from "@/lib/persist/settings";
@@ -76,11 +77,13 @@ export function useGameRuntimeInteraction({
     if (!point) return;
     const preferredBias = tutorialStage === "attack" && targets.length > 1 ? 0.32 : target?.kind === "entity" ? 0.44 : 0.56;
     const yBias = Math.min(0.7, Math.max(preferredBias, 120 / camera.viewportSize.height));
+    // The tile-focus anchor is half a tile above the ground point used by camera clamping.
+    const targetBias = Math.min(0.7, yBias + (TILE_H * camRef.current.zoom) / (2 * camera.viewportSize.height));
     const duration = audioSettings.reducedMotion || tutorialStage === "select" ? 0 : TUTORIAL_CAMERA_FOCUS_MS;
     // Wait for the canvas size, and repeat after resizes or effect replay.
     // The first lesson target must be visible before the player learns to pan.
-    focusTileAnimated(Math.round(point.x), Math.round(point.y), yBias, duration);
-  }, [audioSettings.reducedMotion, camera.viewportSize, focusTileAnimated, stateRef, tutorial, tutorialStage]);
+    focusTileAnimated(Math.round(point.x), Math.round(point.y), targetBias, duration);
+  }, [audioSettings.reducedMotion, camera.viewportSize, camRef, focusTileAnimated, stateRef, tutorial, tutorialStage]);
 
   const actions = useGameActions({ stateRef, commandPort, selected, selectedIds, onCommandNotice: announceCommandFeedback, onCommandRejection: recordCommandRejection, uxRef });
   const { place, placeKind, setPlaceKind, repair, repairMode, setRepairMode, sell, sellMode, setSellMode, mobileCommand, setMobileCommandState, resetMobileCommand, cancelMobileCommand, clearTools, issueSelectedCommand, toggleRepair, toggleSell, activateCameo } = actions;
