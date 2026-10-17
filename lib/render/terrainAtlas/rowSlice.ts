@@ -26,8 +26,10 @@ import {
 import {
   CONCRETE_CELL_CLASS,
   GROUND_CELL_CLASS,
+  MATERIAL_EDGE_BLEND_CAP,
   MATERIAL_EDGE_RADIUS_MIN,
   MATERIAL_EDGE_RADIUS_RANGE,
+  MATERIAL_EDGE_SPREAD_SCALE,
   MATERIAL_EDGE_WARP_RANGE,
   ORE_CELL_CLASS,
   WATER_CELL_CLASS,
@@ -101,7 +103,6 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
     salt,
     mats,
     pixelFractions,
-    edgeFactors,
     organicCorners,
     data,
   } = ctx;
@@ -234,16 +235,16 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
       const southMaterialG = southMaterialEdgeValid ? colors[southI + 1]! : baseG;
       const southMaterialB = southMaterialEdgeValid ? colors[southI + 2]! : baseB;
       const westMaterialBlend = westMaterialEdgeValid
-        ? organicEdgeBlendStrength(baseR, baseG, baseB, westMaterialR, westMaterialG, westMaterialB)
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, westMaterialR, westMaterialG, westMaterialB, MATERIAL_EDGE_BLEND_CAP, MATERIAL_EDGE_SPREAD_SCALE)
         : 0;
       const eastMaterialBlend = eastMaterialEdgeValid
-        ? organicEdgeBlendStrength(baseR, baseG, baseB, eastMaterialR, eastMaterialG, eastMaterialB)
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, eastMaterialR, eastMaterialG, eastMaterialB, MATERIAL_EDGE_BLEND_CAP, MATERIAL_EDGE_SPREAD_SCALE)
         : 0;
       const northMaterialBlend = northMaterialEdgeValid
-        ? organicEdgeBlendStrength(baseR, baseG, baseB, northMaterialR, northMaterialG, northMaterialB)
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, northMaterialR, northMaterialG, northMaterialB, MATERIAL_EDGE_BLEND_CAP, MATERIAL_EDGE_SPREAD_SCALE)
         : 0;
       const southMaterialBlend = southMaterialEdgeValid
-        ? organicEdgeBlendStrength(baseR, baseG, baseB, southMaterialR, southMaterialG, southMaterialB)
+        ? organicEdgeBlendStrength(baseR, baseG, baseB, southMaterialR, southMaterialG, southMaterialB, MATERIAL_EDGE_BLEND_CAP, MATERIAL_EDGE_SPREAD_SCALE)
         : 0;
       const westMaterialRadius = westMaterialEdgeValid
         ? MATERIAL_EDGE_RADIUS_MIN + hash2(gx, 0, salt + 751) * MATERIAL_EDGE_RADIUS_RANGE
@@ -485,10 +486,6 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
             r = pat.r;
             g = pat.g;
             b = pat.b;
-            const edgeFactor = edgeFactors[ly * ATLAS_CELL + lx]!;
-            r *= edgeFactor;
-            g *= edgeFactor;
-            b *= edgeFactor;
           }
           if (same === ORE_CELL_CLASS) {
             const vein = oreVeinAt(
@@ -502,15 +499,6 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
             r += (metal.r - r) * t;
             g += (metal.g - g) * t;
             b += (metal.b - b) * t;
-          }
-          if (same === CONCRETE_CELL_CLASS) {
-            const edge = lx === 0 || ly === 0 || lx === ATLAS_CELL - 1 || ly === ATLAS_CELL - 1;
-            if (edge) {
-              const t = 0.42;
-              r += (CONCRETE_STEEL_DARK.r - r) * t;
-              g += (CONCRETE_STEEL_DARK.g - g) * t;
-              b += (CONCRETE_STEEL_DARK.b - b) * t;
-            }
           }
           if (materialEdgeStrength > 0) {
             const targetR = (baseR + materialEdgeR) * 0.5;
@@ -547,10 +535,11 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
           }
           const px = col * ATLAS_CELL + lx;
           const grainScale = same === CONCRETE_CELL_CLASS ? 5 : same === WATER_CELL_CLASS ? 3 : same === GROUND_CELL_CLASS ? 11 : 13;
-          let grain = (hash2(px, py, salt) - 0.5) * grainScale;
+          const edgeGrainFactor = 1 - materialEdgeStrength * 0.75;
+          let grain = (hash2(px, py, salt) - 0.5) * grainScale * edgeGrainFactor;
           if (same === GROUND_CELL_CLASS) {
-            grain += (hash2(px, py, salt + 91) - 0.5) * 4;
-            grain += (hash2(Math.floor(gx * 2 + lx / 4), Math.floor(gy * 2 + ly / 4), salt + 117) - 0.5) * 5;
+            grain += (hash2(px, py, salt + 91) - 0.5) * 4 * edgeGrainFactor;
+            grain += (hash2(Math.floor(gx * 2 + lx / 4), Math.floor(gy * 2 + ly / 4), salt + 117) - 0.5) * 5 * edgeGrainFactor;
           }
           const o = (py * width + px) * 4;
           if (same === WATER_CELL_CLASS) {

@@ -18,6 +18,10 @@ import {
 } from "../../lib/iso";
 
 describe("orthographic battlefield projection", () => {
+  it("starts the flat camera at the map origin", () => {
+    expect(createCamera()).toEqual({ x: 0, y: 0, zoom: 1 });
+  });
+
   it("round-trips tile coordinates through screen space", () => {
     const cam = createCamera();
     cam.x = 120;

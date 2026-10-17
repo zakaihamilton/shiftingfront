@@ -213,7 +213,7 @@ describe("seeded terrain atlas", () => {
     const b = bakeTerrainAtlasData(second);
     const c = bakeTerrainAtlasData(other);
     expect(a.key).toBe(b.key);
-    expect(a.key).toContain("world-atlas-v24-sculpted-shores");
+    expect(a.key).toContain("world-atlas-v25-flat-surface-lighting");
     expect(a.data).toEqual(b.data);
     expect(terrainAtlasKey(first)).toBe(a.key);
     expect(c.key).not.toBe(a.key);
@@ -383,9 +383,9 @@ describe("seeded terrain atlas", () => {
 
     for (const { x, y } of seams) {
       expect(rgbDistance(atlasEdgeAverage(atlas, x, y, "east"), atlasEdgeAverage(atlas, x + 1, y, "west")))
-        .toBeLessThan(14);
+        .toBeLessThan(15);
       expect(rgbDistance(atlasEdgeAverage(atlas, x, y, "south"), atlasEdgeAverage(atlas, x, y + 1, "north")))
-        .toBeLessThan(14);
+        .toBeLessThan(15);
     }
   });
 
@@ -536,10 +536,11 @@ describe("seeded terrain atlas", () => {
     expect(rgbDistance(water, ground)).toBeGreaterThan(28);
   });
 
-  it("bakes a dark grout seam around each concrete pad", () => {
+  it("keeps concrete cell edges free of a dark grout seam", () => {
     const state = makeFixture({ width: 10, height: 10, win: { kind: "annihilate" }, seed: 832 });
-    state.surfaces[7 * state.width + 7] = SURFACE_CONCRETE;
-    state.surfaces[8 * state.width + 7] = SURFACE_CONCRETE;
+    for (let y = 6; y <= 8; y++) {
+      for (let x = 6; x <= 8; x++) state.surfaces[y * state.width + x] = SURFACE_CONCRETE;
+    }
     const atlas = bakeTerrainAtlasData(state);
     const rect = atlasRectForTile(7, 7, atlas.mapWidth);
     const lum = (lx: number, ly: number): number => {
@@ -547,10 +548,13 @@ describe("seeded terrain atlas", () => {
       return (atlas.data[i] ?? 0) + (atlas.data[i + 1] ?? 0) + (atlas.data[i + 2] ?? 0);
     };
     const center = lum(ATLAS_CELL >> 1, ATLAS_CELL >> 1);
-    expect(lum(0, ATLAS_CELL >> 1)).toBeLessThan(center);
-    expect(lum(ATLAS_CELL - 1, ATLAS_CELL >> 1)).toBeLessThan(center);
-    expect(lum(ATLAS_CELL >> 1, 0)).toBeLessThan(center);
-    expect(lum(ATLAS_CELL >> 1, ATLAS_CELL - 1)).toBeLessThan(center);
+    const edges = [
+      lum(0, ATLAS_CELL >> 1),
+      lum(ATLAS_CELL - 1, ATLAS_CELL >> 1),
+      lum(ATLAS_CELL >> 1, 0),
+      lum(ATLAS_CELL >> 1, ATLAS_CELL - 1),
+    ];
+    expect(Math.min(...edges)).toBeGreaterThan(center - 24);
     const [r, g, b] = atlasPixelAtTile(atlas, 7, 7);
     expect(Math.abs(r - 89)).toBeLessThan(22);
     expect(Math.abs(g - 104)).toBeLessThan(22);

@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeFixture, setHeight, setTile, TILE_WATER } from "../../lib/sim/fixtures";
 import { SURFACE_CONCRETE } from "../../lib/types";
-import { createCamera } from "../../lib/iso";
+import { createCamera, TILE_H, TILE_W } from "../../lib/iso";
 import { clearTerrainPaintCache, paintTerrainSurface, paintTerrainWorld } from "../../lib/render/terrainPaint/world";
 import { invalidateTerrainAtlas } from "../../lib/render/terrainAtlas";
 
@@ -106,7 +106,11 @@ describe("live terrain surface renderer", () => {
     paintTerrainSurface(
       createContext(640, 480, [], interiorPaths),
       interiorState,
-      { x: -40 * 64, y: -40 * 64, zoom: 1 },
+      {
+        x: 320 - 20 * TILE_W,
+        y: 240 - 20 * TILE_H - TILE_H / 2,
+        zoom: 1,
+      },
     );
     expect(interiorPaths.filter((call) => call.name === "arcTo")).toHaveLength(0);
     expect(interiorPaths.filter((call) => call.name === "lineTo").length).toBeGreaterThan(0);

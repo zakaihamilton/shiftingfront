@@ -17,7 +17,7 @@ describe("terrain lighting", () => {
     expect(rig.directionX).toBeGreaterThan(0);
     expect(rig.directionY).toBeGreaterThan(0);
     expect(terrainEdgeDarkening(rig, 0, 0)).toBe(1);
-    expect(terrainEdgeDarkening(rig, 1, 1)).toBeLessThan(1);
+    expect(terrainEdgeDarkening(rig, 1, 1)).toBe(1);
     for (const fx of [0, 0.5, 1]) {
       for (const fy of [0, 0.5, 1]) {
         const factor = terrainLightFactor(rig, 2, 1, 1, fx, fy);
@@ -46,10 +46,10 @@ describe("terrain lighting", () => {
     expect(terrainPropLightGain(world, 1, 1)).toBeLessThanOrEqual(1.02);
   });
 
-  it("brightens the lit corner and restrains excessive ground chroma", () => {
+  it("keeps flat tile lighting uniform and restrains excessive ground chroma", () => {
     const rig = terrainLightRigFor(421);
-    expect(terrainLightFactor(rig, 2, 1, 1, 0.05, 0.05))
-      .toBeGreaterThan(terrainLightFactor(rig, 2, 1, 1, 0.95, 0.95));
+    expect(terrainLightFactor(rig, 2, 2, 2, 0.05, 0.05))
+      .toBe(terrainLightFactor(rig, 2, 2, 2, 0.95, 0.95));
     const restrained = restrainTerrainColor({ r: 220, g: 80, b: 42 }, 0.1);
     expect(restrained.g).toBeGreaterThan(80);
     expect(restrained.r).toBeLessThan(220);

@@ -243,11 +243,8 @@ export function sampleTerrainMaterial(
   } else if (surface === SURFACE_CONCRETE) {
     const plateGrain = fbm(mapX * 0.72, mapY * 0.72, salt + 131);
     const grit = hash2(Math.floor(mapX * 6), Math.floor(mapY * 6), salt + 149);
-    const edgeDistance = Math.min(fx, 1 - fx, fy, 1 - fy);
-    const bevel = smoothstep(0.018, 0.075, edgeDistance);
-    const edgeShade = (1 - bevel) * 0.12;
-    color = mixRgb(CONCRETE_STEEL, CONCRETE_STEEL_DARK, 0.035 + micro * 0.055 + grit * 0.025 + edgeShade);
-    color = mixRgb(color, CONCRETE_STEEL_LIGHT, 0.025 + plateGrain * 0.055 + (1 - fx) * 0.018);
+    color = mixRgb(CONCRETE_STEEL, CONCRETE_STEEL_DARK, 0.035 + micro * 0.055 + grit * 0.025);
+    color = mixRgb(color, CONCRETE_STEEL_LIGHT, 0.025 + plateGrain * 0.055);
   } else if (surface === SURFACE_ROAD) {
     color = mixRgb(mats.road, mats.dark, 0.16 + grain * 0.22);
     color = mixRgb(color, mats.light, 0.06 + micro * 0.08);

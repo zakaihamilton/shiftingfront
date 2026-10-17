@@ -74,7 +74,7 @@ export function terrainLightRigFor(
     // direction stable makes cliffs, props, and tile materials read as one scene.
     directionX: 0.72,
     directionY: 0.58,
-    ambient: 0.85 * familyContrast,
+    ambient: 0.94 * familyContrast,
     keyStrength: 0.15 * familyContrast,
     occlusionStrength: 0.1,
     keyColor: colors.key,
@@ -122,35 +122,28 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function terrainEdgeOcclusion(rig: TerrainLightRig, fx: number, fy: number): number {
-  return (
-    Math.max(0, fx - 0.56) * 0.55
-    + Math.max(0, fy - 0.56) * 0.7
-  ) * rig.occlusionStrength;
-}
-
-export function terrainEdgeDarkening(rig: TerrainLightRig, fx: number, fy: number): number {
-  return clamp(1 - terrainEdgeOcclusion(rig, fx, fy), 0.94, 1);
+export function terrainEdgeDarkening(_rig: TerrainLightRig, _fx: number, _fy: number): number {
+  // Orthographic tiles share one continuous surface; shading each tile edge
+  // separately creates a checkerboard where no raised face is visible.
+  return 1;
 }
 
 /**
- * Estimate a soft surface response from the height changes toward the two
- * east/south height changes and the pixel's position inside its tile.
+ * Estimate a soft surface response from neighboring height changes. Flat
+ * tiles receive a uniform light factor so their boundaries do not read as
+ * beveled, disconnected pieces.
  */
 export function terrainLightFactor(
   rig: TerrainLightRig,
   elev: number,
   eastElev: number,
   southElev: number,
-  fx: number,
-  fy: number,
+  _fx: number,
+  _fy: number,
 ): number {
-  const faceX = Math.sin((0.5 - fx) * Math.PI) * rig.directionX;
-  const faceY = Math.sin((0.5 - fy) * Math.PI) * rig.directionY;
   const relief = (elev - eastElev) * rig.directionX * 0.08
     + (elev - southElev) * rig.directionY * 0.1;
-  const faceLight = (faceX + faceY) * rig.keyStrength * 0.72;
-  return clamp(rig.ambient + faceLight + relief - terrainEdgeOcclusion(rig, fx, fy), 0.76, 1.12);
+  return clamp(rig.ambient + relief, 0.76, 1.12);
 }
 
 /** Shared low-contrast light response for terrain props and scatter. */

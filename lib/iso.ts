@@ -45,7 +45,9 @@ export function toIsometricFacing(dx: number, dy: number): Facing {
 }
 
 export function createCamera(): Camera {
-  return { x: 400, y: 80, zoom: 1 };
+  // A top-down map starts at its upper-left corner. Gameplay focuses the
+  // player's base once the viewport dimensions are known.
+  return { x: 0, y: 0, zoom: 1 };
 }
 
 export function tileToScreen(tx: number, ty: number, cam: Camera, elev = 0): { x: number; y: number } {

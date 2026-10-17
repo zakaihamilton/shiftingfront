@@ -15,7 +15,7 @@ import { minimapMapRect } from "./camera";
 import { atlasPixelAtTile, atlasRectForTile, fogTerrainGain, getTerrainAtlas, isTerrainAtlasBaked, terrainColors } from "./terrainAtlas";
 import type { ColorblindMode } from "../persist/settings";
 
-const MINIMAP_RENDER_REV = "world-atlas-v14-orthographic-viewport-window";
+const MINIMAP_RENDER_REV = "world-atlas-v15-flat-surface-lighting";
 export const MINIMAP_OVERLAY_TICK_SHIFT = 1;
 const MINIMAP_FOG_COLOR = { r: 7, g: 15, b: 21 };
 const MINIMAP_SAMPLE_WEIGHTS = [1, 2, 3, 4, 3, 2, 1];

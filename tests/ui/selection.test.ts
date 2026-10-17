@@ -29,7 +29,7 @@ describe("harvester selection", () => {
     const truck = addUnit(s, 0, "repairTruck", 5, 5);
     const cam = createCamera();
     const pos = tileToScreen(truck.x, truck.y, cam, heightAt(s, 5, 5));
-    const nearEdge = pickEntity(s, pos.x + 36, pos.y + 20, cam);
+    const nearEdge = pickEntity(s, pos.x + 36, pos.y + TILE_H / 2 - 12, cam);
     expect(nearEdge?.id).toBe(truck.id);
   });
 
@@ -87,7 +87,7 @@ describe("harvester selection", () => {
     const truck = addUnit(s, 0, "convoyTruck", 5, 5);
     const cam = createCamera();
     const pos = tileToScreen(truck.x, truck.y, cam, heightAt(s, 5, 5));
-    const nearEdge = pickEntity(s, pos.x + 36, pos.y + 20, cam);
+    const nearEdge = pickEntity(s, pos.x + 36, pos.y + TILE_H / 2 - 12, cam);
     expect(nearEdge?.id).toBe(truck.id);
   });
 
@@ -125,7 +125,7 @@ describe("harvester selection", () => {
     expect(Math.round(h.y)).toBe(2);
   });
 
-  it("keeps tile-diamond clicks working for infantry", () => {
+  it("keeps square-tile clicks working for infantry", () => {
     const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     const u = addUnit(s, 0, "infantry", 5, 5);
     const cam = createCamera();
