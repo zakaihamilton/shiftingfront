@@ -37,6 +37,19 @@
   border-color: color-mix(in srgb, var(--chrome-cyan) 48%, var(--chrome-bevel));
 }
 
+.resumeAction {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.resumeMeta {
+  color: var(--chrome-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
 .utilityAction {
   width: 100%;
   padding: 0.65rem 0.85rem;
