@@ -7,6 +7,7 @@ const IDENTITY_PATHS = [
   "lib/gen",
   "lib/catalog",
   "lib/seed",
+  "lib/iso.ts",
   "lib/catalog.ts",
   "lib/types.ts",
   "lib/gameplayRules.ts",

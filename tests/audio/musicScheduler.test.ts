@@ -103,6 +103,14 @@ function createMockAudioContext(currentTime = 0) {
     createBiquadFilter: () => node(),
     createOscillator: () => node(),
     createPeriodicWave: (real: Float32Array, imag: Float32Array) => ({ real, imag }) as unknown as PeriodicWave,
+    createBuffer: (channels: number, length: number, sampleRate: number) => {
+      const data = Array.from({ length: channels }, () => new Float32Array(length));
+      return {
+        numberOfChannels: channels,
+        sampleRate,
+        getChannelData: (channel: number) => data[channel]!,
+      } as unknown as AudioBuffer;
+    },
     createBufferSource: () => node(),
     createWaveShaper: () => node(),
     createDelay: () => node(),
@@ -123,6 +131,8 @@ function createMockMusicGraph(p?: MusicPattern) {
   const node = () => ({
     gain: param(),
     frequency: param(),
+    detune: param(),
+    Q: param(),
     pan: param(),
     delayTime: param(),
     stop: vi.fn(),
@@ -137,6 +147,8 @@ function createMockMusicGraph(p?: MusicPattern) {
     bassBus: node(),
     rhythmBus: node(),
     harmonyBus: node(),
+    pianoBus: node(),
+    guitarBus: node(),
     pulseBus: node(),
     leadBus: node(),
     counterBus: node(),
@@ -177,6 +189,7 @@ function createMockMusicGraph(p?: MusicPattern) {
             harmony: new Map(),
             counter: new Map(),
             melody: new Map(),
+            guitar: new Map(),
           },
           drums: new Map(),
         },
@@ -288,7 +301,7 @@ describe("automatic music track variety", () => {
   it("handles transitioning flag during applyPattern crossfade and resets on stopMusic", () => {
     vi.useFakeTimers();
     try {
-      const fakeAudio = { currentTime: 5.0 };
+      const fakeAudio = createMockAudioContext(5.0);
       getAudioContext.mockReturnValue(fakeAudio as unknown as AudioContext);
       setTimer(123);
       setPattern(composeMusic(421, "mission", 0));
@@ -322,7 +335,7 @@ describe("automatic music track variety", () => {
   it("clears transitioning immediately if stopMusic is called during a fade", () => {
     vi.useFakeTimers();
     try {
-      getAudioContext.mockReturnValue({ currentTime: 2.0 } as unknown as AudioContext);
+      getAudioContext.mockReturnValue(createMockAudioContext(2.0) as unknown as AudioContext);
       setTimer(456);
       const initialPattern = composeMusic(421, "mission", 0);
       setPattern(initialPattern);
