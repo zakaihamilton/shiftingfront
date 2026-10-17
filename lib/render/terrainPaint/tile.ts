@@ -1,7 +1,9 @@
+import { tileCliffGeometry } from "../../gen/assets";
 import { expandIsoDiamond, isoAtlasTransform } from "../../iso";
 import { atlasRectForTile, fogTerrainGain, type TerrainAtlas } from "../terrainAtlas";
 import { SHROUD_FILL, SHROUD_RGB, SHROUD_COVER, SHROUD_CORNER_RADIUS_FRAC, SHROUD_CORE_COVER } from "./constants";
 import { roundedIsoDiamondPath, type IsoDiamondCornerRadii } from "../isoDiamond";
+import { fillElevationPoly } from "./cliffs";
 import { fogAt } from "../../sim/fog";
 import type { SimState } from "../../types";
 
@@ -19,20 +21,11 @@ export function paintShroudCliffs(
   seed: number,
   seal: boolean,
 ): void {
-  // Cliff walls extended outside the tile footprint in the angled renderer.
-  // The top-down battlefield keeps height cues inside each square tile.
-  void ctx;
-  void sx;
-  void sy;
-  void tw;
-  void th;
-  void dropE;
-  void dropS;
-  void step;
-  void tileX;
-  void tileY;
-  void seed;
-  void seal;
+  if (dropE <= 0 && dropS <= 0) return;
+  const geo = tileCliffGeometry(tw, th, step, dropE, dropS, seed, tileX, tileY);
+  if (geo.south) fillElevationPoly(ctx, sx, sy, geo.south.points, undefined, seal);
+  if (geo.east) fillElevationPoly(ctx, sx, sy, geo.east.points, undefined, seal);
+  if (geo.wedge) fillElevationPoly(ctx, sx, sy, geo.wedge, undefined, seal);
 }
 
 const MASK_RGB = { r: 0, g: 0, b: 0 };

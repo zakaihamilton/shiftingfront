@@ -60,7 +60,7 @@ export function toFacing(dx: number, dy: number): Facing {
 
 export function facingVector(facing: Facing): { x: number; y: number } {
   const angle = isoFacingAngle(facing);
-  return { x: Math.cos(angle), y: Math.sin(angle) };
+  return { x: Math.cos(angle), y: Math.sin(angle) * 0.52 };
 }
 
 export function unitWalkPeriod(kind: UnitKind): number {

@@ -15,7 +15,7 @@ import { minimapMapRect } from "./camera";
 import { atlasPixelAtTile, atlasRectForTile, fogTerrainGain, getTerrainAtlas, isTerrainAtlasBaked, terrainColors } from "./terrainAtlas";
 import type { ColorblindMode } from "../persist/settings";
 
-const MINIMAP_RENDER_REV = "world-atlas-v15-flat-surface-lighting";
+const MINIMAP_RENDER_REV = "world-atlas-v16-isometric-projection";
 export const MINIMAP_OVERLAY_TICK_SHIFT = 1;
 const MINIMAP_FOG_COLOR = { r: 7, g: 15, b: 21 };
 const MINIMAP_SAMPLE_WEIGHTS = [1, 2, 3, 4, 3, 2, 1];
@@ -500,7 +500,7 @@ function paintMinimapOverlay(
   ctx.strokeRect(mapRect.x + 0.5, mapRect.y + 0.5, Math.max(0, mapRect.width - 1), Math.max(0, mapRect.height - 1));
 }
 
-/** Project the battlefield viewport footprint into a flat, axis-aligned focus rectangle. */
+/** Show the axis-aligned map-space bounds of the isometric viewport on the minimap. */
 export function minimapViewRect(
   view: { x: number; y: number }[],
   w: number,
@@ -510,18 +510,16 @@ export function minimapViewRect(
 ): { x: number; y: number; width: number; height: number } | null {
   if (view.length < 4) return null;
   const mapRect = minimapMapRect(w, h, mapWidth, mapHeight);
-  const widthTiles = (
-    Math.abs(view[1].x - view[0].x)
-    + Math.abs(view[2].x - view[3].x)
-  ) / 2;
-  const heightTiles = (
-    Math.abs(view[3].y - view[0].y)
-    + Math.abs(view[2].y - view[1].y)
-  ) / 2;
+  const minTileX = Math.min(...view.map((point) => point.x));
+  const maxTileX = Math.max(...view.map((point) => point.x));
+  const minTileY = Math.min(...view.map((point) => point.y));
+  const maxTileY = Math.max(...view.map((point) => point.y));
+  const widthTiles = maxTileX - minTileX;
+  const heightTiles = maxTileY - minTileY;
   const width = (widthTiles / mapWidth) * mapRect.width;
   const height = (heightTiles / mapHeight) * mapRect.height;
-  const centerTileX = view.reduce((sum, point) => sum + point.x, 0) / view.length;
-  const centerTileY = view.reduce((sum, point) => sum + point.y, 0) / view.length;
+  const centerTileX = (minTileX + maxTileX) / 2;
+  const centerTileY = (minTileY + maxTileY) / 2;
   const centerX = mapRect.x + ((centerTileX + 0.5) / mapWidth) * mapRect.width;
   const centerY = mapRect.y + ((centerTileY + 0.5) / mapHeight) * mapRect.height;
   return {

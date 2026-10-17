@@ -43,7 +43,7 @@ describe("PWA icons and manifest", () => {
     expect(webApp.name).toBe(APP_NAME);
     expect(webApp.short_name).toBe(APP_SHORT_NAME);
     expect(webApp.description).toBe(APP_DESCRIPTION);
-    expect(webApp.description).toBe("A seeded top-down RTS — one 4-digit code writes the war.");
+    expect(webApp.description).toBe("A seeded isometric RTS — one 4-digit code writes the war.");
     expect(webApp.id).toBe("/");
     expect(webApp.display).toBe("standalone");
     expect(webApp.theme_color).toBe(APP_THEME_COLOR);

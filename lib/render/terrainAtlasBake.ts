@@ -7,7 +7,10 @@ import {
   surfaceAt,
   type AtlasWorld,
 } from "./terrainMaterials";
-import { terrainLightRigForBiome } from "./terrainLighting";
+import {
+  terrainEdgeDarkening,
+  terrainLightRigForBiome,
+} from "./terrainLighting";
 import {
   sampleTerrainMaterial,
   waterShoreDist,
@@ -61,6 +64,11 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
   const mats = materialsFor(state);
   const rig = terrainLightRigForBiome(state.seed, state.biome);
   const pixelFractions = Array.from({ length: ATLAS_CELL }, (_, index) => (index + 0.5) / ATLAS_CELL);
+  const edgeFactors = Array.from({ length: ATLAS_CELL * ATLAS_CELL }, (_, index) => {
+    const lx = index % ATLAS_CELL;
+    const ly = Math.floor(index / ATLAS_CELL);
+    return terrainEdgeDarkening(rig, lx / ATLAS_CELL, ly / ATLAS_CELL);
+  });
   const featureAt = terrainFeatureSamplerFor(state);
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
@@ -118,6 +126,7 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
     mats,
     rig,
     pixelFractions,
+    edgeFactors,
     organicCorners,
     data,
     currentRow: 0,

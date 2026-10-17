@@ -95,17 +95,6 @@ export function paintTerrainWeather(
     ctx.globalAlpha = particle.alpha;
     const radiusX = particle.size;
     const radiusY = particle.size * 0.62;
-    if (particle.color === "#d06a3c") {
-      ctx.save();
-      ctx.globalCompositeOperation = "screen";
-      ctx.globalAlpha = particle.alpha * 0.32;
-      ctx.fillStyle = particle.color;
-      ctx.beginPath();
-      ctx.ellipse(particle.x, particle.y, radiusX * 2.25, radiusY * 2.25, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      ctx.globalAlpha = particle.alpha;
-    }
     if (particle.trail > 1.05) {
       ctx.save();
       ctx.translate(particle.x, particle.y);

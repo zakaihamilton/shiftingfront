@@ -9,13 +9,12 @@ export const CONCRETE_CELL_CLASS = 2;
 export const ORE_CELL_CLASS = 3;
 export const GROUND_CELL_CLASS = 4;
 
-// Keep mixed-material transitions local to their shared edge while blending
-// strongly enough that orthographic tile seams do not become hard lines.
-export const MATERIAL_EDGE_BLEND_CAP = 0.78;
-export const MATERIAL_EDGE_SPREAD_SCALE = 30;
+// Mixed-material transitions are intentionally narrower than the existing
+// same-ground feather. At the default tile scale this projects to roughly
+// 6–10 screen pixels, enough to break the grid without muddying the materials.
 export const MATERIAL_EDGE_RADIUS_MIN = 0.14;
 export const MATERIAL_EDGE_RADIUS_RANGE = 0.08;
-export const MATERIAL_EDGE_WARP_RANGE = 0.08;
+export const MATERIAL_EDGE_WARP_RANGE = 0.18;
 export const MATERIAL_CORNER_BLEND_CAP = 0.42;
 export const MATERIAL_CORNER_SPREAD_SCALE = 64;
 
@@ -68,6 +67,7 @@ export type AtlasBakeContext = {
   mats: ReturnType<typeof materialsFor>;
   rig: ReturnType<typeof terrainLightRigForBiome>;
   pixelFractions: number[];
+  edgeFactors: number[];
   organicCorners: OrganicCornerBridges;
   data: Uint8ClampedArray;
   currentRow: number;

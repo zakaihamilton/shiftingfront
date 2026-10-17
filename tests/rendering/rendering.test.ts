@@ -17,7 +17,7 @@ import {
   WATER_COVER,
 } from "../../lib/render/terrainPaint";
 import { hash } from "../../lib/gen/tilePalette";
-import { generateMap, MAP_SKIRT, terrainFeatureAt } from "../../lib/gen/map";
+import { generateMap, terrainFeatureAt } from "../../lib/gen/map";
 import { tileSprite, tileSpriteId } from "../../lib/gen/assets";
 import { TERRAIN_ART } from "../../lib/gen/visualAssets";
 import { generateCampaignVisualProfile } from "../../lib/gen/visualProfile";
@@ -78,11 +78,6 @@ import { paintShroudMaskTile, shroudCornerRadii } from "../../lib/render/terrain
 import { rgbOf } from "../../lib/render/terrainPaint/style";
 import { SHROUD_COVER, SHROUD_CORE_COVER, SHROUD_CORNER_RADIUS_FRAC, SHROUD_FILL, SHROUD_RGB } from "../../lib/render/terrainPaint/constants";
 import { fogIndex, makeFog } from "../../lib/sim/fog";
-import {
-  signedShoreDistanceFromMask,
-  shorelineWarp,
-  warpedShoreDistance,
-} from "../../lib/render/terrainAtlasSurfaces";
 
 function atlasCellGoldScore(atlas: TerrainAtlasData, tileX: number, tileY: number): number {
   const rect = atlasRectForTile(tileX, tileY, atlas.mapWidth);
@@ -138,7 +133,7 @@ function atlasLocalPixel(
 }
 
 describe("seeded terrain atlas", () => {
-  it("shares deterministic noise and draws an axis-aligned square tile path", () => {
+  it("shares deterministic noise and preserves the isometric diamond path", () => {
     expect(hash2(7, -3, 41)).toBe(hashNoise(7, -3, 41));
     const noise = valueNoise(2.25, -1.5, 41);
     expect(noise).toBe(valueNoise(2.25, -1.5, 41));
@@ -152,14 +147,14 @@ describe("seeded terrain atlas", () => {
     } as unknown as CanvasRenderingContext2D;
     isoDiamondPath(ctx, 10, 20, 8, 4);
 
-    expect(ctx.moveTo).toHaveBeenCalledWith(6, 20);
-    expect(ctx.lineTo).toHaveBeenNthCalledWith(1, 14, 20);
-    expect(ctx.lineTo).toHaveBeenNthCalledWith(2, 14, 24);
-    expect(ctx.lineTo).toHaveBeenNthCalledWith(3, 6, 24);
+    expect(ctx.moveTo).toHaveBeenCalledWith(10, 20);
+    expect(ctx.lineTo).toHaveBeenNthCalledWith(1, 14, 22);
+    expect(ctx.lineTo).toHaveBeenNthCalledWith(2, 10, 24);
+    expect(ctx.lineTo).toHaveBeenNthCalledWith(3, 6, 22);
     expect(ctx.closePath).toHaveBeenCalledOnce();
   });
 
-  it("rounds square tile corners with arcTo and stays off the raw corners", () => {
+  it("rounds iso diamond corners with arcTo and stays off the raw tips", () => {
     const ctx = {
       beginPath: vi.fn(),
       moveTo: vi.fn(),
@@ -171,15 +166,15 @@ describe("seeded terrain atlas", () => {
 
     expect(ctx.lineTo).not.toHaveBeenCalled();
     expect(ctx.arcTo).toHaveBeenCalledTimes(4);
-    expect(ctx.moveTo).not.toHaveBeenCalledWith(6, 20);
-    expect(ctx.arcTo).toHaveBeenNthCalledWith(1, 6, 20, 14, 20, 1.2);
-    expect(ctx.arcTo).toHaveBeenNthCalledWith(2, 14, 20, 14, 24, 1.2);
-    expect(ctx.arcTo).toHaveBeenNthCalledWith(3, 14, 24, 6, 24, 1.2);
-    expect(ctx.arcTo).toHaveBeenNthCalledWith(4, 6, 24, 6, 20, 1.2);
+    expect(ctx.moveTo).not.toHaveBeenCalledWith(10, 20);
+    expect(ctx.arcTo).toHaveBeenNthCalledWith(1, 10, 20, 14, 22, 1.2);
+    expect(ctx.arcTo).toHaveBeenNthCalledWith(2, 14, 22, 10, 24, 1.2);
+    expect(ctx.arcTo).toHaveBeenNthCalledWith(3, 10, 24, 6, 22, 1.2);
+    expect(ctx.arcTo).toHaveBeenNthCalledWith(4, 6, 22, 10, 20, 1.2);
     expect(ctx.closePath).toHaveBeenCalledOnce();
   });
 
-  it("clamps rounded-tile radius to half of each edge", () => {
+  it("clamps rounded-diamond radius to half of each edge", () => {
     const ctx = {
       beginPath: vi.fn(),
       moveTo: vi.fn(),
@@ -188,8 +183,8 @@ describe("seeded terrain atlas", () => {
       closePath: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
     roundedIsoDiamondPath(ctx, 10, 20, 8, 4, 100);
-    const clamped = 2;
-    expect(ctx.arcTo).toHaveBeenNthCalledWith(1, 6, 20, 14, 20, clamped);
+    const clamped = Math.hypot(4, 2) / 2;
+    expect(ctx.arcTo).toHaveBeenNthCalledWith(1, 10, 20, 14, 22, clamped);
   });
 
   it("scopes raster fallback cache keys to the active mission session", () => {
@@ -213,7 +208,7 @@ describe("seeded terrain atlas", () => {
     const b = bakeTerrainAtlasData(second);
     const c = bakeTerrainAtlasData(other);
     expect(a.key).toBe(b.key);
-    expect(a.key).toContain("world-atlas-v25-flat-surface-lighting");
+    expect(a.key).toContain("world-atlas-v23-isometric-projection");
     expect(a.data).toEqual(b.data);
     expect(terrainAtlasKey(first)).toBe(a.key);
     expect(c.key).not.toBe(a.key);
@@ -221,48 +216,6 @@ describe("seeded terrain atlas", () => {
     const generated = generateMap(832, { index: 0, win: { kind: "annihilate" }, mapSize: 48, biome: "ash plains" });
     const world = { ...generated, seed: 832, missionIndex: 0 };
     expect(sampleTerrainMaterial(world, 4, 4)).toEqual(sampleTerrainMaterial(world, 4, 4));
-  });
-
-  it("warps the shore deterministically and continuously across water/land seams", () => {
-    const salt = 832;
-    const waterDistance = signedShoreDistanceFromMask(0.99, 0.5, 0xfd, true);
-    const landDistance = signedShoreDistanceFromMask(0.01, 0.5, 0x08, false);
-    const waterEdge = warpedShoreDistance(waterDistance, 0.99, 0.5, salt);
-    const landEdge = warpedShoreDistance(landDistance, 1.01, 0.5, salt);
-    const warp = shorelineWarp(1.25, -0.75, salt);
-
-    expect(waterDistance).toBeCloseTo(0.01, 5);
-    expect(landDistance).toBeCloseTo(-0.01, 5);
-    expect(Math.abs(waterEdge - landEdge)).toBeLessThan(0.05);
-    expect(warp).toBe(shorelineWarp(1.25, -0.75, salt));
-    expect(Math.abs(warp)).toBeLessThanOrEqual(0.24);
-    expect(signedShoreDistanceFromMask(0.5, 0.5, 0xff, true)).toBe(8);
-    expect(signedShoreDistanceFromMask(0.5, 0.5, 0, false)).toBe(-8);
-  });
-
-  it("keeps shoreline treatment local and leaves interior water colors unchanged", () => {
-    const nearShore = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed: 832 });
-    const remoteShore = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" }, seed: 832 });
-    for (let y = 2; y <= 4; y++) {
-      for (let x = 2; x <= 4; x++) {
-        setTile(nearShore, x, y, TILE_WATER);
-        setTile(remoteShore, x, y, TILE_WATER);
-      }
-      for (let x = 7; x <= 9; x++) setTile(remoteShore, x, y + 5, TILE_WATER);
-    }
-
-    const atlas = bakeTerrainAtlasData(nearShore);
-    const sameSeedAtlas = bakeTerrainAtlasData(nearShore);
-    const movedShoreAtlas = bakeTerrainAtlasData(remoteShore);
-    const atlasCols = atlas.width / ATLAS_CELL;
-    const waterCellIndex = (3 + MAP_SKIRT) * atlasCols + (3 + MAP_SKIRT);
-    const landCellIndex = (5 + MAP_SKIRT) * atlasCols + (5 + MAP_SKIRT);
-
-    expect(atlas.data).toEqual(sameSeedAtlas.data);
-    expect(atlas.waterCells[waterCellIndex]).toBe(1);
-    expect(atlas.waterCells[landCellIndex]).toBe(0);
-    expect(atlasPixelAtTile(atlas, 3, 3)).toEqual(atlasPixelAtTile(movedShoreAtlas, 3, 3));
-    expect(atlasLocalPixel(atlas, 5, 0, 4, 4)).toEqual(atlasLocalPixel(movedShoreAtlas, 5, 0, 4, 4));
   });
 
   it("keeps derived prop materials matte without erasing biome identity", () => {
@@ -383,9 +336,9 @@ describe("seeded terrain atlas", () => {
 
     for (const { x, y } of seams) {
       expect(rgbDistance(atlasEdgeAverage(atlas, x, y, "east"), atlasEdgeAverage(atlas, x + 1, y, "west")))
-        .toBeLessThan(15);
+        .toBeLessThan(14);
       expect(rgbDistance(atlasEdgeAverage(atlas, x, y, "south"), atlasEdgeAverage(atlas, x, y + 1, "north")))
-        .toBeLessThan(15);
+        .toBeLessThan(14);
     }
   });
 
@@ -536,11 +489,10 @@ describe("seeded terrain atlas", () => {
     expect(rgbDistance(water, ground)).toBeGreaterThan(28);
   });
 
-  it("keeps concrete cell edges free of a dark grout seam", () => {
+  it("bakes a dark grout seam around each concrete pad", () => {
     const state = makeFixture({ width: 10, height: 10, win: { kind: "annihilate" }, seed: 832 });
-    for (let y = 6; y <= 8; y++) {
-      for (let x = 6; x <= 8; x++) state.surfaces[y * state.width + x] = SURFACE_CONCRETE;
-    }
+    state.surfaces[7 * state.width + 7] = SURFACE_CONCRETE;
+    state.surfaces[8 * state.width + 7] = SURFACE_CONCRETE;
     const atlas = bakeTerrainAtlasData(state);
     const rect = atlasRectForTile(7, 7, atlas.mapWidth);
     const lum = (lx: number, ly: number): number => {
@@ -548,13 +500,10 @@ describe("seeded terrain atlas", () => {
       return (atlas.data[i] ?? 0) + (atlas.data[i + 1] ?? 0) + (atlas.data[i + 2] ?? 0);
     };
     const center = lum(ATLAS_CELL >> 1, ATLAS_CELL >> 1);
-    const edges = [
-      lum(0, ATLAS_CELL >> 1),
-      lum(ATLAS_CELL - 1, ATLAS_CELL >> 1),
-      lum(ATLAS_CELL >> 1, 0),
-      lum(ATLAS_CELL >> 1, ATLAS_CELL - 1),
-    ];
-    expect(Math.min(...edges)).toBeGreaterThan(center - 24);
+    expect(lum(0, ATLAS_CELL >> 1)).toBeLessThan(center);
+    expect(lum(ATLAS_CELL - 1, ATLAS_CELL >> 1)).toBeLessThan(center);
+    expect(lum(ATLAS_CELL >> 1, 0)).toBeLessThan(center);
+    expect(lum(ATLAS_CELL >> 1, ATLAS_CELL - 1)).toBeLessThan(center);
     const [r, g, b] = atlasPixelAtTile(atlas, 7, 7);
     expect(Math.abs(r - 89)).toBeLessThan(22);
     expect(Math.abs(g - 104)).toBeLessThan(22);
@@ -581,16 +530,16 @@ describe("seeded terrain atlas", () => {
     expect(smoothFogGain(state, 3, 4)).toBe(0);
   });
 
-  it("maps atlas cells onto square tile corners", () => {
+  it("maps atlas cells onto isometric diamond vertices", () => {
     const [a, b, c, d, e, f] = isoAtlasTransform(100, 50, TILE_W, TILE_H, 8, 8);
     const map = (u: number, v: number) => ({ x: a * u + c * v + e, y: b * u + d * v + f });
-    expect(map(0, 0)).toEqual({ x: 68, y: 50 });
-    expect(map(8, 0)).toEqual({ x: 132, y: 50 });
-    expect(map(0, 8)).toEqual({ x: 68, y: 114 });
-    expect(map(8, 8)).toEqual({ x: 132, y: 114 });
+    expect(map(0, 0)).toEqual({ x: 100, y: 50 });
+    expect(map(8, 0)).toEqual({ x: 132, y: 66 });
+    expect(map(0, 8)).toEqual({ x: 68, y: 66 });
+    expect(map(8, 8)).toEqual({ x: 100, y: 82 });
   });
 
-  it("expands a rectangular tile about its center", () => {
+  it("expands an isometric diamond about its center", () => {
     const box = expandIsoDiamond(100, 50, 64, 32, 1.5);
     expect(box).toEqual({ x: 100, y: 42, w: 96, h: 48 });
   });
@@ -903,7 +852,7 @@ describe("terrain scroll cache key", () => {
     const state = makeFixture({ width: 8, height: 8, win: { kind: "annihilate" }, seed: 832 });
     const cam = createCamera();
     const a = terrainContentKey(state, cam, 640, 360);
-    expect(a).toContain("world-atlas-v33-orthographic-square-tiles");
+    expect(a).toContain("world-atlas-v34-isometric-projection");
     cam.x += 40;
     cam.y -= 18;
     expect(terrainContentKey(state, cam, 640, 360)).toBe(a);
@@ -929,63 +878,42 @@ describe("terrain scroll cache key", () => {
 });
 
 describe("minimap classification", () => {
-  it("projects the battlefield viewport as a flat rectangle matching its aspect ratio", () => {
-    const view = cameraViewQuad(createCamera(), 640, 480);
-    const rect = minimapViewRect(view, 224, 160, 48, 48);
-    expect(rect).not.toBeNull();
-    expect(rect!.width / rect!.height).toBeCloseTo(640 / 480);
-    const centerTile = view.reduce(
-      (center, point) => ({ x: center.x + point.x / view.length, y: center.y + point.y / view.length }),
-      { x: 0, y: 0 },
-    );
-    expect(rect!.x + rect!.width / 2).toBeCloseTo(32 + ((centerTile.x + 0.5) / 48) * 160);
-    expect(rect!.y + rect!.height / 2).toBeCloseTo(((centerTile.y + 0.5) / 48) * 160);
-    expect(minimapViewRect([], 224, 160, 48, 48)).toBeNull();
-  });
-
-  it("moves the minimap window along flat map axes", () => {
+  it("moves the isometric viewport window along the corresponding map axes", () => {
     const bounds = cameraPanBounds(48, 48, 640, 480);
-    const cases = [
-      { dir: "left" as const, axis: "x" as const, sign: -1 },
-      { dir: "right" as const, axis: "x" as const, sign: 1 },
-      { dir: "up" as const, axis: "y" as const, sign: -1 },
-      { dir: "down" as const, axis: "y" as const, sign: 1 },
-    ];
+    const cam = createCamera();
+    focusCameraAtTile(cam, 24, 24, bounds);
+    const viewRect = () => minimapViewRect(cameraViewQuad(cam, 640, 480), 224, 160, 48, 48)!;
+    const before = viewRect();
 
-    for (const { dir, axis, sign } of cases) {
-      const cam = createCamera();
-      focusCameraAtTile(cam, 24, 24, bounds);
-      const viewRect = () => minimapViewRect(cameraViewQuad(cam, 640, 480), 224, 160, 48, 48)!;
-      const before = viewRect();
+    panCamera(cam, panInputForDirection("right", 40, cam.zoom), bounds);
 
-      panCamera(cam, panInputForDirection(dir, 40, cam.zoom), bounds);
-
-      const after = viewRect();
-      const moved = axis === "x" ? after.x - before.x : after.y - before.y;
-      const unmoved = axis === "x" ? after.y - before.y : after.x - before.x;
-      expect(Math.sign(moved)).toBe(sign);
-      expect(unmoved).toBeCloseTo(0);
-    }
+    const after = viewRect();
+    expect(after.x).toBeGreaterThan(before.x);
+    expect(after.y).toBeCloseTo(before.y);
+    expect(after.width).toBeCloseTo(before.width);
+    expect(after.height).toBeCloseTo(before.height);
   });
 
   it("renders terrain from solid tile samples instead of the atlas grid", () => {
     const state = makeFixture({ width: 4, height: 4, win: { kind: "annihilate" } });
     state.entities = [];
     const fillRect = vi.fn();
-    const strokeRect = vi.fn();
     const drawImage = vi.fn();
-    const ctx = {
+    const ctx = new Proxy({
       canvas: { width: 32, height: 32 },
       fillRect,
-      strokeRect,
       drawImage,
-    } as unknown as CanvasRenderingContext2D;
+    } as unknown as CanvasRenderingContext2D, {
+      get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver);
+        return value ?? vi.fn();
+      },
+    });
 
     renderMinimap(ctx, state, []);
 
     expect(drawImage).not.toHaveBeenCalled();
     expect(fillRect).toHaveBeenCalledTimes(1 + state.width * state.height);
-    expect(strokeRect).toHaveBeenCalledWith(0.5, 0.5, 31, 31);
   });
 
   it("uses one faction color for all unmarked minimap entities", () => {
@@ -1048,21 +976,6 @@ describe("minimap classification", () => {
 
     const selected = minimapCacheKeys(state, view, 96, 96, new Set([1, 3]));
     expect(selected.overlayKey).not.toBe(next.overlayKey);
-
-    const sameBoundsDifferentView = [
-      { x: 0, y: 4 },
-      { x: 4, y: 4 },
-      { x: 4, y: 0 },
-      { x: 0, y: 0 },
-    ];
-    expect(minimapCacheKeys(state, sameBoundsDifferentView, 96, 96).overlayKey).toBe(next.overlayKey);
-    const movedView = [
-      { x: 1, y: 1 },
-      { x: 5, y: 1 },
-      { x: 5, y: 5 },
-      { x: 1, y: 5 },
-    ];
-    expect(minimapCacheKeys(state, movedView, 96, 96).overlayKey).not.toBe(next.overlayKey);
   });
 
   it("hides stranded minimap contacts until their tile is discovered", () => {

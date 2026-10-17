@@ -1,6 +1,6 @@
 # Shifting Front
 
-> A seeded top-down RTS — one 4-digit code writes the war.
+> A seeded isometric RTS — one 4-digit code writes the war.
 
 [Play now](https://shiftingfront.com) · [Run locally](#run-locally) · [View source](https://github.com/zakaihamilton/shiftingfront)
 
@@ -121,7 +121,7 @@ For browser tests, install the required Playwright browsers once with `pnpm exec
 
 ## For contributors
 
-The project is built with Next.js 16, React 19, TypeScript, and a Canvas 2D orthographic renderer with a square tile grid. Campaign generation and gameplay simulation live in DOM-free modules, so the browser, tests, and headless tools exercise the same deterministic game logic.
+The project is built with Next.js 16, React 19, TypeScript, and a Canvas 2D isometric renderer. Campaign generation and gameplay simulation live in DOM-free modules, so the browser, tests, and headless tools exercise the same deterministic game logic.
 
 - `app/` contains the menu, briefing, campaign, tutorial, and play routes.
 - `components/` contains the HUD, Canvas shell, menus, briefings, Asset Bay, and multiplayer lobby views. The multiplayer lobby controller owns room setup and connection lifecycle; its view components render host, join, waiting-room, battle, and connection-status screens.

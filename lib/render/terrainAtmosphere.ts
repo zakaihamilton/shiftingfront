@@ -55,8 +55,13 @@ function ensureMask(state: SimState, cam: Camera, width: number, height: number)
   const range = visibleTileRange(cam, width, height, state.width, state.height);
   const tw = TILE_W * cam.zoom;
   const th = TILE_H * cam.zoom;
-  for (let y = range.y0; y < range.y1; y++) {
-    for (let x = range.x0; x < range.x1; x++) {
+  const depth0 = range.x0 + range.y0;
+  const depth1 = (range.x1 - 1) + (range.y1 - 1);
+  for (let depth = depth0; depth <= depth1; depth++) {
+    const xs = Math.max(range.x0, depth - (range.y1 - 1));
+    const xe = Math.min(range.x1 - 1, depth - range.y0);
+    for (let x = xs; x <= xe; x++) {
+      const y = depth - x;
       const scenery = sceneryAt(state, x, y);
       const gain = fogTerrainGain(fogAt(state, x, y));
       if (gain <= fogTerrainGain(0) + 0.01) continue;
@@ -107,8 +112,6 @@ export function paintTerrainAtmosphere(
   const frame = terrainAtmosphereFrame(state.seed, timeMs, reducedMotion);
   const rig = terrainLightRigForBiome(state.seed, state.biome);
   const atmosphere = biomeAtmosphereColor(state.biome, rig);
-  const glowAlpha = frame.glowAlpha * 1.3;
-  const hazeAlpha = frame.hazeAlpha * 1.25;
   const layerWidth = layer.width;
   const layerHeight = layer.height;
   layerCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -120,15 +123,15 @@ export function paintTerrainAtmosphere(
   const glowY = layerHeight * (0.28 + frame.driftY);
   const glowRadius = Math.max(layerWidth, layerHeight) * 0.62;
   const glow = layerCtx.createRadialGradient(glowX, glowY, 0, glowX, glowY, glowRadius);
-  glow.addColorStop(0, rgba(rig.keyColor, glowAlpha));
-  glow.addColorStop(0.42, rgba(atmosphere, glowAlpha * 0.38));
+  glow.addColorStop(0, rgba(rig.keyColor, frame.glowAlpha));
+  glow.addColorStop(0.42, rgba(atmosphere, frame.glowAlpha * 0.38));
   glow.addColorStop(1, rgba(atmosphere, 0));
   layerCtx.fillStyle = glow;
   layerCtx.fillRect(0, 0, layerWidth, layerHeight);
 
   const haze = layerCtx.createLinearGradient(0, 0, layerWidth, layerHeight);
-  haze.addColorStop(0, rgba(atmosphere, hazeAlpha));
-  haze.addColorStop(0.5, rgba(atmosphere, hazeAlpha * 0.18));
+  haze.addColorStop(0, rgba(atmosphere, frame.hazeAlpha));
+  haze.addColorStop(0.5, rgba(atmosphere, frame.hazeAlpha * 0.18));
   haze.addColorStop(1, rgba(atmosphere, 0));
   layerCtx.fillStyle = haze;
   layerCtx.fillRect(0, 0, layerWidth, layerHeight);

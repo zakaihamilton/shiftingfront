@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createCamera } from "../../lib/iso";
+import { createCamera, TILE_H, TILE_W } from "../../lib/iso";
 import { makeFixture } from "../../lib/sim/fixtures";
 import {
   cameraFocusPoint,
@@ -46,7 +46,7 @@ function makeFrameCoordinator(
 const focus = (frame: ReturnType<typeof makeFrameCoordinator>) => cameraFocusPoint(frame.camera, frame.bounds);
 
 describe("runtime frame coordinator", () => {
-  it("moves keyboard directions along flat minimap axes", () => {
+  it("moves keyboard directions along matching minimap axes", () => {
     const rightFrame = makeFrameCoordinator({ d: true });
     const upFrame = makeFrameCoordinator({ w: true });
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
@@ -103,12 +103,13 @@ describe("runtime frame coordinator", () => {
   });
 
   it("publishes changed direction availability after reaching a map edge", () => {
-    const frame = makeFrameCoordinator({ d: true }, undefined, { x: 46.9, y: 24 });
+    const frame = makeFrameCoordinator({ d: true }, undefined, { x: 46.9, y: 0 });
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
 
     frame.coordinator.onFrame(state, 0, false, 100);
 
     expect(focus(frame).x).toBe(47);
+    expect(focus(frame).y).toBe(0);
     expect(frame.setPanAvailability).toHaveBeenCalledWith(expect.objectContaining({ right: false }));
   });
 
@@ -141,7 +142,8 @@ describe("runtime frame coordinator", () => {
     frame.coordinator.onFrame(state, 1_000, false, 100);
 
     expect(focus(frame).x).toBeGreaterThan(before.x);
-    expect(focus(frame).x - before.x).toBeCloseTo(600 / 64, 1);
+    const screenDistance = (focus(frame).x - before.x) * Math.hypot(TILE_W / 2, TILE_H / 2);
+    expect(screenDistance).toBeCloseTo(600, 1);
   });
 
   it("moves along both minimap axes for a diagonal edge hold", () => {

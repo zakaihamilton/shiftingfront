@@ -70,13 +70,13 @@ export function terrainLightRigFor(
   const colors = accentColors(resolvedProfile.terrainAccent);
   const familyContrast = resolvedProfile.family === 1 ? 0.96 : resolvedProfile.family === 2 ? 0.99 : 1;
   const rig: TerrainLightRig = {
-    // Light arrives from the upper-left of the square tile grid. Keeping this
+    // Light arrives from the upper-left of the isometric diamond. Keeping this
     // direction stable makes cliffs, props, and tile materials read as one scene.
     directionX: 0.72,
     directionY: 0.58,
-    ambient: 0.94 * familyContrast,
-    keyStrength: 0.15 * familyContrast,
-    occlusionStrength: 0.1,
+    ambient: 0.88 * familyContrast,
+    keyStrength: 0.13 * familyContrast,
+    occlusionStrength: 0.08,
     keyColor: colors.key,
     atmosphereColor: colors.atmosphere,
     phase: hash01(seed ^ 0x6d2b79f5) * Math.PI * 2,
@@ -122,28 +122,35 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-export function terrainEdgeDarkening(_rig: TerrainLightRig, _fx: number, _fy: number): number {
-  // Orthographic tiles share one continuous surface; shading each tile edge
-  // separately creates a checkerboard where no raised face is visible.
-  return 1;
+function terrainEdgeOcclusion(rig: TerrainLightRig, fx: number, fy: number): number {
+  return (
+    Math.max(0, fx - 0.56) * 0.55
+    + Math.max(0, fy - 0.56) * 0.7
+  ) * rig.occlusionStrength;
+}
+
+export function terrainEdgeDarkening(rig: TerrainLightRig, fx: number, fy: number): number {
+  return clamp(1 - terrainEdgeOcclusion(rig, fx, fy), 0.94, 1);
 }
 
 /**
- * Estimate a soft surface response from neighboring height changes. Flat
- * tiles receive a uniform light factor so their boundaries do not read as
- * beveled, disconnected pieces.
+ * Estimate a soft surface response from the height changes toward the two
+ * visible isometric faces and the pixel's position inside its tile.
  */
 export function terrainLightFactor(
   rig: TerrainLightRig,
   elev: number,
   eastElev: number,
   southElev: number,
-  _fx: number,
-  _fy: number,
+  fx: number,
+  fy: number,
 ): number {
+  const faceX = Math.sin((0.5 - fx) * Math.PI) * rig.directionX;
+  const faceY = Math.sin((0.5 - fy) * Math.PI) * rig.directionY;
   const relief = (elev - eastElev) * rig.directionX * 0.08
     + (elev - southElev) * rig.directionY * 0.1;
-  return clamp(rig.ambient + relief, 0.76, 1.12);
+  const faceLight = (faceX + faceY) * rig.keyStrength * 0.72;
+  return clamp(rig.ambient + faceLight + relief - terrainEdgeOcclusion(rig, fx, fy), 0.76, 1.12);
 }
 
 /** Shared low-contrast light response for terrain props and scatter. */

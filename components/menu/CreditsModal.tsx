@@ -53,7 +53,7 @@ export function CreditsModal({ onBack }: { onBack: () => void }) {
         <section className={styles.section}>
           <div className={styles.sectionHeading}>Technology Stack</div>
           <p className={styles.sectionBody}>
-            Next.js 16, React 19, TypeScript, Canvas 2D top-down renderer, deterministic fixed-step simulation, Vitest.
+            Next.js 16, React 19, TypeScript, Canvas 2D isometric renderer, deterministic fixed-step simulation, Vitest.
           </p>
         </section>
 

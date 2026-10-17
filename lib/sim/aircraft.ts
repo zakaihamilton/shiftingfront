@@ -158,7 +158,7 @@ function serviceAircraft(state: SimState, aircraft: Entity, events?: SimEvent[])
   const servicePoint = runwayServicePoint(runway);
   aircraft.x = servicePoint.x;
   aircraft.y = servicePoint.y;
-  aircraft.facing = state.multiplayer ? (([0, 2, 4, 6] as const)[aircraft.owner] ?? 0) : (aircraft.owner === 0 ? 0 : 4);
+  aircraft.facing = state.multiplayer ? (([1, 3, 5, 7] as const)[aircraft.owner] ?? 1) : (aircraft.owner === 0 ? 1 : 5);
   aircraft.path = [];
   aircraft.orderDestination = undefined;
   aircraft.orderMode = undefined;
@@ -216,9 +216,10 @@ export function tickAircraft(state: SimState, eventSink?: SimEvent[]): void {
       if (Math.hypot(aircraft.x - point.x, aircraft.y - point.y) <= AIRCRAFT_LANDING_RADIUS) {
         aircraft.x = point.x;
         aircraft.y = point.y;
-        // Point the parked aircraft along the runway's map axis so its sprite
-        // rests along the runway instead of pointing across it.
-        aircraft.facing = state.multiplayer ? (([0, 2, 4, 6] as const)[aircraft.owner] ?? 0) : (aircraft.owner === 0 ? 0 : 4);
+        // The runway art is aligned with the positive isometric x-axis. Set
+        // the parked aircraft to that heading so its centered sprite rests
+        // along the runway instead of pointing across it.
+        aircraft.facing = state.multiplayer ? (([1, 3, 5, 7] as const)[aircraft.owner] ?? 1) : (aircraft.owner === 0 ? 1 : 5);
         aircraft.flightState = "servicing";
         aircraft.serviceTicks = 0;
         aircraft.landingRunwayId = undefined;

@@ -46,9 +46,11 @@ function cameraOffsetForMapDelta(
   deltaY: number,
   zoom: number,
 ): { dx: number; dy: number } {
+  const screenX = (deltaX - deltaY) * (TILE_W / 2) * zoom;
+  const screenY = (deltaX + deltaY) * (TILE_H / 2) * zoom;
   return {
-    dx: -deltaX * TILE_W * zoom,
-    dy: -deltaY * TILE_H * zoom,
+    dx: -screenX,
+    dy: -screenY,
   };
 }
 
@@ -84,7 +86,7 @@ export function panCamera(cam: Camera, input: CameraPanInput, bounds?: CameraPan
   if (bounds) clampCamera(cam, bounds);
 }
 
-/** Move the viewport in flat map directions while preserving projected pan speed. */
+/** Move the viewport along minimap/map axes while preserving projected speed. */
 export function panInputForDirection(
   dir: PanDir,
   screenDistance: number,
@@ -112,15 +114,11 @@ export function focusCameraAtTile(
 }
 
 export function canPan(cam: Camera, bounds: CameraPanBounds, dir: PanDir, epsilon = 0.0001): boolean {
-  const focus = cameraFocusPoint(cam, bounds);
-  const delta = panInputForDirection(dir, 1, cam.zoom);
-  const maxX = Math.max(0, bounds.mapWidth - 1);
-  const maxY = Math.max(0, bounds.mapHeight - 1);
-  const canMoveX = delta.dx === 0
-    || (delta.dx > 0 ? focus.x < maxX - epsilon : focus.x > epsilon);
-  const canMoveY = delta.dy === 0
-    || (delta.dy > 0 ? focus.y < maxY - epsilon : focus.y > epsilon);
-  return canMoveX && canMoveY;
+  const before = cameraFocusPoint(cam, bounds);
+  const next = { ...cam };
+  panCamera(next, panInputForDirection(dir, 1), bounds);
+  const after = cameraFocusPoint(next, bounds);
+  return Math.hypot(after.x - before.x, after.y - before.y) > epsilon;
 }
 
 export function panAvailability(cam: Camera, bounds: CameraPanBounds, epsilon = 0.0001): PanAvailability {
