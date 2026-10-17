@@ -4,6 +4,13 @@ async function waitForBattlefieldCanvas(page: Page): Promise<Locator> {
   const canvas = page.getByTestId("battlefield-canvas");
   await expect(canvas).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 });
+  await expect.poll(async () => {
+    const directions = await Promise.all(
+      (["up", "right", "down", "left"] as const).map((dir) => page.getByTestId(`scroll-arrow-${dir}`).isVisible()),
+    );
+    return directions.some(Boolean);
+  }, { timeout: 15_000 }).toBe(true);
+  await waitForBattlefieldInk(canvas);
   return canvas;
 }
 
