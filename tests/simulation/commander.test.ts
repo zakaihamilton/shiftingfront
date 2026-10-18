@@ -87,6 +87,8 @@ describe("competent commander", () => {
     addBuilding(state, 0, "constructionYard", 2, 2);
     addBuilding(state, 0, "power", 5, 2);
     addBuilding(state, 0, "factory", 2, 5);
+    addUnit(state, 0, "harvester", 8, 8);
+    addUnit(state, 0, "harvester", 9, 8);
     addBuilding(state, 1, "constructionYard", 18, 18);
     const commander = new CompetentCommander();
 
@@ -386,7 +388,7 @@ describe("competent commander", () => {
     expect(planBuilding(state, yard)).toMatchObject({ type: "build", building: "turret" });
   });
 
-  it.each(["rescue", "extraction"] as const)("does not spend the opening on a factory during %s", (kind) => {
+  it.each(["rescue", "extraction"] as const)("builds a factory during %s once the opening turret is up", (kind) => {
     const state = makeFixture({ width: 24, height: 24, win: { kind, targetCount: 1, ticks: 5000 } });
     state.missionIndex = 2;
     const yard = addBuilding(state, 0, "constructionYard", 2, 2);
@@ -394,7 +396,7 @@ describe("competent commander", () => {
     addBuilding(state, 0, "barracks", 2, 5);
     addBuilding(state, 0, "turret", 8, 2);
 
-    expect(planBuilding(state, yard)).toBeUndefined();
+    expect(planBuilding(state, yard)).toMatchObject({ type: "build", building: "factory" });
   });
 
   it("stages a late-game decapitation strike after the opening settle", () => {

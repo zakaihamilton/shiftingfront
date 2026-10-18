@@ -1,3 +1,4 @@
+import { CURRENT_GAMEPLAY_RULES } from "../gameplayRules";
 import { mixSeed } from "../seed/rng";
 import type { BuildingKind, SimState, UnitKind, WinCategory } from "../types";
 import { SURFACE_NONE, TILE_BLOCKED, TILE_CLEAR, TILE_RESOURCE, TILE_WATER } from "../types";
@@ -61,6 +62,7 @@ export function makeFixture(opts: FixtureOpts): SimState {
     ],
     missionName: "Fixture",
   });
+  state.gameplayRulesVersion = CURRENT_GAMEPLAY_RULES;
   return state;
 }
 

@@ -56,7 +56,7 @@ const to = Number(arg("to", "99"));
 const missionArg = arg("mission", "all");
 const maxTicks = Number(arg("ticks", String(MAX_OPERATION_TICKS)));
 const strategyArg = arg("strategy", "competent");
-const rulesArg = Number(arg("rules", "1"));
+const rulesArg = Number(arg("rules", "2"));
 if (rulesArg !== 1 && rulesArg !== 2) throw new Error("--rules must be 1 or 2");
 const pacingGroup = arg("pacing-group", "");
 const pacingMultiplier = Number(arg("pacing-multiplier", "1"));

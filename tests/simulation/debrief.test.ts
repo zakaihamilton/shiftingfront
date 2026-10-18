@@ -129,7 +129,7 @@ describe("mission debrief", () => {
       required: 1,
       secondary: [
         { id: "yard", kind: "preserveYard", label: "Keep the yard standing", completed: true },
-        { id: "time", kind: "completeBefore", label: "Finish before the deadline", completed: true },
+        { id: "time", kind: "completeBefore", priority: "optional", label: "Finish before the deadline", completed: true },
       ],
     };
 

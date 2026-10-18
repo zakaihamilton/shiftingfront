@@ -55,7 +55,7 @@ describe("simulation replay", () => {
     const result = runReplay({
       seed: 0,
       missionIndex: 0,
-      maxTicks: 5_000,
+      maxTicks: 8_000,
       orders: [{
         tick: 0,
         command: { type: "build", building: "constructionYard", x: 0, y: 0 },

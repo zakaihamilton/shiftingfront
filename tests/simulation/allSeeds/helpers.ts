@@ -1,6 +1,7 @@
 import { footprintOf, NEW_MISSION_KINDS } from "../../../lib/catalog";
 import { createCampaign } from "../../../lib/gen/campaign";
-import { generateMap, mapSizeForMission } from "../../../lib/gen/map";
+import { campaignMapSize } from "../../../lib/gen/campaign";
+import { generateMap } from "../../../lib/gen/map";
 import { createMissionFromData } from "../../../lib/sim/api";
 import { inRescueFlank } from "../../../lib/gen/map/generator/rescuePlacement";
 import { distToEntity, footprintFlat, inBounds, isStaticWalkable, staticNavigationFor, terrainAccess } from "../../../lib/sim/world";
@@ -140,7 +141,7 @@ export function assertCampaignTopology(start: number, end: number): void {
       throw new Error(`Seed ${seed} generated a mission outside campaign biome ${campaign.world.biome}`);
     }
     for (const [index, mission] of missions.entries()) {
-      if (mission.index !== index || mission.mapSize !== mapSizeForMission(index) || mission.kind !== mission.win.kind) {
+      if (mission.index !== index || mission.mapSize !== campaignMapSize(index, mission.kind) || mission.kind !== mission.win.kind) {
         throw new Error(`Seed ${seed} generated inconsistent mission metadata at index ${index}`);
       }
     }

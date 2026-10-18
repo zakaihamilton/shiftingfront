@@ -77,4 +77,16 @@ describe("campaign progress", () => {
       completedMissions: [0],
     });
   });
+
+  it("does not let a rules 1 victory downgrade a rules 2 campaign", () => {
+    const storage = memoryStorage();
+    writeCampaignProgress(storage, { ...freshCampaignProgress(42), gameplayRulesVersion: 2, unlockedMission: 1, completedMissions: [0] });
+    const won = makeFixture({ seed: 42, win: { kind: "annihilate" } });
+    won.gameplayRulesVersion = 1;
+    won.result = "won";
+    won.missionIndex = 1;
+    expect(recordWonCampaignProgress(storage, won)).toBe(true);
+    expect(readCampaignProgress(storage, 42).gameplayRulesVersion).toBe(2);
+    expect(readCampaignProgress(storage, 42).completedMissions).toEqual([0, 1]);
+  });
 });

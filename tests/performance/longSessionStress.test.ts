@@ -42,8 +42,9 @@ describe("long-session stress and reliability", () => {
     const memoryAfter = process.memoryUsage().heapUsed;
     const heapGrowthMb = (memoryAfter - memoryBefore) / (1024 * 1024);
 
-    // Heap growth across 5 completed 1,000-tick missions should remain well within healthy limits (< 75MB)
-    expect(heapGrowthMb).toBeLessThan(75);
+    // Rules 2 maps are larger than the old 48–96 layouts. Growth across five
+    // 1,000-tick missions should still stay well under a leak-sized jump.
+    expect(heapGrowthMb).toBeLessThan(100);
   });
 
   it("recovers gracefully from a 5,000ms frame gap without death-spiraling", () => {

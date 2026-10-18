@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
 import { SaveRepository } from "@/lib/persist/save/repository";
-import { memoryStorage, readSave, writeSave, saveKey, listSlots, readSlot, slotKey } from "@/lib/persist/save";
-import { campaignKey, freshCampaignProgress, readCampaignProgress } from "@/lib/persist/campaign";
+import { memoryStorage, readSave, writeSave, saveKey, listSlots, readSlot, slotKey, writeSlot } from "@/lib/persist/save";
+import { campaignKey, freshCampaignProgress, readCampaignProgress, writeCampaignProgress } from "@/lib/persist/campaign";
 import { makeFixture } from "@/lib/sim/fixtures";
 
 const repositories: SaveRepository[] = [];
@@ -14,7 +14,11 @@ async function open(storage = memoryStorage(), factory = new IDBFactory()) {
   expect(repository.mode).toBe("indexeddb");
   return { repository, storage, factory };
 }
-const state = () => makeFixture({ seed: 421, win: { kind: "annihilate" } });
+const state = () => {
+  const next = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+  next.gameplayRulesVersion = 2;
+  return next;
+};
 
 describe("transactional save repository", () => {
   it("migrates idempotently, keeps originals, quarantines malformed records and recovers later legacy changes", async () => {
@@ -149,6 +153,91 @@ describe("transactional save repository", () => {
     repository.writeJournal(state()); expect(await repository.clear()).toBe(true);
     expect(storage.keys()).toEqual([]); expect(repository.storage.keys()).toEqual([]);
     repository.close(); expect((await open(storage, factory)).repository.storage.keys()).toEqual([]);
+  });
+  it("retires a rules 1 battlefield and keeps the campaign record", async () => {
+    const storage = memoryStorage();
+    const legacy = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+    legacy.gameplayRulesVersion = 1;
+    legacy.tick = 40;
+    legacy.missionIndex = 2;
+    writeSave(storage, legacy);
+    writeCampaignProgress(storage, {
+      ...freshCampaignProgress(421),
+      gameplayRulesVersion: 1,
+      unlockedMission: 2,
+      completedMissions: [0, 1],
+      medals: { "0": 2 },
+      bestScores: { "0": 800 },
+    });
+    writeSlot(storage, {
+      name: "Old front",
+      state: legacy,
+      campaign: {
+        ...freshCampaignProgress(421),
+        gameplayRulesVersion: 1,
+        unlockedMission: 2,
+        completedMissions: [0, 1],
+        medals: { "1": 1 },
+        bestScores: { "1": 100 },
+      },
+    });
+    storage.setItem("shiftingfront:journal:0421", JSON.stringify({
+      revision: 0,
+      autosave: storage.getItem(saveKey(421)),
+      progress: storage.getItem(campaignKey(421)),
+      savedAt: 1,
+    }));
+    const current = state();
+    current.seed = 422;
+    writeSave(storage, current);
+    const { repository } = await open(storage);
+    expect(readSave(repository.storage, 421)).toBeNull();
+    expect(listSlots(repository.storage)).toHaveLength(0);
+    expect(storage.getItem(saveKey(421))).toBeNull();
+    expect(storage.keys().some((key) => key.includes("journal"))).toBe(false);
+    expect(readSave(repository.storage, 422)?.gameplayRulesVersion).toBe(2);
+    const progress = readCampaignProgress(repository.storage, 421);
+    expect(progress.gameplayRulesVersion).toBe(2);
+    expect(progress.unlockedMission).toBe(2);
+    expect(progress.completedMissions).toEqual([0, 1]);
+    expect(progress.medals).toMatchObject({ "0": 2, "1": 1 });
+    expect(progress.bestScores).toMatchObject({ "0": 800, "1": 100 });
+    expect(repository.notice).toContain("rebuilt");
+  });
+  it("retires rules 1 battlefields when indexeddb is unavailable", async () => {
+    const storage = memoryStorage();
+    const legacy = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+    legacy.gameplayRulesVersion = 1;
+    legacy.missionIndex = 1;
+    writeSave(storage, legacy);
+    writeCampaignProgress(storage, { ...freshCampaignProgress(421), gameplayRulesVersion: 1, unlockedMission: 1, completedMissions: [0], medals: { "0": 3 }, bestScores: { "0": 50 } });
+    const repository = new SaveRepository(storage, undefined);
+    repositories.push(repository);
+    await repository.initialize();
+    expect(repository.mode).toBe("legacy");
+    expect(readSave(storage, 421)).toBeNull();
+    expect(readCampaignProgress(storage, 421)).toMatchObject({ gameplayRulesVersion: 2, unlockedMission: 1, completedMissions: [0], medals: { "0": 3 } });
+    expect(repository.notice).toContain("rebuilt");
+    expect(repository.notice).toContain("reduced");
+  });
+  it("refuses to import a rules 1 battlefield and keeps its campaign record", async () => {
+    const { repository } = await open();
+    const legacy = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+    legacy.gameplayRulesVersion = 1;
+    legacy.missionIndex = 1;
+    const exported = memoryStorage();
+    const written = writeSlot(exported, {
+      name: "Old export",
+      state: legacy,
+      campaign: { ...freshCampaignProgress(421), gameplayRulesVersion: 1, unlockedMission: 1, completedMissions: [0], medals: { "0": 2 }, bestScores: { "0": 20 } },
+    });
+    expect(written.ok).toBe(true);
+    if (!written.ok) return;
+    const result = await repository.importSlot(exported.getItem(slotKey(written.id))!);
+    expect(result).toEqual({ ok: false, reason: "legacy-rules" });
+    expect(listSlots(repository.storage)).toHaveLength(0);
+    expect(readSave(repository.storage, 421)).toBeNull();
+    expect(readCampaignProgress(repository.storage, 421)).toMatchObject({ gameplayRulesVersion: 2, unlockedMission: 1, completedMissions: [0], medals: { "0": 2 } });
   });
   it("reports failed legacy writes and exposes reduced reliability", async () => {
     const storage = memoryStorage(); const broken = { ...storage, setItem() { throw new Error("quota"); } };

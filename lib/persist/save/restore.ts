@@ -1,11 +1,18 @@
-import { writeCampaignProgress } from "../campaign";
+import { campaignKey, readCampaignProgress, writeCampaignProgress } from "../campaign";
 import { writeSave } from "./api";
 import { saveKey } from "./serialize";
 import type { ParsedSlot } from "./slots";
-import { safeRemoveItem, safeSetItem, type StorageAdapter } from "./storage";
+import { safeGetItem, safeRemoveItem, safeSetItem, type StorageAdapter } from "./storage";
+import { isCurrentGameplayRules, progressAfterRetiredBattlefield, RULES_REBUILD_NOTICE } from "../rulesRetirement";
 
 /** Restore both records before changing the active mission or its URL. */
 export function restoreSlot(storage: StorageAdapter, slot: ParsedSlot): string | null {
+  if (!isCurrentGameplayRules(slot.state.gameplayRulesVersion)) {
+    const existingRaw = safeGetItem(storage, campaignKey(slot.state.seed));
+    const existing = existingRaw ? readCampaignProgress(storage, slot.state.seed) : null;
+    writeCampaignProgress(storage, progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex));
+    return RULES_REBUILD_NOTICE;
+  }
   const key = saveKey(slot.state.seed);
   let previous: string | null;
   try {

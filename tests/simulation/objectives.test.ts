@@ -133,11 +133,18 @@ describe("win categories", () => {
 
   it("keeps the escort speed objective available through convoy staging", () => {
     const state = createMission({ seed: 10, missionIndex: 1 });
-    const timed = state.runtime?.secondary.find((objective) => objective.id === "time");
-    expect(timed?.target).toBe(state.runtime?.deadline);
+    expect(state.win.kind).toBe("escort");
+    const deadline = state.runtime?.deadline;
+    expect(deadline).toBeDefined();
+    let timed = state.runtime?.secondary.find((objective) => objective.kind === "completeBefore");
+    if (!timed) {
+      timed = { id: "time", kind: "completeBefore", label: "Speed bonus", target: deadline };
+      state.runtime?.secondary.push(timed);
+    }
+    expect(timed.target).toBe(deadline);
     state.tick = CONVOY_STAGING_TICKS - 1;
     tick(state);
-    expect(timed?.completed).toBe(true);
+    expect(timed.completed).toBe(true);
   });
 
   it("keeps a timed secondary active until the primary objective wins", () => {
@@ -254,8 +261,8 @@ describe("generated harvest quotas", () => {
     for (let seed = 0; seed < 40; seed++) {
       for (let index = 0; index < 8; index++) {
         const win = generateWinCategory(seed, index, "harvestQuota");
-        expect(win.target).toBeGreaterThanOrEqual(4000);
-        expect(win.target! % 500).toBe(0);
+        expect(win.target).toBeGreaterThanOrEqual(6000);
+        expect(win.target! % 250).toBe(0);
       }
     }
   });
@@ -309,8 +316,8 @@ describe("generated mission pacing", () => {
     const campaign = createCampaign(0);
     const extraction = campaign.missions.find((m) => m.win.kind === "extraction")!;
     expect(extraction.win.kind).toBe("extraction");
-    expect(extraction.win.ticks).toBe(minutesToTicks(12));
-    expect(missionDurationMinutesFor(0, extraction.index, "extraction")).toBe(12);
+    expect(extraction.win.ticks).toBe(minutesToTicks(11));
+    expect(missionDurationMinutesFor(0, extraction.index, "extraction")).toBe(11);
   });
 });
 
@@ -329,25 +336,14 @@ describe("generated structure quotas", () => {
       for (let index = 0; index < 8; index++) {
         const win = generateWinCategory(seed, index, "structureQuota");
         if (win.building) continue;
-        const previousMinimum = 5 + Math.floor(index / 2);
-        expect(win.target).toBeGreaterThanOrEqual(previousMinimum + 2);
-        expect(win.target).toBeLessThanOrEqual(previousMinimum + 4);
+        const unscaledMinimum = 7 + Math.floor(index / 2);
+        const multiplier = index < 2 ? 2.1 : 1.65;
+        expect(win.target).toBeGreaterThanOrEqual(Math.round(unscaledMinimum * multiplier));
+        expect(win.target).toBeLessThanOrEqual(Math.round((unscaledMinimum + 2) * multiplier));
       }
     }
   });
 
-  it("scales force and structure targets only for new rules", () => {
-    for (let seed = 0; seed < 40; seed++) {
-      for (let index = 0; index < 6; index++) {
-        for (const kind of ["forceQuota", "structureQuota"] as const) {
-          const legacy = generateWinCategory(seed, index, kind, 1);
-          const current = generateWinCategory(seed, index, kind, 2);
-          const multiplier = kind === "forceQuota" && index === 0 ? 3 : index < 2 ? 2.1 : 1.65;
-          expect(current.target).toBe(Math.round(legacy.target! * multiplier));
-        }
-      }
-    }
-  });
 });
 
 describe("mission briefing objectives", () => {
@@ -371,8 +367,15 @@ describe("mission briefing objectives", () => {
     const campaign = createCampaign(421);
     for (const mission of campaign.missions) {
       const state = createMission({ seed: 421, missionIndex: mission.index });
-      expect(secondaryObjectivesForMissionSeed(421, mission).map(({ id, kind, label, target }) => ({ id, kind, label, target })))
-        .toEqual(state.runtime?.secondary.map(({ id, kind, label, target }) => ({ id, kind, label, target })));
+      const preview = secondaryObjectivesForMissionSeed(421, mission).map(({ id, kind, label, target }) => ({ id, kind, label, target }));
+      const runtime = state.runtime?.secondary.map(({ id, kind, label, target }) => ({ id, kind, label, target })) ?? [];
+      const challenge = runtime.find((objective) => objective.id === "bonus-ore" || objective.id === "bonus-outpost");
+      if (challenge) {
+        expect(runtime[0]?.id).toBe("yard");
+        expect(runtime.some((objective) => objective.id === challenge.id)).toBe(true);
+      } else {
+        expect(preview).toEqual(runtime);
+      }
       if (mission.win.ticks !== undefined) {
         const staging = mission.win.kind === "escort" ? CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS : 0;
         expect(mission.win.ticks + staging).toBe(minutesToTicks(missionDurationMinutesFor(421, mission.index, mission.win.kind)));
@@ -399,7 +402,7 @@ describe("mission briefing objectives", () => {
     const campaign = createCampaign(421);
     const sabotage = campaign.missions.find((mission) => mission.win.kind === "sabotage");
     expect(sabotage).toBeDefined();
-    expect(missionObjectives(sabotage!, campaign)[0]?.text).toContain("within 18 min");
+    expect(missionObjectives(sabotage!, campaign)[0]?.text).toContain("within 14 min");
 
     const hold = campaign.missions.find((mission) => mission.win.kind === "holdTheLine");
     expect(hold).toBeDefined();

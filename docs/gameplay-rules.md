@@ -1,9 +1,12 @@
 # Versioned gameplay rules
 
-New campaigns use rules 2. Campaign progress, battlefield saves, named slots,
-restarts and subsequent deployments retain their rules version. Unversioned
-campaigns and saves use rules 1; legacy replay fingerprints remain unchanged.
-Tutorial and multiplayer scenarios do not receive campaign bonus challenges.
+New campaigns, headless tools, and replay fingerprints use rules 2. Opening a
+stored campaign whose battlefield or progress is rules 1, or has no rules
+version, keeps the seed, unlocks, medals, and best scores, discards that
+battlefield, and rebuilds the operation under rules 2. A stored rules 2 record
+is not downgraded by an older battlefield. A missing battlefield version in a
+save file still decodes as rules 1 so that file can be retired. Tutorial and
+multiplayer scenarios do not receive campaign bonus challenges.
 
 ## Pacing
 

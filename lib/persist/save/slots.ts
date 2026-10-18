@@ -12,6 +12,8 @@ import { decodeSavedState, encodeSavedState } from "./serialize";
 import { migrateSaveContent } from "./migrations";
 import { listSaves } from "./api";
 import { safeGetItem, safeKeys, safeRemoveItem, safeSetItem, type StorageAdapter } from "./storage";
+import { campaignKey, readCampaignProgress, writeCampaignProgress } from "../campaign";
+import { isCurrentGameplayRules, LEGACY_RULES_IMPORT_NOTICE, progressAfterRetiredBattlefield } from "../rulesRetirement";
 
 export const SLOT_PREFIX = "shiftingfront:slot:";
 export const SLOT_VERSION = 1;
@@ -61,7 +63,9 @@ export type ArchiveEntry =
       savedAt: number;
     };
 
-export type SlotWriteResult = { ok: true; id: string } | { ok: false };
+export type SlotWriteResult = { ok: true; id: string } | { ok: false; reason?: "legacy-rules" };
+
+export { LEGACY_RULES_IMPORT_NOTICE };
 
 export function slotKey(id: string): string {
   return `${SLOT_PREFIX}${id}`;
@@ -132,6 +136,12 @@ export function importSlot(storage: StorageAdapter, raw: string): SlotWriteResul
   }
   try {
     const decoded = decodeSlot(raw);
+    if (!isCurrentGameplayRules(decoded.state.gameplayRulesVersion)) {
+      const existingRaw = safeGetItem(storage, campaignKey(decoded.state.seed));
+      const existing = existingRaw ? readCampaignProgress(storage, decoded.state.seed) : null;
+      writeCampaignProgress(storage, progressAfterRetiredBattlefield(existing, decoded.campaign, decoded.state.missionIndex));
+      return { ok: false, reason: "legacy-rules" };
+    }
     return writeSlot(storage, {
       name: decoded.name,
       state: decoded.state,

@@ -77,7 +77,7 @@ describe("gameplay diagnostics", () => {
     const serial = await runBalanceScenarios({ ...options, jobs: 1 });
     const parallel = await runBalanceScenarios({ ...options, jobs: 2 });
     expect(serial.map(r => r.nearestResourceDistance)).toEqual(parallel.map(r => r.nearestResourceDistance));
-    expect(serial[0].baselineRouteLength).not.toBe(runBalanceJob({ ...options, gameplayRulesVersion: 1, scenarios: [{seed:0,mission:0}] })[0].baselineRouteLength);
+    expect(serial[0].baselineRouteLength).toBe(runBalanceJob({ ...options, gameplayRulesVersion: 1, scenarios: [{seed:0,mission:0}] })[0].baselineRouteLength);
     expect(serial[0].runOutcome).toBe("runnerTruncated");
     expect(serial[0].firstDamageTick).toBeUndefined();
   });

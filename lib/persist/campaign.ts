@@ -1,7 +1,7 @@
 import { CURRENT_GAMEPLAY_RULES, gameplayRulesVersion } from "../gameplayRules";
 import { missionMedals, missionScore } from "../sim/debrief";
 import type { CampaignProgress, SimState } from "../types";
-import { safeSetItem, type StorageAdapter } from "./save";
+import { safeGetItem, safeSetItem, type StorageAdapter } from "./save";
 import { assertValidSeed, formatSeed } from "../seed/rng";
 import { isRecord, readPersistedEnvelope } from "./utils";
 
@@ -83,12 +83,30 @@ export function writeCampaignProgress(storage: StorageAdapter, progress: Campaig
   }));
 }
 
+/**
+ * A stored rules 2 campaign stays on rules 2. A missing record follows the battlefield,
+ * so headless rules 1 fixtures can still record a win without downgrading an upgraded campaign.
+ */
+export function retainedGameplayRules(
+  stored: CampaignProgress["gameplayRulesVersion"],
+  stateVersion: CampaignProgress["gameplayRulesVersion"],
+  recordExists: boolean,
+): NonNullable<CampaignProgress["gameplayRulesVersion"]> {
+  if (recordExists && stored === 2) return 2;
+  return gameplayRulesVersion(stateVersion);
+}
+
 /** Persist unlocks/medals for a won mission. No-op when the mission is not won. */
 export function recordWonCampaignProgress(storage: StorageAdapter, state: SimState): boolean {
   if (state.result !== "won") return true;
+  const recordExists = safeGetItem(storage, campaignKey(state.seed)) !== null;
+  const existing = readCampaignProgress(storage, state.seed);
   return writeCampaignProgress(
     storage,
-    completeMission({ ...readCampaignProgress(storage, state.seed), gameplayRulesVersion: gameplayRulesVersion(state.gameplayRulesVersion) }, state.missionIndex, missionMedals(state), missionScore(state)),
+    completeMission({
+      ...existing,
+      gameplayRulesVersion: retainedGameplayRules(existing.gameplayRulesVersion, state.gameplayRulesVersion, recordExists),
+    }, state.missionIndex, missionMedals(state), missionScore(state)),
   );
 }
 

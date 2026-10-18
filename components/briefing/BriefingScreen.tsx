@@ -42,8 +42,7 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
     () => {
       if (!def) return [];
       const required = missionObjectives(def, campaign);
-      if (campaign.gameplayRulesVersion !== 2) return required;
-      const preview = createMission({ seed, missionIndex: mission, gameplayRulesVersion: 2 });
+      const preview = createMission({ seed, missionIndex: mission, gameplayRulesVersion: campaign.gameplayRulesVersion });
       return [...required, ...(preview.runtime?.secondary ?? []).filter(o => o.priority === "optional").map(o => ({ id: o.id, text: `Optional: ${o.label}` }))];
     },
     [def, campaign, seed, mission],

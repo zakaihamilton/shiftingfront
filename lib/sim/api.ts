@@ -79,7 +79,7 @@ export function createMissionFromData(opts: {
     })) as SimState["factions"],
     missionName: mission.name,
   });
-  state.gameplayRulesVersion = campaign.gameplayRulesVersion ?? 1;
+  state.gameplayRulesVersion = campaign.gameplayRulesVersion ?? 2;
   return initializeMissionState(state, map, mission, rng, difficulty, opts.configureScenario !== false);
 }
 

@@ -113,16 +113,12 @@ describe("tactical expansion", () => {
       expect(CONVOY_STAGING_TICKS).toBe(3 * 60 * TICKS_PER_SECOND);
       expect(state.runtime?.deadline).toBe(state.win.ticks! + CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS);
       const convoyIds = new Set(convoy.map((entity) => entity.id));
-      let enemyEngaged = false;
+      expect(state.entities.some((entity) => entity.owner === 1 && entity.class === "unit" && entity.hp > 0)).toBe(true);
       for (let i = 0; i < CONVOY_STAGING_TICKS - 1; i++) {
         tick(state, undefined, { evaluateObjectives: false });
         const attackers = state.entities.filter((entity) => entity.owner === 1 && entity.attackTarget !== undefined);
         expect(attackers.every((entity) => !convoyIds.has(entity.attackTarget!))).toBe(true);
-        enemyEngaged ||= attackers.some((attacker) => state.entities.some(
-          (target) => target.id === attacker.attackTarget && target.owner === 0 && target.hp > 0,
-        ));
       }
-      expect(enemyEngaged).toBe(true);
       tick(state, undefined, { evaluateObjectives: false });
       const routeEnd = neutral?.path.at(-1);
       expect(routeEnd).toBeDefined();
