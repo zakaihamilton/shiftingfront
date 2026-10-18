@@ -63,7 +63,7 @@ export type ArchiveEntry =
       savedAt: number;
     };
 
-export type SlotWriteResult = { ok: true; id: string } | { ok: false; reason?: "legacy-rules" };
+export type SlotWriteResult = { ok: true; id: string } | { ok: false; reason?: "legacy-rules" | "storage-failed" };
 
 export { LEGACY_RULES_IMPORT_NOTICE };
 
@@ -139,8 +139,8 @@ export function importSlot(storage: StorageAdapter, raw: string): SlotWriteResul
     if (!isCurrentGameplayRules(decoded.state.gameplayRulesVersion)) {
       const existingRaw = safeGetItem(storage, campaignKey(decoded.state.seed));
       const existing = existingRaw ? readCampaignProgress(storage, decoded.state.seed) : null;
-      writeCampaignProgress(storage, progressAfterRetiredBattlefield(existing, decoded.campaign, decoded.state.missionIndex));
-      return { ok: false, reason: "legacy-rules" };
+      const kept = writeCampaignProgress(storage, progressAfterRetiredBattlefield(existing, decoded.campaign, decoded.state.missionIndex));
+      return kept ? { ok: false, reason: "legacy-rules" } : { ok: false, reason: "storage-failed" };
     }
     return writeSlot(storage, {
       name: decoded.name,

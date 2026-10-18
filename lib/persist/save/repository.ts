@@ -320,41 +320,51 @@ export class SaveRepository {
       return rebuilt;
     });
   }
-  private keepRetiredSlot(slot: { state: SimState; campaign: CampaignProgress }): Promise<void> {
+  private keepRetiredSlot(slot: { state: SimState; campaign: CampaignProgress }): Promise<boolean> {
     const seed = slot.state.seed;
     return this.enqueue(async () => {
       if (this.mode === "legacy") {
         const existingRaw = safeGetItem(this.legacy, campaignKey(seed));
         const existing = existingRaw ? readCampaignProgress(this.legacy, seed) : null;
-        writeCampaignProgress(this.legacy, progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex));
+        const kept = writeCampaignProgress(this.legacy, progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex));
+        if (!kept) return false;
         this.rulesRebuilt = true;
         this.publish();
-        return;
+        return true;
       }
-      await this.transaction(["campaigns"], async (tx) => {
-        const store = tx.objectStore("campaigns");
-        const record = await request(store.get(seed)) as CampaignRecord | undefined;
-        const existing = record?.progress
-          ? readCampaignProgress(memoryStorage({ [campaignKey(seed)]: record.progress }), seed)
-          : null;
-        let autosave = record?.autosave ?? null;
-        if (autosave) {
-          try {
-            if (!isCurrentGameplayRules(decodeSave(autosave).state.gameplayRulesVersion)) autosave = null;
-          } catch {
-            autosave = null;
+      try {
+        await this.transaction(["campaigns"], async (tx) => {
+          const store = tx.objectStore("campaigns");
+          const record = await request(store.get(seed)) as CampaignRecord | undefined;
+          const existing = record?.progress
+            ? readCampaignProgress(memoryStorage({ [campaignKey(seed)]: record.progress }), seed)
+            : null;
+          let autosave = record?.autosave ?? null;
+          if (autosave) {
+            try {
+              if (!isCurrentGameplayRules(decodeSave(autosave).state.gameplayRulesVersion)) autosave = null;
+            } catch {
+              autosave = null;
+            }
           }
-        }
-        store.put({
-          seed,
-          revision: (record?.revision ?? 0) + 1,
-          autosave,
-          progress: encodeProgress(progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex)),
-        } satisfies CampaignRecord);
-      });
+          store.put({
+            seed,
+            revision: (record?.revision ?? 0) + 1,
+            autosave,
+            progress: encodeProgress(progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex)),
+          } satisfies CampaignRecord);
+        });
+      } catch {
+        return false;
+      }
       this.rulesRebuilt = true;
-      await this.committed();
-    }).then(() => undefined);
+      try {
+        await this.committed();
+      } catch {
+        this.publish();
+      }
+      return true;
+    }).catch(() => false);
   }
   writeJournal(state: SimState, revision = this.revisions.get(state.seed) ?? 0): boolean {
     try {
@@ -477,7 +487,9 @@ export class SaveRepository {
   }
   restoreSlot(slot: ParsedSlot, isCurrent: () => boolean = () => true): Promise<string | null> {
     if (!isCurrentGameplayRules(slot.state.gameplayRulesVersion)) {
-      return this.keepRetiredSlot(slot).then(() => RULES_REBUILD_NOTICE);
+      return this.keepRetiredSlot(slot).then((kept) => kept
+        ? RULES_REBUILD_NOTICE
+        : "Couldn't preserve campaign progress from that slot because browser storage is unavailable. Your current mission is unchanged.");
     }
     const autosave = encode(slot.state);
     const progress = encodeProgress(slot.campaign);
@@ -504,7 +516,9 @@ export class SaveRepository {
     let decoded: ReturnType<typeof decodeSlot>;
     try { decoded = decodeSlot(raw); } catch { return Promise.resolve({ ok: false }); }
     if (!isCurrentGameplayRules(decoded.state.gameplayRulesVersion)) {
-      return this.keepRetiredSlot(decoded).then(() => ({ ok: false as const, reason: "legacy-rules" as const }));
+      return this.keepRetiredSlot(decoded).then((kept) => kept
+        ? { ok: false as const, reason: "legacy-rules" as const }
+        : { ok: false as const, reason: "storage-failed" as const });
     }
     const temp = memoryStorage();
     const result = writeSlot(temp, decoded);

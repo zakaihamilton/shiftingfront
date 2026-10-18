@@ -116,7 +116,9 @@ export function CampaignArchiveScreen() {
           tone: "alert",
           text: result.reason === "legacy-rules"
             ? "That save used the previous campaign rules. Its battle was retired and its campaign record was kept."
-            : "Could not import that file. It is invalid or unsupported.",
+            : result.reason === "storage-failed"
+              ? "Could not keep that campaign record because browser storage is unavailable. Free storage and try importing again."
+              : "Could not import that file. It is invalid or unsupported.",
         });
         return;
       }

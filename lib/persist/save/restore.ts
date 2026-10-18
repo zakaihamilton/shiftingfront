@@ -10,8 +10,10 @@ export function restoreSlot(storage: StorageAdapter, slot: ParsedSlot): string |
   if (!isCurrentGameplayRules(slot.state.gameplayRulesVersion)) {
     const existingRaw = safeGetItem(storage, campaignKey(slot.state.seed));
     const existing = existingRaw ? readCampaignProgress(storage, slot.state.seed) : null;
-    writeCampaignProgress(storage, progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex));
-    return RULES_REBUILD_NOTICE;
+    const kept = writeCampaignProgress(storage, progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex));
+    return kept
+      ? RULES_REBUILD_NOTICE
+      : "Couldn't preserve campaign progress from that slot because browser storage is unavailable. Your current mission is unchanged.";
   }
   const key = saveKey(slot.state.seed);
   let previous: string | null;
