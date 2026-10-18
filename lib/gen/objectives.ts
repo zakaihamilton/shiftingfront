@@ -1,6 +1,6 @@
 import { labelFor } from "../catalog";
 import { createRng, type Rng } from "../seed/rng";
-import type { BuildingKind, MissionKind, GameplayRulesVersion, ReadonlyMissionDef, ReadonlyWinCategory, SecondaryObjective, UnitKind, WinCategory } from "../types";
+import type { BuildingKind, MissionKind, ReadonlyMissionDef, ReadonlyWinCategory, SecondaryObjective, UnitKind, WinCategory } from "../types";
 import {
   CONVOY_STAGING_MINUTES,
   CONVOY_STAGING_TICKS,
@@ -28,6 +28,12 @@ function baseMissionDurationMinutes(seed: number, missionIndex: number, kind: Mi
   return missionDurationMinutes(missionIndex, rng.fork("duration"));
 }
 
+function pacingBaseMinutes(seed: number, missionIndex: number, kind: MissionKind): number {
+  if (kind === "holdTheLine") return baseMissionDurationMinutes(seed, missionIndex, kind);
+  const rng = createRng(seed, `win:${missionIndex}:${kind}`);
+  return Math.min(12, 5 + missionIndex + rng.fork("pacing-v2").int(2));
+}
+
 function clampDeadlineMinutes(minutes: number, minMinutes: number): number {
   return Math.min(MAX_DEADLINE_MINUTES, Math.max(minMinutes, minutes));
 }
@@ -46,7 +52,7 @@ export function missionDurationMinutesFor(
   missionIndex: number,
   kind: MissionKind,
 ): number {
-  const minutes = baseMissionDurationMinutes(seed, missionIndex, kind);
+  const minutes = pacingBaseMinutes(seed, missionIndex, kind);
   const activeMinutes = activeMissionDurationMinutes(kind, minutes);
   return kind === "escort" ? activeMinutes + CONVOY_STAGING_MINUTES + CONVOY_COMPLETION_BUFFER_MINUTES : activeMinutes;
 }
@@ -124,11 +130,10 @@ function generateWinCategoryBase(
   seed: number,
   missionIndex: number,
   kind: MissionKind,
-  rules: GameplayRulesVersion = 1,
 ): WinCategory {
   const rng = createRng(seed, `win:${missionIndex}:${kind}`);
   // Shortening survival missions made rush-only armies pass the existing gate.
-  const minutes = rules === 2 && kind !== "holdTheLine" ? Math.min(12, 5 + missionIndex + rng.fork("pacing-v2").int(2)) : baseMissionDurationMinutes(seed, missionIndex, kind);
+  const minutes = pacingBaseMinutes(seed, missionIndex, kind);
   const activeMinutes = activeMissionDurationMinutes(kind, minutes);
   switch (kind) {
     case "harvestQuota":
@@ -182,14 +187,14 @@ function generateWinCategoryBase(
 
 export { pickMissionKinds } from "./missionOrder";
 
-/** Measured quota pacing for new campaigns; legacy seeded contracts stay exact. */
-export function generateWinCategory(seed: number, missionIndex: number, kind: MissionKind, rules: GameplayRulesVersion = 1): WinCategory {
-  const win = generateWinCategoryBase(seed, missionIndex, kind, rules);
-  if (rules === 2 && win.target !== undefined && ["harvestQuota", "forceQuota", "structureQuota"].includes(kind)) {
+/** Measured quota pacing. Harvest, force, and structure targets include the rules 2 scale once. */
+export function generateWinCategory(seed: number, missionIndex: number, kind: MissionKind): WinCategory {
+  const win = generateWinCategoryBase(seed, missionIndex, kind);
+  if (win.target !== undefined && ["harvestQuota", "forceQuota", "structureQuota"].includes(kind)) {
     const multiplier = kind === "harvestQuota"
       ? 1.5
       : kind === "forceQuota" && missionIndex === 0
-        ? 3
+        ? 3.2
         : missionIndex < 2 ? 2.1 : 1.65;
     return { ...win, target: Math.max(1, Math.round(win.target * multiplier)) };
   }

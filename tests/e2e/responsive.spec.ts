@@ -503,6 +503,7 @@ test.describe("short-height layouts", () => {
   test("keeps the tutorial overlay inside a short landscape viewport", async ({ page }) => {
     await page.setViewportSize({ width: 700, height: 400 });
     await page.goto("/tutorial");
+    await waitForBattlefield(page);
     const tutorial = page.getByTestId("tutorial-overlay");
     await expect(tutorial).toBeVisible();
     await expectNoHorizontalOverflow(page);
@@ -1022,6 +1023,7 @@ test.describe("mobile-first layouts", () => {
   test("keeps tutorial controls above the battlefield and reachable on small phones", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto("/tutorial");
+    await waitForBattlefield(page);
     const tutorial = page.getByTestId("tutorial-overlay");
     await expect(tutorial).toBeVisible();
     await expect(page.getByTestId("mobile-command-launcher")).toBeVisible();

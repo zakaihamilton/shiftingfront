@@ -5,7 +5,7 @@ import { readCampaignRecord, savedSlotCount } from "./saveRepositoryHelpers";
 import { waitForBattlefield } from "./battlefieldReady";
 
 async function seedCampaign(page: import("@playwright/test").Page) {
-  const state = createMission({ seed: 421, missionIndex: 0 }); state.tick = 120; state.credits[0] = 9876;
+  const state = createMission({ seed: 421, missionIndex: 0, gameplayRulesVersion: 2 }); state.tick = 120; state.credits[0] = 9876;
   const storage = memoryStorage(); writeSave(storage, state);
   await page.addInitScript(({ key, raw }) => { if (!localStorage.getItem(key)) localStorage.setItem(key, raw); }, { key: saveKey(421), raw: storage.getItem(saveKey(421))! });
 }

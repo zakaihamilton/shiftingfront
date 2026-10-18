@@ -29,7 +29,9 @@ import { makeFixture } from "../../lib/sim/fixtures";
 import { generateWorld } from "../../lib/gen/world";
 
 function makeState(seed: number) {
-  return makeFixture({ seed, win: { kind: "annihilate" } });
+  const state = makeFixture({ seed, win: { kind: "annihilate" } });
+  state.gameplayRulesVersion = 2;
+  return state;
 }
 
 describe("named save slots", () => {
@@ -221,6 +223,31 @@ describe("named save slots", () => {
     expect(imported.id).not.toBe(written.id);
     expect(readSlot(destination, imported.id)).toMatchObject({ name: "Portable", state: { seed: 421 } });
     expect(listSlots(destination)).toHaveLength(1);
+  });
+
+  it("keeps campaign progress when an imported battlefield is rules 1", () => {
+    const source = memoryStorage();
+    const legacy = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+    legacy.gameplayRulesVersion = 1;
+    legacy.missionIndex = 2;
+    const written = writeSlot(source, {
+      name: "Previous rules",
+      state: legacy,
+      campaign: { ...freshCampaignProgress(421), gameplayRulesVersion: 1, unlockedMission: 2, completedMissions: [0, 1], medals: { "0": 2 }, bestScores: { "1": 40 } },
+    });
+    expect(written.ok).toBe(true);
+    if (!written.ok) return;
+    const destination = memoryStorage();
+    writeCampaignProgress(destination, { ...freshCampaignProgress(421), gameplayRulesVersion: 2, unlockedMission: 1, completedMissions: [0], medals: { "0": 1 }, bestScores: { "0": 10 } });
+    expect(importSlot(destination, exportSlot(source, written.id)!)).toEqual({ ok: false, reason: "legacy-rules" });
+    expect(listSlots(destination)).toHaveLength(0);
+    expect(readCampaignProgress(destination, 421)).toMatchObject({
+      gameplayRulesVersion: 2,
+      unlockedMission: 2,
+      completedMissions: [0, 1],
+      medals: { "0": 2 },
+      bestScores: { "0": 10, "1": 40 },
+    });
   });
 
   it("rejects invalid imports without changing storage", () => {

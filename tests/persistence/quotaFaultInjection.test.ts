@@ -30,8 +30,8 @@ function createQuotaStorage(maxBytes: number): StorageAdapter {
 
 describe("storage quota fault injection", () => {
   it("gracefully catches QuotaExceededError during writeSave without throwing", () => {
-    // 15 KB quota fits exactly one ~8.5KB RLE save, but rejects a second (~17KB total)
-    const storage = createQuotaStorage(15 * 1024);
+    // One rules 2 escort save is about 18KB. 20KB holds that save and rejects the next.
+    const storage = createQuotaStorage(20 * 1024);
     const state1 = createMission({ seed: 101, missionIndex: 0 });
 
     // First save fits comfortably
@@ -50,7 +50,7 @@ describe("storage quota fault injection", () => {
   });
 
   it("gracefully catches QuotaExceededError during writeSlot without corrupting storage", () => {
-    const storage = createQuotaStorage(15 * 1024);
+    const storage = createQuotaStorage(40 * 1024);
     const state = createMission({ seed: 421, missionIndex: 0 });
     const campaign = freshCampaignProgress(421);
 

@@ -103,6 +103,8 @@ use 2.1; mission 1 force quotas use 3.0. That opening factor was retuned after
 fixing the second-harvester startup so force quotas stay above the five-minute
 floor. Full 240-run sweeps passed the timing target at 72.46% baseline and
 70.18% held-out, with the existing balance gates passing in both ranges.
+Mission 1 force quotas now scale by 3.2, after illegal route replans finished
+seed 0040 mission 1 inside five minutes.
 
 The first route diagnostics exhausted the realtime path-search budget on
 large maps. Diagnostic searches now have a full-grid budget, while realtime

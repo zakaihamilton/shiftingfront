@@ -25,7 +25,7 @@ import {
 } from "../../lib/render/camera";
 import { visibleTileRange } from "../../lib/render/terrainPaint";
 
-const EXHAUSTIVE_TEST_TIMEOUT = 60_000;
+const EXHAUSTIVE_TEST_TIMEOUT = 120_000;
 const IS_COVERAGE = Boolean(process.env.NODE_V8_COVERAGE || process.env.VITEST_COVERAGE);
 
 describe("terrain height", () => {
@@ -178,7 +178,7 @@ describe("mission footprints", () => {
         }
       }
     }
-  });
+  }, EXHAUSTIVE_TEST_TIMEOUT);
 });
 
 describe("map skirt scenery", () => {

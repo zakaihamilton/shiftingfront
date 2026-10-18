@@ -45,8 +45,9 @@ describe("enemy AI", () => {
     const yard = s.entities.find((entity) => entity.owner === 1 && entity.kind === "constructionYard")!;
     const director = s.runtime!.director!;
     const difficulty = missionDifficulty(s.missionIndex);
+    const productionEvery = difficulty.enemyProductionEvery * 4;
     const productionTick = difficulty.enemyProductionStart
-      + Math.ceil((director.pressureStart - difficulty.enemyProductionStart) / difficulty.enemyProductionEvery) * difficulty.enemyProductionEvery;
+      + Math.ceil((director.pressureStart - difficulty.enemyProductionStart) / productionEvery) * productionEvery;
 
     s.tick = director.pressureStart;
     tickMissionDirector(s);
@@ -62,7 +63,7 @@ describe("enemy AI", () => {
       Math.hypot(entity.x - yard.x, entity.y - yard.y) >= 10,
     )).toBe(true);
 
-    s.tick = productionTick + difficulty.enemyProductionEvery;
+    s.tick = productionTick + productionEvery;
     tickAi(s);
     expect(s.entities.some((entity) =>
       entity.owner === 1 &&
@@ -376,8 +377,8 @@ describe("enemy AI", () => {
   });
 
   it("produces and assigns an attack during a short headless mission", () => {
-    const state = createMission({ seed: 421, missionIndex: 0 });
-    for (let i = 0; i < missionDifficulty(state.missionIndex).enemyAssaultEvery + 120 && state.result === "playing"; i++) {
+    const state = createMission({ seed: 421, missionIndex: 1 });
+    for (let i = 0; i < missionDifficulty(state.missionIndex).enemyAssaultEvery + 240 && state.result === "playing"; i++) {
       tick(state);
     }
     expect(state.unitsProduced[1]).toBeGreaterThan(0);

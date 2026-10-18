@@ -87,7 +87,7 @@ export function initialMission(
     const previous = readSave(cachedCampaignStorage(), seed);
     if (previous) progress.gameplayRulesVersion = previous.gameplayRulesVersion ?? 1;
   }
-  const rules = progress.gameplayRulesVersion ?? 1;
+  const rules = progress.gameplayRulesVersion ?? 2;
   if (typeof window !== "undefined") writeCampaignProgress(cachedLocalStorage(), progress);
   return createMission({ seed, missionIndex: mission, gameplayRulesVersion: rules });
 }

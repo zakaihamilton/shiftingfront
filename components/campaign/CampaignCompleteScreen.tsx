@@ -8,7 +8,7 @@ import { DocumentTitle } from "@/components/ui/DocumentTitle";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { ActionRail, MetricCluster } from "@/components/ui/Dossier";
 import { createCampaign } from "@/lib/gen/campaign";
-import { missionDurationMinutesFor, missionTimeLimitLabel, secondaryObjectivesForMissionSeed } from "@/lib/gen/objectives";
+import { missionDurationMinutesFor, missionTimeLimitLabel } from "@/lib/gen/objectives";
 import { missionObjectives } from "@/lib/gen/story";
 import { biomeArt, RASTER_ART } from "@/lib/gen/visualAssets";
 import { formatSeed } from "@/lib/seed/rng";
@@ -69,9 +69,7 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
     : false;
   const selectedObjectives = selectedMission ? missionObjectives(selectedMission, campaign) : [];
   const selectedSecondaryObjectives = useMemo(() => selectedMission
-    ? campaign.gameplayRulesVersion === 2
-      ? createMission({ seed, missionIndex: selectedMission.index, gameplayRulesVersion: 2 }).runtime?.secondary ?? []
-      : secondaryObjectivesForMissionSeed(seed, selectedMission)
+    ? createMission({ seed, missionIndex: selectedMission.index, gameplayRulesVersion: campaign.gameplayRulesVersion }).runtime?.secondary ?? []
     : [], [seed, selectedMission, campaign.gameplayRulesVersion]);
   const selectedPrimaryObjectives = selectedSecondaryObjectives.filter((objective) => objectivePriorityFor(objective.id, objective.priority) === "primary");
   const selectedOptionalObjectives = selectedSecondaryObjectives.filter((objective) => objectivePriorityFor(objective.id, objective.priority) === "optional");

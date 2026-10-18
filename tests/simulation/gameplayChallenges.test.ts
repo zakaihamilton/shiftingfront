@@ -77,16 +77,16 @@ describe("versioned gameplay and optional challenges", () => {
       expect(withoutOutpost.reduce((n, cell, i) => n + (cell && !withOutpost[i] ? 1 : 0), 0)).toBeLessThanOrEqual(4);
     }
   });
-  it("keeps legacy campaigns and caches separate from new campaigns", () => {
-    const old = createCampaign(0);
-    const current = createCampaign(0, 2);
-    expect(old).toBe(createCampaign(0, 1));
+  it("keeps an explicit rules 1 stamp separate from the current default", () => {
+    const current = createCampaign(0);
+    const legacy = createCampaign(0, 1);
     expect(current).toBe(createCampaign(0, 2));
-    expect(current).not.toBe(old);
-    expect(old.missions.map(m => m.kind)).toEqual(current.missions.map(m => m.kind));
+    expect(legacy).toBe(createCampaign(0, 1));
+    expect(current).not.toBe(legacy);
+    expect(legacy.missions.map(m => m.kind)).toEqual(current.missions.map(m => m.kind));
     expect(normalizeCampaignProgress({ seed: 0 }, 0).gameplayRulesVersion).toBe(1);
     expect(freshCampaignProgress(0).gameplayRulesVersion).toBe(2);
-    expect(createMission({ seed: 0, missionIndex: 0 }).gameplayRulesVersion).toBe(1);
+    expect(createMission({ seed: 0, missionIndex: 0 }).gameplayRulesVersion).toBe(2);
   });
 
   it.each([1, 2] as const)("preserves rules %s for the next deployment after a save and win", rules => {
@@ -167,19 +167,21 @@ describe("versioned gameplay and optional challenges", () => {
     expect(secondaryProgress(restored)[0].priority).toBe("optional");
   });
 
-  it("new rescue contacts require clearing defenders while legacy contacts do not", () => {
+  it("rescue contacts stay blocked while a defender is adjacent", () => {
     const state = makeFixture({ width: 24, height: 24, win: { kind: "rescue", targetCount: 1 } });
     const target = addUnit(state, 0, "infantry", 12, 12);
     target.neutral = true;
     addUnit(state, 0, "tank", 12, 13);
     const guard = addUnit(state, 1, "infantry", 13, 12);
     state.runtime = { kind: "rescue", phase: "active", targetIds: [target.id], rescued: 0, required: 1, contactedIds: [], rescuedIds: [], secondary: [] };
-    state.gameplayRulesVersion = 2;
-    tickRescueExtraction(state);
-    expect(target.neutral).toBe(true);
-    state.gameplayRulesVersion = 1;
+    for (const version of [2, 1] as const) {
+      state.gameplayRulesVersion = version;
+      target.neutral = true;
+      tickRescueExtraction(state);
+      expect(target.neutral).toBe(true);
+    }
+    guard.hp = 0;
     tickRescueExtraction(state);
     expect(target.neutral).toBe(false);
-    expect(guard.hp).toBeGreaterThan(0);
   });
 });

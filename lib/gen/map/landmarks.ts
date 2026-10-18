@@ -9,7 +9,7 @@ import {
 } from "../../types";
 import type { Rng } from "../../seed/rng";
 import { idx, inBounds } from "./terrain";
-import { resourceCenterNear } from "./generator/resources";
+import { resourceCenterNear, resourceCenterOnOpenGround } from "./generator/resources";
 import { walkDistances } from "./generator/affordances";
 
 export function landmarkForBiome(biome: BiomeName): LandmarkKind {
@@ -361,9 +361,9 @@ export function generateLandmarkResourceVeins(
     y: Math.max(3, Math.min(height - 4, enemyStart.y - towardEnemy.y * 8 + lateral.y)),
   };
 
-  const playerStarter = resourceCenterNear(tiles, surfaces, distances, width, height, playerStart, safeP);
+  const playerStarter = starterCenter(tiles, surfaces, heights, distances, width, height, playerStart, safeP);
   const enemyDistances = walkDistances(tiles, heights, width, height, enemyStart);
-  const enemyStarter = resourceCenterNear(tiles, surfaces, enemyDistances, width, height, enemyStart, safeE);
+  const enemyStarter = starterCenter(tiles, surfaces, heights, enemyDistances, width, height, enemyStart, safeE);
 
   stampResourceCluster(tiles, heights, resourceAmount, surfaces, width, height, playerStarter, 3, rng);
   stampResourceCluster(tiles, heights, resourceAmount, surfaces, width, height, enemyStarter, 3, rng);
@@ -405,6 +405,46 @@ export function generateLandmarkResourceVeins(
       break;
     }
   }
+}
+
+function starterCenter(
+  tiles: number[],
+  surfaces: SurfaceKind[],
+  heights: number[],
+  distances: Int32Array,
+  width: number,
+  height: number,
+  origin: Vec2,
+  preferred: Vec2,
+): Vec2 {
+  const starter = resourceCenterNear(tiles, surfaces, distances, width, height, origin, preferred);
+  if (clusterCanStamp(tiles, surfaces, heights, width, height, starter, 3)) return starter;
+  // A cliff-side preferred cell is clear on the tile grid and still rejects
+  // every stamp. Fall back to open ground inside the funded ring.
+  return resourceCenterOnOpenGround(tiles, surfaces, heights, distances, width, height, origin, preferred) ?? starter;
+}
+
+function clusterCanStamp(
+  tiles: number[],
+  surfaces: SurfaceKind[],
+  heights: number[],
+  width: number,
+  height: number,
+  center: Vec2,
+  radius: number,
+): boolean {
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if (Math.hypot(dx, dy) > radius + 0.3) continue;
+      const x = center.x + dx;
+      const y = center.y + dy;
+      if (!inBounds(x, y, width, height)) continue;
+      const i = idx(x, y, width);
+      if (tiles[i] !== TILE_CLEAR || surfaces[i] === SURFACE_CONCRETE || (heights[i] ?? 0) >= 3) continue;
+      return true;
+    }
+  }
+  return false;
 }
 
 function stampResourceCluster(

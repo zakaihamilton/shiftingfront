@@ -1,6 +1,7 @@
 import { footprintOf, NEW_MISSION_KINDS } from "../../../lib/catalog";
 import { createCampaign } from "../../../lib/gen/campaign";
-import { generateMap, mapSizeForMission } from "../../../lib/gen/map";
+import { campaignMapSize } from "../../../lib/gen/campaign";
+import { generateMap } from "../../../lib/gen/map";
 import { createMissionFromData } from "../../../lib/sim/api";
 import { inRescueFlank } from "../../../lib/gen/map/generator/rescuePlacement";
 import { distToEntity, footprintFlat, inBounds, isStaticWalkable, staticNavigationFor, terrainAccess } from "../../../lib/sim/world";
@@ -8,7 +9,8 @@ import { PATH_DIRS } from "../../../lib/sim/pathfinding";
 import type { Entity, MissionKind, SimState, Vec2 } from "../../../lib/types";
 
 export const SEED_COUNT = 10_000;
-export const EXHAUSTIVE_TEST_TIMEOUT = 180_000;
+// Four partitions share a 2-vCPU health runner and finish in about 340s.
+export const EXHAUSTIVE_TEST_TIMEOUT = 480_000;
 export const IS_COVERAGE = Boolean(process.env.NODE_V8_COVERAGE || process.env.VITEST_COVERAGE);
 export const SCENARIO_SAMPLE_COUNT = 1_024;
 export const REPRESENTATIVE_SEEDS = Array.from(
@@ -140,7 +142,8 @@ export function assertCampaignTopology(start: number, end: number): void {
       throw new Error(`Seed ${seed} generated a mission outside campaign biome ${campaign.world.biome}`);
     }
     for (const [index, mission] of missions.entries()) {
-      if (mission.index !== index || mission.mapSize !== mapSizeForMission(index) || mission.kind !== mission.win.kind) {
+      const kind = mission.kind;
+      if (kind === undefined || mission.index !== index || mission.mapSize !== campaignMapSize(index, kind) || kind !== mission.win.kind) {
         throw new Error(`Seed ${seed} generated inconsistent mission metadata at index ${index}`);
       }
     }

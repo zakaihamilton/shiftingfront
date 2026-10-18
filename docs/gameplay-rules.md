@@ -1,9 +1,12 @@
 # Versioned gameplay rules
 
-New campaigns use rules 2. Campaign progress, battlefield saves, named slots,
-restarts and subsequent deployments retain their rules version. Unversioned
-campaigns and saves use rules 1; legacy replay fingerprints remain unchanged.
-Tutorial and multiplayer scenarios do not receive campaign bonus challenges.
+New campaigns, headless tools, and replay fingerprints use rules 2. Opening a
+stored campaign whose battlefield or progress is rules 1, or has no rules
+version, keeps the seed, unlocks, medals, and best scores, discards that
+battlefield, and rebuilds the operation under rules 2. A stored rules 2 record
+is not downgraded by an older battlefield. A missing battlefield version in a
+save file still decodes as rules 1 so that file can be retired. Tutorial and
+multiplayer scenarios do not receive campaign bonus challenges.
 
 ## Pacing
 
@@ -12,7 +15,7 @@ maps in missions 1–4 (150×150 in missions 5–6). Offensive combat maps are a
 least 104×104; other mission families keep their legacy dimensions. Seeded
 mission kinds, ordering and quota roles stay the same. Harvest quotas scale
 their generated targets by 1.5. Force and structure quotas scale by 2.1 in
-missions 1–2, except mission 1 force quotas, which scale by 3.0; later force
+missions 1–2, except mission 1 force quotas, which scale by 3.2; later force
 and structure quotas scale by 1.65. These factors apply once. Rescue
 patrols must be cleared before stranded units can be contacted, with two guards
 per target.

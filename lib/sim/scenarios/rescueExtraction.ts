@@ -71,7 +71,7 @@ function rescuePointCandidates(
     for (let x = 0; x < map.width; x += 1) {
       if (reachable && reachable[y * map.width + x] !== 1) continue;
       if (!inRescueFlank(map, x, y) || !isWalkable(state, x, y) || tileInPlayerVision(state, x, y)) continue;
-      if (state.gameplayRulesVersion === 2 && yard && pointDistance({ x, y }, yard) < recoveryDistance) continue;
+      if (yard && pointDistance({ x, y }, yard) < recoveryDistance) continue;
       candidates.push({ x, y });
     }
   }
@@ -151,7 +151,7 @@ function extractionPointCandidates(
       const point = { x, y };
       if (reachable && reachable[y * map.width + x] !== 1) continue;
       if (!isWalkable(state, x, y) || tileInPlayerVision(state, x, y)) continue;
-      if (pointDistance(point, map.playerStart) < (state.gameplayRulesVersion === 2 ? 90 : EXTRACTION_PLAYER_BASE_CLEARANCE)) continue;
+      if (pointDistance(point, map.playerStart) < 90) continue;
       if (playerBuildings.some((building) => distToEntity(point, building) < EXTRACTION_PLAYER_BASE_CLEARANCE)) continue;
       if (pointDistance(point, map.enemyStart) < EXTRACTION_ENEMY_BASE_CLEARANCE) continue;
       if (enemyBuildings.some((building) => distToEntity(point, building) < EXTRACTION_ENEMY_BASE_CLEARANCE)) continue;
@@ -334,7 +334,7 @@ function returnStrandedUnitToBase(state: SimState, unit: Entity, yard: Entity | 
 }
 
 function strandedUnitContacted(target: Entity, rescuers: readonly Entity[], state?: SimState): boolean {
-  if (state?.gameplayRulesVersion === 2 && state.win.kind === "rescue" && entitiesFor(state).some(e => e.owner === 1 && e.hp > 0 && isUnitEntity(e) && UNIT_STATS[e.kind].damage > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 6)) return false;
+  if (state?.win.kind === "rescue" && entitiesFor(state).some(e => e.owner === 1 && e.hp > 0 && isUnitEntity(e) && UNIT_STATS[e.kind].damage > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 6)) return false;
   // Revealing a stranded unit only makes its blue contact halo visible. The
   // rescue starts when a player unit actually enters that halo.
   return rescuers.some((rescuer) => Math.hypot(rescuer.x - target.x, rescuer.y - target.y) <= RESCUE_CONTACT_RADIUS);

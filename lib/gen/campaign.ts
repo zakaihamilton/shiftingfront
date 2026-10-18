@@ -13,9 +13,8 @@ import { missionProfileFor } from "./profile";
 
 const campaignCache = new Map<string, ReadonlyCampaign>();
 
-function campaignMapSize(index: number, kind: MissionKind, version: GameplayRulesVersion): number {
+export function campaignMapSize(index: number, kind: MissionKind): number {
   const legacySize = mapSizeForMission(index);
-  if (version === 1) return legacySize;
   if (kind === "rescue") return 200;
   if (kind === "extraction") return 180;
   if (kind === "escort") return index >= 4 ? 150 : 144;
@@ -45,7 +44,7 @@ export function createCampaign(seed: number, rules?: GameplayRulesVersion): Read
   const characters = generateCharacters(seed);
   const kinds = pickMissionKinds(seed);
   const missions: MissionDef[] = kinds.map((kind, index) => {
-    const win = generateWinCategory(seed, index, kind, version);
+    const win = generateWinCategory(seed, index, kind);
     const profile = missionProfileFor(seed, index, kind);
     const draft: MissionDef = {
       gameplayRulesVersion: version,
@@ -53,7 +52,7 @@ export function createCampaign(seed: number, rules?: GameplayRulesVersion): Read
       name: genMissionTitle(createRng(seed, `mission-title:${index}`), kind, profile),
       briefing: [],
       win,
-      mapSize: campaignMapSize(index, kind, version),
+      mapSize: campaignMapSize(index, kind),
       biome: world.biome,
       kind: win.kind,
       profile,

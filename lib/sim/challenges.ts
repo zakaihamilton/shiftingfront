@@ -11,7 +11,7 @@ export const CHALLENGE_HOLD_TICKS = 60 * TICKS_PER_SECOND;
 
 /** Pure seeded placement: no extra RNG draws enter the legacy simulation stream. */
 export function configureChallenge(state: SimState, map: GeneratedMap): void {
-  if (state.gameplayRulesVersion !== 2 || !state.runtime || state.multiplayer || state.tutorialStage !== undefined) return;
+  if (!state.runtime || state.multiplayer || state.tutorialStage !== undefined) return;
   const reachable = reachableScenarioCells(state);
   if (!reachable) return;
   const outpost = OUTPOST_KINDS.has(state.win.kind);

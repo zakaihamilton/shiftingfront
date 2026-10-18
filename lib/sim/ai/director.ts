@@ -162,7 +162,7 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   const profileContract = profile ? profileContractFor(profile) : undefined;
   const objectiveContract = objectiveContractFor(state.win.kind);
   const phase = directorPhase(state);
-  const recoveryRoutes = state.gameplayRulesVersion === 2 && (state.runtime?.kind === "escort" || isTimedRecovery(state.runtime?.kind ?? state.win.kind));
+  const recoveryRoutes = state.runtime?.kind === "escort" || isTimedRecovery(state.runtime?.kind ?? state.win.kind);
   const timedScenario = state.runtime?.director !== undefined && (state.missionIndex >= 4 || recoveryRoutes) && (
     state.runtime.kind === "escort" || isTimedRecovery(state.runtime.kind)
   );

@@ -72,7 +72,7 @@ export type MissionObjective = {
 };
 
 export function missionObjectives(
-  mission: Pick<ReadonlyMissionDef, "win" | "index" | "gameplayRulesVersion">,
+  mission: Pick<ReadonlyMissionDef, "win">,
   campaign: Pick<Campaign, "world" | "factions">,
 ): MissionObjective[] {
   const win = mission.win;
@@ -105,7 +105,7 @@ export function missionObjectives(
       case "sabotage":
         return `Sabotage ${win.targetCount ?? 1} enemy systems within ${scenarioTimeLimitLabel(win)}`;
       case "rescue":
-        return `${mission.gameplayRulesVersion === 2 ? "Clear nearby patrols, then contact" : "Contact"} and return ${win.targetCount ?? 1} stranded units within ${scenarioTimeLimitLabel(win)}`;
+        return `Clear nearby patrols, then contact and return ${win.targetCount ?? 1} stranded units within ${scenarioTimeLimitLabel(win)}`;
       case "extraction":
         return `Extract ${win.targetCount ?? 1} assets from ${place} within ${scenarioTimeLimitLabel(win)}`;
       default:

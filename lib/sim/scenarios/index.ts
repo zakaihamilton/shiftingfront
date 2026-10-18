@@ -77,8 +77,7 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
     ? extractionPoints(state, map, count, reachable, rng)
     : undefined;
   const spawnScenarioPatrols = (index: number, target: Entity, center: Vec2): void => {
-    const patrolCount = state.gameplayRulesVersion === 2 && kind === "rescue" ? 2 : kind === "rescue"
-      ? contestedRoute ? 2 : 1
+    const patrolCount = kind === "rescue" ? 2
       : contestedRoute ? mission.index >= 4 ? index === 0 ? 2 : 1 : 2 : index === 0 ? 1 : 0;
     for (let patrolIndex = 0; patrolIndex < patrolCount; patrolIndex++) {
       const side = (index + patrolIndex) % 2 === 0 ? 1 : -1;
@@ -148,7 +147,7 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
           undefined,
           kind === "rescue" ? (x, y) => inRescueFlank(map, x, y) : undefined,
         );
-      const target = spawnUnit(state, 0, kind === "escort" || (kind === "extraction" && state.gameplayRulesVersion === 2) ? "convoyTruck" : "infantry", point.x, point.y);
+      const target = spawnUnit(state, 0, kind === "escort" || kind === "extraction" ? "convoyTruck" : "infantry", point.x, point.y);
       target.neutral = kind === "escort" || kind === "rescue" || kind === "extraction";
       target.scenarioRole = kind === "escort" ? "convoy" : kind === "rescue" ? "stranded" : "cargo";
       if (kind === "extraction") target.marked = true;

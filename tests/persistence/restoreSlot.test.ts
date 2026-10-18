@@ -7,6 +7,7 @@ import { makeFixture } from "../../lib/sim/fixtures";
 function fixture() {
   const storage = memoryStorage();
   const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+  state.gameplayRulesVersion = 2;
   writeSave(storage, state);
   const campaign = freshCampaignProgress(421);
   writeCampaignProgress(storage, campaign);
@@ -55,6 +56,15 @@ describe("slot restore writes", () => {
       storage.setItem(key, raw);
     } };
     expect(restoreSlot(broken, slot)).toContain("recover the previous autosave");
+  });
+
+  it("keeps campaign progress when the slot battlefield is rules 1", () => {
+    const { storage, slot } = fixture();
+    slot.state = { ...slot.state, gameplayRulesVersion: 1, missionIndex: 2 };
+    slot.campaign = { ...slot.campaign, gameplayRulesVersion: 1, unlockedMission: 2, completedMissions: [0], medals: { "0": 2 }, bestScores: { "0": 15 } };
+    expect(restoreSlot(storage, slot)).toContain("rebuilt");
+    expect(readSave(storage, 421)?.tick).toBe(0);
+    expect(readCampaignProgress(storage, 421)).toMatchObject({ gameplayRulesVersion: 2, unlockedMission: 2, completedMissions: [0], medals: { "0": 2 } });
   });
 
   it("does not write when the original autosave cannot be read", () => {

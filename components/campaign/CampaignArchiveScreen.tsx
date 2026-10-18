@@ -112,7 +112,14 @@ export function CampaignArchiveScreen() {
       const raw = await file.text();
       const result = getSaveRepository() ? await getSaveRepository()!.importSlot(raw) : importSlot(cachedCampaignStorage(), raw);
       if (!result.ok) {
-        setPortabilityNotice({ tone: "alert", text: "Could not import that file. It is invalid or unsupported." });
+        setPortabilityNotice({
+          tone: "alert",
+          text: result.reason === "legacy-rules"
+            ? "That save used the previous campaign rules. Its battle was retired and its campaign record was kept."
+            : result.reason === "storage-failed"
+              ? "Could not keep that campaign record because browser storage is unavailable. Free storage and try importing again."
+              : "Could not import that file. It is invalid or unsupported.",
+        });
         return;
       }
       setPortabilityNotice({ tone: "success", text: "Imported save as a new named slot." });
