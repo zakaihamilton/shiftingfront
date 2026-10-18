@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stored rules 1 campaigns keep their unlocks, medals, and scores, and their in-progress operation is rebuilt under rules 2. An older battlefield cannot downgrade a rules 2 campaign record.
 - Campaign generation, the balance gate, and replay fingerprints now use rules 2 when a rules version is omitted. A save that omits the battlefield version still decodes as rules 1.
 - Mission 1 force quotas scale by 3.2 so the five-minute floor still holds after harvesters replan illegal routes.
+- Terrain atlas health budgets allow 12 MB and 4 s in CI so 180×180 extraction maps fit.
 - Browser performance checks measure full runtime-loop work and animation-frame cadence during active simulation, with separate drawing diagnostics and tighter frame budgets.
 - Application and package versions are now 1.1.6.
 - Survival waves refresh slightly faster to preserve defensive pressure after the building repair corrections.

@@ -9,8 +9,10 @@ import { staticNavigationFor } from "../lib/sim/world";
 import type { SimState } from "../lib/types";
 import { percentile, summarizeTimings, type TimingSummary } from "../lib/perf/metrics";
 
-const MAX_ATLAS_MS = process.env.CI ? 2_500 : 1_200;
-const MAX_ATLAS_BYTES = 4 * 1024 * 1024;
+// A 96 map atlas is 3.75 MB. Rules 2 extraction at 180 is 10.6 MB and took
+// 2.96 s on the health runner, so the old 4 MB / 2.5 s caps no longer fit.
+const MAX_ATLAS_MS = process.env.CI ? 4_000 : 2_000;
+const MAX_ATLAS_BYTES = 12 * 1024 * 1024;
 const MAX_SIM_P95_MS = 25;
 /** Isolated GC spikes on 2-vCPU runners can clear 25 ms while p95 stays ~3 ms. */
 const MAX_SIM_P99_MS = process.env.CI ? 40 : 25;
