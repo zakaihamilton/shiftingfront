@@ -8,7 +8,7 @@ import { makeFixture } from "../../lib/sim/fixtures";
 import { BUILDING_STATS, footprintOf } from "../../lib/catalog";
 import type { BuildingKind } from "../../lib/types";
 import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../lib/types";
-import { cameraViewQuad, createCamera, TILE_H, tileToScreen } from "../../lib/iso";
+import { cameraViewQuad, createCamera, TILE_H, TILE_W, tileToScreen } from "../../lib/iso";
 import {
   cameraFocusPoint,
   cameraPanBounds,
@@ -20,6 +20,7 @@ import {
   minimapPoint,
   panAvailability,
   panCamera,
+  panCameraPreservingDirection,
   panInputForDirection,
 } from "../../lib/render/camera";
 import { visibleTileRange } from "../../lib/render/terrainPaint";
@@ -432,16 +433,33 @@ describe("camera pan bounds", () => {
     expect(cameraFocusPoint(cam, bounds).y).toBeCloseTo(0);
     expect(canPan(cam, bounds, "up")).toBe(false);
     expect(canPan(cam, bounds, "left")).toBe(false);
-    expect(canPan(cam, bounds, "right")).toBe(true);
+    expect(canPan(cam, bounds, "right")).toBe(false);
     expect(canPan(cam, bounds, "down")).toBe(true);
+    expect(panAvailability(cam, bounds)).toEqual({ left: false, right: false, up: false, down: true });
 
     focusCameraAtTile(cam, 47, 47, bounds);
     expect(cameraFocusPoint(cam, bounds).x).toBeCloseTo(47);
     expect(cameraFocusPoint(cam, bounds).y).toBeCloseTo(47);
     expect(canPan(cam, bounds, "right")).toBe(false);
     expect(canPan(cam, bounds, "down")).toBe(false);
-    expect(canPan(cam, bounds, "left")).toBe(true);
+    expect(canPan(cam, bounds, "left")).toBe(false);
     expect(canPan(cam, bounds, "up")).toBe(true);
+    expect(panAvailability(cam, bounds)).toEqual({ left: false, right: false, up: true, down: false });
+  });
+
+  it("blocks a screen-direction pan when either map axis is already at its boundary", () => {
+    const cam = createCamera();
+    const bounds = cameraPanBounds(48, 48, 640, 480);
+    focusCameraAtTile(cam, 24, 0, bounds);
+    const before = cameraFocusPoint(cam, bounds);
+
+    expect(canPan(cam, bounds, "up")).toBe(false);
+    panCameraPreservingDirection(cam, panInputForDirection("up", 40, cam.zoom), bounds);
+    const after = cameraFocusPoint(cam, bounds);
+    const projectedX = (after.x - before.x - (after.y - before.y)) * (TILE_W / 2);
+    const projectedY = (after.x - before.x + (after.y - before.y)) * (TILE_H / 2);
+    expect(projectedX).toBeCloseTo(0);
+    expect(projectedY).toBeCloseTo(0);
   });
 
   it("keeps small maps pannable by focus point even when the viewport is larger", () => {
@@ -455,33 +473,35 @@ describe("camera pan bounds", () => {
     expect(avail.down).toBe(true);
   });
 
-  it("moves directional controls along minimap map axes", () => {
+  it("moves directional controls along battlefield screen axes", () => {
     const bounds = cameraPanBounds(48, 48, 640, 480);
+    const diagonal = 1 / Math.sqrt(2);
     const cases = [
-      { dir: "left" as const, dx: -1, dy: 0 },
-      { dir: "right" as const, dx: 1, dy: 0 },
-      { dir: "up" as const, dx: 0, dy: -1 },
-      { dir: "down" as const, dx: 0, dy: 1 },
+      { dir: "left" as const, screenX: -1, screenY: 0 },
+      { dir: "right" as const, screenX: 1, screenY: 0 },
+      { dir: "up" as const, screenX: 0, screenY: -1 },
+      { dir: "down" as const, screenX: 0, screenY: 1 },
+      { dir: "up-left" as const, screenX: -diagonal, screenY: -diagonal },
+      { dir: "up-right" as const, screenX: diagonal, screenY: -diagonal },
+      { dir: "down-left" as const, screenX: -diagonal, screenY: diagonal },
+      { dir: "down-right" as const, screenX: diagonal, screenY: diagonal },
     ];
 
-    for (const { dir, dx, dy } of cases) {
+    for (const { dir, screenX, screenY } of cases) {
       const cam = createCamera();
       focusCameraAtTile(cam, 24, 24, bounds);
       const start = cameraFocusPoint(cam, bounds);
       const input = panInputForDirection(dir, 40, cam.zoom);
 
       expect(input.space).toBe("map");
-      expect(Math.sign(input.dx)).toBe(dx);
-      expect(Math.sign(input.dy)).toBe(dy);
       panCamera(cam, input, bounds);
       const moved = cameraFocusPoint(cam, bounds);
-      if (dx) {
-        expect(Math.sign(moved.x - start.x)).toBe(dx);
-        expect(moved.y).toBeCloseTo(start.y);
-      } else {
-        expect(moved.x).toBeCloseTo(start.x);
-        expect(Math.sign(moved.y - start.y)).toBe(dy);
-      }
+      const mapDx = moved.x - start.x;
+      const mapDy = moved.y - start.y;
+      const projectedX = (mapDx - mapDy) * (TILE_W / 2);
+      const projectedY = (mapDx + mapDy) * (TILE_H / 2);
+      expect(projectedX).toBeCloseTo(screenX * 40);
+      expect(projectedY).toBeCloseTo(screenY * 40);
     }
   });
 

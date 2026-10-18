@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, type MutableRefObject, type PointerEvent, type RefObject } from "react";
 import { pickTile } from "@/lib/render/renderer";
 import type { CommandMarker } from "@/lib/render/renderOverlays";
-import { panDirFromPointer, EDGE_PAN_BAND, type PanAvailability, type PanDir } from "@/lib/render/camera";
+import { cameraPanBounds, canPan as cameraCanPan, panDirFromPointer, EDGE_PAN_BAND, type PanAvailability, type PanDir } from "@/lib/render/camera";
 import { type Camera } from "@/lib/iso";
 import type { BuildingKind, Command, SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
@@ -224,10 +224,21 @@ export function useGameInput({
       boxRef.current.y1 = p.y;
     }
     const r = e.currentTarget.getBoundingClientRect();
+    const panBounds = s
+      ? cameraPanBounds(s.width, s.height, e.currentTarget.width, e.currentTarget.height)
+      : undefined;
     applyEdgePan(
       e.pointerType === "touch" || pausedRef.current
         ? null
-        : panDirFromPointer(e.clientX - r.left, e.clientY - r.top, r.width, r.height, EDGE_PAN_BAND, panAvailRef.current),
+        : panDirFromPointer(
+            e.clientX - r.left,
+            e.clientY - r.top,
+            r.width,
+            r.height,
+            EDGE_PAN_BAND,
+            panAvailRef.current,
+            (dir) => Boolean(panBounds && cameraCanPan(camRef.current, panBounds, dir)),
+          ),
     );
   }, [applyEdgePan, camRef, hoverAtPointer, moveTouch, panAvailRef, pausedRef, stateRef, syncCursor]);
 
