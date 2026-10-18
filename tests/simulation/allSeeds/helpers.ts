@@ -141,7 +141,8 @@ export function assertCampaignTopology(start: number, end: number): void {
       throw new Error(`Seed ${seed} generated a mission outside campaign biome ${campaign.world.biome}`);
     }
     for (const [index, mission] of missions.entries()) {
-      if (mission.index !== index || mission.mapSize !== campaignMapSize(index, mission.kind) || mission.kind !== mission.win.kind) {
+      const kind = mission.kind;
+      if (kind === undefined || mission.index !== index || mission.mapSize !== campaignMapSize(index, kind) || kind !== mission.win.kind) {
         throw new Error(`Seed ${seed} generated inconsistent mission metadata at index ${index}`);
       }
     }
