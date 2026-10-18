@@ -7,6 +7,7 @@ import {
   COMMANDER_CADENCE,
   COMBAT_ORDER_REFRESH,
   OFFENSIVE_KINDS,
+  YARD_THREAT_RADIUS,
   combatUnits,
   objectiveKind,
   playerBuildingsView,
@@ -274,6 +275,7 @@ export class CompetentCommander {
           const escortTarget = objectiveKind(state) === "extraction"
             ? extractionEscortTarget ?? objective
             : objective;
+          const returningUnit = extractionEscortTarget ?? rescueEscortTarget;
           if (responseForce.length && pendingNeutral && objective && objectiveKind(state) !== "escort") {
             // Yard raids are the home guard's job. Keep the contact team on
             // the objective; pulling it home for every nearby attacker is
@@ -286,6 +288,18 @@ export class CompetentCommander {
               y: objective.y,
               formation: "line",
             });
+          } else if (responseForce.length && returningUnit) {
+            // Cargo already at the base must not count as the scenario
+            // threat. Stay with the unit that is still in the field.
+            const localThreat = enemyEntitiesView(state)
+              .filter((entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)))
+              .sort((a, b) => distToEntity(returningUnit, a) - distToEntity(returningUnit, b) || a.id - b.id)
+              .find((entity) => distToEntity(returningUnit, entity) <= YARD_THREAT_RADIUS);
+            if (localThreat) {
+              combatCommands.push({ type: "attack", unitIds: responseForce.map((entity) => entity.id), targetId: localThreat.id });
+            } else {
+              combatCommands.push({ type: "attackMove", unitIds: responseForce.map((entity) => entity.id), x: returningUnit.x, y: returningUnit.y, formation: "line" });
+            }
           } else if (responseForce.length && escortTarget) {
             // A threatened scenario target takes priority over escort travel.
             // The force will receive its route to the target again once the

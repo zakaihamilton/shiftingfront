@@ -5,10 +5,10 @@ import { runReplay } from "../../lib/sim/replay";
 const BASELINES = [
   { kind: "annihilate", seed: 1, missionIndex: 2, digest: "6f07e50f0d1145a761455588a58b773528d24da26a324b591211d65a84925b74" },
   { kind: "decapitate", seed: 1, missionIndex: 4, digest: "2103df589ed3a521b67090524d5444789f25a3da87a84c5307fd4749ba89c747" },
-  { kind: "destroyMarked", seed: 0, missionIndex: 3, digest: "df40bcea51feb5933019b2250d0e9b879eb24c5c1dde96164ccb10c803386cab" },
+  { kind: "destroyMarked", seed: 0, missionIndex: 3, digest: "fcec4720a709159bfc81ea037e94e756b96d91d00f183587a437da4adb82fa12" },
   // Escort includes the expanded completion buffer and convoy unblocking path.
   { kind: "escort", seed: 0, missionIndex: 2, digest: "926f7493f84e2e739ebdf79c419a0a90b5173a53dba64ce65e6bb1673dcebb5e" },
-  { kind: "extraction", seed: 0, missionIndex: 1, digest: "9a144984c8ff1f837016440ef20fb48af87ee2720176ce70277e971c05b84edf" },
+  { kind: "extraction", seed: 0, missionIndex: 1, digest: "b525b97f234ed25e59f1050a4c2d8b7ed7f3772e748baaad67c062d69d8e89b5" },
   { kind: "forceQuota", seed: 0, missionIndex: 4, digest: "4cea64dcb84f4459efabc70c1523a55002ab82833d3b2c6d5c87e387a49f27b6" },
   { kind: "harvestQuota", seed: 7, missionIndex: 3, digest: "55ec1b34e68d97593f761b7c5ad8393f7ca3012f010aa6a76c70ac308b520cb2" },
   { kind: "holdTheLine", seed: 0, missionIndex: 5, digest: "5f7b0de66989ee02207c55f00be5d7a70656905197b03490934ff48d26656516" },

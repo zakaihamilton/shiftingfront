@@ -5,8 +5,8 @@ import { tryFindPathDetailed } from "./pathBudget";
 import { routePendingFor } from "./pathfinding";
 import { prepareFlowFieldRoutes } from "./flowFieldRouting";
 import { flowDistanceAt } from "./flowField";
-import { navigationEdgeKey, navigationEdgeReserved } from "./navigation/grid";
-import { invalidateUnitAtCache, unitOccupancyFor } from "./world";
+import { navigationEdgeKey, navigationEdgeReserved, navigationStepAllowed } from "./navigation/grid";
+import { invalidateUnitAtCache, staticNavigationFor, unitOccupancyFor } from "./world";
 import type { FlowField } from "./flowField";
 import { tickAircraft } from "./aircraft";
 import { entitiesFor } from "./entities";
@@ -149,6 +149,21 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
   for (const e of movers) {
     const current = cellOf(state, e.x, e.y);
     const next = e.path[0];
+    if (next) {
+      const currentX = current % state.width;
+      const currentY = Math.floor(current / state.width);
+      const nextX = Math.round(next.x);
+      const nextY = Math.round(next.y);
+      // A sidestep can drop the waypoint after the blocked cell, leaving a
+      // jump the unit is not allowed to take. Drop that path and replan
+      // instead of standing on it until the deadline.
+      if ((currentX !== nextX || currentY !== nextY) && !navigationStepAllowed(staticNavigationFor(state), currentX, currentY, nextX, nextY)) {
+        e.path = [];
+        e.routePending = true;
+        e.idle = false;
+        continue;
+      }
+    }
     const movementCost = next ? terrainMovementCostAt(state, navigationMobilityFor(e), next.x, next.y) : 1;
     const speed = UNIT_STATS[e.kind].speed / movementCost * (1 - Math.min(0.4, (e.suppression ?? 0) / 250));
     const distance = next ? Math.hypot(next.x - e.x, next.y - e.y) : 0;
