@@ -9,7 +9,8 @@ import { PATH_DIRS } from "../../../lib/sim/pathfinding";
 import type { Entity, MissionKind, SimState, Vec2 } from "../../../lib/types";
 
 export const SEED_COUNT = 10_000;
-export const EXHAUSTIVE_TEST_TIMEOUT = 300_000;
+// Four partitions share a 2-vCPU health runner and finish in about 340s.
+export const EXHAUSTIVE_TEST_TIMEOUT = 480_000;
 export const IS_COVERAGE = Boolean(process.env.NODE_V8_COVERAGE || process.env.VITEST_COVERAGE);
 export const SCENARIO_SAMPLE_COUNT = 1_024;
 export const REPRESENTATIVE_SEEDS = Array.from(
