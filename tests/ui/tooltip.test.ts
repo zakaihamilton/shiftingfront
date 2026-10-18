@@ -37,6 +37,14 @@ describe("edge pan from pointer", () => {
       down: true,
     })).toBeNull();
   });
+
+  it("checks diagonal availability directly at battlefield corners", () => {
+    const cardinalAvailability = { left: false, right: true, up: true, down: true };
+    expect(panDirFromPointer(10, 598, 800, 600, EDGE_PAN_BAND, cardinalAvailability, (dir) => dir === "down-left"))
+      .toBe("down-left");
+    expect(panDirFromPointer(10, 598, 800, 600, EDGE_PAN_BAND, cardinalAvailability, () => false))
+      .toBe("down");
+  });
 });
 
 describe("floating tooltips", () => {

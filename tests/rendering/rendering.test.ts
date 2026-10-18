@@ -956,7 +956,7 @@ describe("terrain scroll cache key", () => {
 });
 
 describe("minimap classification", () => {
-  it("moves the isometric viewport window along the corresponding map axes", () => {
+  it("moves the isometric viewport window along the corresponding screen direction", () => {
     const bounds = cameraPanBounds(48, 48, 640, 480);
     const cam = createCamera();
     focusCameraAtTile(cam, 24, 24, bounds);
@@ -968,7 +968,7 @@ describe("minimap classification", () => {
 
     const after = viewRect();
     expect(after.x).toBeGreaterThan(before.x);
-    expect(after.y).toBeCloseTo(before.y);
+    expect(after.y).toBeLessThan(before.y);
     expect(after.width).toBeCloseTo(before.width);
     expect(after.height).toBeCloseTo(before.height);
   });

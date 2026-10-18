@@ -3,7 +3,7 @@ import {
   canPan,
   capPanInput,
   panAvailability,
-  panCamera,
+  panCameraPreservingDirection,
   panInputForDirection,
   EDGE_PAN_DELAY_MS,
   type PanAvailability,
@@ -78,7 +78,7 @@ export function createFrameCoordinator({
           { dir: "right", pressed: keyIsDown(panRightKey) || Boolean(keys.current.ArrowRight) },
         ];
         for (const { dir, pressed } of keyboardDirections) {
-          if (!pressed || !canPanDirection(dir)) continue;
+          if (!pressed) continue;
           const input = panInputForDirection(dir, panStep, camera.zoom);
           keyboardPan.dx += input.dx;
           keyboardPan.dy += input.dy;
@@ -111,7 +111,7 @@ export function createFrameCoordinator({
           dx: combineAxis(keyboardPan.dx, edgeStep.dx, activeEdge ? panInputForDirection(activeEdge, 1, camera.zoom).dx : 0),
           dy: combineAxis(keyboardPan.dy, edgeStep.dy, activeEdge ? panInputForDirection(activeEdge, 1, camera.zoom).dy : 0),
         }, panStep, camera.zoom);
-        if (bounds) panCamera(camera, combinedPan, bounds);
+        if (bounds && combinedPan.space === "map") panCameraPreservingDirection(camera, combinedPan, bounds);
         if (bounds) {
           const next = panAvailability(camera, bounds);
           const previous = panAvailabilityRef.current;

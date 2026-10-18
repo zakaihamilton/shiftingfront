@@ -44,25 +44,32 @@ function makeFrameCoordinator(
 }
 
 const focus = (frame: ReturnType<typeof makeFrameCoordinator>) => cameraFocusPoint(frame.camera, frame.bounds);
+const screenFocus = (frame: ReturnType<typeof makeFrameCoordinator>) => {
+  const point = focus(frame);
+  return {
+    x: (point.x - point.y) * (TILE_W / 2),
+    y: (point.x + point.y) * (TILE_H / 2),
+  };
+};
 
 describe("runtime frame coordinator", () => {
-  it("moves keyboard directions along matching minimap axes", () => {
-    const rightFrame = makeFrameCoordinator({ d: true });
-    const upFrame = makeFrameCoordinator({ w: true });
+  it("moves keyboard arrow directions along matching battlefield screen axes", () => {
+    const rightFrame = makeFrameCoordinator({ ArrowRight: true });
+    const upFrame = makeFrameCoordinator({ ArrowUp: true });
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
-    const rightStart = focus(rightFrame);
-    const upStart = focus(upFrame);
+    const rightStart = screenFocus(rightFrame);
+    const upStart = screenFocus(upFrame);
 
     rightFrame.coordinator.onFrame(state, 0, false, 16);
     upFrame.coordinator.onFrame(state, 0, false, 16);
 
-    expect(focus(rightFrame).x).toBeGreaterThan(rightStart.x);
-    expect(focus(rightFrame).y).toBeCloseTo(rightStart.y);
-    expect(focus(upFrame).x).toBeCloseTo(upStart.x);
-    expect(focus(upFrame).y).toBeLessThan(upStart.y);
+    expect(screenFocus(rightFrame).x).toBeGreaterThan(rightStart.x);
+    expect(screenFocus(rightFrame).y).toBeCloseTo(rightStart.y);
+    expect(screenFocus(upFrame).x).toBeCloseTo(upStart.x);
+    expect(screenFocus(upFrame).y).toBeLessThan(upStart.y);
   });
 
-  it("does not pan upward when the minimap top edge is unavailable", () => {
+  it("does not skew an upward pan when one map axis is at its boundary", () => {
     const frame = makeFrameCoordinator({ w: true }, undefined, { x: 24, y: 0 });
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     const before = focus(frame);
@@ -73,15 +80,28 @@ describe("runtime frame coordinator", () => {
     expect(frame.setPanAvailability).not.toHaveBeenCalled();
   });
 
-  it("blocks an edge direction when the matching minimap direction is unavailable", () => {
+  it("keeps a combined keyboard pan on its diagonal path at a map edge", () => {
+    const frame = makeFrameCoordinator({ ArrowLeft: true, ArrowDown: true }, undefined, { x: 0, y: 24 });
+    const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    const before = screenFocus(frame);
+
+    frame.coordinator.onFrame(state, 0, false, 16);
+
+    const after = screenFocus(frame);
+    expect(after.x).toBeLessThan(before.x);
+    expect(after.y).toBeGreaterThan(before.y);
+    expect(Math.abs(after.x - before.x)).toBeCloseTo(Math.abs(after.y - before.y));
+  });
+
+  it("blocks an edge direction when the matching screen direction is unavailable", () => {
     const frame = makeFrameCoordinator({}, undefined, { x: 24, y: 0 });
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     frame.edgePanHover.current = { dir: "up", startedAt: 0 };
-    const before = focus(frame);
+    const before = screenFocus(frame);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 1, false, 16);
 
-    expect(focus(frame)).toEqual(before);
+    expect(screenFocus(frame)).toEqual(before);
     expect(frame.panHold.current).toBeNull();
     expect(frame.applyEdgePan).toHaveBeenLastCalledWith(null);
   });
@@ -94,22 +114,23 @@ describe("runtime frame coordinator", () => {
     };
     const frame = makeFrameCoordinator({ l: true, k: true }, customBindings);
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
-    const before = focus(frame);
+    const before = screenFocus(frame);
 
     frame.coordinator.onFrame(state, 0, false, 16);
 
-    expect(focus(frame).x).toBeGreaterThan(before.x);
-    expect(focus(frame).y).toBeLessThan(before.y);
+    expect(screenFocus(frame).x).toBeGreaterThan(before.x);
+    expect(screenFocus(frame).y).toBeLessThan(before.y);
   });
 
   it("publishes changed direction availability after reaching a map edge", () => {
-    const frame = makeFrameCoordinator({ d: true }, undefined, { x: 46.9, y: 0 });
+    const frame = makeFrameCoordinator({ d: true }, undefined, { x: 46.9, y: 24 });
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    const before = screenFocus(frame);
 
     frame.coordinator.onFrame(state, 0, false, 100);
 
     expect(focus(frame).x).toBe(47);
-    expect(focus(frame).y).toBe(0);
+    expect(screenFocus(frame).y).toBeCloseTo(before.y);
     expect(frame.setPanAvailability).toHaveBeenCalledWith(expect.objectContaining({ right: false }));
   });
 
@@ -117,15 +138,16 @@ describe("runtime frame coordinator", () => {
     const frame = makeFrameCoordinator();
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     frame.edgePanHover.current = { dir: "left", startedAt: 0 };
-    const before = focus(frame);
+    const before = screenFocus(frame);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS - 1, false, 16);
     expect(frame.panHold.current).toBeNull();
-    expect(focus(frame)).toEqual(before);
+    expect(screenFocus(frame)).toEqual(before);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 1, false, 16);
     expect(frame.panHold.current).toBe("left");
-    expect(focus(frame).x).toBeLessThan(before.x);
+    expect(screenFocus(frame).x).toBeLessThan(before.x);
+    expect(screenFocus(frame).y).toBeCloseTo(before.y);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 2, true, 16);
     expect(frame.edgePanHover.current).toBeNull();
@@ -136,26 +158,40 @@ describe("runtime frame coordinator", () => {
     const frame = makeFrameCoordinator();
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     frame.edgePanHover.current = { dir: "right", startedAt: 0 };
-    const before = focus(frame);
+    const before = screenFocus(frame);
 
     frame.coordinator.onFrame(state, 0, false, 0);
     frame.coordinator.onFrame(state, 1_000, false, 100);
 
-    expect(focus(frame).x).toBeGreaterThan(before.x);
-    const screenDistance = (focus(frame).x - before.x) * Math.hypot(TILE_W / 2, TILE_H / 2);
+    expect(screenFocus(frame).x).toBeGreaterThan(before.x);
+    const after = screenFocus(frame);
+    const screenDistance = Math.hypot(after.x - before.x, after.y - before.y);
     expect(screenDistance).toBeCloseTo(600, 1);
   });
 
-  it("moves along both minimap axes for a diagonal edge hold", () => {
+  it("moves along both battlefield screen axes for a diagonal edge hold", () => {
     const frame = makeFrameCoordinator();
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     frame.edgePanHover.current = { dir: "down-right", startedAt: 0 };
-    const before = focus(frame);
+    const before = screenFocus(frame);
 
     frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 1, false, 16);
 
-    expect(focus(frame).x).toBeGreaterThan(before.x);
-    expect(focus(frame).y).toBeGreaterThan(before.y);
+    expect(screenFocus(frame).x).toBeGreaterThan(before.x);
+    expect(screenFocus(frame).y).toBeGreaterThan(before.y);
+  });
+
+  it("moves a cardinal edge hold straight along its battlefield screen axis", () => {
+    const frame = makeFrameCoordinator();
+    const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    frame.edgePanHover.current = { dir: "up", startedAt: 0 };
+    const before = screenFocus(frame);
+
+    frame.coordinator.onFrame(state, 0, false, 16);
+    frame.coordinator.onFrame(state, EDGE_PAN_DELAY_MS + 1, false, 16);
+
+    expect(screenFocus(frame).x).toBeCloseTo(before.x);
+    expect(screenFocus(frame).y).toBeLessThan(before.y);
   });
 
   it("eases into edge scrolling instead of jumping to full speed", () => {

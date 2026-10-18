@@ -27,6 +27,17 @@ export type PanAvailability = {
 
 export type MinimapMapRect = { x: number; y: number; width: number; height: number };
 
+const SCREEN_VECTOR_FOR_PAN_DIR: Record<PanDir, { x: number; y: number }> = {
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  "up-left": { x: -1, y: -1 },
+  "up-right": { x: 1, y: -1 },
+  "down-left": { x: -1, y: 1 },
+  "down-right": { x: 1, y: 1 },
+};
+
 export function cameraPanBounds(
   mapWidth: number,
   mapHeight: number,
@@ -86,14 +97,39 @@ export function panCamera(cam: Camera, input: CameraPanInput, bounds?: CameraPan
   if (bounds) clampCamera(cam, bounds);
 }
 
-/** Move the viewport along minimap/map axes while preserving projected speed. */
+/** Pan within map bounds while keeping a map-space input on its original path. */
+export function panCameraPreservingDirection(
+  cam: Camera,
+  input: Extract<CameraPanInput, { space: "map" }>,
+  bounds: CameraPanBounds,
+): void {
+  const focus = cameraFocusPoint(cam, bounds);
+  const maxX = Math.max(0, bounds.mapWidth - 1);
+  const maxY = Math.max(0, bounds.mapHeight - 1);
+  let scale = 1;
+
+  if (input.dx < 0) scale = Math.min(scale, focus.x / -input.dx);
+  else if (input.dx > 0) scale = Math.min(scale, (maxX - focus.x) / input.dx);
+  if (input.dy < 0) scale = Math.min(scale, focus.y / -input.dy);
+  else if (input.dy > 0) scale = Math.min(scale, (maxY - focus.y) / input.dy);
+
+  const limitedScale = Math.max(0, Math.min(1, scale));
+  panCamera(cam, { ...input, dx: input.dx * limitedScale, dy: input.dy * limitedScale }, bounds);
+}
+
+/** Move the viewport in a battlefield screen direction using map-space deltas. */
 export function panInputForDirection(
   dir: PanDir,
   screenDistance: number,
   zoom = 1,
 ): Extract<CameraPanInput, { space: "map" }> {
-  const dx = dir.includes("left") ? -1 : dir.includes("right") ? 1 : 0;
-  const dy = dir.includes("up") ? -1 : dir.includes("down") ? 1 : 0;
+  // A tile-axis direction is diagonal on screen. Convert the requested screen
+  // vector back into map axes so all eight directions stay screen-aligned.
+  const screen = SCREEN_VECTOR_FOR_PAN_DIR[dir];
+  const screenTileX = screen.x / (TILE_W / 2);
+  const screenTileY = screen.y / (TILE_H / 2);
+  const dx = (screenTileX + screenTileY) / 2;
+  const dy = (screenTileY - screenTileX) / 2;
   const projected = cameraOffsetForMapDelta(dx, dy, zoom);
   const distance = Math.hypot(projected.dx, projected.dy);
   const scale = distance === 0 ? 0 : screenDistance / distance;
@@ -116,7 +152,7 @@ export function focusCameraAtTile(
 export function canPan(cam: Camera, bounds: CameraPanBounds, dir: PanDir, epsilon = 0.0001): boolean {
   const before = cameraFocusPoint(cam, bounds);
   const next = { ...cam };
-  panCamera(next, panInputForDirection(dir, 1), bounds);
+  panCameraPreservingDirection(next, panInputForDirection(dir, 1), bounds);
   const after = cameraFocusPoint(next, bounds);
   return Math.hypot(after.x - before.x, after.y - before.y) > epsilon;
 }
@@ -177,6 +213,7 @@ export function panDirFromPointer(
   height: number,
   band = EDGE_PAN_BAND,
   avail?: PanAvailability,
+  canPanDirection?: (dir: PanDir) => boolean,
 ): PanDir | null {
   if (x < 0 || y < 0 || x > width || y > height) return null;
   const horizontal = x <= band
@@ -195,7 +232,9 @@ export function panDirFromPointer(
     // control free of edge-pan side effects.
     if (horizontal.dir === "right" && vertical.dir === "up") return null;
     const diagonal = `${vertical.dir}-${horizontal.dir}` as DiagonalPanDir;
-    if (!avail || (avail[horizontal.dir] && avail[vertical.dir])) return diagonal;
+    if (canPanDirection ? canPanDirection(diagonal) : !avail || (avail[horizontal.dir] && avail[vertical.dir])) {
+      return diagonal;
+    }
   }
 
   const candidates: { dir: CardinalPanDir; dist: number }[] = [];

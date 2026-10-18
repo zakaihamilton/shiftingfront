@@ -35,7 +35,7 @@ export function ScrollArrow({
   available: boolean;
   hot: boolean;
 }) {
-  const label = dir === "up" ? "north" : dir === "down" ? "south" : dir;
+  const label = dir;
   const tooltipPos = dir === "up" ? "below" : dir === "left" ? "right" : dir === "right" ? "left" : "above";
   const showTip = hot && available;
   return (
