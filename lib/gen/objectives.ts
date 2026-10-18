@@ -194,7 +194,7 @@ export function generateWinCategory(seed: number, missionIndex: number, kind: Mi
     const multiplier = kind === "harvestQuota"
       ? 1.5
       : kind === "forceQuota" && missionIndex === 0
-        ? 3
+        ? 3.2
         : missionIndex < 2 ? 2.1 : 1.65;
     return { ...win, target: Math.max(1, Math.round(win.target * multiplier)) };
   }

@@ -15,7 +15,7 @@ maps in missions 1–4 (150×150 in missions 5–6). Offensive combat maps are a
 least 104×104; other mission families keep their legacy dimensions. Seeded
 mission kinds, ordering and quota roles stay the same. Harvest quotas scale
 their generated targets by 1.5. Force and structure quotas scale by 2.1 in
-missions 1–2, except mission 1 force quotas, which scale by 3.0; later force
+missions 1–2, except mission 1 force quotas, which scale by 3.2; later force
 and structure quotas scale by 1.65. These factors apply once. Rescue
 patrols must be cleared before stranded units can be contacted, with two guards
 per target.

@@ -52,3 +52,32 @@ export function resourceCenterNear(
   }
   return best ?? preferred;
 }
+
+/** Used when the preferred ring is high ground and cannot take a starter patch. */
+export function resourceCenterOnOpenGround(
+  tiles: number[],
+  surfaces: SurfaceKind[],
+  heights: number[],
+  distances: Int32Array,
+  width: number,
+  height: number,
+  origin: Vec2,
+  preferred: Vec2,
+): Vec2 | undefined {
+  let best: Vec2 | undefined;
+  let bestDistance = Infinity;
+  for (let y = Math.max(0, origin.y - 14); y <= Math.min(height - 1, origin.y + 14); y++) {
+    for (let x = Math.max(0, origin.x - 14); x <= Math.min(width - 1, origin.x + 14); x++) {
+      const distanceFromOrigin = Math.hypot(x - origin.x, y - origin.y);
+      if (distanceFromOrigin < 7 || distanceFromOrigin > 14) continue;
+      const i = idx(x, y, width);
+      if (distances[i]! < 0 || distances[i]! > 48 || tiles[i] !== TILE_CLEAR || surfaces[i] === SURFACE_CONCRETE || (heights[i] ?? 0) >= 3) continue;
+      const distanceFromPreferred = Math.hypot(x - preferred.x, y - preferred.y);
+      if (distanceFromPreferred < bestDistance) {
+        bestDistance = distanceFromPreferred;
+        best = { x, y };
+      }
+    }
+  }
+  return best;
+}
