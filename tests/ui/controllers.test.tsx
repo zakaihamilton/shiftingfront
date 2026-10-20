@@ -785,6 +785,31 @@ function persistenceProps(): Parameters<typeof useGameSession>[0] {
   };
 }
 
+describe("browser back confirmation", () => {
+  it("pauses while the leave confirmation is open and resumes on cancel", () => {
+    window.history.replaceState({}, "", "/briefing?seed=0421&mission=0");
+    window.history.pushState({}, "", "/play?seed=0421&mission=0&fresh=1");
+    const props = persistenceProps();
+    props.pausedRef = { current: false };
+    props.browserBackGuardEnabled = true;
+    const { result, unmount } = renderHook(() => useGameSession(props));
+
+    act(() => window.dispatchEvent(new PopStateEvent("popstate")));
+
+    expect(props.pausedRef.current).toBe(true);
+    expect(props.setPaused).toHaveBeenCalledWith(true);
+    expect(result.current.confirmation?.action).toBe("menu");
+
+    act(() => result.current.cancelConfirmation());
+    expect(props.pausedRef.current).toBe(false);
+    expect(props.setPaused).toHaveBeenCalledWith(false);
+    expect(result.current.confirmation).toBeNull();
+
+    unmount();
+    window.history.replaceState({}, "", "/");
+  });
+});
+
 describe("partial persistence feedback", () => {
   it("reports the named slot as saved when only the autosave update fails", () => {
     const props = persistenceProps();
