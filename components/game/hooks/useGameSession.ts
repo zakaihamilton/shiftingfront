@@ -13,6 +13,7 @@ import {
   readSlot,
 } from "@/lib/persist/save";
 import { clearTelemetry, readTelemetry, serializeTelemetry } from "@/lib/persist/telemetry";
+import { campaignProficiencyBand } from "@/lib/sim/proficiency";
 import { consumeFreshLaunchIntent, consumeResultReturnSnapshot } from "@/lib/persist/navigation";
 import { restoreSlot } from "@/lib/persist/save/restore";
 import type { SaveSession } from "@/lib/persist/save";
@@ -88,8 +89,9 @@ export function initialMission(
     if (previous) progress.gameplayRulesVersion = previous.gameplayRulesVersion ?? 1;
   }
   const rules = progress.gameplayRulesVersion ?? 2;
+  const proficiencyBand = typeof window === "undefined" ? undefined : campaignProficiencyBand(readTelemetry(cachedLocalStorage()));
   if (typeof window !== "undefined") writeCampaignProgress(cachedLocalStorage(), progress);
-  return createMission({ seed, missionIndex: mission, gameplayRulesVersion: rules });
+  return createMission({ seed, missionIndex: mission, gameplayRulesVersion: rules, proficiencyBand });
 }
 
 export async function prepareInitialMission({ seed, mission, resume, fresh = false, slot }: {

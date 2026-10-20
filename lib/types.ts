@@ -564,6 +564,11 @@ export type SimState = {
   aiRetreatTick?: number;
   /** After a timed-out retreat, stay out until average HP recovers to the leave threshold. */
   aiRetreatLocked?: boolean;
+  /**
+   * Campaign proficiency snapshotted when the mission starts.
+   * Omitted means neutral. Live pressure is derived each decision and is not stored.
+   */
+  proficiencyBand?: -1 | 0 | 1;
   /** Deterministic, serializable last-known player contacts used by enemy AI. */
   aiContacts?: Record<string, AiContact>;
   /** Player control-group membership, persisted with the mission but ignored by simulation identity. */
