@@ -204,7 +204,16 @@ export function tickAircraft(state: SimState, eventSink?: SimEvent[]): void {
     if (!runway) {
       if (aircraft.assignedRunwayId !== undefined) aircraft.assignedRunwayId = undefined;
     } else if ((aircraft.ammo ?? 0) <= 0 || aircraft.hp / aircraft.maxHp <= AIRCRAFT_AUTO_RETURN_HP_RATIO) {
+      const outOfBombs = (aircraft.ammo ?? 0) <= 0;
+      const alreadyReturning = aircraft.landingRunwayId === runway.id;
       beginReturn(state, aircraft, runway, eventSink);
+      if (outOfBombs && !alreadyReturning) {
+        eventSink?.push({
+          type: "alert",
+          kind: "objective",
+          text: "Strike plane is out of bombs and returning to rearm.",
+        });
+      }
     }
 
     const landingRunway = aircraft.landingRunwayId === undefined ? undefined : byId(state, aircraft.landingRunwayId);

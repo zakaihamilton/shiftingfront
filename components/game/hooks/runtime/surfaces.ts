@@ -114,6 +114,8 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
         onStop: () => runtime.actions.issueSelectedCommand("stop"),
         onStance: (stance) => runtime.actions.issueSelectedCommand("stance", stance),
         onFormation: (formation) => runtime.actions.issueSelectedCommand("formation", formation),
+        onBrace: () => runtime.actions.issueBrace(),
+        onBombard: () => runtime.actions.issueBombard(),
       },
       mobilePanelOpen: runtime.mobilePanelOpen,
       selectionCount: runtime.selectedIds.length,

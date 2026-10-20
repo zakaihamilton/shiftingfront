@@ -14,6 +14,8 @@ import {
 } from "@/lib/persist/save";
 import { clearTelemetry, readTelemetry, serializeTelemetry } from "@/lib/persist/telemetry";
 import { campaignProficiencyBand } from "@/lib/sim/proficiency";
+import { persistDeploymentEdge } from "@/lib/persist/deploymentEdge";
+import { deploymentEdgeForMission } from "@/lib/sim/fieldIdentity";
 import { consumeFreshLaunchIntent, consumeResultReturnSnapshot } from "@/lib/persist/navigation";
 import { restoreSlot } from "@/lib/persist/save/restore";
 import type { SaveSession } from "@/lib/persist/save";
@@ -90,8 +92,13 @@ export function initialMission(
   }
   const rules = progress.gameplayRulesVersion ?? 2;
   const proficiencyBand = typeof window === "undefined" ? undefined : campaignProficiencyBand(readTelemetry(cachedLocalStorage()));
-  if (typeof window !== "undefined") writeCampaignProgress(cachedLocalStorage(), progress);
-  return createMission({ seed, missionIndex: mission, gameplayRulesVersion: rules, proficiencyBand });
+  const deploymentEdge = typeof window === "undefined" ? undefined : deploymentEdgeForMission(progress, mission);
+  if (deploymentEdge) delete progress.deploymentEdge;
+  if (typeof window !== "undefined") {
+    writeCampaignProgress(cachedLocalStorage(), progress);
+    if (deploymentEdge) persistDeploymentEdge(seed, undefined);
+  }
+  return createMission({ seed, missionIndex: mission, gameplayRulesVersion: rules, proficiencyBand, deploymentEdge });
 }
 
 export async function prepareInitialMission({ seed, mission, resume, fresh = false, slot }: {

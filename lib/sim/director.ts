@@ -4,6 +4,7 @@ import { missionDifficulty } from "./difficulty";
 import { powerBreakdown, trySpawnUnit } from "./world";
 import { objectiveContractFor, profileContractFor, resolveMissionProfile } from "../gen/profile";
 import { entitiesFor } from "./entities";
+import { FINALE_WARNING_TICKS } from "./fieldIdentity";
 
 const CLASSIC_DIRECTOR_DURATION = 3600;
 const CLASSIC_DURATION_STEP = 480;
@@ -199,6 +200,15 @@ export function tickMissionDirector(state: SimState, eventSink?: SimEvent[], col
   if (nextPhase === "opening" && state.tick === director.pressureStart - PRESSURE_WARNING_TICKS) {
     const profile = resolveMissionProfile(state.seed, state.missionIndex, runtime.kind);
     return missionAlert(eventSink, `${profileContractFor(profile).alert} Pressure expected in two minutes.`, collectEvents);
+  }
+  if (
+    !director.finaleWarned
+    && state.tick >= director.finaleStart - FINALE_WARNING_TICKS
+    && state.tick < director.finaleStart
+    && nextPhase !== "finale"
+  ) {
+    director.finaleWarned = true;
+    return missionAlert(eventSink, "Advisor: the final push arrives in ten seconds. Commit or pull the line back.", collectEvents, "warning");
   }
   if (nextPhase === "pressure" && director.phase === "opening" && delayForRecovery(state, "pressureStart")) {
     return missionAlert(eventSink, "Pressure is building — use the delay to recover, repair, and reinforce.", collectEvents);

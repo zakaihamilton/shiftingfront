@@ -179,11 +179,16 @@ export function powerBreakdownFor(state: SimState, owner: Owner): PowerTotals {
   for (const e of livingView(state)) {
     if (!isBuildingEntity(e) || e.constructing > 0) continue;
     const totals = value[e.owner];
-    const watt = BUILDING_STATS[e.kind].power;
+    const crystalPower = state.biome === "crystal flats" && state.tutorialStage === undefined && e.kind === "power" ? 20 : 0;
+    const watt = BUILDING_STATS[e.kind].power + crystalPower;
     if (watt >= 0) totals.produced += watt;
     else totals.used -= watt;
   }
   for (const totals of value) totals.surplus = totals.produced - totals.used;
+  if (state.powerReserve && value[0]) {
+    value[0].produced += state.powerReserve;
+    value[0].surplus += state.powerReserve;
+  }
   powerCache.set(state, { tick: state.tick, entities: state.entities, value });
   return value[owner];
 }

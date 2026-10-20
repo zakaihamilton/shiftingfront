@@ -38,6 +38,8 @@ export function CommandSidebar({
   onStop,
   onStance,
   onFormation,
+  onBrace,
+  onBombard,
   onCenter,
   mobilePanelOpen,
   selectionCount = 0,
@@ -119,6 +121,8 @@ export function CommandSidebar({
         onStop={onStop}
         onStance={onStance}
         onFormation={onFormation}
+        onBrace={onBrace}
+        onBombard={onBombard}
         onCenter={onCenter}
       />
     </aside>

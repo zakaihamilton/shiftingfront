@@ -1,4 +1,4 @@
-import type { CampaignProgress, SimState } from "@/lib/types";
+import type { CampaignProgress, DeploymentEdge, SimState } from "@/lib/types";
 import { campaignKey, CAMPAIGN_PREFIX, completeMission, readCampaignProgress, retainedGameplayRules, writeCampaignProgress } from "../campaign";
 import { missionMedals, missionScore } from "@/lib/sim/debrief";
 import { decodeSave, SAVE_PREFIX, saveKey } from "./serialize";
@@ -415,6 +415,34 @@ export class SaveRepository {
       markExternalChange: () => { external = true; },
       writeJournal: (state) => this.writeJournal(state, revision),
     };
+  }
+  setDeploymentEdge(seed: number, edge: DeploymentEdge | undefined): Promise<boolean> {
+    const current = readCampaignProgress(this.storage, seed);
+    const next: CampaignProgress = { ...current };
+    if (edge) next.deploymentEdge = edge;
+    else delete next.deploymentEdge;
+    const encoded = encodeProgress(next);
+    if (this.mode === "legacy") {
+      const wrote = writeCampaignProgress(this.legacy, next);
+      if (wrote) this.publish();
+      return Promise.resolve(wrote);
+    }
+    this.cache.setItem(campaignKey(seed), encoded);
+    this.publish();
+    return this.enqueue(async () => {
+      await this.transaction(["campaigns"], async (tx) => {
+        const store = tx.objectStore("campaigns");
+        const record: CampaignRecord = await request(store.get(seed)) ?? { seed, revision: 0, autosave: null, progress: null };
+        const stored = record.progress
+          ? readCampaignProgress(memoryStorage({ [campaignKey(seed)]: record.progress }), seed)
+          : current;
+        if (edge) stored.deploymentEdge = edge;
+        else delete stored.deploymentEdge;
+        store.put({ ...record, revision: record.revision + 1, progress: encodeProgress(stored) });
+      });
+      await this.committed();
+      return true;
+    }).catch(() => false);
   }
   save(state: SimState, expectedRevision?: number, isCurrent: () => boolean = () => true): Promise<SaveWriteStatus> {
     return this.saveWithRevision(state, expectedRevision, isCurrent).then((outcome) => outcome.status);

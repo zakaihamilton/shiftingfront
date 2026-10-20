@@ -5,6 +5,7 @@ import { entitiesFor } from "./entities";
 import { reachableScenarioCells, reachableBuildingFilter } from "./scenarios/reachability";
 import { invalidateEntityCaches, invalidateNavigation, isStaticWalkable, spawnBuildingAt, trySpawnUnit } from "./world";
 import { tileInPlayerVision } from "./fog";
+import { CACHE_CREDITS, CACHE_FINALE_PULL_TICKS } from "./fieldIdentity";
 
 const OUTPOST_KINDS = new Set(["destroyMarked", "razeAll", "decapitate", "annihilate", "sabotage"]);
 export const CHALLENGE_HOLD_TICKS = 60 * TICKS_PER_SECOND;
@@ -76,18 +77,106 @@ export function configureChallenge(state: SimState, map: GeneratedMap): void {
         label: "Secure forward ore for 60 seconds" };
     }
     state.runtime.secondary = [{ id: "yard", kind: "preserveYard", priority: "primary", label: "Keep the Command HQ standing" }, challenge];
+    placeFieldDrama(state, candidates.slice(candidates.indexOf(point) + 1), reachable, outpost);
     return;
   }
   // A constrained map must still be playable without an optional objective.
   state.runtime.secondary = [{ id: "yard", kind: "preserveYard", priority: "primary", label: "Keep the Command HQ standing" }];
 }
 
+function placeFieldDrama(state: SimState, points: Array<Vec2 & { score: number }>, reachable: Uint8Array, placedBuilding: boolean): void {
+  const runtime = state.runtime;
+  if (!runtime) return;
+  let buildingPlaced = placedBuilding;
+  let mechanicPlaced = false;
+  for (const point of points) {
+    if (!buildingPlaced) {
+      const filter = reachableBuildingFilter(state, "objective", reachable);
+      const target = spawnBuildingAt(state, 1, "objective", point.x, point.y, 0, true,
+        (x, y) => x === point.x && y === point.y && (filter?.(x, y) ?? false), 0);
+      if (target) {
+        target.optionalChallenge = true;
+        target.marked = true;
+        const after = reachableScenarioCells(state);
+        const footprint = footprintOf("objective");
+        const disconnects = reachable.some((wasReachable, index) => {
+          if (!wasReachable || after?.[index]) return false;
+          const x = index % state.width;
+          const y = Math.floor(index / state.width);
+          return x < target.x || x >= target.x + footprint.w || y < target.y || y >= target.y + footprint.h;
+        });
+        if (disconnects) {
+          target.hp = 0;
+          invalidateEntityCaches(state);
+          invalidateNavigation(state, target.id);
+        } else {
+          runtime.secondary.push({
+            id: "bonus-cache",
+            kind: "destroyTarget",
+            priority: "optional",
+            targetId: target.id,
+            zone: { x: target.x, y: target.y },
+            label: "Raid the supply cache. The finale arrives sooner.",
+          });
+          buildingPlaced = true;
+          continue;
+        }
+      }
+    }
+    if (!mechanicPlaced) {
+      const mechanic = trySpawnUnit(state, 1, "repairTruck", point.x, point.y);
+      if (!mechanic) continue;
+      mechanic.neutral = true;
+      mechanic.optionalChallenge = true;
+      mechanic.recruitable = true;
+      mechanic.stance = "hold";
+      runtime.secondary.push({
+        id: "bonus-mechanic",
+        kind: "secureZone",
+        priority: "optional",
+        zone: { x: mechanic.x, y: mechanic.y },
+        radius: 3,
+        target: 1,
+        progressTicks: 0,
+        label: "Recover the stranded mechanic. You can leave them.",
+      });
+      mechanicPlaced = true;
+    }
+    if (buildingPlaced && mechanicPlaced) return;
+  }
+}
+
 export function tickChallenges(state: SimState): void {
   if (state.result !== "playing") return;
   for (const objective of state.runtime?.secondary ?? []) {
     if (objective.completed || objective.priority !== "optional") continue;
+    if (objective.id === "bonus-mechanic") {
+      const mechanic = entitiesFor(state).find((entity) => entity.recruitable === true && entity.hp > 0);
+      const contacted = mechanic !== undefined && entitiesFor(state).some((entity) =>
+        entity.owner === 0 && entity.hp > 0 && isUnitEntity(entity) && !entity.neutral
+        && UNIT_STATS[entity.kind].damage > 0
+        && Math.hypot(entity.x - mechanic.x, entity.y - mechanic.y) <= 2.5);
+      if (mechanic && contacted) {
+        mechanic.owner = 0;
+        mechanic.neutral = false;
+        mechanic.optionalChallenge = false;
+        mechanic.recruitable = undefined;
+        objective.completed = true;
+      }
+      continue;
+    }
     if (objective.kind === "destroyTarget" && objective.targetId !== undefined) {
       objective.completed = !entitiesFor(state).some(e => e.id === objective.targetId && e.hp > 0);
+      if (objective.id === "bonus-cache" && objective.completed && state.runtime && !state.runtime.cachePaid) {
+        state.runtime.cachePaid = true;
+        state.credits[0] += CACHE_CREDITS;
+        const director = state.runtime.director;
+        if (director && !director.finalePulled) {
+          director.finaleStart = Math.max(director.pressureStart + 360, director.finaleStart - CACHE_FINALE_PULL_TICKS);
+          director.finalePulled = true;
+          state.runtime.finalePullTicks = CACHE_FINALE_PULL_TICKS;
+        }
+      }
     } else if (objective.kind === "secureZone" && objective.zone && objective.target) {
       let friendly = false;
       let contested = false;

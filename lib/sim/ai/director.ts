@@ -26,6 +26,7 @@ import { aiBehavior, setAiBehavior } from "./ownerState";
 import { isCombatTarget } from "../combat/grid";
 import { homeGuardCount, isTimedRecovery } from "../policy";
 import { activeProducerFor } from "../producerState";
+import { enemyDoctrine, FINALE_WARNING_TICKS } from "../fieldIdentity";
 
 const YARD_DEFENSE_RANGE = 14;
 
@@ -163,6 +164,7 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   const difficultyMission = aiDifficultyMission(state);
   const difficulty = missionDifficulty(difficultyMission);
   const phase = directorPhase(state);
+  const doctrine = enemyDoctrine(state, aiOwner);
   let playerCombat = 0;
   let playerBases = 0;
   let playerHqHealthRatio: number | undefined;
@@ -245,9 +247,11 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
     );
     const producer = want === "infantry" || want === "antiArmor" ? barracks : factory;
     const supportWant =
-      woundedHumans && medicCount === 0 && isUnitAvailable("medic", state.missionIndex) ? "medic"
-        : woundedVehicles && repairTruckCount === 0 && isUnitAvailable("repairTruck", state.missionIndex) ? "repairTruck"
-          : undefined;
+      doctrine?.supportFirst && medicCount === 0 && isUnitAvailable("medic", state.missionIndex) ? "medic"
+        : doctrine?.supportFirst && repairTruckCount === 0 && isUnitAvailable("repairTruck", state.missionIndex) ? "repairTruck"
+          : woundedHumans && medicCount === 0 && isUnitAvailable("medic", state.missionIndex) ? "medic"
+            : woundedVehicles && repairTruckCount === 0 && isUnitAvailable("repairTruck", state.missionIndex) ? "repairTruck"
+              : undefined;
     const supportProducer = supportWant === "medic" ? barracks : supportWant === "repairTruck" ? factory : undefined;
     const power = powerFor(state, aiOwner);
     if (power < 0) {
@@ -309,10 +313,11 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   const pressureScale = timedScenario ? recoveryRoutes ? 4 : 2 : (!state.multiplayer && state.win.kind === "decapitate" && state.missionIndex < 2) ? 4 : 1;
   const waveEvery = Math.max(240, Math.round((holdLineAssaultEvery
     + (profileContract?.assaultEveryOffset ?? 0)
-    + (objectiveContract?.assaultDelay ?? 0)) * pressureScale));
+    + (objectiveContract?.assaultDelay ?? 0)) * pressureScale * (doctrine?.assaultScale ?? 1)));
   for (const b of enemyBuildings) {
     if (b.constructing > 0 || b.hp <= 0) continue;
-    if (b.hp < b.maxHp && shouldAutoRepair(state, b)) b.repairing = true;
+    const directorateRepair = doctrine?.thickTurrets === true && b.kind !== "objective" && !b.marked && b.hp < b.maxHp * 0.85;
+    if (b.hp < b.maxHp && (shouldAutoRepair(state, b) || directorateRepair)) b.repairing = true;
     else if (!shouldAutoRepair(state, b)) b.repairing = false;
   }
 
@@ -336,7 +341,7 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   );
   const units = enemyUnits;
   const averageHealth = units.length ? units.reduce((sum, unit) => sum + unit.hp / unit.maxHp, 0) / units.length : 1;
-  if (shouldRetreat(state, averageHealth, aiOwner, retreatEnterHealth(shift))) setAiBehavior(state, aiOwner, "retreat");
+  if (shouldRetreat(state, averageHealth, aiOwner, retreatEnterHealth(shift) + (doctrine?.retreatEnterBonus ?? 0))) setAiBehavior(state, aiOwner, "retreat");
   else if (threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) setAiBehavior(state, aiOwner, "defense");
   else if (playerYard && state.tick >= waveEvery) setAiBehavior(state, aiOwner, "assault");
   else if (units.length > 0 && state.tick % 180 === 0) setAiBehavior(state, aiOwner, "regroup");
@@ -347,8 +352,11 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   }
 
   const behavior = aiBehavior(state, aiOwner);
+  if (doctrine?.thickTurrets && state.tick % 240 === 0 && behavior !== "assault") {
+    tryBuildTurret(state, yard, threat ?? yard, aiOwner, shift);
+  }
   if (behavior === "defense" && threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) {
-    tryBuildTurret(state, yard, threat, aiOwner, shift);
+    if (!doctrine?.thinTurrets) tryBuildTurret(state, yard, threat, aiOwner, shift);
     for (const u of units) {
       if (u.attackTarget) continue;
       assignAttack(state, u, threat);

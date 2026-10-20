@@ -11,12 +11,18 @@ export function SelectionOrders({
   onStop,
   onStance,
   onFormation,
+  selectedKind,
+  onBrace,
+  onBombard,
 }: {
   stance: Stance;
   formation: Formation | undefined;
   onStop: () => void;
   onStance: (stance: Stance) => void;
   onFormation: (formation: Formation) => void;
+  selectedKind?: string;
+  onBrace?: () => void;
+  onBombard?: () => void;
 }) {
   return (
     <div className={styles.orders} data-testid="unit-orders">
@@ -67,6 +73,32 @@ export function SelectionOrders({
           </ConsoleButton>
         ))}
       </div>
+      {selectedKind === "tank" && onBrace ? (
+        <ConsoleButton
+          className={styles.order}
+          data-testid="selected-action-brace"
+          tooltip="Plant the tank: slower, longer range, until it moves"
+          onClick={() => {
+            triggerHaptic("tap");
+            onBrace();
+          }}
+        >
+          Brace
+        </ConsoleButton>
+      ) : null}
+      {selectedKind === "behemoth" && onBombard ? (
+        <ConsoleButton
+          className={styles.order}
+          data-testid="selected-action-bombard"
+          tooltip="Plant and fire a charged area shot at the current target"
+          onClick={() => {
+            triggerHaptic("tap");
+            onBombard();
+          }}
+        >
+          Bombard
+        </ConsoleButton>
+      ) : null}
     </div>
   );
 }

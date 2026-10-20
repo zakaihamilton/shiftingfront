@@ -6,7 +6,7 @@ export function GameSidebarSurface({
   factionName, state, palette, profile, selected, activeTab, power, produced, used, miniRef,
   onPause, onToggleMobilePanel, camera, onTab, commands, mobilePanelOpen, selectionCount, minimapPing,
 }: SidebarSurfaceModel) {
-  const { placeKind, repairMode, sellMode, onPlace, onRepair, onSell, onCancelBuilding, onQueueUnit, onCancelUnit, availableProducer, onStop, onStance, onFormation } = commands;
+  const { placeKind, repairMode, sellMode, onPlace, onRepair, onSell, onCancelBuilding, onQueueUnit, onCancelUnit, availableProducer, onStop, onStance, onFormation, onBrace, onBombard } = commands;
   const onMinimapPointerDown: PointerEventHandler<HTMLCanvasElement> = camera.onMinimapPointerDown;
   const onMinimapPointerMove: PointerEventHandler<HTMLCanvasElement> = camera.onMinimapPointerMove;
   const onMinimapPointerUp: PointerEventHandler<HTMLCanvasElement> = camera.onMinimapPointerUp;
@@ -47,6 +47,8 @@ export function GameSidebarSurface({
       onStop={onStop}
       onStance={onStance}
       onFormation={onFormation}
+      onBrace={onBrace}
+      onBombard={onBombard}
       onCenter={() => selected && camera.centerSelection(new Set([selected.id]))}
       selectionCount={selectionCount}
     />

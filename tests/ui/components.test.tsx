@@ -286,6 +286,31 @@ describe("SelectionOrders", () => {
     expect(onStance).toHaveBeenCalledWith("hold");
     expect(onFormation).toHaveBeenCalledWith("wedge");
   });
+
+  it("offers brace and bombard only for the planted unit", async () => {
+    const user = userEvent.setup();
+    const onBrace = vi.fn();
+    const onBombard = vi.fn();
+    const props = {
+      stance: "aggressive" as const,
+      formation: undefined,
+      onStop: vi.fn(),
+      onStance: vi.fn(),
+      onFormation: vi.fn(),
+      onBrace,
+      onBombard,
+    };
+
+    const { rerender } = render(<SelectionOrders {...props} selectedKind="tank" />);
+    await user.click(screen.getByTestId("selected-action-brace"));
+    expect(screen.queryByTestId("selected-action-bombard")).toBeNull();
+    expect(onBrace).toHaveBeenCalledOnce();
+
+    rerender(<SelectionOrders {...props} selectedKind="behemoth" />);
+    await user.click(screen.getByTestId("selected-action-bombard"));
+    expect(screen.queryByTestId("selected-action-brace")).toBeNull();
+    expect(onBombard).toHaveBeenCalledOnce();
+  });
 });
 
 describe("CommandCatalogContent", () => {
