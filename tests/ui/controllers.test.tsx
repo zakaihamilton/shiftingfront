@@ -688,6 +688,48 @@ describe("useGameKeyboard", () => {
     });
     expect(result.current.keys.current["s"]).toBeFalsy();
   });
+
+  it("does not pan when a command is bound to a pan key", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    const bindings = defaultSettings().keyBindings;
+    const { result } = renderHook(() => useGameKeyboard({
+      stateRef: { current: state },
+      pausedRef: { current: false },
+      pauseViewRef: { current: "main" },
+      activeTabRef: { current: "construction" },
+      place: { current: null },
+      repair: { current: false },
+      sell: { current: false },
+      openPauseMenu: vi.fn(),
+      resumeMission: vi.fn(),
+      setPauseView: vi.fn(),
+      setPauseNotice: vi.fn(),
+      setActiveTab: vi.fn(),
+      activateCameo: vi.fn(),
+      assignControlGroup: vi.fn(),
+      recallControlGroup: vi.fn(),
+      jumpHome: vi.fn(),
+      centerSelection: vi.fn(),
+      toggleRepair: vi.fn(),
+      toggleSell: vi.fn(),
+      stopSelected: vi.fn(),
+      clearTools: vi.fn(),
+      saveMission: vi.fn(),
+      loadMission: vi.fn(),
+      viewMissionBriefing: vi.fn(),
+      restartMission: vi.fn(),
+      toggleSound: vi.fn(),
+      toggleMusic: vi.fn(),
+      resultPrimary: vi.fn(),
+      onNavigateHome: vi.fn(),
+      keyBindings: { ...bindings, stop: "w" },
+    }));
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    });
+    expect(result.current.keys.current["w"]).toBe(false);
+  });
 });
 
 describe("save before navigation", () => {
@@ -742,6 +784,31 @@ function persistenceProps(): Parameters<typeof useGameSession>[0] {
     settings: defaultSettings(), setSettings: vi.fn(), saveSession: createSaveSession(localStorageAdapter(), 421),
   };
 }
+
+describe("browser back confirmation", () => {
+  it("pauses while the leave confirmation is open and resumes on cancel", () => {
+    window.history.replaceState({}, "", "/briefing?seed=0421&mission=0");
+    window.history.pushState({}, "", "/play?seed=0421&mission=0&fresh=1");
+    const props = persistenceProps();
+    props.pausedRef = { current: false };
+    props.browserBackGuardEnabled = true;
+    const { result, unmount } = renderHook(() => useGameSession(props));
+
+    act(() => window.dispatchEvent(new PopStateEvent("popstate")));
+
+    expect(props.pausedRef.current).toBe(true);
+    expect(props.setPaused).toHaveBeenCalledWith(true);
+    expect(result.current.confirmation?.action).toBe("menu");
+
+    act(() => result.current.cancelConfirmation());
+    expect(props.pausedRef.current).toBe(false);
+    expect(props.setPaused).toHaveBeenCalledWith(false);
+    expect(result.current.confirmation).toBeNull();
+
+    unmount();
+    window.history.replaceState({}, "", "/");
+  });
+});
 
 describe("partial persistence feedback", () => {
   it("reports the named slot as saved when only the autosave update fails", () => {

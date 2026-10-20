@@ -11,6 +11,7 @@ import { applyRulesRetirement } from "./retireRules";
 import {
   isCurrentGameplayRules,
   JOURNAL_PREFIX,
+  mergeCampaignProgress,
   planSeedRetirement,
   progressAfterRetiredBattlefield,
   RULES_REBUILD_NOTICE,
@@ -227,13 +228,21 @@ export class SaveRepository {
                 if (saved.state.result === "won") record.progress = encodeProgress(progressFor(record, saved.state));
               }
             } else {
-              const progress = validatedProgress(raw, seed);
-              if (!record.progress) record.progress = progress;
-              else if (previous && previous.raw !== raw && record.autosave) {
-                const temp = memoryStorage();
-                const result = writeSlot(temp, { name: "Recovered legacy progress", state: decodeSave(record.autosave).state,
-                  campaign: readCampaignProgress(memoryStorage({ [key]: progress }), seed) });
-                if (result.ok) tx.objectStore("slots").put({ id: result.id, revision: 1, raw: temp.getItem(slotKey(result.id))! });
+              const incomingEncoded = validatedProgress(raw, seed);
+              const incoming = readCampaignProgress(memoryStorage({ [campaignKey(seed)]: incomingEncoded }), seed);
+              if (!record.progress) record.progress = incomingEncoded;
+              else if (!previous || previous.raw !== raw) {
+                const existing = readCampaignProgress(memoryStorage({ [campaignKey(seed)]: record.progress }), seed);
+                record.progress = encodeProgress(mergeCampaignProgress(existing, incoming));
+                if (record.autosave && previous && previous.raw !== raw) {
+                  const temp = memoryStorage();
+                  const result = writeSlot(temp, {
+                    name: "Recovered legacy progress",
+                    state: decodeSave(record.autosave).state,
+                    campaign: incoming,
+                  });
+                  if (result.ok) tx.objectStore("slots").put({ id: result.id, revision: 1, raw: temp.getItem(slotKey(result.id))! });
+                }
               }
             }
             record.revision++;
@@ -261,6 +270,14 @@ export class SaveRepository {
           if ((record?.revision ?? 0) === journal.revision) {
             store.put({ seed: state.seed, revision: journal.revision + 1, autosave: journal.autosave, progress });
           } else {
+            const existing = readCampaignProgress(memoryStorage(record?.progress ? { [campaignKey(state.seed)]: record.progress } : {}), state.seed);
+            const incoming = readCampaignProgress(memoryStorage({ [campaignKey(state.seed)]: progress }), state.seed);
+            store.put({
+              seed: state.seed,
+              revision: (record?.revision ?? 0) + 1,
+              autosave: record?.autosave ?? null,
+              progress: encodeProgress(mergeCampaignProgress(existing, incoming)),
+            });
             const temp = memoryStorage({ [campaignKey(state.seed)]: progress });
             const result = writeSlot(temp, { name: "Recovered interrupted save", state, campaign: readCampaignProgress(temp, state.seed) });
             if (result.ok) tx.objectStore("slots").put({ id: result.id, revision: 1, raw: temp.getItem(slotKey(result.id))! });

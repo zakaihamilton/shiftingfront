@@ -132,7 +132,7 @@ export function useGameActions({
       return false;
     }
     const commands = command === "move"
-      ? groundOrders(state, unitIds, tx, ty, true)
+      ? groundOrders(state, unitIds, tx, ty, false)
       : [{ type: command, unitIds, x: tx, y: ty } satisfies Command];
     if (!commands.length) {
       notify("No eligible units for that order.", "error");

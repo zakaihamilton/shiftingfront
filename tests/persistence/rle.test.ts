@@ -27,6 +27,11 @@ describe("RLE compression", () => {
     expect(decodeRle(encodeRle(data), data.length)).toEqual(data);
   });
 
+  it("rejects a truncated run instead of padding it with clear ground", () => {
+    expect(() => decodeRle({ encoding: "rle", runs: [2, 1] }, 4)).toThrow("Invalid map data");
+    expect(() => decodeRle("2x1", 4)).toThrow("Invalid map data");
+  });
+
   it("transparently decodes string format and legacy uncompressed arrays", () => {
     const uncompressed = [1, 2, 3, 4];
     expect(decodeRle(uncompressed, 4)).toEqual(uncompressed);

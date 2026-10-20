@@ -120,6 +120,20 @@ describe("transactional save repository", () => {
     expect(readCampaignProgress(next.repository.storage, 421).completedMissions).toEqual([0]);
     expect(storage.keys().some((key) => key.includes("journal"))).toBe(false);
   });
+  it("merges a conflicting journal win into the live campaign", async () => {
+    const { repository, storage, factory } = await open();
+    await repository.save(state());
+    const won = state();
+    won.missionIndex = 2;
+    won.result = "won";
+    expect(repository.writeJournal(won, 99)).toBe(true);
+    repository.close();
+    const next = await open(storage, factory);
+    expect(readSave(next.repository.storage, 421)?.tick).toBe(0);
+    expect(readCampaignProgress(next.repository.storage, 421).completedMissions).toEqual([2]);
+    expect(readCampaignProgress(next.repository.storage, 421).unlockedMission).toBe(3);
+    expect(listSlots(next.repository.storage)).toHaveLength(1);
+  });
   it("invalidates old queued session work when a mission is adopted", async () => {
     const { repository } = await open(); const session = repository.createSession(421);
     const old = session.write(state(), "implicit"); session.adoptCurrent();

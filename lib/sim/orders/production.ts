@@ -3,7 +3,7 @@ import { type BuildingKind, type Entity, type SimEvent, type SimState, type Unit
 import { byId, powerFor } from "../world";
 import { entitiesFor } from "../entities";
 import { commandOwner } from "./commandOwner";
-import { activateProducer, ensureActiveProducer, isSharedProducerKind, sharedProductionQueue, sharedProductionQueueSize } from "../producerState";
+import { activateProducer, ensureActiveProducer, isSharedProducerKind, sharedProductionQueue, sharedProductionQueueSize, shiftSharedResume } from "../producerState";
 
 export function startProduce(state: SimState, fromId: number, unit: UnitKind): SimEvent[] {
   const owner = commandOwner(state);
@@ -62,10 +62,21 @@ export function cancelProduce(state: SimState, unit: UnitKind): SimEvent[] {
       state.credits[owner] += UNIT_STATS[unit].cost;
       return [];
     }
+    const resumeIndex = queue.resume ? queue.resume.reduce((found, job, index) => job.kind === unit ? index : found, -1) : -1;
+    if (resumeIndex >= 0 && queue.resume) {
+      queue.resume.splice(resumeIndex, 1);
+      if (queue.resume.length === 0) delete queue.resume;
+      state.credits[owner] += UNIT_STATS[unit].cost;
+      return [];
+    }
     if (queue.producing?.kind !== unit) return [];
     state.credits[owner] += UNIT_STATS[unit].cost;
-    const next = queue.queue.shift();
-    queue.producing = next ? { kind: next, remaining: UNIT_STATS[next].buildTicks } : undefined;
+    const resumed = shiftSharedResume(queue);
+    if (resumed) queue.producing = resumed;
+    else {
+      const next = queue.queue.shift();
+      queue.producing = next ? { kind: next, remaining: UNIT_STATS[next].buildTicks } : undefined;
+    }
     return [];
   }
 

@@ -112,6 +112,9 @@ export function tickSupport(state: SimState, eventSink?: SimEvent[], collectEven
           provider.path = result.path;
           provider.routePending = routePendingFor(result.status);
           provider.idle = result.status === "unreachable";
+        } else {
+          provider.path = [];
+          provider.routePending = true;
         }
       }
       continue;

@@ -164,6 +164,7 @@ export function useGameSession({
   const routes = useMissionRoutes({ stateRef, saveSession, tutorial, onSaveError });
   const { goHomeNow, prepareLeave } = routes;
   const browserBackRef = useRef(false);
+  const browserBackPausedRef = useRef(false);
   const leaveBackRef = useRef<() => void>(() => undefined);
   const leaveWithoutSave = useCallback(() => {
     const fallback = leaveWithoutSaveRef.current;
@@ -217,8 +218,11 @@ export function useGameSession({
   const requestBrowserLeave = useCallback(() => {
     onBrowserBackLeave?.();
     browserBackRef.current = true;
+    browserBackPausedRef.current = !pausedRef.current;
+    pausedRef.current = true;
+    setPaused(true);
     requestConfirmationLeave();
-  }, [onBrowserBackLeave, requestConfirmationLeave]);
+  }, [onBrowserBackLeave, pausedRef, requestConfirmationLeave, setPaused]);
   const backGuard = useMissionBackGuard({ enabled: browserBackGuardEnabled, onRequestLeave: requestBrowserLeave });
 
   useEffect(() => {
@@ -245,8 +249,13 @@ export function useGameSession({
 
   const cancelConfirmation = useCallback(() => {
     browserBackRef.current = false;
+    if (browserBackPausedRef.current) {
+      browserBackPausedRef.current = false;
+      pausedRef.current = false;
+      setPaused(false);
+    }
     cancelConfirmationState();
-  }, [cancelConfirmationState]);
+  }, [cancelConfirmationState, pausedRef, setPaused]);
 
   const saveNamedSlot = useCallback((name: string, overwriteId: string | null) => {
     const saved = persistNamedSlot(name, overwriteId);

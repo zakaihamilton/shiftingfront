@@ -3,6 +3,7 @@ import type { BuildingKind, Entity, Owner, SimState } from "../../types";
 import { findBuildSite, isStaticWalkable, livingView, powerFor, spawnBuilding } from "../world";
 import { findPathDetailed } from "../pathfinding";
 import { contestedResourcePoint, forwardRefinerySite, forwardRelaySite, hasBuildingNear } from "./helpers";
+import { aiDifficultyMission } from "../difficulty";
 import { directorPhase } from "./director";
 
 function reachableConstructionSite(state: SimState, kind: BuildingKind, spot: { x: number; y: number }, from: Entity): boolean {
@@ -85,7 +86,7 @@ export function tryBuildForwardInfrastructure(
 }
 
 export function tryBuildTurret(state: SimState, yard: Entity, threat: Entity, owner: Owner = 1): boolean {
-  const cap = 1 + Math.floor(state.missionIndex / 2);
+  const cap = 1 + Math.floor(aiDifficultyMission(state) / 2);
   const turrets = livingView(state).filter((e) => e.owner === owner && e.kind === "turret");
   if (turrets.length >= cap) return false;
   if (turrets.some((e) => e.constructing > 0)) return false;
@@ -103,7 +104,7 @@ export function tryBuildRunway(state: SimState, yard: Entity, desiredCount: numb
 }
 
 export function tryBuildAntiAir(state: SimState, yard: Entity, threat: Entity, owner: Owner = 1): boolean {
-  const cap = 1 + Math.floor(state.missionIndex / 2);
+  const cap = 1 + Math.floor(aiDifficultyMission(state) / 2);
   const antiAir = livingView(state).filter((e) => e.owner === owner && e.class === "building" && e.kind === "antiAirTurret");
   if (antiAir.length >= cap || antiAir.some((e) => e.constructing > 0)) return false;
   const spot = findBuildSite(state, "antiAirTurret", threat.x, threat.y, 12, owner)

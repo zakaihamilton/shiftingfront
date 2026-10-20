@@ -20,6 +20,20 @@ export function createScreenShakeState(): ScreenShakeState {
  * - Vehicle destruction: 0.45 - 0.6
  * - Heavy cannon impact: 0.2 - 0.35
  */
+const shakeOffsets = new WeakMap<object, { offsetX: number; offsetY: number }>();
+
+/** Remember the offset applied to a drawn camera so pointer picking uses the same view. */
+export function rememberCameraShake(camera: object, offsetX: number, offsetY: number): void {
+  if (offsetX === 0 && offsetY === 0) shakeOffsets.delete(camera);
+  else shakeOffsets.set(camera, { offsetX, offsetY });
+}
+
+export function cameraForPicking<T extends { x: number; y: number }>(camera: T): T {
+  const shake = shakeOffsets.get(camera);
+  if (!shake) return camera;
+  return { ...camera, x: camera.x + shake.offsetX, y: camera.y + shake.offsetY };
+}
+
 export function addScreenShake(state: ScreenShakeState, amount: number): void {
   state.trauma = Math.min(1, state.trauma + Math.max(0, amount));
 }

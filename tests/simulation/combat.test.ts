@@ -26,6 +26,31 @@ describe("combat targeting", () => {
     expect(attacker.attackTarget).toBe(turret.id);
   });
 
+  it("lets a multiplayer bot intercept a threat while a human keeps the assigned target", () => {
+    const s = makeFixture({ width: 24, height: 12, win: { kind: "annihilate" } });
+    s.multiplayer = true;
+    s.multiplayerOwners = [0, 1];
+    s.multiplayerAiOwners = [1];
+    const power = addBuilding(s, 0, "power", 20, 4);
+    const threat = addUnit(s, 0, "infantry", 6, 4);
+    const bot = addUnit(s, 1, "tank", 4, 4);
+    const human = addUnit(s, 0, "tank", 4, 8);
+    const nearby = addUnit(s, 1, "infantry", 4, 9);
+    const distant = addBuilding(s, 1, "power", 20, 8);
+    for (const unit of [bot, human]) {
+      unit.idle = false;
+      unit.orderMode = "move";
+    }
+    bot.attackTarget = power.id;
+    human.attackTarget = distant.id;
+
+    tickCombat(s);
+
+    expect(bot.attackTarget).toBe(threat.id);
+    expect(human.attackTarget).toBe(distant.id);
+    expect(human.attackTarget).not.toBe(nearby.id);
+  });
+
   it("falls back to a passive building when no threats are in reach", () => {
     const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
     const attacker = addUnit(s, 0, "infantry", 4, 4);

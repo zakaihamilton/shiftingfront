@@ -1,7 +1,7 @@
 import { BUILDING_STATS, UNIT_STATS, footprintOf, isAirUnit, isSupportUnit, isUnitAvailable } from "../../catalog";
 import { isUnitEntity, type Entity, type MissionDirectorPhase, type Owner, type SimState, type UnitKind } from "../../types";
 import { rngFromState } from "../../seed/rng";
-import { missionDifficulty } from "../difficulty";
+import { aiDifficultyMission, missionDifficulty } from "../difficulty";
 import { objectiveContractFor, profileContractFor, resolveMissionProfile } from "../../gen/profile";
 import { byId, closestApproach, distToEntity, findBuildSite, livingView, powerFor, spawnBuilding, trySpawnUnit } from "../world";
 import { tryBuildAntiAir, tryBuildForwardInfrastructure, tryBuildPower, tryBuildRefinery, tryBuildRunway, tryBuildTurret } from "./building";
@@ -41,7 +41,7 @@ function buffersFor(state: SimState): DirectorBuffers {
 export function directorPhase(state: SimState): MissionDirectorPhase {
   if (state.tutorialStage !== undefined) return "opening";
   return state.runtime?.director?.phase
-    ?? (state.tick >= missionDifficulty(state.missionIndex).enemyAssaultEvery ? "pressure" : "opening");
+    ?? (state.tick >= missionDifficulty(aiDifficultyMission(state)).enemyAssaultEvery ? "pressure" : "opening");
 }
 
 export function guardScenarioObjectives(state: SimState, units: Entity[]): void {
@@ -148,7 +148,8 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
     return;
   }
 
-  const difficulty = missionDifficulty(state.missionIndex);
+  const difficultyMission = aiDifficultyMission(state);
+  const difficulty = missionDifficulty(difficultyMission);
   const generatedHoldLine = state.win.kind === "holdTheLine" && state.runtime?.director !== undefined;
   // A rush that abandons the yard still has to survive the timer. Scale 8
   // made those runs unwinnable for the defender and let every rush hold.
@@ -192,8 +193,8 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
     // Introduce dedicated air infrastructure from mission 2 onward, after the
     // player has completed the opening mission and can answer the new threat.
     const airEnabled = state.multiplayer || state.missionIndex >= 2;
-    const desiredRunways = state.missionIndex >= 4 ? 2 : 1;
-    const aircraftCap = state.missionIndex >= 4 ? 2 : 1;
+    const desiredRunways = difficultyMission >= 4 ? 2 : 1;
+    const aircraftCap = difficultyMission >= 4 ? 2 : 1;
     const hasRefinery = enemyBuildings.some((e) => e.kind === "refinery");
     const want: UnitKind =
       playerTanks > playerInfantry && playerTanks > playerAntiArmor

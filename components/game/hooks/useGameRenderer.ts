@@ -5,7 +5,7 @@ import type { RenderExtras } from "@/lib/render/renderer";
 import type { CommandMarker } from "@/lib/render/renderOverlays/types";
 import type { BuildingKind, SimState } from "@/lib/types";
 import { renderGameFrame } from "../renderFrame";
-import { createScreenShakeState, updateScreenShake, type ScreenShakeState } from "@/lib/render/screenShake";
+import { createScreenShakeState, rememberCameraShake, updateScreenShake, type ScreenShakeState } from "@/lib/render/screenShake";
 import type { SelectionBox } from "./selectionBox";
 
 type Point = { x: number; y: number };
@@ -95,6 +95,7 @@ export function useGameRenderer({
 
     const renderStartedAt = performance.now();
     const shake = updateScreenShake(screenShakeRef.current, currentNow, reducedMotion);
+    rememberCameraShake(camRef.current, shake.offsetX, shake.offsetY);
     const renderCam = (shake.offsetX !== 0 || shake.offsetY !== 0)
       ? { ...camRef.current, x: camRef.current.x + shake.offsetX, y: camRef.current.y + shake.offsetY }
       : camRef.current;

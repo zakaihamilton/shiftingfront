@@ -81,12 +81,18 @@ function isSharedProducerKind(value: unknown): value is "barracks" | "factory" {
   return value === "barracks" || value === "factory";
 }
 
+function isProductionJob(value: unknown): boolean {
+  return isRecord(value) && isUnitKind(value.kind) && isNonNegativeNumber(value.remaining);
+}
+
 function isSharedProductionQueue(value: unknown, maxQueueLength = Number.MAX_SAFE_INTEGER): boolean {
-  if (!isRecord(value) || !Array.isArray(value.queue) || value.queue.length > maxQueueLength || !value.queue.every(isUnitKind)) return false;
+  if (!isRecord(value) || !Array.isArray(value.queue) || !value.queue.every(isUnitKind)) return false;
+  const resume = value.resume;
+  if (resume !== undefined && (!Array.isArray(resume) || !resume.every(isProductionJob))) return false;
+  const resumeCount = Array.isArray(resume) ? resume.length : 0;
+  if (value.queue.length + resumeCount > maxQueueLength) return false;
   if (value.producing === undefined) return true;
-  return isRecord(value.producing)
-    && isUnitKind(value.producing.kind)
-    && isNonNegativeNumber(value.producing.remaining);
+  return isProductionJob(value.producing);
 }
 
 function isOwnerProducerMap(value: unknown, validateProducer: (entry: unknown) => boolean): boolean {

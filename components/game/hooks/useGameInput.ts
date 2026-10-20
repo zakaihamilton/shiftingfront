@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, type MutableRefObject, type PointerEvent, type RefObject } from "react";
 import { pickTile } from "@/lib/render/renderer";
+import { cameraForPicking } from "@/lib/render/screenShake";
 import type { CommandMarker } from "@/lib/render/renderOverlays";
 import { cameraPanBounds, canPan as cameraCanPan, panDirFromPointer, EDGE_PAN_BAND, type PanAvailability, type PanDir } from "@/lib/render/camera";
 import { type Camera } from "@/lib/iso";
@@ -190,7 +191,7 @@ export function useGameInput({
       y0: p.y,
       x1: p.x,
       y1: p.y,
-      anchor: selectionProjectionPoint(p, camRef.current),
+      anchor: selectionProjectionPoint(p, cameraForPicking(camRef.current)),
     };
   }, [beginTouch, camRef, canvasElRef]);
 
@@ -198,7 +199,7 @@ export function useGameInput({
     const p = canvasPointerPos(e);
     const s = stateRef.current;
     cursorRef.current = p;
-    if (s) hoverRef.current = pickTile(s, p.x, p.y, camRef.current);
+    if (s) hoverRef.current = pickTile(s, p.x, p.y, cameraForPicking(camRef.current));
     syncCursor(e.currentTarget);
     return p;
   }, [camRef, stateRef, syncCursor]);
@@ -217,7 +218,7 @@ export function useGameInput({
     const s = stateRef.current;
     if (e.pointerType === "touch" && moveTouch(e, p)) return;
     cursorRef.current = p;
-    if (s) hoverRef.current = pickTile(s, p.x, p.y, camRef.current);
+    if (s) hoverRef.current = pickTile(s, p.x, p.y, cameraForPicking(camRef.current));
     syncCursor(e.currentTarget);
     if (e.pointerType !== "touch" && boxRef.current && e.buttons === 1) {
       boxRef.current.x1 = p.x;

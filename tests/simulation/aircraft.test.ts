@@ -34,6 +34,25 @@ describe("air support", () => {
     expect(plane.facing).toBe(1);
   });
 
+  it("queues an attack without restarting rearm while the plane is empty", () => {
+    const state = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const runway = addBuilding(state, 0, "runway", 2, 2);
+    const plane = addUnit(state, 0, "strikePlane", 4, 4);
+    const enemy = addUnit(state, 1, "infantry", 14, 8);
+    plane.assignedRunwayId = runway.id;
+    runway.assignedPlaneId = plane.id;
+    plane.flightState = "servicing";
+    plane.ammo = 0;
+    plane.maxAmmo = 3;
+    plane.serviceTicks = 10;
+
+    issue(state, { type: "attack", unitIds: [plane.id], targetId: enemy.id });
+
+    expect(plane.flightState).toBe("servicing");
+    expect(plane.serviceTicks).toBe(10);
+    expect(plane.attackTarget).toBe(enemy.id);
+  });
+
   it("accepts manual landing and automatically returns after a finite sortie", () => {
     const state = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
     const runway = addBuilding(state, 0, "runway", 2, 2);
