@@ -2,6 +2,18 @@ import { BUILDING_STATS, UNIT_STATS, footprintOf, isAirUnit, isSupportUnit, isUn
 import { isUnitEntity, type Entity, type MissionDirectorPhase, type Owner, type SimState, type UnitKind } from "../../types";
 import { rngFromState } from "../../seed/rng";
 import { aiDifficultyMission, missionDifficulty } from "../difficulty";
+import {
+  MIN_SCALED_ASSAULT_EVERY,
+  MIN_SCALED_PRODUCTION_EVERY,
+  adaptiveAirCapacity,
+  adaptiveCombatWant,
+  adaptiveDifficultyShift,
+  isPressureBase,
+  isPressureCombatant,
+  livePressureFromForces,
+  retreatEnterHealth,
+  scaleDecisionInterval,
+} from "../proficiency";
 import { objectiveContractFor, profileContractFor, resolveMissionProfile } from "../../gen/profile";
 import { byId, closestApproach, distToEntity, findBuildSite, livingView, powerFor, spawnBuilding, trySpawnUnit } from "../world";
 import { tryBuildAntiAir, tryBuildForwardInfrastructure, tryBuildPower, tryBuildRefinery, tryBuildRunway, tryBuildTurret } from "./building";
@@ -150,19 +162,48 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
 
   const difficultyMission = aiDifficultyMission(state);
   const difficulty = missionDifficulty(difficultyMission);
+  const phase = directorPhase(state);
+  let playerCombat = 0;
+  let playerBases = 0;
+  let playerHqHealthRatio: number | undefined;
+  for (const entity of knownPlayers) {
+    if (isPressureCombatant(entity)) playerCombat += 1;
+    if (isPressureBase(entity)) playerBases += 1;
+    if (entity.kind === "constructionYard") {
+      const ratio = entity.hp / Math.max(1, entity.maxHp);
+      playerHqHealthRatio = playerHqHealthRatio === undefined ? ratio : Math.min(playerHqHealthRatio, ratio);
+    }
+  }
+  let enemyBases = 0;
+  for (const entity of enemyBuildings) {
+    if (isPressureBase(entity)) enemyBases += 1;
+  }
+  const openingYardThreat = phase === "opening" && knownPlayers.some((entity) =>
+    isPressureCombatant(entity) && distToEntity(yard, entity) <= YARD_DEFENSE_RANGE,
+  );
+  const shift = adaptiveDifficultyShift(state, state.multiplayer || state.tutorialStage !== undefined ? 0 : livePressureFromForces({
+    phase,
+    playerCombat,
+    enemyCombat: enemyUnits.length + enemyAircraft.length,
+    playerBases,
+    enemyBases,
+    openingYardThreat,
+    playerHqHealthRatio,
+    enemyUnitLosses: state.losses.units[aiOwner] ?? 0,
+  }));
   const generatedHoldLine = state.win.kind === "holdTheLine" && state.runtime?.director !== undefined;
   // A rush that abandons the yard still has to survive the timer. Scale 8
   // made those runs unwinnable for the defender and let every rush hold.
   // With repairs paused between incoming shots, refresh survival pressure
   // slightly faster so rushing away from the yard still carries a risk.
   const holdLinePressureScale = generatedHoldLine ? 2.75 : 1;
-  const holdLineAssaultEvery = difficulty.enemyAssaultEvery * holdLinePressureScale;
+  const assaultEvery = scaleDecisionInterval(difficulty.enemyAssaultEvery, shift, MIN_SCALED_ASSAULT_EVERY);
+  const holdLineAssaultEvery = Math.round(assaultEvery * holdLinePressureScale);
   const profile = state.runtime?.director
     ? resolveMissionProfile(state.seed, state.missionIndex, state.win.kind)
     : undefined;
   const profileContract = profile ? profileContractFor(profile) : undefined;
   const objectiveContract = objectiveContractFor(state.win.kind);
-  const phase = directorPhase(state);
   const recoveryRoutes = state.runtime?.kind === "escort" || isTimedRecovery(state.runtime?.kind ?? state.win.kind);
   const timedScenario = state.runtime?.director !== undefined && (state.missionIndex >= 4 || recoveryRoutes) && (
     state.runtime.kind === "escort" || isTimedRecovery(state.runtime.kind)
@@ -170,12 +211,12 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   const openingOffensive = !state.multiplayer && state.win.kind === "decapitate" && state.missionIndex < 2;
   const timedProductionScale = recoveryRoutes ? 4 : state.runtime?.kind === "extraction" ? 2.5 : 2;
   const holdLineProductionScale = holdLinePressureScale;
-  const productionEvery = timedScenario
+  const productionEvery = scaleDecisionInterval(timedScenario
     ? Math.round(difficulty.enemyProductionEvery * timedProductionScale)
     : openingOffensive ? Math.round(difficulty.enemyProductionEvery * 4)
       : objectiveContract
         ? Math.max(1, Math.round(difficulty.enemyProductionEvery * objectiveContract.productionScale))
-        : Math.round(difficulty.enemyProductionEvery * holdLineProductionScale);
+        : Math.round(difficulty.enemyProductionEvery * holdLineProductionScale), shift, MIN_SCALED_PRODUCTION_EVERY);
   // Objective closeout windows need finite pressure: once the finale begins,
   // stop adding fresh enemy units or structures while keeping existing
   // defenses active. Otherwise the player can chase a moving target to timeout.
@@ -193,15 +234,15 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
     // Introduce dedicated air infrastructure from mission 2 onward, after the
     // player has completed the opening mission and can answer the new threat.
     const airEnabled = state.multiplayer || state.missionIndex >= 2;
-    const desiredRunways = difficultyMission >= 4 ? 2 : 1;
-    const aircraftCap = difficultyMission >= 4 ? 2 : 1;
+    const airCapacity = adaptiveAirCapacity(difficultyMission, shift);
+    const desiredRunways = airCapacity;
+    const aircraftCap = airCapacity;
     const hasRefinery = enemyBuildings.some((e) => e.kind === "refinery");
-    const want: UnitKind =
-      playerTanks > playerInfantry && playerTanks > playerAntiArmor
-        ? "antiArmor"
-        : playerAntiArmor > playerTanks
-          ? "infantry"
-          : rng.chance(0.4) ? "tank" : "infantry";
+    const want: UnitKind = adaptiveCombatWant(
+      { tanks: playerTanks, infantry: playerInfantry, antiArmor: playerAntiArmor },
+      shift,
+      (chance) => rng.chance(chance),
+    );
     const producer = want === "infantry" || want === "antiArmor" ? barracks : factory;
     const supportWant =
       woundedHumans && medicCount === 0 && isUnitAvailable("medic", state.missionIndex) ? "medic"
@@ -246,7 +287,7 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
     }
   }
 
-  if (state.win.kind === "holdTheLine" && state.tick > 0 && state.tick % holdLineAssaultEvery === 0) {
+  if (shift >= 0 && state.win.kind === "holdTheLine" && state.tick > 0 && state.tick % holdLineAssaultEvery === 0) {
     const fp = footprintOf("constructionYard");
     const spot = { x: yard.x - 1, y: yard.y + fp.h };
     const spawned = trySpawnUnit(state, aiOwner, rng.chance(0.45) ? "tank" : "infantry", spot.x, spot.y);
@@ -295,25 +336,25 @@ function tickAiForOwner(state: SimState, aiOwner: Owner, opponents: readonly Own
   );
   const units = enemyUnits;
   const averageHealth = units.length ? units.reduce((sum, unit) => sum + unit.hp / unit.maxHp, 0) / units.length : 1;
-  if (shouldRetreat(state, averageHealth, aiOwner)) setAiBehavior(state, aiOwner, "retreat");
+  if (shouldRetreat(state, averageHealth, aiOwner, retreatEnterHealth(shift))) setAiBehavior(state, aiOwner, "retreat");
   else if (threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) setAiBehavior(state, aiOwner, "defense");
   else if (playerYard && state.tick >= waveEvery) setAiBehavior(state, aiOwner, "assault");
   else if (units.length > 0 && state.tick % 180 === 0) setAiBehavior(state, aiOwner, "regroup");
   else setAiBehavior(state, aiOwner, "economy");
 
   if (airThreat && distToEntity(yard, airThreat) <= YARD_DEFENSE_RANGE + 4) {
-    tryBuildAntiAir(state, yard, airThreat, aiOwner);
+    tryBuildAntiAir(state, yard, airThreat, aiOwner, shift);
   }
 
   const behavior = aiBehavior(state, aiOwner);
   if (behavior === "defense" && threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) {
-    tryBuildTurret(state, yard, threat, aiOwner);
+    tryBuildTurret(state, yard, threat, aiOwner, shift);
     for (const u of units) {
       if (u.attackTarget) continue;
       assignAttack(state, u, threat);
     }
   } else if (behavior === "assault" && playerYard && state.tick > 0) {
-    assignAssault(state, units, yard, playerYard, state.tick % waveEvery === 0, knownPlayers, aiOwner, opponents);
+    assignAssault(state, units, yard, playerYard, state.tick % waveEvery === 0, knownPlayers, aiOwner, opponents, shift);
     for (const aircraft of enemyAircraft) {
       if (aircraft.attackTarget !== undefined && byId(state, aircraft.attackTarget)) continue;
       const aircraftTarget = nearestKnownPlayer(

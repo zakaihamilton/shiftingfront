@@ -31,13 +31,26 @@ export type TickOptions = SimulationTickOptions;
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
-export function createMission(opts: { seed: number; missionIndex: number; gameplayRulesVersion?: import("../types").GameplayRulesVersion }): SimState {
+export function createMission(opts: {
+  seed: number;
+  missionIndex: number;
+  gameplayRulesVersion?: import("../types").GameplayRulesVersion;
+  /** Snapshotted campaign proficiency. Omitted and 0 stay off the state so neutral replays match. */
+  proficiencyBand?: -1 | 0 | 1;
+}): SimState {
   assertValidSeed(opts.seed);
   const campaign = createCampaign(opts.seed, opts.gameplayRulesVersion);
   const mission = campaign.missions[opts.missionIndex];
   if (!mission) throw new Error(`No mission ${opts.missionIndex}`);
   const map = generateMap(opts.seed, mission);
-  return createMissionFromData({ seed: opts.seed, missionIndex: opts.missionIndex, campaign, mission, map });
+  return createMissionFromData({
+    seed: opts.seed,
+    missionIndex: opts.missionIndex,
+    campaign,
+    mission,
+    map,
+    proficiencyBand: opts.proficiencyBand,
+  });
 }
 
 /** Create a mission from already-generated campaign and map data. */
@@ -48,6 +61,7 @@ export function createMissionFromData(opts: {
   mission: ReadonlyMissionDef;
   map: GeneratedMap;
   configureScenario?: boolean;
+  proficiencyBand?: -1 | 0 | 1;
 }): SimState {
   assertValidSeed(opts.seed);
   const { campaign, mission, map } = opts;
@@ -80,6 +94,7 @@ export function createMissionFromData(opts: {
     missionName: mission.name,
   });
   state.gameplayRulesVersion = campaign.gameplayRulesVersion ?? 2;
+  if (opts.proficiencyBand === -1 || opts.proficiencyBand === 1) state.proficiencyBand = opts.proficiencyBand;
   return initializeMissionState(state, map, mission, rng, difficulty, opts.configureScenario !== false);
 }
 

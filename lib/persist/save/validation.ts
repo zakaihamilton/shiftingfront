@@ -342,6 +342,7 @@ export function isStateShape(
   if (value.aiState !== undefined && !isOneOf(value.aiState, ["economy", "defense", "assault", "retreat", "regroup"] as const)) return false;
   if (value.aiRetreatTick !== undefined && !isIntegerInRange(value.aiRetreatTick, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (value.aiRetreatLocked !== undefined && typeof value.aiRetreatLocked !== "boolean") return false;
+  if (value.proficiencyBand !== undefined && value.proficiencyBand !== -1 && value.proficiencyBand !== 0 && value.proficiencyBand !== 1) return false;
   const aiContacts = value.aiContacts === undefined ? null : boundedEntries(value.aiContacts, 8_192);
   if (value.aiContacts !== undefined && (!aiContacts || !aiContacts.every(([key, contact]) =>
     isIntegerInRange(Number(key), 0, Number.MAX_SAFE_INTEGER) && isAiContact(contact),

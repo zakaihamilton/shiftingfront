@@ -322,6 +322,7 @@ export function runOne(
     campaign,
     mission: definition,
     map,
+    proficiencyBand: 0,
   });
   const scenario = sharedScenario?.affordances ?? scenarioAffordances(state);
   if (sharedScenario && !sharedScenario.affordances) sharedScenario.affordances = scenario;

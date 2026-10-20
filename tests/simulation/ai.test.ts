@@ -414,6 +414,9 @@ describe("enemy AI", () => {
     addBuilding(s, 1, "turret", 12, 10);
     addUnit(s, 0, "tank", 14, 14);
     s.credits[1] = 5000;
+    // Past the opening, a nearby tank is a defense problem. During the opening
+    // the same contact is a proficiency signal and raises the turret cap.
+    s.tick = missionDifficulty(4).enemyAssaultEvery;
 
     tickAi(s);
 
