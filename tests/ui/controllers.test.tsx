@@ -688,6 +688,48 @@ describe("useGameKeyboard", () => {
     });
     expect(result.current.keys.current["s"]).toBeFalsy();
   });
+
+  it("does not pan when a command is bound to a pan key", () => {
+    const state = makeFixture({ win: { kind: "annihilate" } });
+    const bindings = defaultSettings().keyBindings;
+    const { result } = renderHook(() => useGameKeyboard({
+      stateRef: { current: state },
+      pausedRef: { current: false },
+      pauseViewRef: { current: "main" },
+      activeTabRef: { current: "construction" },
+      place: { current: null },
+      repair: { current: false },
+      sell: { current: false },
+      openPauseMenu: vi.fn(),
+      resumeMission: vi.fn(),
+      setPauseView: vi.fn(),
+      setPauseNotice: vi.fn(),
+      setActiveTab: vi.fn(),
+      activateCameo: vi.fn(),
+      assignControlGroup: vi.fn(),
+      recallControlGroup: vi.fn(),
+      jumpHome: vi.fn(),
+      centerSelection: vi.fn(),
+      toggleRepair: vi.fn(),
+      toggleSell: vi.fn(),
+      stopSelected: vi.fn(),
+      clearTools: vi.fn(),
+      saveMission: vi.fn(),
+      loadMission: vi.fn(),
+      viewMissionBriefing: vi.fn(),
+      restartMission: vi.fn(),
+      toggleSound: vi.fn(),
+      toggleMusic: vi.fn(),
+      resultPrimary: vi.fn(),
+      onNavigateHome: vi.fn(),
+      keyBindings: { ...bindings, stop: "w" },
+    }));
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    });
+    expect(result.current.keys.current["w"]).toBe(false);
+  });
 });
 
 describe("save before navigation", () => {

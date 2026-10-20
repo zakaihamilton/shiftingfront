@@ -41,7 +41,9 @@ export function SelectionPanel({
   const stance = selected?.stance ?? "aggressive";
   const formation = selected?.formation;
   const producing = sharedQueue ? sharedQueue.producing : selected?.producing;
-  const queuedUnits = sharedQueue ? sharedQueue.queue : selected?.queue ?? [];
+  const queuedUnits = sharedQueue
+    ? [...(sharedQueue.resume?.map((job) => job.kind) ?? []), ...sharedQueue.queue]
+    : selected?.queue ?? [];
   return (
     <section className={cx(styles.section, className)}>
       <ConsoleLabel className={styles.label}>{selectionCount > 1 ? `${selectionCount} units selected` : "Selected"}</ConsoleLabel>

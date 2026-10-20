@@ -11,6 +11,7 @@ function cloneProductionQueues(state: SimState): SimState["productionQueues"] {
       queue ? {
         ...queue,
         ...(queue.producing ? { producing: { ...queue.producing } } : {}),
+        ...(queue.resume ? { resume: queue.resume.map((job) => ({ ...job })) } : {}),
         queue: [...queue.queue],
       } : queue,
     ])),

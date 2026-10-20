@@ -1,4 +1,11 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
+
+function bindingMatchesKey(binding: string | undefined, eventKey: string): boolean {
+  if (!binding) return false;
+  if (binding === " " || binding.toLowerCase() === "space") return eventKey === " " || eventKey === "Spacebar";
+  if (binding.length === 1) return eventKey.toLowerCase() === binding.toLowerCase();
+  return eventKey === binding;
+}
 import { gameCommandFromKey, isEditableTarget } from "@/lib/ui/shortcuts";
 import { applyGameCommand, type GameKeyboardParams } from "./gameKeyboard";
 
@@ -70,9 +77,6 @@ export function useGameKeyboard({
         closeMobilePanel();
         return;
       }
-      if (!pausedRef.current && stateRef.current.result === "playing") {
-        keys.current[e.key] = true;
-      }
       const isPanKey = (k: string) => {
         const panKeys = [
           keyBindings?.panUp || "w",
@@ -82,6 +86,20 @@ export function useGameKeyboard({
         ].map((s) => s.toLowerCase());
         return panKeys.includes(k.toLowerCase()) || k.startsWith("Arrow");
       };
+      const claimedByAction = [
+        keyBindings?.home,
+        keyBindings?.center,
+        keyBindings?.repair,
+        keyBindings?.sell,
+        keyBindings?.stop,
+        keyBindings?.construction,
+        keyBindings?.production,
+        keyBindings?.selected,
+      ].some((binding) => bindingMatchesKey(binding, e.key));
+      if (!pausedRef.current && stateRef.current.result === "playing") {
+        if (isPanKey(e.key) && claimedByAction) keys.current[e.key] = false;
+        else keys.current[e.key] = true;
+      }
       if (
         !isEditableTarget(e.target) &&
         !pausedRef.current &&

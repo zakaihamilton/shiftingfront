@@ -21,6 +21,8 @@ export type BuildingKind =
 export type SharedProducerKind = "barracks" | "factory";
 export type SharedProductionQueue = {
   producing?: { kind: UnitKind; remaining: number };
+  /** In-progress jobs kept when several buildings were producing at once. */
+  resume?: { kind: UnitKind; remaining: number }[];
   queue: UnitKind[];
 };
 

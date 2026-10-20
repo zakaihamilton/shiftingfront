@@ -455,6 +455,7 @@ describe("mission confirmation and routes", () => {
     expect(resultPrimaryPath({ result: "lost", seed: 421, missionIndex: 3 })).toBe("/briefing?seed=0421&mission=3&from=result");
     expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 3, multiplayer: true })).toBe(menuPath());
     expect(resultPrimaryPath({ result: "lost", seed: 421, missionIndex: 3, multiplayer: true })).toBe(menuPath());
+    expect(missionConfirmationFor("menu").message).toBe("Return to the main menu? Your mission progress will be saved.");
     expect(missionConfirmationFor("menu", "won").message).toBe("Return to the main menu?");
     expect(missionConfirmationFor("restart", "lost").message).toBe("Restart this mission from the beginning?");
     expect(missionConfirmationFor("menu", "playing", true)).toMatchObject({

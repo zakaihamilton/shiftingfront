@@ -17,6 +17,10 @@ export function attackUnits(state: SimState, ids: number[], targetId: number): S
     const e = byId(state, id);
     if (!e || !isUnitEntity(e) || e.owner !== owner || e.neutral) continue;
     if (e.kind === "harvester" || isSupportUnit(e.kind)) continue;
+    if (isAirUnit(e.kind) && e.flightState === "servicing" && (e.ammo ?? 0) <= 0) {
+      e.attackTarget = targetId;
+      continue;
+    }
     if (isAirUnit(e.kind)) launchAircraft(state, e);
     e.attackTarget = targetId;
     e.flowGoal = undefined;

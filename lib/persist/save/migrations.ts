@@ -38,6 +38,8 @@ function migrateSharedProducerQueues(value: unknown): unknown {
     )
     .sort((a, b) => Number(a.id) - Number(b.id));
 
+  const jobsByKey = new Map<string, { kind: string; remaining: number; order: number }[]>();
+  let jobOrder = 0;
   for (const producer of producers) {
     const owner = String(producer.owner);
     const kind = producer.kind as "barracks" | "factory";
@@ -52,10 +54,12 @@ function migrateSharedProducerQueues(value: unknown): unknown {
       recordQueue = sharedQueue;
     }
     const queuedUnits = recordQueue.queue as unknown[];
-    if (!("producing" in recordQueue) && producer.producing !== undefined) {
-      recordQueue.producing = producer.producing;
-    } else if (producer.producing !== undefined && isRecord(producer.producing)) {
-      queuedUnits.push(producer.producing.kind);
+    if (isRecord(producer.producing) && typeof producer.producing.kind === "string" && typeof producer.producing.remaining === "number") {
+      const key = `${owner}:${kind}`;
+      const jobs = jobsByKey.get(key) ?? [];
+      jobs.push({ kind: producer.producing.kind, remaining: producer.producing.remaining, order: jobOrder });
+      jobOrder += 1;
+      jobsByKey.set(key, jobs);
     }
     if (Array.isArray(producer.queue)) queuedUnits.push(...producer.queue);
 
@@ -64,6 +68,23 @@ function migrateSharedProducerQueues(value: unknown): unknown {
 
     if (!(kind in ownerChoices) && typeof producer.constructing === "number" && producer.constructing <= 0) {
       ownerChoices[kind] = producer.id;
+    }
+  }
+
+  for (const [key, jobs] of jobsByKey) {
+    const separator = key.indexOf(":");
+    const owner = key.slice(0, separator);
+    const kind = key.slice(separator + 1);
+    const recordQueue = (productionQueues[owner] as Record<string, Record<string, unknown>> | undefined)?.[kind];
+    if (!recordQueue) continue;
+    const sorted = [...jobs].sort((a, b) => a.remaining - b.remaining || a.order - b.order);
+    const parked = sorted.map(({ kind: unit, remaining }) => ({ kind: unit, remaining }));
+    if (recordQueue.producing === undefined) {
+      recordQueue.producing = parked[0];
+      if (parked.length > 1) recordQueue.resume = parked.slice(1);
+    } else if (parked.length) {
+      const existing = Array.isArray(recordQueue.resume) ? recordQueue.resume : [];
+      recordQueue.resume = [...existing, ...parked];
     }
   }
 
