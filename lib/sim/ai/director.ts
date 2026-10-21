@@ -26,7 +26,7 @@ import { aiBehavior, setAiBehavior } from "./ownerState";
 import { isCombatTarget } from "../combat/grid";
 import { homeGuardCount, isTimedRecovery } from "../policy";
 import { activeProducerFor } from "../producerState";
-import { enemyDoctrine, FINALE_WARNING_TICKS } from "../fieldIdentity";
+import { enemyDoctrine } from "../fieldIdentity";
 
 const YARD_DEFENSE_RANGE = 14;
 

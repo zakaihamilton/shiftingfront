@@ -1,7 +1,7 @@
 import { STARTING_CREDITS } from "../catalog";
 import { assertValidSeed, createRng, mixSeed } from "../seed/rng";
 import { SURFACE_NONE, TILE_CLEAR, TILE_RESOURCE } from "../types";
-import type { Faction, Owner, Palette, ReadonlyCampaign, ReadonlyMissionDef, SimEvent, SimState, SurfaceKind, UnitKind, Vec2 } from "../types";
+import type { Faction, Owner, Palette, ReadonlyCampaign, ReadonlyMissionDef, SimEvent, SimState, SurfaceKind, TutorialStage, UnitKind, Vec2 } from "../types";
 import { createCampaign } from "../gen/campaign";
 import { generateMap, type GeneratedMap } from "../gen/map";
 import { makeFog, tickFog } from "./fog";
@@ -66,6 +66,8 @@ export function createMissionFromData(opts: {
   configureScenario?: boolean;
   proficiencyBand?: -1 | 0 | 1;
   deploymentEdge?: import("../types").DeploymentEdge;
+  /** Set before scenario setup so tutorial maps skip campaign challenges and the director. */
+  tutorialStage?: TutorialStage;
 }): SimState {
   assertValidSeed(opts.seed);
   const { campaign, mission, map } = opts;
@@ -99,6 +101,7 @@ export function createMissionFromData(opts: {
   });
   state.gameplayRulesVersion = campaign.gameplayRulesVersion ?? 2;
   if (opts.proficiencyBand === -1 || opts.proficiencyBand === 1) state.proficiencyBand = opts.proficiencyBand;
+  if (opts.tutorialStage) state.tutorialStage = opts.tutorialStage;
   return initializeMissionState(state, map, mission, rng, difficulty, opts.configureScenario !== false, opts.deploymentEdge);
 }
 

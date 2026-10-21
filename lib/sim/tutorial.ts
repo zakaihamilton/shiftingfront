@@ -36,6 +36,7 @@ export function createTutorialMission(): SimState {
     campaign,
     mission,
     map: generateMap(TUTORIAL_SEED, mission),
+    tutorialStage: "select",
   });
   state.tutorialStage = "select";
   if (state.runtime) delete state.runtime.director;
