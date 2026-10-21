@@ -113,7 +113,7 @@ export function PauseMenu({
             onMenu={onMenu}
           />
         ) : view === "controls" ? (
-          <PauseControls onBack={onBack} />
+          <PauseControls onBack={onBack} keyBindings={settings.keyBindings} />
         ) : view === "diagnostics" ? (
           <PauseDiagnostics
             telemetryRecordCount={telemetryRecordCount}

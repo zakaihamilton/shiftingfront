@@ -13,6 +13,8 @@ export type ReplayOptions = {
   missionIndex: number;
   orders?: TimedOrder[];
   maxTicks: number;
+  /** Campaign proficiency copied from the mission that recorded the orders. */
+  proficiencyBand?: -1 | 0 | 1;
 };
 
 export type ReplayResult = {
@@ -93,7 +95,12 @@ export function simulationFingerprint(state: SimState): string {
 }
 
 export function runReplay(options: ReplayOptions): ReplayResult {
-  const state = createMission({ seed: options.seed, missionIndex: options.missionIndex, gameplayRulesVersion: options.gameplayRulesVersion });
+  const state = createMission({
+    seed: options.seed,
+    missionIndex: options.missionIndex,
+    gameplayRulesVersion: options.gameplayRulesVersion,
+    proficiencyBand: options.proficiencyBand,
+  });
   const ordersByTick = new Map<number, Command[]>();
   for (const order of options.orders ?? []) {
     if (!Number.isInteger(order.tick) || order.tick < 0) continue;

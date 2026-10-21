@@ -125,6 +125,7 @@ export function missionDebrief(state: SimState) {
       ? draw ? "The skirmish ended in a draw." : won ? "All rival Command HQs destroyed." : "Your Command HQ was destroyed."
       : won ? "Primary objective achieved." : missionLossMessage(state),
     retryGuidance: won || state.multiplayer ? undefined : retryGuidance(state),
+    lesson: battleLesson(state),
     objective: {
       headline: state.multiplayer ? "Destroy all rival Command HQs" : objectiveHeadline(state.win),
       progress: objective.label,
@@ -155,11 +156,28 @@ export function missionDebrief(state: SimState) {
   };
 }
 
+export function battleLesson(state: SimState): string | undefined {
+  if (state.multiplayer || state.tutorialStage !== undefined || state.result === "won") return undefined;
+  const harvesters = livingView(state).filter((entity) => entity.owner === 0 && entity.kind === "harvester" && entity.hp > 0).length;
+  const refineries = state.buildingsCompletedByKind.refinery ?? 0;
+  const antiArmorInField = livingView(state).some((entity) => entity.owner === 0 && entity.kind === "antiArmor");
+  const finale = state.runtime?.director?.phase === "finale";
+  if (harvesters === 0 && refineries < 2) return "Harvesters were gone before a second refinery came online.";
+  if (!antiArmorInField && finale) return "The finale arrived with no anti-armor in the field.";
+  if (!antiArmorInField && state.lossReason === "deadline") return "Time ran out with no anti-armor in the field.";
+  return undefined;
+}
+
 function retryGuidance(state: SimState): string {
-  if (state.lossReason === "deadline") return "Open with power and a refinery. Keep the timer visible and move before the final minute.";
-  if (state.lossReason === "objectiveTargetLost") return "Protect the target first. Escort the route and keep support units behind the front line.";
-  if (state.lossReason === "yardDestroyed") return "Rebuild the screen around Command HQ. Repair damaged structures before pushing again.";
-  return "Secure the opening economy, then issue focused orders from the Selected tab.";
+  const lesson = battleLesson(state);
+  const guidance = state.lossReason === "deadline"
+    ? "Open with power and a refinery. Keep the timer visible and move before the final minute."
+    : state.lossReason === "objectiveTargetLost"
+      ? "Protect the target first. Escort the route and keep support units behind the front line."
+      : state.lossReason === "yardDestroyed"
+        ? "Rebuild the screen around Command HQ. Repair damaged structures before pushing again."
+        : "Secure the opening economy, then issue focused orders from the Selected tab.";
+  return lesson ? `${lesson} ${guidance}` : guidance;
 }
 
 export type MissionDebrief = ReturnType<typeof missionDebrief>;

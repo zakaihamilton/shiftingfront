@@ -239,15 +239,24 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
         e.idle = true;
         continue;
       }
-      if (n.x !== gx || n.y !== gy) e.path = [];
+      const sameTile = gx !== undefined && gy !== undefined && n.x === gx && n.y === gy;
+      if (!sameTile) {
+        if (gx !== undefined && gy !== undefined) {
+          const oldKey = at(state, gx, gy);
+          const previous = claims.get(oldKey) ?? 0;
+          if (previous <= 1) claims.delete(oldKey);
+          else claims.set(oldKey, previous - 1);
+        }
+        e.path = [];
+        const key = at(state, n.x, n.y);
+        claims.set(key, (claims.get(key) ?? 0) + 1);
+      }
       gx = n.x;
       gy = n.y;
       e.gatherX = gx;
       e.gatherY = gy;
       e.routePending = undefined;
       e.blockedTicks = 0;
-      const key = at(state, gx, gy);
-      claims.set(key, (claims.get(key) ?? 0) + 1);
     }
 
     if (!e.orderDestination || e.orderDestination.x !== gx || e.orderDestination.y !== gy) {

@@ -142,7 +142,7 @@ export function mobileCommandOrders(
     });
     if (aircraft.length) return [{ type: "land", unitIds: aircraft, runwayId: target.id }];
   }
-  if (command === "move") return groundOrders(s, ids, x, y, true);
+  if (command === "move") return groundOrders(s, ids, x, y, false);
   if (command === "attackMove") return groundOrders(s, ids, x, y, true);
   if (command === "attack" && target && target.owner !== owner && !target.neutral) return [{ type: "attack", unitIds: ids, targetId: target.id }];
   if (command === "harvest" && s.tiles[y * s.width + x] === 2) return [{ type: "harvest", unitIds: ids, x, y }];

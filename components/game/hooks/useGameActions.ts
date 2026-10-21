@@ -3,6 +3,7 @@ import { buildingCameoStatus, buildingLimitReached, isAirUnit, isSupportUnit, pr
 import { beep } from "@/lib/audio/synth";
 import { voiceBarkForBeep } from "@/lib/audio/voice";
 import { groundOrders } from "@/lib/sim/orders";
+import { bombardPointFor } from "@/lib/sim/verbs";
 import { isSharedProducerKind, readSharedProductionQueue } from "@/lib/sim/producerState";
 import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
@@ -108,6 +109,62 @@ export function useGameActions({
       : `${command === "stance" ? "Stance" : "Formation"} updated for ${unitIds.length} unit${unitIds.length === 1 ? "" : "s"}.`, "success");
   }, [enqueue, notify, selected, selectedIds, stateRef, uxRef]);
 
+  const selectedOwnedUnits = useCallback((kind?: "tank" | "behemoth") => {
+    const state = stateRef.current;
+    const owner = state.viewOwner ?? 0;
+    return [...(selectedIds.length > 0 ? selectedIds : selected.current)].flatMap((id) => {
+      const entity = state.entities.find((candidate) => candidate.id === id);
+      if (!entity || entity.owner !== owner || !isPlayerSelectableUnit(entity) || entity.neutral || entity.hp <= 0) return [];
+      if (kind && entity.kind !== kind) return [];
+      return [entity];
+    });
+  }, [selected, selectedIds, stateRef]);
+
+  const issueBrace = useCallback(() => {
+    const tanks = selectedOwnedUnits("tank");
+    if (tanks.length === 0) {
+      notify("Select a tank to brace.", "error");
+      return;
+    }
+    enqueue({ type: "brace", unitIds: tanks.map((entity) => entity.id) });
+    mobileCommand.current = null;
+    setMobileCommandState(null);
+    beep("ack");
+    voiceBarkForBeep("ack");
+    if (uxRef && uxRef.current.firstOrderTick === undefined) uxRef.current.firstOrderTick = stateRef.current.tick;
+    notify(`Brace order issued to ${tanks.length} tank${tanks.length === 1 ? "" : "s"}.`, "success");
+  }, [enqueue, notify, selectedOwnedUnits, stateRef, uxRef]);
+
+  const issueBombard = useCallback(() => {
+    const behemoths = selectedOwnedUnits("behemoth");
+    if (behemoths.length === 0) {
+      notify("Select a behemoth to bombard.", "error");
+      return;
+    }
+    const state = stateRef.current;
+    const aimed = behemoths.find((entity) => entity.attackTarget !== undefined);
+    const target = aimed?.attackTarget === undefined
+      ? undefined
+      : state.entities.find((entity) => entity.id === aimed.attackTarget && entity.hp > 0);
+    if (!target) {
+      notify("Attack a target, then bombard.", "error");
+      return;
+    }
+    const shooters = aimed ? [aimed, ...behemoths.filter((entity) => entity !== aimed)] : behemoths;
+    const point = bombardPointFor(state, shooters, target);
+    if (!point) {
+      notify("The target is out of range.", "error");
+      return;
+    }
+    enqueue({ type: "bombard", unitIds: behemoths.map((entity) => entity.id), x: point.x, y: point.y });
+    mobileCommand.current = null;
+    setMobileCommandState(null);
+    beep("ack");
+    voiceBarkForBeep("ack");
+    if (uxRef && uxRef.current.firstOrderTick === undefined) uxRef.current.firstOrderTick = state.tick;
+    notify("Bombard order issued.", "success");
+  }, [enqueue, notify, selectedOwnedUnits, stateRef, uxRef]);
+
   const issueCoordinateCommand = useCallback((command: "move" | "attackMove" | "harvest", x: number, y: number) => {
     const tx = Math.round(x);
     const ty = Math.round(y);
@@ -132,7 +189,7 @@ export function useGameActions({
       return false;
     }
     const commands = command === "move"
-      ? groundOrders(state, unitIds, tx, ty, true)
+      ? groundOrders(state, unitIds, tx, ty, false)
       : [{ type: command, unitIds, x: tx, y: ty } satisfies Command];
     if (!commands.length) {
       notify("No eligible units for that order.", "error");
@@ -295,6 +352,8 @@ export function useGameActions({
     cancelMobileCommand,
     resetMobileCommand,
     issueSelectedCommand,
+    issueBrace,
+    issueBombard,
     issueCoordinateCommand,
     issueTargetCommand,
     togglePlace,

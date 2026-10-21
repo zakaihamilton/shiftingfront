@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   addScreenShake,
+  cameraForPicking,
   createScreenShakeState,
+  rememberCameraShake,
   updateScreenShake,
   MAX_SHAKE_OFFSET_PX,
 } from "../../lib/render/screenShake";
@@ -33,6 +35,14 @@ describe("screenShake", () => {
     const later = updateScreenShake(state, 600);
     expect(state.trauma).toBe(0);
     expect(later).toEqual({ offsetX: 0, offsetY: 0 });
+  });
+
+  it("shifts pointer picking by the offset used to draw the camera", () => {
+    const camera = { x: 40, y: 20, zoom: 1 };
+    rememberCameraShake(camera, 6, -3);
+    expect(cameraForPicking(camera)).toEqual({ x: 46, y: 17, zoom: 1 });
+    rememberCameraShake(camera, 0, 0);
+    expect(cameraForPicking(camera)).toBe(camera);
   });
 
   it("strictly suppresses shake when reducedMotion is true", () => {

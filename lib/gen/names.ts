@@ -100,11 +100,17 @@ function uniqueAdjectives(neutral: readonly string[], biome?: BiomeName): string
 
 export type FactionArchetype = "directorate" | "concord" | "legion" | "syndicate";
 
-export function factionArchetype(name: string): FactionArchetype {
+/** Archetype for a generated faction title. Unrecognized names stay unset. */
+export function explicitFactionArchetype(name: string): FactionArchetype | undefined {
   if (/Directorate|Mandate|Order/i.test(name)) return "directorate";
   if (/Concord|Coalition|Union|Pact|Republic/i.test(name)) return "concord";
   if (/Syndicate|Circle/i.test(name)) return "syndicate";
-  return "legion";
+  if (/Legion|Front/i.test(name)) return "legion";
+  return undefined;
+}
+
+export function factionArchetype(name: string): FactionArchetype {
+  return explicitFactionArchetype(name) ?? "legion";
 }
 
 export const FACTION_DOCTRINES: Record<FactionArchetype, {

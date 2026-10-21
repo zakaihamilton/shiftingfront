@@ -140,7 +140,12 @@ export function shouldAutoRepair(state: SimState, building: Entity): boolean {
   return true;
 }
 
-export function shouldRetreat(state: SimState, averageHealth: number, owner: Owner = 1): boolean {
+export function shouldRetreat(
+  state: SimState,
+  averageHealth: number,
+  owner: Owner = 1,
+  enterHealth: number = RETREAT_ENTER_HEALTH,
+): boolean {
   if (averageHealth >= RETREAT_RECOVER_HEALTH) {
     setAiRetreatLocked(state, owner, undefined);
     setAiRetreatTick(state, owner, undefined);
@@ -148,7 +153,7 @@ export function shouldRetreat(state: SimState, averageHealth: number, owner: Own
   if (aiRetreatLocked(state, owner)) return false;
 
   const holding = aiBehavior(state, owner) === "retreat" && averageHealth < RETREAT_RECOVER_HEALTH;
-  const entering = averageHealth < RETREAT_ENTER_HEALTH;
+  const entering = averageHealth < enterHealth;
   if (!holding && !entering) {
     setAiRetreatTick(state, owner, undefined);
     return false;

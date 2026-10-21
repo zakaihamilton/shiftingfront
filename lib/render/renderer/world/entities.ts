@@ -241,6 +241,11 @@ export function renderEntityPhase(
       cy = e.y + (fp.h - 1) / 2;
     }
     const s = tileToScreen(cx, cy, cam, elev);
+    if (e.class === "unit" && (e.suppression ?? 0) > 25 && !extras.reducedMotion) {
+      const wobble = ((state.tick + e.id) % 4) - 1.5;
+      s.x += wobble * 1.4;
+      s.y += Math.abs(wobble) * 0.45;
+    }
     if (s.x < -cullPad || s.y < -cullPad || s.x > w + cullPad || s.y > h + cullPad) continue;
     const pal = state.factions[e.owner]!.palette;
     const profile = generateVisualProfile(state.seed, e.owner);
@@ -449,6 +454,19 @@ export function renderEntityPhase(
         e.id,
         spriteAlpha,
       );
+    }
+    if (e.class === "unit" && e.veteranRank === 1) {
+      ctx.fillStyle = "#e6c15a";
+      ctx.globalAlpha = spriteAlpha;
+      const tipX = dx + dw / 2;
+      const tipY = dy - 8 * z;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX - 5 * z, tipY + 6 * z);
+      ctx.lineTo(tipX + 5 * z, tipY + 6 * z);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
     ctx.restore();
     if (spriteReady && e.class === "unit") {

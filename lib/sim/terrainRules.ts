@@ -1,6 +1,7 @@
 import { isAirUnit, UNIT_STATS } from "../catalog";
 import { ACTIVE_TERRAIN_RULE_INTENSITY, terrainFeatureSamplerFor, type TerrainFeatureSample } from "../gen/map/features";
 import type { BiomeName, Entity, SimState, UnitKind } from "../types";
+import { canyonGullyVehicleCost, veteranSightBonus, volcanicClosureCost } from "./fieldIdentity";
 
 export const TERRAIN_RULE_INTENSITY = ACTIVE_TERRAIN_RULE_INTENSITY;
 
@@ -113,8 +114,16 @@ function entityInActiveRegion(state: SimState, entity: object, x: number, y: num
 }
 
 export function terrainMovementCostAt(state: SimState, mobility: NavigationMobility, x: number, y: number): number {
+  const tile = terrainRuleAt(state, x, y);
+  if (state.biome === "volcanic shelf" && tile) {
+    const closure = volcanicClosureCost(state.tick, tile.kind, tile.active);
+    if (closure !== undefined) return closure;
+  }
+  if (mobility === "vehicle" && state.biome === "rust canyons" && tile) {
+    const gully = canyonGullyVehicleCost(tile.kind, tile.active);
+    if (gully !== undefined) return gully;
+  }
   if (mobility !== "vehicle" || (state.biome !== "salt marshes" && state.biome !== "tundra grid")) return 1;
-  terrainRuleAt(state, x, y);
   const tx = Math.round(x);
   const ty = Math.round(y);
   if (!inBounds(state, tx, ty)) return 1;
@@ -128,16 +137,17 @@ export function navigationMobilityFor(entity: Pick<Entity, "class" | "kind">): N
   return "foot";
 }
 
-export function groundUnitSightAt(state: SimState, entity: Pick<Entity, "class" | "kind" | "x" | "y">, baseSight: number): number {
+export function groundUnitSightAt(state: SimState, entity: Pick<Entity, "class" | "kind" | "x" | "y" | "veteranRank">, baseSight: number): number {
+  const veteran = veteranSightBonus(entity);
   if (
     (state.biome !== "ash plains" && state.biome !== "crystal flats") ||
     entity.class !== "unit" ||
     isAirUnit(entity.kind as UnitKind) ||
     !entityInActiveRegion(state, entity, entity.x, entity.y)
-  ) return baseSight;
-  if (state.biome === "ash plains") return Math.max(1, baseSight - 1);
-  if (state.biome === "crystal flats") return baseSight + 1;
-  return baseSight;
+  ) return baseSight + veteran;
+  if (state.biome === "ash plains") return Math.max(1, baseSight - 1) + veteran;
+  if (state.biome === "crystal flats") return baseSight + 1 + veteran;
+  return baseSight + veteran;
 }
 
 export function incomingDamageMultiplier(state: SimState, target: Entity): number {

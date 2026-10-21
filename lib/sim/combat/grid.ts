@@ -2,6 +2,7 @@ import { BUILDING_STATS, isAirUnit, isDefensiveTurret, POWER_SHORTAGE_TURRET_RAN
 import { isBuildingEntity, isUnitEntity, type BuildingKind, type Entity, type SimState, type UnitKind, type WeaponType } from "../../types";
 import { entitiesFor } from "../entities";
 import { directFireRangeBonusAt, groundUnitSightAt } from "../terrainRules";
+import { braceRangeBonus } from "../verbs";
 import { powerFor } from "../world";
 
 export type CombatGrid = {
@@ -189,7 +190,7 @@ export function acquire(grid: CombatGrid, e: Entity, threatsOnly = false): Entit
   const lowPower = isTurret && powerFor(grid.state, e.owner) < 0;
   const rangeMult = lowPower ? POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER : 1;
   const sightMult = lowPower ? POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER : 1;
-  const range = (stats.range * rangeMult) + (stats.weapon === "airStrike" ? 0 : directFireRangeBonusAt(grid.state, e));
+  const range = (stats.range * rangeMult) + (stats.weapon === "airStrike" ? 0 : directFireRangeBonusAt(grid.state, e)) + braceRangeBonus(e);
   const sight = isUnitEntity(e)
     ? groundUnitSightAt(grid.state, e, UNIT_STATS[e.kind].sight)
     : isBuildingEntity(e)

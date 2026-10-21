@@ -21,6 +21,8 @@ export function CommandCatalogContent({
   onStop,
   onStance,
   onFormation,
+  onBrace,
+  onBombard,
   onCenter,
   selectedClassName,
 }: CommandCatalogContentProps) {
@@ -69,6 +71,8 @@ export function CommandCatalogContent({
       onStop={onStop}
       onStance={onStance}
       onFormation={onFormation}
+      onBrace={onBrace}
+      onBombard={onBombard}
       onCenter={onCenter}
     />
   );

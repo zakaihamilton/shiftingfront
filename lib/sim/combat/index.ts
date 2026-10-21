@@ -1,4 +1,5 @@
-import { isAirUnit, isDefensiveTurret, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER } from "../../catalog";
+import { isAirUnit, isDefensiveTurret, POWER_SHORTAGE_TURRET_COOLDOWN_RATE, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER } from "../../catalog";
+import { isPlayerControlledOwner } from "../ownership";
 import { distToEntity, livingView } from "../world";
 import { rngFromState } from "../../seed/rng";
 import { buildGrid, statsFor, canTarget, isCombatTarget, isCombatThreat, acquire, acquirePreferred, closestEnemy } from "./grid";
@@ -8,12 +9,23 @@ import { createPendingAlerts, flushPlayerAlerts } from "./alerts";
 import type { SimEvent, SimState } from "../../types";
 import { tryFindPath } from "../pathBudget";
 import { directFireRangeBonusAt } from "../terrainRules";
+import { braceRangeBonus, tickBombards } from "../verbs";
 import { powerShortageByOwner } from "../powerShortage";
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
+/** Power shortage slows turret recovery by the catalog rate. 0.5 recovers on every other tick. */
+function turretCooldownAdvances(tick: number, shortage: boolean): boolean {
+  if (!shortage) return true;
+  if (POWER_SHORTAGE_TURRET_COOLDOWN_RATE <= 0) return false;
+  if (POWER_SHORTAGE_TURRET_COOLDOWN_RATE >= 1) return true;
+  const stride = Math.max(1, Math.round(1 / POWER_SHORTAGE_TURRET_COOLDOWN_RATE));
+  return tick % stride === 0;
+}
+
 export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
   const events = eventSink ?? (collectEvents ? [] : undefined);
+  tickBombards(state, events);
   const pending = collectEvents ? createPendingAlerts() : undefined;
   const rng = rngFromState(state.rngState);
   const grid = buildGrid(state);
@@ -26,14 +38,12 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     const hasPowerShortage = isTurret && lowPower[e.owner];
     const st = statsFor(e);
     const baseRange = hasPowerShortage ? st.range * POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER : st.range;
-    const weaponRange = baseRange + (st.weapon === "airStrike" ? 0 : directFireRangeBonusAt(state, e));
+    const weaponRange = baseRange + (st.weapon === "airStrike" ? 0 : directFireRangeBonusAt(state, e)) + braceRangeBonus(e);
     if (st.damage <= 0 || e.neutral) continue;
     if (e.class === "unit" && (e.flightState === "servicing" || e.landingRunwayId !== undefined)) continue;
     if (e.constructing > 0) continue;
-    if (e.cooldown > 0) {
-      if (!hasPowerShortage || state.tick % 2 === 0) {
-        e.cooldown -= 1;
-      }
+    if (e.cooldown > 0 && turretCooldownAdvances(state.tick, hasPowerShortage)) {
+      e.cooldown -= 1;
     }
 
     const ordered = e.class === "unit" && !e.idle;
@@ -64,7 +74,7 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
             }
           }
         } else {
-          const intercept = !state.multiplayer && e.owner === 1 && !isCombatThreat(state, assigned)
+          const intercept = !isPlayerControlledOwner(state, e.owner) && !isCombatThreat(state, assigned)
             ? closestEnemy(grid, e, weaponRange, true)
             : undefined;
           if (intercept && ((e.class === "unit" && isAirUnit(e.kind)) || (intercept.class === "unit" && isAirUnit(intercept.kind)) || lineOfSight(state, e, intercept))) {

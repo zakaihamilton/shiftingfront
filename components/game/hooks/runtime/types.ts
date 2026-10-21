@@ -177,6 +177,8 @@ export type SidebarCommandModel = {
   onStop: () => void;
   onStance: (stance: Stance) => void;
   onFormation: (formation: Formation) => void;
+  onBrace: () => void;
+  onBombard: () => void;
 };
 
 export type SidebarSurfaceModel = {

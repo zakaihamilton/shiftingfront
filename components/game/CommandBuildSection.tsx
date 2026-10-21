@@ -25,6 +25,8 @@ export function CommandBuildSection({
   onStop,
   onStance,
   onFormation,
+  onBrace,
+  onBombard,
   onCenter,
 }: CommandBuildControls) {
   const catalog = (
@@ -45,6 +47,8 @@ export function CommandBuildSection({
       onStop={onStop}
       onStance={onStance}
       onFormation={onFormation}
+      onBrace={onBrace}
+      onBombard={onBombard}
       onCenter={onCenter}
       selectedClassName={activeTab === "selected" ? styles.selectedBody : undefined}
     />

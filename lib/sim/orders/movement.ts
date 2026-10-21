@@ -7,6 +7,7 @@ import { byId, inBounds, isStaticWalkable } from "../world";
 import { clearSupportOrder } from "../support";
 import { launchAircraft } from "../aircraft";
 import { commandOwner } from "./commandOwner";
+import { clearPlanted } from "../verbs";
 
 export function moveUnits(state: SimState, ids: number[], x: number, y: number, formation?: Formation): SimEvent[] {
   return issueTravelOrder(state, ids, x, y, "move", formation);
@@ -40,6 +41,7 @@ function issueTravelOrder(
   let groundIndex = 0;
   movers.forEach((e) => {
     clearSupportOrder(e);
+    clearPlanted(e);
     if (isAirUnit(e.kind)) launchAircraft(state, e);
     e.attackTarget = undefined;
     e.orderMode = orderMode;
