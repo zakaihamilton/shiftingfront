@@ -163,9 +163,8 @@ export function battleLesson(state: SimState): string | undefined {
   const antiArmor = state.unitsProducedByRole.antiArmor ?? 0;
   const finale = state.runtime?.director?.phase === "finale";
   if (harvesters === 0 && refineries < 2) return "Harvesters were gone before a second refinery came online.";
-  if (antiArmor === 0 && (finale || state.lossReason === "deadline")) {
-    return "The finale arrived with no anti-armor in the field.";
-  }
+  if (antiArmor === 0 && finale) return "The finale arrived with no anti-armor in the field.";
+  if (antiArmor === 0 && state.lossReason === "deadline") return "Time ran out with no anti-armor in the field.";
   return undefined;
 }
 

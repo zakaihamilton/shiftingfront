@@ -5,6 +5,7 @@ import { byId, invalidateLivingCache } from "./world";
 import { commandOwner } from "./orders/commandOwner";
 import { entitiesFor } from "./entities";
 import { campaignIdentityActive, VETERAN_DAMAGE } from "./fieldIdentity";
+import { directFireRangeBonusAt } from "./terrainRules";
 
 export const BRACE_SPEED = 0.45;
 export const BRACE_RANGE = 1.4;
@@ -33,8 +34,14 @@ export function braceRangeBonus(entity: Entity): number {
   return entity.braced === true && entity.kind === "tank" ? BRACE_RANGE : 0;
 }
 
-export function veteranSightBonus(entity: Pick<Entity, "veteranRank">): number {
-  return entity.veteranRank === 1 ? 1 : 0;
+export function bombardRange(state: SimState, entity: Entity, x: number, y: number): number {
+  const source = state.heights[Math.round(entity.y) * state.width + Math.round(entity.x)] ?? 1;
+  const target = state.heights[Math.round(y) * state.width + Math.round(x)] ?? 1;
+  return UNIT_STATS.behemoth.range + directFireRangeBonusAt(state, entity) + (source > target ? 1 : 0);
+}
+
+export function bombardInRange(state: SimState, entity: Entity, x: number, y: number): boolean {
+  return Math.hypot(entity.x - x, entity.y - y) <= bombardRange(state, entity, x, y);
 }
 
 export function noteDamageDealt(state: SimState, attacker: Entity, amount: number): void {
@@ -67,9 +74,12 @@ export function braceUnits(state: SimState, ids: number[]): SimEvent[] {
 export function bombardUnits(state: SimState, ids: number[], x: number, y: number): SimEvent[] {
   const owner = commandOwner(state);
   let armed = 0;
+  let behemoths = 0;
   for (const id of ids) {
     const entity = byId(state, id);
     if (!entity || !isUnitEntity(entity) || entity.owner !== owner || entity.neutral || entity.kind !== "behemoth") continue;
+    behemoths += 1;
+    if (!bombardInRange(state, entity, x, y)) continue;
     clearPlanted(entity);
     entity.bombard = { x, y, remaining: BOMBARD_TICKS };
     entity.path = [];
@@ -81,7 +91,8 @@ export function bombardUnits(state: SimState, ids: number[], x: number, y: numbe
     entity.idle = true;
     armed += 1;
   }
-  return armed > 0 ? [] : [{ type: "commandRejected", reason: "no behemoth to bombard" }];
+  if (armed > 0) return [];
+  return [{ type: "commandRejected", reason: behemoths > 0 ? "target out of range" : "no behemoth to bombard" }];
 }
 
 function destroyFromBombard(state: SimState, target: Entity, events?: SimEvent[]): void {

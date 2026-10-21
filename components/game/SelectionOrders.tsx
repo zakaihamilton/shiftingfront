@@ -77,7 +77,7 @@ export function SelectionOrders({
         <ConsoleButton
           className={styles.order}
           data-testid="selected-action-brace"
-          tooltip="Plant the tank: slower, longer range, until it moves"
+          tooltip="Plant the tank: it moves slower and shoots farther until you give another order."
           onClick={() => {
             triggerHaptic("tap");
             onBrace();

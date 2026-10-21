@@ -28,6 +28,10 @@ export function campaignIdentityActive(state: Pick<SimState, "multiplayer" | "tu
   return state.multiplayer !== true && state.tutorialStage === undefined;
 }
 
+export function veteranSightBonus(entity: { veteranRank?: 0 | 1 }): number {
+  return entity.veteranRank === 1 ? 1 : 0;
+}
+
 export type EnemyDoctrine = {
   archetype: FactionArchetype;
   assaultScale: number;

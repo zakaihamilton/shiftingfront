@@ -5,7 +5,7 @@ import { entitiesFor } from "./entities";
 import { reachableScenarioCells, reachableBuildingFilter } from "./scenarios/reachability";
 import { invalidateEntityCaches, invalidateNavigation, isStaticWalkable, spawnBuildingAt, trySpawnUnit } from "./world";
 import { tileInPlayerVision } from "./fog";
-import { CACHE_CREDITS, CACHE_FINALE_PULL_TICKS } from "./fieldIdentity";
+import { CACHE_CREDITS, CACHE_FINALE_PULL_TICKS, FINALE_WARNING_TICKS } from "./fieldIdentity";
 
 const OUTPOST_KINDS = new Set(["destroyMarked", "razeAll", "decapitate", "annihilate", "sabotage"]);
 export const CHALLENGE_HOLD_TICKS = 60 * TICKS_PER_SECOND;
@@ -172,9 +172,15 @@ export function tickChallenges(state: SimState): void {
         state.credits[0] += CACHE_CREDITS;
         const director = state.runtime.director;
         if (director && !director.finalePulled) {
-          director.finaleStart = Math.max(director.pressureStart + 360, director.finaleStart - CACHE_FINALE_PULL_TICKS);
           director.finalePulled = true;
-          state.runtime.finalePullTicks = CACHE_FINALE_PULL_TICKS;
+          if (director.phase !== "finale") {
+            const previous = director.finaleStart;
+            const next = Math.max(director.pressureStart + 360, previous - CACHE_FINALE_PULL_TICKS);
+            director.finaleStart = next;
+            state.runtime.finalePullTicks = previous - next;
+            // A pull inside the warning window makes the old countdown false.
+            if (next < previous && next - state.tick <= FINALE_WARNING_TICKS) director.finaleWarned = false;
+          }
         }
       }
     } else if (objective.kind === "secureZone" && objective.zone && objective.target) {

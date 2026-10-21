@@ -3,6 +3,7 @@ import { buildingCameoStatus, buildingLimitReached, isAirUnit, isSupportUnit, pr
 import { beep } from "@/lib/audio/synth";
 import { voiceBarkForBeep } from "@/lib/audio/voice";
 import { groundOrders } from "@/lib/sim/orders";
+import { bombardInRange } from "@/lib/sim/verbs";
 import { isSharedProducerKind, readSharedProductionQueue } from "@/lib/sim/producerState";
 import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
@@ -147,6 +148,10 @@ export function useGameActions({
       : state.entities.find((entity) => entity.id === aimed.attackTarget && entity.hp > 0);
     if (!target) {
       notify("Attack a target, then bombard.", "error");
+      return;
+    }
+    if (!behemoths.some((entity) => bombardInRange(state, entity, target.x, target.y))) {
+      notify("The target is out of range.", "error");
       return;
     }
     enqueue({ type: "bombard", unitIds: behemoths.map((entity) => entity.id), x: target.x, y: target.y });

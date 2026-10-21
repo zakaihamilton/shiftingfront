@@ -302,6 +302,10 @@ describe("SelectionOrders", () => {
     };
 
     const { rerender } = render(<SelectionOrders {...props} selectedKind="tank" />);
+    expect(screen.getByTestId("selected-action-brace")).toHaveAttribute(
+      "data-tooltip",
+      "Plant the tank: it moves slower and shoots farther until you give another order.",
+    );
     await user.click(screen.getByTestId("selected-action-brace"));
     expect(screen.queryByTestId("selected-action-bombard")).toBeNull();
     expect(onBrace).toHaveBeenCalledOnce();

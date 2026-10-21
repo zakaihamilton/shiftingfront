@@ -1,8 +1,7 @@
 import { isAirUnit, UNIT_STATS } from "../catalog";
 import { ACTIVE_TERRAIN_RULE_INTENSITY, terrainFeatureSamplerFor, type TerrainFeatureSample } from "../gen/map/features";
 import type { BiomeName, Entity, SimState, UnitKind } from "../types";
-import { canyonGullyVehicleCost, volcanicClosureCost } from "./fieldIdentity";
-import { veteranSightBonus } from "./verbs";
+import { canyonGullyVehicleCost, veteranSightBonus, volcanicClosureCost } from "./fieldIdentity";
 
 export const TERRAIN_RULE_INTENSITY = ACTIVE_TERRAIN_RULE_INTENSITY;
 

@@ -94,7 +94,7 @@ export function strike(
 }
 
 export function chase(state: SimState, e: Entity, target: Entity): void {
-  if (e.braced || e.bombard) {
+  if (e.bombard) {
     e.path = [];
     e.flowGoal = undefined;
     e.routePending = false;

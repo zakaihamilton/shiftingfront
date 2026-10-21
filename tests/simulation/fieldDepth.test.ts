@@ -3,7 +3,7 @@ import { createRng } from "../../lib/seed/rng";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { createMission, issue } from "../../lib/sim/api";
 import { tickAircraft } from "../../lib/sim/aircraft";
-import { strike } from "../../lib/sim/combat/damage";
+import { chase, strike } from "../../lib/sim/combat/damage";
 import { statsFor } from "../../lib/sim/combat/grid";
 import { tickChallenges } from "../../lib/sim/challenges";
 import { battleLesson } from "../../lib/sim/debrief";
@@ -20,7 +20,9 @@ import {
   VOLCANIC_CLOSURE_COST,
   CANYON_GULLY_VEHICLE_COST,
   VETERAN_DAMAGE,
+  FINALE_WARNING_TICKS,
 } from "../../lib/sim/fieldIdentity";
+import { tickMovement } from "../../lib/sim/movement";
 import { noteDamageDealt, tickBombards } from "../../lib/sim/verbs";
 import { powerBreakdown } from "../../lib/sim/world";
 import type { SimEvent } from "../../lib/types";
@@ -127,15 +129,43 @@ describe("field verbs", () => {
     expect(tank.idle).toBe(true);
     issue(state, { type: "move", unitIds: [tank.id], x: 10, y: 10 });
     expect(tank.braced).toBeUndefined();
+
+    const chasing = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const planted = addUnit(chasing, 0, "tank", 4, 4);
+    const quarry = addUnit(chasing, 1, "infantry", 14, 4);
+    issue(chasing, { type: "brace", unitIds: [planted.id] });
+    chase(chasing, planted, quarry);
+    expect(planted.braced).toBe(true);
+    expect(planted.path.length).toBeGreaterThan(0);
+
+    const traveled = (braced: boolean) => {
+      const moving = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+      const mover = addUnit(moving, 0, "tank", 4, 4);
+      if (braced) mover.braced = true;
+      mover.path = [{ x: 5, y: 4 }];
+      mover.idle = false;
+      const start = mover.x;
+      tickMovement(moving);
+      return Math.hypot(mover.x - start, mover.y - 4);
+    };
+    expect(traveled(true) / traveled(false)).toBeCloseTo(0.45, 2);
   });
 
   it("resolves a planted behemoth shot after the charge", () => {
     const state = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
     const behemoth = addUnit(state, 0, "behemoth", 2, 2);
-    const enemy = addUnit(state, 1, "infantry", 10, 8);
+    const enemy = addUnit(state, 1, "infantry", 5, 2);
+    const distant = addUnit(state, 0, "behemoth", 2, 8);
+    expect(issue(state, { type: "bombard", unitIds: [distant.id], x: 18, y: 14 })).toEqual([
+      { type: "commandRejected", reason: "target out of range" },
+    ]);
+    expect(distant.bombard).toBeUndefined();
     const before = enemy.hp;
     expect(issue(state, { type: "bombard", unitIds: [behemoth.id], x: enemy.x, y: enemy.y })).toEqual([]);
     expect(behemoth.bombard?.remaining).toBe(36);
+    chase(state, behemoth, enemy);
+    expect(behemoth.path).toEqual([]);
+    expect(behemoth.bombard).toBeDefined();
     for (let tick = 0; tick < 35; tick += 1) tickBombards(state);
     expect(enemy.hp).toBe(before);
     tickBombards(state);
@@ -199,8 +229,8 @@ describe("mission drama", () => {
   it("warns once before the finale and names the loss that decided the battle", () => {
     const state = createMission({ seed: 2, missionIndex: 0 });
     const director = state.runtime!.director!;
-    state.tick = director.finaleStart - 1;
-    if (state.runtime?.kind === "rescue" && state.tick % 6 === 0) state.tick -= 1;
+    state.tick = director.finaleStart - FINALE_WARNING_TICKS;
+    if (state.runtime?.kind === "rescue" && state.tick % 6 === 0) state.tick += 1;
     const warning = tickMissionDirector(state);
     expect(warning[0]).toMatchObject({
       type: "alert",
@@ -220,8 +250,70 @@ describe("mission drama", () => {
     expect(battleLesson(lost)).toBe("Harvesters were gone before a second refinery came online.");
     addUnit(lost, 0, "harvester", 3, 3);
     lost.lossReason = "deadline";
+    expect(battleLesson(lost)).toBe("Time ran out with no anti-armor in the field.");
+    lost.lossReason = undefined;
+    lost.runtime = {
+      kind: "annihilate",
+      phase: "active",
+      targetIds: [],
+      rescued: 0,
+      required: 0,
+      secondary: [],
+      director: { phase: "finale", pressureStart: 10, finaleStart: 20, eventCount: 1 },
+    };
     expect(battleLesson(lost)).toBe("The finale arrived with no anti-armor in the field.");
     lost.result = "won";
     expect(battleLesson(lost)).toBeUndefined();
+  });
+
+  it("corrects the finale warning when a cache raid shortens the countdown", () => {
+    const state = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
+    const cache = addBuilding(state, 1, "objective", 12, 4);
+    cache.optionalChallenge = true;
+    state.tick = 3700;
+    state.runtime = {
+      kind: "annihilate",
+      phase: "active",
+      targetIds: [],
+      rescued: 0,
+      required: 0,
+      director: { phase: "pressure", pressureStart: 1000, finaleStart: 4000, eventCount: 1, finaleWarned: true },
+      secondary: [{ id: "bonus-cache", kind: "destroyTarget", priority: "optional", targetId: cache.id, label: "cache" }],
+    };
+    cache.hp = 0;
+    tickChallenges(state);
+    expect(state.runtime.director?.finaleStart).toBe(3760);
+    expect(state.runtime.director?.finaleWarned).toBe(false);
+    const warning = tickMissionDirector(state);
+    expect(warning[0]).toMatchObject({
+      type: "alert",
+      kind: "warning",
+      text: "Advisor: The final push arrives in 5 seconds. Commit or pull the line back.",
+    });
+    expect(state.runtime.director?.phase).not.toBe("finale");
+
+    const rushed = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
+    const lateCache = addBuilding(rushed, 1, "objective", 12, 4);
+    lateCache.optionalChallenge = true;
+    addUnit(rushed, 0, "infantry", 3, 3);
+    rushed.tick = 3900;
+    rushed.runtime = {
+      kind: "annihilate",
+      phase: "active",
+      targetIds: [],
+      rescued: 0,
+      required: 0,
+      director: { phase: "pressure", pressureStart: 1000, finaleStart: 4000, eventCount: 1, finaleWarned: true },
+      secondary: [{ id: "bonus-cache", kind: "destroyTarget", priority: "optional", targetId: lateCache.id, label: "cache" }],
+    };
+    lateCache.hp = 0;
+    tickChallenges(rushed);
+    expect(rushed.runtime.director!.finaleStart).toBe(3760);
+    const arriving = tickMissionDirector(rushed);
+    expect(arriving[0]).toMatchObject({ text: "Advisor: The final push is arriving now. Commit or pull the line back." });
+    expect(rushed.runtime.director?.phase).not.toBe("finale");
+    const finale = tickMissionDirector(rushed);
+    expect(rushed.runtime.director?.phase).toBe("finale");
+    expect(String(finale[0] && "text" in finale[0] ? finale[0].text : "")).not.toContain("ten seconds");
   });
 });
