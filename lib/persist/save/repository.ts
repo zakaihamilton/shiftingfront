@@ -438,7 +438,9 @@ export class SaveRepository {
           : current;
         if (edge) stored.deploymentEdge = edge;
         else delete stored.deploymentEdge;
-        store.put({ ...record, revision: record.revision + 1, progress: encodeProgress(stored) });
+        // Leave the revision alone. This record is also the autosave lock, and
+        // the victory save is often still queued when the player picks a reward.
+        store.put({ ...record, progress: encodeProgress(stored) });
       });
       await this.committed();
       return true;

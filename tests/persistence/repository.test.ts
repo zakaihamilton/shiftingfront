@@ -86,6 +86,39 @@ describe("transactional save repository", () => {
     expect(readSave(repository.storage, 421)?.result).toBe("won");
     expect(readCampaignProgress(repository.storage, 421).completedMissions).toEqual([0]);
   });
+  it("keeps a queued victory when a deployment edge is chosen before that save commits", async () => {
+    const { repository } = await open();
+    const session = repository.createSession(421);
+    const playing = state();
+    const prior = session.write(playing, "implicit");
+    const won = state();
+    won.result = "won";
+    const victory = session.write(won, "implicit");
+    const edge = repository.setDeploymentEdge(421, "veteranSquad");
+    const leave = session.write(won, "implicit");
+    expect(await prior).toBe("saved");
+    expect(await victory).toBe("saved");
+    expect(await edge).toBe(true);
+    expect(await leave).toBe("saved");
+    const progress = readCampaignProgress(repository.storage, 421);
+    expect(progress.completedMissions).toEqual([0]);
+    expect(progress.unlockedMission).toBe(1);
+    expect(progress.deploymentEdge).toBe("veteranSquad");
+  });
+  it("does not make the mission session conflict after a deployment edge is stored", async () => {
+    const { repository } = await open();
+    const session = repository.createSession(421);
+    const won = state();
+    won.result = "won";
+    expect(await session.write(won, "implicit")).toBe("saved");
+    expect(await repository.setDeploymentEdge(421, "airSortie")).toBe(true);
+    won.tick = 4;
+    expect(await session.write(won, "implicit")).toBe("saved");
+    const progress = readCampaignProgress(repository.storage, 421);
+    expect(progress.completedMissions).toEqual([0]);
+    expect(progress.unlockedMission).toBe(1);
+    expect(progress.deploymentEdge).toBe("airSortie");
+  });
   it("aborts named save, autosave and progress when the transaction fails after a slot write", async () => {
     const { repository } = await open(); const current = state(); await repository.save(current);
     const put = IDBObjectStore.prototype.put;
