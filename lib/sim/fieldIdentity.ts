@@ -78,7 +78,7 @@ const DOCTRINE_NOTES: Record<FactionArchetype, string> = {
   legion: "The enemy attacks sooner and does not dig in behind new turrets.",
   syndicate: "The enemy raids harvesters and ore lanes.",
   directorate: "The enemy builds and repairs turrets.",
-  concord: "The enemy fields medics and repair trucks and pulls damaged units back.",
+  concord: "The enemy fields medics and repair trucks, then pulls its damaged units back.",
 };
 
 export function fieldNotes(enemyName: string, biome: BiomeName): { doctrine?: string; ground: string } {
