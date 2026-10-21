@@ -5,7 +5,8 @@ import { createMission, issue } from "../../lib/sim/api";
 import { tickAircraft } from "../../lib/sim/aircraft";
 import { chase, strike } from "../../lib/sim/combat/damage";
 import { statsFor } from "../../lib/sim/combat/grid";
-import { tickChallenges } from "../../lib/sim/challenges";
+import { configureChallenge, tickChallenges } from "../../lib/sim/challenges";
+import { tickCombat } from "../../lib/sim/combat";
 import { battleLesson } from "../../lib/sim/debrief";
 import { applyDeploymentEdge } from "../../lib/sim/deployment";
 import { tickMissionDirector } from "../../lib/sim/director";
@@ -202,6 +203,39 @@ describe("field verbs", () => {
 });
 
 describe("mission drama", () => {
+  it("has the outpost guard fire in place at a nearby squad", () => {
+    const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
+    const spotter = addUnit(state, 0, "infantry", 4, 24);
+    state.runtime = {
+      kind: "annihilate",
+      phase: "active",
+      targetIds: [],
+      rescued: 0,
+      required: 0,
+      secondary: [],
+    };
+    configureChallenge(state, {
+      playerStart: { x: 4, y: 24 },
+      enemyStart: { x: 44, y: 24 },
+    } as Parameters<typeof configureChallenge>[1]);
+    const guard = state.entities.find((entity) => entity.kind === "antiArmor" && entity.optionalChallenge);
+    expect(guard).toBeDefined();
+    expect(guard!.stance).toBe("defensive");
+
+    tickCombat(state);
+    expect(guard!.attackTarget).toBeUndefined();
+    expect(guard!.path).toEqual([]);
+    expect(spotter.hp).toBe(spotter.maxHp);
+
+    const attacker = addUnit(state, 0, "infantry", guard!.x, guard!.y + 1);
+    const hp = attacker.hp;
+    tickCombat(state);
+    expect(guard!.attackTarget).toBe(attacker.id);
+    expect(guard!.path).toEqual([]);
+    expect(attacker.hp).toBeLessThan(hp);
+    expect(Math.hypot(guard!.x - attacker.x, guard!.y - attacker.y)).toBeLessThan(2);
+  });
+
   it("pays a raided cache and recruits a stranded mechanic on contact", () => {
     const state = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
     const cache = addBuilding(state, 1, "objective", 12, 4);

@@ -68,7 +68,8 @@ export function configureChallenge(state: SimState, map: GeneratedMap): void {
         continue;
       }
       guard.optionalChallenge = true;
-      guard.stance = "hold";
+      // Hold never acquires a target. Defend fires inside weapon range and stays on the outpost.
+      guard.stance = "defensive";
       challenge = { id: "bonus-outpost", kind: "destroyTarget", priority: "optional", targetId: target.id,
         zone: { x: target.x, y: target.y }, label: "Destroy the supply outpost" };
     } else {
