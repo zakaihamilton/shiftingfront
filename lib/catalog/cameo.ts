@@ -43,10 +43,12 @@ export function unitCameoStatus(
   entities: ReadonlyArray<CameoEntity>,
   owner: number,
   kind: UnitKind,
-  sharedQueue?: { producing?: { kind: UnitKind; remaining: number }; queue: UnitKind[] },
+  sharedQueue?: { producing?: { kind: UnitKind; remaining: number }; resume?: { kind: UnitKind; remaining: number }[]; queue: UnitKind[] },
 ): CameoStatus {
   if (sharedQueue) {
-    const queued = (sharedQueue.producing?.kind === kind ? 1 : 0) + sharedQueue.queue.filter((item) => item === kind).length;
+    const queued = (sharedQueue.producing?.kind === kind ? 1 : 0)
+      + (sharedQueue.resume?.filter((job) => job.kind === kind).length ?? 0)
+      + sharedQueue.queue.filter((item) => item === kind).length;
     if (queued === 0) return { ratio: 0, queued: 0, phase: "idle" };
     if (sharedQueue.producing?.kind === kind) {
       const total = UNIT_STATS[kind].buildTicks || 1;

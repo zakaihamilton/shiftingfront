@@ -6,6 +6,7 @@ import { fogAt } from "@/lib/sim/fog";
 import { evaluateObjectives } from "@/lib/sim/objectives";
 import { SIMULATION_SYSTEMS, createSimulationTickContext } from "@/lib/sim/pipeline";
 import { tickProduction } from "@/lib/sim/production";
+import { aiDifficultyMission, missionDifficulty, SKIRMISH_AI_MISSION_INDEX } from "@/lib/sim/difficulty";
 import { isPlayerControlledOwner } from "@/lib/sim/ownership";
 import { findBuildSite, invalidateEntityCaches, powerFor } from "@/lib/sim/world";
 import { tickMultiplayerAi } from "@/lib/sim/ai";
@@ -24,6 +25,14 @@ function constructionYard(state: ReturnType<typeof createSkirmish>["state"], own
 }
 
 describe("free-for-all skirmish simulation", () => {
+  it("gives skirmish bots the last campaign difficulty instead of mission 0", () => {
+    const { state } = createSkirmish(8123, 0, ALL_PLAYERS, [1, 2, 3]);
+    expect(state.missionIndex).toBe(0);
+    expect(aiDifficultyMission(state)).toBe(SKIRMISH_AI_MISSION_INDEX);
+    expect(missionDifficulty(aiDifficultyMission(state)).enemyProductionEvery).toBe(missionDifficulty(5).enemyProductionEvery);
+    expect(missionDifficulty(0).enemyProductionEvery).toBeGreaterThan(missionDifficulty(5).enemyProductionEvery);
+  });
+
   it("creates four equivalent corner forces and resources without campaign AI", () => {
     const { state } = createSkirmish(8123, 0, ALL_PLAYERS);
     expect(state.multiplayer).toBe(true);

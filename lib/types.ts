@@ -21,6 +21,8 @@ export type BuildingKind =
 export type SharedProducerKind = "barracks" | "factory";
 export type SharedProductionQueue = {
   producing?: { kind: UnitKind; remaining: number };
+  /** In-progress jobs kept when several buildings were producing at once. */
+  resume?: { kind: UnitKind; remaining: number }[];
   queue: UnitKind[];
 };
 
@@ -105,6 +107,10 @@ export type MissionDirectorState = {
   pressureStart: number;
   finaleStart: number;
   eventCount: number;
+  /** Set after the pre-finale warning has been spoken. */
+  finaleWarned?: boolean;
+  /** Set after an optional cache pulls the finale earlier. */
+  finalePulled?: boolean;
 };
 
 export type MissionRuntime = {
@@ -125,6 +131,10 @@ export type MissionRuntime = {
   hqThreatActive?: boolean;
   secondary: SecondaryObjective[];
   director?: MissionDirectorState;
+  /** Optional cache reward has already been paid. */
+  cachePaid?: boolean;
+  /** Ticks removed from the finale after the supply cache is raided. */
+  finalePullTicks?: number;
 };
 
 // Contact is resolved around the target's occupied tile. A radius below four
@@ -146,6 +156,8 @@ export function missionUsesObjectiveZone(kind: MissionKind | undefined): boolean
   return kind === "escort" || kind === "rescue" || kind === "extraction";
 }
 
+export type DeploymentEdge = "veteranSquad" | "forwardTurret" | "airSortie" | "powerReserve";
+
 export type CampaignProgress = {
   gameplayRulesVersion?: GameplayRulesVersion;
   version: 1;
@@ -155,6 +167,8 @@ export type CampaignProgress = {
   completedMissions: number[];
   medals: Record<string, number>;
   bestScores: Record<string, number>;
+  /** Chosen reward applied to the next unlocked mission, then cleared. */
+  deploymentEdge?: DeploymentEdge;
 };
 
 export type WinCategory = {
@@ -257,6 +271,16 @@ export type Entity = {
   /** When true, the harvester is executing a player-issued move command and should
    *  travel to orderDestination before the economy loop starts searching for ore. */
   moveToHarvest?: boolean;
+  /** One rank earned by dealing enough damage in a campaign battle. */
+  veteranRank?: 0 | 1;
+  /** Damage dealt toward the veteran rank. Campaign player units only. */
+  damageDealt?: number;
+  /** Tank brace: slower, longer range, and planted until a move order. */
+  braced?: boolean;
+  /** Behemoth area shot charging at a ground point. */
+  bombard?: { x: number; y: number; remaining: number };
+  /** Neutral mechanic that joins the player on contact. Optional. */
+  recruitable?: boolean;
 };
 
 export type UnitEntity = Entity & { class: "unit"; kind: UnitKind };
@@ -562,6 +586,13 @@ export type SimState = {
   aiRetreatTick?: number;
   /** After a timed-out retreat, stay out until average HP recovers to the leave threshold. */
   aiRetreatLocked?: boolean;
+  /**
+   * Campaign proficiency snapshotted when the mission starts.
+   * Omitted means neutral. Live pressure is derived each decision and is not stored.
+   */
+  proficiencyBand?: -1 | 0 | 1;
+  /** Extra power granted by the power-reserve deployment edge. */
+  powerReserve?: number;
   /** Deterministic, serializable last-known player contacts used by enemy AI. */
   aiContacts?: Record<string, AiContact>;
   /** Player control-group membership, persisted with the mission but ignored by simulation identity. */
@@ -589,7 +620,9 @@ type CommandOrder =
   | { type: "sell"; buildingId: number }
   | { type: "stop"; unitIds: number[] }
   | { type: "stance"; unitIds: number[]; stance: Stance }
-  | { type: "formation"; unitIds: number[]; formation: Formation };
+  | { type: "formation"; unitIds: number[]; formation: Formation }
+  | { type: "brace"; unitIds: number[] }
+  | { type: "bombard"; unitIds: number[]; x: number; y: number };
 
 /** Owner is assigned by the host arbiter; single-player commands default to owner 0. */
 export type Command = CommandOrder & { owner?: Owner };

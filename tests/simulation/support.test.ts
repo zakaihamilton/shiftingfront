@@ -6,7 +6,7 @@ import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { holdSupport, tickSupport } from "../../lib/sim/support";
 import { missionDifficulty } from "../../lib/sim/difficulty";
 import { tickMovement } from "../../lib/sim/movement";
-import { resetPathBudget } from "../../lib/sim/pathBudget";
+import { PATH_BUDGET_PER_TICK, resetPathBudget } from "../../lib/sim/pathBudget";
 
 describe("support units", () => {
   it("classifies support targets by reusable domain", () => {
@@ -99,6 +99,23 @@ describe("support units", () => {
     expect(Math.hypot(medic.x - 5, medic.y - 4)).toBeLessThanOrEqual(0.1);
     expect(infantry.hp).toBeGreaterThan(infantry.maxHp - 20);
     expect(medic.supportTargetId).toBe(infantry.id);
+  });
+
+  it("retries a support route after the path budget is exhausted", () => {
+    const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const medic = addUnit(state, 0, "medic", 1, 1);
+    const infantry = addUnit(state, 0, "infantry", 12, 12);
+    infantry.hp = infantry.maxHp - 10;
+    medic.supportMode = "auto";
+    medic.routePending = false;
+    medic.path = [];
+    state.pathBudget = { remaining: 0, used: PATH_BUDGET_PER_TICK };
+
+    tickSupport(state);
+
+    expect(medic.supportTargetId).toBe(infantry.id);
+    expect(medic.routePending).toBe(true);
+    expect(medic.path).toEqual([]);
   });
 
   it("allows support production from the first mission", () => {

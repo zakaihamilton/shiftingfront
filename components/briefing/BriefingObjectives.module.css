@@ -8,6 +8,16 @@
   border-top: 2px solid var(--chrome-gold-dim);
 }
 
+.note {
+  margin: 0.55rem 0 0;
+  color: var(--chrome-gold);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
 .list {
   margin: 0.5rem 0 0;
   padding: 0;

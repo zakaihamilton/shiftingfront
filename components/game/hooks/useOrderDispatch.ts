@@ -3,6 +3,7 @@ import { beep } from "@/lib/audio/synth";
 import { beepForCommands } from "@/lib/audio/uiOrders";
 import { voiceBarkForBeep } from "@/lib/audio/voice";
 import { COMMAND_MARKER_INVALID_MS, commandMarkerKind, type CommandMarker } from "@/lib/render/renderOverlays";
+import { cameraForPicking } from "@/lib/render/screenShake";
 import type { Camera } from "@/lib/iso";
 import type { Command, SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
@@ -51,7 +52,7 @@ export function useOrderDispatch({
       commandMarkerRef.current = null;
       return;
     }
-    const { x, y } = pointerTile(s, p, camRef.current);
+    const { x, y } = pointerTile(s, p, cameraForPicking(camRef.current));
     commandMarkerRef.current = {
       x,
       y,
@@ -63,13 +64,13 @@ export function useOrderDispatch({
     };
   }, [camRef, commandMarkerRef]);
   const markInvalidCommand = useCallback((s: SimState, p: { x: number; y: number }) => {
-    const { x, y } = pointerTile(s, p, camRef.current);
+    const { x, y } = pointerTile(s, p, cameraForPicking(camRef.current));
     const bornMs = performance.now();
     commandMarkerRef.current = { x, y, bornMs, expiresMs: bornMs + COMMAND_MARKER_INVALID_MS, kind: "invalid" };
   }, [camRef, commandMarkerRef]);
 
   const issueContextOrder = useCallback((s: SimState, p: { x: number; y: number }, attackMove = false) => {
-    const { x: tx, y: ty } = pointerTile(s, p, camRef.current);
+    const { x: tx, y: ty } = pointerTile(s, p, cameraForPicking(camRef.current));
     if (repairRef.current || sellRef.current) {
       clearTools();
       beep("cancel");
@@ -77,7 +78,7 @@ export function useOrderDispatch({
       return;
     }
     const ids = [...selectedRef.current];
-    const target = pickSelectableEntity(s, p.x, p.y, tx, ty, camRef.current);
+    const target = pickSelectableEntity(s, p.x, p.y, tx, ty, cameraForPicking(camRef.current));
     const commands = contextOrders(s, ids, target, tx, ty, attackMove);
     if (!commands.length) {
       markInvalidCommand(s, p);

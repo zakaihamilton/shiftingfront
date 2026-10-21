@@ -23,7 +23,7 @@ export function missionConfirmationFor(
         ? "Return to the main menu?"
         : multiplayer
         ? "Return to the main menu? You will forfeit your position in this skirmish."
-        : "Return to the main menu? Unsaved mission progress will be lost.",
+        : "Return to the main menu? Your mission progress will be saved.",
       confirmLabel: multiplayer ? "Leave skirmish" : "Leave mission",
     };
   }

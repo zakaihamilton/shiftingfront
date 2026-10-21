@@ -708,8 +708,15 @@
 }
 
 .operationsBody .detailGrid {
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 0.55rem;
   margin-top: 0.7rem;
+  overflow: auto;
+}
+
+.operationsBody .detailActions {
+  flex: 0 0 auto;
 }
 
 .operationsBody .detailBlock {
@@ -833,6 +840,12 @@
 
   .operationsBody > .section,
   .operationsBody > .detail {
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .operationsBody .detailGrid {
     flex: 0 0 auto;
     min-height: auto;
     overflow: visible;

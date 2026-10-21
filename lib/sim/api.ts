@@ -1,7 +1,7 @@
 import { STARTING_CREDITS } from "../catalog";
 import { assertValidSeed, createRng, mixSeed } from "../seed/rng";
 import { SURFACE_NONE, TILE_CLEAR, TILE_RESOURCE } from "../types";
-import type { Faction, Owner, Palette, ReadonlyCampaign, ReadonlyMissionDef, SimEvent, SimState, SurfaceKind, UnitKind, Vec2 } from "../types";
+import type { Faction, Owner, Palette, ReadonlyCampaign, ReadonlyMissionDef, SimEvent, SimState, SurfaceKind, TutorialStage, UnitKind, Vec2 } from "../types";
 import { createCampaign } from "../gen/campaign";
 import { generateMap, type GeneratedMap } from "../gen/map";
 import { makeFog, tickFog } from "./fog";
@@ -23,6 +23,7 @@ import {
 } from "./pipeline";
 import { configureChallenge } from "./challenges";
 import { entitiesFor } from "./entities";
+import { applyDeploymentEdge } from "./deployment";
 
 export { issue, inspect };
 export { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS, scenarioAffordances, type ScenarioAffordances } from "./scenarios";
@@ -31,13 +32,28 @@ export type TickOptions = SimulationTickOptions;
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
-export function createMission(opts: { seed: number; missionIndex: number; gameplayRulesVersion?: import("../types").GameplayRulesVersion }): SimState {
+export function createMission(opts: {
+  seed: number;
+  missionIndex: number;
+  gameplayRulesVersion?: import("../types").GameplayRulesVersion;
+  /** Snapshotted campaign proficiency. Omitted and 0 stay off the state so neutral replays match. */
+  proficiencyBand?: -1 | 0 | 1;
+  deploymentEdge?: import("../types").DeploymentEdge;
+}): SimState {
   assertValidSeed(opts.seed);
   const campaign = createCampaign(opts.seed, opts.gameplayRulesVersion);
   const mission = campaign.missions[opts.missionIndex];
   if (!mission) throw new Error(`No mission ${opts.missionIndex}`);
   const map = generateMap(opts.seed, mission);
-  return createMissionFromData({ seed: opts.seed, missionIndex: opts.missionIndex, campaign, mission, map });
+  return createMissionFromData({
+    seed: opts.seed,
+    missionIndex: opts.missionIndex,
+    campaign,
+    mission,
+    map,
+    proficiencyBand: opts.proficiencyBand,
+    deploymentEdge: opts.deploymentEdge,
+  });
 }
 
 /** Create a mission from already-generated campaign and map data. */
@@ -48,6 +64,10 @@ export function createMissionFromData(opts: {
   mission: ReadonlyMissionDef;
   map: GeneratedMap;
   configureScenario?: boolean;
+  proficiencyBand?: -1 | 0 | 1;
+  deploymentEdge?: import("../types").DeploymentEdge;
+  /** Set before scenario setup so tutorial maps skip campaign challenges and the director. */
+  tutorialStage?: TutorialStage;
 }): SimState {
   assertValidSeed(opts.seed);
   const { campaign, mission, map } = opts;
@@ -80,7 +100,9 @@ export function createMissionFromData(opts: {
     missionName: mission.name,
   });
   state.gameplayRulesVersion = campaign.gameplayRulesVersion ?? 2;
-  return initializeMissionState(state, map, mission, rng, difficulty, opts.configureScenario !== false);
+  if (opts.proficiencyBand === -1 || opts.proficiencyBand === 1) state.proficiencyBand = opts.proficiencyBand;
+  if (opts.tutorialStage) state.tutorialStage = opts.tutorialStage;
+  return initializeMissionState(state, map, mission, rng, difficulty, opts.configureScenario !== false, opts.deploymentEdge);
 }
 
 function initializeMissionState(
@@ -90,6 +112,7 @@ function initializeMissionState(
   rng: ReturnType<typeof createRng>,
   difficulty: ReturnType<typeof missionDifficulty>,
   configureScenario: boolean,
+  deploymentEdge?: import("../types").DeploymentEdge,
 ): SimState {
   state.missionKind = mission.win.kind;
   state.aiState = "economy";
@@ -256,6 +279,7 @@ function dirPoint(
     configureMissionScenario(state, map, mission, rng);
     configureChallenge(state, map);
   }
+  applyDeploymentEdge(state, deploymentEdge);
 
   ensureSimulationDirector(state);
   tickFog(state);

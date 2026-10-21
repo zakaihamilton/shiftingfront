@@ -21,6 +21,8 @@ export function SelectionPanel({
   onStance,
   onFormation,
   onCenter,
+  onBrace,
+  onBombard,
 }: {
   selected: Entity | undefined;
   selectionCount?: number;
@@ -35,13 +37,17 @@ export function SelectionPanel({
   onStance?: (stance: Stance) => void;
   onFormation?: (formation: Formation) => void;
   onCenter?: () => void;
+  onBrace?: () => void;
+  onBombard?: () => void;
 }) {
   const friendlyUnit = selected && selected.owner === playerOwner && selected.class === "unit" && !selected.neutral;
   const friendlyProducer = selected && isBuildingEntity(selected) && selected.owner === playerOwner && selected.constructing <= 0 && Boolean(BUILDING_DEFINITIONS[selected.kind].production);
   const stance = selected?.stance ?? "aggressive";
   const formation = selected?.formation;
   const producing = sharedQueue ? sharedQueue.producing : selected?.producing;
-  const queuedUnits = sharedQueue ? sharedQueue.queue : selected?.queue ?? [];
+  const queuedUnits = sharedQueue
+    ? [...(sharedQueue.resume?.map((job) => job.kind) ?? []), ...sharedQueue.queue]
+    : selected?.queue ?? [];
   return (
     <section className={cx(styles.section, className)}>
       <ConsoleLabel className={styles.label}>{selectionCount > 1 ? `${selectionCount} units selected` : "Selected"}</ConsoleLabel>
@@ -59,9 +65,12 @@ export function SelectionPanel({
             <SelectionOrders
               stance={stance}
               formation={formation}
+              selectedKind={selected.kind}
               onStop={onStop}
               onStance={onStance}
               onFormation={onFormation}
+              onBrace={onBrace}
+              onBombard={onBombard}
             />
           ) : null}
           {selected.constructing > 0 && isBuildingEntity(selected) ? (

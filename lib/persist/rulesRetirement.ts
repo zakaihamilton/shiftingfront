@@ -72,6 +72,7 @@ export function mergeCampaignProgress(left: CampaignProgress, right: CampaignPro
     medals: maxStats(left.medals, right.medals),
     bestScores: maxStats(left.bestScores, right.bestScores),
     gameplayRulesVersion: left.gameplayRulesVersion === 2 || right.gameplayRulesVersion === 2 ? 2 : 1,
+    deploymentEdge: right.deploymentEdge ?? left.deploymentEdge,
   };
 }
 

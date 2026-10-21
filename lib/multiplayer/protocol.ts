@@ -179,6 +179,14 @@ export function sanitizeCommand(value: unknown, allowOwner = false): Command | n
       if (!idsOk || typeof input.formation !== "string" || !FORMATIONS.has(input.formation)) return null;
       command = { type: "formation", unitIds: input.unitIds as number[], formation: input.formation as "line" | "column" | "wedge" };
       break;
+    case "brace":
+      if (!idsOk) return null;
+      command = { type: "brace", unitIds: input.unitIds as number[] };
+      break;
+    case "bombard":
+      if (!idsOk || !pointOk(input.x, input.y)) return null;
+      command = { type: "bombard", unitIds: input.unitIds as number[], x: Number(input.x), y: Number(input.y) };
+      break;
   }
   return command ? { ...command, ...(owner === undefined ? {} : { owner }) } as Command : null;
 }

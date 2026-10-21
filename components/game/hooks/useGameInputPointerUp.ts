@@ -8,6 +8,7 @@ import { isSameKindDoubleClick, isSameProducerDoubleClick, resolvePointerUp, typ
 import { selectionBoxDistance, type SelectionBox } from "./selectionBox";
 import type { RuntimeCommandPort } from "./runtime/facade";
 import { activeProducerFor, isSharedProducerKind } from "@/lib/sim/producerState";
+import { cameraForPicking } from "@/lib/render/screenShake";
 
 type PointerPosition = { x: number; y: number };
 type PointerUpEffect = ReturnType<typeof resolvePointerUp>;
@@ -50,7 +51,7 @@ export function useGameInputPointerUp(options: {
     const state = stateRef.current;
     if (!state) return;
     if (event.pointerType === "touch" && endTouch(event, point)) return;
-    const camera = camRef.current;
+    const camera = cameraForPicking(camRef.current);
     const drag = Boolean(boxRef.current && selectionBoxDistance(boxRef.current, camera) > 8);
     const nowMs = performance.now();
     const { x: tileX, y: tileY } = pointerTile(state, point, camera);

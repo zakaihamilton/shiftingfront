@@ -118,7 +118,9 @@ export function queuedUnitCount(state: SimState, kind: UnitKind): number {
   const producerKind = producerFor(kind);
   if (isSharedProducerKind(producerKind)) {
     const queue = readSharedProductionQueue(state, 0, producerKind);
-    return (queue.producing?.kind === kind ? 1 : 0) + queue.queue.filter((item) => item === kind).length;
+    return (queue.producing?.kind === kind ? 1 : 0)
+      + (queue.resume?.filter((job) => job.kind === kind).length ?? 0)
+      + queue.queue.filter((item) => item === kind).length;
   }
   let count = 0;
   for (const producer of playerBuildingsView(state)) {

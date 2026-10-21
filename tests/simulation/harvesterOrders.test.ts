@@ -1,10 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { makeFixture, addUnit, addBuilding, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
 import { issue, tick } from "../../lib/sim/api";
+import { tickEconomy } from "../../lib/sim/economy";
 import { groundOrders } from "../../lib/sim/orders";
 import { battlefieldCursor } from "../../lib/ui/battlefieldCursor";
 
 describe("harvester group orders and harvesting", () => {
+  it("does not double-count a claim when a blocked harvester replans onto the same tile", () => {
+    const s = makeFixture({ width: 40, height: 16, win: { kind: "harvestQuota", target: 99999 } });
+    setTile(s, 10, 10, TILE_RESOURCE, 500);
+    setTile(s, 22, 10, TILE_RESOURCE, 500);
+    const assigned = addUnit(s, 0, "harvester", 2, 10);
+    const follower = addUnit(s, 0, "harvester", 0, 10);
+    assigned.gatherX = 10;
+    assigned.gatherY = 10;
+    assigned.blockedTicks = 6;
+    assigned.path = [{ x: 3, y: 10 }];
+
+    tickEconomy(s);
+
+    expect([assigned.gatherX, assigned.gatherY]).toEqual([10, 10]);
+    expect(assigned.path).toEqual([{ x: 3, y: 10 }]);
+    expect([follower.gatherX, follower.gatherY]).toEqual([10, 10]);
+  });
+
   it("makes a group of 3 harvesters harvest concurrently across an ore patch", () => {
     const s = makeFixture({ width: 25, height: 25, win: { kind: "harvestQuota", target: 99999 } });
     addBuilding(s, 0, "constructionYard", 0, 0);
