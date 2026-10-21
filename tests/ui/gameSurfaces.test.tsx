@@ -68,6 +68,8 @@ function testCommands() {
     onStop: noop,
     onStance: noop,
     onFormation: noop,
+    onBrace: noop,
+    onBombard: noop,
   };
 }
 
@@ -260,6 +262,9 @@ describe("game overlay surfaces", () => {
     expect(screen.getByTestId("mission-result")).toHaveAttribute("data-result", "won");
     expect(screen.getByTestId("mission-result")).toHaveStyle({ "--result-art": 'url("/art/results/victory.webp")' });
     expect(screen.getByText("Mission 1 // Fixture")).toBeInTheDocument();
+    expect(screen.getByTestId("deployment-choices")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Veteran squad" }));
+    expect(callbacks.onNextBriefing).toHaveBeenCalledOnce();
 
     const multiplayerWon = { ...won, multiplayer: true, missionName: "Versus Skirmish" };
     rerender(<MissionResult state={multiplayerWon} {...callbacks} />);

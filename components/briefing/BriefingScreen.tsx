@@ -21,6 +21,7 @@ import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
 import { cachedLocalStorage } from "@/lib/persist/save";
 import { readTelemetry } from "@/lib/persist/telemetry";
 import { briefingProficiencyNote, campaignProficiencyBand } from "@/lib/sim/proficiency";
+import { fieldNotes } from "@/lib/sim/fieldIdentity";
 import { useBriefingController } from "./useBriefingController";
 import { useBriefingTypewriter } from "./useBriefingTypewriter";
 import type { NavigationOrigin } from "@/lib/navigation/routes";
@@ -96,6 +97,7 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
   }
 
   const liveRole = typewriter.isTalking ? typewriter.revealedLines.find((line) => line.started && !line.complete)?.speaker : undefined;
+  const notes = fieldNotes(campaign.factions[1].name, def.biome);
 
   return (
     <div
@@ -123,7 +125,7 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
                 onStoryScroll={typewriter.onStoryScroll}
               />
             </section>
-            <BriefingObjectives objectives={objectives} proficiencyNote={proficiencyNote} />
+            <BriefingObjectives objectives={objectives} proficiencyNote={proficiencyNote} groundNote={notes.ground} doctrineNote={notes.doctrine} />
           </div>
           <BriefingActions
             returnToGame={returnToGame}

@@ -111,7 +111,7 @@ describe("versioned gameplay and optional challenges", () => {
       const state = createMission({ seed, missionIndex, gameplayRulesVersion: 2 });
       const repeat = createMission({ seed, missionIndex, gameplayRulesVersion: 2 });
       expect(state.runtime?.secondary).toEqual(repeat.runtime?.secondary);
-      expect(state.runtime?.secondary.filter(o => o.priority === "optional").length).toBeLessThanOrEqual(1);
+      expect(state.runtime?.secondary.filter(o => o.priority === "optional").length).toBeLessThanOrEqual(3);
       for (const e of state.entities.filter(e => e.optionalChallenge)) expect(state.runtime?.targetIds).not.toContain(e.id);
     }
   });

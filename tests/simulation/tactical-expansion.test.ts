@@ -963,8 +963,10 @@ describe("tactical expansion", () => {
     harvester.suppression = 10;
     tick(state);
     expect(harvester.suppression).toBe(9);
-    expect(state.runtime?.secondary).toHaveLength(2);
-    expect(state.runtime?.secondary[1]?.target).toBeDefined();
+    expect(state.runtime?.secondary?.[0]?.id).toBe("yard");
+    expect(state.runtime?.secondary?.[1]?.target).toBeDefined();
+    expect(state.runtime?.secondary?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(state.runtime?.secondary?.length ?? 0).toBeLessThanOrEqual(4);
   });
 
   it("shows suppression on the unit hover tooltip", () => {

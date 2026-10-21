@@ -1,8 +1,9 @@
 import { profileContractFor, resolveMissionProfile } from "../gen/profile";
+import { fieldNotes } from "../sim/fieldIdentity";
 import type { SimState } from "../types";
 
 export type DoctrineHint = {
-  id: "power" | "counters" | "support" | "routes" | "secondary";
+  id: "power" | "counters" | "support" | "routes" | "secondary" | "ground" | "enemy";
   label: string;
   text: string;
 };
@@ -42,6 +43,11 @@ export function doctrineHintsFor(state: SimState): DoctrineHint[] {
       label: "Secondary",
       text: "Bonus orders reward preservation and timing; they are valuable, but never block the primary objective.",
     });
+  }
+  if (state.tutorialStage === undefined && !state.multiplayer) {
+    const notes = fieldNotes(state.factions[1]?.name ?? "", state.biome);
+    hints.push({ id: "ground", label: "Ground", text: notes.ground });
+    if (notes.doctrine) hints.push({ id: "enemy", label: "Enemy", text: notes.doctrine });
   }
   return hints;
 }

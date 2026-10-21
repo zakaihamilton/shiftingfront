@@ -1,4 +1,5 @@
 import { isAirUnit, isUnitKind, UNIT_STATS, labelFor } from "@/lib/catalog";
+import { isEntrenched } from "@/lib/sim/verbs";
 import { cx } from "@/lib/ui/cx";
 import type { Entity, FactionVisualProfile, Palette, Stance } from "@/lib/types";
 import { SUPPORT_MODE_LABEL, stanceLabel } from "@/lib/ui/copy";
@@ -38,6 +39,24 @@ export function SelectionIdentity({
   const supportText = selected.supportMode ? `Support: ${SUPPORT_MODE_LABEL[selected.supportMode]}` : "";
   const orderText = currentOrder ? `Order: ${currentOrder}` : "";
   const suppressionText = `Suppressed ${Math.ceil(selected.suppression ?? 0)}%`;
+  const entrenched = isEntrenched(selected);
+  const planeText = selected.kind === "strikePlane"
+    ? selected.flightState === "servicing"
+      ? `Rearming ${selected.ammo ?? 0}/${selected.maxAmmo ?? 0}`
+      : selected.landingRunwayId !== undefined && (selected.ammo ?? 0) <= 0
+        ? "Returning to the runway to rearm"
+        : (selected.ammo ?? 0) <= 0
+          ? "Out of bombs. A runway rearms the plane."
+          : `Bombs ${selected.ammo ?? 0}/${selected.maxAmmo ?? 0}`
+    : "";
+  const plantedText = selected.bombard
+    ? `Bombarding for ${Math.ceil(selected.bombard.remaining / 12)}s`
+    : selected.braced
+      ? "Braced"
+      : entrenched
+        ? "Entrenched"
+        : "";
+  const veteranText = selected.veteranRank === 1 ? "Veteran" : "";
   const cargoText = `Cargo ${selected.carry} / ${UNIT_STATS.harvester.carryMax}`;
   const ammoText = selected.class === "unit" && isAirUnit(selected.kind)
     ? `Ammo ${selected.ammo ?? 0} / ${selected.maxAmmo ?? UNIT_STATS[selected.kind].ammoMax ?? 0}${selected.flightState === "servicing" ? " · Servicing runway" : selected.landingRunwayId !== undefined ? " · Returning to runway" : ""}`
@@ -99,14 +118,16 @@ export function SelectionIdentity({
         ) : null}
         {currentOrder ? <span className={styles.orderStatus} data-testid="selected-order" data-tooltip={orderText}>{orderText}</span> : null}
         {(selected.suppression ?? 0) > 0 ? <span className={styles.stat} data-tooltip={suppressionText}>{suppressionText}</span> : null}
+        {veteranText ? <span className={styles.stat} data-testid="selected-veteran">{veteranText}</span> : null}
+        {plantedText ? <span className={styles.stat} data-testid="selected-planted">{plantedText}</span> : null}
         {selected.kind === "harvester" ? (
           <span className={styles.carry} data-tooltip={cargoText}>
             {cargoText}
           </span>
         ) : null}
         {selected.class === "unit" && isAirUnit(selected.kind) ? (
-          <span className={styles.stat} data-testid="selected-ammo" data-tooltip={ammoText}>
-            {ammoText}
+          <span className={styles.stat} data-testid="selected-ammo" data-tooltip={planeText || ammoText}>
+            {planeText || ammoText}
           </span>
         ) : null}
         {selected.class === "building" && selected.kind === "runway" ? (

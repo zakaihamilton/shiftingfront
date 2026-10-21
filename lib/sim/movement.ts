@@ -165,7 +165,8 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
       }
     }
     const movementCost = next ? terrainMovementCostAt(state, navigationMobilityFor(e), next.x, next.y) : 1;
-    const speed = UNIT_STATS[e.kind].speed / movementCost * (1 - Math.min(0.4, (e.suppression ?? 0) / 250));
+    const planted = e.bombard ? 0 : e.braced ? 0.45 : 1;
+    const speed = UNIT_STATS[e.kind].speed / movementCost * (1 - Math.min(0.4, (e.suppression ?? 0) / 250)) * planted;
     const distance = next ? Math.hypot(next.x - e.x, next.y - e.y) : 0;
     const nx = next ? Math.round(next.x) : Math.round(e.x);
     const ny = next ? Math.round(next.y) : Math.round(e.y);
