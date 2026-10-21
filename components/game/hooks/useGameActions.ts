@@ -3,7 +3,7 @@ import { buildingCameoStatus, buildingLimitReached, isAirUnit, isSupportUnit, pr
 import { beep } from "@/lib/audio/synth";
 import { voiceBarkForBeep } from "@/lib/audio/voice";
 import { groundOrders } from "@/lib/sim/orders";
-import { bombardInRange } from "@/lib/sim/verbs";
+import { bombardPointFor } from "@/lib/sim/verbs";
 import { isSharedProducerKind, readSharedProductionQueue } from "@/lib/sim/producerState";
 import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
@@ -150,11 +150,13 @@ export function useGameActions({
       notify("Attack a target, then bombard.", "error");
       return;
     }
-    if (!behemoths.some((entity) => bombardInRange(state, entity, target.x, target.y))) {
+    const shooters = aimed ? [aimed, ...behemoths.filter((entity) => entity !== aimed)] : behemoths;
+    const point = bombardPointFor(state, shooters, target);
+    if (!point) {
       notify("The target is out of range.", "error");
       return;
     }
-    enqueue({ type: "bombard", unitIds: behemoths.map((entity) => entity.id), x: target.x, y: target.y });
+    enqueue({ type: "bombard", unitIds: behemoths.map((entity) => entity.id), x: point.x, y: point.y });
     mobileCommand.current = null;
     setMobileCommandState(null);
     beep("ack");

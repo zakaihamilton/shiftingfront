@@ -23,8 +23,8 @@ import {
   FINALE_WARNING_TICKS,
 } from "../../lib/sim/fieldIdentity";
 import { tickMovement } from "../../lib/sim/movement";
-import { noteDamageDealt, tickBombards } from "../../lib/sim/verbs";
-import { powerBreakdown } from "../../lib/sim/world";
+import { bombardInRange, bombardPointFor, noteDamageDealt, tickBombards } from "../../lib/sim/verbs";
+import { invalidateLivingCache, powerBreakdown } from "../../lib/sim/world";
 import type { SimEvent } from "../../lib/types";
 
 describe("field identity", () => {
@@ -172,6 +172,17 @@ describe("field verbs", () => {
     expect(behemoth.bombard).toBeUndefined();
     expect(enemy.hp).toBeLessThan(before);
     expect(enemy.suppression).toBeGreaterThan(0);
+
+    const structure = makeFixture({ width: 20, height: 20, win: { kind: "annihilate" } });
+    const building = addBuilding(structure, 1, "objective", 2, 8);
+    const gunner = addUnit(structure, 0, "behemoth", 2, 13);
+    const nearSide = bombardPointFor(structure, [gunner], building);
+    expect(nearSide).toEqual({ x: 2, y: 9 });
+    expect(bombardInRange(structure, gunner, building.x, building.y)).toBe(false);
+    const beforeBuilding = building.hp;
+    expect(issue(structure, { type: "bombard", unitIds: [gunner.id], x: nearSide!.x, y: nearSide!.y })).toEqual([]);
+    for (let tick = 0; tick < 36; tick += 1) tickBombards(structure);
+    expect(building.hp).toBeLessThan(beforeBuilding);
   });
 
   it("says when a strike plane is returning to rearm", () => {
@@ -250,6 +261,11 @@ describe("mission drama", () => {
     expect(battleLesson(lost)).toBe("Harvesters were gone before a second refinery came online.");
     addUnit(lost, 0, "harvester", 3, 3);
     lost.lossReason = "deadline";
+    const armor = addUnit(lost, 0, "antiArmor", 4, 4);
+    expect(battleLesson(lost)).toBeUndefined();
+    armor.hp = 0;
+    lost.unitsProducedByRole.antiArmor = 1;
+    invalidateLivingCache(lost);
     expect(battleLesson(lost)).toBe("Time ran out with no anti-armor in the field.");
     lost.lossReason = undefined;
     lost.runtime = {

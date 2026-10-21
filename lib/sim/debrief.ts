@@ -160,11 +160,11 @@ export function battleLesson(state: SimState): string | undefined {
   if (state.multiplayer || state.tutorialStage !== undefined || state.result === "won") return undefined;
   const harvesters = livingView(state).filter((entity) => entity.owner === 0 && entity.kind === "harvester" && entity.hp > 0).length;
   const refineries = state.buildingsCompletedByKind.refinery ?? 0;
-  const antiArmor = state.unitsProducedByRole.antiArmor ?? 0;
+  const antiArmorInField = livingView(state).some((entity) => entity.owner === 0 && entity.kind === "antiArmor");
   const finale = state.runtime?.director?.phase === "finale";
   if (harvesters === 0 && refineries < 2) return "Harvesters were gone before a second refinery came online.";
-  if (antiArmor === 0 && finale) return "The finale arrived with no anti-armor in the field.";
-  if (antiArmor === 0 && state.lossReason === "deadline") return "Time ran out with no anti-armor in the field.";
+  if (!antiArmorInField && finale) return "The finale arrived with no anti-armor in the field.";
+  if (!antiArmorInField && state.lossReason === "deadline") return "Time ran out with no anti-armor in the field.";
   return undefined;
 }
 

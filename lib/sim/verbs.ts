@@ -1,7 +1,7 @@
 import { UNIT_STATS } from "../catalog";
 import type { Entity, SimEvent, SimState } from "../types";
 import { isUnitEntity } from "../types";
-import { byId, invalidateLivingCache } from "./world";
+import { byId, closestTargetPoint, invalidateLivingCache } from "./world";
 import { commandOwner } from "./orders/commandOwner";
 import { entitiesFor } from "./entities";
 import { campaignIdentityActive, VETERAN_DAMAGE } from "./fieldIdentity";
@@ -42,6 +42,15 @@ export function bombardRange(state: SimState, entity: Entity, x: number, y: numb
 
 export function bombardInRange(state: SimState, entity: Entity, x: number, y: number): boolean {
   return Math.hypot(entity.x - x, entity.y - y) <= bombardRange(state, entity, x, y);
+}
+
+/** Aim at the near side of a building, and keep the chosen point inside cannon range. */
+export function bombardPointFor(state: SimState, shooters: readonly Entity[], target: Entity): { x: number; y: number } | undefined {
+  for (const shooter of shooters) {
+    const point = closestTargetPoint(shooter, target);
+    if (bombardInRange(state, shooter, point.x, point.y)) return point;
+  }
+  return undefined;
 }
 
 export function noteDamageDealt(state: SimState, attacker: Entity, amount: number): void {
