@@ -211,7 +211,7 @@ export function tickAircraft(state: SimState, eventSink?: SimEvent[]): void {
         eventSink?.push({
           type: "alert",
           kind: "objective",
-          text: "Strike plane is out of bombs and returning to rearm.",
+          text: "The strike plane is out of bombs and returning to rearm.",
         });
       }
     }

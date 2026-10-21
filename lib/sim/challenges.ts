@@ -138,7 +138,7 @@ function placeFieldDrama(state: SimState, points: Array<Vec2 & { score: number }
         radius: 3,
         target: 1,
         progressTicks: 0,
-        label: "Recover the stranded mechanic. You can leave them.",
+        label: "Recover the stranded mechanic. You can ignore this objective.",
       });
       mechanicPlaced = true;
     }

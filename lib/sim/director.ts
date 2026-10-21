@@ -208,7 +208,7 @@ export function tickMissionDirector(state: SimState, eventSink?: SimEvent[], col
     && nextPhase !== "finale"
   ) {
     director.finaleWarned = true;
-    return missionAlert(eventSink, "Advisor: the final push arrives in ten seconds. Commit or pull the line back.", collectEvents, "warning");
+    return missionAlert(eventSink, "Advisor: The final push arrives in ten seconds. Commit or pull the line back.", collectEvents, "warning");
   }
   if (nextPhase === "pressure" && director.phase === "opening" && delayForRecovery(state, "pressureStart")) {
     return missionAlert(eventSink, "Pressure is building — use the delay to recover, repair, and reinforce.", collectEvents);

@@ -44,13 +44,13 @@ export function SelectionIdentity({
     ? selected.flightState === "servicing"
       ? `Rearming ${selected.ammo ?? 0}/${selected.maxAmmo ?? 0}`
       : selected.landingRunwayId !== undefined && (selected.ammo ?? 0) <= 0
-        ? "Returning to runway to rearm"
+        ? "Returning to the runway to rearm"
         : (selected.ammo ?? 0) <= 0
           ? "Out of bombs. A runway rearms the plane."
           : `Bombs ${selected.ammo ?? 0}/${selected.maxAmmo ?? 0}`
     : "";
   const plantedText = selected.bombard
-    ? `Bombarding ${Math.ceil(selected.bombard.remaining / 12)}s`
+    ? `Bombarding for ${Math.ceil(selected.bombard.remaining / 12)}s`
     : selected.braced
       ? "Braced"
       : entrenched

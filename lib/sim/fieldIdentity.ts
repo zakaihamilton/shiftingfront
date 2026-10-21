@@ -64,13 +64,13 @@ export function canyonGullyVehicleCost(kind: string, active: boolean): number | 
 }
 
 const GROUND_NOTES: Record<BiomeName, string> = {
-  "ash plains": "Ash drifts cut sight by one.",
+  "ash plains": "Ash drifts cut sight by one tile.",
   "crystal flats": "Crystal ground extends sight, and power plants yield extra power.",
   "rust canyons": "Gullies slow vehicles, so the shelf is the faster route. Units in a gully take less damage.",
   "salt marshes": "Mud slows vehicles.",
   "glass desert": "Open glass extends weapon range.",
   "tundra grid": "Packed frost lets vehicles move faster.",
-  "jungle wreckage": "Infantry in the canopy take less damage.",
+  "jungle wreckage": "Infantry in the canopy takes less damage.",
   "volcanic shelf": "Shots from the shelf hit harder. Lava scars periodically slow movement.",
 };
 

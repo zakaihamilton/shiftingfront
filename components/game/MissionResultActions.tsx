@@ -10,7 +10,7 @@ import styles from "./MissionResult.module.css";
 
 const DEPLOYMENT_CHOICES: ReadonlyArray<{ id: DeploymentEdge; label: string; detail: string }> = [
   { id: "veteranSquad", label: "Veteran squad", detail: "Four veteran infantry deploy with the next operation." },
-  { id: "forwardTurret", label: "Forward turret", detail: "A gun turret is already built at your next start." },
+  { id: "forwardTurret", label: "Forward turret", detail: "A gun turret is already built at the start of the next operation." },
   { id: "airSortie", label: "Air sortie", detail: "One strike plane begins the next operation with a full load." },
   { id: "powerReserve", label: "Power reserve", detail: "The next operation starts with extra power." },
 ];
