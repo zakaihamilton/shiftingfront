@@ -81,12 +81,18 @@ function isSharedProducerKind(value: unknown): value is "barracks" | "factory" {
   return value === "barracks" || value === "factory";
 }
 
+function isProductionJob(value: unknown): boolean {
+  return isRecord(value) && isUnitKind(value.kind) && isNonNegativeNumber(value.remaining);
+}
+
 function isSharedProductionQueue(value: unknown, maxQueueLength = Number.MAX_SAFE_INTEGER): boolean {
-  if (!isRecord(value) || !Array.isArray(value.queue) || value.queue.length > maxQueueLength || !value.queue.every(isUnitKind)) return false;
+  if (!isRecord(value) || !Array.isArray(value.queue) || !value.queue.every(isUnitKind)) return false;
+  const resume = value.resume;
+  if (resume !== undefined && (!Array.isArray(resume) || !resume.every(isProductionJob))) return false;
+  const resumeCount = Array.isArray(resume) ? resume.length : 0;
+  if (value.queue.length + resumeCount > maxQueueLength) return false;
   if (value.producing === undefined) return true;
-  return isRecord(value.producing)
-    && isUnitKind(value.producing.kind)
-    && isNonNegativeNumber(value.producing.remaining);
+  return isProductionJob(value.producing);
 }
 
 function isOwnerProducerMap(value: unknown, validateProducer: (entry: unknown) => boolean): boolean {
@@ -177,6 +183,11 @@ export function isEntity(
   if (value.landingRunwayId !== undefined && (!classIsUnit || !isIntegerInRange(value.landingRunwayId, 0, Number.MAX_SAFE_INTEGER))) return false;
   if (value.assignedPlaneId !== undefined && (!classIsBuilding || !isIntegerInRange(value.assignedPlaneId, 0, Number.MAX_SAFE_INTEGER))) return false;
   if (value.moveToHarvest !== undefined && typeof value.moveToHarvest !== "boolean") return false;
+  if (value.veteranRank !== undefined && value.veteranRank !== 0 && value.veteranRank !== 1) return false;
+  if (value.damageDealt !== undefined && !isNonNegativeNumber(value.damageDealt)) return false;
+  if (value.braced !== undefined && typeof value.braced !== "boolean") return false;
+  if (value.recruitable !== undefined && typeof value.recruitable !== "boolean") return false;
+  if (value.bombard !== undefined && (!isRecord(value.bombard) || !isFiniteNumber(value.bombard.x) || !isFiniteNumber(value.bombard.y) || !isIntegerInRange(value.bombard.remaining, 0, 10_000))) return false;
   return true;
 }
 
@@ -247,9 +258,13 @@ function isRuntime(value: unknown): boolean {
     value.extractedIds.some((id) => !targetIds.includes(id))
   )) return false;
   if (value.hqThreatActive !== undefined && typeof value.hqThreatActive !== "boolean") return false;
+  if (value.cachePaid !== undefined && typeof value.cachePaid !== "boolean") return false;
+  if (value.finalePullTicks !== undefined && !isIntegerInRange(value.finalePullTicks, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (value.director !== undefined) {
     if (!isRecord(value.director) || !isOneOf(value.director.phase, ["opening", "pressure", "finale"] as const)) return false;
     if (!isIntegerInRange(value.director.pressureStart, 0, Number.MAX_SAFE_INTEGER) || !isIntegerInRange(value.director.finaleStart, 0, Number.MAX_SAFE_INTEGER) || !isIntegerInRange(value.director.eventCount, 0, Number.MAX_SAFE_INTEGER)) return false;
+    if (value.director.finaleWarned !== undefined && typeof value.director.finaleWarned !== "boolean") return false;
+    if (value.director.finalePulled !== undefined && typeof value.director.finalePulled !== "boolean") return false;
   }
   return true;
 }
@@ -317,6 +332,7 @@ export function isStateShape(
   const nextId = value.nextId;
   if (!isIntegerInRange(nextId, 1, Number.MAX_SAFE_INTEGER) || entities.some((entity) => entity.id >= nextId)) return false;
   if (!isNonNegativeNumberArray(value.credits, ownerCount) || !isNonNegativeNumberArray(value.creditsEarned, ownerCount) || !isNonNegativeNumberArray(value.unitsProduced, ownerCount) || !isNonNegativeNumberArray(value.buildingsCompleted, ownerCount)) return false;
+  if (value.powerReserve !== undefined && !isIntegerInRange(value.powerReserve, 0, 500)) return false;
   const unitsProducedByRole = value.unitsProducedByRole;
   if (!isRecord(unitsProducedByRole) || !UNIT_KINDS.every((kind) => isNonNegativeNumber(unitsProducedByRole[kind]))) return false;
   const completedByKind = boundedEntries(value.buildingsCompletedByKind, BUILDING_KINDS.length);
@@ -336,6 +352,7 @@ export function isStateShape(
   if (value.aiState !== undefined && !isOneOf(value.aiState, ["economy", "defense", "assault", "retreat", "regroup"] as const)) return false;
   if (value.aiRetreatTick !== undefined && !isIntegerInRange(value.aiRetreatTick, 0, Number.MAX_SAFE_INTEGER)) return false;
   if (value.aiRetreatLocked !== undefined && typeof value.aiRetreatLocked !== "boolean") return false;
+  if (value.proficiencyBand !== undefined && value.proficiencyBand !== -1 && value.proficiencyBand !== 0 && value.proficiencyBand !== 1) return false;
   const aiContacts = value.aiContacts === undefined ? null : boundedEntries(value.aiContacts, 8_192);
   if (value.aiContacts !== undefined && (!aiContacts || !aiContacts.every(([key, contact]) =>
     isIntegerInRange(Number(key), 0, Number.MAX_SAFE_INTEGER) && isAiContact(contact),
@@ -359,6 +376,7 @@ export function isCampaignProgressShape(value: unknown): value is CampaignProgre
   const validStats = (stats: Record<string, unknown>) => Object.entries(stats).every(([key, score]) =>
     /^[0-5]$/.test(key) && typeof score === "number" && Number.isFinite(score) && score >= 0,
   );
+  if (value.deploymentEdge !== undefined && value.deploymentEdge !== "veteranSquad" && value.deploymentEdge !== "forwardTurret" && value.deploymentEdge !== "airSortie" && value.deploymentEdge !== "powerReserve") return false;
   return validStats(value.medals) && validStats(value.bestScores);
 }
 

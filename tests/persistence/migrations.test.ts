@@ -31,6 +31,20 @@ describe("save migrations", () => {
     expect(() => migrateSaveContent({}, "1")).toThrow("Unsupported save content version");
   });
 
+  it("keeps the remaining time of every barracks that was already producing", () => {
+    const migrated = migrateSaveContent({
+      entities: [
+        { class: "building", kind: "barracks", owner: 0, hp: 10, id: 1, constructing: 0, producing: { kind: "infantry", remaining: 40 }, queue: ["infantry"] },
+        { class: "building", kind: "barracks", owner: 0, hp: 10, id: 2, constructing: 0, producing: { kind: "antiArmor", remaining: 10 }, queue: [] },
+      ],
+    }, 1) as {
+      productionQueues: { 0: { barracks: { producing: { kind: string; remaining: number }; resume?: { kind: string; remaining: number }[]; queue: string[] } } };
+    };
+    expect(migrated.productionQueues[0].barracks.producing).toEqual({ kind: "antiArmor", remaining: 10 });
+    expect(migrated.productionQueues[0].barracks.resume).toEqual([{ kind: "infantry", remaining: 40 }]);
+    expect(migrated.productionQueues[0].barracks.queue).toEqual(["infantry"]);
+  });
+
   it("applies a registry chain when loading older content into a later format", () => {
     const migrated = migrateSaveContent({ seed: 7 }, 1, {
       currentVersion: 2,

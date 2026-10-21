@@ -5,7 +5,7 @@ import { assignMoveDestination } from "./orders/movement";
 import { runwayServicePoint } from "./aircraft";
 import { entitiesFor } from "./entities";
 import { powerShortageByOwner } from "./powerShortage";
-import { SHARED_PRODUCER_KINDS, ensureActiveProducer, isSharedProducerKind, sharedProductionQueue } from "./producerState";
+import { SHARED_PRODUCER_KINDS, ensureActiveProducer, isSharedProducerKind, sharedProductionQueue, shiftSharedResume } from "./producerState";
 import { refundOrphanedSharedQueue } from "./productionRefund";
 
 const playerPowerOk = new WeakMap<SimState, Map<number, boolean>>();
@@ -145,8 +145,12 @@ function tickSharedProduction(
     sourceId: producer.id,
   });
   if (producer.rallyPoint) assignMoveDestination(state, spawned, producer.rallyPoint.x, producer.rallyPoint.y);
-  const next = queue.queue.shift();
-  queue.producing = next ? { kind: next, remaining: UNIT_STATS[next].buildTicks } : undefined;
+  const resumed = shiftSharedResume(queue);
+  if (resumed) queue.producing = resumed;
+  else {
+    const next = queue.queue.shift();
+    queue.producing = next ? { kind: next, remaining: UNIT_STATS[next].buildTicks } : undefined;
+  }
 }
 
 export function tickProduction(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {

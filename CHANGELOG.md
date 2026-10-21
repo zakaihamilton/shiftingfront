@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Browser Back pauses the battle while the leave confirmation is open, and that confirmation says progress will be saved.
+- Skirmish AI uses late-campaign difficulty instead of the opening mission curve.
+- Support units retry pathing after a search budget miss. Attack orders no longer launch an empty strike plane and restart its rearm.
+- Mobile and coordinate Move orders are move orders. Remapped command keys no longer pan the camera, and the field manual shows the live bindings.
+- Multiplayer AI retargets a threat already in range. Harvesters no longer double-count an ore claim when they replan onto the same tile.
+- Content migration keeps the remaining build time of every barracks or factory that was already producing. Conflicting recovery journals merge campaign wins into the live record. Truncated terrain no longer loads as clear ground.
+- Pointer picking follows the shaken camera. Turret cooldown under a power shortage follows the catalog rate.
 - Optional challenge descriptions no longer expose map coordinates for supply outposts or forward ore zones.
 - Next.js and Sharp were updated to patched versions for high-severity security advisories.
 - Multiplayer resync snapshots remain authoritative at frame boundaries, including paused terminal and forfeiture updates.

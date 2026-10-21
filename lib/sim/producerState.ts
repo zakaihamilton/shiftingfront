@@ -61,16 +61,26 @@ function legacyQueue(state: SimState, owner: Owner, kind: SharedProducerKind): S
   const sources = state.entities
     .filter((entity) => entity.class === "building" && entity.kind === kind && entity.owner === owner && entity.hp > 0)
     .sort((a, b) => a.id - b.id);
-  let producing: SharedProductionQueue["producing"];
+  const jobs: { kind: UnitKind; remaining: number; order: number }[] = [];
   const queue: UnitKind[] = [];
-  for (const source of sources) {
-    if (source.producing) {
-      if (!producing) producing = { ...source.producing };
-      else queue.push(source.producing.kind);
-    }
+  sources.forEach((source, order) => {
+    if (source.producing) jobs.push({ kind: source.producing.kind, remaining: source.producing.remaining, order });
     queue.push(...(source.queue ?? []));
-  }
-  return { ...(producing ? { producing } : {}), queue };
+  });
+  jobs.sort((a, b) => a.remaining - b.remaining || a.order - b.order);
+  const [first, ...rest] = jobs;
+  return {
+    ...(first ? { producing: { kind: first.kind, remaining: first.remaining } } : {}),
+    ...(rest.length ? { resume: rest.map(({ kind: unit, remaining }) => ({ kind: unit, remaining })) } : {}),
+    queue,
+  };
+}
+
+/** Take the next preserved in-progress job, if a legacy migration parked one. */
+export function shiftSharedResume(queue: SharedProductionQueue): { kind: UnitKind; remaining: number } | undefined {
+  const resumed = queue.resume?.shift();
+  if (queue.resume && queue.resume.length === 0) delete queue.resume;
+  return resumed;
 }
 
 export function readSharedProductionQueue(
@@ -104,7 +114,7 @@ export function sharedProductionQueue(
 }
 
 export function sharedProductionQueueSize(queue: SharedProductionQueue): number {
-  return (queue.producing ? 1 : 0) + queue.queue.length;
+  return (queue.producing ? 1 : 0) + (queue.resume?.length ?? 0) + queue.queue.length;
 }
 
 export function activeProducerIdsFor(state: SimState, owner: Owner): number[] {

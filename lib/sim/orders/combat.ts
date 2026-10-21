@@ -7,6 +7,7 @@ import { assignSupportTarget, canSupportEntity } from "../support";
 import { launchAircraft } from "../aircraft";
 import { directFireRangeBonusAt } from "../terrainRules";
 import { commandOwner } from "./commandOwner";
+import { braceRangeBonus, clearPlanted } from "../verbs";
 
 export function attackUnits(state: SimState, ids: number[], targetId: number): SimEvent[] {
   const owner = commandOwner(state);
@@ -17,7 +18,12 @@ export function attackUnits(state: SimState, ids: number[], targetId: number): S
     const e = byId(state, id);
     if (!e || !isUnitEntity(e) || e.owner !== owner || e.neutral) continue;
     if (e.kind === "harvester" || isSupportUnit(e.kind)) continue;
+    if (isAirUnit(e.kind) && e.flightState === "servicing" && (e.ammo ?? 0) <= 0) {
+      e.attackTarget = targetId;
+      continue;
+    }
     if (isAirUnit(e.kind)) launchAircraft(state, e);
+    clearPlanted(e);
     e.attackTarget = targetId;
     e.flowGoal = undefined;
     e.orderMode = "attack";
@@ -27,7 +33,7 @@ export function attackUnits(state: SimState, ids: number[], targetId: number): S
     e.routePending = false;
     e.landingRunwayId = undefined;
     e.idle = false;
-    const range = UNIT_STATS[e.kind].range + directFireRangeBonusAt(state, e);
+    const range = UNIT_STATS[e.kind].range + directFireRangeBonusAt(state, e) + braceRangeBonus(e);
     const dest = target.class === "building" ? closestApproach(state, e, target) : target;
     if (Math.hypot(e.x - dest.x, e.y - dest.y) > range) {
       if (isAirUnit(e.kind)) {

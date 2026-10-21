@@ -37,7 +37,7 @@ describe("campaign summary policy", () => {
 });
 
 describe("mobile command policy", () => {
-  it("labels commands and emits attack-and-continue movement or harvest orders", () => {
+  it("labels commands and emits plain movement or harvest orders", () => {
     const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     setTile(state, 6, 6, TILE_RESOURCE, 100);
     const unit = addUnit(state, 0, "infantry", 2, 2);
@@ -45,7 +45,7 @@ describe("mobile command policy", () => {
     expect(mobileCommandLabel("attackMove")).toBe("Attack-move");
     expect(mobileCommandLabel(null)).toBe("Ready");
     expect(mobileCommandOrders(state, "move", [unit.id], undefined, 6, 6)).toEqual([
-      { type: "attackMove", unitIds: [unit.id], x: 6, y: 6 },
+      { type: "move", unitIds: [unit.id], x: 6, y: 6 },
     ]);
     expect(contextOrders(state, [unit.id], undefined, 6, 6)).toEqual([
       { type: "move", unitIds: [unit.id], x: 6, y: 6 },

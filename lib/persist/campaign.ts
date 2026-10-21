@@ -55,6 +55,9 @@ export function normalizeCampaignProgress(value: unknown, seed: number): Campaig
     completedMissions,
     medals: normalizeStats(raw.medals),
     bestScores: normalizeStats(raw.bestScores),
+    deploymentEdge: raw.deploymentEdge === "veteranSquad" || raw.deploymentEdge === "forwardTurret" || raw.deploymentEdge === "airSortie" || raw.deploymentEdge === "powerReserve"
+      ? raw.deploymentEdge
+      : undefined,
   };
 }
 

@@ -20,6 +20,7 @@ const REJECTION_MESSAGES: Record<string, string> = {
   "invalid attack target": "That's not a valid attack target.",
   "invalid support target": "That unit can't be healed or repaired.",
   "no eligible support unit": "Select a Field Medic or Repair Truck first.",
+  "target out of range": "The target is out of range.",
 };
 
 const TRAINING_STEP_MESSAGES: Record<string, string> = {
