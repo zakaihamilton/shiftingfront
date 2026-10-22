@@ -13,6 +13,9 @@ import {
   readSlot,
 } from "@/lib/persist/save";
 import { clearTelemetry, readTelemetry, serializeTelemetry } from "@/lib/persist/telemetry";
+import { campaignProficiencyBand } from "@/lib/sim/proficiency";
+import { persistDeploymentEdge } from "@/lib/persist/deploymentEdge";
+import { deploymentEdgeForMission } from "@/lib/sim/fieldIdentity";
 import { consumeFreshLaunchIntent, consumeResultReturnSnapshot } from "@/lib/persist/navigation";
 import { restoreSlot } from "@/lib/persist/save/restore";
 import type { SaveSession } from "@/lib/persist/save";
@@ -88,8 +91,14 @@ export function initialMission(
     if (previous) progress.gameplayRulesVersion = previous.gameplayRulesVersion ?? 1;
   }
   const rules = progress.gameplayRulesVersion ?? 2;
-  if (typeof window !== "undefined") writeCampaignProgress(cachedLocalStorage(), progress);
-  return createMission({ seed, missionIndex: mission, gameplayRulesVersion: rules });
+  const proficiencyBand = typeof window === "undefined" ? undefined : campaignProficiencyBand(readTelemetry(cachedLocalStorage()));
+  const deploymentEdge = typeof window === "undefined" ? undefined : deploymentEdgeForMission(progress, mission);
+  if (deploymentEdge) delete progress.deploymentEdge;
+  if (typeof window !== "undefined") {
+    writeCampaignProgress(cachedLocalStorage(), progress);
+    if (deploymentEdge) persistDeploymentEdge(seed, undefined);
+  }
+  return createMission({ seed, missionIndex: mission, gameplayRulesVersion: rules, proficiencyBand, deploymentEdge });
 }
 
 export async function prepareInitialMission({ seed, mission, resume, fresh = false, slot }: {
@@ -164,6 +173,7 @@ export function useGameSession({
   const routes = useMissionRoutes({ stateRef, saveSession, tutorial, onSaveError });
   const { goHomeNow, prepareLeave } = routes;
   const browserBackRef = useRef(false);
+  const browserBackPausedRef = useRef(false);
   const leaveBackRef = useRef<() => void>(() => undefined);
   const leaveWithoutSave = useCallback(() => {
     const fallback = leaveWithoutSaveRef.current;
@@ -217,8 +227,11 @@ export function useGameSession({
   const requestBrowserLeave = useCallback(() => {
     onBrowserBackLeave?.();
     browserBackRef.current = true;
+    browserBackPausedRef.current = !pausedRef.current;
+    pausedRef.current = true;
+    setPaused(true);
     requestConfirmationLeave();
-  }, [onBrowserBackLeave, requestConfirmationLeave]);
+  }, [onBrowserBackLeave, pausedRef, requestConfirmationLeave, setPaused]);
   const backGuard = useMissionBackGuard({ enabled: browserBackGuardEnabled, onRequestLeave: requestBrowserLeave });
 
   useEffect(() => {
@@ -245,8 +258,13 @@ export function useGameSession({
 
   const cancelConfirmation = useCallback(() => {
     browserBackRef.current = false;
+    if (browserBackPausedRef.current) {
+      browserBackPausedRef.current = false;
+      pausedRef.current = false;
+      setPaused(false);
+    }
     cancelConfirmationState();
-  }, [cancelConfirmationState]);
+  }, [cancelConfirmationState, pausedRef, setPaused]);
 
   const saveNamedSlot = useCallback((name: string, overwriteId: string | null) => {
     const saved = persistNamedSlot(name, overwriteId);

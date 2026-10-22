@@ -101,15 +101,20 @@ function drawActiveProducerIndicator(ctx: CanvasRenderingContext2D, state: SimSt
   const fontSize = Math.max(9, Math.min(12, 12 * cam.zoom));
   const badgeHeight = fontSize + 7;
   ctx.save();
-  ctx.globalAlpha = 0.96;
   ctx.strokeStyle = "#59f0c6";
-  ctx.fillStyle = "rgba(8, 31, 29, 0.94)";
   ctx.lineWidth = Math.max(2, 2.5 * cam.zoom);
   if (!selected) {
+    ctx.save();
+    ctx.globalAlpha = 0.96;
     ctx.setLineDash([1, 3]);
     ctx.lineCap = "round";
     strokeFootprint(ctx, state, cam, producer.x, producer.y, footprint.w, footprint.h);
+    ctx.restore();
   }
+  ctx.globalAlpha = 1;
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#081f1d";
+  ctx.lineWidth = Math.max(1.5, 1.5 * cam.zoom);
   ctx.font = `700 ${fontSize}px monospace`;
   const badgeWidth = ctx.measureText("ACTIVE").width + 12;
   const badgeX = Math.round(screen.x - badgeWidth / 2);

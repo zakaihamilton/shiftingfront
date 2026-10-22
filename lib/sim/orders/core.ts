@@ -5,6 +5,7 @@ import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
 import { byId, inBounds, tileAt } from "../world";
 import { holdSupport } from "../support";
+import { bombardUnits, braceUnits, clearPlanted } from "../verbs";
 import { landAircraft } from "../aircraft";
 import { moveUnits, attackMoveUnits } from "./movement";
 import { attackUnits, supportUnits, setStance, setFormation } from "./combat";
@@ -71,6 +72,12 @@ export function issue(state: SimState, command: Command): SimEvent[] {
     case "formation":
       events = setFormation(state, command.unitIds, command.formation);
       break;
+    case "brace":
+      events = braceUnits(state, command.unitIds);
+      break;
+    case "bombard":
+      events = bombardUnits(state, command.unitIds, command.x, command.y);
+      break;
     default:
       events = [];
   }
@@ -136,6 +143,7 @@ function stopUnits(state: SimState, ids: number[]): SimEvent[] {
     e.routePending = false;
     e.idle = true;
     e.moveToHarvest = undefined;
+    clearPlanted(e);
     if (isAirUnit(e.kind)) e.landingRunwayId = undefined;
     if (isSupportEntity(e)) holdSupport(e);
   }

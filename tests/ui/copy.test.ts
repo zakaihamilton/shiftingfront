@@ -3,6 +3,7 @@ import { commandRejectionMessage, formationLabel, lossReasonLabel, saveResultLab
 
 describe("player-facing copy helpers", () => {
   it("maps command rejection keys to complete sentences", () => {
+    expect(commandRejectionMessage("target out of range")).toBe("The target is out of range.");
     expect(commandRejectionMessage("insufficient credits")).toBe("Not enough credits.");
     expect(commandRejectionMessage("producer unavailable")).toBe("You need the required building first.");
     expect(commandRejectionMessage("training step: move")).toBe("Finish the movement training step first.");

@@ -10,6 +10,7 @@ import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
 import { entitiesFor } from "../entities";
 import { incomingDamageMultiplier } from "../terrainRules";
+import { isEntrenched, noteDamageDealt, ENTRENCH_INCOMING, VETERAN_DAMAGE_MULTIPLIER } from "../verbs";
 
 export function strike(
   state: SimState,
@@ -29,8 +30,11 @@ export function strike(
   if (pending) notePlayerAlert(state, e, target, pending);
   e.lastFiredTargetId = target.id;
   const jitter = 0.85 + rng.next() * 0.3;
-  const baseDamage = stats.damage * jitter * damageMultiplier(stats.weapon, armorFor(target)) * heightMultiplier(state, e, target);
-  const damage = baseDamage * incomingDamageMultiplier(state, target);
+  const veteran = e.veteranRank === 1 ? VETERAN_DAMAGE_MULTIPLIER : 1;
+  const entrenched = isEntrenched(target) ? ENTRENCH_INCOMING : 1;
+  const baseDamage = stats.damage * jitter * damageMultiplier(stats.weapon, armorFor(target)) * heightMultiplier(state, e, target) * veteran;
+  const damage = baseDamage * incomingDamageMultiplier(state, target) * entrenched;
+  noteDamageDealt(state, e, damage);
   target.hp -= damage;
   e.cooldown = stats.cooldown;
   if (target.class === "unit") {
@@ -47,7 +51,7 @@ export function strike(
       if (dist > stats.splashRadius) continue;
       if (!lineOfSight(state, target, splash)) continue;
       const falloff = Math.max(0.2, 1 - (dist / stats.splashRadius) * 0.7);
-      const splashDamage = baseDamage * 0.35 * falloff * incomingDamageMultiplier(state, splash);
+      const splashDamage = baseDamage * 0.35 * falloff * incomingDamageMultiplier(state, splash) * (isEntrenched(splash) ? ENTRENCH_INCOMING : 1);
       splash.hp -= splashDamage;
       if (splash.class === "unit") splash.suppression = Math.min(100, (splash.suppression ?? 0) + Math.round(stats.suppression * 0.35 * falloff));
       if (splash.hp <= 0) {
@@ -90,6 +94,12 @@ export function strike(
 }
 
 export function chase(state: SimState, e: Entity, target: Entity): void {
+  if (e.bombard) {
+    e.path = [];
+    e.flowGoal = undefined;
+    e.routePending = false;
+    return;
+  }
   e.flowGoal = undefined;
   if (isUnitEntity(e) && isAirUnit(e.kind)) {
     e.orderDestination = { x: target.x, y: target.y };

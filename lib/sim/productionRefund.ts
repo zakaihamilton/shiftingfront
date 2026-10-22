@@ -28,7 +28,9 @@ export function refundOrphanedSharedQueue(state: SimState, owner: Owner, kind: S
 
   const queue = sharedProductionQueue(state, owner, kind);
   if (queue.producing) state.credits[owner] += UNIT_STATS[queue.producing.kind].cost;
+  for (const job of queue.resume ?? []) state.credits[owner] += UNIT_STATS[job.kind].cost;
   for (const unit of queue.queue) state.credits[owner] += UNIT_STATS[unit].cost;
   queue.producing = undefined;
+  delete queue.resume;
   queue.queue.length = 0;
 }

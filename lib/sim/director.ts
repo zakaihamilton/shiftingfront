@@ -1,9 +1,10 @@
-import { footprintOf, labelFor } from "../catalog";
+import { footprintOf, labelFor, TICKS_PER_SECOND } from "../catalog";
 import { isUnitEntity, type MissionDirectorPhase, type MissionRuntime, type SimEvent, type SimState, type UnitKind } from "../types";
 import { missionDifficulty } from "./difficulty";
 import { powerBreakdown, trySpawnUnit } from "./world";
 import { objectiveContractFor, profileContractFor, resolveMissionProfile } from "../gen/profile";
 import { entitiesFor } from "./entities";
+import { FINALE_WARNING_TICKS } from "./fieldIdentity";
 
 const CLASSIC_DIRECTOR_DURATION = 3600;
 const CLASSIC_DURATION_STEP = 480;
@@ -167,6 +168,13 @@ function phaseAlert(state: SimState, runtime: MissionRuntime, phase: MissionDire
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
+export function finaleWarningText(remainingTicks: number): string {
+  const seconds = Math.round(remainingTicks / TICKS_PER_SECOND);
+  if (seconds < 1) return "Advisor: The final push is arriving now. Commit or pull the line back.";
+  const amount = seconds === 10 ? "ten seconds" : seconds === 1 ? "one second" : `${seconds} seconds`;
+  return `Advisor: The final push arrives in ${amount}. Commit or pull the line back.`;
+}
+
 function missionAlert(
   eventSink: SimEvent[] | undefined,
   text: string,
@@ -199,6 +207,16 @@ export function tickMissionDirector(state: SimState, eventSink?: SimEvent[], col
   if (nextPhase === "opening" && state.tick === director.pressureStart - PRESSURE_WARNING_TICKS) {
     const profile = resolveMissionProfile(state.seed, state.missionIndex, runtime.kind);
     return missionAlert(eventSink, `${profileContractFor(profile).alert} Pressure expected in two minutes.`, collectEvents);
+  }
+  const finaleRemaining = director.finaleStart - state.tick;
+  const finaleDue = finaleRemaining <= 0;
+  if (
+    !director.finaleWarned
+    && finaleRemaining <= FINALE_WARNING_TICKS
+    && (!finaleDue || director.finalePulled === true)
+  ) {
+    director.finaleWarned = true;
+    return missionAlert(eventSink, finaleWarningText(finaleRemaining), collectEvents, "warning");
   }
   if (nextPhase === "pressure" && director.phase === "opening" && delayForRecovery(state, "pressureStart")) {
     return missionAlert(eventSink, "Pressure is building — use the delay to recover, repair, and reinforce.", collectEvents);

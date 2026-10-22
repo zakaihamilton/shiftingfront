@@ -56,48 +56,48 @@ export function isRleString(raw: unknown): raw is string {
   });
 }
 
-function decodePairs(raw: readonly number[], expectedLength: number): number[] {
-  const out: number[] = new Array(expectedLength);
-  let outIdx = 0;
+function expandRuns(raw: readonly number[], expectedLength: number): number[] {
+  const out: number[] = [];
   for (let i = 0; i + 1 < raw.length; i += 2) {
     const count = raw[i]!;
     const value = raw[i + 1]!;
-    if (!Number.isInteger(count) || count < 0 || !Number.isFinite(value)) continue;
-    for (let c = 0; c < count && outIdx < expectedLength; c++) out[outIdx++] = value;
+    if (!Number.isInteger(count) || count <= 0 || !Number.isFinite(value)) throw new Error("Invalid map data");
+    for (let c = 0; c < count; c++) {
+      if (out.length >= expectedLength) throw new Error("Invalid map data");
+      out.push(value);
+    }
   }
-  while (outIdx < expectedLength) out[outIdx++] = 0;
+  if (out.length !== expectedLength) throw new Error("Invalid map data");
   return out;
+}
+
+function decodeExact(raw: unknown, expectedLength: number): number[] {
+  if (isRleEncoded(raw)) return expandRuns(raw.runs, expectedLength);
+  if (Array.isArray(raw)) {
+    if (raw.length === expectedLength) return [...raw];
+    return expandRuns(raw as number[], expectedLength);
+  }
+  if (typeof raw === "string") {
+    if (!isRleString(raw)) throw new Error("Invalid map data");
+    const pairs: number[] = [];
+    for (const part of raw.split(",")) {
+      if (!part) continue;
+      const sep = part.indexOf("x");
+      if (sep === -1) pairs.push(1, Number(part));
+      else pairs.push(Number(part.slice(0, sep)), Number(part.slice(sep + 1)));
+    }
+    return expandRuns(pairs, expectedLength);
+  }
+  throw new Error("Invalid map data");
 }
 
 export function decodeRle(raw: unknown, expectedLength: number, alternateLength?: number): number[] {
   if (!raw) return new Array(expectedLength).fill(0);
-  if (isRleEncoded(raw)) return decodePairs(raw.runs, expectedLength);
-  if (Array.isArray(raw)) {
-    if (raw.length === expectedLength || (alternateLength !== undefined && raw.length === alternateLength)) {
-      return [...raw];
-    }
-    return decodePairs(raw as number[], expectedLength);
+  if (Array.isArray(raw) && alternateLength !== undefined && raw.length === alternateLength) return [...raw];
+  try {
+    return decodeExact(raw, expectedLength);
+  } catch (error) {
+    if (alternateLength !== undefined && alternateLength !== expectedLength) return decodeExact(raw, alternateLength);
+    throw error;
   }
-  if (typeof raw === "string") {
-    const out: number[] = new Array(expectedLength);
-    let outIdx = 0;
-    if (!isRleString(raw)) return out.fill(0);
-    const parts = raw.split(",");
-    for (let i = 0; i < parts.length; i++) {
-      const p = parts[i]!;
-      const sep = p.indexOf("x");
-      if (sep === -1) {
-        if (outIdx < expectedLength) out[outIdx++] = Number(p);
-      } else {
-        const count = Number(p.slice(0, sep));
-        const val = Number(p.slice(sep + 1));
-        for (let c = 0; c < count && outIdx < expectedLength; c++) {
-          out[outIdx++] = val;
-        }
-      }
-    }
-    while (outIdx < expectedLength) out[outIdx++] = 0;
-    return out;
-  }
-  return new Array(expectedLength).fill(0);
 }

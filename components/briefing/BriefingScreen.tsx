@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, useSyncExternalStore, type CSSProperties } from "react";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { ConsoleNotice } from "@/components/ui/ConsoleNotice";
@@ -18,10 +18,28 @@ import { BriefingObjectives } from "./BriefingObjectives";
 import { BriefingStory } from "./BriefingStory";
 import styles from "./BriefingScreen.module.css";
 import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
+import { cachedLocalStorage } from "@/lib/persist/save";
+import { readTelemetry } from "@/lib/persist/telemetry";
+import { briefingProficiencyNote, campaignProficiencyBand } from "@/lib/sim/proficiency";
+import { fieldNotes } from "@/lib/sim/fieldIdentity";
 import { useBriefingController } from "./useBriefingController";
 import { useBriefingTypewriter } from "./useBriefingTypewriter";
 import type { NavigationOrigin } from "@/lib/navigation/routes";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
+
+function subscribeProficiency(onStoreChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("storage", onStoreChange);
+  return () => window.removeEventListener("storage", onStoreChange);
+}
+
+function useBriefingProficiencyNote(mission: number): string | undefined {
+  return useSyncExternalStore(
+    subscribeProficiency,
+    () => briefingProficiencyNote(campaignProficiencyBand(readTelemetry(cachedLocalStorage())), mission),
+    () => undefined,
+  );
+}
 
 export function BriefingScreen({ seed, mission, returnToGame = false, replay = false, origin = "menu" }: { seed: number; mission: number; returnToGame?: boolean; replay?: boolean; origin?: NavigationOrigin }) {
   const progress = useCampaignProgress(seed);
@@ -57,6 +75,7 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
           ? "Back to result"
           : "Back to menu";
   const completedReplay = replay && progress.completedMissions.includes(mission);
+  const proficiencyNote = useBriefingProficiencyNote(mission);
 
   if (!def) {
     return (
@@ -78,6 +97,7 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
   }
 
   const liveRole = typewriter.isTalking ? typewriter.revealedLines.find((line) => line.started && !line.complete)?.speaker : undefined;
+  const notes = fieldNotes(campaign.factions[1].name, def.biome);
 
   return (
     <div
@@ -105,7 +125,7 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
                 onStoryScroll={typewriter.onStoryScroll}
               />
             </section>
-            <BriefingObjectives objectives={objectives} />
+            <BriefingObjectives objectives={objectives} proficiencyNote={proficiencyNote} groundNote={notes.ground} doctrineNote={notes.doctrine} />
           </div>
           <BriefingActions
             returnToGame={returnToGame}

@@ -4,10 +4,11 @@ import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
 import { byId, closestApproach, distToEntity, livingView } from "../world";
 import { contestedResourcePoint } from "./helpers";
-import { homeGuardCount } from "../policy";
+import { adaptiveHomeGuardCount } from "../proficiency";
 import { nearestKnownPlayer } from "./visibility";
 import { launchAircraft } from "../aircraft";
 import { buildInfluenceMap, findWeakestFlank } from "./influence";
+import { enemyDoctrine } from "../fieldIdentity";
 
 function sameTile(a: { x: number; y: number } | undefined, b: { x: number; y: number }): boolean {
   return !!a && Math.round(a.x) === Math.round(b.x) && Math.round(a.y) === Math.round(b.y);
@@ -114,8 +115,9 @@ export function assignAssault(
   knownPlayers?: Entity[],
   aiOwner: Owner = 1,
   opponents: readonly Owner[] = [0],
+  shift = 0,
 ): void {
-  const guards = homeGuardCount(state.missionIndex);
+  const guards = adaptiveHomeGuardCount(state.missionIndex, shift);
   if (!retarget) {
     let allAssigned = true;
     for (const unit of units) {
@@ -158,7 +160,8 @@ export function assignAssault(
       }
       return;
     }
-    const target = objectiveTarget ?? (harvester && index % 2 === 1 ? playerYard : harvester ?? playerYard);
+    const raidHarvesters = enemyDoctrine(state, aiOwner)?.raidHarvesters === true;
+    const target = objectiveTarget ?? (harvester && (raidHarvesters ? index % 4 === 0 : index % 2 === 1) ? playerYard : harvester ?? playerYard);
     assignAttack(state, u, target);
   });
 }
