@@ -1,50 +1,28 @@
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { createMission, tick } from "../../lib/sim/api";
 import { MAX_CATCH_UP_TICKS_PER_FRAME, startLoop } from "../../lib/game/loop";
+import { createMission, tick } from "../../lib/sim/api";
 import type { SimState } from "../../lib/types";
 
 describe("long-session stress and reliability", () => {
-  it("runs 5,000+ continuous simulation ticks across 5 mission cycles without heap leaks or entity explosion", () => {
-    const memoryBefore = process.memoryUsage().heapUsed;
-    const missionCount = 5;
-    const ticksPerMission = 1000; // 5 x 1000 = 5000 ticks total
+  it("runs 5,000+ continuous simulation ticks across 5 mission cycles without heap leaks or entity explosion", { timeout: 60_000 }, () => {
+    // Worker threads reject --expose-gc, and heapUsed without a collection
+    // still includes the previous mission. Measure retained heap in a child
+    // process that can actually collect.
+    const root = fileURLToPath(new URL("../..", import.meta.url));
+    const probe = fileURLToPath(new URL("./longSessionHeapProbe.ts", import.meta.url));
+    const result = spawnSync(process.execPath, ["--expose-gc", "--import", "tsx", probe], {
+      cwd: root,
+      encoding: "utf8",
+      timeout: 50_000,
+    });
 
-    for (let missionIndex = 0; missionIndex < missionCount; missionIndex++) {
-      const state = createMission({ seed: 100 + missionIndex, missionIndex });
-      expect(state.entities.length).toBeGreaterThan(0);
-
-      for (let t = 0; t < ticksPerMission; t++) {
-        tick(state);
-      }
-
-      // Verify state integrity after 1,000 ticks
-      expect(state.tick).toBe(ticksPerMission);
-
-      // Verify spatial and coordinate sanity
-      for (const entity of state.entities) {
-        expect(Number.isFinite(entity.x)).toBe(true);
-        expect(Number.isFinite(entity.y)).toBe(true);
-        expect(Number.isFinite(entity.hp)).toBe(true);
-        expect(entity.x).toBeGreaterThanOrEqual(0);
-        expect(entity.x).toBeLessThanOrEqual(state.width);
-        expect(entity.y).toBeGreaterThanOrEqual(0);
-        expect(entity.y).toBeLessThanOrEqual(state.height);
-      }
-
-      // Ensure entity count stays reasonably bounded (no runaway unit spawning)
-      expect(state.entities.length).toBeLessThan(500);
-    }
-
-    // Force garbage collection if exposed, or check heap delta
-    if (typeof global.gc === "function") {
-      global.gc();
-    }
-    const memoryAfter = process.memoryUsage().heapUsed;
-    const heapGrowthMb = (memoryAfter - memoryBefore) / (1024 * 1024);
-
-    // Rules 2 maps are larger than the old 48–96 layouts. Growth across five
-    // 1,000-tick missions should still stay well under a leak-sized jump.
-    expect(heapGrowthMb).toBeLessThan(100);
+    expect(result.status, result.stderr || result.stdout || result.error?.message).toBe(0);
+    const report = JSON.parse(result.stdout) as { heapGrowthMb: number };
+    // Rules 2 maps are larger than the old 48–96 layouts. Retained growth
+    // across five 1,000-tick missions should still stay well under a leak.
+    expect(report.heapGrowthMb).toBeLessThan(100);
   });
 
   it("recovers gracefully from a 5,000ms frame gap without death-spiraling", () => {
