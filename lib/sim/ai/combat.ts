@@ -4,6 +4,7 @@ import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
 import { byId, closestApproach, distToEntity, livingView } from "../world";
 import { contestedResourcePoint } from "./helpers";
+import { aiDifficultyMission } from "../difficulty";
 import { adaptiveHomeGuardCount } from "../proficiency";
 import { nearestKnownPlayer } from "./visibility";
 import { launchAircraft } from "../aircraft";
@@ -117,7 +118,7 @@ export function assignAssault(
   opponents: readonly Owner[] = [0],
   shift = 0,
 ): void {
-  const guards = adaptiveHomeGuardCount(state.missionIndex, shift);
+  const guards = adaptiveHomeGuardCount(aiDifficultyMission(state), shift);
   if (!retarget) {
     let allAssigned = true;
     for (const unit of units) {

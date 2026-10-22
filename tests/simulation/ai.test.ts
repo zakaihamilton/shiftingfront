@@ -195,6 +195,25 @@ describe("enemy AI", () => {
     expect(raider.attackTarget).toBe(playerYard.id);
   });
 
+  it("holds two skirmish yard guards and one opening-mission guard", () => {
+    const arrange = (multiplayer: boolean) => {
+      const state = makeFixture({ width: 20, height: 20, win: { kind: "annihilate" } });
+      state.multiplayer = multiplayer;
+      const enemyYard = addBuilding(state, 1, "constructionYard", 2, 2);
+      const playerYard = addBuilding(state, 0, "constructionYard", 16, 16);
+      const near = addUnit(state, 1, "infantry", 3, 2);
+      const far = addUnit(state, 1, "infantry", 5, 5);
+      assignAssault(state, [far, near], enemyYard, playerYard, true);
+      return { near, far };
+    };
+    const skirmish = arrange(true);
+    expect(skirmish.near.attackTarget).toBeUndefined();
+    expect(skirmish.far.attackTarget).toBeUndefined();
+    const opening = arrange(false);
+    expect(opening.near.attackTarget).toBeUndefined();
+    expect(opening.far.attackTarget).toBeDefined();
+  });
+
   it("prioritizes a live convoy over the default harassment targets", () => {
     const s = makeFixture({ width: 24, height: 24, win: { kind: "escort", targetCount: 1, ticks: 5000 } });
     addBuilding(s, 1, "constructionYard", 2, 2);

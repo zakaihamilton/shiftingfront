@@ -15,6 +15,7 @@ import {
 import { drawFxLayer } from "../../lib/render/renderCombat";
 import { drawSprite } from "../../lib/render/sprites";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import type { SimEvent } from "../../lib/types";
 
 vi.mock("../../lib/render/sprites", async () => {
   const actual = await vi.importActual<typeof import("../../lib/render/sprites")>("../../lib/render/sprites");
@@ -262,6 +263,29 @@ describe("combat fx bursts", () => {
       sourceY: 3,
     });
     expect(bursts.every((item) => item.variant !== undefined && item.magnitude !== undefined)).toBe(true);
+  });
+
+  it("times bombard kills out to the blast radius and leaves weapon splash unchanged", () => {
+    const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const blast: SimEvent = {
+      type: "combat",
+      owner: 2,
+      attackerKind: "behemoth",
+      weapon: "cannon",
+      x: 2,
+      y: 5,
+      targetX: 5,
+      targetY: 5,
+      targetOwner: 3,
+      targetKind: "tank",
+      destroyed: false,
+      areaRadius: 3.2,
+    };
+    const killed: SimEvent = { type: "destroyed", id: 9, owner: 1, kind: "infantry", x: 5, y: 8 };
+    const matched = burstsFromEvents([blast, killed], state, 1_000, 1).bursts.find((burst) => burst.kind === "destruction");
+    expect(matched?.impactAtMs).toBeGreaterThan(1_000);
+    const unmatched = burstsFromEvents([{ ...blast, areaRadius: undefined }, killed], state, 1_000, 1).bursts.find((burst) => burst.kind === "destruction");
+    expect(unmatched?.impactAtMs).toBeUndefined();
   });
 
   it("keeps deterministic metadata and non-gory target domains", () => {
