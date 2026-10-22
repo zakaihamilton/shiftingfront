@@ -1,3 +1,5 @@
+import { transformedCanvasPoint } from "../../canvasViewport";
+import { drawInfantryMarker } from "../../unitReadability";
 import { footprintOf, isAirUnit, UNIT_STATS } from "../../../catalog";
 import { isSharedProducerKind } from "../../../sim/producerState";
 import { buildingSprite, unitSprite } from "../../../gen/assets";
@@ -305,7 +307,7 @@ export function drawWorldEntity(e: Entity, frame: WorldEntityFrame): void {
     if (unitLayers.length) {
       drawBlendedUnitSprites(ctx, unitLayers.map(layer => ({ ...layer, img: litUnitRaster(layer.img, lightRig, flash,
         isVehicle && !aircraft && dyn && dyn.moveSpeed > 0.025 && !extras.reducedMotion
-          ? { phase: dyn.travel * 3, tracked: e.kind === "harvester" || e.kind === "tank" || e.kind === "behemoth", side: facing === 0 || facing === 4 } : undefined) })), dx, dy, dw, dh, spriteAlpha);
+          ? { phase: dyn.travel * 3, tracked: e.kind === "harvester" || e.kind === "tank" || e.kind === "behemoth", side: facing === 0 || facing === 4 } : undefined, isWalker) })), dx, dy, dw, dh, spriteAlpha);
     } else {
       ctx.globalAlpha = spriteAlpha;
       drawSprite(ctx, spec, e.class === "unit" ? litUnitRaster(img, lightRig, flash) : img, dx, dy, dw, dh);
@@ -319,8 +321,7 @@ export function drawWorldEntity(e: Entity, frame: WorldEntityFrame): void {
         const side = facing === 0 || facing === 1 || facing === 7 ? 0.96 : facing === 3 || facing === 4 || facing === 5 ? 0.04 : 0.5;
         const px = dx + (bounds.minX + bounds.width * side) / img.width * dw;
         const py = dy + (bounds.minY + bounds.height * 0.35) / img.height * dh;
-        const t = ctx.getTransform();
-        unitWeaponSockets.set(e.id, { x: t.a * px + t.c * py + t.e, y: t.b * px + t.d * py + t.f });
+        unitWeaponSockets.set(e.id, transformedCanvasPoint(ctx, px, py));
       }
     }
     drawDamageOverlay(
@@ -359,6 +360,9 @@ export function drawWorldEntity(e: Entity, frame: WorldEntityFrame): void {
   }
 
   if (bAnim) drawBuildingFx(ctx, e, s, z, bAnim, state);
+  if (isWalker && spriteReady) {
+    drawInfantryMarker(ctx, e, groundX, spriteGroundY, z, spriteAlpha, state.viewOwner ?? 0, extras.colorblindMode);
+  }
   if ((e.kind === "turret" || e.kind === "antiAirTurret") && e.class === "building") {
     const targetEntity = e.attackTarget !== undefined ? entityById.get(e.attackTarget) : undefined;
     drawTurretCannon(ctx, e, s, z, state, cam, timeMs, targetEntity, extras.colorblindMode);

@@ -196,6 +196,7 @@
 .caption {
   display: grid;
   box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto 1.2em 1.2em;
   flex: 0 0 auto;
   height: auto;
@@ -210,22 +211,19 @@
 }
 
 .captionTop {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.35rem;
+  display: contents;
 }
 
 .name {
-  flex: 1 1 auto;
+  display: block;
+  grid-column: 1 / -1;
   min-width: 0;
   overflow: visible;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   text-overflow: clip;
   white-space: normal;
-  font-size: var(--text-xs);
-  letter-spacing: 0.04em;
+  font-size: calc(0.6875rem * var(--hud-scale, 1));
+  letter-spacing: 0.02em;
   line-height: 1.2;
 }
 
@@ -239,13 +237,23 @@
 }
 
 .caption b {
-  flex: 0 0 auto;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
   color: var(--chrome-gold);
-  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
 .status {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
   color: var(--chrome-cyan);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
@@ -260,6 +268,8 @@
 }
 
 .detail {
+  grid-column: 1 / -1;
+  grid-row: 3;
   color: var(--chrome-muted);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
@@ -269,7 +279,6 @@
 }
 
 @media (max-width: 799px) and (orientation: landscape), (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
-  .name,
   .caption b {
     font-size: var(--text-2xs);
     letter-spacing: 0.02em;

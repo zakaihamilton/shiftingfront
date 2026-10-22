@@ -1,3 +1,4 @@
+import { canvasViewport } from "./canvasViewport";
 import { fogAt } from "../sim/fog";
 import type { SimState } from "../types";
 import { expandIsoDiamond, TILE_H, TILE_W, tileToScreen, type Camera } from "../iso";
@@ -101,8 +102,8 @@ export function paintTerrainAtmosphere(
   timeMs = 0,
   reducedMotion = false,
 ): void {
-  const width = ctx.canvas.width;
-  const height = ctx.canvas.height;
+  const width = canvasViewport(ctx.canvas).width;
+  const height = canvasViewport(ctx.canvas).height;
   if (width <= 0 || height <= 0 || typeof document === "undefined") return;
   const mask = ensureMask(state, cam, width, height);
   const layer = ensureLayer(width, height);

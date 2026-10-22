@@ -52,8 +52,8 @@ function paintConcreteSlab(
   let face = mixTone(CONCRETE_STEEL, CONCRETE_STEEL_LIGHT, 0.12 + polish * 0.08);
   face = mixTone(face, CONCRETE_STEEL_DARK, 0.08 + age * 0.28);
   if (age > 0.62) face = mixTone(face, SLAB_RUST, 0.06 + (age - 0.62) * 0.1);
-  const grout = mixTone(CONCRETE_STEEL_DARK, CONCRETE_STEEL, 0.22);
-  const joint = Math.max(1.15, 1.45 * z);
+  const grout = mixTone(CONCRETE_STEEL_DARK, CONCRETE_STEEL, 0.58);
+  const joint = Math.max(0.5, 0.65 * z);
   const iw = tw - joint * 2;
   const ih = th - joint;
   const iy = sy + joint * 0.5;

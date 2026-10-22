@@ -36,19 +36,28 @@ export function unitLightStrength(lights: readonly UnitLight[], x: number, y: nu
 }
 
 /** Cache silhouette-masked scene lighting; no pixel readbacks in the render loop. */
-export function litUnitRaster(image: HTMLCanvasElement, rig: TerrainLightRig, flash = 0, gear?: { phase: number; tracked: boolean; side: boolean }): HTMLCanvasElement {
+export function litUnitRaster(image: HTMLCanvasElement, rig: TerrainLightRig, flash = 0, gear?: { phase: number; tracked: boolean; side: boolean }, infantry = false): HTMLCanvasElement {
   if (typeof document === "undefined") return image;
   const flashStep = Math.round(Math.min(0.65, Math.max(0, flash)) * 6);
   const gearStep = gear ? Math.floor(gear.phase * 4) % 4 : -1;
   let id = rasterIds.get(image);
   if (id === undefined) { id = nextRasterId++; rasterIds.set(image, id); }
-  const key = `${id}:${rig.keyColor.r}:${rig.keyColor.g}:${rig.keyColor.b}:${rig.keyStrength}:${rig.ambient}:${rig.directionX}:${rig.directionY}:${flashStep}:${gearStep}:${gear?.tracked}:${gear?.side}`;
+  const key = `${infantry}:${id}:${rig.keyColor.r}:${rig.keyColor.g}:${rig.keyColor.b}:${rig.keyStrength}:${rig.ambient}:${rig.directionX}:${rig.directionY}:${flashStep}:${gearStep}:${gear?.tracked}:${gear?.side}`;
   const cached = rasters.get(key);
   if (cached) { rasters.delete(key); rasters.set(key, cached); return cached; }
   const canvas = document.createElement("canvas");
   canvas.width = image.width; canvas.height = image.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) return image;
+  if (infantry) {
+    // Cache a narrow up-light around the silhouette. The original sprite is
+    // still drawn at its authored contact point, so feet never slide.
+    ctx.drawImage(image, 0, -Math.max(1, image.width / 90));
+    ctx.globalCompositeOperation = "source-in";
+    ctx.fillStyle = "rgba(196,218,221,0.65)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = "source-over";
+  }
   ctx.drawImage(image, 0, 0);
   ctx.globalCompositeOperation = "source-atop";
   const keyLight = ctx.createLinearGradient(0, 0, canvas.width * rig.directionX, canvas.height * rig.directionY);

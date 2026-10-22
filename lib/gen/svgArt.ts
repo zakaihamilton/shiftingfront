@@ -132,10 +132,10 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
   const infantry = kind === "infantry" || kind === "medic";
   const antiArmor = kind === "antiArmor";
   const behemoth = kind === "behemoth";
-  // Keep foot soldiers visually subordinate to the larger tracked units while
-  // retaining the same bottom contact anchor on the battlefield.
-  const w = infantry ? 38 : antiArmor ? 44 : behemoth ? 78 : 64;
-  const h = infantry ? 42 : antiArmor ? 46 : behemoth ? 74 : 60;
+  // Give foot soldiers a readable silhouette at tactical zoom while keeping
+  // their authored feet anchored to the same world contact point.
+  const w = infantry ? 46 : antiArmor ? 50 : behemoth ? 78 : 64;
+  const h = infantry ? 51 : antiArmor ? 53 : behemoth ? 74 : 60;
   const facing = options.facing ?? 0;
   if (kind === "strikePlane") {
     const w = 96;

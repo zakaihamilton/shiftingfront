@@ -48,7 +48,7 @@ function fillShroudStamp(
   ctx.scale(radius, radius);
   const feather = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1);
   feather.addColorStop(0, shroudStop(rgb, 1));
-  feather.addColorStop(0.7, shroudStop(rgb, 1));
+  feather.addColorStop(0.56, shroudStop(rgb, 1));
   feather.addColorStop(1, shroudStop(rgb, 0));
   ctx.fillStyle = feather;
   ctx.beginPath();

@@ -1,4 +1,5 @@
 import { dispatchBattlefieldAudio } from "@/lib/audio/battlefield";
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import { pauseMusic, setMusicIntensity, type MusicIntensity } from "@/lib/audio/music";
 import { playSfx } from "@/lib/audio/synth";
 import { playVoiceBark } from "@/lib/audio/voice";
@@ -57,8 +58,8 @@ export function createPresentationCoordinator({
       dispatchBattlefieldAudio(
         events,
         cameraRef.current,
-        canvasRef.current?.width ?? 1,
-        canvasRef.current?.height ?? 1,
+        canvasRef.current ? canvasViewport(canvasRef.current).width : 1,
+        canvasRef.current ? canvasViewport(canvasRef.current).height : 1,
         state.viewOwner ?? 0,
       );
       if (events.some((event) => event.type === "won")) playSfx("victory", { force: true });

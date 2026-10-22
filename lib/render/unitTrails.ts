@@ -1,3 +1,4 @@
+import { canvasViewport } from "./canvasViewport";
 import { isAirUnit } from "../catalog";
 import { TILE_H, tileToScreen, type Camera } from "../iso";
 import { fogAt } from "../sim/fog";
@@ -70,11 +71,12 @@ export function updateUnitTrails(state: SimState, positions: ReadonlyMap<number,
 
 export function drawUnitTrails(ctx: CanvasRenderingContext2D, state: SimState, cam: Camera, trails: readonly TrailMark[], now: number): void {
   const z = cam.zoom;
+  const viewport = canvasViewport(ctx.canvas);
   ctx.save();
   for (const mark of trails) {
     if (fogAt(state, Math.round(mark.x), Math.round(mark.y)) !== 2) continue;
     const p = tileToScreen(mark.x, mark.y, cam, groundHeight(state, mark.x, mark.y));
-    if (p.x < -60 * z || p.y < -60 * z || p.x > ctx.canvas.width + 60 * z || p.y > ctx.canvas.height + 60 * z) continue;
+    if (p.x < -60 * z || p.y < -60 * z || p.x > viewport.width + 60 * z || p.y > viewport.height + 60 * z) continue;
     const age = Math.max(0, (now - mark.born) / mark.life);
     const headingX = Math.cos(mark.heading) - Math.sin(mark.heading);
     const headingY = (Math.cos(mark.heading) + Math.sin(mark.heading)) * 0.5;

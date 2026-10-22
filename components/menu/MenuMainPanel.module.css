@@ -24,7 +24,7 @@
   margin-top: 0.7rem;
 }
 
-.primaryAction {
+.panel .primaryAction {
   width: 100%;
   text-align: left;
   font-size: var(--text-base);
@@ -43,7 +43,7 @@
 }
 
 .resumeMeta {
-  color: var(--chrome-muted);
+  color: var(--chrome-body);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: 600;
@@ -58,7 +58,7 @@
   letter-spacing: 0.12em;
 }
 
-.loadAction {
+.panel .loadAction {
   color: var(--chrome-cyan);
   border-color: color-mix(in srgb, var(--chrome-cyan) 30%, var(--chrome-bevel));
 }

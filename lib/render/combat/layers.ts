@@ -1,3 +1,4 @@
+import { canvasViewport } from "../canvasViewport";
 import { footprintOf } from "../../catalog";
 import { drawBurstFx, drawGroundFx } from "./fxPasses";
 import { buildingSprite, unitSprite } from "../../gen/assets";
@@ -219,7 +220,7 @@ export function drawFxLayer(
   };
   const visible = (s: { x: number; y: number }) => {
     const pad = 140 * Math.max(1, z);
-    return s.x >= -pad && s.y >= -pad && s.x <= ctx.canvas.width + pad && s.y <= ctx.canvas.height + pad;
+    return s.x >= -pad && s.y >= -pad && s.x <= canvasViewport(ctx.canvas).width + pad && s.y <= canvasViewport(ctx.canvas).height + pad;
   };
 
   if (layer === "ground") {

@@ -5,10 +5,9 @@
   row-gap: 0.16rem;
   padding: 0.28rem 0.32rem 0.3rem;
   border: 1px solid var(--chrome-inset);
-  background: linear-gradient(180deg, var(--chrome-steel-hi), var(--chrome-steel-lo));
+  background: var(--chrome-steel-lo);
   box-shadow:
-    inset 1px 1px var(--chrome-bevel),
-    inset -1px -1px var(--chrome-void);
+    inset 0 1px color-mix(in srgb, var(--chrome-bevel) 25%, transparent);
 }
 
 .label {

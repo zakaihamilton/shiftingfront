@@ -135,6 +135,24 @@ test("keeps initial gameplay art loading scoped to the current mission", async (
   expect(artRequests.length, `initial art requests: ${artRequests.join(", ")}`).toBeLessThan(100);
 });
 
+test.describe("Retina battlefield performance", () => {
+  test.use({ deviceScaleFactor: 2 });
+
+  test("keeps dense late-game frames within budget on a Retina display", async ({ page }) => {
+    const state = denseLateGameState();
+    await page.addInitScript(({ key, raw }) => {
+      localStorage.setItem(key, raw);
+    }, { key: saveKey(state.seed), raw: saveEnvelope(state) });
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto("/play?seed=0421&mission=5&resume=1&perf=1");
+    await waitForBattlefield(page);
+    await expect.poll(() => page.getByTestId("battlefield-canvas").evaluate(element =>
+      (element as HTMLCanvasElement).width / element.getBoundingClientRect().width,
+    )).toBeLessThanOrEqual(1.01);
+    await expectFrameBudgets(page);
+  });
+});
+
 test("keeps mobile battlefield frames within budget with a dense late-game state", async ({ page }) => {
   const state = denseLateGameState();
   await page.addInitScript(({ key, raw }) => {

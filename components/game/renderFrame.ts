@@ -5,7 +5,8 @@ import { drawPerfHud, isPerfHudEnabled } from "@/lib/render/perfHud";
 import { isTerrainAtlasBaked } from "@/lib/render/terrainAtlas";
 import { cullFx, type FxBurst } from "@/lib/render/fx";
 import type { BuildingKind, SimState } from "@/lib/types";
-import { renderDimensions } from "./renderDimensions";
+import { renderDimensions, renderPixelRatio } from "./renderDimensions";
+import { prepareRenderContext, resizeRenderCanvas } from "@/lib/render/canvasViewport";
 import { selectionBoxScreen, type SelectionBox } from "./hooks/selectionBox";
 
 type Point = { x: number; y: number };
@@ -65,15 +66,10 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
   } = options;
 
   const dimensions = renderDimensions(host);
-  if (canvas.width !== dimensions.width || canvas.height !== dimensions.height) {
-    canvas.width = dimensions.width;
-    canvas.height = dimensions.height;
-  }
+  const density = renderPixelRatio(dimensions, undefined, undefined, state.entities.length);
+  resizeRenderCanvas(canvas, dimensions, density);
   const tooltipCanvas = options.tooltipCanvas;
-  if (tooltipCanvas && (tooltipCanvas.width !== dimensions.width || tooltipCanvas.height !== dimensions.height)) {
-    tooltipCanvas.width = dimensions.width;
-    tooltipCanvas.height = dimensions.height;
-  }
+  if (tooltipCanvas) resizeRenderCanvas(tooltipCanvas, dimensions, density);
 
   let worldCtx = options.worldCtx;
   if (!worldCtx || worldCtx.canvas !== canvas) {
@@ -89,13 +85,17 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     };
   }
 
+  prepareRenderContext(worldCtx);
   let tooltipCtx: CanvasRenderingContext2D | null = worldCtx;
   if (tooltipCanvas) {
     const cachedTooltipCtx = options.tooltipCtx;
     tooltipCtx = cachedTooltipCtx?.canvas === tooltipCanvas
       ? cachedTooltipCtx
       : tooltipCanvas.getContext("2d");
-    tooltipCtx?.clearRect(0, 0, tooltipCanvas.width, tooltipCanvas.height);
+    if (tooltipCtx) {
+      prepareRenderContext(tooltipCtx);
+      tooltipCtx.clearRect(0, 0, dimensions.width, dimensions.height);
+    }
   }
 
   extras.cursor = cursor;
@@ -121,7 +121,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     }
     if (miniCtx) {
       const miniStarted = worldTimings ? performance.now() : 0;
-      renderMinimap(miniCtx, state, cameraViewQuad(minimapCam, canvas.width, canvas.height), selected, options.colorblindMode);
+      renderMinimap(miniCtx, state, cameraViewQuad(minimapCam, dimensions.width, dimensions.height), selected, options.colorblindMode);
       if (worldTimings) minimapMs = performance.now() - miniStarted;
     }
   }
@@ -131,7 +131,7 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     }
     if (secondaryMiniCtx) {
       const miniStarted = worldTimings ? performance.now() : 0;
-      renderMinimap(secondaryMiniCtx, state, cameraViewQuad(minimapCam, canvas.width, canvas.height), selected, options.colorblindMode);
+      renderMinimap(secondaryMiniCtx, state, cameraViewQuad(minimapCam, dimensions.width, dimensions.height), selected, options.colorblindMode);
       if (worldTimings) minimapMs += performance.now() - miniStarted;
     }
   }

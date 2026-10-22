@@ -53,7 +53,12 @@ async function waitForBattlefield(page: Page) {
     if (!host) return false;
     const width = Math.max(mins.width, Math.floor(host.clientWidth));
     const height = Math.max(mins.height, Math.floor(host.clientHeight));
-    return canvasEl.width === width && canvasEl.height === height;
+    const density = Math.min(
+      window.devicePixelRatio || 1,
+      navigator.maxTouchPoints > 0 ? 1.5 : 2,
+      Math.sqrt((navigator.maxTouchPoints > 0 ? 1_500_000 : 4_000_000) / (width * height)),
+    );
+    return canvasEl.width === Math.round(width * density) && canvasEl.height === Math.round(height * density);
   }, { width: MIN_RENDER_WIDTH, height: MIN_RENDER_HEIGHT }), { timeout: 15_000 }).toBe(true);
 }
 
@@ -70,8 +75,8 @@ async function loadAutosaveFromPause(page: Page) {
 async function pageCamera(page: Page, state: SimState) {
   const canvas = page.getByTestId("battlefield-canvas");
   const dimensions = await canvas.evaluate((element) => ({
-    width: (element as HTMLCanvasElement).width,
-    height: (element as HTMLCanvasElement).height,
+    width: element.parentElement!.clientWidth,
+    height: element.parentElement!.clientHeight,
   }));
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Battlefield canvas has no layout bounds");

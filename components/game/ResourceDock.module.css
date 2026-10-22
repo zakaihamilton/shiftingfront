@@ -4,8 +4,8 @@
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--chrome-inset);
-  background: linear-gradient(var(--chrome-steel), var(--chrome-steel-lo));
-  box-shadow: inset 1px 1px var(--chrome-bevel), inset -1px -1px var(--chrome-void), 2px 2px 0 var(--chrome-inset);
+  background: var(--chrome-steel-lo);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--chrome-bevel) 30%, transparent);
 }
 
 .host {

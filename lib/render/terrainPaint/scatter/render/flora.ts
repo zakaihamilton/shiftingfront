@@ -47,7 +47,7 @@ export function drawTuft(
   const s = z * scale;
   const blades = 5 + (detailHash(variant, 461) % 3);
   const stem = mixRgb(mats.dark, mats.blocked, 0.15);
-  const tip = mixRgb(mats.light, mats.high, 0.45);
+  const tip = mixRgb(mats.high, mats.mid, 0.35);
   const wind = detailSigned(variant, 467, 1.1) * s;
   paintLayeredShadow(ctx, s, 5.8, 1.9, 2.5, mats.dark);
   ctx.lineCap = "round";
@@ -73,9 +73,9 @@ export function drawShrub(
   variant: number,
 ): void {
   const s = z * scale;
-  const dark = mixRgb(mats.high, mats.blocked, 0.32);
-  const mid = mixRgb(mats.high, mats.light, 0.35);
-  const hi = mats.light;
+  const dark = mixRgb(mats.blocked, mats.dark, 0.28);
+  const mid = mixRgb(mats.high, mats.mid, 0.48);
+  const hi = mixRgb(mats.light, mats.high, 0.58);
   const lobes = 4 + (detailHash(variant, 541) % 2);
   paintLayeredShadow(ctx, s, 6.4, 2.05, 2.6, mats.dark);
   ctx.strokeStyle = rgbOf(mixRgb(mats.dark, mats.blocked, 0.52));
@@ -94,7 +94,15 @@ export function drawShrub(
   ];
   for (let i = 0; i < lobes; i++) {
     const lobe = spots[i]!;
-    ctx.fillStyle = rgbOf(lobe.fill);
+    // Match the scene's upper-left key and cool shaded undersides.
+    const light = ctx.createLinearGradient(
+      (lobe.x - lobe.rx * 0.6) * s, (lobe.y - lobe.ry) * s,
+      (lobe.x + lobe.rx * 0.5) * s, (lobe.y + lobe.ry) * s,
+    );
+    light.addColorStop(0, rgbOf(mixRgb(lobe.fill, hi, 0.35)));
+    light.addColorStop(0.48, rgbOf(lobe.fill));
+    light.addColorStop(1, rgbOf(mixRgb(lobe.fill, dark, 0.66)));
+    ctx.fillStyle = light;
     ctx.beginPath();
     ctx.ellipse(
       (lobe.x + detailSigned(variant, 571 + i * 7, 0.8)) * s,
@@ -107,7 +115,7 @@ export function drawShrub(
     );
     ctx.fill();
   }
-  withAlpha(ctx, 0.32, () => {
+  withAlpha(ctx, 0.2, () => {
     ctx.fillStyle = rgbOf(hi);
     ctx.beginPath();
     ctx.ellipse(0.4 * s, -4.6 * s, 2.1 * s, 1.3 * s, -0.25, 0, Math.PI * 2);

@@ -1,3 +1,4 @@
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import { useCallback, useRef, useState, type RefObject } from "react";
 import {
   cameraPanBounds,
@@ -56,7 +57,7 @@ export function useMinimapInteraction({
     const point = minimapPointFromEvent(e);
     const tx = Math.max(0, Math.min(s.width - 1, Math.floor(point.x)));
     const ty = Math.max(0, Math.min(s.height - 1, Math.floor(point.y)));
-    const bounds = cameraPanBounds(s.width, s.height, canvas.width, canvas.height);
+    const bounds = cameraPanBounds(s.width, s.height, canvasViewport(canvas).width, canvasViewport(canvas).height);
     focusCameraAtTile(camRef.current, tx, ty, bounds, { elevation: heightAt(s, tx, ty) });
   }, [cancelCameraFocus, canvasRef, camRef, minimapPointFromEvent, stateRef]);
 
@@ -90,7 +91,7 @@ export function useMinimapInteraction({
       setIsMinimapDragging(true);
     }
     const point = minimapPointFromEvent(e);
-    const bounds = cameraPanBounds(s.width, s.height, canvas.width, canvas.height);
+    const bounds = cameraPanBounds(s.width, s.height, canvasViewport(canvas).width, canvasViewport(canvas).height);
     camRef.current.x = drag.startCameraX;
     camRef.current.y = drag.startCameraY;
     panCamera(

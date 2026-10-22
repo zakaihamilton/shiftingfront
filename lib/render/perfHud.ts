@@ -1,3 +1,4 @@
+import { prepareRenderContext } from "./canvasViewport";
 import { chromeMonoFont } from "../ui/chromeFont";
 
 export type WorldPhaseTimings = {
@@ -70,7 +71,7 @@ export function drawPerfHud(
 ): void {
   const line = composePerfHudLine(nowMs, world, minimapMs);
   ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  prepareRenderContext(ctx);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
   ctx.shadowBlur = 0;

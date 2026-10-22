@@ -146,7 +146,7 @@
 }
 
 .topbarMuted {
-  color: var(--chrome-muted);
+  color: #a6bac8;
 }
 
 .statusDot {
@@ -470,7 +470,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.05em;
-  color: var(--chrome-muted);
+  color: #a6bac8;
 }
 
 .footerLink {
@@ -479,7 +479,7 @@
   padding: 0;
   font: inherit;
   cursor: pointer;
-  color: var(--chrome-muted);
+  color: #a6bac8;
   text-decoration: none;
   transition: color 0.15s ease;
 }

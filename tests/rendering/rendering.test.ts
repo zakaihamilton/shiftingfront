@@ -670,7 +670,7 @@ describe("shroud corner rounding", () => {
     const { ctx, addColorStop, arcTo } = mockStampCtx();
     paintShroudMaskTile(ctx, 100, 50, TILE_W, TILE_H, 0, 0, 0, 1, 1, 4, 4, 0, state);
     expect(addColorStop).toHaveBeenNthCalledWith(1, 0, "rgba(0,0,0,1)");
-    expect(addColorStop).toHaveBeenNthCalledWith(2, 0.7, "rgba(0,0,0,1)");
+    expect(addColorStop).toHaveBeenNthCalledWith(2, 0.56, "rgba(0,0,0,1)");
     expect(addColorStop).toHaveBeenNthCalledWith(3, 1, "rgba(0,0,0,0)");
     expect(arcTo).toHaveBeenCalledTimes(4);
     expect(arcTo.mock.calls.every((call) => call[4] === 0)).toBe(true);

@@ -1,3 +1,4 @@
+import { drawRenderCanvas, prepareRenderContext } from "../../canvasViewport";
 import { footprintOf } from "../../../catalog";
 import type { SimState } from "../../../types";
 import { animClock } from "../../anim";
@@ -37,6 +38,7 @@ export function renderTerrainPhase(
   if (layer && scroll && scrollLayerNeedsRebuild(scroll, contentKey, cam.x, cam.y)) {
     const tctx = layer.getContext("2d");
     if (tctx) {
+      prepareRenderContext(tctx);
       paintTerrain(tctx, state, scrollLayerPaintCamera(cam, pad));
       scroll.key = contentKey;
       scroll.originX = cam.x;
@@ -46,7 +48,7 @@ export function renderTerrainPhase(
   }
   if (layer && scroll && scroll.key === contentKey) {
     const blit = scrollLayerBlitOffset(scroll, cam.x, cam.y);
-    ctx.drawImage(layer, blit.x, blit.y);
+    drawRenderCanvas(ctx, layer, blit.x, blit.y);
   } else {
     paintTerrain(ctx, state, cam);
   }

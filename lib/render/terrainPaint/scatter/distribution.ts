@@ -9,7 +9,7 @@ import {
   TILE_WATER,
 } from "../../../types";
 import { tileVariant } from "../../terrainAtlas";
-import { terrainVisualTuningFor } from "../../terrainMaterials";
+import { fbm, terrainVisualTuningFor } from "../../terrainMaterials";
 import type { ScatterItem, ScatterKind, ScatterWorld } from "./types";
 
 const POOLS: Record<BiomeName, ScatterKind[]> = {
@@ -109,9 +109,9 @@ function makeItem(
   };
 }
 
-function groundItems(biome: BiomeName, v: number, feature: TerrainFeatureSample): ScatterItem[] {
+function groundItems(biome: BiomeName, v: number, feature: TerrainFeatureSample, coverage: number): ScatterItem[] {
   const tuning = terrainVisualTuningFor(biome);
-  const chance = Math.min(72, Math.round(scatterChance(biome) * tuning.scatterDensity + feature.intensity * 12));
+  const chance = Math.min(72, Math.round((scatterChance(biome) * tuning.scatterDensity + feature.intensity * 12) * coverage));
   const roll = Math.floor(unit(v, 397) * 100);
   if (roll >= chance) return [];
   const grouped = unit(v, 401) < 0.16 + tuning.clusterBias * 0.26;
@@ -160,5 +160,7 @@ export function scatterForTile(
   if (tile === TILE_WATER || tile === TILE_RESOURCE || tile === TILE_BLOCKED) return [];
   if (surf === SURFACE_CONCRETE) return [];
   if (surf === SURFACE_ROAD) return roadItems(v);
-  return groundItems(state.biome, v, terrainFeatureAt(state, x, y));
+  // World-space patches leave quiet lanes between natural clusters.
+  const coverage = 0.35 + fbm(x * 0.19, y * 0.19, state.seed ^ 0x51ca77) * 0.95;
+  return groundItems(state.biome, v, terrainFeatureAt(state, x, y), coverage);
 }
