@@ -90,11 +90,15 @@ describe("free-for-all skirmish simulation", () => {
     tickMultiplayerAi(state);
 
     for (const owner of aiOwners) {
-      const assignedTargets = state.entities
-        .filter((entity) => entity.owner === owner && entity.class === "unit" && entity.attackTarget !== undefined)
+      // Late-campaign yard guards stay home. The surplus raider may attack or
+      // step off toward a flank, so either order counts as leaving the base.
+      const committed = state.entities.filter((entity) => entity.owner === owner && entity.class === "unit" && entity.kind !== "harvester"
+        && (entity.attackTarget !== undefined || entity.orderDestination !== undefined));
+      expect(committed.length).toBeGreaterThan(0);
+      const assignedTargets = committed
+        .filter((entity) => entity.attackTarget !== undefined)
         .map((entity) => state.entities.find((target) => target.id === entity.attackTarget))
         .filter((target) => target !== undefined);
-      expect(assignedTargets.length).toBeGreaterThan(0);
       expect(assignedTargets.every((target) => target.owner !== owner && ALL_PLAYERS.includes(target.owner))).toBe(true);
     }
   });

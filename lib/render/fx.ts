@@ -210,7 +210,7 @@ export function burstsFromEvents(
       if (hit.type !== "combat" || hit.owner === destroyed.owner) continue;
       const distance = Math.hypot(destroyed.x - hit.targetX, destroyed.y - hit.targetY);
       const directHit = hit.targetOwner === destroyed.owner && hit.targetKind === destroyed.kind && distance < 0.001;
-      const splashRadius = splashRadiusForAttacker(hit.attackerKind);
+      const splashRadius = hit.areaRadius ?? splashRadiusForAttacker(hit.attackerKind);
       const splashHit = splashRadius > 0 && distance <= splashRadius;
       if (!directHit && !splashHit) continue;
       if (nearestHit && distance >= nearestHit.distance) continue;

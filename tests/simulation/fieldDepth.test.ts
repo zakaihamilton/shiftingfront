@@ -24,7 +24,8 @@ import {
   FINALE_WARNING_TICKS,
 } from "../../lib/sim/fieldIdentity";
 import { tickMovement } from "../../lib/sim/movement";
-import { bombardInRange, bombardPointFor, noteDamageDealt, tickBombards } from "../../lib/sim/verbs";
+import { impactSfxFor } from "../../lib/audio/battlefield";
+import { BOMBARD_RADIUS, bombardInRange, bombardPointFor, noteDamageDealt, tickBombards } from "../../lib/sim/verbs";
 import { invalidateLivingCache, powerBreakdown } from "../../lib/sim/world";
 import type { SimEvent } from "../../lib/types";
 
@@ -184,6 +185,47 @@ describe("field verbs", () => {
     expect(issue(structure, { type: "bombard", unitIds: [gunner.id], x: nearSide!.x, y: nearSide!.y })).toEqual([]);
     for (let tick = 0; tick < 36; tick += 1) tickBombards(structure);
     expect(building.hp).toBeLessThan(beforeBuilding);
+  });
+
+  it("labels a behemoth blast with the nearest victim and the bombard radius", () => {
+    const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const gunner = addUnit(state, 0, "behemoth", 4, 4);
+    gunner.owner = 2;
+    const tank = addUnit(state, 1, "tank", 7, 4);
+    tank.owner = 3;
+    const infantry = addUnit(state, 1, "infantry", tank.x, tank.y + 3);
+    infantry.hp = 10;
+    gunner.bombard = { x: tank.x, y: tank.y, remaining: 1 };
+    const events: SimEvent[] = [];
+    tickBombards(state, events);
+    const combat = events.find((event) => event.type === "combat");
+    expect(combat).toMatchObject({
+      owner: 2,
+      targetOwner: 3,
+      targetKind: "tank",
+      targetX: tank.x,
+      targetY: tank.y,
+      destroyed: false,
+      areaRadius: BOMBARD_RADIUS,
+    });
+    expect(impactSfxFor(combat && combat.type === "combat" ? combat.targetKind : "infantry")).toBe("impactMetal");
+    expect(events).toContainEqual(expect.objectContaining({ type: "destroyed", id: infantry.id, owner: 1, kind: "infantry" }));
+    expect(tank.hp).toBeGreaterThan(0);
+
+    const miss = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const lone = addUnit(miss, 0, "behemoth", 4, 4);
+    lone.owner = 2;
+    lone.bombard = { x: lone.x, y: lone.y, remaining: 1 };
+    const missed: SimEvent[] = [];
+    tickBombards(miss, missed);
+    const empty = missed.find((event) => event.type === "combat");
+    expect(empty).toMatchObject({
+      targetOwner: 2,
+      targetKind: "constructionYard",
+      destroyed: false,
+      areaRadius: BOMBARD_RADIUS,
+    });
+    expect(impactSfxFor(empty && empty.type === "combat" ? empty.targetKind : "infantry")).toBe("impact");
   });
 
   it("says when a strike plane is returning to rearm", () => {
