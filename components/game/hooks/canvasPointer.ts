@@ -1,3 +1,5 @@
+import { canvasViewport } from "@/lib/render/canvasViewport";
+
 export function canvasPointerPos(e: {
   currentTarget: { getBoundingClientRect(): DOMRect; width: number; height: number };
   clientX: number;
@@ -5,7 +7,7 @@ export function canvasPointerPos(e: {
 }) {
   const canvas = e.currentTarget;
   const r = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / r.width;
-  const scaleY = canvas.height / r.height;
+  const scaleX = canvasViewport(canvas).width / Math.max(1, r.width);
+  const scaleY = canvasViewport(canvas).height / Math.max(1, r.height);
   return { x: (e.clientX - r.left) * scaleX, y: (e.clientY - r.top) * scaleY };
 }

@@ -447,9 +447,13 @@ export function bakeAtlasRowSlice(ctx: AtlasBakeContext, rowCount: number): bool
             b += (metal.b - b) * t;
           }
           if (same === CONCRETE_CELL_CLASS) {
-            const edge = lx === 0 || ly === 0 || lx === ATLAS_CELL - 1 || ly === ATLAS_CELL - 1;
+            // Expansion joints belong to larger slabs, not every tactical tile.
+            const edge = (gx % 2 === 0 && lx === 0)
+              || (gy % 2 === 0 && ly === 0)
+              || (gx % 2 !== 0 && lx === ATLAS_CELL - 1)
+              || (gy % 2 !== 0 && ly === ATLAS_CELL - 1);
             if (edge) {
-              const t = 0.42;
+              const t = 0.22;
               r += (CONCRETE_STEEL_DARK.r - r) * t;
               g += (CONCRETE_STEEL_DARK.g - g) * t;
               b += (CONCRETE_STEEL_DARK.b - b) * t;

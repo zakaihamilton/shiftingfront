@@ -1,3 +1,4 @@
+import { canvasViewport } from "../canvasViewport";
 import { sceneryAt } from "../../gen/map";
 import type { SimState } from "../../types";
 import { fogAt } from "../../sim/fog";
@@ -58,8 +59,8 @@ export function paintOreGlints(
   cam: Camera,
   clockMs = 0,
 ): void {
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
+  const w = canvasViewport(ctx.canvas).width;
+  const h = canvasViewport(ctx.canvas).height;
   const z = cam.zoom;
   const margin = TILE_W * z;
   const range = visibleTileRange(cam, w, h, state.width, state.height);

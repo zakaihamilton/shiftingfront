@@ -81,7 +81,7 @@ function canopyLean(y: number, lean: number): number {
 
 export function treePrims(v: number, t: BlockerTone, biome: BiomeName): PropPrim[] {
   const dark = mixHex(t.high, t.blocked, 0.28);
-  const mid = mixHex(liftGreen(t.high, 16), t.mid, 0.22);
+  const mid = mixHex(liftGreen(t.high, 6), t.mid, 0.38);
   const hi = mixHex(t.light, t.high, 0.35);
   const wood = mixHex(t.dark, t.blocked, 0.42);
   const profile = TREE_PROFILES[hash(v + 7) % TREE_PROFILES.length]!;
@@ -128,7 +128,7 @@ export function treePrims(v: number, t: BlockerTone, biome: BiomeName): PropPrim
     ], mid, 0.66),
   );
   const fills = { dark, mid, hi };
-  for (let i = 0; i < Math.min(profile.lobes.length, 3); i++) {
+  for (let i = 0; i < profile.lobes.length; i++) {
     const lobe = profile.lobes[i]!;
     const lobeScale = 0.86 + treeUnit(v, 41 + i * 7) * 0.28;
     const rx = lobe.rx * scale * lobeScale;

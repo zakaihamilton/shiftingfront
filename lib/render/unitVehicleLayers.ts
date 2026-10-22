@@ -1,3 +1,4 @@
+import { transformedCanvasPoint } from "./canvasViewport";
 import { UNIT_VEHICLE_LAYERS, type VehiclePart } from "../gen/unitAnimationAssets";
 import { unitViewForFacing } from "../gen/visualAssets";
 import { isoHeadingAngle, screenAngleToFacing } from "../iso";
@@ -74,8 +75,7 @@ export function drawLayeredVehicle(ctx: CanvasRenderingContext2D, options: {
   if (turretFacing >= 5) { draw("barrel", turrets, barrelOrigin); draw("turret", turrets, turretOrigin); }
   else { draw("turret", turrets, turretOrigin); draw("barrel", turrets, barrelOrigin); }
   const p = { x: barrelOrigin.x + muzzle.x, y: barrelOrigin.y + muzzle.y };
-  const t = ctx.getTransform();
-  unitWeaponSockets.set(id, { x: t.a * p.x + t.c * p.y + t.e, y: t.b * p.x + t.d * p.y + t.f });
+  unitWeaponSockets.set(id, transformedCanvasPoint(ctx, p.x, p.y));
   return true;
 }
 export function clearUnitWeaponSockets(): void { unitWeaponSockets.clear(); }

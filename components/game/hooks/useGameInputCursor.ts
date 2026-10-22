@@ -1,3 +1,4 @@
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import { useCallback, useEffect, useLayoutEffect, useRef, type MutableRefObject, type RefObject } from "react";
 import { cameraPanBounds, panAvailability, panCamera, type PanAvailability } from "@/lib/render/camera";
 import type { Camera } from "@/lib/iso";
@@ -73,12 +74,12 @@ export function useGameInputCursor(options: {
 
     const rect = canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
-    const deltaX = wheelDeltaInPixels(event.deltaX, event.deltaMode, rect.width) * canvas.width / rect.width;
-    const deltaY = wheelDeltaInPixels(event.deltaY, event.deltaMode, rect.height) * canvas.height / rect.height;
+    const deltaX = wheelDeltaInPixels(event.deltaX, event.deltaMode, rect.width) * canvasViewport(canvas).width / rect.width;
+    const deltaY = wheelDeltaInPixels(event.deltaY, event.deltaMode, rect.height) * canvasViewport(canvas).height / rect.height;
     if (deltaX === 0 && deltaY === 0) return;
 
     cancelCameraFocus();
-    const bounds = cameraPanBounds(state.width, state.height, canvas.width, canvas.height);
+    const bounds = cameraPanBounds(state.width, state.height, canvasViewport(canvas).width, canvasViewport(canvas).height);
     panCamera(camRef.current, { space: "screen", dx: -deltaX, dy: -deltaY }, bounds);
     const nextAvailability = panAvailability(camRef.current, bounds);
     panAvailRef.current = nextAvailability;

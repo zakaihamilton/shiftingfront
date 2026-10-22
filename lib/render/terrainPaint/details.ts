@@ -19,6 +19,7 @@ import {
 import { blockerPropKind, type BlockerPropKind } from "./scatter";
 import { fillPoly, mixRgb, rgbOf, withAlpha } from "./style";
 import { terrainPropLightGain } from "../terrainLighting";
+import { mixHex } from "../../gen/tilePalette";
 
 type PropWorld = SceneryWorld & { seed: number };
 
@@ -40,19 +41,29 @@ export function smoothFogGain(state: SimState, x: number, y: number): number {
   return sum / count;
 }
 
-function paintPropArt(ctx: CanvasRenderingContext2D, prims: PropPrim[], z: number): void {
+function paintPropArt(ctx: CanvasRenderingContext2D, prims: PropPrim[], z: number, foliage = false): void {
+  const shadedFill = (fill: string, left: number, top: number, right: number, bottom: number) => {
+    if (!foliage || bottom >= 0) return fill;
+    const gradient = ctx.createLinearGradient(left * z, top * z, right * z, bottom * z);
+    gradient.addColorStop(0, mixHex(fill, "#b7c5ae", 0.18));
+    gradient.addColorStop(0.42, fill);
+    gradient.addColorStop(1, mixHex(fill, "#14252b", 0.48));
+    return gradient;
+  };
   ctx.save();
   for (const prim of prims) {
     const paint = () => {
       if (prim.k === "ell") {
-        ctx.fillStyle = prim.fill;
+        ctx.fillStyle = shadedFill(prim.fill, prim.x - prim.rx, prim.y - prim.ry, prim.x + prim.rx, prim.y + prim.ry);
         ctx.beginPath();
         ctx.ellipse(prim.x * z, prim.y * z, prim.rx * z, prim.ry * z, prim.rot, 0, Math.PI * 2);
         ctx.fill();
         return;
       }
       if (prim.k === "poly") {
-        ctx.fillStyle = prim.fill;
+        const xs = prim.pts.filter((_, index) => index % 2 === 0);
+        const ys = prim.pts.filter((_, index) => index % 2 === 1);
+        ctx.fillStyle = shadedFill(prim.fill, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
         const pts: number[] = [];
         for (const value of prim.pts) pts.push(value * z);
         fillPoly(ctx, pts);
@@ -85,7 +96,7 @@ function paintBlocker(
   v: number,
   biome: BiomeName,
 ): void {
-  paintPropArt(ctx, blockerPropPrims(kind, v, blockerToneFromRgb(mats), biome), z);
+  paintPropArt(ctx, blockerPropPrims(kind, v, blockerToneFromRgb(mats), biome), z, kind === "tree" || kind === "pine" || kind === "desertTree");
 }
 
 export function drawBlockerProp(

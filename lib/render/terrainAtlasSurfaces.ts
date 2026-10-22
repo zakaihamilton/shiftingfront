@@ -236,8 +236,9 @@ export function sampleTerrainMaterial(
     const dist = waterPixelDist(state, mapX, mapY);
     color = tintWater(mats, dist, mapX, mapY, salt);
   } else if (surface === SURFACE_CONCRETE) {
-    color = mixRgb(CONCRETE_STEEL, CONCRETE_STEEL_DARK, 0.05 + micro * 0.08);
-    color = mixRgb(color, CONCRETE_STEEL_LIGHT, 0.04 + hash2(x, y, salt) * 0.05);
+    const slab = hash2(Math.floor(x / 2), Math.floor(y / 2), salt);
+    color = mixRgb(CONCRETE_STEEL, CONCRETE_STEEL_DARK, 0.08 + slab * 0.06 + grain * 0.04);
+    color = mixRgb(color, CONCRETE_STEEL_LIGHT, 0.04 + slab * 0.035);
   } else if (surface === SURFACE_ROAD) {
     color = mixRgb(mats.road, mats.dark, 0.16 + grain * 0.22);
     color = mixRgb(color, mats.light, 0.06 + micro * 0.08);

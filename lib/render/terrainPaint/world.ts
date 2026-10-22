@@ -1,3 +1,4 @@
+import { canvasViewport, canvasDensity, drawRenderCanvas, prepareRenderContext, resizeRenderCanvas } from "../canvasViewport";
 import { cliffFaces } from "../../gen/assets";
 import { MAP_SKIRT, isMountainScenery, outsideDist, skirtAlpha } from "../../gen/map";
 import { generateCampaignVisualProfile } from "../../gen/visualProfile";
@@ -122,16 +123,14 @@ function skirtRenderTarget(ctx: CanvasRenderingContext2D): { canvas: HTMLCanvasE
     return null;
   }
   if (!skirtCanvas) skirtCanvas = document.createElement("canvas");
-  if (skirtCanvas.width !== ctx.canvas.width || skirtCanvas.height !== ctx.canvas.height) {
-    skirtCanvas.width = ctx.canvas.width;
-    skirtCanvas.height = ctx.canvas.height;
-  }
+  resizeRenderCanvas(skirtCanvas, canvasViewport(ctx.canvas), canvasDensity(ctx.canvas));
   const target = skirtCanvas.getContext("2d");
   if (!target) return null;
-  target.setTransform(1, 0, 0, 1, 0, 0);
+  prepareRenderContext(target);
   target.globalAlpha = 1;
   target.filter = "none";
-  target.clearRect(0, 0, skirtCanvas.width, skirtCanvas.height);
+  const viewport = canvasViewport(skirtCanvas);
+  target.clearRect(0, 0, viewport.width, viewport.height);
   return { canvas: skirtCanvas, ctx: target };
 }
 
@@ -426,8 +425,8 @@ function visitVisibleTiles(
   cam: Camera,
   visit: (x: number, y: number) => void,
 ): void {
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
+  const w = canvasViewport(ctx.canvas).width;
+  const h = canvasViewport(ctx.canvas).height;
   const margin = TILE_W * cam.zoom * 2;
   const range = visibleTileRange(cam, w, h, state.width, state.height);
   const x0 = range.x0;
@@ -457,8 +456,8 @@ function paintShroudLayer(
   state: SimState,
   cam: Camera,
 ): void {
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
+  const w = canvasViewport(ctx.canvas).width;
+  const h = canvasViewport(ctx.canvas).height;
   const z = cam.zoom;
   const tw = TILE_W * z;
   const th = TILE_H * z;
@@ -478,16 +477,13 @@ function paintShroudLayer(
     return;
   }
   if (!shroudMask) shroudMask = document.createElement("canvas");
-  if (shroudMask.width !== w || shroudMask.height !== h) {
-    shroudMask.width = w;
-    shroudMask.height = h;
-  }
+  resizeRenderCanvas(shroudMask, { width: w, height: h }, canvasDensity(ctx.canvas));
   const fog = shroudMask.getContext("2d");
   if (!fog) {
     paintVisibleShroud(ctx, paintShroudOverlay);
     return;
   }
-  fog.setTransform(1, 0, 0, 1, 0, 0);
+  prepareRenderContext(fog);
   fog.globalCompositeOperation = "source-over";
   fog.globalAlpha = 1;
   fog.clearRect(0, 0, w, h);
@@ -500,7 +496,7 @@ function paintShroudLayer(
   fog.globalAlpha = 1;
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
-  ctx.drawImage(shroudMask, 0, 0);
+  drawRenderCanvas(ctx, shroudMask);
   ctx.restore();
 }
 
@@ -539,7 +535,7 @@ export function paintTerrainSurface(
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.filter = `blur(${SKIRT_BLUR_PX}px)`;
-    ctx.drawImage(skirtTarget.canvas, 0, 0);
+    drawRenderCanvas(ctx, skirtTarget.canvas);
     ctx.restore();
   } else {
     paintSkirt(ctx);
@@ -587,8 +583,8 @@ export function paintTerrainWorld(
   state: SimState,
   cam: Camera,
 ): void {
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
+  const w = canvasViewport(ctx.canvas).width;
+  const h = canvasViewport(ctx.canvas).height;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.fillStyle = SHROUD_FILL;
@@ -608,14 +604,13 @@ function paintCachedTerrainSurface(ctx: CanvasRenderingContext2D, state: SimStat
     return;
   }
   const atlas = getTerrainAtlas(state);
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
-  const key = `${atlas.key}:${atlas.canvas ? "ready" : "pending"}:${cam.x}:${cam.y}:${cam.zoom}:${w}x${h}`;
+  const w = canvasViewport(ctx.canvas).width;
+  const h = canvasViewport(ctx.canvas).height;
+  const key = `${atlas.key}:${atlas.canvas ? "ready" : "pending"}:${cam.x}:${cam.y}:${cam.zoom}:${w}x${h}:${canvasDensity(ctx.canvas)}`;
   let cached = surfaceCaches.get(ctx.canvas);
   if (!cached || cached.key !== key) {
     const canvas = cached?.canvas ?? document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
+    resizeRenderCanvas(canvas, { width: w, height: h }, canvasDensity(ctx.canvas));
     const surface = canvas.getContext("2d");
     if (!surface) {
       paintTerrainSurface(ctx, state, cam);
@@ -623,9 +618,11 @@ function paintCachedTerrainSurface(ctx: CanvasRenderingContext2D, state: SimStat
     }
     // The shroud below supplies visibility shading. Geometry, textures, and
     // the blurred skirt can survive fog refreshes without being repainted.
+    prepareRenderContext(surface);
+    surface.clearRect(0, 0, w, h);
     paintTerrainSurface(surface, state, cam);
     cached = { key, canvas };
     surfaceCaches.set(ctx.canvas, cached);
   }
-  ctx.drawImage(cached.canvas, 0, 0);
+  drawRenderCanvas(ctx, cached.canvas);
 }

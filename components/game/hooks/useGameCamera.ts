@@ -1,3 +1,4 @@
+import { canvasViewport, resizeRenderCanvas } from "@/lib/render/canvasViewport";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import {
   cameraPanBounds,
@@ -10,7 +11,7 @@ import {
 import { createCamera, type Camera } from "@/lib/iso";
 import { heightAt } from "@/lib/sim/world";
 import type { SimState } from "@/lib/types";
-import { renderDimensions } from "../renderDimensions";
+import { renderDimensions, renderPixelRatio } from "../renderDimensions";
 import { useMinimapInteraction } from "./useMinimapInteraction";
 
 export function useGameCamera({
@@ -59,7 +60,7 @@ export function useGameCamera({
     const world = stateRef.current;
     const canvas = canvasRef.current;
     if (!world || !canvas) return;
-    const bounds = cameraPanBounds(world.width, world.height, canvas.width, canvas.height);
+    const bounds = cameraPanBounds(world.width, world.height, canvasViewport(canvas).width, canvasViewport(canvas).height);
     focusCameraAtTile(camRef.current, tx, ty, bounds, {
       elevation: heightAt(world, tx, ty),
       yBias,
@@ -77,7 +78,7 @@ export function useGameCamera({
 
     cancelFocusAnimation();
     const target = { ...camRef.current };
-    const bounds = cameraPanBounds(world.width, world.height, canvas.width, canvas.height);
+    const bounds = cameraPanBounds(world.width, world.height, canvasViewport(canvas).width, canvasViewport(canvas).height);
     focusCameraAtTile(target, tx, ty, bounds, {
       elevation: heightAt(world, tx, ty),
       yBias,
@@ -123,7 +124,7 @@ export function useGameCamera({
     const cy = s.entities.find((e) => e.owner === (s.viewOwner ?? 0) && e.kind === "constructionYard");
     const canvas = canvasRef.current;
     if (cy && canvas) {
-      const bounds = cameraPanBounds(s.width, s.height, canvas.width, canvas.height);
+      const bounds = cameraPanBounds(s.width, s.height, canvasViewport(canvas).width, canvasViewport(canvas).height);
       focusCameraAtTile(camRef.current, cy.x, cy.y, bounds, {
         elevation: heightAt(s, cy.x, cy.y),
         yBias: 1 / 3,
@@ -143,10 +144,7 @@ export function useGameCamera({
     const host = hostRef.current;
     if (!canvas || !host) return;
     let dimensions = renderDimensions(host);
-    if (canvas.width !== dimensions.width || canvas.height !== dimensions.height) {
-      canvas.width = dimensions.width;
-      canvas.height = dimensions.height;
-    }
+    resizeRenderCanvas(canvas, dimensions, renderPixelRatio(dimensions, undefined, undefined, s?.entities.length));
 
     if (s) resetCamera(s);
     setViewportSize(dimensions);
@@ -156,8 +154,7 @@ export function useGameCamera({
       if (nextDimensions.width === dimensions.width && nextDimensions.height === dimensions.height) return;
 
       cancelFocusAnimation();
-      canvas.width = nextDimensions.width;
-      canvas.height = nextDimensions.height;
+      resizeRenderCanvas(canvas, nextDimensions, renderPixelRatio(nextDimensions, undefined, undefined, stateRef.current?.entities.length));
 
       const currentState = stateRef.current;
       if (currentState) {

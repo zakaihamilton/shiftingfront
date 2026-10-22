@@ -1,3 +1,4 @@
+import { canvasViewport } from "../canvasViewport";
 import { featureEdgeMask } from "../../gen/map";
 import type { SimState } from "../../types";
 import { fogAt } from "../../sim/fog";
@@ -48,8 +49,8 @@ export function paintWaterFx(
   cam: Camera,
   clockMs = 0,
 ): void {
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
+  const w = canvasViewport(ctx.canvas).width;
+  const h = canvasViewport(ctx.canvas).height;
   const z = cam.zoom;
   const tw = TILE_W * z;
   const th = TILE_H * z;

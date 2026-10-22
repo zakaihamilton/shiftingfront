@@ -1,3 +1,4 @@
+import { canvasViewport } from "../canvasViewport";
 import type { BiomeName, SimState } from "../../types";
 import type { Camera } from "../../iso";
 import { terrainVisualTuningFor } from "../terrainMaterials";
@@ -83,8 +84,8 @@ export function paintTerrainWeather(
   clockMs = 0,
   reducedMotion = false,
 ): void {
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
+  const w = canvasViewport(ctx.canvas).width;
+  const h = canvasViewport(ctx.canvas).height;
   if (w <= 0 || h <= 0) return;
   if (reducedMotion) return;
   const kind = weatherKindForBiome(state.biome);

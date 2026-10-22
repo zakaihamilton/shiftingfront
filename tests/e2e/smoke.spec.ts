@@ -5,6 +5,7 @@ import { BUILDING_KINDS, footprintOf } from "../../lib/catalog";
 import { TILE_H, tileToScreen } from "../../lib/iso";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { createMission } from "../../lib/sim/api";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { createTutorialMission } from "../../lib/sim/tutorial";
 import { heightAt } from "../../lib/sim/world";
 import { spawnBuilding } from "../../lib/sim/world";
@@ -100,8 +101,8 @@ async function tutorialTargetPoint(
 ): Promise<{ x: number; y: number }> {
   const canvas = page.getByTestId("battlefield-canvas");
   const dimensions = await canvas.evaluate((element) => ({
-    width: (element as HTMLCanvasElement).width,
-    height: (element as HTMLCanvasElement).height,
+    width: element.parentElement!.clientWidth,
+    height: element.parentElement!.clientHeight,
   }));
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Battlefield canvas has no layout bounds");
@@ -173,8 +174,8 @@ async function clickTutorialTarget(
 async function battlefieldEntityGeometry(page: Page, state: SimState, entity: Entity) {
   const canvas = page.getByTestId("battlefield-canvas");
   const dimensions = await canvas.evaluate((element) => ({
-    width: (element as HTMLCanvasElement).width,
-    height: (element as HTMLCanvasElement).height,
+    width: element.parentElement!.clientWidth,
+    height: element.parentElement!.clientHeight,
   }));
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Battlefield canvas has no layout bounds");
@@ -196,6 +197,9 @@ async function battlefieldEntityGeometry(page: Page, state: SimState, entity: En
   const screen = tileToScreen(x, y, camera, heightAt(state, Math.round(entity.x), Math.round(entity.y)));
   const toCss = (value: number, axis: "x" | "y") => bounds[axis] + value * (bounds[axis === "x" ? "width" : "height"] / dimensions[axis === "x" ? "width" : "height"]);
   return {
+    bounds,
+    dimensions,
+    camera,
     screen,
     pointer: {
       x: toCss(screen.x, "x"),
@@ -276,6 +280,115 @@ test("welcome tutorial opens the seed 0000 training range", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Skip training" })).toHaveCount(0);
   await page.getByRole("button", { name: "Exit Training" }).click();
   await expect(page).toHaveURL(/\/$/);
+});
+
+test.describe("Retina battlefield", () => {
+  test.use({ deviceScaleFactor: 2, viewport: { width: 1280, height: 800 } });
+
+  for (const { count, before, after } of [
+    { count: 80, before: 2, after: 1.5 },
+    { count: 200, before: 1.5, after: 1 },
+  ]) {
+    test(`keeps rendering and picking aligned across repeated ${count}-entity density changes`, async ({ page }) => {
+      // Placing/canceling a foundation crosses the army threshold without
+      // reloading the mission, replacing the canvas, or using a debug API.
+      const state = makeFixture({ seed: 421, width: 64, height: 64, win: { kind: "annihilate" } });
+      state.heights.fill(0);
+      state.credits[1] = 0;
+      addBuilding(state, 0, "constructionYard", 30, 30);
+      addBuilding(state, 1, "constructionYard", 56, 56);
+      const infantry = addUnit(state, 0, "infantry", 29, 33);
+      while (state.entities.length < count) {
+        const i = state.entities.length;
+        addUnit(state, 0, "infantry", 3 + i % 14, 3 + Math.floor(i / 14)).idle = true;
+      }
+      await page.addInitScript(({ key, raw }) => localStorage.setItem(key, raw), {
+        key: saveKey(state.seed), raw: saveEnvelope(state),
+      });
+      await page.setViewportSize({ width: 1100, height: 700 });
+      await page.goto("/play?seed=0421&mission=0&resume=1");
+      await waitForBattlefield(page);
+      const canvas = page.getByTestId("battlefield-canvas");
+      await canvas.evaluate(element => element.setAttribute("data-density-test", "same-canvas"));
+      const { bounds, dimensions, camera } = await battlefieldEntityGeometry(page, state, infantry);
+      const cssPoint = (x: number, y: number, offsetY = 0) => {
+        const p = tileToScreen(x, y, camera, 0);
+        return {
+          x: bounds.x + p.x * bounds.width / dimensions.width,
+          y: bounds.y + (p.y + offsetY) * bounds.height / dimensions.height,
+        };
+      };
+      const soldier = cssPoint(infantry.x, infantry.y, TILE_H / 2 - 12);
+      const site = cssPoint(33, 33, TILE_H / 2);
+      const empty = cssPoint(27, 34, TILE_H / 2);
+      const ground = tileToScreen(27, 34, camera, 0);
+      const terrainColor = () => canvas.evaluate((element, point) => {
+        const source = element as HTMLCanvasElement;
+        const sample = document.createElement("canvas");
+        sample.width = sample.height = 1;
+        const context = sample.getContext("2d")!;
+        const sx = source.width / source.clientWidth;
+        const sy = source.height / source.clientHeight;
+        context.drawImage(source, point.x * sx, point.y * sy, 16 * sx, 16 * sy, 0, 0, 1, 1);
+        return Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3);
+      }, ground);
+      const expectDensity = async (density: number) => {
+        await expect.poll(() => canvas.evaluate(element => {
+          const target = element as HTMLCanvasElement;
+          return { x: target.width / target.clientWidth, y: target.height / target.clientHeight };
+        })).toEqual({ x: density, y: density });
+        await expect(canvas).toHaveAttribute("data-density-test", "same-canvas");
+      };
+      const expectPicking = async () => {
+        await page.mouse.click(empty.x, empty.y);
+        await expect(page.getByTestId("selected-kind")).toHaveCount(0);
+        await page.mouse.click(soldier.x, soldier.y);
+        await expect(page.getByTestId("selected-kind")).toHaveText("Infantry");
+      };
+
+      await expectDensity(before);
+      await expectPicking();
+      const baseline = await terrainColor();
+      expect(Math.max(...baseline), "terrain must contain painted ground").toBeGreaterThan(25);
+      const expectTerrain = async () => {
+        const color = await terrainColor();
+        for (let channel = 0; channel < 3; channel++) {
+          expect(Math.abs(color[channel]! - baseline[channel]!), "terrain survives cache resizing").toBeLessThan(20);
+        }
+      };
+      for (let cycle = 0; cycle < 3; cycle++) {
+        await page.getByRole("tab", { name: "Construction", exact: true }).click();
+        await page.getByRole("button", { name: /^Power Plant,/ }).click();
+        await page.mouse.click(site.x, site.y);
+        await expectDensity(after);
+        await expectPicking();
+        await expectTerrain();
+        await page.getByRole("tab", { name: "Construction", exact: true }).click();
+        await page.getByTestId("cameo-cancel-power").click();
+        await expectDensity(before);
+        await expectPicking();
+        await expectTerrain();
+      }
+    });
+  }
+
+  test("keeps dense rendering, infantry picking, and movement aligned", async ({ page }) => {
+    const world = createTutorialMission();
+    await page.goto("/tutorial");
+    await waitForBattlefield(page);
+    const canvas = page.getByTestId("battlefield-canvas");
+    await expect.poll(() => canvas.evaluate(element => {
+      const target = element as HTMLCanvasElement;
+      return target.width / target.getBoundingClientRect().width;
+    })).toBeCloseTo(2, 1);
+    await page.waitForTimeout(1000);
+    await clickTutorialTarget(page, world, "Friendly Infantry");
+    const coach = page.getByTestId("tutorial-overlay");
+    await waitForTutorialStage(coach, "move");
+    await expect(page.getByTestId("selected-kind")).toHaveText("Infantry");
+    await clickTutorialTarget(page, world, "Move destination", "right");
+    await waitForTutorialStage(coach, "build");
+  });
 });
 
 test("guides a player through the live tutorial flow", async ({ page }) => {

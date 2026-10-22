@@ -21,7 +21,6 @@
   user-select: none;
   cursor: crosshair;
   image-rendering: auto;
-  filter: saturate(0.96) contrast(1.04);
 }
 
 .tooltipCanvas {
@@ -57,8 +56,8 @@
   z-index: 0;
   inset: 0 0 auto;
   height: var(--status-backdrop-height, 5.25rem);
-  background: linear-gradient(180deg, rgba(5, 8, 14, 0.86), rgba(5, 8, 14, 0.58) 82%, transparent);
-  backdrop-filter: blur(8px) saturate(0.8);
+  background: linear-gradient(180deg, rgba(5, 8, 14, 0.86), rgba(5, 8, 14, 0.3) 65%, transparent);
+  backdrop-filter: blur(3px);
 }
 
 .operationBar,

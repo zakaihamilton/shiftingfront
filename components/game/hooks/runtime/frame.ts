@@ -1,3 +1,4 @@
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import {
   cameraPanBounds,
   canPan,
@@ -58,7 +59,7 @@ export function createFrameCoordinator({
         const camera = cameraRef.current;
         const canvas = canvasRef.current;
         const bounds = canvas
-          ? cameraPanBounds(state.width, state.height, canvas.width, canvas.height)
+          ? cameraPanBounds(state.width, state.height, canvasViewport(canvas).width, canvasViewport(canvas).height)
           : undefined;
         const panElapsedMs = cameraFrameMs;
         const panStep = EDGE_PAN_SPEED * panElapsedMs / 1000;

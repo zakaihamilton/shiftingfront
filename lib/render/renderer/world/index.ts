@@ -1,3 +1,4 @@
+import { canvasViewport } from "../../canvasViewport";
 import { isBuildingEntity, type Entity, type SimState } from "../../../types";
 import { BUILDING_DEFINITIONS, footprintOf } from "../../../catalog";
 import { animClock } from "../../anim";
@@ -37,8 +38,8 @@ export function renderWorld(
     mark = now;
   };
 
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
+  const w = canvasViewport(ctx.canvas).width;
+  const h = canvasViewport(ctx.canvas).height;
   ctx.clearRect(0, 0, w, h);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "medium";

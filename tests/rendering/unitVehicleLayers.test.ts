@@ -31,7 +31,7 @@ describe("cold articulated vehicle views", () => {
     // The full sprite was facing right before articulated artwork was available.
     unitFacingLayers(7, 0, 0, 140, true);
     unitFacingLayers(-8, 0, 0, 110, true);
-    const ctx = { getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) } as CanvasRenderingContext2D;
+    const ctx = { canvas: { width: 640, height: 480 }, getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) } as CanvasRenderingContext2D;
     const options = { id: 7, kind, base: unitSprite(kind, state.factions[0]!.palette), hullFacing: 1 as const,
       turretYaw: -Math.PI / 4, x: 100, groundY: 100, zoom: 1, time: 10, alpha: 1, recoil: 0,
       reducedMotion: false, rig: terrainLightRigForBiome(421, "ash plains"), flash: 0 };
