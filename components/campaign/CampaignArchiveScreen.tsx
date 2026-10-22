@@ -1,141 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { ActionRail } from "@/components/ui/Dossier";
 import { RASTER_ART } from "@/lib/gen/visualAssets";
-import {
-  cachedCampaignStorage,
-  getSaveRepository,
-  slotKey,
-  saveKey,
-  exportSlot,
-  importSlot,
-  listArchiveEntries,
-  listUnreadableSaves,
-  listUnreadableSlots,
-  removeSave,
-  removeSlot,
-  type ArchiveEntry,
-} from "@/lib/persist/save";
 import { MenuBackdrop } from "@/components/shared/MenuBackdrop";
 import { SaveSlotList } from "@/components/save/SaveSlotList";
 import { CampaignArchiveControls } from "./CampaignArchiveControls";
 import { CampaignArchiveRecovery } from "./CampaignArchiveRecovery";
+import { useCampaignArchive } from "./useCampaignArchive";
 import styles from "./CampaignArchiveScreen.module.css";
 
-function safeExportName(value: string): string {
-  return value.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "slot";
-}
-
 export function CampaignArchiveScreen() {
-  const router = useRouter();
-  const [entries, setEntries] = useState<ArchiveEntry[]>([]);
-  const [unreadableSaves, setUnreadableSaves] = useState<string[]>([]);
-  const [unreadableSlots, setUnreadableSlots] = useState<string[]>([]);
-  const [portabilityNotice, setPortabilityNotice] = useState<{ tone: "success" | "alert"; text: string } | null>(null);
-  const importInputRef = useRef<HTMLInputElement>(null);
-
-  const refreshSaves = useCallback(() => {
-    const storage = cachedCampaignStorage();
-    setEntries(listArchiveEntries(storage));
-    setUnreadableSaves(listUnreadableSaves(storage));
-    setUnreadableSlots(listUnreadableSlots(storage));
-  }, []);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(refreshSaves);
-    return () => cancelAnimationFrame(frame);
-  }, [refreshSaves]);
-
-  useEffect(() => getSaveRepository()?.subscribe(refreshSaves), [refreshSaves]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      router.push("/");
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [router]);
-
-  const deleteEntry = useCallback(async (entry: ArchiveEntry) => {
-    const storage = cachedCampaignStorage();
-    if (getSaveRepository()) await getSaveRepository()!.remove(entry.kind === "slot" ? slotKey(entry.id) : saveKey(Number(entry.seed)));
-    else if (entry.kind === "slot") removeSlot(storage, entry.id);
-    else removeSave(storage, Number(entry.seed));
-    refreshSaves();
-  }, [refreshSaves]);
-
-  const resetUnreadableSave = useCallback(async (seed: string) => {
-    if (getSaveRepository()) await getSaveRepository()!.remove(saveKey(Number(seed)));
-    else removeSave(cachedCampaignStorage(), Number(seed));
-    refreshSaves();
-  }, [refreshSaves]);
-
-  const resetUnreadableSlot = useCallback(async (id: string) => {
-    if (getSaveRepository()) await getSaveRepository()!.remove(slotKey(id));
-    else removeSlot(cachedCampaignStorage(), id);
-    refreshSaves();
-  }, [refreshSaves]);
-
-  const exportEntry = useCallback((entry: ArchiveEntry) => {
-    if (entry.kind !== "slot") return;
-    const raw = exportSlot(cachedCampaignStorage(), entry.id);
-    if (!raw) {
-      setPortabilityNotice({ tone: "alert", text: `Could not export ${entry.name}. The slot may be damaged.` });
-      return;
-    }
-    const blob = new Blob([raw], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `shiftingfront-${entry.seed}-${safeExportName(entry.name)}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    setPortabilityNotice({ tone: "success", text: `Exported ${entry.name}.` });
-  }, []);
-
-  const importFile = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const input = event.currentTarget;
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file) return;
-    try {
-      const raw = await file.text();
-      const result = getSaveRepository() ? await getSaveRepository()!.importSlot(raw) : importSlot(cachedCampaignStorage(), raw);
-      if (!result.ok) {
-        setPortabilityNotice({
-          tone: "alert",
-          text: result.reason === "legacy-rules"
-            ? "That save used the previous campaign rules. Its battle was retired and its campaign record was kept."
-            : result.reason === "storage-failed"
-              ? "Could not keep that campaign record because browser storage is unavailable. Free storage and try importing again."
-              : "Could not import that file. It is invalid or unsupported.",
-        });
-        return;
-      }
-      setPortabilityNotice({ tone: "success", text: "Imported save as a new named slot." });
-      refreshSaves();
-    } catch {
-      setPortabilityNotice({ tone: "alert", text: "Unable to read that save file." });
-    }
-  }, [refreshSaves]);
-
-  const resumeEntry = useCallback((entry: ArchiveEntry) => {
-    if (entry.kind === "slot") {
-      router.push(`/play?seed=${entry.seed}&mission=${entry.missionIndex}&slot=${entry.id}`);
-      return;
-    }
-    router.push(`/play?seed=${entry.seed}&resume=1&mission=${entry.missionIndex}`);
-  }, [router]);
+  const archive = useCampaignArchive();
 
   return (
     <main
@@ -171,35 +49,35 @@ export function CampaignArchiveScreen() {
             </header>
 
             <CampaignArchiveControls
-              entriesCount={entries.length}
-              importInputRef={importInputRef}
-              onImportFile={importFile}
+              entriesCount={archive.entries.length}
+              importInputRef={archive.importInputRef}
+              onImportFile={archive.importFile}
             />
-            {portabilityNotice ? (
-              <p className={portabilityNotice.tone === "success" ? styles.importNotice : styles.importError} role="status">
-                {portabilityNotice.text}
+            {archive.portabilityNotice ? (
+              <p className={archive.portabilityNotice.tone === "success" ? styles.importNotice : styles.importError} role="status">
+                {archive.portabilityNotice.text}
               </p>
             ) : null}
             <SaveSlotList
-              entries={entries}
+              entries={archive.entries}
               emptyLabel="No save slots."
               expanded
               showActions
-              onResume={resumeEntry}
-              onCampaignMap={(seed) => router.push(`/campaign?seed=${seed}`)}
-              onExport={exportEntry}
-              onDelete={deleteEntry}
+              onResume={archive.resumeEntry}
+              onCampaignMap={archive.openCampaignMap}
+              onExport={archive.exportEntry}
+              onDelete={archive.deleteEntry}
             />
 
             <CampaignArchiveRecovery
-              unreadableSaves={unreadableSaves}
-              unreadableSlots={unreadableSlots}
-              onResetSave={resetUnreadableSave}
-              onResetSlot={resetUnreadableSlot}
+              unreadableSaves={archive.unreadableSaves}
+              unreadableSlots={archive.unreadableSlots}
+              onResetSave={archive.resetUnreadableSave}
+              onResetSlot={archive.resetUnreadableSlot}
             />
 
             <ActionRail className={styles.actions}>
-              <ConsoleButton muted onClick={() => router.push("/")} tooltip="Return to the main menu" shortcut="Esc">
+              <ConsoleButton muted onClick={archive.returnToMenu} tooltip="Return to the main menu" shortcut="Esc">
                 Return to menu
               </ConsoleButton>
             </ActionRail>
