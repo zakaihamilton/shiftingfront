@@ -1,18 +1,17 @@
-import { useCallback, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { buildingCameoStatus, buildingLimitReached, isAirUnit, isSupportUnit, producerFor, unitCameoStatus } from "@/lib/catalog";
+import { useCallback, useMemo, type MutableRefObject } from "react";
+import { isAirUnit, isSupportUnit } from "@/lib/catalog";
 import { beep } from "@/lib/audio/synth";
 import { voiceBarkForBeep } from "@/lib/audio/voice";
 import { groundOrders } from "@/lib/sim/orders";
 import { bombardPointFor } from "@/lib/sim/verbs";
-import { isSharedProducerKind, readSharedProductionQueue } from "@/lib/sim/producerState";
 import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
-import { isPlayerSelectableUnit, type BuildingKind, type Command, type Formation, type SimState, type Stance, type UnitKind } from "@/lib/types";
+import { isPlayerSelectableUnit, type Command, type Formation, type SimState, type Stance, type UnitKind } from "@/lib/types";
 import { inBounds, terrainAccess } from "@/lib/sim/world";
-import type { MobileCommand } from "../mobileCommandTypes";
-import { PLACEABLE, PRODUCIBLE, productionBuildingFor } from "./gameActions";
 import { createRuntimeCommandPort, type RuntimeCommandPort } from "./runtime/facade";
 import type { CommandNoticeKind } from "./useGameChrome";
+import { useProductionActions } from "./useProductionActions";
+import { useToolModes } from "./useToolModes";
 
 export { PLACEABLE, PRODUCIBLE } from "./gameActions";
 
@@ -48,45 +47,17 @@ export function useGameActions({
     if (kind === "error") onCommandRejection?.(text);
     onCommandNotice?.(text, kind);
   }, [onCommandNotice, onCommandRejection]);
-  const place = useRef<BuildingKind | null>(null);
-  const [placeKind, setPlaceKind] = useState<BuildingKind | null>(null);
-  const repair = useRef(false);
-  const [repairMode, setRepairMode] = useState(false);
-  const sell = useRef(false);
-  const [sellMode, setSellMode] = useState(false);
-  const mobileCommand = useRef<MobileCommand | null>(null);
-  const [mobileCommandState, setMobileCommandState] = useState<MobileCommand | null>(null);
-
-  const clearTools = useCallback(() => {
-    place.current = null;
-    setPlaceKind(null);
-    repair.current = false;
-    setRepairMode(false);
-    sell.current = false;
-    setSellMode(false);
-  }, []);
-
-  const chooseMobileCommand = useCallback((command: MobileCommand) => {
-    clearTools();
-    mobileCommand.current = command;
-    setMobileCommandState(command);
-    beep("select");
-    voiceBarkForBeep("select");
-    notify(`${command === "attackMove" ? "Attack-move" : command.charAt(0).toUpperCase() + command.slice(1)} ready — tap a destination.`, "info");
-  }, [clearTools, notify]);
-
-  const cancelMobileCommand = useCallback(() => {
-    mobileCommand.current = null;
-    setMobileCommandState(null);
-    clearTools();
-    beep("cancel");
-    notify("Command cancelled.", "info");
-  }, [clearTools, notify]);
-
-  const resetMobileCommand = useCallback(() => {
-    mobileCommand.current = null;
-    setMobileCommandState(null);
-  }, []);
+  const tools = useToolModes({ stateRef, notify });
+  const production = useProductionActions({
+    stateRef,
+    enqueue,
+    notify,
+    uxRef,
+    placeRef: tools.place,
+    setPlaceKind: tools.setPlaceKind,
+    togglePlace: tools.togglePlace,
+  });
+  const { resetMobileCommand } = tools;
 
   const issueSelectedCommand = useCallback((command: "stop" | "stance" | "formation", value?: Stance | Formation) => {
     const state = stateRef.current;
@@ -99,15 +70,14 @@ export function useGameActions({
     if (command === "stop") enqueue({ type: "stop", unitIds });
     else if (command === "stance" && value) enqueue({ type: "stance", unitIds, stance: value as Stance });
     else if (command === "formation" && value) enqueue({ type: "formation", unitIds, formation: value as Formation });
-    mobileCommand.current = null;
-    setMobileCommandState(null);
+    resetMobileCommand();
     beep("ack");
     voiceBarkForBeep("ack");
     if (uxRef && uxRef.current.firstOrderTick === undefined) uxRef.current.firstOrderTick = stateRef.current.tick;
     notify(command === "stop"
       ? `Stop order issued to ${unitIds.length} unit${unitIds.length === 1 ? "" : "s"}.`
       : `${command === "stance" ? "Stance" : "Formation"} updated for ${unitIds.length} unit${unitIds.length === 1 ? "" : "s"}.`, "success");
-  }, [enqueue, notify, selected, selectedIds, stateRef, uxRef]);
+  }, [enqueue, notify, resetMobileCommand, selected, selectedIds, stateRef, uxRef]);
 
   const selectedOwnedUnits = useCallback((kind?: "tank" | "behemoth") => {
     const state = stateRef.current;
@@ -127,13 +97,12 @@ export function useGameActions({
       return;
     }
     enqueue({ type: "brace", unitIds: tanks.map((entity) => entity.id) });
-    mobileCommand.current = null;
-    setMobileCommandState(null);
+    resetMobileCommand();
     beep("ack");
     voiceBarkForBeep("ack");
     if (uxRef && uxRef.current.firstOrderTick === undefined) uxRef.current.firstOrderTick = stateRef.current.tick;
     notify(`Brace order issued to ${tanks.length} tank${tanks.length === 1 ? "" : "s"}.`, "success");
-  }, [enqueue, notify, selectedOwnedUnits, stateRef, uxRef]);
+  }, [enqueue, notify, resetMobileCommand, selectedOwnedUnits, stateRef, uxRef]);
 
   const issueBombard = useCallback(() => {
     const behemoths = selectedOwnedUnits("behemoth");
@@ -157,13 +126,12 @@ export function useGameActions({
       return;
     }
     enqueue({ type: "bombard", unitIds: behemoths.map((entity) => entity.id), x: point.x, y: point.y });
-    mobileCommand.current = null;
-    setMobileCommandState(null);
+    resetMobileCommand();
     beep("ack");
     voiceBarkForBeep("ack");
     if (uxRef && uxRef.current.firstOrderTick === undefined) uxRef.current.firstOrderTick = state.tick;
     notify("Bombard order issued.", "success");
-  }, [enqueue, notify, selectedOwnedUnits, stateRef, uxRef]);
+  }, [enqueue, notify, resetMobileCommand, selectedOwnedUnits, stateRef, uxRef]);
 
   const issueCoordinateCommand = useCallback((command: "move" | "attackMove" | "harvest", x: number, y: number) => {
     const tx = Math.round(x);
@@ -231,139 +199,14 @@ export function useGameActions({
     return true;
   }, [enqueue, notify, selected, selectedIds, stateRef, uxRef]);
 
-  const togglePlace = useCallback((kind: BuildingKind) => {
-    const owner = stateRef.current.viewOwner ?? 0;
-    if (place.current !== kind && buildingLimitReached(stateRef.current.entities, owner, kind)) {
-      notify("This structure is limited to one per mission.", "error");
-      return;
-    }
-    const next = place.current === kind ? null : kind;
-    place.current = next;
-    setPlaceKind(next);
-    if (next) {
-      repair.current = false;
-      setRepairMode(false);
-      sell.current = false;
-      setSellMode(false);
-    }
-    if (next) notify("Placement mode ready — choose a build site.", "info");
-  }, [notify, stateRef]);
-
-  const toggleRepair = useCallback(() => {
-    const next = !repair.current;
-    repair.current = next;
-    setRepairMode(next);
-    if (next) {
-      place.current = null;
-      setPlaceKind(null);
-      sell.current = false;
-      setSellMode(false);
-    }
-    notify(next ? "Repair mode ready." : "Repair mode cancelled.", "info");
-  }, [notify]);
-
-  const toggleSell = useCallback(() => {
-    const next = !sell.current;
-    sell.current = next;
-    setSellMode(next);
-    if (next) {
-      place.current = null;
-      setPlaceKind(null);
-      repair.current = false;
-      setRepairMode(false);
-    }
-    notify(next ? "Sell mode ready." : "Sell mode cancelled.", "info");
-  }, [notify]);
-
-  const cancelBuilding = useCallback((kind: BuildingKind) => {
-    if (place.current === kind) {
-      place.current = null;
-      setPlaceKind(null);
-      beep("cancel");
-      notify("Placement cancelled.", "info");
-      return;
-    }
-    if (buildingCameoStatus(stateRef.current.entities, stateRef.current.viewOwner ?? 0, kind).phase === "idle") return;
-    enqueue({ type: "cancelBuild", building: kind });
-    beep("cancel");
-    notify("Construction cancelled.", "info");
-  }, [enqueue, notify, stateRef]);
-
-  const availableProducer = useCallback((unit: UnitKind) => productionBuildingFor(stateRef.current, stateRef.current.viewOwner ?? 0, unit), [stateRef]);
-
-  const queueUnit = useCallback((unit: UnitKind) => {
-    const next = availableProducer(unit);
-    if (!next) {
-      notify("No production slot is available.", "error");
-      return;
-    }
-    enqueue({ type: "produce", fromId: next.id, unit });
-    beep("build");
-    if (uxRef && uxRef.current.firstProductionTick === undefined) uxRef.current.firstProductionTick = stateRef.current.tick;
-    notify(`${unit} queued for production.`, "success");
-  }, [availableProducer, enqueue, notify, stateRef, uxRef]);
-
-  const cancelUnit = useCallback((unit: UnitKind) => {
-    const state = stateRef.current;
-    const owner = state.viewOwner ?? 0;
-    const producerKind = producerFor(unit);
-    const sharedQueue = isSharedProducerKind(producerKind)
-      ? readSharedProductionQueue(state, owner, producerKind)
-      : undefined;
-    if (unitCameoStatus(state.entities, owner, unit, sharedQueue).phase === "idle") return;
-    enqueue({ type: "cancelProduce", unit });
-    beep("cancel");
-    notify(`${unit} production cancelled.`, "info");
-  }, [enqueue, notify, stateRef]);
-
-  const activateCameo = useCallback((tab: "construction" | "production", index: number, cancel: boolean) => {
-    if (tab === "construction") {
-      const kind = PLACEABLE[index];
-      if (!kind) return;
-      if (cancel) cancelBuilding(kind);
-      else togglePlace(kind);
-      return;
-    }
-    const unit = PRODUCIBLE[index];
-    if (!unit) return;
-    if (cancel) cancelUnit(unit);
-    else queueUnit(unit);
-  }, [cancelBuilding, cancelUnit, queueUnit, togglePlace]);
-
   return {
-    place,
-    placeRef: place,
-    placeKind,
-    setPlaceKind,
-    repair,
-    repairRef: repair,
-    repairMode,
-    setRepairMode,
-    sell,
-    sellRef: sell,
-    sellMode,
-    setSellMode,
-    mobileCommand,
-    mobileCommandRef: mobileCommand,
-    mobileCommandState,
-    setMobileCommandState,
-    clearTools,
-    chooseMobileCommand,
-    cancelMobileCommand,
-    resetMobileCommand,
+    ...tools,
     issueSelectedCommand,
     issueBrace,
     issueBombard,
     issueCoordinateCommand,
     issueTargetCommand,
-    togglePlace,
-    toggleRepair,
-    toggleSell,
-    cancelBuilding,
-    availableProducer,
-    queueUnit,
-    cancelUnit,
-    activateCameo,
+    ...production,
   };
 }
 
