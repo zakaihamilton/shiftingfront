@@ -19,7 +19,9 @@ Next.js routes
 runtime hooks
   ├─ useGameRuntimeState  — campaign, initial state, refs, save session
   ├─ GameRuntimeFacade     — authoritative refs, command port, loop lifecycle
-  ├─ useGameActions       — converts UI actions into queued Commands
+  ├─ useGameActions       — order issuance on the command port
+  │    ├─ useToolModes         — placement, repair, sell, and mobile command modes
+  │    └─ useProductionActions — queue, cancel, and cameo production
   ├─ useGameInput         — pointer/touch selection and ground targeting
   ├─ useGameKeyboard      — keyboard shortcut adapter
   ├─ useGameSession       — pause, save/load, tutorial, and navigation
@@ -146,7 +148,7 @@ Initial, terminal, and 120-tick checks use canonical key/entity ordering and two
 
 The host scheduler and guest validator share a 256-command tick-frame limit. Accepted commands beyond that budget remain queued for later ticks, preserving each queue's order. Guest intake is bounded to two frames of pending commands, and forfeiture removes that seat's deferred commands.
 
-The lobby controller owns screen state, roster and seat policy, handshakes, and match launch. Its `PeerLifecycle` helper owns peer creation, credential refresh, requests, tracked connections, timers, signaling recovery, and disposal. Peer creation, requests, clocks, and timers are injected, retaining the browser-test PeerFactory seam. Each room operation has a generation; disposal invalidates that generation before closing resources, and asynchronous completions and connection callbacks check it before updating the active room. Recovery retains the existing 60-second deadlines and retry intervals.
+The lobby controller owns roster and seat policy, handshakes, and match launch. `useLobbyMode` owns the screen mode and Escape routing, and room actions stay thin callers of the host and guest controllers. The controller's `PeerLifecycle` helper owns peer creation, credential refresh, requests, tracked connections, timers, signaling recovery, and disposal. Peer creation, requests, clocks, and timers are injected, retaining the browser-test PeerFactory seam. Each room operation has a generation; disposal invalidates that generation before closing resources, and asynchronous completions and connection callbacks check it before updating the active room. Recovery retains the existing 60-second deadlines and retry intervals.
 
 Campaign persistence remains local. Online skirmishes use a stateless room API for short-lived Peerovo credentials and a host-arbitrated PeerJS data connection; they do not write campaign saves or progression. Future online campaign persistence should enter behind the `SaveRepository`/`SaveSession` boundary.
 
