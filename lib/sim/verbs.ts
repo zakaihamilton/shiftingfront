@@ -112,6 +112,17 @@ function destroyFromBombard(state: SimState, target: Entity, events?: SimEvent[]
   events?.push({ type: "destroyed", id: target.id, owner: target.owner, kind: target.kind, x: target.x, y: target.y });
 }
 
+function closerBombardHit(
+  current: { target: Entity; distance: number } | undefined,
+  target: Entity,
+  distance: number,
+): { target: Entity; distance: number } {
+  if (!current || distance < current.distance || (distance === current.distance && target.id < current.target.id)) {
+    return { target, distance };
+  }
+  return current;
+}
+
 /** Charges a planted area shot, then resolves it once. */
 export function tickBombards(state: SimState, events?: SimEvent[]): void {
   for (const entity of entitiesFor(state)) {
@@ -124,6 +135,7 @@ export function tickBombards(state: SimState, events?: SimEvent[]): void {
     entity.bombard = undefined;
     entity.cooldown = Math.max(entity.cooldown, 36);
     let dealt = 0;
+    let primary: { target: Entity; distance: number } | undefined;
     for (const target of entitiesFor(state)) {
       if (target.hp <= 0 || target.id === entity.id || target.owner === entity.owner || target.neutral) continue;
       const distance = Math.hypot(target.x - point.x, target.y - point.y);
@@ -133,9 +145,11 @@ export function tickBombards(state: SimState, events?: SimEvent[]): void {
       target.hp -= amount;
       dealt += amount;
       if (target.class === "unit") target.suppression = Math.min(100, (target.suppression ?? 0) + 24);
+      primary = closerBombardHit(primary, target, distance);
       if (target.hp <= 0) destroyFromBombard(state, target, events);
     }
     noteDamageDealt(state, entity, dealt);
+    const hit = primary?.target;
     events?.push({
       type: "combat",
       owner: entity.owner,
@@ -145,9 +159,12 @@ export function tickBombards(state: SimState, events?: SimEvent[]): void {
       y: entity.y,
       targetX: point.x,
       targetY: point.y,
-      targetOwner: entity.owner === 0 ? 1 : 0,
-      targetKind: "infantry",
-      destroyed: false,
+      // A miss has no victim. A building kind keeps the cue on the generic shell
+      // sound, and the shooter owns the marker so another faction is not painted.
+      targetOwner: hit?.owner ?? entity.owner,
+      targetKind: hit?.kind ?? "constructionYard",
+      destroyed: hit !== undefined && hit.hp <= 0,
+      areaRadius: BOMBARD_RADIUS,
     });
   }
 }

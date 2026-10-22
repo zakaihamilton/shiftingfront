@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
-import { SaveRepository } from "@/lib/persist/save/repository";
+import { SAVE_DATABASE_NAME, SaveRepository } from "@/lib/persist/save/repository";
 import { memoryStorage, readSave, writeSave, saveKey, listSlots, readSlot, slotKey, writeSlot } from "@/lib/persist/save";
 import { campaignKey, freshCampaignProgress, readCampaignProgress, writeCampaignProgress } from "@/lib/persist/campaign";
 import { makeFixture } from "@/lib/sim/fixtures";
@@ -19,6 +19,36 @@ const state = () => {
   next.gameplayRulesVersion = 2;
   return next;
 };
+async function replaceCampaignProgress(factory: IDBFactory, seed: number, progress: string): Promise<void> {
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const opening = factory.open(SAVE_DATABASE_NAME);
+    opening.onsuccess = () => resolve(opening.result);
+    opening.onerror = () => reject(opening.error ?? new Error("Save database unavailable"));
+  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const finish = (error?: unknown) => {
+        if (settled) return;
+        settled = true;
+        if (error) reject(error);
+        else resolve();
+      };
+      const tx = db.transaction("campaigns", "readwrite");
+      const store = tx.objectStore("campaigns");
+      const get = store.get(seed);
+      get.onerror = () => finish(get.error ?? new Error("Campaign missing"));
+      get.onsuccess = () => {
+        store.put({ ...get.result, progress });
+      };
+      tx.oncomplete = () => finish();
+      tx.onerror = () => finish(tx.error ?? new Error("Campaign update failed"));
+      tx.onabort = () => finish(tx.error ?? new Error("Campaign update aborted"));
+    });
+  } finally {
+    db.close();
+  }
+}
 
 describe("transactional save repository", () => {
   it("migrates idempotently, keeps originals, quarantines malformed records and recovers later legacy changes", async () => {
@@ -152,6 +182,47 @@ describe("transactional save repository", () => {
     expect(listSlots(next.repository.storage)).toHaveLength(conflict ? 1 : 0);
     expect(readCampaignProgress(next.repository.storage, 421).completedMissions).toEqual([0]);
     expect(storage.keys().some((key) => key.includes("journal"))).toBe(false);
+  });
+  it("restores a deployment edge from a journal when the won battlefield is already saved", async () => {
+    const { repository, storage, factory } = await open();
+    const won = state();
+    won.result = "won";
+    await repository.save(won);
+    const progressWithoutEdge = repository.storage.getItem(campaignKey(421));
+    expect(progressWithoutEdge).toEqual(expect.any(String));
+    expect(await repository.setDeploymentEdge(421, "forwardTurret")).toBe(true);
+    expect(repository.writeJournal(won)).toBe(true);
+    repository.close();
+    await replaceCampaignProgress(factory, 421, progressWithoutEdge!);
+    const next = await open(storage, factory);
+    expect(readCampaignProgress(next.repository.storage, 421)).toMatchObject({
+      deploymentEdge: "forwardTurret",
+      completedMissions: [0],
+      unlockedMission: 1,
+    });
+    expect(listSlots(next.repository.storage)).toHaveLength(0);
+    expect(readSave(next.repository.storage, 421)?.result).toBe("won");
+    expect(storage.keys().some((key) => key.includes("journal"))).toBe(false);
+    const session = next.repository.createSession(421);
+    won.tick = 8;
+    expect(await session.write(won, "implicit")).toBe("saved");
+    expect(readCampaignProgress(next.repository.storage, 421).deploymentEdge).toBe("forwardTurret");
+  });
+  it("keeps a newer deployment edge when an older journal has a different reward", async () => {
+    let clock = 1_700_000_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => clock++);
+    const { repository, storage, factory } = await open();
+    const won = state();
+    won.result = "won";
+    await repository.save(won);
+    expect(await repository.setDeploymentEdge(421, "veteranSquad")).toBe(true);
+    expect(repository.writeJournal(won)).toBe(true);
+    expect(await repository.setDeploymentEdge(421, "airSortie")).toBe(true);
+    repository.close();
+    const next = await open(storage, factory);
+    expect(readCampaignProgress(next.repository.storage, 421).deploymentEdge).toBe("airSortie");
+    expect(listSlots(next.repository.storage)).toHaveLength(0);
+    expect(readSave(next.repository.storage, 421)?.result).toBe("won");
   });
   it("merges a conflicting journal win into the live campaign", async () => {
     const { repository, storage, factory } = await open();

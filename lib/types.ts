@@ -646,6 +646,8 @@ export type SimEvent =
       targetOwner: Owner;
       targetKind: UnitKind | BuildingKind;
       destroyed: boolean;
+      /** Presentational blast radius. Bombard sets this because it reaches past the weapon splash radius. */
+      areaRadius?: number;
     }
   | {
       type: "support";

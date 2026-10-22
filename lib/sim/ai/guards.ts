@@ -2,6 +2,7 @@ import type { Entity, Owner, SimState } from "../../types";
 import { byId, closestApproach, distToEntity } from "../world";
 import { assignMove } from "./combat";
 import { contestedResourcePoint, distance } from "./helpers";
+import { aiDifficultyMission } from "../difficulty";
 import { homeGuardCount, isTimedRecovery } from "../policy";
 import { directorPhase } from "./phase";
 
@@ -57,7 +58,7 @@ export function guardResourceLane(
 ): void {
   if (directorPhase(state) === "opening") return;
   const point = contestedResourcePoint(state, yard, knownPlayers, aiOwner, opponents);
-  const guardIndex = homeGuardCount(state.missionIndex);
+  const guardIndex = homeGuardCount(aiDifficultyMission(state));
   if (!point || units.length <= guardIndex) return;
 
   const guard = [...units]

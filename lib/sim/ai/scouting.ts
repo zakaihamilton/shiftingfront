@@ -3,6 +3,7 @@ import { isUnitEntity } from "../../types";
 import { isAirUnit, isSupportUnit } from "../../catalog";
 import { closestApproach, distToEntity, inBounds, isStaticWalkable } from "../world";
 import { cellInfluence, type InfluenceMap } from "./influence";
+import { aiDifficultyMission } from "../difficulty";
 import { homeGuardCount } from "../policy";
 import { holdingDestination } from "../navigation";
 import { multiplayerAiMemory } from "./ownerState";
@@ -156,7 +157,7 @@ export function updateScouts(
   // Maximum 1 scout in opening/early phases to avoid depleting base defense
   if (activeScouts.size >= 1) return finish();
 
-  const homeReserve = homeGuardCount(state.missionIndex);
+  const homeReserve = homeGuardCount(aiDifficultyMission(state));
   const defenders = yard
     ? [...units]
         .filter((u) => isUnitEntity(u) && u.scenarioGuardTargetId === undefined && !isAirUnit(u.kind) && !isSupportUnit(u.kind) && u.kind !== "harvester")

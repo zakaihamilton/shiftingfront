@@ -49,6 +49,44 @@ function progressFor(record: CampaignRecord, state: SimState): CampaignProgress 
   };
   return state.result === "won" ? completeMission(progress, state.missionIndex, missionMedals(state), missionScore(state)) : progress;
 }
+function progressSavedAt(raw: string | null): number {
+  if (!raw) return 0;
+  try {
+    const parsed = JSON.parse(raw) as { savedAt?: unknown };
+    return typeof parsed.savedAt === "number" && Number.isFinite(parsed.savedAt) ? parsed.savedAt : 0;
+  } catch {
+    return 0;
+  }
+}
+function sameStatMap(left: Record<string, number>, right: Record<string, number>): boolean {
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && left[key] === right[key]);
+}
+function sameCampaignProgress(left: CampaignProgress, right: CampaignProgress): boolean {
+  return left.version === right.version
+    && left.seed === right.seed
+    && left.tutorialComplete === right.tutorialComplete
+    && left.unlockedMission === right.unlockedMission
+    && left.gameplayRulesVersion === right.gameplayRulesVersion
+    && left.deploymentEdge === right.deploymentEdge
+    && left.completedMissions.length === right.completedMissions.length
+    && left.completedMissions.every((mission, index) => mission === right.completedMissions[index])
+    && sameStatMap(left.medals, right.medals)
+    && sameStatMap(left.bestScores, right.bestScores);
+}
+/** Merge progress-only journal data when the battlefield snapshot is already stored. */
+function progressWhenBattlefieldMatches(record: CampaignRecord, journalSavedAt: number, progress: string): string | undefined {
+  const existing = readCampaignProgress(memoryStorage(record.progress ? { [campaignKey(record.seed)]: record.progress } : {}), record.seed);
+  const incoming = readCampaignProgress(memoryStorage({ [campaignKey(record.seed)]: progress }), record.seed);
+  const merged = mergeCampaignProgress(existing, incoming);
+  // A later committed reward wins. An older journal must not put the previous choice back.
+  if (progressSavedAt(record.progress) > journalSavedAt) {
+    if (existing.deploymentEdge) merged.deploymentEdge = existing.deploymentEdge;
+    else delete merged.deploymentEdge;
+  }
+  return sameCampaignProgress(existing, merged) ? undefined : encodeProgress(merged);
+}
 function validatedProgress(raw: string, seed: number): string {
   const parsed = JSON.parse(raw);
   if (parsed.version !== 1 || !isCampaignProgressShape(parsed.progress) || parsed.progress.seed !== seed) throw new Error("Invalid campaign progress");
@@ -263,10 +301,16 @@ export class SaveRepository {
         if (!Number.isSafeInteger(journal.revision) || journal.revision < 0
           || key !== `${JOURNAL_PREFIX}${state.seed.toString().padStart(4, "0")}`) throw new Error("Invalid recovery journal");
         const progress = validatedProgress(journal.progress, state.seed);
+        const journalSavedAt = typeof journal.savedAt === "number" && Number.isFinite(journal.savedAt) ? journal.savedAt : 0;
         await this.transaction(["campaigns", "slots"], async (tx) => {
           const store = tx.objectStore("campaigns");
           const record = await request(store.get(state.seed)) as CampaignRecord | undefined;
-          if (record?.autosave && JSON.stringify(decodeSave(record.autosave).state) === JSON.stringify(state)) return;
+          if (record?.autosave && JSON.stringify(decodeSave(record.autosave).state) === JSON.stringify(state)) {
+            const merged = progressWhenBattlefieldMatches(record, journalSavedAt, progress);
+            // Leave the revision alone. This record is also the autosave lock.
+            if (merged) store.put({ ...record, progress: merged });
+            return;
+          }
           if ((record?.revision ?? 0) === journal.revision) {
             store.put({ seed: state.seed, revision: journal.revision + 1, autosave: journal.autosave, progress });
           } else {
