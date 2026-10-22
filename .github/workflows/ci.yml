@@ -28,7 +28,7 @@ jobs:
         shardTotal: [2]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -67,7 +67,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -118,7 +118,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -195,7 +195,7 @@ jobs:
             shardTotal: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -228,8 +228,11 @@ jobs:
     name: E2E (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     # Shard 1 measures active frame timing; avoid competing browser workers.
     # Shard 3 combines WebKit touch tests with desktop visual tests; serialize it to avoid input timing races.
+    # Every shard gets the longer budget. A slow apt mirror can use several
+    # minutes before scripts/ci/playwright-system-deps.sh retries elsewhere,
+    # and the tests still need to run.
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ matrix.shardIndex == 3 && 25 || 15 }}
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -237,7 +240,7 @@ jobs:
         shardTotal: [4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -266,12 +269,12 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Playwright browsers with deps
+      - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install chromium webkit
       - name: Install Playwright system dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium webkit
+        timeout-minutes: 12
+        run: bash scripts/ci/playwright-system-deps.sh chromium webkit
       - run: pnpm test:e2e --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --workers=${{ (matrix.shardIndex == 1 || matrix.shardIndex == 3) && 1 || 2 }}
         env:
           CI: true
@@ -288,10 +291,12 @@ jobs:
   performance:
     name: Battlefield performance
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # The frame check is short. The extra room covers the same bounded apt
+    # fallback the E2E jobs use.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -320,12 +325,12 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Playwright browsers with deps
+      - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install chromium webkit
       - name: Install Playwright system dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium webkit
+        timeout-minutes: 12
+        run: bash scripts/ci/playwright-system-deps.sh chromium webkit
       - name: Record runner resources
         run: |
           lscpu
@@ -345,7 +350,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7

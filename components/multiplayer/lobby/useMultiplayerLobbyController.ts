@@ -4,20 +4,36 @@ import type { DataConnection, Peer } from "peerjs";
 import type { Owner } from "@/lib/types";
 import { MultiplayerSession, type MultiplayerStatus } from "@/lib/multiplayer/session";
 import { createCampaign } from "@/lib/gen/campaign";
-import type { Credential, LobbyMode, LobbyPlayer } from "./types";
+import type { Credential, LobbyPlayer } from "./types";
 import { PeerLifecycle } from "./peerLifecycle";
 import { PeerFactory, peerOptions, postJson, publicError } from "./utils";
 import { createHostLobbyController } from "./hostController";
 import { createGuestLobbyController, createGuestRecoveryAction } from "./guestController";
+import { useLobbyMode, type LobbyEscapeHandlers } from "./useLobbyMode";
 
 export function useMultiplayerLobbyController() {
   const router = useRouter();
-  const [mode, setMode] = useState<LobbyMode>("choose");
+  const escapeRef = useRef<LobbyEscapeHandlers>({
+    mode: "choose",
+    session: null,
+    backToMenu: () => undefined,
+    backToChoose: () => undefined,
+    cancelJoin: () => undefined,
+    endCurrentMatch: () => undefined,
+  });
+  const {
+    mode,
+    setMode,
+    error,
+    setError,
+    showHostSetup,
+    backToChoose,
+    enterBattle,
+  } = useLobbyMode(escapeRef);
   const [seed, setSeed] = useState("0000");
   const skirmishBiome = useMemo(() => /^\d{4}$/.test(seed) ? createCampaign(Number(seed)).world.biome : null, [seed]);
   const [joinCode, setJoinCode] = useState("");
   const [inviteCode, setInviteCode] = useState("");
-  const [error, setError] = useState("");
   const [status, setStatus] = useState("Create a room or join with a six-letter code.");
   const [gameSeed, setGameSeed] = useState<number | null>(null);
   const [session, setSession] = useState<MultiplayerSession | null>(null);
@@ -77,44 +93,21 @@ export function useMultiplayerLobbyController() {
     setGuestOwner(null);
     setRoster([{ owner: 0, connected: true, host: true }]);
     setMode("choose");
-  }, [destroyPeer]);
-
-  const showHostSetup = useCallback(() => {
-    setMode("hostSetup");
-    setError("");
-  }, []);
-
-  const backToChoose = useCallback(() => {
-    setMode("choose");
-    setError("");
-  }, []);
+  }, [destroyPeer, setMode]);
 
   const cancelJoin = useCallback(() => {
     destroyPeer();
     setMode("choose");
     setStatus("Create a room or join with a six-letter code.");
     setError("");
-  }, [destroyPeer]);
+  }, [destroyPeer, setError, setMode]);
 
   const backToMenu = useCallback(() => {
     router.push("/");
   }, [router]);
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented || event.repeat ||
-          event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      if (mode === "battle" && session &&
-          session.status !== "disconnected" && session.status !== "ended") return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      if (mode === "choose") backToMenu();
-      else if (mode === "hostSetup") backToChoose();
-      else if (mode === "joining") cancelJoin();
-      else endCurrentMatch();
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
+    escapeRef.current = { mode, session, backToMenu, backToChoose, cancelJoin, endCurrentMatch };
   }, [backToChoose, backToMenu, cancelJoin, endCurrentMatch, mode, session]);
 
   useEffect(() => {
@@ -147,10 +140,9 @@ export function useMultiplayerLobbyController() {
     sessionRef.current = nextSession;
     setSession(nextSession);
     setGameSeed(nextSeed);
-    setError("");
+    enterBattle();
     setStatus("Skirmish in progress");
-    setMode("battle");
-  }, []);
+  }, [enterBattle]);
 
   const scheduleGuestRetry = useCallback((credential: Credential, peer: Peer, delayMs = 1800) => {
     createGuestRecoveryAction({
@@ -168,7 +160,7 @@ export function useMultiplayerLobbyController() {
       setStatus,
       setError,
     })(credential, peer, delayMs);
-  }, [destroyPeer, lifecycle]);
+  }, [destroyPeer, lifecycle, setError, setMode]);
 
   const startPeer = useCallback(async (credential: Credential, role: "host" | "guest", operation: number) => {
     const peer = await lifecycle.start(credential, role, operation, {
@@ -211,128 +203,63 @@ export function useMultiplayerLobbyController() {
     });
     if (peer) setLobbyRole(role);
     return peer;
-  }, [destroyPeer, lifecycle, scheduleGuestRetry]);
+  }, [destroyPeer, lifecycle, scheduleGuestRetry, setError]);
+
+  const guestController = useCallback(() => createGuestLobbyController({
+    joinCode,
+    lifecycle,
+    refs: {
+      mounted: mountedRef,
+      connection: guestConnectionRef,
+      owner: guestOwnerRef,
+      connecting: guestConnectingRef,
+      session: sessionRef,
+      beginConnection: beginGuestConnectionRef,
+    },
+    setMode,
+    setStatus,
+    setError,
+    setGuestOwner,
+    setSession,
+    destroyPeer,
+    showBattle,
+    startPeer,
+    scheduleGuestRetry,
+  }), [destroyPeer, joinCode, lifecycle, scheduleGuestRetry, setError, setMode, showBattle, startPeer]);
+
+  const hostController = useCallback(() => createHostLobbyController({
+    seed,
+    lifecycle,
+    refs: {
+      mounted: mountedRef,
+      connections: hostConnectionsRef,
+      seats: hostSeatsRef,
+      aiOwners: hostAiOwnersRef,
+      forfeited: hostForfeitedRef,
+      handshakes: handshakeConnectionsRef,
+      started: hostStartedRef,
+      session: sessionRef,
+    },
+    setRoster,
+    setInviteCode,
+    setMode,
+    setStatus,
+    setError,
+    destroyPeer,
+    showBattle,
+    startPeer,
+  }), [destroyPeer, lifecycle, seed, setError, setMode, showBattle, startPeer]);
 
   const beginGuestConnection = useCallback((credential: Credential, peer: Peer) => {
-    const guest = createGuestLobbyController({
-      joinCode,
-      lifecycle,
-      refs: {
-        mounted: mountedRef,
-        connection: guestConnectionRef,
-        owner: guestOwnerRef,
-        connecting: guestConnectingRef,
-        session: sessionRef,
-        beginConnection: beginGuestConnectionRef,
-      },
-      setMode,
-      setStatus,
-      setError,
-      setGuestOwner,
-      setSession,
-      destroyPeer,
-      showBattle,
-      startPeer,
-      scheduleGuestRetry,
-    });
-    guest.beginGuestConnection(credential, peer);
-  }, [destroyPeer, joinCode, lifecycle, scheduleGuestRetry, setError, setGuestOwner, setMode, setSession, setStatus, showBattle, startPeer]);
+    guestController().beginGuestConnection(credential, peer);
+  }, [guestController]);
 
   useEffect(() => { beginGuestConnectionRef.current = beginGuestConnection; }, [beginGuestConnection]);
 
-  const joinRoom = useCallback((event: FormEvent) => {
-    const guest = createGuestLobbyController({
-      joinCode,
-      lifecycle,
-      refs: {
-        mounted: mountedRef,
-        connection: guestConnectionRef,
-        owner: guestOwnerRef,
-        connecting: guestConnectingRef,
-        session: sessionRef,
-        beginConnection: beginGuestConnectionRef,
-      },
-      setMode,
-      setStatus,
-      setError,
-      setGuestOwner,
-      setSession,
-      destroyPeer,
-      showBattle,
-      startPeer,
-      scheduleGuestRetry,
-    });
-    return guest.joinRoom(event);
-  }, [destroyPeer, joinCode, lifecycle, scheduleGuestRetry, setError, setGuestOwner, setMode, setSession, setStatus, showBattle, startPeer]);
-
-  const hostRoom = useCallback(() => createHostLobbyController({
-    seed,
-    lifecycle,
-    refs: {
-      mounted: mountedRef,
-      connections: hostConnectionsRef,
-      seats: hostSeatsRef,
-      aiOwners: hostAiOwnersRef,
-      forfeited: hostForfeitedRef,
-      handshakes: handshakeConnectionsRef,
-      started: hostStartedRef,
-      session: sessionRef,
-    },
-    setRoster,
-    setInviteCode,
-    setMode,
-    setStatus,
-    setError,
-    destroyPeer,
-    showBattle,
-    startPeer,
-  }).hostRoom(), [destroyPeer, lifecycle, seed, setError, setInviteCode, setMode, setRoster, setStatus, showBattle, startPeer]);
-
-  const startMatch = useCallback(() => createHostLobbyController({
-    seed,
-    lifecycle,
-    refs: {
-      mounted: mountedRef,
-      connections: hostConnectionsRef,
-      seats: hostSeatsRef,
-      aiOwners: hostAiOwnersRef,
-      forfeited: hostForfeitedRef,
-      handshakes: handshakeConnectionsRef,
-      started: hostStartedRef,
-      session: sessionRef,
-    },
-    setRoster,
-    setInviteCode,
-    setMode,
-    setStatus,
-    setError,
-    destroyPeer,
-    showBattle,
-    startPeer,
-  }).startMatch(), [destroyPeer, lifecycle, seed, setError, setInviteCode, setMode, setRoster, setStatus, showBattle, startPeer]);
-
-  const setSeatAi = useCallback((owner: Owner) => createHostLobbyController({
-    seed,
-    lifecycle,
-    refs: {
-      mounted: mountedRef,
-      connections: hostConnectionsRef,
-      seats: hostSeatsRef,
-      aiOwners: hostAiOwnersRef,
-      forfeited: hostForfeitedRef,
-      handshakes: handshakeConnectionsRef,
-      started: hostStartedRef,
-      session: sessionRef,
-    },
-    setRoster,
-    setInviteCode,
-    setMode,
-    setStatus,
-    setError,
-    destroyPeer,
-    showBattle,
-    startPeer,
-  }).setSeatAi(owner), [destroyPeer, lifecycle, seed, setError, setInviteCode, setMode, setRoster, setStatus, showBattle, startPeer]);
+  const joinRoom = useCallback((event: FormEvent) => guestController().joinRoom(event), [guestController]);
+  const hostRoom = useCallback(() => hostController().hostRoom(), [hostController]);
+  const startMatch = useCallback(() => hostController().startMatch(), [hostController]);
+  const setSeatAi = useCallback((owner: Owner) => hostController().setSeatAi(owner), [hostController]);
 
   const copyInvite = useCallback(async () => {
     if (!inviteCode) return;
@@ -342,12 +269,12 @@ export function useMultiplayerLobbyController() {
     } catch {
       setError("Could not copy the invite code. Select it to copy manually.");
     }
-  }, [inviteCode]);
+  }, [inviteCode, setError]);
 
   const changeJoinCode = useCallback((value: string) => {
     setJoinCode(value);
     setError("");
-  }, []);
+  }, [setError]);
 
   const activePlayers = roster.filter((player) => player.host || (player.connected && !player.forfeited) || player.ai).length;
 
