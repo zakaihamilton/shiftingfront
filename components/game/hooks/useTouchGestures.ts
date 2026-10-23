@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, type MutableRefObject, type PointerEvent } from "react";
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import { cameraPanBounds, panCamera } from "@/lib/render/camera";
 import type { Camera } from "@/lib/iso";
 import type { SimState } from "@/lib/types";
@@ -69,8 +70,9 @@ export function useTouchGestures({
 
   const moveTouch = useCallback((e: PointerEvent<HTMLCanvasElement>, p: { x: number; y: number }): boolean => {
     const s = stateRef.current;
+    const viewport = canvasViewport(e.currentTarget);
     const bounds = s
-      ? cameraPanBounds(s.width, s.height, e.currentTarget.width, e.currentTarget.height)
+      ? cameraPanBounds(s.width, s.height, viewport.width, viewport.height)
       : undefined;
     touchPoints.current.set(e.pointerId, p);
     if (touchPoints.current.size >= 2) {

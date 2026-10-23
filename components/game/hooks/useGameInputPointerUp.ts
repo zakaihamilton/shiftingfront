@@ -1,5 +1,6 @@
 import { useCallback, useRef, type MutableRefObject, type PointerEvent } from "react";
 import type { Camera } from "@/lib/iso";
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import type { BuildingEntity, BuildingKind, SharedProducerKind, SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
 import { canvasPointerPos } from "./canvasPointer";
@@ -103,7 +104,7 @@ export function useGameInputPointerUp(options: {
       repairMode: repairRef.current,
       sellMode: sellRef.current,
       doubleClick,
-      viewport: { width: event.currentTarget.width, height: event.currentTarget.height },
+      viewport: canvasViewport(event.currentTarget),
     });
     const rememberUnitClick = () => {
       if (!drag && hoverHit?.class === "unit" && effect.select?.includes(hoverHit.id)) {
