@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, type MutableRefObject, type PointerEvent, type RefObject } from "react";
 import { pickTile } from "@/lib/render/renderer";
 import { cameraForPicking } from "@/lib/render/screenShake";
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import type { CommandMarker } from "@/lib/render/renderOverlays";
 import { cameraPanBounds, canPan as cameraCanPan, panDirFromPointer, EDGE_PAN_BAND, type PanAvailability, type PanDir } from "@/lib/render/camera";
 import { type Camera } from "@/lib/iso";
@@ -225,8 +226,9 @@ export function useGameInput({
       boxRef.current.y1 = p.y;
     }
     const r = e.currentTarget.getBoundingClientRect();
+    const viewport = canvasViewport(e.currentTarget);
     const panBounds = s
-      ? cameraPanBounds(s.width, s.height, e.currentTarget.width, e.currentTarget.height)
+      ? cameraPanBounds(s.width, s.height, viewport.width, viewport.height)
       : undefined;
     applyEdgePan(
       e.pointerType === "touch" || pausedRef.current
