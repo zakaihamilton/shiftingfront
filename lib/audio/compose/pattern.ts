@@ -40,6 +40,7 @@ import {
 } from "./helpers";
 import { bassRiffsFor, createMusicStyle, styleRng } from "./styles";
 import { musicMissionContext } from "./missionContext";
+import { cueMotifPhrases } from "./cueThemes";
 import { missionMotifPalette } from "./missionThemes";
 import { smoothMelodyLine } from "./stems";
 import { composeBar, type ComposeCarry } from "./composeBar";
@@ -50,6 +51,10 @@ const CINEMATIC_VERSE_CONTOURS: readonly (readonly (number | null)[])[] = [
   [2, 0, 2, 4, 5, 4, 2, 0],
   [0, 1, 3, 4, 2, 0, null, 1],
   [0, 2, 4, 3, 2, 4, 5, 0],
+  [0, 2, 3, 5, 3, 2, 4, 0],
+  [4, 2, 0, 1, 3, 2, 4, 0],
+  [0, null, 4, 5, 4, 2, null, 0],
+  [2, 4, 5, 3, 1, 2, 0, 2],
 ];
 
 const CINEMATIC_VERSE_RHYTHMS: readonly number[][] = [
@@ -57,6 +62,10 @@ const CINEMATIC_VERSE_RHYTHMS: readonly number[][] = [
   [0, 2, 5, 8, 10, 12, 14, 15],
   [0, 3, 6, 9, 11, 12, 14, 15],
   [0, 2, 6, 8, 11, 13, 14, 15],
+  [0, 2, 4, 7, 9, 11, 13, 15],
+  [0, 4, 6, 8, 10, 12, 14, 15],
+  [1, 3, 6, 8, 10, 12, 14, 15],
+  [0, 3, 5, 8, 10, 12, 13, 15],
 ];
 
 const CINEMATIC_HOOK_CONTOURS: readonly (readonly (number | null)[])[] = [
@@ -64,13 +73,342 @@ const CINEMATIC_HOOK_CONTOURS: readonly (readonly (number | null)[])[] = [
   [0, 2, 3, 5, 4, 2, 0],
   [2, 4, 5, 4, 2, 0, 2],
   [4, 2, 0, 2, 4, 5, 4],
+  [0, 2, 4, 3, 5, 2, 0],
+  [0, 1, 3, 5, 3, 2, 0],
+  [2, 0, 2, 4, 3, 2, 0],
+  [0, 3, 2, 4, 5, 3, 0],
 ];
 
 const CINEMATIC_HOOK_RHYTHMS: readonly number[][] = [
   [0, 3, 6, 8, 11, 13, 15],
   [0, 2, 6, 9, 11, 14, 15],
   [0, 4, 7, 9, 12, 14, 15],
+  [0, 2, 5, 8, 10, 12, 15],
+  [0, 1, 4, 7, 10, 12, 15],
+  [0, 3, 5, 8, 11, 14, 15],
 ];
+
+const MELODY_LOW = 36;
+const MELODY_HIGH = 100;
+const REPEATED_SENTENCES = ["groove", "hook", "development", "breakdown", "climax", "turnaround"] as const;
+
+function localBar(note: MusicNoteEvent, sectionStart: number): number {
+  return Math.floor(note.step / STEPS_PER_BAR) - sectionStart;
+}
+
+function notesInRegion(notes: readonly MusicNoteEvent[], sectionStart: number, from: number, to: number): MusicNoteEvent[] {
+  return notes
+    .filter((note) => {
+      const bar = localBar(note, sectionStart);
+      return bar >= from && bar < to;
+    })
+    .sort((a, b) => a.step - b.step);
+}
+
+function dropRegion(notes: MusicNoteEvent[], sectionStart: number, from: number, to: number): void {
+  for (let index = notes.length - 1; index >= 0; index -= 1) {
+    const bar = localBar(notes[index]!, sectionStart);
+    if (bar >= from && bar < to) notes.splice(index, 1);
+  }
+}
+
+function sectionByName(sections: readonly MusicSection[], name: MusicSection["name"]): MusicSection {
+  return sections.find((section) => section.name === name)!;
+}
+
+/** Keep a doubled counter off the lead and inside the counter register. */
+function placeCounterPitch(current: number, delta: number, leadMidi: number): number {
+  let next = current + delta;
+  while (next > 100) next -= 12;
+  while (next < 24) next += 12;
+  if (next !== leadMidi) return next;
+  return next + 12 <= 100 ? next + 12 : next - 12;
+}
+
+function applyMidis(phrase: readonly MusicNoteEvent[], midis: readonly number[], counters: MusicNoteEvent[]): void {
+  phrase.forEach((note, index) => {
+    const midi = midis[index]!;
+    const delta = midi - note.midi;
+    note.midi = midi;
+    if (delta === 0) return;
+    for (const counter of counters) {
+      if (counter.step !== note.step) continue;
+      counter.midi = placeCounterPitch(counter.midi, delta, midi);
+    }
+  });
+}
+
+function phraseLoops(phrase: readonly MusicNoteEvent[]): boolean {
+  if (phrase.length === 0) return true;
+  const low = Math.min(...phrase.map((note) => note.midi));
+  const high = Math.max(...phrase.map((note) => note.midi));
+  if (high - low > 24) return false;
+  for (let index = 1; index < phrase.length; index += 1) {
+    if (Math.abs(phrase[index]!.midi - phrase[index - 1]!.midi) > 12) return false;
+  }
+  return Math.abs(phrase[phrase.length - 1]!.midi - phrase[0]!.midi) <= 12;
+}
+
+type PitchNode = { midi: number; cost: number; prev?: PitchNode };
+
+/**
+ * Re-voice one sentence so it stays inside an octave and can restart
+ * without a jump. Pitch classes stay put; only the octave of a note changes.
+ */
+function loopPhrase(phrase: MusicNoteEvent[], counters: MusicNoteEvent[]): void {
+  if (phrase.length === 0 || phraseLoops(phrase)) return;
+  const optionsFor = (note: MusicNoteEvent) => {
+    const options: number[] = [];
+    for (let midi = MELODY_LOW; midi <= MELODY_HIGH; midi += 1) {
+      if (((midi - note.midi) % 12 + 12) % 12 === 0) options.push(midi);
+    }
+    return options;
+  };
+  const voice = (span: number): number[] | undefined => {
+    let layer = new Map<string, PitchNode>();
+    for (const midi of optionsFor(phrase[0]!)) {
+      layer.set(`${midi}:${midi}`, { midi, cost: Math.abs(midi - phrase[0]!.midi) });
+    }
+    for (let index = 1; index < phrase.length; index += 1) {
+      const next = new Map<string, PitchNode>();
+      for (const [key, state] of layer) {
+        const first = Number(key.slice(0, key.indexOf(":")));
+        for (const midi of optionsFor(phrase[index]!)) {
+          const leap = Math.abs(midi - state.midi);
+          if (leap > 12 || Math.abs(midi - first) > span) continue;
+          const cost = state.cost + Math.abs(midi - phrase[index]!.midi) + (leap > 7 ? 6 : 0);
+          const nextKey = `${first}:${midi}`;
+          const existing = next.get(nextKey);
+          if (!existing || cost < existing.cost) next.set(nextKey, { midi, cost, prev: state });
+        }
+      }
+      if (next.size === 0) return undefined;
+      layer = next;
+    }
+    let best: PitchNode | undefined;
+    for (const [key, node] of layer) {
+      const first = Number(key.slice(0, key.indexOf(":")));
+      if (Math.abs(node.midi - first) > 12) continue;
+      if (!best || node.cost < best.cost) best = node;
+    }
+    if (!best) return undefined;
+    const midis: number[] = [];
+    for (let cursor: PitchNode | undefined = best; cursor; cursor = cursor.prev) midis.push(cursor.midi);
+    midis.reverse();
+    return midis;
+  };
+  const midis = voice(12) ?? voice(19);
+  if (midis) applyMidis(phrase, midis, counters);
+}
+
+/** Move climax and turnaround onto the chorus contour, octave by octave. */
+function imposeContour(target: MusicNoteEvent[], reference: readonly MusicNoteEvent[], counters: MusicNoteEvent[]): void {
+  if (target.length === 0 || reference.length === 0 || target.length !== reference.length) {
+    loopPhrase(target, counters);
+    return;
+  }
+  const relative = reference.map((note) => note.midi - reference[0]!.midi);
+  let best: number[] | undefined;
+  let bestCost = Infinity;
+  for (let base = MELODY_LOW; base <= MELODY_HIGH; base += 1) {
+    if (((base - target[0]!.midi) % 12 + 12) % 12 !== 0) continue;
+    const midis = relative.map((interval) => base + interval);
+    if (midis.some((midi) => midi < MELODY_LOW || midi > MELODY_HIGH)) continue;
+    const cost = midis.reduce((sum, midi, index) => sum + Math.abs(midi - target[index]!.midi), 0);
+    if (cost < bestCost) {
+      bestCost = cost;
+      best = midis;
+    }
+  }
+  if (!best) {
+    loopPhrase(target, counters);
+    return;
+  }
+  applyMidis(target, best, counters);
+}
+
+function copySentence(melody: MusicNoteEvent[], counters: MusicNoteEvent[], sectionStart: number): void {
+  const first = notesInRegion(melody, sectionStart, 0, 8);
+  if (first.length === 0) return;
+  const copy = first.map((note) => ({ ...note, step: note.step + 8 * STEPS_PER_BAR }));
+  dropRegion(melody, sectionStart, 8, 16);
+  melody.push(...copy);
+  const copiedCounters = notesInRegion(counters, sectionStart, 0, 8).flatMap((note) => {
+    const step = note.step + 8 * STEPS_PER_BAR;
+    const lead = copy.find((entry) => entry.step === step);
+    if (!lead || lead.midi === note.midi) return [];
+    return [{ ...note, step }];
+  });
+  dropRegion(counters, sectionStart, 8, 16);
+  counters.push(...copiedCounters);
+}
+
+function placedRepeat(
+  relative: readonly number[],
+  anchor: number,
+  sourceMidi: number,
+): { start: number; leap: number } | undefined {
+  let best: { start: number; leap: number } | undefined;
+  for (let start = MELODY_LOW; start <= MELODY_HIGH; start += 1) {
+    if (((start - sourceMidi) % 12 + 12) % 12 !== 0) continue;
+    if (relative.some((interval) => start + interval < MELODY_LOW || start + interval > MELODY_HIGH)) continue;
+    const leap = Math.abs(start - anchor);
+    if (!best || leap < best.leap) best = { start, leap };
+  }
+  return best;
+}
+
+function shiftRegion(
+  melody: MusicNoteEvent[],
+  counters: MusicNoteEvent[],
+  sectionStart: number,
+  from: number,
+  to: number,
+  shift: number,
+): void {
+  if (shift === 0) return;
+  const leads = new Map<number, number>();
+  for (const note of melody) {
+    const bar = localBar(note, sectionStart);
+    if (bar < from || bar >= to) continue;
+    note.midi += shift;
+    leads.set(note.step, note.midi);
+  }
+  for (const note of counters) {
+    const bar = localBar(note, sectionStart);
+    if (bar < from || bar >= to) continue;
+    note.midi = placeCounterPitch(note.midi, shift, leads.get(note.step) ?? -1);
+  }
+}
+
+/** Land the chorus under the pre-chorus, then keep that entrance inside an octave. */
+function graftPhrase(
+  melody: MusicNoteEvent[],
+  counters: MusicNoteEvent[],
+  sourceStart: number,
+  targetStart: number,
+): void {
+  const source = notesInRegion(melody, sourceStart, 0, 8);
+  const before = notesInRegion(melody, targetStart, 0, 8);
+  if (source.length === 0 || before.length === 0) return;
+  const relative = source.map((note) => note.midi - source[0]!.midi);
+  const beforeLow = Math.min(...before.map((note) => note.midi));
+  const beforeHigh = Math.max(...before.map((note) => note.midi));
+  let best: { anchorShift: number; start: number; leap: number } | undefined;
+  for (let anchorShift = -60; anchorShift <= 60; anchorShift += 12) {
+    if (beforeLow + anchorShift < MELODY_LOW || beforeHigh + anchorShift > MELODY_HIGH) continue;
+    const placed = placedRepeat(relative, before[before.length - 1]!.midi + anchorShift, source[0]!.midi);
+    if (!placed) continue;
+    const candidate = { anchorShift, start: placed.start, leap: placed.leap };
+    const closer = !best
+      || candidate.leap < best.leap
+      || (candidate.leap === best.leap && Math.abs(candidate.anchorShift) < Math.abs(best.anchorShift));
+    if (closer) best = candidate;
+  }
+  if (!best) return;
+  const landing = best;
+  shiftRegion(melody, counters, targetStart, 0, 8, landing.anchorShift);
+  const sourceOrigin = sourceStart * STEPS_PER_BAR;
+  const copy = source.map((note) => ({
+    ...note,
+    step: (targetStart + 8) * STEPS_PER_BAR + (note.step - sourceOrigin),
+    midi: landing.start + (note.midi - source[0]!.midi),
+  }));
+  dropRegion(melody, targetStart, 8, 16);
+  melody.push(...copy);
+  const copiedCounters = notesInRegion(counters, sourceStart, 0, 8).flatMap((note) => {
+    const step = (targetStart + 8) * STEPS_PER_BAR + (note.step - sourceOrigin);
+    const sourceLead = source.find((entry) => entry.step === note.step);
+    const lead = copy.find((entry) => entry.step === step);
+    if (!sourceLead || !lead) return [];
+    const midi = placeCounterPitch(note.midi, lead.midi - sourceLead.midi, lead.midi);
+    if (midi === lead.midi) return [];
+    return [{ ...note, step, midi }];
+  });
+  dropRegion(counters, targetStart, 8, 16);
+  counters.push(...copiedCounters);
+}
+
+/**
+ * Slide each section by octaves so the entrance stays within one leap of the
+ * phrase before it. A whole-section slide keeps the repeated sentence intact.
+ */
+function connectSections(melody: MusicNoteEvent[], counters: MusicNoteEvent[], sections: readonly MusicSection[]): void {
+  const groups = sections.map((section) => {
+    const notes = notesInRegion(melody, section.startBar, 0, 16);
+    if (notes.length === 0) return undefined;
+    return {
+      startBar: section.startBar,
+      low: Math.min(...notes.map((note) => note.midi)),
+      high: Math.max(...notes.map((note) => note.midi)),
+      first: notes[0]!.midi,
+      last: notes[notes.length - 1]!.midi,
+    };
+  });
+  type Path = { cost: number; shifts: number[]; last: number };
+  const findPath = (requireSmooth: boolean): Path | undefined => {
+    let paths = new Map<number, Path>([[0, { cost: 0, shifts: [], last: Number.NaN }]]);
+    for (const group of groups) {
+      const next = new Map<number, Path>();
+      if (!group) {
+        for (const [key, path] of paths) next.set(key, { ...path, shifts: [...path.shifts, 0] });
+        paths = next;
+        continue;
+      }
+      for (let shift = -60; shift <= 60; shift += 12) {
+        if (group.low + shift < MELODY_LOW || group.high + shift > MELODY_HIGH) continue;
+        for (const path of paths.values()) {
+          const boundary = Number.isNaN(path.last) ? 0 : Math.abs(group.first + shift - path.last);
+          if (requireSmooth && boundary > 12) continue;
+          const cost = path.cost + Math.abs(shift) * 0.05 + (boundary > 12 ? 1_000 + boundary : boundary);
+          const current = next.get(shift);
+          if (!current || cost < current.cost) {
+            next.set(shift, { cost, shifts: [...path.shifts, shift], last: group.last + shift });
+          }
+        }
+      }
+      if (next.size === 0) return undefined;
+      paths = next;
+    }
+    return [...paths.values()].sort((a, b) => a.cost - b.cost)[0];
+  };
+  const best = findPath(true) ?? findPath(false);
+  if (!best) return;
+  groups.forEach((group, index) => {
+    if (!group) return;
+    shiftRegion(melody, counters, group.startBar, 0, 16, best.shifts[index] ?? 0);
+  });
+}
+
+/**
+ * Mission verses and choruses are written as an 8-bar sentence played twice.
+ * Voice-leading can still drag individual notes into another octave on the
+ * repeat; fold the sentence back into one register and copy it.
+ */
+function settleMissionMelody(
+  melody: MusicNoteEvent[],
+  counters: MusicNoteEvent[],
+  sections: readonly MusicSection[],
+): void {
+  const hook = sectionByName(sections, "hook");
+  const hookSentence = notesInRegion(melody, hook.startBar, 0, 8);
+  loopPhrase(hookSentence, counters);
+  for (const name of ["climax", "turnaround"] as const) {
+    const section = sectionByName(sections, name);
+    imposeContour(notesInRegion(melody, section.startBar, 0, 8), hookSentence, counters);
+  }
+  for (const name of ["groove", "development", "breakdown"] as const) {
+    const section = sectionByName(sections, name);
+    loopPhrase(notesInRegion(melody, section.startBar, 0, 8), counters);
+  }
+  const escalation = sectionByName(sections, "escalation");
+  loopPhrase(notesInRegion(melody, escalation.startBar, 0, 8), counters);
+  for (const name of REPEATED_SENTENCES) copySentence(melody, counters, sectionByName(sections, name).startBar);
+  graftPhrase(melody, counters, hook.startBar, escalation.startBar);
+  connectSections(melody, counters, sections);
+  melody.sort((a, b) => a.step - b.step);
+  counters.sort((a, b) => a.step - b.step);
+}
 
 function makeSections(): MusicSection[] {
   return SECTION_ORDER.map((name, index) => ({
@@ -103,6 +441,37 @@ function motifFrom(
     response: [...response],
     rhythm: [...rhythm],
     accentSteps: [...accents],
+  };
+}
+
+function nudgeResponse(degrees: readonly (number | null)[]): (number | null)[] {
+  const response = [...degrees];
+  const index = response.findIndex((degree, position) => degree !== null && position > 0 && position < response.length - 1);
+  if (index < 0) return response;
+  const degree = response[index]!;
+  response[index] = degree < 4 ? degree + 1 : degree - 1;
+  return response;
+}
+
+function motifFromPhrases(
+  rng: Rng,
+  phrases: readonly { degrees: readonly (number | null)[]; rhythm: readonly number[] }[],
+  avoid?: MusicMotif,
+): MusicMotif {
+  const available = avoid
+    ? phrases.filter((phrase) => JSON.stringify(phrase.degrees) !== JSON.stringify(avoid.degrees))
+    : phrases;
+  const call = rng.pick(available.length > 0 ? available : phrases);
+  const alternates = phrases.filter((phrase) =>
+    phrase.degrees.length === call.degrees.length
+    && JSON.stringify(phrase.degrees) !== JSON.stringify(call.degrees),
+  );
+  const response = alternates.length > 0 ? [...rng.pick(alternates).degrees] : nudgeResponse(call.degrees);
+  return {
+    degrees: [...call.degrees],
+    response,
+    rhythm: [...call.rhythm],
+    accentSteps: [...rng.pick([[0, 2], [0, 3], [1, 4]] as const)],
   };
 }
 
@@ -238,23 +607,28 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const bassRiffs = bassRiffsFor(style.bassRiffFamily);
   const [bassRiffA, bassRiffB, bassRiffC, bassRiffD] = pickCycle(harmonyRng, bassRiffs);
   const cinematicMaterial = style.voiceEngine === "cinematic";
-  const verseContours = missionPalette
-    ? [...missionPalette.verseContours, ...missionPalette.hookContours]
-    : cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS;
-  const verseRhythms = missionPalette
-    ? [...missionPalette.verseRhythms, ...missionPalette.hookRhythms]
-    : cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS;
-  const motif = motifFrom(melodyRng, verseContours, verseRhythms);
+  const verseContours = cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS;
+  const verseRhythms = cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS;
+  const cueBook = cueMotifPhrases(cue);
+  const motif = missionPalette
+    ? motifFromPhrases(melodyRng, missionPalette.phrases)
+    : cueBook
+      ? motifFromPhrases(melodyRng, cueBook.verse)
+      : motifFrom(melodyRng, verseContours, verseRhythms);
   // Keep one recognizable mission phrase through the score, changing its
   // scale-degree center in development and hook sections instead of replacing its shape.
   const developmentMotif = cue === "mission"
     ? transposeMotif(motif, 1)
-    : motifFrom(melodyRng, verseContours, verseRhythms, motif);
+    : cueBook
+      ? motifFromPhrases(melodyRng, cueBook.verse, motif)
+      : motifFrom(melodyRng, verseContours, verseRhythms, motif);
   const hook = cue === "mission"
     ? transposeMotif(motif, 2)
-    : cinematicMaterial
-      ? motifFrom(melodyRng, CINEMATIC_HOOK_CONTOURS, CINEMATIC_HOOK_RHYTHMS)
-      : signatureMotifFrom(melodyRng);
+    : cueBook
+      ? motifFromPhrases(melodyRng, cueBook.hook)
+      : cinematicMaterial
+        ? motifFrom(melodyRng, CINEMATIC_HOOK_CONTOURS, CINEMATIC_HOOK_RHYTHMS)
+        : signatureMotifFrom(melodyRng);
   const [arpFigureA, arpFigureB, arpFigureC, arpFigureD] = pickCycle(rhythmRng, ARP_FIGURES);
   const [openHatA, openHatB, openHatC, openHatD] = pickCycle(drumRng, OPEN_HAT_FIGURES);
   const sparse = isSparseCue(cue);
@@ -274,7 +648,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const padThird: number[] = [];
   const padFifth: number[] = [];
   const padSeventh: number[] = [];
-  const carry: ComposeCarry = { previousMelodyMidi: null, previousPadVoicing: null };
+  const carry: ComposeCarry = { previousMelodyMidi: null, previousBassMidi: null, previousPadVoicing: null };
   const barInput = {
     sections,
     phrasePlans,
@@ -299,7 +673,6 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     arrangement,
     cue,
     style,
-    cinematicMaterial,
     rootMidi,
     scalePick,
     hook,
@@ -334,6 +707,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   };
 
   smoothMelodyLine(notes.melody, cue === "mission" ? { min: 36, max: 100 } : { min: 0, max: 127 });
+  if (cue === "mission") settleMissionMelody(notes.melody, notes.counter, sections);
   notes.counter = notes.counter.filter(
     (note) => !notes.melody.some((lead) => lead.step === note.step && lead.midi === note.midi),
   );

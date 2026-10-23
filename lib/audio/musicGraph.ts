@@ -15,7 +15,7 @@ import type {
   MusicWaveformName,
 } from "./musicState";
 import { noiseBuf, setNoiseBuf } from "./musicState";
-import { cinematicWave } from "./cinematicWaves";
+import { cinematicToneFor, cinematicWave } from "./cinematicWaves";
 
 export type { AudioGraphContext, MusicGraph, PatternIndex };
 
@@ -50,9 +50,8 @@ export function layerMultiplier(layer: "bass" | "pulse" | "harmony" | "counter" 
 }
 
 export function padGainFor(value: MusicIntensity = "calm"): number {
-  if (value === "critical") return PAD_GAIN * 0.48;
-  if (value === "engaged") return PAD_GAIN * 0.7;
-  return PAD_GAIN;
+  // Combat used to cut the bed in half. Keep it under the extra layers without dropping the chord.
+  return PAD_GAIN * (value === "critical" ? 0.9 : 1);
 }
 
 function createSaturationCurve(amount: number): Float32Array<ArrayBuffer> {
@@ -304,7 +303,7 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   padGain.gain.setValueAtTime(PAD_GAIN, now);
   padGate.gain.setValueAtTime(0.02, now);
   padReverbGate.gain.setValueAtTime(0.02, now);
-  const padWave = cinematicWave(audio, "pad");
+  const padWave = cinematicWave(audio, "pad", cinematicToneFor(p.style.padType));
   padOscA.setPeriodicWave(padWave);
   padOscB.setPeriodicWave(padWave);
   padOscC.setPeriodicWave(padWave);

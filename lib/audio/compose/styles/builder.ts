@@ -79,7 +79,7 @@ function roundVoiceType(type: MusicVoiceType): MusicVoiceType {
 
 function refineCinematicSound(profile: MusicStyleProfile, cue: MusicCue): MusicStyleProfile {
   const mission = cue === "mission";
-  const softenedDetune = profile.padDetune.map((cents) => Math.max(-8, Math.min(8, cents * 0.55))) as [number, number, number, number];
+  const softenedDetune = profile.padDetune.map((cents) => Math.max(-16, Math.min(16, Math.round(cents * 0.8)))) as [number, number, number, number];
   return {
     ...profile,
     bassType: roundVoiceType(profile.bassType),
@@ -88,28 +88,45 @@ function refineCinematicSound(profile: MusicStyleProfile, cue: MusicCue): MusicS
     counterType: roundVoiceType(profile.counterType),
     padType: roundVoiceType(profile.padType),
     padDetune: softenedDetune,
-    padLfoDepth: Math.min(profile.padLfoDepth, 180),
-    padQ: Math.min(profile.padQ, 1.2),
+    padLfoDepth: Math.min(profile.padLfoDepth, 320),
+    padQ: Math.min(profile.padQ, 2.2),
     delayWet: Math.min(profile.delayWet, mission ? 0.18 : 0.22),
-    delayFeedback: Math.min(profile.delayFeedback, 0.3),
-    reverbSeconds: Math.min(1.65, Math.max(0.9, profile.reverbSeconds)),
+    delayFeedback: Math.min(profile.delayFeedback, 0.46),
+    reverbSeconds: Math.min(2.4, Math.max(0.7, profile.reverbSeconds)),
     reverbDecay: Math.min(3.4, Math.max(2.1, profile.reverbDecay)),
-    reverbSend: Math.min(mission ? 0.2 : 0.24, Math.max(0.12, profile.reverbSend)),
-    reverbWet: Math.min(mission ? 0.18 : 0.22, Math.max(0.1, profile.reverbWet)),
-    cutoffMin: Math.min(profile.cutoffMin, mission ? 680 : 840),
-    cutoffMax: Math.min(profile.cutoffMax, mission ? 1_080 : 1_280),
-    melodyOctave: mission ? 1 : profile.melodyOctave,
+    reverbSend: Math.min(mission ? 0.2 : 0.24, Math.max(0.08, profile.reverbSend)),
+    reverbWet: Math.min(mission ? 0.18 : 0.22, Math.max(0.05, profile.reverbWet)),
+    cutoffMin: Math.min(profile.cutoffMin, mission ? 980 : 1_100),
+    cutoffMax: Math.min(profile.cutoffMax, mission ? 1_600 : 1_800),
     voiceEngine: "cinematic",
     drumKit: profile.drumKit === "chip-noise" ? "gated" : profile.drumKit,
-    drumDensity: profile.drumDensity * (mission ? 0.86 : 0.92),
+    drumDensity: profile.drumDensity * (mission ? 0.96 : 0.98),
     saturationAmount: Math.min(profile.saturationAmount, 0.1),
-    drum: {
+    drum: colorRhythmSection({
       ...profile.drum,
       snareNoise: Math.min(profile.drum.snareNoise, 2_100),
       hatFrequency: Math.min(profile.drum.hatFrequency, 6_500),
       openHatFrequency: Math.min(profile.drum.openHatFrequency, 3_400),
-    },
+    }, profile.name),
   };
+}
+
+function colorRhythmSection(drum: MusicStyleProfile["drum"], name: MusicStyleProfile["name"]): MusicStyleProfile["drum"] {
+  const next = { ...drum };
+  if (name === "foundry-stomp" || name === "industrial-march") {
+    next.kickStart = Math.min(next.kickStart, 168);
+    next.kickEnd = Math.min(next.kickEnd, 30);
+    next.kickTail = Math.max(next.kickTail, 0.3);
+    next.hatFrequency = Math.min(next.hatFrequency, 4_200);
+    next.snareBody = Math.min(next.snareBody, 140);
+  }
+  if (name === "ice-protocol" || name === "glass-chime" || name === "low-orbit") {
+    next.hatFrequency = Math.max(next.hatFrequency, 6_200);
+    next.openHatFrequency = Math.max(next.openHatFrequency, 3_100);
+    next.kickTail = Math.min(next.kickTail, 0.18);
+    next.kickEnd = Math.max(next.kickEnd, 48);
+  }
+  return next;
 }
 
 export function selectStyleBlueprint(cue: MusicCue, seed: number, missionIndex: number): StyleBlueprint {
@@ -117,7 +134,20 @@ export function selectStyleBlueprint(cue: MusicCue, seed: number, missionIndex: 
   const tieRng = assignmentRng(seed, cue, "music-style-order");
   const ctx = musicMissionContext(seed, Math.max(0, missionIndex));
   if (cue !== "mission" || missionIndex < 0) {
-    return pickBestByScore(pool, (item) => styleAffinityScore(item.name, ctx), tieRng.fork(String(missionIndex)));
+    const avoid = new Set<string>();
+    const missionName = cue === "mission" ? undefined : selectStyleBlueprint("mission", seed, Math.max(0, missionIndex)).name;
+    if (missionName) avoid.add(missionName);
+    if (cue === "briefing" || cue === "victory" || cue === "defeat") {
+      avoid.add(selectStyleBlueprint("menu", seed, missionIndex).name);
+    }
+    if (cue === "victory" || cue === "defeat") {
+      avoid.add(selectStyleBlueprint("briefing", seed, missionIndex).name);
+    }
+    if (cue === "defeat") avoid.add(selectStyleBlueprint("victory", seed, missionIndex).name);
+    const narrowed = pool.filter((item) => !avoid.has(item.name));
+    const withoutMission = missionName ? pool.filter((item) => item.name !== missionName) : pool;
+    const choices = narrowed.length > 0 ? narrowed : withoutMission.length > 0 ? withoutMission : pool;
+    return pickBestByScore(choices, (item) => styleAffinityScore(item.name, ctx), tieRng.fork(String(missionIndex)));
   }
   return pickAssignedItem(
     pool,
