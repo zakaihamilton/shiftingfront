@@ -58,6 +58,19 @@ function progressSavedAt(raw: string | null): number {
     return 0;
   }
 }
+/** A later committed reward wins, including when the journal battlefield is a different snapshot. */
+function keepNewerDeploymentEdge(
+  existing: CampaignProgress,
+  merged: CampaignProgress,
+  existingSavedAt: number,
+  incomingSavedAt: number,
+): CampaignProgress {
+  if (existingSavedAt <= incomingSavedAt) return merged;
+  const next = { ...merged };
+  if (existing.deploymentEdge) next.deploymentEdge = existing.deploymentEdge;
+  else delete next.deploymentEdge;
+  return next;
+}
 function sameStatMap(left: Record<string, number>, right: Record<string, number>): boolean {
   const leftKeys = Object.keys(left).sort();
   const rightKeys = Object.keys(right).sort();
@@ -79,12 +92,12 @@ function sameCampaignProgress(left: CampaignProgress, right: CampaignProgress): 
 function progressWhenBattlefieldMatches(record: CampaignRecord, journalSavedAt: number, progress: string): string | undefined {
   const existing = readCampaignProgress(memoryStorage(record.progress ? { [campaignKey(record.seed)]: record.progress } : {}), record.seed);
   const incoming = readCampaignProgress(memoryStorage({ [campaignKey(record.seed)]: progress }), record.seed);
-  const merged = mergeCampaignProgress(existing, incoming);
-  // A later committed reward wins. An older journal must not put the previous choice back.
-  if (progressSavedAt(record.progress) > journalSavedAt) {
-    if (existing.deploymentEdge) merged.deploymentEdge = existing.deploymentEdge;
-    else delete merged.deploymentEdge;
-  }
+  const merged = keepNewerDeploymentEdge(
+    existing,
+    mergeCampaignProgress(existing, incoming),
+    progressSavedAt(record.progress),
+    journalSavedAt,
+  );
   return sameCampaignProgress(existing, merged) ? undefined : encodeProgress(merged);
 }
 function validatedProgress(raw: string, seed: number): string {
@@ -103,6 +116,8 @@ export class SaveRepository {
   private db: IDBDatabase | null = null;
   private cache = memoryStorage();
   private revisions = new Map<number, number>();
+  /** null means a clear must survive the next autosave even if the durable write failed. */
+  private edgeOverrides = new Map<number, DeploymentEdge | null>();
   private listeners = new Set<() => void>();
   private channel: BroadcastChannel | null = null;
   private queue: Promise<unknown> = Promise.resolve();
@@ -223,7 +238,21 @@ export class SaveRepository {
     for (const record of slots) next.setItem(slotKey(record.id), record.raw);
     for (const record of metadata) if (record.unreadable && !next.getItem(record.key)) next.setItem(record.key, record.raw);
     this.cache = next;
+    this.applyPendingEdgesToCache();
     this.publish();
+  }
+  private progressWithPendingEdge(seed: number, progress: CampaignProgress): CampaignProgress {
+    if (!this.edgeOverrides.has(seed)) return progress;
+    const edge = this.edgeOverrides.get(seed);
+    const next = { ...progress };
+    if (edge) next.deploymentEdge = edge;
+    else delete next.deploymentEdge;
+    return next;
+  }
+  private applyPendingEdgesToCache(): void {
+    for (const seed of this.edgeOverrides.keys()) {
+      this.cache.setItem(campaignKey(seed), encodeProgress(this.progressWithPendingEdge(seed, readCampaignProgress(this.cache, seed))));
+    }
   }
   private async committed(): Promise<void> {
     if (this.db) await this.refresh();
@@ -311,16 +340,22 @@ export class SaveRepository {
             if (merged) store.put({ ...record, progress: merged });
             return;
           }
+          const existing = readCampaignProgress(memoryStorage(record?.progress ? { [campaignKey(state.seed)]: record.progress } : {}), state.seed);
+          const incoming = readCampaignProgress(memoryStorage({ [campaignKey(state.seed)]: progress }), state.seed);
+          const merged = encodeProgress(keepNewerDeploymentEdge(
+            existing,
+            mergeCampaignProgress(existing, incoming),
+            progressSavedAt(record?.progress ?? null),
+            journalSavedAt,
+          ));
           if ((record?.revision ?? 0) === journal.revision) {
-            store.put({ seed: state.seed, revision: journal.revision + 1, autosave: journal.autosave, progress });
+            store.put({ seed: state.seed, revision: journal.revision + 1, autosave: journal.autosave, progress: merged });
           } else {
-            const existing = readCampaignProgress(memoryStorage(record?.progress ? { [campaignKey(state.seed)]: record.progress } : {}), state.seed);
-            const incoming = readCampaignProgress(memoryStorage({ [campaignKey(state.seed)]: progress }), state.seed);
             store.put({
               seed: state.seed,
               revision: (record?.revision ?? 0) + 1,
               autosave: record?.autosave ?? null,
-              progress: encodeProgress(mergeCampaignProgress(existing, incoming)),
+              progress: merged,
             });
             const temp = memoryStorage({ [campaignKey(state.seed)]: progress });
             const result = writeSlot(temp, { name: "Recovered interrupted save", state, campaign: readCampaignProgress(temp, state.seed) });
@@ -472,20 +507,27 @@ export class SaveRepository {
       return Promise.resolve(wrote);
     }
     this.cache.setItem(campaignKey(seed), encoded);
+    const pendingEdge = edge ?? null;
+    this.edgeOverrides.set(seed, pendingEdge);
     this.publish();
     return this.enqueue(async () => {
+      let written: DeploymentEdge | null | undefined;
       await this.transaction(["campaigns"], async (tx) => {
+        if (!this.edgeOverrides.has(seed)) return;
         const store = tx.objectStore("campaigns");
         const record: CampaignRecord = await request(store.get(seed)) ?? { seed, revision: 0, autosave: null, progress: null };
+        if (!this.edgeOverrides.has(seed)) return;
+        written = this.edgeOverrides.get(seed) ?? null;
         const stored = record.progress
           ? readCampaignProgress(memoryStorage({ [campaignKey(seed)]: record.progress }), seed)
           : current;
-        if (edge) stored.deploymentEdge = edge;
+        if (written) stored.deploymentEdge = written;
         else delete stored.deploymentEdge;
         // Leave the revision alone. This record is also the autosave lock, and
         // the victory save is often still queued when the player picks a reward.
         store.put({ ...record, progress: encodeProgress(stored) });
       });
+      if (written !== undefined && this.edgeOverrides.get(seed) === written) this.edgeOverrides.delete(seed);
       await this.committed();
       return true;
     }).catch(() => false);
@@ -521,15 +563,25 @@ export class SaveRepository {
         }
         this.publish(); return { status: written ? "saved" : "failed" };
       }
+      let writtenEdge: DeploymentEdge | null | undefined;
       const outcome = await this.transaction<SaveOutcome>(["campaigns"], async (tx) => {
         const store = tx.objectStore("campaigns");
         const record: CampaignRecord = await request(store.get(captured.seed)) ?? { seed: captured.seed, revision: 0, autosave: null, progress: null };
         if (!isCurrent()) return { status: "conflict" };
         if (expectedRevision !== undefined && record.revision !== expectedRevision) return { status: "conflict" };
-        store.put({ ...record, revision: record.revision + 1, autosave, progress: encodeProgress(progressFor(record, captured)) });
+        const progress = progressFor(record, captured);
+        if (this.edgeOverrides.has(captured.seed)) {
+          writtenEdge = this.edgeOverrides.get(captured.seed) ?? null;
+          if (writtenEdge) progress.deploymentEdge = writtenEdge;
+          else delete progress.deploymentEdge;
+        }
+        store.put({ ...record, revision: record.revision + 1, autosave, progress: encodeProgress(progress) });
         return { status: "saved", revision: record.revision + 1 };
       });
-      if (outcome.status === "saved") await this.committed();
+      if (outcome.status === "saved") {
+        if (writtenEdge !== undefined && this.edgeOverrides.get(captured.seed) === writtenEdge) this.edgeOverrides.delete(captured.seed);
+        await this.committed();
+      }
       return outcome;
     }).catch(() => ({ status: "failed" }));
   }
@@ -650,6 +702,7 @@ export class SaveRepository {
   async clear(): Promise<boolean> {
     this.generation++;
     await this.queue;
+    this.edgeOverrides.clear();
     try {
       if (this.db) await this.transaction(["campaigns", "slots", "metadata"], async (tx) => {
         for (const store of ["campaigns", "slots", "metadata"]) tx.objectStore(store).clear();

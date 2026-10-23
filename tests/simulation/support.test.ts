@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { canSupportTarget, isSupportUnit, isUnitAvailable, UNIT_STATS } from "../../lib/catalog";
 import { tickAi } from "../../lib/sim/ai";
 import { issue } from "../../lib/sim/orders";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { TILE_BLOCKED, TILE_CLEAR, addBuilding, addUnit, makeFixture, setTile } from "../../lib/sim/fixtures";
 import { holdSupport, tickSupport } from "../../lib/sim/support";
 import { missionDifficulty } from "../../lib/sim/difficulty";
 import { tickMovement } from "../../lib/sim/movement";
@@ -144,5 +144,35 @@ describe("support units", () => {
     tickAi(state);
 
     expect(state.productionQueues?.[1]?.barracks?.producing?.kind).toBe("medic");
+  });
+
+  it("resumes an assigned support route after an unreachable blockage opens", () => {
+    const state = makeFixture({ width: 18, height: 8, win: { kind: "annihilate" } });
+    addBuilding(state, 0, "constructionYard", 0, 0);
+    addBuilding(state, 1, "constructionYard", 0, 6);
+    const medic = addUnit(state, 0, "medic", 1, 3);
+    const infantry = addUnit(state, 0, "infantry", 16, 3);
+    infantry.hp = infantry.maxHp - 30;
+    for (let y = 0; y < state.height; y++) setTile(state, 8, y, TILE_BLOCKED);
+    state.navigationRevision += 1;
+    expect(issue(state, { type: "support", unitIds: [medic.id], targetId: infantry.id })).toEqual([]);
+
+    const advance = () => {
+      resetPathBudget(state);
+      tickMovement(state);
+      tickSupport(state);
+      state.tick += 1;
+    };
+    for (let i = 0; i < 120 && (medic.path.length > 0 || medic.routePending !== false); i++) advance();
+    expect(state.result).toBe("playing");
+    expect(medic.routePending).toBe(false);
+    expect(medic.path).toEqual([]);
+    expect(Math.round(medic.x)).toBeLessThan(8);
+    expect(infantry.hp).toBe(infantry.maxHp - 30);
+
+    for (let y = 0; y < state.height; y++) setTile(state, 8, y, TILE_CLEAR);
+    state.navigationRevision += 1;
+    for (let i = 0; i < 400; i++) advance();
+    expect(infantry.hp).toBeGreaterThan(infantry.maxHp - 30);
   });
 });
