@@ -50,6 +50,10 @@ const CINEMATIC_VERSE_CONTOURS: readonly (readonly (number | null)[])[] = [
   [2, 0, 2, 4, 5, 4, 2, 0],
   [0, 1, 3, 4, 2, 0, null, 1],
   [0, 2, 4, 3, 2, 4, 5, 0],
+  [0, 2, 3, 5, 3, 2, 4, 0],
+  [4, 2, 0, 1, 3, 2, 4, 0],
+  [0, null, 4, 5, 4, 2, null, 0],
+  [2, 4, 5, 3, 1, 2, 0, 2],
 ];
 
 const CINEMATIC_VERSE_RHYTHMS: readonly number[][] = [
@@ -57,6 +61,10 @@ const CINEMATIC_VERSE_RHYTHMS: readonly number[][] = [
   [0, 2, 5, 8, 10, 12, 14, 15],
   [0, 3, 6, 9, 11, 12, 14, 15],
   [0, 2, 6, 8, 11, 13, 14, 15],
+  [0, 2, 4, 7, 9, 11, 13, 15],
+  [0, 4, 6, 8, 10, 12, 14, 15],
+  [1, 3, 6, 8, 10, 12, 14, 15],
+  [0, 3, 5, 8, 10, 12, 13, 15],
 ];
 
 const CINEMATIC_HOOK_CONTOURS: readonly (readonly (number | null)[])[] = [
@@ -64,12 +72,19 @@ const CINEMATIC_HOOK_CONTOURS: readonly (readonly (number | null)[])[] = [
   [0, 2, 3, 5, 4, 2, 0],
   [2, 4, 5, 4, 2, 0, 2],
   [4, 2, 0, 2, 4, 5, 4],
+  [0, 2, 4, 3, 5, 2, 0],
+  [0, 1, 3, 5, 3, 2, 0],
+  [2, 0, 2, 4, 3, 2, 0],
+  [0, 3, 2, 4, 5, 3, 0],
 ];
 
 const CINEMATIC_HOOK_RHYTHMS: readonly number[][] = [
   [0, 3, 6, 8, 11, 13, 15],
   [0, 2, 6, 9, 11, 14, 15],
   [0, 4, 7, 9, 12, 14, 15],
+  [0, 2, 5, 8, 10, 12, 15],
+  [0, 1, 4, 7, 10, 12, 15],
+  [0, 3, 5, 8, 11, 14, 15],
 ];
 
 function makeSections(): MusicSection[] {
@@ -103,6 +118,30 @@ function motifFrom(
     response: [...response],
     rhythm: [...rhythm],
     accentSteps: [...accents],
+  };
+}
+
+function nudgeResponse(degrees: readonly (number | null)[]): (number | null)[] {
+  const response = [...degrees];
+  const index = response.findIndex((degree, position) => degree !== null && position > 0 && position < response.length - 1);
+  if (index < 0) return response;
+  const degree = response[index]!;
+  response[index] = degree < 4 ? degree + 1 : degree - 1;
+  return response;
+}
+
+function motifFromPhrases(rng: Rng, phrases: readonly { degrees: readonly (number | null)[]; rhythm: readonly number[] }[]): MusicMotif {
+  const call = rng.pick(phrases);
+  const alternates = phrases.filter((phrase) =>
+    phrase.degrees.length === call.degrees.length
+    && JSON.stringify(phrase.degrees) !== JSON.stringify(call.degrees),
+  );
+  const response = alternates.length > 0 ? [...rng.pick(alternates).degrees] : nudgeResponse(call.degrees);
+  return {
+    degrees: [...call.degrees],
+    response,
+    rhythm: [...call.rhythm],
+    accentSteps: [...rng.pick([[0, 2], [0, 3], [1, 4]] as const)],
   };
 }
 
@@ -238,13 +277,11 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const bassRiffs = bassRiffsFor(style.bassRiffFamily);
   const [bassRiffA, bassRiffB, bassRiffC, bassRiffD] = pickCycle(harmonyRng, bassRiffs);
   const cinematicMaterial = style.voiceEngine === "cinematic";
-  const verseContours = missionPalette
-    ? [...missionPalette.verseContours, ...missionPalette.hookContours]
-    : cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS;
-  const verseRhythms = missionPalette
-    ? [...missionPalette.verseRhythms, ...missionPalette.hookRhythms]
-    : cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS;
-  const motif = motifFrom(melodyRng, verseContours, verseRhythms);
+  const verseContours = cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS;
+  const verseRhythms = cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS;
+  const motif = missionPalette
+    ? motifFromPhrases(melodyRng, missionPalette.phrases)
+    : motifFrom(melodyRng, verseContours, verseRhythms);
   // Keep one recognizable mission phrase through the score, changing its
   // scale-degree center in development and hook sections instead of replacing its shape.
   const developmentMotif = cue === "mission"

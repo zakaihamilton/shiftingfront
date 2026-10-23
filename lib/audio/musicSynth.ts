@@ -4,7 +4,7 @@ import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { ATTACK_S, notePan } from "./musicGraph";
 import { getNoiseBuffer } from "./musicGraph";
 import type { MusicWaveformName } from "./musicState";
-import { cinematicWave, type CinematicWaveRole } from "./cinematicWaves";
+import { cinematicToneFor, cinematicWave, type CinematicWaveRole } from "./cinematicWaves";
 
 function cinematicWaveRole(voice: MusicStem): CinematicWaveRole {
   if (voice === "bass" || voice === "pulse" || voice === "melody") return voice === "melody" ? "lead" : voice;
@@ -106,8 +106,11 @@ export function playSynthTone(
   pan.pan.setValueAtTime(panCenter, time);
   pan.pan.linearRampToValueAtTime(panTarget, time + Math.min(0.18, Math.max(0.03, duration * 0.25)));
 
+  const tone = cinematicToneFor(
+    bass ? g.style.bassType : lead ? g.style.melodyType : pulse ? g.style.pulseType : piano || guitar ? g.style.padType : g.style.counterType,
+  );
   if (cinematic) {
-    oscA.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice)));
+    oscA.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice), tone));
   } else {
     const waveformName: MusicWaveformName = guitar
       ? "guitar"
@@ -174,7 +177,7 @@ export function playSynthTone(
     oscB.frequency.setValueAtTime(freq * (bass ? 1.004 : 1.01), time);
     oscB.detune.setValueAtTime(cinematic ? (lead ? 4 : guitar ? 5 : pulse ? -3 : -2) : guitar ? 7 : lead ? 10 : pulse ? -8 : -5, time);
     oscBGain.gain.setValueAtTime(pwm ? 0.2 : cinematic ? (lead ? 0.18 : guitar ? 0.12 : piano ? 0.08 : 0.16) : 0.28, time);
-    if (cinematic) oscB.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice)));
+    if (cinematic) oscB.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice), tone));
     if (pwm) {
       const pwmGain = audio.createGain();
       const pwmLfo = audio.createOscillator();
@@ -216,7 +219,7 @@ export function playSynthTone(
     const oscSub = audio.createOscillator();
     const subGain = audio.createGain();
     oscSub.type = bass ? "sine" : lead ? g.style.counterType : "triangle";
-    if (cinematic) oscSub.setPeriodicWave(cinematicWave(audio, bass ? "bass" : "harmony"));
+    if (cinematic) oscSub.setPeriodicWave(cinematicWave(audio, bass ? "bass" : "harmony", tone));
     oscSub.frequency.setValueAtTime(freq * (bass || lead ? 0.5 : 0.25), time);
     subGain.gain.setValueAtTime(bass ? (acid ? 0.34 : 0.4) : lead ? 0.05 : 0.16, time);
     oscSub.connect(subGain);

@@ -15,7 +15,7 @@ import type {
   MusicWaveformName,
 } from "./musicState";
 import { noiseBuf, setNoiseBuf } from "./musicState";
-import { cinematicWave } from "./cinematicWaves";
+import { cinematicToneFor, cinematicWave } from "./cinematicWaves";
 
 export type { AudioGraphContext, MusicGraph, PatternIndex };
 
@@ -303,7 +303,7 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   padGain.gain.setValueAtTime(PAD_GAIN, now);
   padGate.gain.setValueAtTime(0.02, now);
   padReverbGate.gain.setValueAtTime(0.02, now);
-  const padWave = cinematicWave(audio, "pad");
+  const padWave = cinematicWave(audio, "pad", cinematicToneFor(p.style.padType));
   padOscA.setPeriodicWave(padWave);
   padOscB.setPeriodicWave(padWave);
   padOscC.setPeriodicWave(padWave);

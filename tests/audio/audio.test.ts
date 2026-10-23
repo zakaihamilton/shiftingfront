@@ -16,6 +16,8 @@ import { spatialAudioForWorld } from "../../lib/audio/spatial";
 import { createCamera } from "../../lib/iso";
 import { createCampaign } from "../../lib/gen/campaign";
 import { styleAffinityScore } from "../../lib/audio/compose/missionContext";
+import { missionMotifPalette } from "../../lib/audio/compose/missionThemes";
+import type { MissionKind } from "../../lib/types";
 
 const CINEMATIC_MISSION_STYLES = new Set([
   "neon-arpeggio",
@@ -875,6 +877,60 @@ describe("generated audio", () => {
     expect(scheduleSfxTime(1, previous, 0.045)).toBeNull();
     // When clock resets (e.g. context recreation with now = 0.1 but previous was 50), it recovers immediately
     expect(scheduleSfxTime(0.1, 50, 0.045)).toBe(0.1);
+  });
+
+  it("gives every mission kind a phrase book and keeps cues off the battle style", () => {
+    const kinds: MissionKind[] = [
+      "harvestQuota",
+      "forceQuota",
+      "structureQuota",
+      "holdTheLine",
+      "sabotage",
+      "destroyMarked",
+      "razeAll",
+      "annihilate",
+      "decapitate",
+      "escort",
+      "rescue",
+      "extraction",
+    ];
+    for (const kind of kinds) {
+      const phrases = missionMotifPalette(kind)!.phrases;
+      expect(phrases.length).toBeGreaterThanOrEqual(6);
+      expect(new Set(phrases.map((phrase) => JSON.stringify(phrase.rhythm))).size).toBeGreaterThanOrEqual(4);
+      for (const phrase of phrases) {
+        expect(phrase.degrees.length).toBeGreaterThan(4);
+        expect(phrase.rhythm).toHaveLength(phrase.degrees.length);
+        expect(phrase.rhythm.some((step) => step % 2 === 1)).toBe(true);
+        expect(phrase.rhythm[0]).toBeGreaterThanOrEqual(0);
+        expect(phrase.rhythm.at(-1)).toBeLessThanOrEqual(15);
+        for (let index = 1; index < phrase.rhythm.length; index += 1) {
+          expect(phrase.rhythm[index]).toBeGreaterThan(phrase.rhythm[index - 1]!);
+        }
+      }
+    }
+
+    const pieces = Array.from({ length: 24 }, (_, seed) =>
+      Array.from({ length: 6 }, (__, mission) => composeMusic(seed, "mission", mission)),
+    );
+    const flat = pieces.flat();
+    expect(new Set(flat.map((pattern) => JSON.stringify(pattern.theme.motif.degrees))).size).toBeGreaterThanOrEqual(24);
+    expect(new Set(flat.map((pattern) => JSON.stringify(pattern.theme.motif.rhythm))).size).toBeGreaterThanOrEqual(8);
+    expect(new Set(flat.map((pattern) => pattern.style.melodyOctave))).toEqual(new Set([1, 2]));
+    expect(Math.max(...flat.flatMap((pattern) => pattern.style.padDetune.map((cents) => Math.abs(cents))))).toBeGreaterThanOrEqual(12);
+    for (const campaign of pieces) {
+      expect(new Set(campaign.map((pattern) => pattern.theme.groove)).size).toBeGreaterThanOrEqual(2);
+      expect(new Set(campaign.map((pattern) => pattern.scaleName)).size).toBeGreaterThanOrEqual(2);
+    }
+
+    const cues = ["menu", "briefing", "victory", "defeat"] as const;
+    for (const cue of cues) {
+      let differs = 0;
+      for (let seed = 0; seed < 24; seed += 1) {
+        if (composeMusic(seed, cue, 0).style.name !== composeMusic(seed, "mission", 0).style.name) differs += 1;
+      }
+      expect(differs).toBeGreaterThanOrEqual(20);
+    }
   });
 
   it("tracks the music enable flag without requiring an audio device", () => {

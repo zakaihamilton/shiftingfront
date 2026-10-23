@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { cinematicHarmonics } from "../../lib/audio/cinematicWaves";
 import { playSynthTone, schedulePadGate } from "../../lib/audio/musicSynth";
 import { composeMusic } from "../../lib/audio/compose";
 import type { AudioGraphContext, MusicGraph } from "../../lib/audio/musicGraph";
@@ -136,5 +137,22 @@ describe("cinematic music synthesis", () => {
     expect(Math.min(...levels)).toBeGreaterThan(0.2);
     expect(Math.max(...levels)).toBeGreaterThan(Math.min(...levels));
     expect(actions.at(-1)?.args[1]).toBeCloseTo(2 + 0.12 * 16);
+  });
+
+  it("colors the lead, bed, piano, and guitar by voice type", () => {
+    for (const role of ["lead", "pad", "piano", "guitar", "harmony"] as const) {
+      const warm = cinematicHarmonics(role, "warm");
+      const bright = cinematicHarmonics(role, "bright");
+      const soft = cinematicHarmonics(role, "soft");
+      expect(warm).not.toEqual(bright);
+      expect(warm).not.toEqual(soft);
+      expect(bright).not.toEqual(soft);
+      if (role === "lead") {
+        for (const spectrum of [warm, bright, soft]) {
+          expect(spectrum).toHaveLength(6);
+          expect(spectrum[0]).toBeGreaterThan(spectrum[1]!);
+        }
+      }
+    }
   });
 });
