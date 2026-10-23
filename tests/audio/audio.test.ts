@@ -1017,6 +1017,52 @@ describe("generated audio", () => {
     expect(ice!.drum.hatFrequency).toBeGreaterThan(foundry!.drum.hatFrequency);
   });
 
+  it("forms each mission as a verse, a repeated chorus, and a bridge", () => {
+    const cells = (pattern: ReturnType<typeof composeMusic>, name: string, fromBar: number, toBar: number) => {
+      const section = pattern.sections.find((entry) => entry.name === name)!;
+      return pattern.notes.melody
+        .filter((note) => {
+          const bar = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
+          return bar >= fromBar && bar < toBar;
+        })
+        .sort((a, b) => a.step - b.step)
+        .map((note) => {
+          const localBar = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
+          const pitchClass = ((note.midi - pattern.rootMidi) % 12 + 12) % 12;
+          return `${localBar % 8}:${note.step % STEPS_PER_BAR}:${pitchClass}`;
+        });
+    };
+
+    for (const seed of [0, 21, 421, 9999]) {
+      const pattern = composeMusic(seed, "mission", 3);
+      const verse = cells(pattern, "groove", 0, 8);
+      const verseReturn = cells(pattern, "groove", 8, 16);
+      const chorus = cells(pattern, "hook", 0, 8);
+      const chorusReturn = cells(pattern, "hook", 8, 16);
+      const secondVerse = cells(pattern, "development", 0, 8);
+      const secondVerseReturn = cells(pattern, "development", 8, 16);
+      expect(verse.length).toBeGreaterThan(0);
+      expect(chorus.length).toBeGreaterThan(0);
+      expect(verseReturn).toEqual(verse);
+      expect(chorusReturn).toEqual(chorus);
+      expect(secondVerseReturn).toEqual(secondVerse);
+      expect(chorus).not.toEqual(verse);
+      expect(cells(pattern, "climax", 0, 16)).toEqual(cells(pattern, "hook", 0, 16));
+      expect(cells(pattern, "turnaround", 0, 16)).toEqual(cells(pattern, "hook", 0, 16));
+      expect(cells(pattern, "escalation", 8, 16)).toEqual(chorus);
+
+      const bridge = pattern.sections.find((entry) => entry.name === "breakdown")!;
+      const bridgeNotes = pattern.notes.melody.filter(
+        (note) => note.step >= bridge.startBar * STEPS_PER_BAR && note.step < bridge.endBar * STEPS_PER_BAR,
+      );
+      expect(bridgeNotes.length).toBeGreaterThan(0);
+      expect(cells(pattern, "breakdown", 8, 16)).toEqual(cells(pattern, "breakdown", 0, 8));
+      expect(pattern.notes.harmony.some(
+        (note) => note.step >= bridge.startBar * STEPS_PER_BAR && note.step < bridge.endBar * STEPS_PER_BAR,
+      )).toBe(false);
+    }
+  });
+
   it("tracks the music enable flag without requiring an audio device", () => {
     setMusicEnabled(false);
     expect(isMusicEnabled()).toBe(false);
