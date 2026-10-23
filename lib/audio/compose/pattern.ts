@@ -40,6 +40,7 @@ import {
 } from "./helpers";
 import { bassRiffsFor, createMusicStyle, styleRng } from "./styles";
 import { musicMissionContext } from "./missionContext";
+import { cueMotifPhrases } from "./cueThemes";
 import { missionMotifPalette } from "./missionThemes";
 import { smoothMelodyLine } from "./stems";
 import { composeBar, type ComposeCarry } from "./composeBar";
@@ -130,8 +131,15 @@ function nudgeResponse(degrees: readonly (number | null)[]): (number | null)[] {
   return response;
 }
 
-function motifFromPhrases(rng: Rng, phrases: readonly { degrees: readonly (number | null)[]; rhythm: readonly number[] }[]): MusicMotif {
-  const call = rng.pick(phrases);
+function motifFromPhrases(
+  rng: Rng,
+  phrases: readonly { degrees: readonly (number | null)[]; rhythm: readonly number[] }[],
+  avoid?: MusicMotif,
+): MusicMotif {
+  const available = avoid
+    ? phrases.filter((phrase) => JSON.stringify(phrase.degrees) !== JSON.stringify(avoid.degrees))
+    : phrases;
+  const call = rng.pick(available.length > 0 ? available : phrases);
   const alternates = phrases.filter((phrase) =>
     phrase.degrees.length === call.degrees.length
     && JSON.stringify(phrase.degrees) !== JSON.stringify(call.degrees),
@@ -279,19 +287,26 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const cinematicMaterial = style.voiceEngine === "cinematic";
   const verseContours = cinematicMaterial ? CINEMATIC_VERSE_CONTOURS : VERSE_CONTOURS;
   const verseRhythms = cinematicMaterial ? CINEMATIC_VERSE_RHYTHMS : VERSE_RHYTHMS;
+  const cueBook = cueMotifPhrases(cue);
   const motif = missionPalette
     ? motifFromPhrases(melodyRng, missionPalette.phrases)
-    : motifFrom(melodyRng, verseContours, verseRhythms);
+    : cueBook
+      ? motifFromPhrases(melodyRng, cueBook.verse)
+      : motifFrom(melodyRng, verseContours, verseRhythms);
   // Keep one recognizable mission phrase through the score, changing its
   // scale-degree center in development and hook sections instead of replacing its shape.
   const developmentMotif = cue === "mission"
     ? transposeMotif(motif, 1)
-    : motifFrom(melodyRng, verseContours, verseRhythms, motif);
+    : cueBook
+      ? motifFromPhrases(melodyRng, cueBook.verse, motif)
+      : motifFrom(melodyRng, verseContours, verseRhythms, motif);
   const hook = cue === "mission"
     ? transposeMotif(motif, 2)
-    : cinematicMaterial
-      ? motifFrom(melodyRng, CINEMATIC_HOOK_CONTOURS, CINEMATIC_HOOK_RHYTHMS)
-      : signatureMotifFrom(melodyRng);
+    : cueBook
+      ? motifFromPhrases(melodyRng, cueBook.hook)
+      : cinematicMaterial
+        ? motifFrom(melodyRng, CINEMATIC_HOOK_CONTOURS, CINEMATIC_HOOK_RHYTHMS)
+        : signatureMotifFrom(melodyRng);
   const [arpFigureA, arpFigureB, arpFigureC, arpFigureD] = pickCycle(rhythmRng, ARP_FIGURES);
   const [openHatA, openHatB, openHatC, openHatD] = pickCycle(drumRng, OPEN_HAT_FIGURES);
   const sparse = isSparseCue(cue);

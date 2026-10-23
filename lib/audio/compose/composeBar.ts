@@ -131,6 +131,7 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const breakdown = section.name === "breakdown";
   const climax = section.name === "climax";
   const hookSection = section.name === "hook" || section.name === "turnaround" || climax;
+  const clearBreakdown = breakdown && cue !== "victory";
   if (phraseBar === 0 && recurringHookSection) previousMelodyMidi = null;
   const holdBass = arrangement.holdBass[sectionIndex]!;
   const energy = section.energy;
@@ -141,11 +142,12 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const dropHats = dropTexture && !hookSection;
   const dropPulse = dropTexture && !hookSection;
   const hole = holdBass && phraseBar < 8;
-  const fullDrums = !sparse && !dropTexture && (cue === "victory" || (!hole && (!intro || phraseBar >= 4)));
+  const introDrums = !intro || phraseBar >= 8;
+  const fullDrums = !sparse && !dropTexture && !clearBreakdown && (cue === "victory" || (!hole && introDrums));
   const phraseEnd = phraseBar === 7 || phraseBar === 15;
-  const lightDrums = sparse && !hole && (!intro || phraseBar >= 4) && (phraseBar % 2 === 0 || phraseEnd);
+  const lightDrums = sparse && !hole && !clearBreakdown && introDrums && (phraseBar % 2 === 0 || phraseEnd);
   let usePulse = arrangement.pulseEnabled[sectionIndex]!;
-  if (intro && phraseBar < 4) usePulse = false;
+  if (intro && phraseBar < 8) usePulse = false;
   if (hole) usePulse = false;
   if (dropPulse) usePulse = false;
   const phraseSlot = phraseBar % 4;
@@ -154,8 +156,7 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const restBar = section.name === "breakdown" && phraseSlot === 3;
   const useHookLead =
     hookSection ||
-    (intro && phraseBar >= 12) ||
-    (breakdown && phraseBar >= 8) ||
+    (breakdown && !clearBreakdown && phraseBar >= 8) ||
     (section.name === "escalation" && phraseBar >= 8);
   const echoBar = arrangement.echoMelody && section.name === "groove" && phraseBar % 2 === 0;
   const useMelody =
@@ -166,8 +167,8 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
       section.name === "development" ||
       section.name === "escalation" ||
       hookSection ||
-      (intro && phraseBar >= 8) ||
-      (breakdown && phraseBar >= 8));
+      (intro && phraseBar >= 12) ||
+      (breakdown && !clearBreakdown && phraseBar >= 8));
   const useCounter = !sparse && arrangement.counterEnabled[sectionIndex]! && (useMelody || echoBar) && response && halfPhrase >= 4;
   const sequenceOffset = hookSection ? 0 : liftBar ? 2 : 0;
   const sequenceOctave = climax && style.melodyOctave === 1 ? 2 : style.melodyOctave;
@@ -211,9 +212,24 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
     previousBassMidi = midi;
     noteEvent(notes.bass, step, midi, duration, velocity, accent);
   };
+  const bassLift = hookSection ? 1.08 : intro ? 0.82 : 1;
   if (holdBass) {
-    addBass(origin, 0, -1, 8, mixEnergy(0.58, energy), true);
-    if (bar % 2 === 1) addBass(origin + 8, 0, 0, 6, mixEnergy(0.46, energy));
+    addBass(origin, 0, -1, 8, mixEnergy(0.58 * bassLift, energy), true);
+    if (bar % 2 === 1) addBass(origin + 8, 0, 0, 6, mixEnergy(0.46 * bassLift, energy));
+  } else if (section.name === "development") {
+    const answer = [0, 2, 3, 4, 2, 4, 1, 0];
+    const answerStride = Math.min(bassStride, 4);
+    for (let i = 0; i < 8; i += 1) {
+      if (i % (answerStride / 2) !== 0) continue;
+      addBass(
+        origin + i * 2,
+        answer[i]!,
+        i % 4 === 2 ? 1 : 0,
+        2,
+        mixEnergy(i === 0 || i === 4 ? 0.84 : 0.66, energy),
+        i === 0,
+      );
+    }
   } else {
     for (let i = 0; i < 8; i++) {
       if (i % (bassStride / 2) !== 0 && bassStride > 2) continue;
@@ -225,7 +241,7 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
         hit.tone,
         octave,
         intro ? 3 : 2,
-        mixEnergy(i === 0 || i === 4 ? 0.92 : 0.7, energy),
+        mixEnergy((i === 0 || i === 4 ? 0.92 : 0.7) * bassLift, energy),
         i === 0 || i === 4,
       );
     }
@@ -268,7 +284,13 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
         ? developmentMotif
         : motif;
     const lead = developMotif(baseLead, phrasePass);
-    const velocity = mixEnergy(climax ? 0.96 : hookSection ? 0.86 : 0.74, energy);
+    const leadBase = intro ? 0.58
+      : clearBreakdown ? 0.52
+      : section.name === "hook" || section.name === "turnaround" ? 1
+      : climax ? 1
+      : section.name === "escalation" ? 0.9
+      : 0.72;
+    const velocity = mixEnergy(leadBase, energy);
     const durationFor = (index: number, sounding: number, gap = 1) => {
       const last = index === sounding - 1;
       if (useHookLead) return last && phraseEnd ? Math.min(gap + 2, 6) : Math.min(gap, 5);
@@ -369,7 +391,11 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
     const grooveVariantNow = ((bar >= MUSIC_BARS / 2 ? style.grooveVariant + 1 : style.grooveVariant) % 3) as 0 | 1 | 2;
     const hits = grooveHits(groove, cycle % 2 as 0 | 1, grooveVariantNow);
     const density = Math.min(1, style.drumDensity * arrangement.drumDensity[sectionIndex]!);
-    const drumGain = mixEnergy(fullDrums ? 0.82 + density * 0.18 : 0.54 + density * 0.12, energy) * (cue === "mission" ? 0.78 : 1);
+    const drumScale = intro ? 0.7 : hookSection ? 1.08 : section.name === "escalation" ? 1.02 : 1;
+    const drumGain = Math.min(
+      0.9,
+      mixEnergy(fullDrums ? 0.82 + density * 0.18 : 0.54 + density * 0.12, energy) * (cue === "mission" ? 0.78 : 1) * drumScale,
+    );
     for (const step of hits.kick) drumEvent(drums, origin + step, "kick", (step === 0 ? 0.95 : 0.72) * drumGain, step === 0, drumRng);
     for (const step of hits.snare) {
       const accent = step === 4 || step === 12;
@@ -399,11 +425,13 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
     drumEvent(drums, origin, "impact", mixEnergy(climax ? 0.9 : section.name === "hook" ? 0.46 : 0.62, energy), true, drumRng);
   }
 
-  if (miniFill) {
+  if (miniFill && !clearBreakdown) {
     placePhraseFill(drums, origin, arrangement.fillStyle[sectionIndex]!, { sparse, finalBar: false, mini: true, rng: drumRng });
   }
 
-  if (fill) {
+  if (fill && clearBreakdown) {
+    drumEvent(drums, origin + 12, "snare", mixEnergy(0.42, energy), true, drumRng);
+  } else if (fill) {
     placePhraseFill(drums, origin, arrangement.fillStyle[sectionIndex]!, {
       sparse: sparse || (hole && cue !== "victory"),
       finalBar: bar === MUSIC_BARS - 1,

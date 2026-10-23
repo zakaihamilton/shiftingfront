@@ -329,11 +329,12 @@ export function schedulePadGate(
   const t = Math.max(time, audio.currentTime);
   const level = value === "critical" ? 0.92 : value === "engaged" ? 1 : 0.86;
   const sparseSection = section === "intro" || section === "breakdown";
+  const arrival = section === "hook" || section === "climax" || section === "turnaround";
   const stepsIntoBar = ((stepIndex % STEPS_PER_BAR) + STEPS_PER_BAR) % STEPS_PER_BAR;
   const interval = stepDuration * (STEPS_PER_BAR - stepsIntoBar);
   // Swell on the downbeat, then hold the chord. A mid-bar resume opens straight to the hold.
-  const pulseLevel = level * (sparseSection ? 0.24 : 0.4);
-  const floor = pulseLevel * (sparseSection ? 0.62 : 0.75);
+  const pulseLevel = level * (sparseSection ? 0.5 : arrival ? 0.62 : 0.4);
+  const floor = pulseLevel * (sparseSection || arrival ? 0.8 : 0.75);
   for (const gate of [g.padGate, g.padReverbGate]) {
     gate.gain.cancelScheduledValues(t);
     gate.gain.setValueAtTime(floor, t);

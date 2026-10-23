@@ -16,6 +16,7 @@ import { spatialAudioForWorld } from "../../lib/audio/spatial";
 import { createCamera } from "../../lib/iso";
 import { createCampaign } from "../../lib/gen/campaign";
 import { styleAffinityScore } from "../../lib/audio/compose/missionContext";
+import { cueMotifPhrases } from "../../lib/audio/compose/cueThemes";
 import { missionMotifPalette } from "../../lib/audio/compose/missionThemes";
 import type { MissionKind } from "../../lib/types";
 
@@ -931,6 +932,89 @@ describe("generated audio", () => {
       }
       expect(differs).toBeGreaterThanOrEqual(20);
     }
+  });
+
+  it("gives each screen its own tune, a louder hook, and a rhythm section that matches the style", () => {
+    const sounding = (degrees: readonly (number | null)[]) => degrees.filter((degree): degree is number => degree !== null);
+    const menu = cueMotifPhrases("menu")!;
+    const briefing = cueMotifPhrases("briefing")!;
+    const victory = cueMotifPhrases("victory")!;
+    const defeat = cueMotifPhrases("defeat")!;
+    for (const phrase of [...menu.verse, ...menu.hook]) {
+      expect(Math.max(...sounding(phrase.degrees))).toBeLessThanOrEqual(3);
+      expect(phrase.rhythm.some((step, index) => index > 0 && step - phrase.rhythm[index - 1]! >= 3)).toBe(true);
+    }
+    for (const phrase of briefing.verse) {
+      expect(Math.max(...sounding(phrase.degrees))).toBeLessThanOrEqual(4);
+      expect(phrase.rhythm.some((step, index) => index > 0 && step - phrase.rhythm[index - 1]! <= 2)).toBe(true);
+    }
+    for (const phrase of [...victory.verse, ...victory.hook]) {
+      const notes = sounding(phrase.degrees);
+      expect(Math.max(...notes) - notes[0]!).toBeGreaterThanOrEqual(3);
+    }
+    for (const phrase of defeat.verse) {
+      const notes = sounding(phrase.degrees);
+      expect(notes[0]).toBeGreaterThanOrEqual(3);
+      expect(notes.at(-1)).toBe(0);
+    }
+
+    const cueMotifs = ["menu", "briefing", "victory", "defeat"].map((cue) =>
+      JSON.stringify(composeMusic(421, cue as "menu" | "briefing" | "victory" | "defeat").theme.motif.degrees),
+    );
+    expect(new Set(cueMotifs).size).toBe(4);
+
+    const averageVelocity = (pattern: ReturnType<typeof composeMusic>, name: string) => {
+      const section = pattern.sections.find((entry) => entry.name === name)!;
+      const notes = pattern.notes.melody.filter(
+        (note) => note.step >= section.startBar * STEPS_PER_BAR && note.step < section.endBar * STEPS_PER_BAR,
+      );
+      return notes.reduce((sum, note) => sum + note.velocity, 0) / Math.max(1, notes.length);
+    };
+    const drumsIn = (pattern: ReturnType<typeof composeMusic>, name: string) => {
+      const section = pattern.sections.find((entry) => entry.name === name)!;
+      return pattern.drums.filter(
+        (event) => event.step >= section.startBar * STEPS_PER_BAR && event.step < section.endBar * STEPS_PER_BAR,
+      ).length;
+    };
+    for (const seed of [0, 421, 9999]) {
+      const pattern = composeMusic(seed, "mission", 3);
+      if (pattern.style.arrangement.melodyEnabled[0] && pattern.style.arrangement.melodyEnabled[1] && pattern.style.arrangement.melodyEnabled[2]) {
+        expect(averageVelocity(pattern, "hook")).toBeGreaterThan(averageVelocity(pattern, "groove"));
+        expect(averageVelocity(pattern, "groove")).toBeGreaterThan(averageVelocity(pattern, "intro"));
+      }
+      const breakdown = pattern.sections.find((entry) => entry.name === "breakdown")!;
+      const breakdownDrums = pattern.drums.filter(
+        (event) => event.step >= breakdown.startBar * STEPS_PER_BAR && event.step < breakdown.endBar * STEPS_PER_BAR,
+      );
+      expect(breakdownDrums.some((event) => event.kind === "kick" || event.kind === "hat")).toBe(false);
+      expect(breakdownDrums.length).toBeGreaterThan(0);
+      expect(breakdownDrums.length).toBeLessThan(drumsIn(pattern, "groove"));
+      expect(drumsIn(composeMusic(seed, "victory"), "breakdown")).toBeGreaterThan(drumsIn(pattern, "breakdown"));
+      if (!pattern.style.arrangement.holdBass[3]) {
+        const section = pattern.sections.find((entry) => entry.name === "development")!;
+        const classes = new Set(
+          pattern.notes.bass
+            .filter((note) => note.step >= section.startBar * STEPS_PER_BAR && note.step < section.endBar * STEPS_PER_BAR)
+            .map((note) => ((note.midi % 12) + 12) % 12),
+        );
+        expect(classes.size).toBeGreaterThanOrEqual(3);
+      }
+    }
+
+    let foundry: ReturnType<typeof composeMusic>["style"] | undefined;
+    let ice: ReturnType<typeof composeMusic>["style"] | undefined;
+    for (let seed = 0; seed < 48 && (!foundry || !ice); seed += 1) {
+      for (let mission = 0; mission < 6 && (!foundry || !ice); mission += 1) {
+        const pattern = composeMusic(seed, "mission", mission);
+        if (pattern.style.name === "foundry-stomp") foundry = pattern.style;
+        if (pattern.style.name === "ice-protocol") ice = pattern.style;
+      }
+    }
+    expect(foundry).toBeTruthy();
+    expect(ice).toBeTruthy();
+    expect(foundry!.drum.kickTail).toBeGreaterThan(ice!.drum.kickTail);
+    expect(foundry!.drum.kickEnd).toBeLessThan(ice!.drum.kickEnd);
+    expect(ice!.drum.hatFrequency).toBeGreaterThan(foundry!.drum.hatFrequency);
   });
 
   it("tracks the music enable flag without requiring an audio device", () => {

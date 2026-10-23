@@ -102,13 +102,31 @@ function refineCinematicSound(profile: MusicStyleProfile, cue: MusicCue): MusicS
     drumKit: profile.drumKit === "chip-noise" ? "gated" : profile.drumKit,
     drumDensity: profile.drumDensity * (mission ? 0.96 : 0.98),
     saturationAmount: Math.min(profile.saturationAmount, 0.1),
-    drum: {
+    drum: colorRhythmSection({
       ...profile.drum,
       snareNoise: Math.min(profile.drum.snareNoise, 2_100),
       hatFrequency: Math.min(profile.drum.hatFrequency, 6_500),
       openHatFrequency: Math.min(profile.drum.openHatFrequency, 3_400),
-    },
+    }, profile.name),
   };
+}
+
+function colorRhythmSection(drum: MusicStyleProfile["drum"], name: MusicStyleProfile["name"]): MusicStyleProfile["drum"] {
+  const next = { ...drum };
+  if (name === "foundry-stomp" || name === "industrial-march") {
+    next.kickStart = Math.min(next.kickStart, 168);
+    next.kickEnd = Math.min(next.kickEnd, 30);
+    next.kickTail = Math.max(next.kickTail, 0.3);
+    next.hatFrequency = Math.min(next.hatFrequency, 4_200);
+    next.snareBody = Math.min(next.snareBody, 140);
+  }
+  if (name === "ice-protocol" || name === "glass-chime" || name === "low-orbit") {
+    next.hatFrequency = Math.max(next.hatFrequency, 6_200);
+    next.openHatFrequency = Math.max(next.openHatFrequency, 3_100);
+    next.kickTail = Math.min(next.kickTail, 0.18);
+    next.kickEnd = Math.max(next.kickEnd, 48);
+  }
+  return next;
 }
 
 export function selectStyleBlueprint(cue: MusicCue, seed: number, missionIndex: number): StyleBlueprint {
