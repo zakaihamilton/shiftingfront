@@ -65,6 +65,8 @@ export type MusicGraph = {
   padReverbFilter: BiquadFilterNode;
   padReverbGate: GainNode;
   padReverbSend: GainNode;
+  /** Bar index whose pad swell has already been scheduled. */
+  padPhrase?: number;
   padReverbVoices: readonly GainNode[];
   padBase: number;
   index: PatternIndex;

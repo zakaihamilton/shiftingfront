@@ -331,6 +331,7 @@ export function applyPattern(next: MusicPattern): void {
     const t = audio.currentTime;
     syncGraphStyle(audio, activeGraph, next, t);
     activeGraph.index = indexPattern(next);
+    activeGraph.padPhrase = undefined;
     setStep(0);
     prewarmMusicSamples(audio, next.style.drumKit, next.style.drum);
     applyIntensityAt(audio, activeGraph, intensity, t, ducked);

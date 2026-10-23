@@ -50,9 +50,8 @@ export function layerMultiplier(layer: "bass" | "pulse" | "harmony" | "counter" 
 }
 
 export function padGainFor(value: MusicIntensity = "calm"): number {
-  if (value === "critical") return PAD_GAIN * 0.48;
-  if (value === "engaged") return PAD_GAIN * 0.7;
-  return PAD_GAIN;
+  // Combat used to cut the bed in half. Keep it under the extra layers without dropping the chord.
+  return PAD_GAIN * (value === "critical" ? 0.9 : 1);
 }
 
 function createSaturationCurve(amount: number): Float32Array<ArrayBuffer> {

@@ -615,6 +615,62 @@ describe("generated audio", () => {
     expect(notesWithinFifth / adjacentNotes).toBeGreaterThanOrEqual(0.95);
   });
 
+  it("voices a sustained bed, a singable bass line, and a melody that does not stack on itself", () => {
+    const midiFromHz = (hz: number) => Math.round(69 + 12 * Math.log2(hz / 440));
+    const cues = ["menu", "briefing", "mission", "victory", "defeat"] as const;
+
+    for (const cue of cues) {
+      for (let seed = 0; seed < 16; seed += 1) {
+        const pattern = composeMusic(seed, cue, cue === "mission" ? seed % 8 : 0);
+        const bass = [...pattern.notes.bass].sort((a, b) => a.step - b.step);
+        expect(bass.length).toBeGreaterThan(0);
+        expect(bass.every((note) => note.midi >= 28 && note.midi <= 64)).toBe(true);
+        for (let index = 1; index < bass.length; index += 1) {
+          expect(Math.abs(bass[index]!.midi - bass[index - 1]!.midi)).toBeLessThanOrEqual(12);
+        }
+
+        for (let bar = 0; bar < pattern.bars; bar += 1) {
+          const voices = [pattern.padRoot, pattern.padThird, pattern.padFifth, pattern.padSeventh].map(
+            (lane) => midiFromHz(lane[bar]!),
+          );
+          expect(Math.max(...voices) - Math.min(...voices)).toBeLessThanOrEqual(24);
+          expect(voices[0]).toBe(Math.min(...voices));
+          for (let left = 0; left < voices.length; left += 1) {
+            for (let right = left + 1; right < voices.length; right += 1) {
+              const diff = Math.abs(voices[left]! - voices[right]!);
+              expect(diff).toBeGreaterThanOrEqual(2);
+              expect(diff % 12).not.toBe(1);
+            }
+          }
+        }
+
+        const melody = [...pattern.notes.melody].sort((a, b) => a.step - b.step);
+        let overlaps = 0;
+        for (let index = 1; index < melody.length; index += 1) {
+          if (melody[index - 1]!.step + melody[index - 1]!.duration > melody[index]!.step) overlaps += 1;
+        }
+        expect(overlaps / melody.length).toBeLessThan(0.05);
+
+        if (cue !== "mission") continue;
+        const groove = pattern.sections.find((section) => section.name === "groove")!;
+        const grooveChords = pattern.notes.harmony.filter(
+          (note) => note.step >= groove.startBar * STEPS_PER_BAR && note.step < groove.endBar * STEPS_PER_BAR,
+        );
+        expect(grooveChords.length).toBeGreaterThan(0);
+        expect(grooveChords.every((note) => note.duration >= 6)).toBe(true);
+        const guitarSteps = new Set(pattern.notes.guitar.map((note) => note.step));
+        expect(pattern.notes.guitar.length).toBeGreaterThan(guitarSteps.size);
+        for (const strum of pattern.notes.guitar) {
+          for (const lead of melody) {
+            if (strum.step < lead.step || strum.step >= lead.step + lead.duration) continue;
+            const diff = Math.abs(strum.midi - lead.midi) % 12;
+            expect(diff === 0 || diff === 1 || diff === 11).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
   it("keeps sparse cue percussion atmospheric", () => {
     for (const cue of ["menu", "briefing", "defeat"] as const) {
       for (let seed = 0; seed < 24; seed++) {

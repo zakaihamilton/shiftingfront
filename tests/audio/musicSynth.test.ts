@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { playSynthTone } from "../../lib/audio/musicSynth";
+import { playSynthTone, schedulePadGate } from "../../lib/audio/musicSynth";
 import { composeMusic } from "../../lib/audio/compose";
 import type { AudioGraphContext, MusicGraph } from "../../lib/audio/musicGraph";
 
@@ -112,5 +112,29 @@ describe("cinematic music synthesis", () => {
     expect(envelopeActions.at(-1)?.method).toBe("setTargetAtTime");
     expect(envelopeActions.some(({ method, args }) => method === "exponentialRampToValueAtTime" && args[0] === 0.0001)).toBe(false);
     expect(oscillators[0]?.setPeriodicWave).toHaveBeenCalledOnce();
+  });
+
+  it("holds the harmonic pad through the bar instead of gating it to silence", () => {
+    const actions: { method: string; args: number[] }[] = [];
+    const gain = {
+      cancelScheduledValues: () => undefined,
+      setValueAtTime: (...args: number[]) => { actions.push({ method: "setValueAtTime", args }); },
+      linearRampToValueAtTime: (...args: number[]) => { actions.push({ method: "linearRampToValueAtTime", args }); },
+    };
+    const gate = { gain };
+    schedulePadGate(
+      { currentTime: 0 } as unknown as AudioGraphContext,
+      { padGate: gate, padReverbGate: gate } as unknown as MusicGraph,
+      2,
+      0.12,
+      0,
+      "hook",
+      "calm",
+    );
+
+    const levels = actions.map((action) => action.args[0]!);
+    expect(Math.min(...levels)).toBeGreaterThan(0.2);
+    expect(Math.max(...levels)).toBeGreaterThan(Math.min(...levels));
+    expect(actions.at(-1)?.args[1]).toBeCloseTo(2 + 0.12 * 16);
   });
 });

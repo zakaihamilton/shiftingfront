@@ -274,7 +274,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const padThird: number[] = [];
   const padFifth: number[] = [];
   const padSeventh: number[] = [];
-  const carry: ComposeCarry = { previousMelodyMidi: null, previousPadVoicing: null };
+  const carry: ComposeCarry = { previousMelodyMidi: null, previousBassMidi: null, previousPadVoicing: null };
   const barInput = {
     sections,
     phrasePlans,
@@ -299,7 +299,6 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     arrangement,
     cue,
     style,
-    cinematicMaterial,
     rootMidi,
     scalePick,
     hook,
