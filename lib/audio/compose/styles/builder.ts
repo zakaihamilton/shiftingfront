@@ -135,18 +135,19 @@ export function selectStyleBlueprint(cue: MusicCue, seed: number, missionIndex: 
   const ctx = musicMissionContext(seed, Math.max(0, missionIndex));
   if (cue !== "mission" || missionIndex < 0) {
     const avoid = new Set<string>();
-    if (cue !== "mission") {
-      avoid.add(selectStyleBlueprint("mission", seed, Math.max(0, missionIndex)).name);
-      if (cue === "briefing" || cue === "victory" || cue === "defeat") {
-        avoid.add(selectStyleBlueprint("menu", seed, missionIndex).name);
-      }
-      if (cue === "victory" || cue === "defeat") {
-        avoid.add(selectStyleBlueprint("briefing", seed, missionIndex).name);
-      }
-      if (cue === "defeat") avoid.add(selectStyleBlueprint("victory", seed, missionIndex).name);
+    const missionName = cue === "mission" ? undefined : selectStyleBlueprint("mission", seed, Math.max(0, missionIndex)).name;
+    if (missionName) avoid.add(missionName);
+    if (cue === "briefing" || cue === "victory" || cue === "defeat") {
+      avoid.add(selectStyleBlueprint("menu", seed, missionIndex).name);
     }
+    if (cue === "victory" || cue === "defeat") {
+      avoid.add(selectStyleBlueprint("briefing", seed, missionIndex).name);
+    }
+    if (cue === "defeat") avoid.add(selectStyleBlueprint("victory", seed, missionIndex).name);
     const narrowed = pool.filter((item) => !avoid.has(item.name));
-    return pickBestByScore(narrowed.length > 0 ? narrowed : pool, (item) => styleAffinityScore(item.name, ctx), tieRng.fork(String(missionIndex)));
+    const withoutMission = missionName ? pool.filter((item) => item.name !== missionName) : pool;
+    const choices = narrowed.length > 0 ? narrowed : withoutMission.length > 0 ? withoutMission : pool;
+    return pickBestByScore(choices, (item) => styleAffinityScore(item.name, ctx), tieRng.fork(String(missionIndex)));
   }
   return pickAssignedItem(
     pool,

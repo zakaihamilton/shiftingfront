@@ -1018,19 +1018,24 @@ describe("generated audio", () => {
   });
 
   it("forms each mission as a verse, a repeated chorus, and a bridge", () => {
+    const midiFromHz = (hz: number) => Math.round(69 + 12 * Math.log2(hz / 440));
     const cells = (pattern: ReturnType<typeof composeMusic>, name: string, fromBar: number, toBar: number) => {
       const section = pattern.sections.find((entry) => entry.name === name)!;
-      return pattern.notes.melody
+      const notes = pattern.notes.melody
         .filter((note) => {
           const bar = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
           return bar >= fromBar && bar < toBar;
         })
-        .sort((a, b) => a.step - b.step)
-        .map((note) => {
-          const localBar = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
-          const pitchClass = ((note.midi - pattern.rootMidi) % 12 + 12) % 12;
-          return `${localBar % 8}:${note.step % STEPS_PER_BAR}:${pitchClass}`;
-        });
+        .sort((a, b) => a.step - b.step);
+      const bases = new Map<number, number>();
+      for (const note of notes) {
+        const half = Math.floor((Math.floor(note.step / STEPS_PER_BAR) - section.startBar) / 8);
+        if (!bases.has(half)) bases.set(half, note.midi);
+      }
+      return notes.map((note) => {
+        const localBar = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
+        return `${localBar % 8}:${note.step % STEPS_PER_BAR}:${note.midi - bases.get(Math.floor(localBar / 8))!}`;
+      });
     };
 
     for (const seed of [0, 21, 421, 9999]) {
@@ -1050,6 +1055,14 @@ describe("generated audio", () => {
       expect(cells(pattern, "climax", 0, 16)).toEqual(cells(pattern, "hook", 0, 16));
       expect(cells(pattern, "turnaround", 0, 16)).toEqual(cells(pattern, "hook", 0, 16));
       expect(cells(pattern, "escalation", 8, 16)).toEqual(chorus);
+      for (const name of ["groove", "hook", "development", "breakdown"] as const) {
+        const section = pattern.sections.find((entry) => entry.name === name)!;
+        for (let offset = 0; offset < 8; offset += 1) {
+          const first = midiFromHz(pattern.padRoot[section.startBar + offset]!);
+          const repeated = midiFromHz(pattern.padRoot[section.startBar + offset + 8]!);
+          expect(((first % 12) + 12) % 12).toBe(((repeated % 12) + 12) % 12);
+        }
+      }
 
       const bridge = pattern.sections.find((entry) => entry.name === "breakdown")!;
       const bridgeNotes = pattern.notes.melody.filter(

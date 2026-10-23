@@ -194,11 +194,18 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
         : section.name === "escalation" && !useHookLead
           ? 1
           : 0) + arrangement.melodyDegreeOffset + sequenceOffset;
-  const chord = phraseEnd ? 0 : progression[Math.floor(phraseBar / 2)] ?? 0;
+  const preChorus = song && section.name === "escalation" && phraseBar < 8;
+  const loopHarmony = song && !intro && section.name !== "turnaround";
+  const harmonyProgression = bridge ? progressionB : preChorus ? progressionA : progression;
+  const chord = phraseEnd
+    ? 0
+    : loopHarmony
+      ? harmonyProgression[Math.floor(songCycle / 2)] ?? 0
+      : progression[Math.floor(phraseBar / 2)] ?? 0;
   const leadChord = phraseEnd ? 0 : leadProgression[Math.floor(phraseBar / 2)] ?? 0;
-  const melodyProgression = song && section.name === "escalation" && phraseBar < 8 ? progressionA : leadProgression;
-  const melodyChord = song
-    ? songCycle === 7 ? 0 : melodyProgression[Math.floor(songCycle / 2)] ?? 0
+  const melodyProgression = bridge ? progressionB : preChorus ? progressionA : leadProgression;
+  const melodyChord = song && !intro
+    ? (songCycle === 7 ? 0 : (melodyProgression[Math.floor(songCycle / 2)] ?? 0))
     : leadChord;
 
   const padVoicing = voiceLeadPad(rootMidi, scalePick.notes, chord, previousPadVoicing);
