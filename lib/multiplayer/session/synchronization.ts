@@ -35,6 +35,7 @@ export class MultiplayerSynchronization {
     sendToPeer: (peerId: string, value: unknown) => void;
     publish: () => void;
     end: () => void;
+    forfeitPeer: (peerId: string) => void;
     setNotice: (notice: string) => void;
     installTick: (tick: number) => void;
   }) {}
@@ -77,7 +78,7 @@ export class MultiplayerSynchronization {
       const previous = this.repairs.get(peerId);
       const now = monotonicNow();
       if (previous?.tick === tick && previous.report === message.checksum) return true;
-      if (previous && previous.verified && now - previous.at < 60_000) { this.fail(); return true; }
+      if (previous && previous.verified && now - previous.at < 60_000) { this.removeDivergentPeer(peerId); return true; }
       if (previous && (!previous.verified || tick <= previous.tick)) return true;
       const state = this.snapshotSource?.();
       if (state) {
@@ -93,7 +94,7 @@ export class MultiplayerSynchronization {
       if (this.validCheck(message) && typeof message.verified === "boolean") {
         const repair = this.repairs.get(peerId);
         if (repair && repair.tick === message.tick && !repair.verified) {
-          if (!message.verified || repair.checksum !== message.checksum) { this.fail(); return true; }
+          if (!message.verified || repair.checksum !== message.checksum) { this.removeDivergentPeer(peerId); return true; }
           repair.verified = true;
           this.options.setNotice("Synchronization restored.");
           this.options.publish();
@@ -136,8 +137,8 @@ export class MultiplayerSynchronization {
 
   /** Install a staged guest snapshot at the frame boundary and verify it before resuming. */
   syncSnapshot(): boolean {
-    for (const repair of this.repairs.values()) {
-      if (!repair.verified && monotonicNow() - repair.at >= 60_000) this.fail();
+    for (const [peerId, repair] of [...this.repairs]) {
+      if (!repair.verified && monotonicNow() - repair.at >= 60_000) this.removeDivergentPeer(peerId);
     }
     if (!this.pendingSnapshot) return false;
     const snapshot = this.pendingSnapshot;
@@ -204,6 +205,16 @@ export class MultiplayerSynchronization {
     this.reportedChecks.add(tick);
     while (this.reportedChecks.size > CHECK_HISTORY_LIMIT) this.reportedChecks.delete(this.reportedChecks.values().next().value!);
     this.options.sender().send({ type: "desync", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick, checksum: own });
+  }
+
+  /** Drop one divergent guest. A single seat must not end the match for everyone else. */
+  private removeDivergentPeer(peerId: string): void {
+    if (this.options.role !== "host" || !this.repairs.has(peerId)) return;
+    this.repairs.delete(peerId);
+    this.options.setNotice("A player could not stay synchronized and was removed from the match.");
+    this.options.publish();
+    try { this.options.sendToPeer(peerId, { type: "ended", reason: "synchronization_failed" }); } catch { /* The forfeit snapshot still removes the seat. */ }
+    this.options.forfeitPeer(peerId);
   }
 
   private fail(): void {

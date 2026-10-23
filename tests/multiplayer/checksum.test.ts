@@ -29,7 +29,7 @@ describe("multiplayer checks", () => {
     second.credits[1]++;
     expect(stateChecksum(first)).not.toBe(stateChecksum(second));
   });
-  it("repairs divergence once and ends on a verified recurrence", () => {
+  it("repairs divergence once and removes a guest that diverges again", () => {
     const pair = connectedPair();
     pair.guestState().credits[1] = 100;
     for (let i = 0; i < 120; i++) { tick(pair.hostState()); tick(pair.guestState()); }
@@ -41,7 +41,9 @@ describe("multiplayer checks", () => {
     pair.guestState().credits[1]--;
     for (let i = 0; i < 120; i++) { tick(pair.hostState()); tick(pair.guestState()); }
     pair.host.checkState(pair.hostState()); pair.guest.checkState(pair.guestState());
-    expect(pair.host.status).toBe("ended"); expect(pair.guest.status).toBe("ended");
+    expect(pair.host.status).toBe("connected");
+    expect(pair.host.synchronizationNotice).toBe("A player could not stay synchronized and was removed from the match.");
+    expect(pair.guest.status).toBe("ended");
     expect(pair.guest.synchronizationNotice).toContain("Synchronization failed");
   });
   it("ignores unauthenticated and malformed reports", () => {
@@ -51,21 +53,27 @@ describe("multiplayer checks", () => {
     expect(pair.host.status).toBe("connected");
     expect(pair.host.synchronizationNotice).toBeNull();
   });
-  it("ends all peers when a snapshot fails verification even if its actual digest matches the host", () => {
+  it("removes a guest whose snapshot fails verification even if its actual digest matches the host", () => {
     const pair = connectedPair();
     pair.host.receiveFrom("g", { type: "desync", protocolVersion: 5, tick: 0, checksum: "0000000000000000" });
     const snapshot = pair.messages.find((message) => (message as { type: string }).type === "resync") as Record<string, unknown>;
     pair.guest.receive({ ...snapshot, checksum: "0000000000000000" });
     expect(pair.guest.syncSnapshot()).toBe(false);
-    expect(pair.host.status).toBe("ended"); expect(pair.guest.status).toBe("ended");
+    expect(pair.host.status).toBe("connected");
+    expect(pair.host.synchronizationNotice).toBe("A player could not stay synchronized and was removed from the match.");
+    expect(pair.guest.status).toBe("ended");
+    expect(pair.guest.synchronizationNotice).toContain("Synchronization failed");
   });
-  it("ends a repair that is never acknowledged within sixty seconds", () => {
+  it("removes a guest whose repair is never acknowledged within sixty seconds", () => {
     const pair = connectedPair();
     vi.spyOn(performance, "now").mockReturnValue(0);
     pair.host.receiveFrom("g", { type: "desync", protocolVersion: 5, tick: 0, checksum: "0000000000000000" });
     vi.spyOn(performance, "now").mockReturnValue(60_001);
     pair.host.syncSnapshot();
-    expect(pair.host.status).toBe("ended");
+    expect(pair.host.status).toBe("connected");
+    expect(pair.host.synchronizationNotice).toBe("A player could not stay synchronized and was removed from the match.");
+    expect(pair.guest.status).toBe("ended");
+    expect(pair.guest.synchronizationNotice).toContain("Synchronization failed");
     vi.restoreAllMocks();
   });
 });

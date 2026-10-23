@@ -11,6 +11,7 @@ import type { BuildingKind, Command, SimState } from "../../lib/types";
 import { useGameInput } from "../../components/game/hooks/useGameInput";
 import { useMinimapInteraction } from "../../components/game/hooks/useMinimapInteraction";
 import { useTouchGestures } from "../../components/game/hooks/useTouchGestures";
+import { selectionBoxScreen } from "../../components/game/hooks/selectionBox";
 import { voiceBarkForBeep } from "../../lib/audio/voice";
 
 vi.mock("@/lib/audio/synth", () => ({ beep: vi.fn() }));
@@ -419,7 +420,9 @@ describe("touch gesture lifecycle", () => {
     expect(cam.zoom).toBe(1);
     expect(selectionModeRef.current).toBe(true);
     expect(setSelectionMode).toHaveBeenCalledWith(true);
-    expect(boxRef.current).toEqual({ x0: 100, y0: 100, x1: 240, y1: 220 });
+    expect(boxRef.current).toEqual({ x0: 100, y0: 100, x1: 240, y1: 220, anchor: { x: -300, y: 20 } });
+    cam.x += 30;
+    expect(selectionBoxScreen(boxRef.current!, cam).x0).toBe(130);
 
     expect(result.current.endTouch(touch(1, { clientX: 100, clientY: 100 }), { x: 100, y: 100 })).toBe(true);
     expect(result.current.endTouch(touch(2, { clientX: 240, clientY: 220 }), { x: 240, y: 220 })).toBe(false);

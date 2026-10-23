@@ -14,6 +14,52 @@ function readyBase(width = 24, height = 16) {
   return s;
 }
 
+describe("shared production leftovers", () => {
+  it("does not advance a barracks job twice when the building still has its own producer", () => {
+    const s = readyBase();
+    const barracks = addBuilding(s, 0, "barracks", 6, 4);
+    barracks.producing = { kind: "infantry", remaining: 5 };
+    barracks.queue = ["infantry"];
+    s.productionQueues = { 0: { barracks: { producing: { kind: "infantry", remaining: 5 }, queue: [] } } };
+    tickProduction(s);
+    expect(barracks.producing).toBeUndefined();
+    expect(barracks.queue).toEqual([]);
+    expect(s.productionQueues[0]?.barracks?.producing?.remaining).toBe(4);
+    expect(s.entities.some((entity) => entity.class === "unit" && entity.kind === "infantry")).toBe(false);
+  });
+
+  it("adopts a legacy barracks job when the shared queue is empty", () => {
+    const s = readyBase();
+    const barracks = addBuilding(s, 0, "barracks", 6, 4);
+    barracks.producing = { kind: "infantry", remaining: 3 };
+    s.productionQueues = { 0: { barracks: { queue: [] } } };
+    tickProduction(s);
+    expect(barracks.producing).toBeUndefined();
+    expect(barracks.queue).toEqual([]);
+    expect(s.productionQueues[0]?.barracks?.producing).toEqual({ kind: "infantry", remaining: 2 });
+  });
+
+  it("refunds a legacy barracks job hidden by an empty shared queue", () => {
+    const s = readyBase();
+    s.credits[0] = 0;
+    const barracks = addBuilding(s, 0, "barracks", 6, 4);
+    barracks.producing = { kind: "infantry", remaining: 3 };
+    s.productionQueues = { 0: { barracks: { queue: [] } } };
+    issue(s, { type: "cancelProduce", unit: "infantry" });
+    expect(s.credits[0]).toBe(UNIT_STATS.infantry.cost);
+    expect(barracks.producing).toBeUndefined();
+    expect(s.productionQueues[0]?.barracks?.producing).toBeUndefined();
+  });
+
+  it("keeps runway production on the building", () => {
+    const s = readyBase();
+    const runway = addBuilding(s, 0, "runway", 6, 8);
+    runway.producing = { kind: "strikePlane", remaining: 5 };
+    tickProduction(s);
+    expect(runway.producing?.remaining).toBe(4);
+  });
+});
+
 describe("producer speed", () => {
   it("finishes a unit twice as fast with a second barracks", () => {
     const one = readyBase();

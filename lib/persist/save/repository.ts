@@ -19,6 +19,7 @@ import {
 
 export const SAVE_DATABASE_NAME = "shiftingfront-saves";
 const SAVE_REPOSITORY_INITIALIZATION_TIMEOUT_MS = 5_000;
+const SAVE_FALLBACK_EPOCH_KEY = "shiftingfront:save-fallback-epoch";
 type CampaignRecord = { seed: number; revision: number; autosave: string | null; progress: string | null };
 type SlotRecord = { id: string; revision: number; raw: string };
 type MigrationRecord = { key: string; raw: string; unreadable?: boolean; sourceKey?: string };
@@ -100,6 +101,27 @@ function progressWhenBattlefieldMatches(record: CampaignRecord, journalSavedAt: 
   );
   return sameCampaignProgress(existing, merged) ? undefined : encodeProgress(merged);
 }
+function canonicalBattlefield(state: SimState): string {
+  const sorted = sortBattlefieldValue(state) as { entities?: { id?: number }[] };
+  if (Array.isArray(sorted.entities)) sorted.entities.sort((left, right) => (left.id ?? 0) - (right.id ?? 0));
+  return JSON.stringify(sorted);
+}
+function sortBattlefieldValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortBattlefieldValue);
+  if (!value || typeof value !== "object") return value;
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+    const nested = (value as Record<string, unknown>)[key];
+    if (nested !== undefined) sorted[key] = sortBattlefieldValue(nested);
+  }
+  return sorted;
+}
+function sameBattlefield(left: SimState, right: SimState): boolean {
+  return canonicalBattlefield(left) === canonicalBattlefield(right);
+}
+function savedAtOf(raw: string): number {
+  try { return decodeSave(raw).savedAt; } catch { return 0; }
+}
 function validatedProgress(raw: string, seed: number): string {
   const parsed = JSON.parse(raw);
   if (parsed.version !== 1 || !isCampaignProgressShape(parsed.progress) || parsed.progress.seed !== seed) throw new Error("Invalid campaign progress");
@@ -123,6 +145,7 @@ export class SaveRepository {
   private queue: Promise<unknown> = Promise.resolve();
   private initPromise: Promise<void> | null = null;
   private generation = 0;
+  private openAttempt = 0;
   readonly storage: StorageAdapter;
 
   constructor(private legacy: StorageAdapter = cachedLocalStorage(), private factory: IDBFactory | undefined = browserIndexedDB()) {
@@ -142,9 +165,12 @@ export class SaveRepository {
   subscribe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
   private publish(): void { for (const listener of this.listeners) listener(); }
   private fallBackToLegacy(): void {
+    this.openAttempt += 1;
     this.db?.close();
     this.db = null;
     this.mode = "legacy";
+    const existing = Number(safeGetItem(this.legacy, SAVE_FALLBACK_EPOCH_KEY));
+    if (!Number.isFinite(existing) || existing <= 0) safeSetItem(this.legacy, SAVE_FALLBACK_EPOCH_KEY, String(Date.now()));
   }
   private enqueue<T>(work: () => Promise<T>): Promise<T> {
     const generation = this.generation;
@@ -183,6 +209,7 @@ export class SaveRepository {
   }
   private async open(): Promise<void> {
     if (!this.factory) return;
+    const attempt = this.openAttempt;
     try {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const opening = this.factory!.open(SAVE_DATABASE_NAME, 1);
@@ -197,20 +224,26 @@ export class SaveRepository {
         opening.onsuccess = () => { clearTimeout(timeout); if (expired) opening.result.close(); else resolve(opening.result); };
         opening.onerror = () => { clearTimeout(timeout); reject(opening.error); };
       });
+      if (attempt !== this.openAttempt) { db.close(); return; }
       this.db = db;
       db.onversionchange = () => { this.close(); this.publish(); };
       this.mode = "indexeddb";
       await this.migrateLegacy();
+      if (attempt !== this.openAttempt) return;
       await this.recoverJournals();
+      if (attempt !== this.openAttempt) return;
       if (await this.retireIndexedRules()) this.rulesRebuilt = true;
+      if (attempt !== this.openAttempt) return;
       if (applyRulesRetirement(this.legacy)) this.rulesRebuilt = true;
       await this.refresh();
+      if (attempt !== this.openAttempt) return;
+      safeRemoveItem(this.legacy, SAVE_FALLBACK_EPOCH_KEY);
       if (typeof BroadcastChannel !== "undefined" && typeof window !== "undefined") {
         this.channel = new BroadcastChannel("shiftingfront-save-revisions");
         this.channel.onmessage = ({ data }) => { if (data?.type === "committed") void this.refresh().catch(() => undefined); };
       }
     } catch {
-      this.fallBackToLegacy();
+      if (attempt === this.openAttempt) this.fallBackToLegacy();
     }
   }
   private async transaction<T>(stores: string[], work: (tx: IDBTransaction) => Promise<T>): Promise<T> {
@@ -286,7 +319,21 @@ export class SaveRepository {
             if (key.startsWith(SAVE_PREFIX)) {
               const saved = decodeSave(raw);
               if (saved.state.seed !== seed) throw new Error("Save seed mismatch");
-              if (record.autosave && record.autosave !== raw) {
+              const fallbackEpoch = Number(safeGetItem(this.legacy, SAVE_FALLBACK_EPOCH_KEY));
+              const legacyWins = record.autosave
+                && record.autosave !== raw
+                && Number.isFinite(fallbackEpoch)
+                && fallbackEpoch > 0
+                && saved.savedAt >= fallbackEpoch
+                && saved.savedAt >= savedAtOf(record.autosave);
+              if (legacyWins && record.autosave) {
+                const archived = decodeSave(record.autosave);
+                const temp = memoryStorage();
+                const result = writeSlot(temp, { name: "Recovered earlier save", state: archived.state, campaign: progressFor(record, archived.state) });
+                if (result.ok) tx.objectStore("slots").put({ id: result.id, revision: 1, raw: temp.getItem(slotKey(result.id))! });
+                record.autosave = raw;
+                if (saved.state.result === "won") record.progress = encodeProgress(progressFor(record, saved.state));
+              } else if (record.autosave && record.autosave !== raw) {
                 const temp = memoryStorage();
                 const result = writeSlot(temp, { name: "Recovered legacy save", state: saved.state, campaign: progressFor(record, saved.state) });
                 if (result.ok) tx.objectStore("slots").put({ id: result.id, revision: 1, raw: temp.getItem(slotKey(result.id))! });
@@ -334,7 +381,7 @@ export class SaveRepository {
         await this.transaction(["campaigns", "slots"], async (tx) => {
           const store = tx.objectStore("campaigns");
           const record = await request(store.get(state.seed)) as CampaignRecord | undefined;
-          if (record?.autosave && JSON.stringify(decodeSave(record.autosave).state) === JSON.stringify(state)) {
+          if (record?.autosave && sameBattlefield(decodeSave(record.autosave).state, state)) {
             const merged = progressWhenBattlefieldMatches(record, journalSavedAt, progress);
             // Leave the revision alone. This record is also the autosave lock.
             if (merged) store.put({ ...record, progress: merged });
@@ -713,6 +760,7 @@ export class SaveRepository {
   }
   close(): void {
     this.generation++;
+    this.openAttempt += 1;
     this.channel?.close();
     this.channel = null;
     this.db?.close();

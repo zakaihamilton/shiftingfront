@@ -64,6 +64,7 @@ export function useGameRuntimeLifecycle({
   const openMissionPause = session.openPauseMenu;
   const exitTutorial = session.exitTutorial;
   const recordControlsOpened = feedback.recordControlsOpened;
+  const announceCommandFeedback = feedback.announceCommandFeedback;
   const openPauseMenu = useCallback((view: PauseView = "main") => {
     if (view === "controls") recordControlsOpened();
     resetTransientMobileUi();
@@ -80,6 +81,13 @@ export function useGameRuntimeLifecycle({
     window.addEventListener("orientationchange", onOrientationChange);
     return () => window.removeEventListener("orientationchange", onOrientationChange);
   }, [resetTransientMobileUi]);
+
+  useEffect(() => {
+    if (!multiplayerSession) return;
+    return multiplayerSession.subscribeCommandFeedback((text) => {
+      announceCommandFeedback(text, "warning");
+    });
+  }, [announceCommandFeedback, multiplayerSession]);
 
   useEffect(() => {
     if (tutorial || paused || state.result !== "playing") resetTransientMobileUi();

@@ -3,8 +3,8 @@ import type { Camera } from "@/lib/iso";
 type Point = { x: number; y: number };
 
 /**
- * Desktop marquee boxes keep their anchor in camera-independent projected
- * coordinates. Touch selection still uses the legacy screen-space form.
+ * Marquee boxes keep their anchor in camera-independent projected
+ * coordinates so the selection stays on the same ground while the camera pans.
  */
 export type SelectionBox = {
   x0: number;

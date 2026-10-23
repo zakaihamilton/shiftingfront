@@ -3,7 +3,8 @@ import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
 import { SAVE_DATABASE_NAME, SaveRepository } from "@/lib/persist/save/repository";
 import { memoryStorage, readSave, writeSave, saveKey, listSlots, readSlot, slotKey, writeSlot } from "@/lib/persist/save";
 import { campaignKey, freshCampaignProgress, readCampaignProgress, writeCampaignProgress } from "@/lib/persist/campaign";
-import { makeFixture } from "@/lib/sim/fixtures";
+import { JOURNAL_PREFIX } from "@/lib/persist/rulesRetirement";
+import { addBuilding, makeFixture } from "@/lib/sim/fixtures";
 
 const repositories: SaveRepository[] = [];
 afterEach(() => { repositories.splice(0).forEach((repository) => repository.close()); vi.restoreAllMocks(); });
@@ -51,6 +52,63 @@ async function replaceCampaignProgress(factory: IDBFactory, seed: number, progre
 }
 
 describe("transactional save repository", () => {
+  it("keeps the battlefield played while a database open is still migrating", async () => {
+    const first = await open();
+    const early = state();
+    early.tick = 10;
+    expect(await first.repository.save(early)).toBe("saved");
+    first.repository.close();
+
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const proto = SaveRepository.prototype as unknown as { migrateLegacy(): Promise<void> };
+    const original = proto.migrateLegacy;
+    let stalled: Promise<void> | undefined;
+    const spy = vi.spyOn(proto, "migrateLegacy").mockImplementation(function (this: SaveRepository) {
+      stalled = gate.then(() => original.call(this));
+      return stalled;
+    });
+    const slow = new SaveRepository(first.storage, first.factory);
+    repositories.push(slow);
+    await slow.initialize();
+    expect(slow.mode).toBe("legacy");
+    const later = state();
+    later.tick = 40;
+    expect(writeSave(first.storage, later)).toBe(true);
+    release();
+    await stalled?.catch(() => undefined);
+    expect(slow.mode).toBe("legacy");
+    spy.mockRestore();
+
+    const next = await open(first.storage, first.factory);
+    expect(readSave(next.repository.storage, 421)?.tick).toBe(40);
+    const slots = listSlots(next.repository.storage);
+    expect(slots).toHaveLength(1);
+    expect(slots[0]?.name).toBe("Recovered earlier save");
+    expect(slots[0]?.tick).toBe(10);
+  }, 20_000);
+  it("treats a reordered journal battlefield as the same save", async () => {
+    const { repository, storage, factory } = await open();
+    const current = state();
+    addBuilding(current, 0, "power", 2, 2);
+    addBuilding(current, 0, "barracks", 6, 2);
+    await repository.save(current);
+    expect(repository.writeJournal(current)).toBe(true);
+    const key = `${JOURNAL_PREFIX}0421`;
+    const journal = JSON.parse(storage.getItem(key)!) as { autosave: string };
+    const autosave = JSON.parse(journal.autosave) as { state: { entities: Record<string, unknown>[] } };
+    const [firstEntity, ...rest] = autosave.state.entities;
+    const keys = Object.keys(firstEntity!);
+    const rotated: Record<string, unknown> = {};
+    for (const name of [...keys.slice(1), keys[0]!]) rotated[name] = firstEntity![name];
+    autosave.state.entities = [...rest.reverse(), rotated];
+    journal.autosave = JSON.stringify(autosave);
+    storage.setItem(key, JSON.stringify(journal));
+    repository.close();
+    const next = await open(storage, factory);
+    expect(readSave(next.repository.storage, 421)?.tick).toBe(0);
+    expect(listSlots(next.repository.storage)).toHaveLength(0);
+  });
   it("migrates idempotently, keeps originals, quarantines malformed records and recovers later legacy changes", async () => {
     const storage = memoryStorage({ [saveKey(422)]: "broken" });
     const original = state(); writeSave(storage, original);

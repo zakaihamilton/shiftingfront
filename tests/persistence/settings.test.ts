@@ -207,6 +207,21 @@ describe("audio settings", () => {
     expect(loaded.keyBindings.repair).toBe(defaultKeyBindings().repair);
   });
 
+  it("gives a duplicated binding back to the command that already owned that key", () => {
+    const storage = memoryStorage({
+      [SETTINGS_KEY]: JSON.stringify({
+        version: SETTINGS_VERSION,
+        savedAt: 1,
+        settings: {
+          keyBindings: { ...defaultKeyBindings(), repair: "x", stop: "x" },
+        },
+      }),
+    });
+    const loaded = readSettings(storage);
+    expect(loaded.keyBindings.repair).toBe("x");
+    expect(loaded.keyBindings.stop).toBe("r");
+  });
+
   it("returns false when settings cannot be written", () => {
     const storage = memoryStorage();
     storage.setItem = () => {

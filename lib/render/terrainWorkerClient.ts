@@ -9,10 +9,16 @@ let generation = 0;
 let sequence = 0;
 let pending: Pending | null = null;
 
-function fail(): void {
-  disabled = true;
-  worker?.terminate();
+function fail(disable = true): void {
+  if (disable) disabled = true;
+  const active = worker;
   worker = null;
+  if (active) {
+    active.onerror = null;
+    active.onmessageerror = null;
+    active.onmessage = null;
+    active.terminate();
+  }
   pending?.cleanup();
   pending?.reject(new Error("Terrain worker unavailable"));
   pending = null;
@@ -62,7 +68,7 @@ export function bakeTerrainInWorker(world: AtlasWorld, grainGeneration: number, 
         pending = null;
         reject(new DOMException("Terrain request cancelled", "AbortError"));
       };
-      const timeout = setTimeout(fail, 15_000);
+      const timeout = setTimeout(() => fail(false), 15_000);
       pending = { id, key, resolve, reject, cleanup: () => { clearTimeout(timeout); signal.removeEventListener("abort", abort); } };
       signal.addEventListener("abort", abort, { once: true });
       if (signal.aborted) { abort(); return; }

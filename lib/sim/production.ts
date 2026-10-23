@@ -5,7 +5,7 @@ import { assignMoveDestination } from "./orders/movement";
 import { runwayServicePoint } from "./aircraft";
 import { entitiesFor } from "./entities";
 import { powerShortageByOwner } from "./powerShortage";
-import { SHARED_PRODUCER_KINDS, ensureActiveProducer, isSharedProducerKind, sharedProductionQueue, shiftSharedResume } from "./producerState";
+import { SHARED_PRODUCER_KINDS, ensureActiveProducer, isSharedProducerKind, reconcileSharedProducerJobs, sharedProductionQueue, shiftSharedResume } from "./producerState";
 import { refundOrphanedSharedQueue } from "./productionRefund";
 
 const playerPowerOk = new WeakMap<SimState, Map<number, boolean>>();
@@ -154,6 +154,7 @@ function tickSharedProduction(
 }
 
 export function tickProduction(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
+  reconcileSharedProducerJobs(state);
   const events = eventSink ?? (collectEvents ? [] : undefined);
   const lowPower = powerShortageByOwner(state);
   const owners = productionOwners(state);
@@ -193,6 +194,9 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
       continue;
     }
     if (e.producing) {
+      // Barracks and factories advance only through the shared queue. A leftover
+      // per-building job must not tick again in the same frame.
+      if (isBuildingEntity(e) && isSharedProducerKind(e.kind)) continue;
       if (lowPower[e.owner]) continue;
       e.producing.remaining -= rates.entity.get(e.id) ?? 1;
       if (e.producing.remaining <= 0) {

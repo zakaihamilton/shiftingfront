@@ -82,11 +82,71 @@ function normalizeKey(value: unknown, fallback: string): string {
   return value.length === 1 ? value.toLowerCase() : value;
 }
 
+/** First match wins, matching the order commands are resolved in. */
+const KEY_BINDING_ORDER = [
+  "construction",
+  "production",
+  "selected",
+  "repair",
+  "sell",
+  "stop",
+  "home",
+  "center",
+  "panUp",
+  "panDown",
+  "panLeft",
+  "panRight",
+] as const satisfies readonly (keyof KeyBindings)[];
+
+function bindingKey(value: string): string {
+  return value.length === 1 ? value.toLowerCase() : value;
+}
+
+function dedupeKeyBindings(bindings: KeyBindings): KeyBindings {
+  const next = { ...bindings };
+  const defaults = defaultKeyBindings();
+  const used = new Set<string>();
+  for (const action of KEY_BINDING_ORDER) {
+    const key = bindingKey(next[action]);
+    if (!used.has(key)) {
+      next[action] = key.length === 1 ? key : next[action];
+      used.add(key);
+      continue;
+    }
+    const preferred = defaults[action];
+    const replacement = !used.has(bindingKey(preferred))
+      ? preferred
+      : KEY_BINDING_ORDER.map((name) => defaults[name]).find((candidate) => !used.has(bindingKey(candidate)))
+        ?? preferred;
+    next[action] = replacement;
+    used.add(bindingKey(replacement));
+  }
+  return next;
+}
+
+/** Assign a key and give the previous key to whichever command it displaced. */
+export function assignKeyBinding(
+  bindings: KeyBindings,
+  action: keyof KeyBindings,
+  rawKey: string,
+): { bindings: KeyBindings; displaced: keyof KeyBindings | null } {
+  const previous = bindings[action];
+  const next: KeyBindings = { ...bindings, [action]: normalizeKey(rawKey, previous) };
+  const taken = bindingKey(next[action]);
+  let displaced: keyof KeyBindings | null = null;
+  for (const other of KEY_BINDING_ORDER) {
+    if (other === action || bindingKey(next[other]) !== taken) continue;
+    next[other] = previous;
+    displaced ??= other;
+  }
+  return { bindings: dedupeKeyBindings(next), displaced };
+}
+
 function normalizeKeyBindings(raw: unknown): KeyBindings {
   const base = defaultKeyBindings();
   if (!raw || typeof raw !== "object") return base;
   const b = raw as Partial<KeyBindings>;
-  return {
+  return dedupeKeyBindings({
     panUp: normalizeKey(b.panUp, base.panUp),
     panDown: normalizeKey(b.panDown, base.panDown),
     panLeft: normalizeKey(b.panLeft, base.panLeft),
@@ -99,7 +159,7 @@ function normalizeKeyBindings(raw: unknown): KeyBindings {
     construction: normalizeKey(b.construction, base.construction),
     production: normalizeKey(b.production, base.production),
     selected: normalizeKey(b.selected, base.selected),
-  };
+  });
 }
 
 function normalize(value: unknown): GameSettings {
