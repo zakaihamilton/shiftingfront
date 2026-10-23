@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The leave confirmation stays above the after-action report, so Menu and Return to menu can be confirmed.
+- Field Medics and Repair Trucks search again after an unreachable route opens.
+- A deployment reward that fails to clear stays cleared on the next autosave. Recovery keeps the newer reward when a journal battlefield differs from the stored battle.
 - Browser Back pauses the battle while the leave confirmation is open, and that confirmation says progress will be saved.
 - Skirmish AI uses late-campaign difficulty instead of the opening mission curve.
 - Support units retry pathing after a search budget miss. Attack orders no longer launch an empty strike plane and restart its rearm.

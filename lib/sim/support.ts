@@ -58,6 +58,12 @@ function clearSupportRoute(provider: Entity): void {
 }
 
 const EMPTY_EVENTS: SimEvent[] = [];
+/** Settled unreachable routes stay put between searches. The cadence is a pure function of tick and id. */
+const SUPPORT_UNREACHABLE_RETRY_TICKS = 30;
+
+function supportRouteRetryDue(state: SimState, provider: Entity): boolean {
+  return state.tick % SUPPORT_UNREACHABLE_RETRY_TICKS === provider.id % SUPPORT_UNREACHABLE_RETRY_TICKS;
+}
 
 export function tickSupport(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
   const events = eventSink ?? (collectEvents ? [] : undefined);
@@ -106,7 +112,8 @@ export function tickSupport(state: SimState, eventSink?: SimEvent[], collectEven
 
     if (distToEntity(provider, target) > supportRange) {
       if (!provider.path.length || destinationChanged) {
-        if (provider.routePending === false && !destinationChanged) continue;
+        const settledUnreachable = provider.routePending === false && !destinationChanged;
+        if (settledUnreachable && !supportRouteRetryDue(state, provider)) continue;
         const result = tryFindPathDetailed(state, provider, target);
         if (result) {
           provider.path = result.path;
