@@ -91,6 +91,32 @@ export function readSharedProductionQueue(
   return state.productionQueues?.[owner]?.[kind] ?? legacyQueue(state, owner, kind);
 }
 
+function queueHasWork(queue: SharedProductionQueue): boolean {
+  return Boolean(queue.producing) || (queue.resume?.length ?? 0) > 0 || queue.queue.length > 0;
+}
+
+/** Move leftover per-building jobs onto an empty shared queue, and drop them when the shared queue already has work. */
+function absorbLegacyProducerJobs(
+  state: SimState,
+  owner: Owner,
+  kind: SharedProducerKind,
+  existing: SharedProductionQueue,
+): void {
+  const legacy = legacyQueue(state, owner, kind);
+  const legacyHasWork = queueHasWork(legacy);
+  if (!legacyHasWork) return;
+  if (!queueHasWork(existing)) {
+    if (legacy.producing) existing.producing = legacy.producing;
+    if (legacy.resume?.length) existing.resume = legacy.resume;
+    existing.queue = [...legacy.queue];
+  }
+  for (const entity of state.entities) {
+    if (entity.class !== "building" || entity.kind !== kind || entity.owner !== owner || entity.hp <= 0) continue;
+    delete entity.producing;
+    entity.queue = [];
+  }
+}
+
 /** Lazily upgrades legacy entity-owned queues when an old raw save is loaded. */
 export function sharedProductionQueue(
   state: SimState,
@@ -100,7 +126,10 @@ export function sharedProductionQueue(
   const queues = state.productionQueues ??= {};
   const byKind = queues[owner] ??= {};
   const existing = byKind[kind];
-  if (existing) return existing;
+  if (existing) {
+    absorbLegacyProducerJobs(state, owner, kind, existing);
+    return existing;
+  }
 
   const upgraded = legacyQueue(state, owner, kind);
   for (const entity of state.entities) {
@@ -111,6 +140,19 @@ export function sharedProductionQueue(
   }
   byKind[kind] = upgraded;
   return upgraded;
+}
+
+/** Reconcile only shared producers that still carry a per-building job. */
+export function reconcileSharedProducerJobs(state: SimState): void {
+  const seen = new Set<string>();
+  for (const entity of state.entities) {
+    if (entity.class !== "building" || entity.hp <= 0 || !isSharedProducerKind(entity.kind)) continue;
+    if (!entity.producing && !(entity.queue?.length)) continue;
+    const key = `${entity.owner}:${entity.kind}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    sharedProductionQueue(state, entity.owner, entity.kind);
+  }
 }
 
 export function sharedProductionQueueSize(queue: SharedProductionQueue): number {

@@ -64,5 +64,12 @@ describe("session terrain worker", () => {
     const pending = bakeTerrainInWorker(fixture(), 0, new AbortController().signal)!;
     const failed = expect(pending).rejects.toThrow("unavailable"); await vi.advanceTimersByTimeAsync(15_000); await failed;
     expect(FakeWorker.instances[0].terminate).toHaveBeenCalledOnce();
+    const retryController = new AbortController();
+    const retry = bakeTerrainInWorker(fixture(), 0, retryController.signal);
+    expect(retry).not.toBeNull();
+    expect(FakeWorker.instances).toHaveLength(2);
+    const aborted = expect(retry!).rejects.toHaveProperty("name", "AbortError");
+    retryController.abort();
+    await aborted;
   });
 });

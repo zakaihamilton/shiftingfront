@@ -2,9 +2,14 @@ import { useCallback, useMemo, useRef, type MutableRefObject, type PointerEvent 
 import { canvasViewport } from "@/lib/render/canvasViewport";
 import { cameraPanBounds, panCamera } from "@/lib/render/camera";
 import type { Camera } from "@/lib/iso";
+import { cameraForPicking } from "@/lib/render/screenShake";
 import type { SimState } from "@/lib/types";
-import type { SelectionBox } from "./selectionBox";
+import { selectionProjectionPoint, type SelectionBox } from "./selectionBox";
 import { triggerHaptic } from "@/lib/ui/haptics";
+
+function touchAnchor(x: number, y: number, cam: Camera) {
+  return selectionProjectionPoint({ x, y }, cameraForPicking(cam));
+}
 
 export function useTouchGestures({
   camRef,
@@ -47,6 +52,7 @@ export function useTouchGestures({
         y0: points[0]!.y,
         x1: points[1]!.x,
         y1: points[1]!.y,
+        anchor: touchAnchor(points[0]!.x, points[0]!.y, camRef.current),
       };
       if (longPress.current) window.clearTimeout(longPress.current.timer);
       longPress.current = null;
@@ -54,7 +60,7 @@ export function useTouchGestures({
     }
     touchPan.current = { pointerId: e.pointerId, start: p, last: p, moved: false };
     if (selectionModeRef.current) {
-      boxRef.current = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+      boxRef.current = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, anchor: touchAnchor(p.x, p.y, camRef.current) };
       return;
     }
     const timer = window.setTimeout(() => {
@@ -66,7 +72,7 @@ export function useTouchGestures({
       }
     }, 480);
     longPress.current = { pointerId: e.pointerId, timer, x: p.x, y: p.y, fired: false };
-  }, [boxRef, issueContextOrder, selectionModeRef, setSelectionMode, stateRef]);
+  }, [boxRef, camRef, issueContextOrder, selectionModeRef, setSelectionMode, stateRef]);
 
   const moveTouch = useCallback((e: PointerEvent<HTMLCanvasElement>, p: { x: number; y: number }): boolean => {
     const s = stateRef.current;
@@ -82,6 +88,7 @@ export function useTouchGestures({
         boxRef.current.y0 = points[0]!.y;
         boxRef.current.x1 = points[1]!.x;
         boxRef.current.y1 = points[1]!.y;
+        boxRef.current.anchor = touchAnchor(points[0]!.x, points[0]!.y, camRef.current);
       }
       return true;
     }
@@ -118,6 +125,7 @@ export function useTouchGestures({
         boxRef.current.y0 = points[0]!.y;
         boxRef.current.x1 = points[1]!.x;
         boxRef.current.y1 = points[1]!.y;
+        boxRef.current.anchor = touchAnchor(points[0]!.x, points[0]!.y, camRef.current);
       }
     }
     const held = longPress.current;
@@ -135,7 +143,7 @@ export function useTouchGestures({
     // Leave the final two-finger pointer-up for the normal input resolver so
     // the marquee is committed as a unit selection.
     return wasSelection ? false : Boolean(held?.fired || wasGesture);
-  }, [boxRef]);
+  }, [boxRef, camRef]);
 
   const cancelTouch = useCallback(() => {
     if (longPress.current) window.clearTimeout(longPress.current.timer);

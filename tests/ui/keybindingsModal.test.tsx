@@ -75,6 +75,25 @@ describe("KeybindingsModal UI component", () => {
     expect(panUpButton).not.toHaveTextContent("Press key…");
   });
 
+  it("swaps the previous key onto the command it displaces", () => {
+    const onSave = vi.fn();
+    render(
+      <KeybindingsModal
+        bindings={initialBindings}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Rebind Stop Selected Units" }));
+    fireEvent.keyDown(window, { key: "w" });
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ stop: "w", panUp: "x" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Pan Camera Up moved to X.");
+    expect(screen.getByRole("button", { name: "Rebind Stop Selected Units" })).toHaveTextContent("W");
+    expect(screen.getByRole("button", { name: "Rebind Pan Camera Up" })).toHaveTextContent("X");
+  });
+
   it("cancels listening state without saving when Escape is pressed", () => {
     const onSave = vi.fn();
     render(

@@ -53,6 +53,27 @@ describe("four-player canonical multiplayer command stream", () => {
     expect(guest.canAdvance({ tick: 0 } as never)).toBe(true);
   });
 
+  it("rejects one guest's order when that guest's backlog is full", () => {
+    const host = new MultiplayerSession("host", 0, 42, { send() {} }, [0, 1, 2]);
+    const guest = new MultiplayerSession("guest", 1, 42, { send: (value) => host.receiveFrom("guest-1", value) }, [0, 1, 2]);
+    const notes: string[] = [];
+    guest.subscribeCommandFeedback((text) => notes.push(text));
+    host.addGuest("guest-1", 1, { send: (value) => guest.receive(value) });
+    host.addGuest("guest-2", 2, { send() {} });
+    for (let i = 0; i < MAX_COMMANDS_PER_TICK * 2; i++) {
+      host.receiveFrom("guest-1", { type: "intent", command: { type: "stop", unitIds: [1] } });
+    }
+    host.receiveFrom("guest-1", { type: "intent", command: { type: "stop", unitIds: [9] } });
+    host.receiveFrom("guest-2", { type: "intent", command: { type: "stop", unitIds: [2] } });
+    expect(notes).toEqual(["The host could not accept that order yet. Issue it again."]);
+    expect(guest.status).toBe("connected");
+    const applied: Command[] = [];
+    for (let tick = 0; tick < 8; tick++) applied.push(...host.drainTick({ tick } as never, []));
+    expect(applied.filter((command) => command.owner === 1)).toHaveLength(MAX_COMMANDS_PER_TICK * 2);
+    expect(applied.some((command) => command.type === "stop" && command.unitIds[0] === 9)).toBe(false);
+    expect(applied).toContainEqual({ type: "stop", unitIds: [2], owner: 2 });
+  });
+
   it("removes deferred commands from a forfeited guest while preserving the other seat's commands", () => {
     const state = createSkirmish(42, 0, [0, 1, 2]).state;
     const host = new MultiplayerSession("host", 0, 42, { send() {} }, [0, 1, 2]);

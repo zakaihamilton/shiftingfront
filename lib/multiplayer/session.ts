@@ -26,6 +26,7 @@ export class MultiplayerSession {
   private statusValue: MultiplayerStatus = "connected";
   private listeners = new Set<() => void>();
   private pingListeners = new Set<() => void>();
+  private commandFeedbackListeners = new Set<(text: string) => void>();
   private localCommands: Command[] = [];
   private guestCommands: GuestIntent[] = [];
   private guests = new Map<string, GuestSeat>();
@@ -80,6 +81,7 @@ export class MultiplayerSession {
       sendToPeer: (peerId, value) => this.sendToGuest(peerId, value),
       publish: () => this.publish(),
       end: () => this.end(),
+      forfeitPeer: (peerId) => { if (this.statusValue !== "ended") this.forfeitGuest(peerId); },
       setNotice: (notice) => { this.synchronizationNotice = notice; },
       installTick: (tick) => {
         for (const frameTick of [...this.frames.keys()]) if (frameTick <= tick) this.frames.delete(frameTick);
@@ -110,6 +112,12 @@ export class MultiplayerSession {
   subscribePing(listener: () => void): () => void {
     this.pingListeners.add(listener);
     return () => this.pingListeners.delete(listener);
+  }
+
+  /** Battlefield feedback for orders the host could not queue. */
+  subscribeCommandFeedback(listener: (text: string) => void): () => void {
+    this.commandFeedbackListeners.add(listener);
+    return () => this.commandFeedbackListeners.delete(listener);
   }
 
   private publishPing(): void {
@@ -280,11 +288,25 @@ export class MultiplayerSession {
       this.publish();
       return;
     }
+    if (message.type === "intent-rejected") {
+      this.notifyCommandFeedback("The host could not accept that order yet. Issue it again.");
+      return;
+    }
     if (message.type === "ended") {
       if (message.reason === "synchronization_failed") this.synchronizationNotice = "Synchronization failed. Reload all players before starting another match.";
       this.statusValue = "ended";
       this.publish();
     }
+  }
+
+  private notifyCommandFeedback(text: string): void {
+    for (const listener of this.commandFeedbackListeners) listener(text);
+  }
+
+  private guestBacklog(owner: Owner): number {
+    let count = 0;
+    for (const intent of this.guestCommands) if (intent.owner === owner) count += 1;
+    return count;
   }
 
   /** Messages from guests must include their authenticated PeerJS identity. */
@@ -309,7 +331,12 @@ export class MultiplayerSession {
         const target = state?.entities.find((entity) => entity.id === command.targetId);
         if (!state || !target || !entityInPlayerVision(state, target, guest.owner)) return;
       }
-      if (command && this.guestCommands.length < MAX_PENDING_GUEST_COMMANDS) this.guestCommands.push({ owner: guest.owner, command });
+      if (!command) return;
+      if (this.guestBacklog(guest.owner) >= MAX_PENDING_GUEST_COMMANDS) {
+        this.sendToGuest(peerId, { type: "intent-rejected" });
+        return;
+      }
+      this.guestCommands.push({ owner: guest.owner, command });
       return;
     }
     if (message.type === "resume") {

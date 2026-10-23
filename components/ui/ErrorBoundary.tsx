@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, type ReactNode } from "react";
+import { Component, Fragment, type ReactNode } from "react";
 import { APP_VERSION } from "@/lib/site";
 import { crashIssueUrl } from "@/lib/ui/issueReport";
 import { ConsoleButton } from "./ConsoleButton";
@@ -13,12 +13,12 @@ type ErrorBoundaryProps = {
   eyebrow?: string;
   fallback?: ReactNode;
 };
-type ErrorBoundaryState = { hasError: boolean; error: Error | null; copied: boolean };
+type ErrorBoundaryState = { hasError: boolean; error: Error | null; copied: boolean; retryKey: number };
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false, error: null, copied: false };
+  state: ErrorBoundaryState = { hasError: false, error: null, copied: false, retryKey: 0 };
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { hasError: true, error, copied: false };
   }
 
@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           detail={this.state.error?.message || "An unexpected error occurred."}
           testId="screen-error"
         >
-          <ConsoleButton onClick={() => this.setState({ hasError: false, error: null, copied: false })}>
+          <ConsoleButton onClick={() => this.setState((state) => ({ hasError: false, error: null, copied: false, retryKey: state.retryKey + 1 }))}>
             Try again
           </ConsoleButton>
           <ConsoleButton
@@ -80,6 +80,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         </ConsoleNotice>
       );
     }
-    return this.props.children;
+    return <Fragment key={this.state.retryKey}>{this.props.children}</Fragment>;
   }
 }

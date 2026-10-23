@@ -597,6 +597,7 @@ describe("mission replacement in a mounted loop", () => {
       markIntroReady: vi.fn(),
       bindState: vi.fn(),
       drainTick: vi.fn((_s, cmds) => cmds),
+      subscribeCommandFeedback: vi.fn(() => () => {}),
     } as unknown as import("@/lib/multiplayer/session").MultiplayerSession;
 
     const { result } = await renderGameRuntime({

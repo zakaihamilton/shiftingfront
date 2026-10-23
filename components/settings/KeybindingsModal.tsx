@@ -6,7 +6,7 @@ import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
-import { defaultKeyBindings, type KeyBindings } from "@/lib/persist/settings";
+import { assignKeyBinding, defaultKeyBindings, type KeyBindings } from "@/lib/persist/settings";
 import { displayKey } from "@/lib/ui/shortcuts";
 import styles from "./KeybindingsModal.module.css";
 
@@ -19,6 +19,7 @@ const ACTION_LABELS: { key: keyof KeyBindings; label: string }[] = [
 export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyBindings; onSave: (bindings: KeyBindings) => void; onClose: () => void }) {
   const [currentBindings, setCurrentBindings] = useState<KeyBindings>(bindings);
   const [activeRebind, setActiveRebind] = useState<keyof KeyBindings | null>(null);
+  const [rebindNotice, setRebindNotice] = useState<string | null>(null);
   const dialogRef = useModalFocus(true, undefined, "dialog");
 
   useEffect(() => {
@@ -28,9 +29,14 @@ export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyB
       event.stopPropagation();
       if (event.key === "Escape" || event.key === "Tab") { setActiveRebind(null); return; }
       const rawKey = event.key === " " ? " " : event.key.length === 1 ? event.key.toLowerCase() : event.key;
-      const next = { ...currentBindings, [activeRebind]: rawKey };
-      setCurrentBindings(next);
-      onSave(next);
+      const assigned = assignKeyBinding(currentBindings, activeRebind, rawKey);
+      setCurrentBindings(assigned.bindings);
+      onSave(assigned.bindings);
+      const displaced = assigned.displaced;
+      const displacedLabel = displaced ? ACTION_LABELS.find((action) => action.key === displaced)?.label : undefined;
+      setRebindNotice(displaced && displacedLabel
+        ? `${displacedLabel} moved to ${displayKey(assigned.bindings[displaced])}.`
+        : null);
       setActiveRebind(null);
     };
     window.addEventListener("keydown", handleKeyDown, true);
@@ -42,6 +48,7 @@ export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyB
     setCurrentBindings(defaults);
     onSave(defaults);
     setActiveRebind(null);
+    setRebindNotice(null);
   };
 
   return (
@@ -52,6 +59,7 @@ export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyB
           <ConsoleLabel>Field Configuration</ConsoleLabel>
           <h2 id="keybinds-title" className={styles.title}>Keybindings</h2>
           <p className={styles.subtitle}>Click a command, then press any key to reassign it. Press Escape to cancel.</p>
+          {rebindNotice ? <p className={styles.subtitle} role="status">{rebindNotice}</p> : null}
           <div className={styles.list}>
             {ACTION_LABELS.map(({ key, label }) => {
               const isListening = activeRebind === key;
