@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 import { ErrorBoundary } from "../../components/ui/ErrorBoundary";
 
 vi.mock("next/link", () => ({
@@ -65,6 +65,25 @@ describe("ErrorBoundary", () => {
     renderCrashing();
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     expect(screen.getByText("Transmission interrupted")).toBeInTheDocument();
+  });
+
+  it("remounts the crashed child when Try again is pressed", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    function StickyBoom() {
+      const [boom, setBoom] = useState(false);
+      if (boom) throw new Error("sticky breach");
+      return <button type="button" onClick={() => setBoom(true)}>detonate</button>;
+    }
+    render(
+      <ErrorBoundary>
+        <StickyBoom />
+      </ErrorBoundary>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "detonate" }));
+    expect(screen.getByText("sticky breach")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.getByRole("button", { name: "detonate" })).toBeInTheDocument();
+    expect(screen.queryByTestId("screen-error")).not.toBeInTheDocument();
   });
 
   it("recovers via Try again once the child stops throwing", () => {

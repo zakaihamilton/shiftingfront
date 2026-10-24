@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A guest that cannot stay synchronized is removed from the skirmish. The host and the other players keep playing.
+- A guest order that does not fit in that player's backlog is rejected and announced, instead of disappearing.
+- A battlefield played while IndexedDB was still opening is kept when the database finishes, and the older copy is archived.
+- Duplicate keybindings move the previous key onto the displaced command, including bindings loaded from storage.
+- A failed mobile Move, Attack, or Harvest order stays armed. A tap with nothing selected asks for a selection first.
+- Touch marquee selection stays on the same ground when the camera moves.
+- Try again remounts the screen that crashed.
+- A stalled terrain worker can be retried. A worker that fails to load stays disabled for the session.
+- Recovery journals treat the same battlefield as the same save when entity order or key order differs.
+- Barracks and War Factories do not build a unit twice when an old per-building job is still stored beside the shared queue.
 - The leave confirmation stays above the after-action report, so Menu and Return to menu can be confirmed.
 - Field Medics and Repair Trucks search again after an unreachable route opens.
 - A deployment reward that fails to clear stays cleared on the next autosave. Recovery keeps the newer reward when a journal battlefield differs from the stored battle.

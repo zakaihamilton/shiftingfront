@@ -184,6 +184,48 @@ describe("pointer-up policy", () => {
       beep: "ack",
       commands: [{ type: "move", unitIds: [unit.id], x: 4, y: 5 }],
     });
+
+    expect(resolvePointerUp({
+      pointerType: "touch",
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      p,
+      state,
+      cam,
+      selectedIds: [unit.id],
+      box: null,
+      selectionMode: false,
+      mobileCommand: "attack",
+      placeKind: null,
+      repairMode: false,
+      sellMode: false,
+    })).toMatchObject({
+      commands: [],
+      clearMobileCommand: false,
+      commandNotice: { text: "Select an enemy target for attack.", kind: "error" },
+    });
+
+    expect(resolvePointerUp({
+      pointerType: "touch",
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      p,
+      state,
+      cam,
+      selectedIds: [],
+      box: null,
+      selectionMode: false,
+      mobileCommand: "move",
+      placeKind: null,
+      repairMode: false,
+      sellMode: false,
+    })).toMatchObject({
+      commands: [],
+      clearMobileCommand: false,
+      commandNotice: { text: "Select units before issuing an order.", kind: "error" },
+    });
   });
 
   it("repairs a friendly building and drag-selects without a beep", () => {

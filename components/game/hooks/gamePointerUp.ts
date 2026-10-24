@@ -157,16 +157,18 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
       : mobileCommand === "attackMove" ? "Attack-move" : mobileCommand.charAt(0).toUpperCase() + mobileCommand.slice(1);
     return {
       commands,
-      clearMobileCommand: true,
+      clearMobileCommand: commands.length > 0,
       beep: beepForCommands(commands),
       commandNotice: commands.length
         ? { text: commands.some((command) => command.type === "rally") ? "Rally point set." : `${issuedLabel} order issued.`, kind: "success" }
         : {
-            text: mobileCommand === "attack"
-              ? "Select an enemy target for attack."
-              : mobileCommand === "harvest"
-                ? "Select an ore field for harvesting."
-                : "That destination cannot be reached.",
+            text: selectedIds.length === 0
+              ? "Select units before issuing an order."
+              : mobileCommand === "attack"
+                ? "Select an enemy target for attack."
+                : mobileCommand === "harvest"
+                  ? "Select an ore field for harvesting."
+                  : "That destination cannot be reached.",
             kind: "error",
           },
     };
