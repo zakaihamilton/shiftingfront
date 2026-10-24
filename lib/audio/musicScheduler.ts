@@ -248,15 +248,8 @@ function tickScheduler(): void {
   while (n < audio.currentTime + SCHEDULE_AHEAD_S) {
     if (shouldApplyPendingIntensity(s, pendingIntensity)) applyPendingIntensityAtPhraseBoundary(audio, g);
     scheduleStep(audio, g, p, n, s, intensity);
-    const prev = s;
     n += stepDuration;
     s = (s + 1) % p.steps;
-    if (prev === p.steps - 1 && s === 0 && cue === "mission" && missionIndex !== TUTORIAL_MUSIC_MISSION && missionIndex >= 0) {
-      setNextNoteTime(n);
-      setStep(0);
-      advanceMusicTrack();
-      return;
-    }
   }
   setNextNoteTime(n);
   setStep(s);
@@ -331,6 +324,7 @@ export function applyPattern(next: MusicPattern): void {
     const t = audio.currentTime;
     syncGraphStyle(audio, activeGraph, next, t);
     activeGraph.index = indexPattern(next);
+    activeGraph.padPhrase = undefined;
     setStep(0);
     prewarmMusicSamples(audio, next.style.drumKit, next.style.drum);
     applyIntensityAt(audio, activeGraph, intensity, t, ducked);

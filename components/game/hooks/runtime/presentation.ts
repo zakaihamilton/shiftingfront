@@ -1,6 +1,6 @@
 import { dispatchBattlefieldAudio } from "@/lib/audio/battlefield";
 import { canvasViewport } from "@/lib/render/canvasViewport";
-import { pauseMusic, setMusicIntensity, type MusicIntensity } from "@/lib/audio/music";
+import { setMusicCue, setMusicIntensity, type MusicIntensity } from "@/lib/audio/music";
 import { playSfx } from "@/lib/audio/synth";
 import { playVoiceBark } from "@/lib/audio/voice";
 import { burstsFromEvents, type FxBurst } from "@/lib/render/fx";
@@ -40,8 +40,11 @@ export function createPresentationCoordinator({
     },
     onTick(state: SimState, events: SimEvent[], now: number) {
       if (events.some((event) => event.type === "combat")) lastCombatTick = state.tick;
-      const terminal = events.some((event) => event.type === "won" || event.type === "lost");
-      if (terminal) pauseMusic();
+      const won = events.some((event) => event.type === "won");
+      const lost = events.some((event) => event.type === "lost");
+      const terminal = won || lost;
+      if (won) setMusicCue("victory", state.seed, state.missionIndex);
+      else if (lost) setMusicCue("defeat", state.seed, state.missionIndex);
       const alert = firstAlert(events);
       if (alert?.kind === "warning") criticalUntilTick = Math.max(criticalUntilTick, state.tick + 24);
       const intensity = desiredMusicIntensity(

@@ -4,7 +4,7 @@ import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { ATTACK_S, notePan } from "./musicGraph";
 import { getNoiseBuffer } from "./musicGraph";
 import type { MusicWaveformName } from "./musicState";
-import { cinematicWave, type CinematicWaveRole } from "./cinematicWaves";
+import { cinematicToneFor, cinematicWave, type CinematicWaveRole } from "./cinematicWaves";
 
 function cinematicWaveRole(voice: MusicStem): CinematicWaveRole {
   if (voice === "bass" || voice === "pulse" || voice === "melody") return voice === "melody" ? "lead" : voice;
@@ -44,7 +44,7 @@ export function playSynthTone(
   const cinematic = engine === "cinematic";
   const cleanType = cinematic && type !== "sine" ? "triangle" : type;
   const attack = Math.min(
-    chip ? 0.002 : piano ? 0.004 : guitar ? 0.006 : cinematic ? (lead ? 0.035 : harmony ? 0.028 : bass ? 0.012 : 0.018) : lead ? 0.02 : harmony ? 0.014 : bass ? (acid ? 0.008 : 0.004) : pulse ? 0.003 : ATTACK_S,
+    chip ? 0.002 : piano ? 0.004 : guitar ? 0.006 : cinematic ? (lead ? 0.048 : harmony ? 0.028 : bass ? 0.012 : 0.018) : lead ? 0.02 : harmony ? 0.014 : bass ? (acid ? 0.008 : 0.004) : pulse ? 0.003 : ATTACK_S,
     duration * 0.22,
   );
   const release = Math.min(
@@ -82,7 +82,7 @@ export function playSynthTone(
       acid
         ? (bass ? 0.18 : 0.42)
         : cinematic
-          ? (bass ? 0.34 : pulse ? 0.72 : 0.88)
+          ? (bass ? 0.34 : pulse ? 0.72 : lead ? 0.96 : 0.9)
           : piano
             ? 0.72
             : guitar
@@ -97,7 +97,7 @@ export function playSynthTone(
   filter.frequency.setValueAtTime(startCut, time);
   filter.frequency.exponentialRampToValueAtTime(
     endCut,
-    time + Math.min(acid ? 0.28 : cinematic ? 0.24 : 0.16, duration * (acid ? 0.8 : cinematic ? 0.72 : 0.55)),
+    time + Math.min(acid ? 0.28 : cinematic && lead ? 0.62 : cinematic ? 0.24 : 0.16, duration * (acid ? 0.8 : cinematic && lead ? 0.9 : cinematic ? 0.72 : 0.55)),
   );
   const panCenter = notePan(voice);
   const panWidth = bass ? 0.02 : guitar ? 0.12 : piano ? 0.045 : pulse ? 0.07 : lead ? 0.08 : harmony ? 0.025 : 0.05;
@@ -106,8 +106,11 @@ export function playSynthTone(
   pan.pan.setValueAtTime(panCenter, time);
   pan.pan.linearRampToValueAtTime(panTarget, time + Math.min(0.18, Math.max(0.03, duration * 0.25)));
 
+  const tone = cinematicToneFor(
+    bass ? g.style.bassType : lead ? g.style.melodyType : pulse ? g.style.pulseType : piano || guitar ? g.style.padType : g.style.counterType,
+  );
   if (cinematic) {
-    oscA.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice)));
+    oscA.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice), tone));
   } else {
     const waveformName: MusicWaveformName = guitar
       ? "guitar"
@@ -138,8 +141,8 @@ export function playSynthTone(
   envelope.gain.setValueAtTime(0.0001, time);
   envelope.gain.exponentialRampToValueAtTime(peak, time + Math.max(0.003, attack));
   if (piano || guitar) {
-    const bodyLevel = Math.max(0.0001, peak * (piano ? 0.22 : 0.14));
-    envelope.gain.setTargetAtTime(bodyLevel, time + attack, piano ? 0.08 : 0.055);
+    const bodyLevel = Math.max(0.0001, peak * (piano ? 0.32 : 0.14));
+    envelope.gain.setTargetAtTime(bodyLevel, time + attack, piano ? 0.1 : 0.055);
     const releaseAt = Math.max(time + attack + 0.025, time + duration * 0.62);
     envelope.gain.setTargetAtTime(0.0001, releaseAt, piano ? 0.09 : 0.065);
   } else if (chip || (pulse && !cinematic)) {
@@ -174,7 +177,7 @@ export function playSynthTone(
     oscB.frequency.setValueAtTime(freq * (bass ? 1.004 : 1.01), time);
     oscB.detune.setValueAtTime(cinematic ? (lead ? 4 : guitar ? 5 : pulse ? -3 : -2) : guitar ? 7 : lead ? 10 : pulse ? -8 : -5, time);
     oscBGain.gain.setValueAtTime(pwm ? 0.2 : cinematic ? (lead ? 0.18 : guitar ? 0.12 : piano ? 0.08 : 0.16) : 0.28, time);
-    if (cinematic) oscB.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice)));
+    if (cinematic) oscB.setPeriodicWave(cinematicWave(audio, cinematicWaveRole(voice), tone));
     if (pwm) {
       const pwmGain = audio.createGain();
       const pwmLfo = audio.createOscillator();
@@ -201,7 +204,7 @@ export function playSynthTone(
       vibrato.frequency.setValueAtTime(5.6, time);
       vibratoGain.gain.setValueAtTime(0.0001, time);
       vibratoGain.gain.setValueAtTime(0.0001, time + 0.12);
-      vibratoGain.gain.linearRampToValueAtTime(cinematic ? 4 : 16, time + (cinematic ? 0.34 : 0.28));
+      vibratoGain.gain.linearRampToValueAtTime(cinematic ? 12 : 16, time + (cinematic ? 0.42 : 0.28));
       vibrato.connect(vibratoGain);
       vibratoGain.connect(oscA.detune);
       vibratoGain.connect(oscB.detune);
@@ -216,9 +219,9 @@ export function playSynthTone(
     const oscSub = audio.createOscillator();
     const subGain = audio.createGain();
     oscSub.type = bass ? "sine" : lead ? g.style.counterType : "triangle";
-    if (cinematic) oscSub.setPeriodicWave(cinematicWave(audio, bass ? "bass" : "harmony"));
+    if (cinematic) oscSub.setPeriodicWave(cinematicWave(audio, bass ? "bass" : "harmony", tone));
     oscSub.frequency.setValueAtTime(freq * (bass || lead ? 0.5 : 0.25), time);
-    subGain.gain.setValueAtTime(bass ? (acid ? 0.34 : 0.4) : lead ? 0.14 : 0.16, time);
+    subGain.gain.setValueAtTime(bass ? (acid ? 0.34 : 0.4) : lead ? 0.05 : 0.16, time);
     oscSub.connect(subGain);
     subGain.connect(filter);
     oscSub.start(time);
@@ -285,11 +288,11 @@ export function playTransition(
   filter.type = "lowpass";
   filter.Q.setValueAtTime(0.5, time);
   filter.frequency.setValueAtTime(1_100, time);
-  oscillator.type = "triangle";
+  oscillator.type = "sine";
   oscillator.frequency.setValueAtTime(root * (rising ? 2 : 4), time);
   oscillator.frequency.exponentialRampToValueAtTime(root * (rising ? 4 : 2), time + duration);
   envelope.gain.setValueAtTime(0.0001, time);
-  envelope.gain.exponentialRampToValueAtTime(0.028, time + duration * 0.72);
+  envelope.gain.exponentialRampToValueAtTime(0.016, time + duration * 0.72);
   envelope.gain.exponentialRampToValueAtTime(0.0001, time + duration);
   oscillator.connect(filter);
   filter.connect(envelope);
@@ -320,19 +323,28 @@ export function schedulePadGate(
   section: MusicSectionName | undefined,
   value: MusicIntensity,
 ): void {
+  const bar = Math.floor(stepIndex / STEPS_PER_BAR);
+  if (g.padPhrase === bar) return;
+  g.padPhrase = bar;
   const t = Math.max(time, audio.currentTime);
-  const level = value === "critical" ? 1 : value === "engaged" ? 0.82 : 0.7;
+  const level = value === "critical" ? 0.92 : value === "engaged" ? 1 : 0.86;
   const sparseSection = section === "intro" || section === "breakdown";
-  const intervalSteps = sparseSection ? STEPS_PER_BAR : STEPS_PER_BAR / 2;
-  if (stepIndex % intervalSteps !== 0) return;
-  const interval = stepDuration * intervalSteps;
-  const pulseLevel = level * (sparseSection ? 0.32 : 0.48);
+  const arrival = section === "hook" || section === "climax" || section === "turnaround";
+  const stepsIntoBar = ((stepIndex % STEPS_PER_BAR) + STEPS_PER_BAR) % STEPS_PER_BAR;
+  const interval = stepDuration * (STEPS_PER_BAR - stepsIntoBar);
+  // Swell on the downbeat, then hold the chord. A mid-bar resume opens straight to the hold.
+  const pulseLevel = level * (sparseSection ? 0.5 : arrival ? 0.62 : 0.4);
+  const floor = pulseLevel * (sparseSection || arrival ? 0.8 : 0.75);
   for (const gate of [g.padGate, g.padReverbGate]) {
     gate.gain.cancelScheduledValues(t);
-    gate.gain.setValueAtTime(0.02, t);
-    gate.gain.linearRampToValueAtTime(pulseLevel, t + Math.max(0.012, stepDuration * 0.18));
-    gate.gain.setValueAtTime(pulseLevel, t + interval * 0.3);
-    gate.gain.linearRampToValueAtTime(0.02, t + interval * 0.65);
+    gate.gain.setValueAtTime(floor, t);
+    if (stepsIntoBar !== 0) {
+      gate.gain.setValueAtTime(floor, t + interval);
+      continue;
+    }
+    gate.gain.linearRampToValueAtTime(pulseLevel, t + Math.min(0.18, interval * 0.22));
+    gate.gain.setValueAtTime(pulseLevel, t + interval * 0.7);
+    gate.gain.linearRampToValueAtTime(floor, t + interval);
   }
 }
 

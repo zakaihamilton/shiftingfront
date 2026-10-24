@@ -359,7 +359,7 @@ describe("automatic music track variety", () => {
     }
   });
 
-  it("automatically advances the music track when the pattern reaches the loop boundary", () => {
+  it("loops the same mission score when the pattern reaches the boundary", () => {
     vi.useFakeTimers();
     try {
       const fakeAudio = createMockAudioContext(100.0);
@@ -382,18 +382,13 @@ describe("automatic music track variety", () => {
 
       expect(trackIndex).toBe(0);
 
-      // Tick scheduler
       tickScheduler();
 
-      // Upon reaching step 0 from p.steps - 1, advanceMusicTrack was automatically called
-      expect(trackIndex).toBe(1);
-      expect(transitioning).toBe(true);
-
-      // Complete crossfade
-      vi.advanceTimersByTime(300);
+      expect(trackIndex).toBe(0);
       expect(transitioning).toBe(false);
-      expect(pattern).toEqual(composeMusic(421, "mission", 1));
-      expect(step).toBe(0);
+      expect(pattern).toEqual(initialPattern);
+      expect(step).toBeGreaterThanOrEqual(0);
+      expect(step).toBeLessThan(initialPattern.steps);
     } finally {
       vi.useRealTimers();
     }

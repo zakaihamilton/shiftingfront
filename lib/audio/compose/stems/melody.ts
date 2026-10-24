@@ -169,7 +169,7 @@ export function placeMelody(
   chord: number,
   variant: number,
   octave: number,
-  durationFor: (index: number, sounding: number) => number,
+  durationFor: (index: number, sounding: number, gap?: number) => number,
   velocity: number,
   harmony: boolean,
   harmonyNotes: MusicNoteEvent[] | null,
@@ -193,8 +193,16 @@ export function placeMelody(
     const isLastSounding = placed === placements.length - 1;
     const melodicDegree = cadence && isLastSounding ? 0 : placement.degree + variant;
     const midi = nearestMelodyMidi(rootMidi, scale, chord, melodicDegree, octave, lastMidi);
-    const duration = durationFor(placed, placements.length);
-    noteEvent(notes, origin + placement.motifStep, midi, duration, velocity, motif.accentSteps.includes(placement.index));
+    const nextPlacement = placements[placed + 1];
+    const gap = Math.max(1, nextPlacement ? nextPlacement.motifStep - placement.motifStep : STEPS_PER_BAR - placement.motifStep);
+    const requested = durationFor(placed, placements.length, gap);
+    // Connect the line up to the next note. A phrase ending may ring a step or two past the bar.
+    const duration = Math.max(1, Math.min(requested, isLastSounding && cadence ? gap + 2 : gap));
+    const span = Math.max(1, placements.length - 1);
+    const rise = placements.length === 1 ? 1 : 0.9 + (placed / span) * 0.16;
+    const cadenceBoost = cadence && isLastSounding ? 1.06 : 1;
+    const shaped = Math.max(0.05, Math.min(1, velocity * rise * cadenceBoost));
+    noteEvent(notes, origin + placement.motifStep, midi, duration, shaped, motif.accentSteps.includes(placement.index));
     if (harmony && harmonyNotes) {
       noteEvent(
         harmonyNotes,
@@ -208,6 +216,32 @@ export function placeMelody(
     placed += 1;
   }
   return lastMidi;
+}
+
+function pitchClassDistance(a: number, b: number): number {
+  return Math.abs(a - b) % 12;
+}
+
+function clashesWithLead(midi: number, lead: number): boolean {
+  const distance = pitchClassDistance(midi, lead);
+  return distance === 0 || distance === 1 || distance === 6 || distance === 11;
+}
+
+function consonantCounterMidi(
+  rootMidi: number,
+  scale: readonly number[],
+  chord: number,
+  degree: number,
+  octave: number,
+  interval: number,
+  leadMidi: number | undefined,
+): number | null {
+  for (const candidate of [interval, 2, 4, -2, 3, -4]) {
+    const midi = scaleToneMidi(rootMidi, scale, chord, degree + candidate, octave);
+    if (leadMidi !== undefined && (midi === leadMidi || clashesWithLead(midi, leadMidi))) continue;
+    return midi;
+  }
+  return null;
 }
 
 export function placeCounter(
@@ -232,9 +266,10 @@ export function placeCounter(
     if (degree === null) continue;
     const motifStep = ((motif.rhythm[i] ?? i * 2) + stepShift) % STEPS_PER_BAR;
     if (motifStep % 2 === 1 || motifStep >= STEPS_PER_BAR) continue;
-    const midi = scaleToneMidi(rootMidi, scale, chord, degree + variant + interval, octave);
     const step = origin + motifStep;
-    if (melody.some((lead) => lead.step === step && lead.midi === midi)) continue;
+    const lead = melody.find((note) => note.step === step);
+    const midi = consonantCounterMidi(rootMidi, scale, chord, degree + variant, octave, interval, lead?.midi);
+    if (midi === null) continue;
     noteEvent(notes, step, midi, duration, velocity);
   }
 }

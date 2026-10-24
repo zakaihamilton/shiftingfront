@@ -501,17 +501,19 @@ describe("useGameRuntime", () => {
     expect(window.localStorage.getItem(TELEMETRY_KEY)).toBeNull();
   });
 
-  it.each(["won", "lost"] as const)("pauses mission music immediately when the simulation reaches a %s result", async (outcome) => {
-    const { pauseMusic } = await import("@/lib/audio/music");
+  it.each(["won", "lost"] as const)("starts the result score when the simulation reaches a %s result", async (outcome) => {
+    const { pauseMusic, setMusicCue } = await import("@/lib/audio/music");
     const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
     const options = (startLoop.mock.calls[0] as unknown as [{ onTick: (state: typeof result.current.state, events: SimEvent[], now: number) => void }] | undefined)?.[0];
     expect(options).toBeDefined();
 
     vi.mocked(pauseMusic).mockClear();
+    vi.mocked(setMusicCue).mockClear();
     const terminalState = { ...result.current.state, tick: 1, result: outcome };
     act(() => options?.onTick(terminalState, [{ type: outcome }], 1_000));
 
-    expect(pauseMusic).toHaveBeenCalledOnce();
+    expect(pauseMusic).not.toHaveBeenCalled();
+    expect(setMusicCue).toHaveBeenCalledWith(outcome === "won" ? "victory" : "defeat", terminalState.seed, terminalState.missionIndex);
   });
 });
 
