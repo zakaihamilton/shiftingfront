@@ -311,10 +311,9 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
     }
   }
 
-  const stepShift = bar % 2 === 1 ? style.rhythmShift + arrangement.rhythmOffset : arrangement.rhythmOffset;
-  const phraseStepShift = song
-    ? arrangement.rhythmOffset
-    : (stepShift + [0, 0, 1, -1][phrasePass]! + STEPS_PER_BAR) % STEPS_PER_BAR;
+  // Keep the written rhythm on the drum grid. A shift inside the bar wraps the
+  // phrase's last sixteenths onto the downbeat.
+  const phraseStepShift = 0;
   const songMotif = (hookLead: boolean) => hookLead
     ? hook
     : section.name === "development"

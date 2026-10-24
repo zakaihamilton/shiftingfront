@@ -641,6 +641,13 @@ function signatureMotifFrom(rng: Rng): MusicMotif {
   return motifFrom(rng, SIGNATURE_CONTOURS, SIGNATURE_RHYTHMS);
 }
 
+/** An octave double stays in the melody register. Above that it is left out. */
+function registerDouble(midi: number, direction: 1 | -1): number | undefined {
+  const doubled = midi + direction * 12;
+  if (doubled < 24 || doubled > 100) return undefined;
+  return doubled;
+}
+
 function makeIntensityLayers(
   notes: Record<MusicStem, MusicNoteEvent[]>,
   drums: MusicDrumEvent[],
@@ -661,23 +668,35 @@ function makeIntensityLayers(
     if (!section || section.energy < 0.64) continue;
     const beat = lead.step % STEPS_PER_BAR;
     if (lead.accent || beat === 0 || beat === 8) {
-      noteEvent(engagedCounter, lead.step, lead.midi - 12, Math.min(lead.duration, 3), lead.velocity * 0.3, !!lead.accent);
+      const below = registerDouble(lead.midi, -1);
+      if (below !== undefined) {
+        noteEvent(engagedCounter, lead.step, below, Math.min(lead.duration, 3), lead.velocity * 0.3, !!lead.accent);
+      }
     }
     if (lead.accent || (lead.step % 8 === 0 && lead.step % 32 === 0)) {
-      noteEvent(criticalCounter, lead.step, lead.midi + 12, Math.min(lead.duration, 3), lead.velocity * 0.24, !!lead.accent);
+      const above = registerDouble(lead.midi, 1);
+      if (above !== undefined) {
+        noteEvent(criticalCounter, lead.step, above, Math.min(lead.duration, 3), lead.velocity * 0.24, !!lead.accent);
+      }
     }
   }
 
   for (const strum of notes.guitar) {
     const section = sectionAt(strum.step);
     if (!section || section.energy < 0.62 || !strum.accent) continue;
-    noteEvent(engagedGuitar, strum.step, strum.midi + 12, Math.min(strum.duration, 2), strum.velocity * 0.24, true);
+    const above = registerDouble(strum.midi, 1);
+    if (above !== undefined) {
+      noteEvent(engagedGuitar, strum.step, above, Math.min(strum.duration, 2), strum.velocity * 0.24, true);
+    }
   }
 
   for (const chord of notes.harmony) {
     const section = sectionAt(chord.step);
     if (!section || section.energy < 0.72 || !chord.accent) continue;
-    noteEvent(criticalPiano, chord.step, chord.midi + 12, Math.min(chord.duration, 2), chord.velocity * 0.2, true);
+    const above = registerDouble(chord.midi, 1);
+    if (above !== undefined) {
+      noteEvent(criticalPiano, chord.step, above, Math.min(chord.duration, 2), chord.velocity * 0.2, true);
+    }
   }
 
   const hasDrum = (step: number, kind: MusicDrumEvent["kind"]) =>

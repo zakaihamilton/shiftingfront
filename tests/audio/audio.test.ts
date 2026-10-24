@@ -1138,6 +1138,50 @@ describe("generated audio", () => {
     }
   });
 
+  it("plays each phrase on the rhythm it was written with", () => {
+    const soundingSteps = (motif: ReturnType<typeof composeMusic>["motif"], response: boolean) => {
+      const degrees = response ? motif.response : motif.degrees;
+      return degrees
+        .map((degree, index) => degree == null ? null : (motif.rhythm[index] ?? index * 2) % STEPS_PER_BAR)
+        .filter((step): step is number => step != null)
+        .sort((left, right) => left - right);
+    };
+    const barSteps = (pattern: ReturnType<typeof composeMusic>, start: number) => pattern.notes.melody
+      .filter((note) => Math.floor(note.step / STEPS_PER_BAR) === start)
+      .map((note) => note.step % STEPS_PER_BAR)
+      .sort((left, right) => left - right);
+
+    for (const cue of ["menu", "briefing", "mission", "victory", "defeat"] as const) {
+      for (let seed = 0; seed < 24; seed += 1) {
+        const missions = cue === "mission" ? [0, 1, 2, 3, 4, 5] : [0];
+        for (const mission of missions) {
+          const pattern = composeMusic(seed, cue, mission);
+          const groove = pattern.sections.find((section) => section.name === "groove")!;
+          const hook = pattern.sections.find((section) => section.name === "hook")!;
+          expect(barSteps(pattern, groove.startBar)).toEqual(soundingSteps(pattern.motif, false));
+          expect(barSteps(pattern, groove.startBar + 4)).toEqual(soundingSteps(pattern.motif, true));
+          expect(barSteps(pattern, hook.startBar)).toEqual(soundingSteps(pattern.theme.hook, false));
+        }
+      }
+    }
+  });
+
+  it("keeps combat doubles inside the melody range", () => {
+    for (let seed = 0; seed < 24; seed += 1) {
+      for (let mission = 0; mission < 6; mission += 1) {
+        const pattern = composeMusic(seed, "mission", mission);
+        for (const layer of Object.values(pattern.intensityLayers)) {
+          for (const lane of Object.values(layer?.notes ?? {})) {
+            for (const note of lane ?? []) {
+              expect(note.midi).toBeGreaterThanOrEqual(24);
+              expect(note.midi).toBeLessThanOrEqual(100);
+            }
+          }
+        }
+      }
+    }
+  });
+
   it("lands chorus downbeats on the chord", () => {
     let hits = 0;
     let tones = 0;
