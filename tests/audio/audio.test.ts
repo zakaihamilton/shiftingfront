@@ -576,18 +576,21 @@ describe("generated audio", () => {
     }
   });
 
-  it("uses dedicated turnaround harmonic material before resolving each phrase", () => {
+  it("repeats the chorus chords through the ending chorus", () => {
     const midiFromHz = (hz: number) => Math.round(69 + 12 * Math.log2(hz / 440));
 
     for (const seed of [0, 421, 9999]) {
       const pattern = composeMusic(seed, "mission", 3);
       const turnaround = pattern.sections.find((section) => section.name === "turnaround")!;
+      const hook = pattern.sections.find((section) => section.name === "hook")!;
       for (let offset = 0; offset < turnaround.endBar - turnaround.startBar; offset += 1) {
-        const degree = offset === 7 || offset === 15
+        const degree = offset % 8 === 7
           ? 0
-          : pattern.theme.progressionD[Math.floor(offset / 2)]!;
+          : pattern.theme.progressionC[Math.floor((offset % 8) / 2)]!;
         const expectedPitchClass = (pattern.rootMidi + pattern.theme.scale[degree]!) % 12;
-        expect(midiFromHz(pattern.padRoot[turnaround.startBar + offset]!) % 12).toBe(expectedPitchClass);
+        const turnaroundPitchClass = midiFromHz(pattern.padRoot[turnaround.startBar + offset]!) % 12;
+        expect(turnaroundPitchClass).toBe(expectedPitchClass);
+        expect(turnaroundPitchClass).toBe(midiFromHz(pattern.padRoot[hook.startBar + offset]!) % 12);
       }
     }
   });
@@ -725,7 +728,7 @@ describe("generated audio", () => {
     }
   });
 
-  it("opens holdBass holes and delays the groove echo", () => {
+  it("opens the double-drop hole and keeps the verse line continuous", () => {
     const sectionHits = (pattern: ReturnType<typeof composeMusic>, name: string, kind: "kick" | "snare" | "hat") => {
       const section = pattern.sections.find((entry) => entry.name === name);
       if (!section) return 0;
@@ -777,7 +780,7 @@ describe("generated audio", () => {
           expect(odd.length).toBeGreaterThan(0);
           const average = (notes: { velocity: number }[]) =>
             notes.reduce((sum, note) => sum + note.velocity, 0) / Math.max(1, notes.length);
-          expect(average(even)).toBeLessThan(average(odd));
+          expect(average(even)).toBeGreaterThan(average(odd) * 0.9);
         }
       }
     }
@@ -1055,7 +1058,7 @@ describe("generated audio", () => {
       expect(cells(pattern, "climax", 0, 16)).toEqual(cells(pattern, "hook", 0, 16));
       expect(cells(pattern, "turnaround", 0, 16)).toEqual(cells(pattern, "hook", 0, 16));
       expect(cells(pattern, "escalation", 8, 16)).toEqual(chorus);
-      for (const name of ["groove", "hook", "development", "breakdown"] as const) {
+      for (const name of ["groove", "hook", "development", "breakdown", "turnaround"] as const) {
         const section = pattern.sections.find((entry) => entry.name === name)!;
         for (let offset = 0; offset < 8; offset += 1) {
           const first = midiFromHz(pattern.padRoot[section.startBar + offset]!);
@@ -1070,9 +1073,29 @@ describe("generated audio", () => {
       );
       expect(bridgeNotes.length).toBeGreaterThan(0);
       expect(cells(pattern, "breakdown", 8, 16)).toEqual(cells(pattern, "breakdown", 0, 8));
+      const pulseCount = (from: number, to: number) => pattern.notes.pulse.filter((note) => {
+        const bar = Math.floor(note.step / STEPS_PER_BAR) - bridge.startBar;
+        return bar >= from && bar < to;
+      }).length;
+      expect(pulseCount(8, 16)).toBe(pulseCount(0, 8));
       expect(pattern.notes.harmony.some(
         (note) => note.step >= bridge.startBar * STEPS_PER_BAR && note.step < bridge.endBar * STEPS_PER_BAR,
       )).toBe(false);
+
+      const tomBars = (name: string, from: number, to: number) => {
+        const section = pattern.sections.find((entry) => entry.name === name)!;
+        return pattern.drums
+          .filter((event) => event.kind === "tom")
+          .map((event) => Math.floor(event.step / STEPS_PER_BAR) - section.startBar)
+          .filter((local) => local >= from && local < to)
+          .map((local) => local % 8)
+          .sort((left, right) => left - right);
+      };
+      for (const name of ["groove", "development", "hook"] as const) {
+        const section = pattern.sections.find((entry) => entry.name === name)!;
+        if (pattern.style.arrangement.holdBass[pattern.sections.indexOf(section)]) continue;
+        expect(tomBars(name, 8, 16)).toEqual(tomBars(name, 0, 8));
+      }
     }
   });
 

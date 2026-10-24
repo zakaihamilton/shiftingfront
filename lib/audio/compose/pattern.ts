@@ -565,8 +565,9 @@ function makePhrasePlans(
   sections: readonly MusicSection[],
   arrangement: MusicPattern["style"]["arrangement"],
   sparse: boolean,
+  cue: MusicCue,
 ): PhrasePlan[] {
-  return Array.from({ length: MUSIC_BARS / 8 }, (_, phraseIndex) => {
+  const plans = Array.from({ length: MUSIC_BARS / 8 }, (_, phraseIndex) => {
     const sectionIndex = Math.floor(phraseIndex / 2);
     const section = sections[sectionIndex]!;
     const intro = section.name === "intro";
@@ -584,6 +585,15 @@ function makePhrasePlans(
     const miniFillBar = miniFillEligible && rng.next() < 0.28 ? 3 : null;
     return { textureDropBar, miniFillBar, liftBar: rng.pick([4, 5] as const) };
   });
+  if (cue === "mission") {
+    const repeated = new Set<string>(REPEATED_SENTENCES);
+    for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex += 1) {
+      const name = sections[sectionIndex]!.name;
+      if (!repeated.has(name)) continue;
+      plans[sectionIndex * 2 + 1] = { ...plans[sectionIndex * 2]! };
+    }
+  }
+  return plans;
 }
 
 export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): MusicPattern {
@@ -634,7 +644,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const sparse = isSparseCue(cue);
   const sections = makeSections();
   const arrangement = style.arrangement;
-  const phrasePlans = makePhrasePlans(formRng, sections, arrangement, sparse);
+  const phrasePlans = makePhrasePlans(formRng, sections, arrangement, sparse, cue);
   const notes: Record<MusicStem, MusicNoteEvent[]> = {
     bass: [],
     pulse: [],

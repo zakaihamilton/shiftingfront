@@ -116,16 +116,18 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const halfPhrase = phraseBar % 8;
   const phrasePlan = phrasePlans[Math.floor(bar / 8)]!;
   const materialIndex = materialIndexForSection(section.name);
+  const song = cue === "mission";
   const cycle = Math.floor(bar / (BARS_PER_SECTION * 2)) % 4;
   const recurringHookSection = section.name === "hook" || section.name === "climax" || section.name === "turnaround";
   const progression = [progressionA, progressionB, progressionC, progressionD][materialIndex]!;
-  // Let the turnaround foundation resolve independently while the hook lead keeps its contour.
+  // The mission ending chorus keeps the hook's chords. Other cues still resolve on the coda progression.
   const leadProgression = section.name === "turnaround" ? progressionC : progression;
   const riff = section.name === "turnaround"
-    ? bassRiffD
+    ? (song ? bassRiffC : bassRiffD)
     : [bassRiffA, bassRiffB, bassRiffC, bassRiffD][materialIndex]!;
-  const arpFigure = [arpFigureA, arpFigureB, arpFigureC, arpFigureD][cycle]!;
-  const openHatSteps = [openHatA, openHatB, openHatC, openHatD][cycle]!;
+  const bedCycle = song && section.name === "turnaround" ? 1 : cycle;
+  const arpFigure = [arpFigureA, arpFigureB, arpFigureC, arpFigureD][bedCycle]!;
+  const openHatSteps = [openHatA, openHatB, openHatC, openHatD][bedCycle]!;
   const fill = halfPhrase === 7;
   const intro = section.name === "intro";
   const breakdown = section.name === "breakdown";
@@ -137,7 +139,6 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const energy = section.energy;
   const thinBar = halfPhrase === 2 || halfPhrase === 3;
   const liftBar = phrasePlan.liftBar === halfPhrase;
-  const song = cue === "mission";
   const dropTexture = phrasePlan.textureDropBar === halfPhrase && !song;
   const miniFill = phrasePlan.miniFillBar === halfPhrase && thinBar;
   const dropHats = dropTexture && !hookSection;
@@ -154,6 +155,7 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const phraseSlot = phraseBar % 4;
   const phrasePass = Math.floor(phraseBar / 4);
   const bridge = song && breakdown;
+  if (bridge && holdBass) usePulse = false;
   const songCycle = phraseBar % 8;
   // Verse and chorus are 8-bar sentences: four bars of the call, four of the answer, then the sentence repeats.
   const response = song
@@ -168,7 +170,7 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
     hookSection ||
     (breakdown && !clearBreakdown && phraseBar >= 8) ||
     (section.name === "escalation" && phraseBar >= 8);
-  const echoBar = arrangement.echoMelody && section.name === "groove" && phraseBar % 2 === 0;
+  const echoBar = arrangement.echoMelody && section.name === "groove" && phraseBar % 2 === 0 && !song;
   const songSection = song && (section.name === "groove" || section.name === "development" || section.name === "escalation" || hookSection || bridge);
   const useMelody =
     !restBar &&
@@ -195,8 +197,14 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
           ? 1
           : 0) + arrangement.melodyDegreeOffset + sequenceOffset;
   const preChorus = song && section.name === "escalation" && phraseBar < 8;
-  const loopHarmony = song && !intro && section.name !== "turnaround";
-  const harmonyProgression = bridge ? progressionB : preChorus ? progressionA : progression;
+  const loopHarmony = song && !intro;
+  const harmonyProgression = bridge
+    ? progressionB
+    : preChorus
+      ? progressionA
+      : section.name === "turnaround"
+        ? progressionC
+        : progression;
   const chord = phraseEnd
     ? 0
     : loopHarmony
