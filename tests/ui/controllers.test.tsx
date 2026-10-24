@@ -494,7 +494,7 @@ describe("game lifecycle hooks", () => {
     expect(state.controlGroups).toEqual({ 1: [infantry.id, tank.id] });
   });
 
-  it("clears combat alerts after their display window and pauses mission music with menus and results", async () => {
+  it("clears combat alerts after their display window, pauses while the menu is open, and plays the result score", async () => {
     vi.useFakeTimers();
     try {
       const { result } = renderHook(() => useCombatAlert());
@@ -520,12 +520,13 @@ describe("game lifecycle hooks", () => {
     vi.mocked(setMusicCue).mockClear();
 
     rerender({ seed: 421, missionIndex: 3, tutorial: false, paused: false, result: "won" as const });
-    expect(pauseMusic).toHaveBeenCalledTimes(2);
-    expect(setMusicCue).not.toHaveBeenCalled();
+    expect(pauseMusic).toHaveBeenCalledTimes(1);
+    expect(setMusicCue).toHaveBeenCalledWith("victory", 421, 3);
 
+    vi.mocked(setMusicCue).mockClear();
     rerender({ seed: 421, missionIndex: 3, tutorial: false, paused: false, result: "lost" as const });
-    expect(pauseMusic).toHaveBeenCalledTimes(3);
-    expect(setMusicCue).not.toHaveBeenCalled();
+    expect(pauseMusic).toHaveBeenCalledTimes(1);
+    expect(setMusicCue).toHaveBeenCalledWith("defeat", 421, 3);
   });
 });
 

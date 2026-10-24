@@ -76,9 +76,10 @@ export function resetMusicPosition(targetCue?: MusicCue, targetSeed?: number, ta
 }
 
 export function musicCueFromPath(pathname: string): MusicCue | null {
-  // Music is scoped to the active mission battlefield. Returning null on all
-  // other routes lets AudioRoot stop any mission music during navigation.
-  if (pathname.startsWith("/play")) return "mission";
+  if (pathname === "/") return "menu";
+  if (pathname.startsWith("/briefing")) return "briefing";
+  if (pathname.startsWith("/tutorial") || pathname.startsWith("/play")) return "mission";
+  if (pathname.startsWith("/campaign-complete")) return "victory";
   return null;
 }
 

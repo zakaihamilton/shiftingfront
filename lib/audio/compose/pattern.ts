@@ -32,6 +32,7 @@ import {
   isSparseCue,
   pickDifferent,
   pickCycle,
+  chordToneMidi,
   noteEvent,
   drumEvent,
   drumEventUnique,
@@ -116,9 +117,15 @@ function sectionByName(sections: readonly MusicSection[], name: MusicSection["na
   return sections.find((section) => section.name === name)!;
 }
 
-/** Keep a doubled counter off the lead and inside the counter register. */
+/**
+ * Follow the lead by octaves only, so a counter stays on its scale degree
+ * when the melody is pulled onto a chord tone.
+ */
 function placeCounterPitch(current: number, delta: number, leadMidi: number): number {
-  let next = current + delta;
+  const target = current + delta;
+  let next = current;
+  while (next + 12 <= 100 && Math.abs(next + 12 - target) < Math.abs(next - target)) next += 12;
+  while (next - 12 >= 24 && Math.abs(next - 12 - target) < Math.abs(next - target)) next -= 12;
   while (next > 100) next -= 12;
   while (next < 24) next += 12;
   if (next !== leadMidi) return next;
@@ -243,21 +250,6 @@ function copySentence(melody: MusicNoteEvent[], counters: MusicNoteEvent[], sect
   counters.push(...copiedCounters);
 }
 
-function placedRepeat(
-  relative: readonly number[],
-  anchor: number,
-  sourceMidi: number,
-): { start: number; leap: number } | undefined {
-  let best: { start: number; leap: number } | undefined;
-  for (let start = MELODY_LOW; start <= MELODY_HIGH; start += 1) {
-    if (((start - sourceMidi) % 12 + 12) % 12 !== 0) continue;
-    if (relative.some((interval) => start + interval < MELODY_LOW || start + interval > MELODY_HIGH)) continue;
-    const leap = Math.abs(start - anchor);
-    if (!best || leap < best.leap) best = { start, leap };
-  }
-  return best;
-}
-
 function shiftRegion(
   melody: MusicNoteEvent[],
   counters: MusicNoteEvent[],
@@ -281,7 +273,43 @@ function shiftRegion(
   }
 }
 
-/** Land the chorus under the pre-chorus, then keep that entrance inside an octave. */
+type ChorusLanding = { anchorShift: number; start: number; leap: number };
+
+/** Place an octave of the hook within a leap of the pre-chorus, preferring the hook's own register. */
+function chorusLanding(
+  sourceMidi: number,
+  relative: readonly number[],
+  before: readonly MusicNoteEvent[],
+): ChorusLanding | undefined {
+  if (before.length === 0) return undefined;
+  const beforeLow = Math.min(...before.map((note) => note.midi));
+  const beforeHigh = Math.max(...before.map((note) => note.midi));
+  const fits = (start: number) => relative.every((interval) => {
+    const midi = start + interval;
+    return midi >= MELODY_LOW && midi <= MELODY_HIGH;
+  });
+  let best: ChorusLanding | undefined;
+  for (let anchorShift = -60; anchorShift <= 60; anchorShift += 12) {
+    if (beforeLow + anchorShift < MELODY_LOW || beforeHigh + anchorShift > MELODY_HIGH) continue;
+    const anchor = before[before.length - 1]!.midi + anchorShift;
+    for (let octave = -5; octave <= 5; octave += 1) {
+      const start = sourceMidi + octave * 12;
+      if (!fits(start)) continue;
+      const leap = Math.abs(start - anchor);
+      if (leap > 12) continue;
+      const sameRegister = start === sourceMidi;
+      const bestSame = best?.start === sourceMidi;
+      const better = !best
+        || (sameRegister && !bestSame)
+        || (sameRegister === bestSame && Math.abs(anchorShift) < Math.abs(best.anchorShift))
+        || (sameRegister === bestSame && Math.abs(anchorShift) === Math.abs(best.anchorShift) && leap < best.leap);
+      if (better) best = { anchorShift, start, leap };
+    }
+  }
+  return best;
+}
+
+/** Land the pre-chorus on the hook, keeping that hook in the register where it was first sung. */
 function graftPhrase(
   melody: MusicNoteEvent[],
   counters: MusicNoteEvent[],
@@ -292,19 +320,7 @@ function graftPhrase(
   const before = notesInRegion(melody, targetStart, 0, 8);
   if (source.length === 0 || before.length === 0) return;
   const relative = source.map((note) => note.midi - source[0]!.midi);
-  const beforeLow = Math.min(...before.map((note) => note.midi));
-  const beforeHigh = Math.max(...before.map((note) => note.midi));
-  let best: { anchorShift: number; start: number; leap: number } | undefined;
-  for (let anchorShift = -60; anchorShift <= 60; anchorShift += 12) {
-    if (beforeLow + anchorShift < MELODY_LOW || beforeHigh + anchorShift > MELODY_HIGH) continue;
-    const placed = placedRepeat(relative, before[before.length - 1]!.midi + anchorShift, source[0]!.midi);
-    if (!placed) continue;
-    const candidate = { anchorShift, start: placed.start, leap: placed.leap };
-    const closer = !best
-      || candidate.leap < best.leap
-      || (candidate.leap === best.leap && Math.abs(candidate.anchorShift) < Math.abs(best.anchorShift));
-    if (closer) best = candidate;
-  }
+  const best = chorusLanding(source[0]!.midi, relative, before);
   if (!best) return;
   const landing = best;
   shiftRegion(melody, counters, targetStart, 0, 8, landing.anchorShift);
@@ -329,55 +345,182 @@ function graftPhrase(
   counters.push(...copiedCounters);
 }
 
+const CHORUS_SECTIONS = new Set<MusicSection["name"]>(["hook", "climax", "turnaround"]);
+
+function chordPitchClasses(rootMidi: number, scale: readonly number[], degree: number): Set<number> {
+  return new Set([0, 1, 2, 3].map((tone) => ((chordToneMidi(rootMidi, scale, degree, tone, 0) % 12) + 12) % 12));
+}
+
+/** Pull chorus downbeats onto the chord without opening a leap past a fifth. */
+function snapChorusDownbeats(
+  melody: MusicNoteEvent[],
+  sectionStart: number,
+  rootMidi: number,
+  scale: readonly number[],
+  progression: readonly number[],
+): void {
+  const phrase = notesInRegion(melody, sectionStart, 0, 8);
+  phrase.forEach((note, index) => {
+    if (note.step % STEPS_PER_BAR !== 0) return;
+    const local = localBar(note, sectionStart);
+    const barNotes = phrase.filter((entry) => localBar(entry, sectionStart) === local);
+    if (local % 8 === 7 && note === barNotes[barNotes.length - 1]) return;
+    const degree = progression[Math.floor((local % 8) / 2)] ?? 0;
+    const pcs = chordPitchClasses(rootMidi, scale, degree);
+    if (pcs.has(((note.midi % 12) + 12) % 12)) return;
+    const previous = index > 0 ? phrase[index - 1]!.midi : note.midi;
+    const next = index + 1 < phrase.length ? phrase[index + 1]!.midi : note.midi;
+    let best: number | undefined;
+    let bestCost = Infinity;
+    for (let midi = note.midi - 5; midi <= note.midi + 5; midi += 1) {
+      if (midi < MELODY_LOW || midi > MELODY_HIGH || !pcs.has(((midi % 12) + 12) % 12)) continue;
+      const leapIn = Math.abs(midi - previous);
+      const leapOut = Math.abs(next - midi);
+      if (leapIn > 7 || leapOut > 7) continue;
+      const replaced = phrase.map((entry, entryIndex) => entryIndex === index ? midi : entry.midi);
+      const span = Math.max(...replaced) - Math.min(...replaced);
+      if (span > 24) continue;
+      const cost = Math.abs(midi - note.midi) * 4 + leapIn + leapOut;
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = midi;
+      }
+    }
+    if (best === undefined) return;
+    note.midi = best;
+  });
+}
+
+/** Copy the hook's pitches onto a later chorus, one note at a time. */
+function matchPhrase(target: MusicNoteEvent[], reference: readonly MusicNoteEvent[], counters: MusicNoteEvent[]): void {
+  if (target.length === 0 || reference.length === 0 || target.length !== reference.length) {
+    imposeContour(target, reference, counters);
+    return;
+  }
+  applyMidis(target, reference.map((note) => note.midi), counters);
+}
+
 /**
- * Slide each section by octaves so the entrance stays within one leap of the
- * phrase before it. A whole-section slide keeps the repeated sentence intact.
+ * Slide each phrase by octaves so the entrance stays within one leap of the
+ * phrase before it. Every chorus, including the one that answers the pre-chorus,
+ * shares one slide, so the reprise stays in the register where the hook was sung.
  */
 function connectSections(melody: MusicNoteEvent[], counters: MusicNoteEvent[], sections: readonly MusicSection[]): void {
-  const groups = sections.map((section) => {
-    const notes = notesInRegion(melody, section.startBar, 0, 16);
+  const regions = sections.flatMap((section) => {
+    const chorus = CHORUS_SECTIONS.has(section.name);
+    if (section.name !== "intro" && section.name !== "escalation") {
+      return [{ startBar: section.startBar, from: 0, to: 16, chorus }];
+    }
+    return [
+      { startBar: section.startBar, from: 0, to: 8, chorus: false },
+      { startBar: section.startBar, from: 8, to: 16, chorus: section.name === "escalation" },
+    ];
+  });
+  const groups = regions.map((region) => {
+    const notes = notesInRegion(melody, region.startBar, region.from, region.to);
     if (notes.length === 0) return undefined;
     return {
-      startBar: section.startBar,
+      ...region,
       low: Math.min(...notes.map((note) => note.midi)),
       high: Math.max(...notes.map((note) => note.midi)),
       first: notes[0]!.midi,
       last: notes[notes.length - 1]!.midi,
     };
   });
-  type Path = { cost: number; shifts: number[]; last: number };
-  const findPath = (requireSmooth: boolean): Path | undefined => {
-    let paths = new Map<number, Path>([[0, { cost: 0, shifts: [], last: Number.NaN }]]);
-    for (const group of groups) {
-      const next = new Map<number, Path>();
-      if (!group) {
-        for (const [key, path] of paths) next.set(key, { ...path, shifts: [...path.shifts, 0] });
-        paths = next;
-        continue;
-      }
-      for (let shift = -60; shift <= 60; shift += 12) {
-        if (group.low + shift < MELODY_LOW || group.high + shift > MELODY_HIGH) continue;
-        for (const path of paths.values()) {
-          const boundary = Number.isNaN(path.last) ? 0 : Math.abs(group.first + shift - path.last);
-          if (requireSmooth && boundary > 12) continue;
-          const cost = path.cost + Math.abs(shift) * 0.05 + (boundary > 12 ? 1_000 + boundary : boundary);
-          const current = next.get(shift);
-          if (!current || cost < current.cost) {
-            next.set(shift, { cost, shifts: [...path.shifts, shift], last: group.last + shift });
-          }
+  type Path = { cost: number; shifts: number[]; last: number; chorusShift: number | null };
+  const openingIndex = groups.findIndex((group) => group !== undefined);
+  const findPath = (requireSmooth: boolean, lockChorus: boolean, closeLoop: boolean): Path | undefined => {
+    let paths = new Map<string, Path>([["start", { cost: 0, shifts: [], last: Number.NaN, chorusShift: null }]]);
+    for (let index = 0; index < groups.length; index += 1) {
+      const group = groups[index];
+      const next = new Map<string, Path>();
+      const consider = (path: Path, shift: number) => {
+        if (group && (group.low + shift < MELODY_LOW || group.high + shift > MELODY_HIGH)) return;
+        const boundary = !group || Number.isNaN(path.last) ? 0 : Math.abs(group.first + shift - path.last);
+        if (requireSmooth && group && boundary > 12) return;
+        const cost = path.cost + Math.abs(shift) * 0.05 + (boundary > 12 ? 1_000 + boundary : boundary);
+        const chorusShift = group?.chorus ? (path.chorusShift ?? shift) : path.chorusShift;
+        const last = group ? group.last + shift : path.last;
+        const opening = openingIndex < 0
+          ? "none"
+          : index < openingIndex
+            ? "wait"
+            : index === openingIndex
+              ? shift
+              : path.shifts[openingIndex] ?? 0;
+        const key = `${chorusShift ?? "open"}:${Number.isNaN(last) ? "none" : last}:${opening}`;
+        const current = next.get(key);
+        if (!current || cost < current.cost) {
+          next.set(key, { cost, shifts: [...path.shifts, shift], last, chorusShift });
         }
+      };
+      for (const path of paths.values()) {
+        if (!group) {
+          consider(path, 0);
+          continue;
+        }
+        if (lockChorus && group.chorus && path.chorusShift !== null) {
+          consider(path, path.chorusShift);
+          continue;
+        }
+        for (let shift = -60; shift <= 60; shift += 12) consider(path, shift);
       }
       if (next.size === 0) return undefined;
       paths = next;
     }
-    return [...paths.values()].sort((a, b) => a.cost - b.cost)[0];
+    const finished = [...paths.values()];
+    const opening = openingIndex >= 0 ? groups[openingIndex] : undefined;
+    const scored = finished.flatMap((path) => {
+      if (!closeLoop || !opening || Number.isNaN(path.last)) return [path];
+      const wrap = Math.abs(opening.first + (path.shifts[openingIndex] ?? 0) - path.last);
+      if (requireSmooth && wrap > 12) return [];
+      return [{ ...path, cost: path.cost + (wrap > 12 ? 1_000 + wrap : wrap) }];
+    });
+    return scored.sort((a, b) => a.cost - b.cost)[0];
   };
-  const best = findPath(true) ?? findPath(false);
+  const best = findPath(true, true, true)
+    ?? findPath(true, true, false)
+    ?? findPath(true, false, false)
+    ?? findPath(false, true, false)
+    ?? findPath(false, false, false);
   if (!best) return;
   groups.forEach((group, index) => {
     if (!group) return;
-    shiftRegion(melody, counters, group.startBar, 0, 16, best.shifts[index] ?? 0);
+    shiftRegion(melody, counters, group.startBar, group.from, group.to, best.shifts[index] ?? 0);
   });
+}
+
+/** Move the choruses together when the pre-chorus can only meet them in another octave. */
+function seatChorus(
+  melody: MusicNoteEvent[],
+  counters: MusicNoteEvent[],
+  sections: readonly MusicSection[],
+): void {
+  const hook = sectionByName(sections, "hook");
+  const escalation = sectionByName(sections, "escalation");
+  const source = notesInRegion(melody, hook.startBar, 0, 8);
+  const before = notesInRegion(melody, escalation.startBar, 0, 8);
+  if (source.length === 0 || before.length === 0) return;
+  const relative = source.map((note) => note.midi - source[0]!.midi);
+  const sourceMidi = source[0]!.midi;
+  const chorusNotes = [...CHORUS_SECTIONS].flatMap((name) => notesInRegion(melody, sectionByName(sections, name).startBar, 0, 16));
+  let best: { shift: number; anchorShift: number; leap: number } | undefined;
+  for (let shift = -60; shift <= 60; shift += 12) {
+    if (chorusNotes.some((note) => note.midi + shift < MELODY_LOW || note.midi + shift > MELODY_HIGH)) continue;
+    const landing = chorusLanding(sourceMidi + shift, relative, before);
+    if (!landing || landing.start !== sourceMidi + shift) continue;
+    const better = !best
+      || Math.abs(shift) < Math.abs(best.shift)
+      || (Math.abs(shift) === Math.abs(best.shift) && Math.abs(landing.anchorShift) < Math.abs(best.anchorShift))
+      || (Math.abs(shift) === Math.abs(best.shift)
+        && Math.abs(landing.anchorShift) === Math.abs(best.anchorShift)
+        && landing.leap < best.leap);
+    if (better) best = { shift, anchorShift: landing.anchorShift, leap: landing.leap };
+  }
+  if (!best || best.shift === 0) return;
+  for (const name of CHORUS_SECTIONS) {
+    shiftRegion(melody, counters, sectionByName(sections, name).startBar, 0, 16, best.shift);
+  }
 }
 
 /**
@@ -389,13 +532,20 @@ function settleMissionMelody(
   melody: MusicNoteEvent[],
   counters: MusicNoteEvent[],
   sections: readonly MusicSection[],
+  rootMidi: number,
+  scale: readonly number[],
+  chorusProgression: readonly number[],
 ): void {
+  const intro = sectionByName(sections, "intro");
+  loopPhrase(notesInRegion(melody, intro.startBar, 0, 8), counters);
+  loopPhrase(notesInRegion(melody, intro.startBar, 8, 16), counters);
   const hook = sectionByName(sections, "hook");
   const hookSentence = notesInRegion(melody, hook.startBar, 0, 8);
   loopPhrase(hookSentence, counters);
+  snapChorusDownbeats(melody, hook.startBar, rootMidi, scale, chorusProgression);
   for (const name of ["climax", "turnaround"] as const) {
     const section = sectionByName(sections, name);
-    imposeContour(notesInRegion(melody, section.startBar, 0, 8), hookSentence, counters);
+    matchPhrase(notesInRegion(melody, section.startBar, 0, 8), hookSentence, counters);
   }
   for (const name of ["groove", "development", "breakdown"] as const) {
     const section = sectionByName(sections, name);
@@ -404,6 +554,7 @@ function settleMissionMelody(
   const escalation = sectionByName(sections, "escalation");
   loopPhrase(notesInRegion(melody, escalation.startBar, 0, 8), counters);
   for (const name of REPEATED_SENTENCES) copySentence(melody, counters, sectionByName(sections, name).startBar);
+  seatChorus(melody, counters, sections);
   graftPhrase(melody, counters, hook.startBar, escalation.startBar);
   connectSections(melody, counters, sections);
   melody.sort((a, b) => a.step - b.step);
@@ -565,7 +716,6 @@ function makePhrasePlans(
   sections: readonly MusicSection[],
   arrangement: MusicPattern["style"]["arrangement"],
   sparse: boolean,
-  cue: MusicCue,
 ): PhrasePlan[] {
   const plans = Array.from({ length: MUSIC_BARS / 8 }, (_, phraseIndex) => {
     const sectionIndex = Math.floor(phraseIndex / 2);
@@ -585,13 +735,11 @@ function makePhrasePlans(
     const miniFillBar = miniFillEligible && rng.next() < 0.28 ? 3 : null;
     return { textureDropBar, miniFillBar, liftBar: rng.pick([4, 5] as const) };
   });
-  if (cue === "mission") {
-    const repeated = new Set<string>(REPEATED_SENTENCES);
-    for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex += 1) {
-      const name = sections[sectionIndex]!.name;
-      if (!repeated.has(name)) continue;
-      plans[sectionIndex * 2 + 1] = { ...plans[sectionIndex * 2]! };
-    }
+  const repeated = new Set<string>(REPEATED_SENTENCES);
+  for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex += 1) {
+    const name = sections[sectionIndex]!.name;
+    if (!repeated.has(name)) continue;
+    plans[sectionIndex * 2 + 1] = { ...plans[sectionIndex * 2]! };
   }
   return plans;
 }
@@ -644,7 +792,7 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
   const sparse = isSparseCue(cue);
   const sections = makeSections();
   const arrangement = style.arrangement;
-  const phrasePlans = makePhrasePlans(formRng, sections, arrangement, sparse, cue);
+  const phrasePlans = makePhrasePlans(formRng, sections, arrangement, sparse);
   const notes: Record<MusicStem, MusicNoteEvent[]> = {
     bass: [],
     pulse: [],
@@ -716,11 +864,14 @@ export function composeMusic(seed: number, cue: MusicCue, missionIndex = 0): Mus
     hook,
   };
 
-  smoothMelodyLine(notes.melody, cue === "mission" ? { min: 36, max: 100 } : { min: 0, max: 127 });
-  if (cue === "mission") settleMissionMelody(notes.melody, notes.counter, sections);
-  notes.counter = notes.counter.filter(
-    (note) => !notes.melody.some((lead) => lead.step === note.step && lead.midi === note.midi),
-  );
+  smoothMelodyLine(notes.melody, { min: MELODY_LOW, max: MELODY_HIGH });
+  settleMissionMelody(notes.melody, notes.counter, sections, rootMidi, scalePick.notes, progressionC);
+  notes.counter = notes.counter.filter((note) => {
+    const lead = notes.melody.find((entry) => entry.step === note.step);
+    if (!lead) return true;
+    const distance = Math.abs(note.midi - lead.midi) % 12;
+    return distance !== 0 && distance !== 1 && distance !== 6 && distance !== 11;
+  });
 
   const intensityLayers = makeIntensityLayers(notes, drums, sections, cue);
 

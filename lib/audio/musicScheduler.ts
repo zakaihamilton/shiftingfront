@@ -248,15 +248,8 @@ function tickScheduler(): void {
   while (n < audio.currentTime + SCHEDULE_AHEAD_S) {
     if (shouldApplyPendingIntensity(s, pendingIntensity)) applyPendingIntensityAtPhraseBoundary(audio, g);
     scheduleStep(audio, g, p, n, s, intensity);
-    const prev = s;
     n += stepDuration;
     s = (s + 1) % p.steps;
-    if (prev === p.steps - 1 && s === 0 && cue === "mission" && missionIndex !== TUTORIAL_MUSIC_MISSION && missionIndex >= 0) {
-      setNextNoteTime(n);
-      setStep(0);
-      advanceMusicTrack();
-      return;
-    }
   }
   setNextNoteTime(n);
   setStep(s);

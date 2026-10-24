@@ -15,6 +15,7 @@ import { beepForCommands } from "../../lib/audio/uiOrders";
 import { spatialAudioForWorld } from "../../lib/audio/spatial";
 import { createCamera } from "../../lib/iso";
 import { createCampaign } from "../../lib/gen/campaign";
+import { chordToneMidi } from "../../lib/audio/compose/helpers";
 import { styleAffinityScore } from "../../lib/audio/compose/missionContext";
 import { cueMotifPhrases } from "../../lib/audio/compose/cueThemes";
 import { missionMotifPalette } from "../../lib/audio/compose/missionThemes";
@@ -789,11 +790,13 @@ describe("generated audio", () => {
   });
 
   it("maps routes onto music cues", () => {
-    expect(musicCueFromPath("/")).toBeNull();
-    expect(musicCueFromPath("/briefing")).toBeNull();
+    expect(musicCueFromPath("/")).toBe("menu");
+    expect(musicCueFromPath("/briefing")).toBe("briefing");
     expect(musicCueFromPath("/play")).toBe("mission");
-    expect(musicCueFromPath("/tutorial")).toBeNull();
-    expect(musicCueFromPath("/campaign-complete")).toBeNull();
+    expect(musicCueFromPath("/tutorial")).toBe("mission");
+    expect(musicCueFromPath("/campaign-complete")).toBe("victory");
+    expect(musicCueFromPath("/campaign")).toBeNull();
+    expect(musicCueFromPath("/privacy")).toBeNull();
   });
 
   it("skips synthesized cues when sound effects are disabled", () => {
@@ -1095,6 +1098,89 @@ describe("generated audio", () => {
         const section = pattern.sections.find((entry) => entry.name === name)!;
         if (pattern.style.arrangement.holdBass[pattern.sections.indexOf(section)]) continue;
         expect(tomBars(name, 8, 16)).toEqual(tomBars(name, 0, 8));
+      }
+
+      const grooveStart = pattern.sections.find((entry) => entry.name === "groove")!.startBar;
+      const stepsOn = (local: number) => pattern.notes.melody
+        .filter((note) => Math.floor(note.step / STEPS_PER_BAR) === grooveStart + local)
+        .map((note) => note.step % STEPS_PER_BAR)
+        .sort((left, right) => left - right);
+      expect(stepsOn(0)).toEqual(stepsOn(1));
+
+      const chorusLead = (name: string) => pattern.notes.melody
+        .filter((note) => {
+          const section = pattern.sections.find((entry) => entry.name === name)!;
+          const local = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
+          return local >= 0 && local < 8;
+        })
+        .sort((left, right) => left.step - right.step)
+        .map((note) => note.midi);
+      expect(chorusLead("climax")).toEqual(chorusLead("hook"));
+      expect(chorusLead("turnaround")).toEqual(chorusLead("hook"));
+
+      const beat = (name: string) => {
+        const section = pattern.sections.find((entry) => entry.name === name)!;
+        return pattern.drums
+          .filter((event) => event.kind === "kick" || event.kind === "snare" || event.kind === "clap")
+          .filter((event) => {
+            const local = Math.floor(event.step / STEPS_PER_BAR) - section.startBar;
+            return local >= 0 && local < 15 && local % 8 !== 7;
+          })
+          .map((event) => {
+            const local = Math.floor(event.step / STEPS_PER_BAR) - section.startBar;
+            return `${local % 8}:${event.step % STEPS_PER_BAR}:${event.kind}`;
+          })
+          .sort()
+          .join("|");
+      };
+      expect(beat("turnaround")).toBe(beat("hook"));
+      expect(beat("climax")).toBe(beat("hook"));
+    }
+  });
+
+  it("lands chorus downbeats on the chord", () => {
+    let hits = 0;
+    let tones = 0;
+    for (let seed = 0; seed < 24; seed += 1) {
+      for (let mission = 0; mission < 6; mission += 1) {
+        const pattern = composeMusic(seed, "mission", mission);
+        const hook = pattern.sections.find((section) => section.name === "hook")!;
+        for (let offset = 0; offset < 16; offset += 1) {
+          const downbeat = pattern.notes.melody.find((note) =>
+            Math.floor(note.step / STEPS_PER_BAR) === hook.startBar + offset && note.step % STEPS_PER_BAR === 0);
+          if (!downbeat) continue;
+          hits += 1;
+          const degree = offset % 8 === 7 ? 0 : pattern.theme.progressionC[Math.floor((offset % 8) / 2)]!;
+          const pcs = [0, 1, 2, 3].map((tone) => ((chordToneMidi(pattern.rootMidi, pattern.theme.scale, degree, tone, 0) % 12) + 12) % 12);
+          if (pcs.includes(((downbeat.midi % 12) + 12) % 12)) tones += 1;
+        }
+      }
+    }
+    expect(hits).toBeGreaterThan(1000);
+    expect(tones / hits).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it("repeats the verse and chorus on every screen", () => {
+    const sentence = (pattern: ReturnType<typeof composeMusic>, name: string, from: number, to: number) => {
+      const section = pattern.sections.find((entry) => entry.name === name)!;
+      return pattern.notes.melody
+        .filter((note) => {
+          const local = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
+          return local >= from && local < to;
+        })
+        .sort((left, right) => left.step - right.step)
+        .map((note) => {
+          const local = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
+          return `${local % 8}:${note.step % STEPS_PER_BAR}:${note.midi}`;
+        });
+    };
+    for (const cue of ["menu", "briefing", "victory", "defeat"] as const) {
+      for (const seed of [0, 21, 421]) {
+        const pattern = composeMusic(seed, cue);
+        expect(sentence(pattern, "groove", 0, 8).length).toBeGreaterThan(0);
+        expect(sentence(pattern, "groove", 8, 16)).toEqual(sentence(pattern, "groove", 0, 8));
+        expect(sentence(pattern, "hook", 8, 16)).toEqual(sentence(pattern, "hook", 0, 8));
+        expect(sentence(pattern, "turnaround", 0, 8)).toEqual(sentence(pattern, "hook", 0, 8));
       }
     }
   });
