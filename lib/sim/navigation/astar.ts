@@ -3,6 +3,7 @@ import { isBuildingEntity, type Entity, type SimState, type Vec2 } from "../../t
 import { inBounds, makeUnitOccupancy, staticNavigationFor } from "../world";
 import { inBoundsNavigation, navigationStepCost, PATH_DIRS, PATH_MAX_NODES } from "./grid";
 import { MinHeap } from "./heap";
+import { smoothGridPath } from "./smooth";
 import { navigationMobilityFor, vehicleMovementCostsFor, type NavigationMobility } from "../terrainRules";
 
 export type PathSearchStatus = "complete" | "partial" | "unreachable";
@@ -75,7 +76,27 @@ function occupancyAt(occupancy: Uint8Array, w: number, x: number, y: number): bo
 function heuristic(x: number, y: number, gx: number, gy: number): number {
   const dx = Math.abs(x - gx);
   const dy = Math.abs(y - gy);
-  return dx + dy + (1.414 - 2) * Math.min(dx, dy);
+  const diagonal = Math.min(dx, dy);
+  return diagonal * Math.SQRT2 + (Math.max(dx, dy) - diagonal);
+}
+
+/** How directly the step from parent to node points at the goal. */
+function stepAlignment(
+  parentX: number,
+  parentY: number,
+  nodeX: number,
+  nodeY: number,
+  goalX: number,
+  goalY: number,
+): number {
+  const stepX = nodeX - parentX;
+  const stepY = nodeY - parentY;
+  const goalXDelta = goalX - parentX;
+  const goalYDelta = goalY - parentY;
+  const step = Math.hypot(stepX, stepY);
+  const goal = Math.hypot(goalXDelta, goalYDelta);
+  if (step === 0 || goal === 0) return 0;
+  return (stepX * goalXDelta + stepY * goalYDelta) / (step * goal);
 }
 
 function buffersFor(state: SimState, size: number): SearchBuffers {
@@ -221,6 +242,18 @@ export function findPathDetailed(
     }
     return Math.abs(x - gx) <= 1 && Math.abs(y - gy) <= 1 && navigation.walkable[y * w + x] === 1 && !unitBlocked(x, y);
   };
+  const publishPath = (path: Vec2[], status: PathSearchStatus): PathSearchResult => cacheStaticResult(
+    state,
+    navigationRevision,
+    cacheKey,
+    {
+      path: smoothGridPath(navigation, { x: sx, y: sy }, path, {
+        blocked: occupancy ? (x, y) => unitBlocked(x, y) : undefined,
+        cellCost: vehicleMovementCosts ? (x, y) => vehicleMovementCosts[y * w + x] ?? 1 : undefined,
+      }),
+      status,
+    },
+  );
 
   const buffers = buffersFor(state, w * state.height);
   const generation = nextGeneration(buffers);
@@ -255,10 +288,7 @@ export function findPathDetailed(
     }
 
     if (goalMatches(cx, cy)) {
-      return cacheStaticResult(state, navigationRevision, cacheKey, {
-        path: reconstruct(parent, currentKey, startKey, w),
-        status: "complete",
-      });
+      return publishPath(reconstruct(parent, currentKey, startKey, w), "complete");
     }
 
     if (cx < 0 || cy < 0 || cx >= w || cy >= state.height || walkable[currentKey] !== 1) continue;
@@ -280,11 +310,28 @@ export function findPathDetailed(
 
       const movementCost = mobility === "vehicle" ? vehicleMovementCosts?.[neighborKey] ?? 1 : 1;
       const tentG = gScore[currentKey]! + navigationStepCost(cx, cy, nx, ny, movementCost);
-      if (stamps[neighborKey] !== generation || tentG < gScore[neighborKey]!) {
+      const unseen = stamps[neighborKey] !== generation;
+      const cheaper = !unseen && tentG < gScore[neighborKey]! - 1e-9;
+      let straighter = false;
+      if (!unseen && !cheaper && Math.abs(tentG - gScore[neighborKey]!) <= 1e-9) {
+        const oldParent = parent[neighborKey] ?? -1;
+        if (oldParent >= 0) {
+          const oldX = oldParent % w;
+          const oldY = Math.floor(oldParent / w);
+          straighter = stepAlignment(cx, cy, nx, ny, gx, gy) > stepAlignment(oldX, oldY, nx, ny, gx, gy) + 1e-9;
+        }
+      }
+      if (unseen || cheaper) {
         parent[neighborKey] = currentKey;
         gScore[neighborKey] = tentG;
         stamps[neighborKey] = generation;
-        open.push(nx, ny, tentG, tentG + heuristic(nx, ny, gx, gy) * (mobility === "vehicle" ? 0.85 : 1), pushSeq++);
+        const remaining = heuristic(nx, ny, gx, gy) * (mobility === "vehicle" ? 0.85 : 1);
+        // Nudge equal-cost frontiers toward the straight line without
+        // overcoming a real step-cost difference.
+        const cross = Math.abs((nx - sx) * (gy - sy) - (ny - sy) * (gx - sx));
+        open.push(nx, ny, tentG, tentG + remaining + cross * 1e-9, pushSeq++);
+      } else if (straighter) {
+        parent[neighborKey] = currentKey;
       }
     }
   }
@@ -294,10 +341,7 @@ export function findPathDetailed(
     return cacheStaticResult(state, navigationRevision, cacheKey, { path: [], status: "partial" });
   }
   if (bestKey >= 0) {
-    return cacheStaticResult(state, navigationRevision, cacheKey, {
-      path: reconstruct(parent, bestKey, startKey, w),
-      status: capped ? "partial" : "unreachable",
-    });
+    return publishPath(reconstruct(parent, bestKey, startKey, w), capped ? "partial" : "unreachable");
   }
 
   return cacheStaticResult(state, navigationRevision, cacheKey, { path: [], status: "unreachable" });

@@ -1,7 +1,6 @@
 import type { GeneratedMap } from "../../gen/map";
 import { OBJECTIVE_ZONE_RADIUS } from "../../types";
 import type { SimState, Vec2 } from "../../types";
-import { tryFindPathDetailed } from "../pathBudget";
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { distToEntity, isStaticWalkable } from "../world";
 import { reachableScenarioPoint } from "./reachability";
@@ -92,14 +91,12 @@ export function tickEscort(state: SimState): void {
       if (convoy?.scenarioRole === "convoy" && convoy.neutral) {
         const destination = convoyDestination(state, runtime.zone!, index);
         convoy.orderDestination = destination;
-        const result = tryFindPathDetailed(state, convoy, destination);
-        if (result) {
-          convoy.path = result.path;
-          convoy.routePending = routePendingFor(result.status);
-        } else {
-          convoy.path = [];
-          convoy.routePending = true;
-        }
+        // Departure searches outside the shared path budget. Crowd replans can
+        // already have spent this tick's searches, and a missed route leaves
+        // the truck parked until the deadline.
+        const result = findPathDetailed(state, convoy, destination);
+        convoy.path = result.path;
+        convoy.routePending = routePendingFor(result.status);
       }
     }
     delete runtime.convoyStartTick;
