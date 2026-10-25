@@ -3,21 +3,22 @@ import { describe, expect, it } from "vitest";
 import { runReplay } from "../../lib/sim/replay";
 
 const BASELINES = [
+  // Digests include the zeroed scout production counter.
   // Outpost guards defend in place, so assault openings include their shots.
-  { kind: "annihilate", seed: 1, missionIndex: 2, digest: "5ce7f19cb260701d3ce2cced205d69a2f9e3e455d0003d5932a66049a1d07f08" },
-  { kind: "decapitate", seed: 1, missionIndex: 4, digest: "319e61b6afabdee535adfb550fe2c020091e0b1361bf88c3a4a41064be99ef25" },
-  { kind: "destroyMarked", seed: 0, missionIndex: 3, digest: "040e0ab2d46482fdd38fdea25f649604128dd79f52f4ee5fb66f465ba0d3d596" },
+  { kind: "annihilate", seed: 1, missionIndex: 2, digest: "e72a2e671e9549fab8289e8b5c23d1ea9456ddd8c401094f9f00884cf286dc6e" },
+  { kind: "decapitate", seed: 1, missionIndex: 4, digest: "7bee95e5d57cc2910b2c1d713f5f6be73e5c319cb61b65cf2dfd78dfbd144ef6" },
+  { kind: "destroyMarked", seed: 0, missionIndex: 3, digest: "f4ef6746634ab141d1d969bd3a28eb6f7b3abe49eab53941cfe5a5b3d5c7c480" },
   // Escort includes the expanded completion buffer and convoy unblocking path.
-  { kind: "escort", seed: 0, missionIndex: 2, digest: "abfa5b84ccc8bcd525aa81cff90f73bf505df1e5e0dc6c808e9b04025cfff337" },
-  { kind: "extraction", seed: 0, missionIndex: 1, digest: "c05ca53193a91d6b17732c556c9ffd365fe3b1cc3ff2f40a674b1a45d72b7493" },
-  { kind: "forceQuota", seed: 0, missionIndex: 4, digest: "2a5d747c035a86ff858b7b54ae749ac4b957d351007cb643d9687acf209c990e" },
-  { kind: "harvestQuota", seed: 7, missionIndex: 3, digest: "4b66bf7ffcd981b8609dbee6ea05eafda2f9524910e8b239414fe47f140280aa" },
-  { kind: "holdTheLine", seed: 0, missionIndex: 5, digest: "49a8aed356d1f64f4dfc4f78da84c9e2ac34ba0571369f4e59526d9a65f3334b" },
-  { kind: "razeAll", seed: 3, missionIndex: 2, digest: "01a2db3a33eb09c6f533cde71c9eb0de001ca113828ac745dfe6a903a5c6a580" },
+  { kind: "escort", seed: 0, missionIndex: 2, digest: "11136c0e671d86169e0159a67788b869f4a6bc6a6bbccaeceb9794b902e254fe" },
+  { kind: "extraction", seed: 0, missionIndex: 1, digest: "9cfb499fcb98cd760b2fe552f0b965b7b819b9785b063380b791d86d1ca63a0d" },
+  { kind: "forceQuota", seed: 0, missionIndex: 4, digest: "2dbe887a9777d480a9f008c51a1e78f3d2850ba0c5f6cbcde6996d6ae68e7ebe" },
+  { kind: "harvestQuota", seed: 7, missionIndex: 3, digest: "f3006cdc7d5e57c33faa195814cde3e671ed109097d25c384a474371a9a419c6" },
+  { kind: "holdTheLine", seed: 0, missionIndex: 5, digest: "16fbd0b955a0e70df7e15354e75b5a5ce9984342e12e0096171fbcb4d80db75e" },
+  { kind: "razeAll", seed: 3, missionIndex: 2, digest: "5039ddf135c410e8d09355cfede26170e93ae6f3f12af61b7dfeb086b5d1805b" },
   // Rescue corridors now join the map route-repair pass used by extraction.
-  { kind: "rescue", seed: 0, missionIndex: 0, digest: "27aea816bcca993be4602bb5d2540101b762dcaa4cd6dd244d9e122793c8f1fb" },
-  { kind: "sabotage", seed: 1, missionIndex: 0, digest: "09bea72f51827fadfac486078ca0d2c80783cb13d0bc3506abe882284ea4c157" },
-  { kind: "structureQuota", seed: 2, missionIndex: 0, digest: "3d43a5a318be99dce37619c20cfa51a9a9717562dd76c959cabe3907c3948545" },
+  { kind: "rescue", seed: 0, missionIndex: 0, digest: "4eadb8d9f0007f0bbebb7ce9ba2240599f22ec799be089c7300d33d9784352d0" },
+  { kind: "sabotage", seed: 1, missionIndex: 0, digest: "8ff46ee1c7cf8f4385a956fa8ad73c4102ee83265d0f1710f367430d878619cb" },
+  { kind: "structureQuota", seed: 2, missionIndex: 0, digest: "a07ec60df9018ff00f479623da3c3daee999edb7138f2a25a6b97b94ddd6fbc6" },
 ] as const;
 
 describe("replay compatibility baselines", () => {
