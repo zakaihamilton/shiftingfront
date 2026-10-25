@@ -655,13 +655,6 @@
   margin-left: auto;
 }
 
-.deployment {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  flex-basis: 100%;
-}
-
 .overlay[data-multiplayer="false"][data-result="lost"] .actions {
   display: grid;
   grid-template-columns: max-content max-content;

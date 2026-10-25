@@ -262,8 +262,11 @@ describe("game overlay surfaces", () => {
     expect(screen.getByTestId("mission-result")).toHaveAttribute("data-result", "won");
     expect(screen.getByTestId("mission-result")).toHaveStyle({ "--result-art": 'url("/art/results/victory.webp")' });
     expect(screen.getByText("Mission 1 // Fixture")).toBeInTheDocument();
-    expect(screen.getByTestId("deployment-choices")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Veteran squad" }));
+    expect(screen.queryByTestId("deployment-choices")).toBeNull();
+    for (const label of ["Veteran squad", "Forward turret", "Air sortie", "Power reserve"]) {
+      expect(screen.queryByRole("button", { name: label })).toBeNull();
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Next briefing" }));
     expect(callbacks.onNextBriefing).toHaveBeenCalledOnce();
 
     const multiplayerWon = { ...won, multiplayer: true, missionName: "Versus Skirmish" };

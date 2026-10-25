@@ -1305,6 +1305,9 @@ test("shows a mission result overlay from a finished save", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Share result" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Replay mission" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Campaign map" })).toHaveCount(0);
+  for (const label of ["Veteran squad", "Forward turret", "Air sortie", "Power reserve"]) {
+    await expect(page.getByRole("button", { name: label })).toHaveCount(0);
+  }
 
   await page.setViewportSize({ width: 1280, height: 600 });
   await page.reload();
