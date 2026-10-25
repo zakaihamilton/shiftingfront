@@ -44,6 +44,7 @@ export function unitShadowRadii(kind: UnitKind, scale: number): { radX: number; 
   if (kind === "antiArmor") return { radX: 12 * scale, radY: 6 * scale };
   if (kind === "behemoth") return { radX: 22 * scale, radY: 11 * scale };
   if (kind === "tank") return { radX: 18 * scale, radY: 9 * scale };
+  if (kind === "scout") return { radX: 13 * scale, radY: 6.5 * scale };
   return { radX: 16 * scale, radY: 8 * scale };
 }
 

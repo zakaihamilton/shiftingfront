@@ -25,6 +25,7 @@ const GROUND_KINDS: UnitKind[] = [
   "antiArmor",
   "medic",
   "behemoth",
+  "scout",
 ];
 
 describe("vehicle perspective consistency", () => {

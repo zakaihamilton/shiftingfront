@@ -71,7 +71,7 @@ export function AssetPreviewControls({
         <div className={styles.group}>
           <ConsoleLabel>Action</ConsoleLabel>
           <div className={styles.chips}>
-            {(["idle", "move", "attack", "work"] as const).filter(action => (action !== "work" || ["medic", "repairTruck", "harvester"].includes(selected.kind)) && (action !== "attack" || ["infantry", "antiArmor", "tank", "behemoth", "strikePlane"].includes(selected.kind))).map(action => (
+            {(["idle", "move", "attack", "work"] as const).filter(action => (action !== "work" || ["medic", "repairTruck", "harvester"].includes(selected.kind)) && (action !== "attack" || ["infantry", "antiArmor", "tank", "behemoth", "strikePlane", "scout"].includes(selected.kind))).map(action => (
               <AssetChip key={action} active={pose === action} tooltip={`Preview ${action}`} onClick={() => onPose(action)}>
                 {{ idle: "Idle", move: "Moving", attack: "Firing", work: "Working" }[action]}
               </AssetChip>

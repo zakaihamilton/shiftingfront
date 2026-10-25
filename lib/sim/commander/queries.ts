@@ -1,4 +1,4 @@
-import { isSupportUnit, producerFor, UNIT_STATS } from "../../catalog";
+import { isReconUnit, isSupportUnit, producerFor, UNIT_STATS } from "../../catalog";
 import { isUnitEntity, type BuildingKind, type Command, type Entity, type MissionKind, type SimState, type UnitKind } from "../../types";
 import { livingView } from "../world";
 import { isSharedProducerKind, readSharedProductionQueue } from "../producerState";
@@ -106,7 +106,7 @@ export function enemyEntities(state: SimState): Entity[] {
 export function combatUnits(state: SimState): Entity[] {
   return playerUnitsView(
     state,
-    (entity) => isUnitEntity(entity) && UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind),
+    (entity) => isUnitEntity(entity) && UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind) && !isReconUnit(entity.kind),
   );
 }
 

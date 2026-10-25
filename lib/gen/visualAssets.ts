@@ -19,6 +19,7 @@ export const SPRITE_ART: Record<BuildingKind, string> = {
   turret: "/art/sprites/sleek-modular/turret-v2.webp",
   runway: "/art/sprites/sleek-modular/air-support/runway-v1.webp",
   antiAirTurret: "/art/sprites/sleek-modular/air-support/anti-air-turret-v1.webp",
+  radar: "/art/sprites/sleek-modular/radar-v1.webp",
   objective: "/art/sprites/sleek-modular/objective-v2.webp",
 };
 
@@ -173,6 +174,16 @@ export const UNIT_DIRECTION_ART: Record<UnitKind, Record<UnitView, string>> = {
     back: "/art/sprites/sleek-modular/behemoth-back-v1.webp",
     left: "/art/sprites/sleek-modular/behemoth-left-v2.webp",
     "back-right": "/art/sprites/sleek-modular/behemoth-back-right-v1.webp",
+  },
+  scout: {
+    right: "/art/sprites/sleek-modular/scout-right-v1.webp",
+    "front-right": "/art/sprites/sleek-modular/scout-front-right-v1.webp",
+    front: "/art/sprites/sleek-modular/scout-front-v1.webp",
+    "front-left": "/art/sprites/sleek-modular/scout-front-left-v1.webp",
+    left: "/art/sprites/sleek-modular/scout-left-v1.webp",
+    "back-left": "/art/sprites/sleek-modular/scout-back-left-v1.webp",
+    back: "/art/sprites/sleek-modular/scout-back-v1.webp",
+    "back-right": "/art/sprites/sleek-modular/scout-back-right-v1.webp",
   },
 };
 

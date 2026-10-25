@@ -302,6 +302,19 @@ describe("tactical procedural assets", () => {
     }
   });
 
+  it("keeps scout rasters transparent, framed, and complete", async () => {
+    const scout = UNIT_DIRECTION_ART.scout;
+    for (const source of Object.values(scout)) {
+      const metadata = await sharp(resolve(process.cwd(), "public", source.slice(1))).metadata();
+      expect(metadata.width).toBe(384);
+      expect(metadata.height).toBe(512);
+      expect(metadata.hasAlpha).toBe(true);
+      const stats = await sharp(resolve(process.cwd(), "public", source.slice(1))).stats();
+      expect(stats.channels[3]?.min ?? 255).toBeLessThan(255);
+    }
+    expect(new Set(Object.values(scout)).size).toBe(8);
+  });
+
   it("keeps convoy truck rasters transparent, framed, and complete", async () => {
     const convoy = UNIT_DIRECTION_ART.convoyTruck;
     for (const source of Object.values(convoy)) {

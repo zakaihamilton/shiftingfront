@@ -10,6 +10,7 @@ export const BUILDING_KINDS: BuildingKind[] = [
   "turret",
   "runway",
   "antiAirTurret",
+  "radar",
   "objective",
 ];
 
@@ -36,7 +37,7 @@ export type BuildingStats = {
   };
 };
 
-export type BuildingAiRole = "base" | "economy" | "production" | "defense" | "objective";
+export type BuildingAiRole = "base" | "economy" | "production" | "defense" | "support" | "objective";
 
 export type BuildingDefinition = BuildingStats & {
   label: string;
@@ -109,7 +110,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingKind, BuildingDefinition> = {
     label: "Vehicle Plant",
     renderKey: "factory",
     aiRole: "production",
-    production: ["harvester", "tank", "repairTruck", "behemoth"],
+    production: ["harvester", "tank", "scout", "repairTruck", "behemoth"],
     requiresFlatGround: true,
     hp: 975,
     cost: 800,
@@ -178,6 +179,20 @@ export const BUILDING_DEFINITIONS: Record<BuildingKind, BuildingDefinition> = {
       suppression: 0,
       targetDomains: ["air"],
     },
+  },
+  radar: {
+    label: "Radar",
+    renderKey: "radar",
+    aiRole: "support",
+    unique: true,
+    requiresFlatGround: true,
+    hp: 560,
+    cost: 450,
+    buildTicks: 108,
+    power: -12,
+    sight: 5,
+    footprint: { w: 2, h: 2 },
+    armor: "structure",
   },
   objective: {
     label: "Marked Structure",

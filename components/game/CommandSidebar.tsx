@@ -1,4 +1,5 @@
 import { useEffect, useState, type PointerEventHandler, type Ref } from "react";
+import { minimapRadarOnline } from "@/lib/sim/radar";
 import type { CommandBuildControls } from "./commandCatalogTypes";
 import { CommandBuildSection } from "./CommandBuildSection";
 import { CommandHeader } from "./CommandHeader";
@@ -92,6 +93,7 @@ export function CommandSidebar({
           ping={minimapPing}
           mapWidth={state.width}
           mapHeight={state.height}
+          powered={minimapRadarOnline(state)}
         />
       </div>
 

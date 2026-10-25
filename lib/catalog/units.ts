@@ -11,6 +11,7 @@ export const UNIT_KINDS: UnitKind[] = [
   "convoyTruck",
   "strikePlane",
   "behemoth",
+  "scout",
 ];
 
 export type UnitStats = {
@@ -30,6 +31,10 @@ export type UnitStats = {
   splashRadius: number;
   suppression: number;
   domain: UnitDomain;
+  /** When set, the assist commander leaves this unit under direct control. */
+  recon?: boolean;
+  /** Extra damage scale against a unit of this domain. Buildings ignore it. */
+  domainDamage?: Partial<Record<UnitDomain, number>>;
   targetDomains?: readonly CombatTargetDomain[];
   ammoMax?: number;
   supportRole?: SupportRole;
@@ -248,6 +253,29 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
     domain: "vehicle",
     targetDomains: ["ground", "air"],
   },
+  scout: {
+    label: "Scout",
+    renderKey: "scout",
+    aiRole: "combat",
+    producer: "factory",
+    recon: true,
+    hp: 120,
+    speed: 0.13,
+    damage: 8,
+    range: 3,
+    cooldown: 10,
+    cost: 280,
+    buildTicks: 90,
+    sight: 12,
+    carryMax: 0,
+    armor: "light",
+    weapon: "smallArms",
+    ammoEffect: "bullet",
+    splashRadius: 0,
+    suppression: 6,
+    domain: "vehicle",
+    domainDamage: { human: 1.45, vehicle: 0.2, air: 0.18 },
+  },
 };
 
 /** Compatibility view containing only simulation statistics. */
@@ -271,6 +299,11 @@ export function isUnitKind(kind: UnitKind | import("../types").BuildingKind): ki
 
 export function isSupportUnit(kind: UnitKind): boolean {
   return UNIT_DEFINITIONS[kind].supportRole !== undefined;
+}
+
+/** Fast reconnaissance vehicles stay out of automatic assault orders. */
+export function isReconUnit(kind: UnitKind): boolean {
+  return UNIT_DEFINITIONS[kind].recon === true;
 }
 
 /** Entity-level companion to isSupportUnit; false for buildings. */

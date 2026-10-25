@@ -373,7 +373,7 @@ export function computeUnitDynamicTransform(
   }
 
   // Smooth angular interpolation for chassis in GL model space
-  const isVehicle = e.kind === "tank" || e.kind === "harvester" || e.kind === "convoyTruck" || e.kind === "repairTruck" || e.kind === "behemoth";
+  const isVehicle = e.kind === "tank" || e.kind === "harvester" || e.kind === "convoyTruck" || e.kind === "repairTruck" || e.kind === "behemoth" || e.kind === "scout";
   const targetSpeed = moveDist / (TICK_MS * 0.001);
   const speedResponse = 1 - Math.exp(-dt * 8);
   const nextSpeed = lerp(hist.speed, targetSpeed, speedResponse);
@@ -403,7 +403,7 @@ export function computeUnitDynamicTransform(
   // Aircraft keep their existing moving/parked response.
   const isWalker = e.kind === "infantry" || e.kind === "antiArmor" || e.kind === "medic";
   const isMoving = moveDist > 0.001 || waypointDist > 0.001;
-  const turnSpeed = isAirUnit(e.kind) ? (isMoving ? 20 : 12) : isWalker ? 12 : e.kind === "behemoth" ? 6 : 8;
+  const turnSpeed = isAirUnit(e.kind) ? (isMoving ? 20 : 12) : isWalker ? 12 : e.kind === "behemoth" ? 6 : e.kind === "scout" ? 14 : 8;
   const prevAngle = hist.screenAngle;
   hist.screenAngle = lerpAngle(hist.screenAngle, targetScreenAngle, isAirUnit(e.kind)
     ? Math.min(1, dt * turnSpeed) : 1 - Math.exp(-dt * turnSpeed));

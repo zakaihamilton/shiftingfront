@@ -2,7 +2,7 @@ export type GameplayRulesVersion = 1 | 2;
 
 export type Owner = 0 | 1 | 2 | 3;
 
-export type UnitKind = "harvester" | "infantry" | "antiArmor" | "tank" | "medic" | "repairTruck" | "convoyTruck" | "strikePlane" | "behemoth";
+export type UnitKind = "harvester" | "infantry" | "antiArmor" | "tank" | "medic" | "repairTruck" | "convoyTruck" | "strikePlane" | "behemoth" | "scout";
 export type UnitDomain = "human" | "vehicle" | "air";
 export type CombatTargetDomain = "ground" | "air";
 export type SupportRole = "medic" | "repairTruck";
@@ -15,6 +15,7 @@ export type BuildingKind =
   | "turret"
   | "runway"
   | "antiAirTurret"
+  | "radar"
   | "objective";
 
 /** Producer types whose queues are shared across all buildings of that type. */

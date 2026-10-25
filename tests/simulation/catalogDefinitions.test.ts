@@ -29,7 +29,7 @@ describe("authoritative catalogs", () => {
       const definition = BUILDING_DEFINITIONS[kind];
       expect(definition.label).toBeTruthy();
       expect(definition.renderKey).toBe(kind);
-      expect(["base", "economy", "production", "defense", "objective"]).toContain(definition.aiRole);
+      expect(["base", "economy", "production", "defense", "support", "objective"]).toContain(definition.aiRole);
       expect(definition.footprint.w).toBeGreaterThan(0);
       expect(definition.footprint.h).toBeGreaterThan(0);
       expect(definition.requiresFlatGround).toBe(true);
@@ -47,6 +47,7 @@ describe("authoritative catalogs", () => {
       480,
       750,
       420,
+      560,
       1350,
     ]);
     expect(BUILDING_STATS.turret.hp).toBe(480);

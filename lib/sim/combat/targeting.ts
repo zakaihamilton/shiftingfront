@@ -1,5 +1,5 @@
-import { BUILDING_STATS } from "../../catalog";
-import type { Entity, SimState } from "../../types";
+import { BUILDING_STATS, UNIT_STATS } from "../../catalog";
+import { isUnitEntity, type Entity, type SimState } from "../../types";
 import { isStaticWalkable, distToEntity } from "../world";
 import { statsFor } from "./grid";
 import { downhillDamageMultiplier } from "../terrainRules";
@@ -37,6 +37,12 @@ export function firingPosition(state: SimState, from: Entity, target: Entity, ra
   }
   candidates.sort((a, b) => a.distance - b.distance || a.y - b.y || a.x - b.x);
   return candidates[0];
+}
+
+/** Scout guns and similar weapons scale by what they are shooting, not only by armor. */
+export function domainDamageScale(attacker: Entity, target: Entity): number {
+  if (!isUnitEntity(attacker) || !isUnitEntity(target)) return 1;
+  return UNIT_STATS[attacker.kind].domainDamage?.[UNIT_STATS[target.kind].domain] ?? 1;
 }
 
 export function damageMultiplier(weapon: import("../../types").WeaponType, armor: import("../../types").ArmorType): number {

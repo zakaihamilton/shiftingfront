@@ -35,11 +35,7 @@ export function ConstructionCameos({
             disabled={blocker !== undefined}
             disabledReason={blocker?.reason}
             statusLabel={blocker?.status}
-            detail={BUILDING_STATS[kind].power === 0
-              ? "No grid load"
-              : BUILDING_STATS[kind].power > 0
-                ? `Produces +${BUILDING_STATS[kind].power} power`
-                : `Uses ${Math.abs(BUILDING_STATS[kind].power)} power`}
+            detail={constructionDetail(kind)}
             active={placeKind === kind}
             tutorialFocus={state.tutorialStage === "build" && kind === "power" ? "power-cameo" : undefined}
             cameo={cameo}
@@ -51,6 +47,16 @@ export function ConstructionCameos({
       })}
     </CameoGrid>
   );
+}
+
+function constructionDetail(kind: BuildingKind): string {
+  const power = BUILDING_STATS[kind].power;
+  const grid = power === 0
+    ? "No grid load"
+    : power > 0
+      ? `Produces +${power} power`
+      : `Uses ${Math.abs(power)} power`;
+  return kind === "radar" ? `Powers the minimap · ${grid}` : grid;
 }
 
 export function constructionBlockerText(state: SimState, kind: BuildingKind): string | undefined {

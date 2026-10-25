@@ -8,7 +8,7 @@ import { createMission } from "../../lib/sim/api";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { createTutorialMission } from "../../lib/sim/tutorial";
 import { heightAt } from "../../lib/sim/world";
-import { spawnBuilding } from "../../lib/sim/world";
+import { findBuildSite, spawnBuilding } from "../../lib/sim/world";
 import { listGeneratedAssets } from "../../lib/gen/assetCatalog";
 import { PLACEABLE, PRODUCIBLE } from "../../components/game/hooks/gameActions";
 import { CAMPAIGN_PROGRESS_VERSION, campaignKey, freshCampaignProgress } from "../../lib/persist/campaign";
@@ -32,6 +32,22 @@ async function deployToBattlefield(page: Page) {
   await page.getByRole("button", { name: "Launch" }).click();
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0/);
   await waitForBattlefieldReady(page);
+}
+
+async function deployWithOperationalRadar(page: Page) {
+  const state = createMission({ seed: 421, missionIndex: 0 });
+  const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+  expect(yard).toBeDefined();
+  const site = findBuildSite(state, "radar", (yard?.x ?? 8) + 4, yard?.y ?? 8, 18, 0);
+  expect(site).toBeDefined();
+  spawnBuilding(state, 0, "radar", site!.x, site!.y, 0);
+  await page.addInitScript(({ key, raw }) => localStorage.setItem(key, raw), {
+    key: saveKey(421),
+    raw: saveEnvelope(state),
+  });
+  await page.goto("/play?seed=0421&resume=1");
+  await waitForBattlefieldReady(page);
+  await expect(page.getByTestId("minimap-frame")).toHaveAttribute("data-power", "on");
 }
 
 async function canvasDigest(canvas: Locator): Promise<number> {
@@ -927,8 +943,18 @@ test("exposes Field Medic production on the first mission", async ({ page }) => 
   await expect(page.getByTestId("cameo-progress-medic")).toBeVisible();
 });
 
-test("keeps the tactical radar readable and usable across breakpoints", async ({ page }) => {
+test("keeps the minimap dark until a radar is standing", async ({ page }) => {
   await deployToBattlefield(page);
+  const frame = page.getByTestId("minimap-frame");
+  await expect(frame).toHaveAttribute("data-power", "off");
+  await expect(frame.getByText("Radar offline")).toBeVisible();
+  const radar = frame.getByTestId("tactical-radar");
+  await expect(radar).toHaveAttribute("aria-disabled", "true");
+  await expect(radar).toHaveAttribute("aria-label", /build a radar/i);
+});
+
+test("keeps the tactical radar readable and usable across breakpoints", async ({ page }) => {
+  await deployWithOperationalRadar(page);
   const radar = page.getByTestId("command-sidebar").getByTestId("tactical-radar");
   await expect(radar).toBeVisible();
   await expect(radar).toHaveAttribute("aria-label", /click or drag to look around/i);
@@ -969,7 +995,7 @@ test("keeps the tactical radar readable and usable across breakpoints", async ({
 });
 
 test("keeps tactical radar clicks anchored and cleans up interrupted drags", async ({ page }) => {
-  await deployToBattlefield(page);
+  await deployWithOperationalRadar(page);
   const radar = page.getByTestId("tactical-radar");
   await expect(radar).toBeVisible();
 

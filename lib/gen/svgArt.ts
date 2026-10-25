@@ -221,6 +221,7 @@ function buildingSky(kind: BuildingKind): number {
     case "refinery": return 54;
     case "factory": return 46;
     case "constructionYard": return 48;
+    case "radar": return 58;
     case "objective": return 50;
     default: return 40;
   }
