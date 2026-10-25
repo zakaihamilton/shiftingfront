@@ -193,7 +193,7 @@ export const UNIT_DEFINITIONS: Record<UnitKind, UnitDefinition> = {
     renderKey: "convoyTruck",
     aiRole: "objective",
     hp: 320,
-    speed: 0.065,
+    speed: 0.09,
     damage: 0,
     range: 0,
     cooldown: 0,
