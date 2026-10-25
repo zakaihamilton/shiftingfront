@@ -96,7 +96,7 @@ describe("tactical expansion", () => {
       expect(convoy.every((entity) => entity.kind === "convoyTruck")).toBe(true);
       expect(UNIT_STATS.convoyTruck).toMatchObject({
         hp: 320,
-        speed: 0.065,
+        speed: 0.09,
         sight: 7,
         armor: "heavy",
         damage: 0,
