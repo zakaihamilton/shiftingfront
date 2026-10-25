@@ -20,8 +20,8 @@ describe("docs and process drift", () => {
     };
     const engineRange = pkg.engines?.node;
 
-    expect(nodeVersion).toBe("24.22.0");
-    expect(engineRange).toBe(">=24.0.0 <25");
+    expect(nodeVersion).toBe("24.22.1");
+    expect(engineRange).toBe(">=24.22.1 <25");
     expect(nodeVersion.startsWith("24.")).toBe(true);
 
     for (const workflow of ["ci.yml", "nightly.yml", "release.yml"]) {
