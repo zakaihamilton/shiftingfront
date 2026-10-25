@@ -34,6 +34,105 @@
   cursor: grabbing;
 }
 
+.canvas[data-offline="true"] {
+  pointer-events: none;
+  cursor: default;
+}
+
+.picture {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+}
+
+.picture[data-power="on"] {
+  transform: scaleY(1);
+}
+
+.picture[data-power="off"] {
+  visibility: hidden;
+  opacity: 0;
+  transform: scaleY(0.012);
+}
+
+.picture[data-power="powering-on"] {
+  animation: crt-on 820ms cubic-bezier(0.16, 0.84, 0.24, 1) both;
+}
+
+.picture[data-power="powering-off"] {
+  animation: crt-off 640ms cubic-bezier(0.4, 0, 0.85, 0.35) both;
+}
+
+.beam,
+.snow,
+.offline {
+  pointer-events: none;
+  position: absolute;
+}
+
+.beam {
+  z-index: 4;
+  left: 8%;
+  right: 8%;
+  top: 50%;
+  height: 2px;
+  background: #f4ffff;
+  box-shadow: 0 0 6px 2px #d7fbff, 0 0 16px #7ee7ff;
+  opacity: 0;
+  transform: translateY(-50%) scaleX(0.15);
+}
+
+.beam[data-power="powering-on"] {
+  animation: crt-beam-on 820ms linear both;
+}
+
+.beam[data-power="powering-off"] {
+  animation: crt-beam-off 640ms linear both;
+}
+
+.snow {
+  z-index: 3;
+  inset: 0;
+  opacity: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(190, 230, 220, 0.18) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120, 180, 170, 0.16) 0 1px, transparent 1px 4px);
+  mix-blend-mode: screen;
+}
+
+.snow[data-power="powering-on"],
+.snow[data-power="powering-off"] {
+  animation: crt-snow 420ms steps(2, end) both;
+}
+
+.offline {
+  z-index: 5;
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin: 0;
+  transform: translateY(-50%);
+  color: color-mix(in srgb, var(--chrome-cyan) 72%, white);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--chrome-cyan) 55%, transparent);
+  opacity: 0;
+}
+
+.offline[data-power="off"] {
+  opacity: 0.86;
+}
+
+.offline[data-power="powering-off"] {
+  animation: crt-caption-in 640ms ease both;
+}
+
+.offline[data-power="powering-on"] {
+  animation: crt-caption-out 360ms ease both;
+}
+
 .sweep {
   pointer-events: none;
   position: absolute;
@@ -71,16 +170,85 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sweep,
-  .ping {
+  .ping,
+  .picture,
+  .beam,
+  .snow,
+  .offline {
     animation: none;
+  }
+
+  .sweep,
+  .ping {
     opacity: 0.2;
     transform: translate(-50%, -50%);
+  }
+
+  .picture[data-power="on"],
+  .picture[data-power="powering-on"] {
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .picture[data-power="off"],
+  .picture[data-power="powering-off"] {
+    opacity: 0;
+    visibility: hidden;
+    transform: none;
   }
 }
 
 @keyframes radar-scan {
   from { transform: translateY(-75%); }
   to { transform: translateY(75%); }
+}
+
+@keyframes crt-on {
+  0% { transform: scale(1.04, 0.012); filter: brightness(8); opacity: 1; }
+  16% { transform: scale(1.02, 0.012); filter: brightness(6); }
+  46% { transform: scale(1.015, 1.08); filter: brightness(1.85) contrast(1.12); }
+  68% { transform: scale(1, 0.9); filter: brightness(1.2); }
+  84% { transform: scale(1, 1.035); filter: brightness(1.05); }
+  100% { transform: scale(1, 1); filter: none; opacity: 1; }
+}
+
+@keyframes crt-off {
+  0% { transform: scale(1, 1); filter: none; opacity: 1; }
+  28% { transform: scale(1.02, 1.06); filter: brightness(2.6); }
+  72% { transform: scale(1.06, 0.07); filter: brightness(3.4); }
+  100% { transform: scale(1.1, 0.012); filter: brightness(5); opacity: 1; }
+}
+
+@keyframes crt-beam-on {
+  0% { opacity: 0; transform: translateY(-50%) scaleX(0.05); }
+  12% { opacity: 1; transform: translateY(-50%) scaleX(0.92); }
+  42% { opacity: 0.85; transform: translateY(-50%) scaleX(1); }
+  100% { opacity: 0; transform: translateY(-50%) scaleX(1); }
+}
+
+@keyframes crt-beam-off {
+  0% { opacity: 0; transform: translateY(-50%) scaleX(1); }
+  35% { opacity: 0.4; transform: translateY(-50%) scaleX(1); }
+  78% { opacity: 1; transform: translateY(-50%) scaleX(0.84); }
+  100% { opacity: 0; transform: translateY(-50%) scaleX(0.2); }
+}
+
+@keyframes crt-snow {
+  0% { opacity: 0.55; }
+  45% { opacity: 0.2; }
+  100% { opacity: 0; }
+}
+
+@keyframes crt-caption-in {
+  0% { opacity: 0; }
+  55% { opacity: 0; }
+  100% { opacity: 0.86; }
+}
+
+@keyframes crt-caption-out {
+  from { opacity: 0.86; }
+  to { opacity: 0; }
 }
 
 @media (max-width: 799px), (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {

@@ -84,6 +84,16 @@ export const UNIT_GROUND_CONTACT_Y: Record<Exclude<UnitKind, "strikePlane">, Rec
     "left": 475 / 512,
     "back-right": 475 / 512,
   },
+  scout: {
+    "front-right": 492 / 512,
+    front: 492 / 512,
+    right: 492 / 512,
+    "front-left": 492 / 512,
+    "back-left": 492 / 512,
+    back: 492 / 512,
+    left: 492 / 512,
+    "back-right": 492 / 512,
+  },
 };
 
 // Contact lines are normalized against the full 2x2 sheet, including each frame offset.

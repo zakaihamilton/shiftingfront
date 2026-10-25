@@ -5,7 +5,7 @@ import { activeProducerFor, isSharedProducerKind, readSharedProductionQueue, sha
 export const PLACEABLE: BuildingKind[] = BUILDING_KINDS.filter(
   (kind) => BUILDING_DEFINITIONS[kind].aiRole !== "base" && BUILDING_DEFINITIONS[kind].aiRole !== "objective",
 );
-export const PRODUCIBLE: UnitKind[] = ["infantry", "antiArmor", "harvester", "tank", "medic", "repairTruck", "strikePlane", "behemoth"];
+export const PRODUCIBLE: UnitKind[] = ["infantry", "antiArmor", "harvester", "tank", "scout", "medic", "repairTruck", "strikePlane", "behemoth"];
 
 export function leastLoadedProducer(state: SimState, owner: Owner, unit: UnitKind): Entity | undefined {
   if (!isUnitAvailable(unit, state.missionIndex)) return undefined;

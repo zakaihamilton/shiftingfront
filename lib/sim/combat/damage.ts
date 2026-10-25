@@ -3,7 +3,7 @@ import { isUnitEntity } from "../../types";
 import { isAirUnit } from "../../catalog";
 import { closestApproach, invalidateLivingCache } from "../world";
 import { canTarget, candidatesInSplash, isCombatTarget, statsFor, type CombatGrid } from "./grid";
-import { armorFor, damageMultiplier, heightMultiplier, lineOfSight } from "./targeting";
+import { armorFor, damageMultiplier, domainDamageScale, heightMultiplier, lineOfSight } from "./targeting";
 import type { Rng } from "../../seed/rng";
 import { type PendingAlerts, notePlayerAlert } from "./alerts";
 import { tryFindPathDetailed } from "../pathBudget";
@@ -32,7 +32,7 @@ export function strike(
   const jitter = 0.85 + rng.next() * 0.3;
   const veteran = e.veteranRank === 1 ? VETERAN_DAMAGE_MULTIPLIER : 1;
   const entrenched = isEntrenched(target) ? ENTRENCH_INCOMING : 1;
-  const baseDamage = stats.damage * jitter * damageMultiplier(stats.weapon, armorFor(target)) * heightMultiplier(state, e, target) * veteran;
+  const baseDamage = stats.damage * jitter * damageMultiplier(stats.weapon, armorFor(target)) * domainDamageScale(e, target) * heightMultiplier(state, e, target) * veteran;
   const damage = baseDamage * incomingDamageMultiplier(state, target) * entrenched;
   noteDamageDealt(state, e, damage);
   target.hp -= damage;

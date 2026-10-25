@@ -54,6 +54,12 @@ export function SelectionPanel({
       {selected ? (
         <div className={styles.body}>
           <SelectionIdentity selected={selected} palette={palette} profile={profile} stance={stance} onCenter={onCenter} />
+          {selected.kind === "radar" && selected.hp > 0 && selected.constructing <= 0 ? (
+            <span className={styles.orderStatus}>Minimap online while this radar stands</span>
+          ) : null}
+          {selected.kind === "scout" ? (
+            <span className={styles.orderStatus}>Fast recon · strong vs infantry, weak vs vehicles</span>
+          ) : null}
           {selected.class === "unit" ? (
             <ProgressMeter
               label="Health"

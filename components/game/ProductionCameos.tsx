@@ -65,6 +65,7 @@ export function ProductionCameos({
 }
 
 export function unitRecommendationText(state: SimState, unit: UnitKind): string | undefined {
+  if (unit === "scout") return "Recon buggy · strong vs infantry, weak vs vehicles";
   if (unit === "infantry") return "Line infantry · effective vs light units";
   if (unit === "antiArmor") return "Rocket launcher · effective vs heavy armor";
   if (unit !== "medic" && unit !== "repairTruck") return undefined;
