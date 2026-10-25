@@ -10,6 +10,7 @@ import { FOREGROUND_PATHS_PER_ORDER, PATH_BUDGET_PER_TICK, backgroundPathSearche
 import { groundOrders } from "../../lib/sim/orders";
 import { BUILDING_PLACEMENT_RADIUS, buildingAt, canPlaceBuilding, compactDestroyedEntities, heightAt, isStaticWalkable, makeUnitOccupancy, occupies, powerBreakdown, powerFor, staticNavigationFor, terrainAccess, unitAt } from "../../lib/sim/world";
 import { navigationStepAllowed } from "../../lib/sim/navigation/grid";
+import { tickEscort } from "../../lib/sim/scenarios/escort";
 import { tickProduction } from "../../lib/sim/production";
 import { BUILDING_STATS, MAX_PRODUCTION_QUEUE, UNIT_STATS } from "../../lib/catalog";
 import { destinationsForGroup } from "../../lib/sim/orders/movement";
@@ -671,6 +672,33 @@ describe("pathfinding", () => {
     }
     expect(Math.round(mover.x)).toBe(8);
     expect(Math.round(mover.y)).toBe(3);
+  });
+
+  it("routes a departing convoy after the path budget is spent", () => {
+    const s = makeFixture({ width: 24, height: 16, win: { kind: "escort", targetCount: 1 } });
+    const convoy = addUnit(s, 0, "convoyTruck", 2, 2);
+    convoy.neutral = true;
+    convoy.scenarioRole = "convoy";
+    s.tick = 10;
+    s.runtime = {
+      kind: "escort",
+      phase: "active",
+      targetIds: [convoy.id],
+      convoyStartTick: s.tick,
+      zone: { x: 18, y: 8 },
+      deadline: 5000,
+      rescued: 0,
+      required: 1,
+      secondary: [],
+    };
+    resetPathBudget(s, 0);
+
+    tickEscort(s);
+
+    expect(s.pathBudget?.remaining).toBe(0);
+    expect(convoy.path.length).toBeGreaterThan(0);
+    expect(convoy.orderDestination).toBeDefined();
+    expect(convoy.routePending).not.toBe(true);
   });
 
   it("keeps neutral convoy movement out of occupied cells", () => {
