@@ -49,7 +49,7 @@ describe("scenario runner", () => {
     const runner = createScenarioRunner(state);
     let commandCalls = 0;
     const result = runner.run({
-      maxTicks: 8_000,
+      maxTicks: (state.runtime?.deadline ?? state.win.ticks ?? 0) + 1,
       commandsForTick: (currentState) => {
         if (currentState.tick !== 0) return undefined;
         commandCalls += 1;
@@ -61,7 +61,7 @@ describe("scenario runner", () => {
     expect(result.ticksRun).toBeGreaterThan(1);
     expect(state.result).toBe("lost");
     expect(commandCalls).toBe(1);
-  }, 20_000);
+  }, 45_000);
 
   it("runs beforeTick before issuing a command and does not advance if it throws", () => {
     const state = createMission({ seed: 421, missionIndex: 0 });

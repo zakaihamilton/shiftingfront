@@ -14,6 +14,7 @@ import {
   goalDistance,
   holdingDestination,
   reversesPreviousStep,
+  stepFromPreviousCell,
   tileFree,
   trySidestep,
 } from "./navigation";
@@ -156,6 +157,7 @@ export function stepMover(e: UnitEntity, step: MoverStep): void {
             avoidUnits: true,
             ignoreId: e.id,
             occupancy,
+            approach: stepFromPreviousCell(state.width, Math.round(e.x), Math.round(e.y), previousCells.get(e.id)),
           });
           if (!detourResult) {
             if (e.flowGoal) e.path = [];

@@ -8,7 +8,7 @@ import { invalidateUnitAtCache, unitOccupancyFor } from "./world";
 import { tickAircraft } from "./aircraft";
 import { entitiesFor } from "./entities";
 import { isPlayerControlledOwner } from "./ownership";
-import { cellOf, goalDistance, holdingDestination, reversesPreviousStep } from "./navigation";
+import { cellOf, goalDistance, holdingDestination, reversesPreviousStep, stepFromPreviousCell } from "./navigation";
 import { isRecoveryReturn, stepMover } from "./movementStep";
 
 type MovementBuffers = {
@@ -88,7 +88,9 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
       continue;
     }
     if (!e.routePending && !e.idle) continue;
-    const result = tryFindPathDetailed(state, e, dest);
+    const result = tryFindPathDetailed(state, e, dest, {
+      approach: stepFromPreviousCell(state.width, Math.round(e.x), Math.round(e.y), previousCells.get(e.id)),
+    });
     if (!result) continue;
     const first = result.path[0];
     if (first && isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && !returningActor && reversesPreviousStep(

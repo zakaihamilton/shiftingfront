@@ -1066,6 +1066,7 @@ describe("pathfinding", () => {
     expect(path.at(-1)).toEqual({ x: 10, y: 4 });
     expect(path.some((step) => step.x === 6 && step.y >= 1 && step.y <= 8)).toBe(false);
     expect(directionChanges({ x: 2, y: 4 }, path)).toBeLessThanOrEqual(4);
+    expect(longestRun({ x: 2, y: 4 }, path)).toBeGreaterThanOrEqual(3);
     let x = 2;
     let y = 4;
     for (const step of path) {
@@ -1101,6 +1102,90 @@ describe("pathfinding", () => {
     expect(around.at(-1)).toEqual({ x: 2, y: 2 });
   });
 
+  it("holds the closer heading on an open offset route", () => {
+    const s = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
+    const start = { x: 2, y: 4 };
+    const path = findPath(s, start, { x: 16, y: 8 });
+    expect(path.at(-1)).toEqual({ x: 16, y: 8 });
+    expect(path).toHaveLength(14);
+    expect(directionChanges(start, path)).toBe(1);
+    expect(longestRun(start, path)).toBeGreaterThanOrEqual(10);
+    expect(path.slice(0, 10).every((step, index) => step.x === start.x + index + 1 && step.y === start.y)).toBe(true);
+  });
+
+  it("keeps walking the current heading when that leg still reaches the goal", () => {
+    const s = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const start = { x: 2, y: 4 };
+    const fresh = findPath(s, start, { x: 12, y: 10 });
+    const continued = findPath(s, start, { x: 12, y: 10 }, { approach: { x: 1, y: 0 } });
+    expect(fresh[0]).toEqual({ x: 3, y: 5 });
+    expect(continued[0]).toEqual({ x: 3, y: 4 });
+    expect(continued).toHaveLength(10);
+    expect(directionChanges(start, continued)).toBe(1);
+  });
+
+  it("clears a blocked finish in one turn instead of weaving", () => {
+    const s = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
+    setTile(s, 14, 4, TILE_BLOCKED);
+    setTile(s, 15, 4, TILE_BLOCKED);
+    const start = { x: 2, y: 4 };
+    const path = findPath(s, start, { x: 18, y: 7 });
+    expect(path.at(-1)).toEqual({ x: 18, y: 7 });
+    expect(directionChanges(start, path)).toBe(1);
+    expect(longestRun(start, path)).toBeGreaterThanOrEqual(10);
+    const navigation = staticNavigationFor(s);
+    let x = start.x;
+    let y = start.y;
+    for (const step of path) {
+      expect(navigationStepAllowed(navigation, x, y, step.x, step.y)).toBe(true);
+      expect(step.x === 14 && step.y === 4).toBe(false);
+      expect(step.x === 15 && step.y === 4).toBe(false);
+      x = step.x;
+      y = step.y;
+    }
+  });
+
+  it("walks an offset order without alternating headings", () => {
+    const s = makeFixture({ width: 24, height: 16, win: { kind: "annihilate" } });
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    const unit = addUnit(s, 0, "infantry", 2, 4);
+    issue(s, { type: "move", unitIds: [unit.id], x: 16, y: 8 });
+    const cells = [{ x: 2, y: 4 }];
+    for (let tickIndex = 0; tickIndex < 400; tickIndex += 1) {
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
+      const x = Math.round(unit.x);
+      const y = Math.round(unit.y);
+      const last = cells[cells.length - 1]!;
+      if (x !== last.x || y !== last.y) cells.push({ x, y });
+      if (x === 16 && y === 8 && unit.path.length === 0) break;
+    }
+    expect(cells.at(-1)).toEqual({ x: 16, y: 8 });
+    expect(directionChanges(cells[0]!, cells.slice(1))).toBeLessThanOrEqual(1);
+  });
+
+  it("marches a group on long straight runs instead of a staircase", () => {
+    const s = makeFixture({ width: 28, height: 20, win: { kind: "annihilate" } });
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    const units = Array.from({ length: 6 }, (_, index) =>
+      addUnit(s, 0, "infantry", 3 + (index % 3), 4 + Math.floor(index / 3)),
+    );
+    issue(s, { type: "move", unitIds: units.map((unit) => unit.id), x: 20, y: 10 });
+    const cells = units.map((unit) => [{ x: Math.round(unit.x), y: Math.round(unit.y) }]);
+    for (let tickIndex = 0; tickIndex < 450; tickIndex += 1) {
+      tick(s, undefined, PATHFINDING_TICK_OPTIONS);
+      units.forEach((unit, index) => {
+        const x = Math.round(unit.x);
+        const y = Math.round(unit.y);
+        const last = cells[index]![cells[index]!.length - 1]!;
+        if (x !== last.x || y !== last.y) cells[index]!.push({ x, y });
+      });
+    }
+    units.forEach((unit, index) => {
+      const walked = cells[index]!;
+      expect(longestRun(walked[0]!, walked.slice(1)), `unit ${unit.id}`).toBeGreaterThanOrEqual(8);
+    });
+  });
+
   it("walks screen up, down, left, and right straight along that facing", () => {
     const orders = [
       { from: { x: 4, y: 4 }, to: { x: 9, y: 9 }, facing: 2, axis: "down" },
@@ -1125,7 +1210,17 @@ describe("pathfinding", () => {
 });
 
 function directionChanges(start: { x: number; y: number }, path: readonly { x: number; y: number }[]): number {
+  return runStats(start, path).changes;
+}
+
+function longestRun(start: { x: number; y: number }, path: readonly { x: number; y: number }[]): number {
+  return runStats(start, path).longest;
+}
+
+function runStats(start: { x: number; y: number }, path: readonly { x: number; y: number }[]): { changes: number; longest: number } {
   let changes = 0;
+  let longest = 0;
+  let run = 0;
   let previousX = start.x;
   let previousY = start.y;
   let lastX = 0;
@@ -1134,14 +1229,20 @@ function directionChanges(start: { x: number; y: number }, path: readonly { x: n
   for (const step of path) {
     const dx = step.x - previousX;
     const dy = step.y - previousY;
-    if (started && (dx !== lastX || dy !== lastY)) changes += 1;
+    if (!started || dx !== lastX || dy !== lastY) {
+      if (started) changes += 1;
+      run = 1;
+    } else {
+      run += 1;
+    }
+    if (run > longest) longest = run;
     lastX = dx;
     lastY = dy;
     started = true;
     previousX = step.x;
     previousY = step.y;
   }
-  return changes;
+  return { changes, longest };
 }
 
 describe("building footprints", () => {
