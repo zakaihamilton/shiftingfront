@@ -92,6 +92,35 @@ describe("SelectionPanel Turret Power Shortage UI", () => {
     expect(screen.queryByTestId("turret-power-shortage")).toBeNull();
   });
 
+  it("tells a selected radar that a power deficit has shut the minimap off", () => {
+    const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
+    const radar = addBuilding(state, 0, "radar", 4, 4);
+
+    const { rerender } = render(
+      <SelectionPanel
+        selected={radar}
+        selectionCount={1}
+        palette={palette}
+        profile={profile}
+        power={-12}
+      />,
+    );
+
+    expect(screen.getByTestId("radar-minimap-status")).toHaveTextContent("Minimap offline until power is restored");
+
+    rerender(
+      <SelectionPanel
+        selected={radar}
+        selectionCount={1}
+        palette={palette}
+        profile={profile}
+        power={0}
+      />,
+    );
+
+    expect(screen.getByTestId("radar-minimap-status")).toHaveTextContent("Minimap stays on while this radar has power");
+  });
+
   it("does not render power shortage badge for non-defense buildings even during power deficit", () => {
     const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
     const factory = addBuilding(state, 0, "factory", 4, 4);
