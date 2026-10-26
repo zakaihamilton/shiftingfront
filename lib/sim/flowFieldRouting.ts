@@ -1,6 +1,6 @@
 import type { Entity, SimState } from "../types";
 import { flowCellTaken, flowDistanceAt, flowFieldForGoals, flowStep, type FlowField } from "./flowField";
-import { navigationEdgeKey, navigationEdgeReserved, returnsToPreviousCell } from "./navigation/grid";
+import { navigationEdgeKey, navigationEdgeReserved, returnsToPreviousCell, stepFromPreviousCell } from "./navigation/grid";
 import { reversesPreviousStep } from "./pathfinding";
 import { tryFindPathDetailed } from "./pathBudget";
 import { entitiesFor } from "./entities";
@@ -262,19 +262,46 @@ function assignFlowPrefix(
     : false;
   const prefix: { x: number; y: number }[] = [];
   let priorCell = previousCell;
+  // A cardinal saved while a teammate blocked the diagonal must not keep the
+  // unit weaving after that diagonal is free.
+  const openingStep = flowStep(field, cursorX, cursorY, {
+    occupancy,
+    reserved,
+    ignoreId: entity.id,
+    state,
+    previousCell: priorCell,
+    vacating: plannedVacates,
+    edgeReservations,
+    allowNonImproving: (entity.blockedTicks ?? 0) >= 3,
+  });
+  const openingKey = openingStep
+    ? Math.round(openingStep.y) * field.width + Math.round(openingStep.x)
+    : -1;
+  const openingDistance = openingKey >= 0 ? field.distance[openingKey] ?? -1 : -1;
+  // Only steal a short flow prefix. A saved cardinal that is a full step worse
+  // than the diagonal is the staircase; a slightly shorter diagonal is not
+  // worth abandoning a heading, and a finished arrival route must stay intact.
+  const diagonalOpens = entity.path.length > 0 &&
+    entity.path.length <= (plannedVacates ? 1 : FLOW_PATH_PREFIX_LENGTH) &&
+    existing !== undefined && openingStep !== undefined &&
+    existingDistance > openingDistance + 0.5 &&
+    diagonalSupersedesCardinal(cursorX, cursorY, existing, openingStep);
   for (let i = 0; i < (plannedVacates ? 1 : FLOW_PATH_PREFIX_LENGTH); i++) {
-    const candidate = i === 0 && existingFree && existing
+    const keepExisting = i === 0 && existingFree && existing && !diagonalOpens;
+    const candidate = keepExisting
       ? existing
-      : flowStep(field, cursorX, cursorY, {
-        occupancy,
-        reserved,
-        ignoreId: entity.id,
-        state,
-        previousCell: priorCell,
-        vacating: plannedVacates,
-        edgeReservations,
-        allowNonImproving: (entity.blockedTicks ?? 0) >= 3,
-      });
+      : i === 0 && openingStep
+        ? openingStep
+        : flowStep(field, cursorX, cursorY, {
+          occupancy,
+          reserved,
+          ignoreId: entity.id,
+          state,
+          previousCell: priorCell,
+          vacating: plannedVacates,
+          edgeReservations,
+          allowNonImproving: (entity.blockedTicks ?? 0) >= 3,
+        });
     if (!candidate || !prefixCellOpen(state, occupancy, reserved, entity.id, candidate.x, candidate.y, plannedVacates)) break;
     if (edgeBlocked(state, edgeReservations, entity.id, cursorX, cursorY, Math.round(candidate.x), Math.round(candidate.y))) break;
     prefix.push(candidate);
@@ -304,6 +331,22 @@ function assignFlowPrefix(
   }
   if (finishFlowFieldRoute(state, occupancy, entity, previousCell)) return;
   entity.routePending = true;
+}
+
+/** True when the new step is the diagonal that extends a saved cardinal. */
+function diagonalSupersedesCardinal(
+  fromX: number,
+  fromY: number,
+  existing: { x: number; y: number },
+  opening: { x: number; y: number },
+): boolean {
+  const existingX = Math.round(existing.x) - fromX;
+  const existingY = Math.round(existing.y) - fromY;
+  const openingX = Math.round(opening.x) - fromX;
+  const openingY = Math.round(opening.y) - fromY;
+  if (Math.abs(existingX) + Math.abs(existingY) !== 1) return false;
+  if (Math.abs(openingX) !== 1 || Math.abs(openingY) !== 1) return false;
+  return existingX === 0 ? openingY === existingY : openingX === existingX;
 }
 
 function edgeBlocked(
@@ -343,6 +386,7 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     avoidUnits: true,
     ignoreId: entity.id,
     occupancy,
+    approach: stepFromPreviousCell(state.width, Math.round(entity.x), Math.round(entity.y), previousCell),
   });
   if (!result) return false;
   if (result.status === "unreachable") return false;

@@ -35,6 +35,22 @@ export function reversesPreviousStep(
   return incomingX * outgoingX + incomingY * outgoingY < 0;
 }
 
+/** The tile step that entered this cell, when the previous cell is a neighbor. */
+export function stepFromPreviousCell(
+  width: number,
+  x: number,
+  y: number,
+  previousCell?: number,
+): Vec2 | undefined {
+  if (previousCell === undefined) return undefined;
+  const previousX = previousCell % width;
+  const previousY = Math.floor(previousCell / width);
+  const dx = x - previousX;
+  const dy = y - previousY;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) !== 1) return undefined;
+  return { x: dx, y: dy };
+}
+
 /** Whether a candidate immediately sends the unit back into its last tile. */
 export function returnsToPreviousCell(
   width: number,
