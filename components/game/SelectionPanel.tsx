@@ -54,8 +54,12 @@ export function SelectionPanel({
       {selected ? (
         <div className={styles.body}>
           <SelectionIdentity selected={selected} palette={palette} profile={profile} stance={stance} onCenter={onCenter} />
-          {selected.kind === "radar" && selected.hp > 0 && selected.constructing <= 0 ? (
-            <span className={styles.orderStatus}>Minimap online while this radar stands</span>
+          {selected.kind === "radar" && selected.owner === playerOwner && selected.hp > 0 && selected.constructing <= 0 ? (
+            <span className={styles.orderStatus} data-testid="radar-minimap-status">
+              {power !== undefined && power < 0
+                ? "Minimap offline until power is restored"
+                : "Minimap stays on while this radar has power"}
+            </span>
           ) : null}
           {selected.kind === "scout" ? (
             <span className={styles.orderStatus}>Fast recon · strong vs infantry, weak vs vehicles</span>

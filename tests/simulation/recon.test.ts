@@ -5,29 +5,76 @@ import { statsFor } from "../../lib/sim/combat/grid";
 import { domainDamageScale } from "../../lib/sim/combat/targeting";
 import { combatUnits } from "../../lib/sim/commander/queries";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { minimapRadarOnline } from "../../lib/sim/radar";
+import { minimapPicture, minimapRadarOnline } from "../../lib/sim/radar";
 import { createRng } from "../../lib/seed/rng";
+import { invalidateEntityCaches, powerFor } from "../../lib/sim/world";
 
 describe("radar minimap power", () => {
-  it("stays offline until a finished radar belonging to the viewer is standing", () => {
+  it("stays offline until a finished radar belonging to the viewer is standing with power", () => {
     const state = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    expect(minimapPicture(state)).toBe("no-radar");
     expect(minimapRadarOnline(state)).toBe(false);
 
     const constructing = addBuilding(state, 0, "radar", 2, 2, BUILDING_STATS.radar.buildTicks);
     expect(minimapRadarOnline(state)).toBe(false);
 
     constructing.constructing = 0;
+    invalidateEntityCaches(state);
+    expect(powerFor(state, 0)).toBeLessThan(0);
+    expect(minimapPicture(state)).toBe("low-power");
+    expect(minimapRadarOnline(state)).toBe(false);
+
+    addBuilding(state, 0, "power", 6, 2, 0);
+    expect(powerFor(state, 0)).toBeGreaterThanOrEqual(0);
     expect(minimapRadarOnline(state)).toBe(true);
 
     constructing.hp = 0;
-    expect(minimapRadarOnline(state)).toBe(false);
+    invalidateEntityCaches(state);
+    expect(minimapPicture(state)).toBe("no-radar");
 
     constructing.hp = constructing.maxHp;
+    invalidateEntityCaches(state);
     state.viewOwner = 1;
     expect(minimapRadarOnline(state)).toBe(false);
     addBuilding(state, 1, "radar", 8, 2, 0);
+    expect(minimapPicture(state)).toBe("low-power");
+    addBuilding(state, 1, "power", 8, 6, 0);
     expect(minimapRadarOnline(state)).toBe(true);
     expect(buildingLimitReached(state.entities, 1, "radar")).toBe(true);
+  });
+
+  it("turns the picture off at a power deficit and back on when surplus returns", () => {
+    const state = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    const radar = addBuilding(state, 0, "radar", 2, 2, 0);
+    addBuilding(state, 0, "constructionYard", 6, 2, 0);
+    addBuilding(state, 0, "turret", 10, 2, 0);
+    expect(powerFor(state, 0)).toBe(0);
+    expect(minimapRadarOnline(state)).toBe(true);
+
+    const barracks = addBuilding(state, 0, "barracks", 12, 2, 0);
+    expect(powerFor(state, 0)).toBeLessThan(0);
+    expect(minimapPicture(state)).toBe("low-power");
+
+    barracks.hp = 0;
+    invalidateEntityCaches(state);
+    expect(minimapRadarOnline(state)).toBe(true);
+
+    radar.hp = 0;
+    invalidateEntityCaches(state);
+    expect(minimapPicture(state)).toBe("no-radar");
+  });
+
+  it("counts a stored power reserve for the player and not the opponent", () => {
+    const state = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    state.powerReserve = BUILDING_STATS.radar.power * -1;
+    addBuilding(state, 0, "radar", 2, 2, 0);
+    expect(powerFor(state, 0)).toBe(0);
+    expect(minimapRadarOnline(state)).toBe(true);
+
+    state.viewOwner = 1;
+    addBuilding(state, 1, "radar", 8, 2, 0);
+    expect(minimapPicture(state, 1)).toBe("low-power");
+    expect(minimapRadarOnline(state, 0)).toBe(true);
   });
 });
 
