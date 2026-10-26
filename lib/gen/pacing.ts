@@ -7,9 +7,11 @@ export const TICKS_PER_MINUTE = 60 * TICKS_PER_SECOND;
 
 /** Fail-deadline scenario windows are scaled for casual play; hold-the-line stays on the 5–20 curve. */
 export const DEADLINE_DURATION_MULT = 1.5;
-export const MAX_DEADLINE_MINUTES = 30;
-export const MIN_DEADLINE_MINUTES = 10;
-export const MIN_SABOTAGE_MINUTES = 12;
+/** Extra minutes on every finish-before-time mission, after the scenario scale. */
+export const DEADLINE_BONUS_MINUTES = 5;
+export const MAX_DEADLINE_MINUTES = 35;
+export const MIN_DEADLINE_MINUTES = 15;
+export const MIN_SABOTAGE_MINUTES = 17;
 
 /** Mission 0 ≈ 5.5 min, mission 7 ≈ 19 min, with ±1 min jitter, clamped to 5–20. */
 export function missionDurationMinutes(missionIndex: number, rng: Rng): number {
