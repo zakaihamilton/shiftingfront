@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A Radar powers the minimap. Destroying or selling the last finished radar shuts the picture off like an old television, and completing another radar turns it back on.
+- A Radar powers the minimap while the base has power. Destroying or selling the last finished radar, or dropping into a power deficit, shuts the picture off like an old television. Completing another radar or restoring power turns it back on.
 - Scouts roll out of the Vehicle Plant. They are fast, see a long way, cut down infantry, and do little harm to vehicles.
 
 ### Fixed

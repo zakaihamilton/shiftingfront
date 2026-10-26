@@ -1,5 +1,5 @@
 import { useEffect, useState, type PointerEventHandler, type Ref } from "react";
-import { minimapRadarOnline } from "@/lib/sim/radar";
+import { minimapPicture } from "@/lib/sim/radar";
 import type { CommandBuildControls } from "./commandCatalogTypes";
 import { CommandBuildSection } from "./CommandBuildSection";
 import { CommandHeader } from "./CommandHeader";
@@ -70,6 +70,7 @@ export function CommandSidebar({
   }, []);
 
   const panelHidden = portraitViewport && !mobilePanelOpen;
+  const picture = minimapPicture(state);
 
   return (
     <aside
@@ -93,7 +94,8 @@ export function CommandSidebar({
           ping={minimapPing}
           mapWidth={state.width}
           mapHeight={state.height}
-          powered={minimapRadarOnline(state)}
+          powered={picture === "on"}
+          offlineCause={picture === "low-power" ? "power" : "radar"}
         />
       </div>
 

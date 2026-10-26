@@ -6,7 +6,7 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MINIMAP_POWER_OFF_MS, MINIMAP_POWER_ON_MS, MinimapFrame } from "../../components/game/MinimapFrame";
 
-function frame(powered: boolean) {
+function frame(powered: boolean, offlineCause: "radar" | "power" = "radar") {
   const onPointer = (() => undefined) as PointerEventHandler<HTMLCanvasElement>;
   return (
     <MinimapFrame
@@ -16,6 +16,7 @@ function frame(powered: boolean) {
       onPointerUp={onPointer}
       isDragging={false}
       powered={powered}
+      offlineCause={offlineCause}
       mapWidth={48}
       mapHeight={48}
     />
@@ -66,5 +67,18 @@ describe("minimap cathode-ray power", () => {
     const view = render(frame(false));
     view.rerender(frame(true));
     expect(screen.getByTestId("minimap-frame")).toHaveAttribute("data-power", "on");
+  });
+
+  it("names a power deficit separately from a missing radar", () => {
+    const view = render(frame(false, "power"));
+    const radar = screen.getByTestId("tactical-radar");
+    expect(screen.getByTestId("minimap-frame")).toHaveAttribute("data-offline-cause", "power");
+    expect(radar.getAttribute("aria-label")).toMatch(/restore power/i);
+    expect(screen.getByText("Low power")).toBeVisible();
+
+    view.rerender(frame(false, "radar"));
+    expect(screen.getByTestId("minimap-frame")).toHaveAttribute("data-offline-cause", "radar");
+    expect(radar.getAttribute("aria-label")).toMatch(/build a radar/i);
+    expect(screen.getByText("Radar offline")).toBeVisible();
   });
 });
