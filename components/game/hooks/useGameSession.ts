@@ -20,7 +20,7 @@ import { consumeFreshLaunchIntent, consumeResultReturnSnapshot } from "@/lib/per
 import { restoreSlot } from "@/lib/persist/save/restore";
 import type { SaveSession } from "@/lib/persist/save";
 import type { GameSettings } from "@/lib/persist/settings";
-import type { SimState } from "@/lib/types";
+import type { CampaignProgress, DeploymentEdge, SimState } from "@/lib/types";
 import type { PauseView } from "@/lib/ui/shortcuts";
 import { useMissionConfirmation } from "./useMissionConfirmation";
 import { useMissionPersistence, type MissionPersistenceParams } from "./useMissionPersistence";
@@ -40,16 +40,24 @@ function isBrowserReload(): boolean {
   return legacyNavigation?.type === 1;
 }
 
-export function initialMission(
+type FreshLaunch = {
+  fresh: true;
+  progress: CampaignProgress;
+  rules: 1 | 2;
+  proficiencyBand: ReturnType<typeof campaignProficiencyBand> | undefined;
+  deploymentEdge: DeploymentEdge | undefined;
+};
+
+function planInitialMission(
   seed: number,
   mission: number,
   resume: boolean,
   tutorial: boolean,
   fresh = false,
   slotId?: string | null,
-): SimState {
+): SimState | FreshLaunch {
   if (tutorial) return createTutorialMission();
-  if (slotId && typeof window !== "undefined") {
+  if (slotId && typeof window !== "undefined" && getSaveRepository()?.mode !== "indexeddb") {
     const isReload = isBrowserReload();
     const saved = readSave(cachedCampaignStorage(), seed);
     if (isReload && saved && (resume || saved.missionIndex === mission)) {
@@ -94,11 +102,56 @@ export function initialMission(
   const proficiencyBand = typeof window === "undefined" ? undefined : campaignProficiencyBand(readTelemetry(cachedLocalStorage()));
   const deploymentEdge = typeof window === "undefined" ? undefined : deploymentEdgeForMission(progress, mission);
   if (deploymentEdge) delete progress.deploymentEdge;
-  if (typeof window !== "undefined") {
-    writeCampaignProgress(cachedLocalStorage(), progress);
-    if (deploymentEdge) persistDeploymentEdge(seed, undefined);
+  return { fresh: true, progress, rules, proficiencyBand, deploymentEdge };
+}
+
+function isFreshLaunch(value: SimState | FreshLaunch): value is FreshLaunch {
+  return "fresh" in value && value.fresh === true;
+}
+
+function missionFromFreshLaunch(seed: number, mission: number, launch: FreshLaunch): SimState {
+  return createMission({
+    seed,
+    missionIndex: mission,
+    gameplayRulesVersion: launch.rules,
+    proficiencyBand: launch.proficiencyBand,
+    deploymentEdge: launch.deploymentEdge,
+  });
+}
+
+/**
+ * IndexedDB owns the campaign record. Rewriting the legacy envelope changes
+ * savedAt, and the next open treats that as a new import: it bumps the
+ * autosave revision and can file the crash journal as an interrupted save.
+ * A failed reward clear still leaves a newer legacy envelope so the next open
+ * can drop the reward without touching that revision.
+ */
+function persistFreshLaunch(seed: number, launch: FreshLaunch): Promise<void> | void {
+  if (typeof window === "undefined") return;
+  const repository = getSaveRepository();
+  if (repository?.mode === "indexeddb") {
+    if (!launch.deploymentEdge) return;
+    return repository.setDeploymentEdge(seed, undefined).then((cleared) => {
+      if (!cleared) writeCampaignProgress(cachedLocalStorage(), launch.progress);
+    });
   }
-  return createMission({ seed, missionIndex: mission, gameplayRulesVersion: rules, proficiencyBand, deploymentEdge });
+  writeCampaignProgress(cachedLocalStorage(), launch.progress);
+  if (launch.deploymentEdge) persistDeploymentEdge(seed, undefined);
+}
+
+export function initialMission(
+  seed: number,
+  mission: number,
+  resume: boolean,
+  tutorial: boolean,
+  fresh = false,
+  slotId?: string | null,
+): SimState {
+  const launch = planInitialMission(seed, mission, resume, tutorial, fresh, slotId);
+  if (!isFreshLaunch(launch)) return launch;
+  const pending = persistFreshLaunch(seed, launch);
+  if (pending) void pending.catch(() => undefined);
+  return missionFromFreshLaunch(seed, mission, launch);
 }
 
 export async function prepareInitialMission({ seed, mission, resume, fresh = false, slot }: {
@@ -121,6 +174,12 @@ export async function prepareInitialMission({ seed, mission, resume, fresh = fal
   if (resume) {
     const resultState = consumeResultReturnSnapshot(seed, mission);
     if (resultState) return resultState;
+  }
+  if (repository?.mode === "indexeddb") {
+    const launch = planInitialMission(seed, mission, resume, false, fresh);
+    if (!isFreshLaunch(launch)) return launch;
+    await persistFreshLaunch(seed, launch);
+    return missionFromFreshLaunch(seed, mission, launch);
   }
   return initialMission(seed, mission, resume, false, fresh);
 }

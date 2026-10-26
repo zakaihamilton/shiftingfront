@@ -585,12 +585,13 @@ export function renderMinimap(
       terrainCanvas.height = h;
       lastTerrainKey = "";
     }
-    if (lastTerrainKey !== terrainKey) {
-      const tctx = terrainCanvas.getContext("2d");
-      if (tctx) {
-        paintMinimapTerrain(tctx, state, w, h);
-        lastTerrainKey = terrainKey;
-      }
+    // Shroud lives on the terrain bitmap. Refresh it whenever the overlay
+    // redraws so blips and fog stay on the same tick, while unchanged cells
+    // are still patched in place.
+    const tctx = terrainCanvas.getContext("2d");
+    if (tctx) {
+      paintMinimapTerrain(tctx, state, w, h);
+      lastTerrainKey = terrainKey;
     }
     if (lastTerrainKey === terrainKey) {
       ctx.drawImage(terrainCanvas, 0, 0);

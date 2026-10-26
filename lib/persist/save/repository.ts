@@ -89,6 +89,27 @@ function sameCampaignProgress(left: CampaignProgress, right: CampaignProgress): 
     && sameStatMap(left.medals, right.medals)
     && sameStatMap(left.bestScores, right.bestScores);
 }
+function withoutDeploymentEdge(progress: CampaignProgress): CampaignProgress {
+  const next = { ...progress };
+  delete next.deploymentEdge;
+  return next;
+}
+/**
+ * A fresh launch restamps the legacy campaign envelope. That rewrite is not a
+ * new import: keep the autosave revision so a crash journal can still resume.
+ * A newer envelope may change only the deployment reward. An older envelope
+ * must not erase a reward stored after it was written.
+ */
+function legacyCampaignMirror(
+  existing: CampaignProgress,
+  incoming: CampaignProgress,
+  existingSavedAt: number,
+  incomingSavedAt: number,
+): "keep" | "edge" | "merge" {
+  if (!sameCampaignProgress(withoutDeploymentEdge(existing), withoutDeploymentEdge(incoming))) return "merge";
+  if (existing.deploymentEdge === incoming.deploymentEdge) return "keep";
+  return incomingSavedAt >= existingSavedAt ? "edge" : "keep";
+}
 /** Merge progress-only journal data when the battlefield snapshot is already stored. */
 function progressWhenBattlefieldMatches(record: CampaignRecord, journalSavedAt: number, progress: string): string | undefined {
   const existing = readCampaignProgress(memoryStorage(record.progress ? { [campaignKey(record.seed)]: record.progress } : {}), record.seed);
@@ -347,6 +368,19 @@ export class SaveRepository {
               if (!record.progress) record.progress = incomingEncoded;
               else if (!previous || previous.raw !== raw) {
                 const existing = readCampaignProgress(memoryStorage({ [campaignKey(seed)]: record.progress }), seed);
+                const mirror = legacyCampaignMirror(existing, incoming, progressSavedAt(record.progress), progressSavedAt(raw));
+                if (mirror === "keep") {
+                  metadata.put({ key, raw } satisfies MigrationRecord);
+                  return;
+                }
+                if (mirror === "edge") {
+                  const stamped = JSON.parse(incomingEncoded) as { savedAt?: number };
+                  stamped.savedAt = progressSavedAt(raw);
+                  record.progress = JSON.stringify(stamped);
+                  campaigns.put(record);
+                  metadata.put({ key, raw } satisfies MigrationRecord);
+                  return;
+                }
                 record.progress = encodeProgress(mergeCampaignProgress(existing, incoming));
                 if (record.autosave && previous && previous.raw !== raw) {
                   const temp = memoryStorage();
@@ -771,6 +805,7 @@ export class SaveRepository {
 
 let repository: SaveRepository | null = null;
 export function getSaveRepository(): SaveRepository | null { return repository; }
+export function installSaveRepository(next: SaveRepository | null): void { repository = next; }
 export function cachedCampaignStorage(): StorageAdapter { return repository?.storage ?? cachedLocalStorage(); }
 export async function initializeSaveRepository(): Promise<SaveRepository> {
   repository ??= new SaveRepository();

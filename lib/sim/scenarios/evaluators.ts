@@ -2,6 +2,7 @@ import type { Entity, SimState } from "../../types";
 import type { ScenarioProgress } from "./contract";
 import { formatMissionClockFromTicks } from "../../gen/pacing";
 import { entitiesFor } from "../entities";
+import { ensureRescueReturnTracking } from "./rescueExtraction";
 
 export function isEntityAlive(state: SimState, id: number): boolean {
   return entitiesFor(state).some((entity) => entity.id === id && entity.hp > 0);
@@ -72,6 +73,7 @@ export type ExtractionEscortResult = {
 export function evaluateExtractionEscort(state: SimState): ExtractionEscortResult {
   const runtime = state.runtime;
   const kind = state.win.kind;
+  if (kind === "rescue") ensureRescueReturnTracking(state);
   const current = runtime?.rescued ?? 0;
   const target = state.win.targetCount ?? runtime?.required ?? 1;
 

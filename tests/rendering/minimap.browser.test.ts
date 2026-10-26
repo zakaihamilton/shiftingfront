@@ -66,4 +66,24 @@ describe("browser minimap terrain cache", () => {
     renderMinimap(context, state, []);
     expect(drawCalls.length - initialDraws).toBe(4);
   });
+
+  it("refreshes shroud when fog changes inside one terrain-cache bucket", () => {
+    const drawCalls: unknown[][] = [];
+    const context = createContext(64, 64, drawCalls);
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(
+      () => context as unknown as RenderingContext,
+    );
+    const state = makeFixture({ width: 4, height: 4, seed: 832, win: { kind: "annihilate" } });
+    state.entities = [];
+    state.tick = 16;
+    renderMinimap(context, state, []);
+    const cachedDraws = drawCalls.length;
+
+    const fogCell = fogIndex(state, 0, 0);
+    expect(fogCell).not.toBeNull();
+    state.fog[fogCell!] = 0;
+    state.tick = 18;
+    renderMinimap(context, state, []);
+    expect(drawCalls.length - cachedDraws).toBe(3);
+  });
 });

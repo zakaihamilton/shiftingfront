@@ -515,6 +515,91 @@ describe("transactional save repository", () => {
     expect(readSave(repository.storage, 421)).toBeNull();
     expect(readCampaignProgress(repository.storage, 421)).toMatchObject({ gameplayRulesVersion: 2, unlockedMission: 1, completedMissions: [0], medals: { "0": 2 } });
   });
+  it("keeps a crash journal when legacy campaign progress is only restamped", async () => {
+    const { repository, storage, factory } = await open();
+    const playing = state();
+    playing.tick = 10;
+    expect(await repository.save(playing)).toBe("saved");
+    const progress = readCampaignProgress(repository.storage, 421);
+    storage.setItem(campaignKey(421), JSON.stringify({ version: 1, savedAt: Date.now() + 5_000, progress }));
+    playing.tick = 40;
+    expect(repository.writeJournal(playing)).toBe(true);
+    repository.close();
+
+    const next = await open(storage, factory);
+    expect(readSave(next.repository.storage, 421)?.tick).toBe(40);
+    expect(listSlots(next.repository.storage)).toHaveLength(0);
+    expect(storage.keys().some((key) => key.includes("journal"))).toBe(false);
+
+    const restamped = JSON.parse(storage.getItem(campaignKey(421))!) as { savedAt: number };
+    restamped.savedAt += 5_000;
+    storage.setItem(campaignKey(421), JSON.stringify(restamped));
+    next.repository.close();
+    const third = await open(storage, factory);
+    expect(readSave(third.repository.storage, 421)?.tick).toBe(40);
+    expect(listSlots(third.repository.storage).map((slot) => slot.name)).not.toContain("Recovered legacy progress");
+  });
+  it("applies a newer legacy reward clear without replacing the crash journal", async () => {
+    const { repository, storage, factory } = await open();
+    const won = state();
+    won.result = "won";
+    expect(await repository.save(won)).toBe("saved");
+    expect(await repository.setDeploymentEdge(421, "airSortie")).toBe(true);
+    const progress = readCampaignProgress(repository.storage, 421);
+    delete progress.deploymentEdge;
+    storage.setItem(campaignKey(421), JSON.stringify({ version: 1, savedAt: Date.now() + 10_000, progress }));
+    const playing = state();
+    playing.tick = 40;
+    expect(repository.writeJournal(playing)).toBe(true);
+    repository.close();
+
+    const next = await open(storage, factory);
+    expect(readCampaignProgress(next.repository.storage, 421).deploymentEdge).toBeUndefined();
+    expect(readCampaignProgress(next.repository.storage, 421).completedMissions).toEqual([0]);
+    expect(readSave(next.repository.storage, 421)?.tick).toBe(40);
+    expect(listSlots(next.repository.storage)).toHaveLength(0);
+  });
+  it("keeps a stored reward when an older legacy envelope omitted it", async () => {
+    const { repository, storage, factory } = await open();
+    const won = state();
+    won.result = "won";
+    expect(await repository.save(won)).toBe("saved");
+    expect(await repository.setDeploymentEdge(421, "airSortie")).toBe(true);
+    const progress = readCampaignProgress(repository.storage, 421);
+    delete progress.deploymentEdge;
+    storage.setItem(campaignKey(421), JSON.stringify({ version: 1, savedAt: 1, progress }));
+    repository.close();
+
+    const next = await open(storage, factory);
+    expect(readCampaignProgress(next.repository.storage, 421).deploymentEdge).toBe("airSortie");
+    expect(listSlots(next.repository.storage)).toHaveLength(0);
+    expect(readSave(next.repository.storage, 421)?.result).toBe("won");
+  });
+  it("still archives a battlefield when legacy campaign progress actually changed", async () => {
+    const { repository, storage, factory } = await open();
+    const playing = state();
+    playing.tick = 10;
+    expect(await repository.save(playing)).toBe("saved");
+    const progress = readCampaignProgress(repository.storage, 421);
+    storage.setItem(campaignKey(421), JSON.stringify({ version: 1, savedAt: Date.now(), progress }));
+    repository.close();
+    const seeded = await open(storage, factory);
+    const changed = readCampaignProgress(seeded.repository.storage, 421);
+    changed.unlockedMission = 2;
+    changed.completedMissions = [0, 1];
+    changed.medals = { ...changed.medals, "0": 2, "1": 1 };
+    storage.setItem(campaignKey(421), JSON.stringify({ version: 1, savedAt: Date.now() + 5_000, progress: changed }));
+    seeded.repository.close();
+
+    const next = await open(storage, factory);
+    expect(readSave(next.repository.storage, 421)?.tick).toBe(10);
+    expect(readCampaignProgress(next.repository.storage, 421)).toMatchObject({
+      unlockedMission: 2,
+      completedMissions: [0, 1],
+      medals: { "0": 2, "1": 1 },
+    });
+    expect(listSlots(next.repository.storage).map((slot) => slot.name)).toContain("Recovered legacy progress");
+  });
   it("reports failed legacy writes and exposes reduced reliability", async () => {
     const storage = memoryStorage(); const broken = { ...storage, setItem() { throw new Error("quota"); } };
     const repository = new SaveRepository(broken, undefined); repositories.push(repository); await repository.initialize();

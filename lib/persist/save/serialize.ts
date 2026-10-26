@@ -3,6 +3,7 @@ import { SURFACE_NONE } from "../../types";
 import type { SimState, SurfaceKind, UnitKind } from "../../types";
 import { generateWorld } from "../../gen/world";
 import { expandFog, fogGridHeight, fogGridWidth } from "../../sim/fog";
+import { ensureRescueReturnTracking } from "../../sim/scenarios/rescueExtraction";
 import { compactDestroyedEntities, compactedState } from "../../sim/world/lifecycle";
 import { isAirUnit, isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
 import {
@@ -251,5 +252,6 @@ function normalizeState(value: unknown): SimState {
       }
     }
   }
+  ensureRescueReturnTracking(s);
   return s;
 }
