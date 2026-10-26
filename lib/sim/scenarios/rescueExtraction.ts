@@ -333,6 +333,28 @@ function returnStrandedUnitToBase(state: SimState, unit: Entity, yard: Entity | 
   }
 }
 
+/**
+ * Older rescue saves counted contact itself as a rescue. Track contacted units
+ * and units that have reached HQ separately so contact cannot complete the mission.
+ */
+export function ensureRescueReturnTracking(state: SimState): void {
+  const runtime = state.runtime;
+  if (!runtime || runtime.kind !== "rescue") return;
+  if (runtime.contactedIds !== undefined && runtime.rescuedIds !== undefined) return;
+  if (!Array.isArray(runtime.targetIds)) return;
+  const contacted = new Set<number>(runtime.contactedIds ?? []);
+  const rescued = new Set<number>((runtime.rescuedIds ?? []).filter((id) => contacted.has(id)));
+  for (const id of runtime.targetIds) {
+    const target = entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0);
+    if (!target || target.neutral) continue;
+    contacted.add(id);
+    if (runtime.zone && inObjectiveZone(target.x, target.y, runtime.zone)) rescued.add(id);
+  }
+  runtime.contactedIds = [...contacted];
+  runtime.rescuedIds = [...rescued];
+  runtime.rescued = rescued.size;
+}
+
 function strandedUnitContacted(target: Entity, rescuers: readonly Entity[], state?: SimState): boolean {
   if (state?.win.kind === "rescue" && entitiesFor(state).some(e => e.owner === 1 && e.hp > 0 && isUnitEntity(e) && UNIT_STATS[e.kind].damage > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 6)) return false;
   // Revealing a stranded unit only makes its blue contact halo visible. The
@@ -348,6 +370,7 @@ export function tickRescueExtraction(state: SimState): void {
   if (yard) {
     runtime.zone = { x: yard.x, y: yard.y };
   }
+  ensureRescueReturnTracking(state);
 
   if (runtime.kind === "rescue" && (runtime.contactedIds !== undefined || runtime.rescuedIds !== undefined)) {
     const contacted = runtime.contactedIds ?? [];
@@ -406,7 +429,6 @@ export function tickRescueExtraction(state: SimState): void {
     if (runtime.kind === "rescue" && strandedUnitContacted(e, rescuers, state)) {
       e.neutral = false;
       returnStrandedUnitToBase(state, e, yard, runtime.zone);
-      runtime.rescued += 1;
     } else if (runtime.kind === "extraction" && strandedUnitContacted(e, rescuers, state)) {
       e.neutral = false;
       runtime.phase = "extraction";

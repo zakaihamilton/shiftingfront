@@ -373,7 +373,9 @@ describe("tactical expansion", () => {
     for (let i = 0; i < 100; i++) tick(state);
 
     expect(stranded.neutral).toBe(false);
-    expect(state.runtime.rescued).toBe(1);
+    expect(state.runtime.contactedIds).toEqual([stranded.id]);
+    expect(state.runtime.rescuedIds).toEqual([]);
+    expect(state.runtime.rescued).toBe(0);
   });
 
   it("does not chain rescue contacts within one tick", () => {
@@ -400,7 +402,9 @@ describe("tactical expansion", () => {
     expect(rescuer.neutral).not.toBe(true);
     expect(first.neutral).toBe(false);
     expect(second.neutral).toBe(true);
-    expect(state.runtime.rescued).toBe(1);
+    expect(state.runtime.contactedIds).toEqual([first.id]);
+    expect(state.runtime.rescuedIds).toEqual([]);
+    expect(state.runtime.rescued).toBe(0);
   });
 
   it("keeps tracked rescue incomplete until contacted units return to HQ", () => {
@@ -589,6 +593,51 @@ describe("tactical expansion", () => {
     expect(restored.runtime?.phase).toBe("extraction");
     expect(restored.runtime?.rescued).toBe(0);
     void rescuer;
+  });
+
+  it("does not complete a legacy rescue on contact", () => {
+    const state = makeFixture({ width: 16, height: 16, win: { kind: "rescue", targetCount: 1, ticks: 500 } });
+    addBuilding(state, 0, "constructionYard", 0, 0);
+    const rescuer = addUnit(state, 0, "infantry", 8, 3);
+    const stranded = addUnit(state, 0, "infantry", 8, 3);
+    stranded.idle = true;
+    stranded.neutral = true;
+    stranded.scenarioRole = "stranded";
+    state.runtime = {
+      kind: "rescue",
+      phase: "active",
+      targetIds: [stranded.id],
+      rescued: 1,
+      required: 1,
+      secondary: [],
+    };
+
+    tick(state);
+
+    expect(stranded.neutral).toBe(false);
+    expect(state.runtime.contactedIds).toEqual([stranded.id]);
+    expect(state.runtime.rescuedIds).toEqual([]);
+    expect(state.runtime.rescued).toBe(0);
+    expect(state.result).toBe("playing");
+    void rescuer;
+
+    const contacted = deserializeState(serializeState({
+      ...state,
+      runtime: {
+        kind: "rescue",
+        phase: "active",
+        targetIds: [stranded.id],
+        zone: { x: 0, y: 0 },
+        rescued: 1,
+        required: 1,
+        secondary: [],
+      },
+    }));
+    const returning = contacted.entities.find((entity) => entity.id === stranded.id);
+    expect(returning?.neutral).toBe(false);
+    expect(contacted.runtime?.contactedIds).toEqual([stranded.id]);
+    expect(contacted.runtime?.rescuedIds).toEqual([]);
+    expect(contacted.runtime?.rescued).toBe(0);
   });
 
   it("keeps extraction assets stationary until a player unit reaches them", () => {
@@ -923,6 +972,8 @@ describe("tactical expansion", () => {
       deadline: 5000,
       rescued: 1,
       required: 2,
+      contactedIds: [rescued.id],
+      rescuedIds: [rescued.id],
       secondary: [],
     };
 
