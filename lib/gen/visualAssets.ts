@@ -176,21 +176,29 @@ export const UNIT_DIRECTION_ART: Record<UnitKind, Record<UnitView, string>> = {
     "back-right": "/art/sprites/sleek-modular/behemoth-back-right-v1.webp",
   },
   scout: {
-    right: "/art/sprites/sleek-modular/scout-right-v1.webp",
-    "front-right": "/art/sprites/sleek-modular/scout-front-right-v1.webp",
-    front: "/art/sprites/sleek-modular/scout-front-v1.webp",
-    "front-left": "/art/sprites/sleek-modular/scout-front-left-v1.webp",
-    left: "/art/sprites/sleek-modular/scout-left-v1.webp",
-    "back-left": "/art/sprites/sleek-modular/scout-back-left-v1.webp",
-    back: "/art/sprites/sleek-modular/scout-back-v1.webp",
-    "back-right": "/art/sprites/sleek-modular/scout-back-right-v1.webp",
+    right: "/art/sprites/sleek-modular/scout-right-v2.webp",
+    "front-right": "/art/sprites/sleek-modular/scout-front-right-v2.webp",
+    front: "/art/sprites/sleek-modular/scout-front-v2.webp",
+    "front-left": "/art/sprites/sleek-modular/scout-front-left-v2.webp",
+    left: "/art/sprites/sleek-modular/scout-left-v2.webp",
+    "back-left": "/art/sprites/sleek-modular/scout-back-left-v2.webp",
+    back: "/art/sprites/sleek-modular/scout-back-v2.webp",
+    "back-right": "/art/sprites/sleek-modular/scout-back-right-v2.webp",
   },
 };
 
-/** Prior Behemoth profiles stay available to clients with cached v1 manifests. */
+/** Previous direction art stays available to clients with cached manifests. */
 export const RETIRED_UNIT_DIRECTION_ART = [
   "/art/sprites/sleek-modular/behemoth-left-v1.webp",
   "/art/sprites/sleek-modular/behemoth-right-v1.webp",
+  "/art/sprites/sleek-modular/scout-back-left-v1.webp",
+  "/art/sprites/sleek-modular/scout-back-right-v1.webp",
+  "/art/sprites/sleek-modular/scout-back-v1.webp",
+  "/art/sprites/sleek-modular/scout-front-left-v1.webp",
+  "/art/sprites/sleek-modular/scout-front-right-v1.webp",
+  "/art/sprites/sleek-modular/scout-front-v1.webp",
+  "/art/sprites/sleek-modular/scout-left-v1.webp",
+  "/art/sprites/sleek-modular/scout-right-v1.webp",
 ] as const;
 
 /** Generated four-frame walk cycles for units with visible legs and feet. */

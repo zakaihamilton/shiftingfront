@@ -7,15 +7,20 @@ export type SmoothGridOptions = {
   blocked?: (x: number, y: number) => boolean;
   /** Multiplier for entering a cell. Omitted terrain costs 1. */
   cellCost?: (x: number, y: number) => number;
+  /**
+   * Tile step already being followed. The first shortcut keeps this heading
+   * when it is one of the two equal-cost legs to the goal.
+   */
+  approach?: Vec2;
 };
 
 /**
  * Replace stair-step detours with a direct grid line.
  *
- * The long leg follows the dominant axis, then one diagonal run finishes the
- * shortcut, so an open route changes direction at most once. A line that is
- * blocked, cuts a corner, or costs more than the original segment is left
- * alone. The result stays on adjacent tiles.
+ * An open shortcut changes direction at most once. Its long leg is the 8-way
+ * heading closest to the destination, unless the unit is already walking the
+ * other equal-cost leg. A line that is blocked, cuts a corner, or costs more
+ * than the original segment is left alone. The result stays on adjacent tiles.
  */
 export function smoothGridPath(
   navigation: StaticNavigation,
@@ -39,10 +44,11 @@ export function smoothGridPath(
   while (index < path.length) {
     let chosen = -1;
     let chosenLine: Vec2[] | undefined;
+    const segmentApproach = smoothed.length === 0 ? options?.approach : undefined;
     for (let probe = path.length - 1; probe > index; probe -= 1) {
       const goal = path[probe]!;
       const budget = segmentCost(anchorX, anchorY, path, index, probe, options?.cellCost);
-      const line = chooseLine(navigation, anchorX, anchorY, goal.x, goal.y, budget, options);
+      const line = chooseLine(navigation, anchorX, anchorY, goal.x, goal.y, budget, options, segmentApproach);
       if (!line) continue;
       chosen = probe;
       chosenLine = line;
@@ -104,15 +110,60 @@ function chooseLine(
   x1: number,
   y1: number,
   budget: number,
-  options?: SmoothGridOptions,
+  options: SmoothGridOptions | undefined,
+  approach: Vec2 | undefined,
 ): Vec2[] | undefined {
-  const grouped = acceptLine(navigation, x0, y0, x1, y1, groupedGridLine(x0, y0, x1, y1), budget, options);
-  if (grouped) return grouped;
-  return acceptLine(navigation, x0, y0, x1, y1, huggingGridLine(x0, y0, x1, y1), budget, options);
+  const heading = headingGroupedGridLine(x0, y0, x1, y1);
+  const alternate = groupedGridLine(x0, y0, x1, y1, !prefersDiagonalLeg(x1 - x0, y1 - y0));
+  const continued = approach ? continuedGroupedGridLine(x0, y0, x1, y1, approach) : undefined;
+  const candidates = continued ? [continued, heading, alternate] : [heading, alternate];
+  for (const candidate of candidates) {
+    const accepted = acceptLine(navigation, x0, y0, x1, y1, candidate, budget, options);
+    if (accepted) return accepted;
+  }
+  return undefined;
 }
 
-/** Dominant axis first, then the diagonal remainder. At most one turn. */
-export function groupedGridLine(x0: number, y0: number, x1: number, y1: number): Vec2[] {
+/** Tan of 22.5°. A shallower angle is closer to the cardinal leg than the diagonal. */
+const DIAGONAL_HEADING_RATIO = Math.SQRT2 - 1;
+
+function prefersDiagonalLeg(dx: number, dy: number): boolean {
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+  if (adx === 0 || ady === 0) return false;
+  return Math.min(adx, ady) > Math.max(adx, ady) * DIAGONAL_HEADING_RATIO;
+}
+
+/**
+ * One turn, with the longer run on the 8-way heading closest to the goal.
+ * A unit ordered mostly east walks east, then turns once for the diagonal.
+ */
+function headingGroupedGridLine(x0: number, y0: number, x1: number, y1: number): Vec2[] {
+  return groupedGridLine(x0, y0, x1, y1, prefersDiagonalLeg(x1 - x0, y1 - y0));
+}
+
+/**
+ * One turn that starts with the step the unit is already taking, when that
+ * step is one of the two equal-cost legs. Otherwise there is no continuation.
+ */
+function continuedGroupedGridLine(x0: number, y0: number, x1: number, y1: number, approach: Vec2): Vec2[] | undefined {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const sx = Math.sign(dx);
+  const sy = Math.sign(dy);
+  const diagonal = approach.x === sx && approach.y === sy && sx !== 0 && sy !== 0;
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+  const cardinal = adx >= ady
+    ? approach.x === sx && approach.y === 0 && sx !== 0
+    : approach.x === 0 && approach.y === sy && sy !== 0;
+  if (!diagonal && !cardinal) return undefined;
+  if (adx === 0 || ady === 0) return groupedGridLine(x0, y0, x1, y1, false);
+  return groupedGridLine(x0, y0, x1, y1, diagonal);
+}
+
+/** One turn: either the diagonal run or the straight cardinal run comes first. */
+export function groupedGridLine(x0: number, y0: number, x1: number, y1: number, diagonalFirst = false): Vec2[] {
   const sx = Math.sign(x1 - x0);
   const sy = Math.sign(y1 - y0);
   const dx = Math.abs(x1 - x0);
@@ -127,34 +178,16 @@ export function groupedGridLine(x0: number, y0: number, x1: number, y1: number):
       line.push({ x, y });
     }
   };
-  if (dx >= dy) push(sx, 0, dx - dy);
-  else push(0, sy, dy - dx);
-  push(sx, sy, Math.min(dx, dy));
-  return line;
-}
-
-/** Adjacent steps that stay beside the geometric line, including diagonals. */
-export function huggingGridLine(x0: number, y0: number, x1: number, y1: number): Vec2[] {
-  const line: Vec2[] = [];
-  let x = x0;
-  let y = y0;
-  const dx = Math.abs(x1 - x0);
-  const dy = Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : x0 > x1 ? -1 : 0;
-  const sy = y0 < y1 ? 1 : y0 > y1 ? -1 : 0;
-  let err = dx - dy;
-  const limit = dx + dy + 1;
-  for (let guard = 0; guard < limit && (x !== x1 || y !== y1); guard += 1) {
-    const e2 = 2 * err;
-    if (e2 > -dy) {
-      err -= dy;
-      x += sx;
-    }
-    if (e2 < dx) {
-      err += dx;
-      y += sy;
-    }
-    line.push({ x, y });
+  const cardinalCount = Math.abs(dx - dy);
+  const diagonalCount = Math.min(dx, dy);
+  const cardinalX = dx >= dy ? sx : 0;
+  const cardinalY = dx >= dy ? 0 : sy;
+  if (diagonalFirst) {
+    push(sx, sy, diagonalCount);
+    push(cardinalX, cardinalY, cardinalCount);
+  } else {
+    push(cardinalX, cardinalY, cardinalCount);
+    push(sx, sy, diagonalCount);
   }
   return line;
 }

@@ -484,7 +484,7 @@ test("launches a seeded campaign from menu to battlefield", async ({ page }) => 
   await openBriefing(page);
   await expect(page.getByTestId("mission-objectives")).toBeVisible();
   await expect(page.getByTestId("mission-objectives")).toContainText(/command hq/i);
-  await expect(page.getByTestId("mission-objectives")).toContainText("10 min");
+  await expect(page.getByTestId("mission-objectives")).toContainText("15 min");
 
   await page.getByRole("button", { name: "Launch" }).click();
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0/);
@@ -492,7 +492,7 @@ test("launches a seeded campaign from menu to battlefield", async ({ page }) => 
   await expect(page.getByTestId("seed")).toContainText("Seed 0421");
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
   await expect(page.getByTestId("credits")).toBeVisible();
-  await expect(page.getByTestId("time-remaining")).toHaveText(/Time remaining (?:09|10):\d{2}/);
+  await expect(page.getByTestId("time-remaining")).toHaveText(/Time remaining (?:14|15):\d{2}/);
 });
 
 test("keeps battlefield entities and hover tooltips visible after water effects", async ({ page }) => {
@@ -630,7 +630,7 @@ test("opens the operations map and launches an available mission", async ({ page
   await page.getByTestId("mission-card-0").click();
   await expect(page.getByTestId("mission-detail")).toContainText("Primary requirements");
   await expect(page.getByTestId("mission-detail")).toContainText("Time limit");
-  await expect(page.getByTestId("mission-detail")).toContainText("10 min");
+  await expect(page.getByTestId("mission-detail")).toContainText("15 min");
   await page.getByTestId("launch-selected-mission").click();
   await expect(page).toHaveURL(/\/briefing\?seed=0421&mission=0/);
 });

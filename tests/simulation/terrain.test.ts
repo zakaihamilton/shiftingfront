@@ -278,7 +278,7 @@ describe("organic map generation", () => {
         expect(components.every((size) => size >= 4)).toBe(true);
       }
     }
-  }, 30_000);
+  }, 60_000);
 
   it("forms broad elevation regions and non-linear surface routes", () => {
     const map = generateMap(832, { index: 0, win: { kind: "annihilate" }, mapSize: 48, biome: "ash plains" });

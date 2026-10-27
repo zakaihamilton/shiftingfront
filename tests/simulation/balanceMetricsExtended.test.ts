@@ -413,6 +413,24 @@ describe("checkArchetypeBalance", () => {
     expect(failures).toHaveLength(8);
   });
 
+  it("allows seven of eight rush hold-the-line wins and rejects eight of eight", () => {
+    const seven = Array.from({ length: 8 }, (_, index) => makeRecord({
+      strategy: "rush",
+      kind: "holdTheLine",
+      result: index === 0 ? "lost" : "won",
+    }));
+    expect(checkArchetypeBalance(summarizeBalance(seven), seven, ["rush"]).passed).toBe(true);
+
+    const eight = Array.from({ length: 8 }, () => makeRecord({
+      strategy: "rush",
+      kind: "holdTheLine",
+      result: "won",
+    }));
+    const result = checkArchetypeBalance(summarizeBalance(eight), eight, ["rush"]);
+    expect(result.passed).toBe(false);
+    expect(result.failures.join(" ")).toContain("exceeds 87.5%");
+  });
+
   it("does not cap an autonomous escort objective for an archetype", () => {
     const records = Array.from({ length: 8 }, () => makeRecord({
       strategy: "greed",

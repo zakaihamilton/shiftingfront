@@ -15,7 +15,18 @@ export const MINIMAP_POWER_OFF_MS = 640;
 type RadarPhase = "off" | "powering-on" | "on" | "powering-off";
 
 const ONLINE_LABEL = "Minimap. Click or drag to look around. Press H to jump to your base.";
-const OFFLINE_LABEL = "Minimap offline. Build a Radar to restore the picture.";
+const OFFLINE_COPY = {
+  radar: {
+    label: "Minimap offline. Build a Radar to restore the picture.",
+    caption: "Radar offline",
+  },
+  power: {
+    label: "Minimap offline. Restore power to bring the picture back.",
+    caption: "Low power",
+  },
+} as const;
+
+export type MinimapOfflineCause = keyof typeof OFFLINE_COPY;
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
@@ -32,6 +43,7 @@ export function MinimapFrame({
   mapWidth,
   mapHeight,
   powered,
+  offlineCause = "radar",
 }: {
   canvasRef: Ref<HTMLCanvasElement>;
   onPointerDown: PointerEventHandler<HTMLCanvasElement>;
@@ -42,6 +54,7 @@ export function MinimapFrame({
   mapWidth: number;
   mapHeight: number;
   powered: boolean;
+  offlineCause?: MinimapOfflineCause;
 }) {
   const [phase, setPhase] = useState<RadarPhase>(powered ? "on" : "off");
   const [seenPower, setSeenPower] = useState(powered);
@@ -63,7 +76,8 @@ export function MinimapFrame({
   }, [phase]);
 
   const interactive = phase === "on" || phase === "powering-on";
-  const label = interactive ? ONLINE_LABEL : OFFLINE_LABEL;
+  const offline = OFFLINE_COPY[offlineCause];
+  const label = interactive ? ONLINE_LABEL : offline.label;
   const showOffline = phase === "off" || phase === "powering-off";
   const mapRect = minimapMapRect(224, 160, mapWidth, mapHeight);
   const pingStyle = ping ? {
@@ -80,6 +94,7 @@ export function MinimapFrame({
       className={styles.host}
       data-testid="minimap-frame"
       data-power={phase}
+      data-offline-cause={interactive ? undefined : offlineCause}
       data-tooltip={label}
       data-shortcut={SHORTCUT.home}
     >
@@ -116,7 +131,7 @@ export function MinimapFrame({
           </div>
           <div className={styles.beam} data-power={phase} aria-hidden />
           <div className={styles.snow} data-power={phase} aria-hidden />
-          <p className={styles.offline} data-power={phase} hidden={!showOffline}>Radar offline</p>
+          <p className={styles.offline} data-power={phase} hidden={!showOffline}>{offline.caption}</p>
         </div>
       </div>
     </div>

@@ -19,6 +19,11 @@ export type FindPathOptions = {
   ignoreId?: number;
   occupancy?: Uint8Array;
   mobility?: NavigationMobility;
+  /**
+   * Tile step the unit just took. Equal-cost routes keep this heading when it
+   * still belongs on the way to the goal, instead of turning onto a weave.
+   */
+  approach?: Vec2;
 };
 
 type SearchBuffers = {
@@ -78,6 +83,30 @@ function heuristic(x: number, y: number, gx: number, gy: number): number {
   const dy = Math.abs(y - gy);
   const diagonal = Math.min(dx, dy);
   return diagonal * Math.SQRT2 + (Math.max(dx, dy) - diagonal);
+}
+
+function unitApproach(step: Vec2 | undefined): Vec2 | undefined {
+  if (!step || !Number.isInteger(step.x) || !Number.isInteger(step.y)) return undefined;
+  if (Math.max(Math.abs(step.x), Math.abs(step.y)) !== 1) return undefined;
+  return { x: step.x, y: step.y };
+}
+
+function incomingStep(
+  parent: Int32Array,
+  key: number,
+  width: number,
+  startKey: number,
+  approach: Vec2 | undefined,
+): Vec2 | undefined {
+  const previous = parent[key] ?? -1;
+  if (previous >= 0) {
+    return {
+      x: (key % width) - (previous % width),
+      y: Math.floor(key / width) - Math.floor(previous / width),
+    };
+  }
+  if (key === startKey && approach) return approach;
+  return undefined;
 }
 
 /** How directly the step from parent to node points at the goal. */
@@ -194,8 +223,9 @@ export function findPathDetailed(
   const heights = navigation.heights;
   const mobility = opts?.mobility ?? navigationMobilityFor(source);
   const vehicleMovementCosts = mobility === "vehicle" ? vehicleMovementCostsFor(state) : undefined;
+  const approach = unitApproach(opts?.approach);
   const cacheKey = !avoidUnits
-    ? `${mobility}:${sx},${sy}:${gx},${gy}:${maxNodes}:${sourceFootprint?.w ?? 0},${sourceFootprint?.h ?? 0}:${targetFootprint?.w ?? 0},${targetFootprint?.h ?? 0}`
+    ? `${mobility}:${sx},${sy}:${gx},${gy}:${maxNodes}:${sourceFootprint?.w ?? 0},${sourceFootprint?.h ?? 0}:${targetFootprint?.w ?? 0},${targetFootprint?.h ?? 0}:${approach ? `${approach.x},${approach.y}` : ""}`
     : undefined;
   if (cacheKey) {
     const sharedKey = pathCacheKey(navigation, cacheKey);
@@ -250,6 +280,7 @@ export function findPathDetailed(
       path: smoothGridPath(navigation, { x: sx, y: sy }, path, {
         blocked: occupancy ? (x, y) => unitBlocked(x, y) : undefined,
         cellCost: vehicleMovementCosts ? (x, y) => vehicleMovementCosts[y * w + x] ?? 1 : undefined,
+        approach,
       }),
       status,
     },
@@ -293,6 +324,7 @@ export function findPathDetailed(
 
     if (cx < 0 || cy < 0 || cx >= w || cy >= state.height || walkable[currentKey] !== 1) continue;
     const currentHeight = heights[currentKey] ?? 0;
+    const incoming = incomingStep(parent, currentKey, w, startKey, approach);
     for (const dir of PATH_DIRS) {
       const nx = cx + dir.x;
       const ny = cy + dir.y;
@@ -312,13 +344,21 @@ export function findPathDetailed(
       const tentG = gScore[currentKey]! + navigationStepCost(cx, cy, nx, ny, movementCost);
       const unseen = stamps[neighborKey] !== generation;
       const cheaper = !unseen && tentG < gScore[neighborKey]! - 1e-9;
+      const continues = incoming !== undefined && incoming.x === dir.x && incoming.y === dir.y;
       let straighter = false;
       if (!unseen && !cheaper && Math.abs(tentG - gScore[neighborKey]!) <= 1e-9) {
         const oldParent = parent[neighborKey] ?? -1;
         if (oldParent >= 0) {
           const oldX = oldParent % w;
           const oldY = Math.floor(oldParent / w);
-          straighter = stepAlignment(cx, cy, nx, ny, gx, gy) > stepAlignment(oldX, oldY, nx, ny, gx, gy) + 1e-9;
+          const oldIncoming = incomingStep(parent, oldParent, w, startKey, approach);
+          const oldContinues = oldIncoming !== undefined && nx - oldX === oldIncoming.x && ny - oldY === oldIncoming.y;
+          // Keep walking the way the route is already going. A weave and a
+          // straight run cost the same, so the straight run wins the tie.
+          if (continues && !oldContinues) straighter = true;
+          else if (continues === oldContinues) {
+            straighter = stepAlignment(cx, cy, nx, ny, gx, gy) > stepAlignment(oldX, oldY, nx, ny, gx, gy) + 1e-9;
+          }
         }
       }
       if (unseen || cheaper) {
@@ -326,10 +366,10 @@ export function findPathDetailed(
         gScore[neighborKey] = tentG;
         stamps[neighborKey] = generation;
         const remaining = heuristic(nx, ny, gx, gy) * (mobility === "vehicle" ? 0.85 : 1);
-        // Nudge equal-cost frontiers toward the straight line without
-        // overcoming a real step-cost difference.
-        const cross = Math.abs((nx - sx) * (gy - sy) - (ny - sy) * (gx - sx));
-        open.push(nx, ny, tentG, tentG + remaining + cross * 1e-9, pushSeq++);
+        // A turn is cheaper to postpone than to take, but never enough to
+        // outweigh a real difference in step cost.
+        const turnBias = continues ? 0 : 1e-8;
+        open.push(nx, ny, tentG, tentG + remaining + turnBias, pushSeq++);
       } else if (straighter) {
         parent[neighborKey] = currentKey;
       }

@@ -6,6 +6,7 @@ import {
   CONVOY_STAGING_TICKS,
   CONVOY_COMPLETION_BUFFER_MINUTES,
   CONVOY_COMPLETION_BUFFER_TICKS,
+  DEADLINE_BONUS_MINUTES,
   DEADLINE_DURATION_MULT,
   formatMissionClockFromTicks,
   formatMissionMinutesFromTicks,
@@ -39,7 +40,7 @@ function clampDeadlineMinutes(minutes: number, minMinutes: number): number {
 }
 
 function activeMissionDurationMinutes(kind: MissionKind, minutes: number): number {
-  const scaled = Math.round(minutes * DEADLINE_DURATION_MULT);
+  const scaled = Math.round(minutes * DEADLINE_DURATION_MULT) + DEADLINE_BONUS_MINUTES;
   if (kind === "escort" || kind === "rescue") return clampDeadlineMinutes(scaled - 1, MIN_DEADLINE_MINUTES);
   if (kind === "sabotage") return clampDeadlineMinutes(scaled + 3, MIN_SABOTAGE_MINUTES);
   if (kind === "extraction") return clampDeadlineMinutes(scaled, MIN_DEADLINE_MINUTES);

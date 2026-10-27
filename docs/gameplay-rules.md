@@ -21,10 +21,12 @@ patrols must be cleared before stranded units can be contacted, with two guards
 per target.
 
 Deadline generation uses a 5–12 minute base curve followed by the existing
-scenario allowances. These allowances can produce longer deadlines; they are
-not minimum victory times. Survival duration retains the legacy curve because
-shorter trials failed the rush-army acceptance gate. Untimed objectives remain
-untimed. No minimum completion time or new defeat condition was introduced.
+scenario allowances, then five extra minutes on every finish-before-time
+mission. Those missions are escort, sabotage, rescue, and extraction. The
+extra time is not a minimum victory time. Survival duration retains the legacy
+curve because shorter trials failed the rush-army acceptance gate. Untimed
+objectives remain untimed. No minimum completion time or new defeat condition
+was introduced.
 
 ## Optional challenges
 

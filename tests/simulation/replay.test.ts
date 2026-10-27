@@ -52,10 +52,11 @@ describe("simulation replay", () => {
   });
 
   it("reports terminal loss, scheduled rejection, and the emitted events", () => {
+    const deadline = createMission({ seed: 0, missionIndex: 0 }).runtime?.deadline ?? 0;
     const result = runReplay({
       seed: 0,
       missionIndex: 0,
-      maxTicks: 8_000,
+      maxTicks: deadline + 1,
       orders: [{
         tick: 0,
         command: { type: "build", building: "constructionYard", x: 0, y: 0 },
@@ -67,5 +68,5 @@ describe("simulation replay", () => {
     expect(result.commandRejections).toBe(1);
     expect(result.events).toContainEqual({ type: "commandRejected", reason: "invalid building" });
     expect(result.events).toContainEqual({ type: "lost" });
-  }, 30_000);
+  }, 45_000);
 });

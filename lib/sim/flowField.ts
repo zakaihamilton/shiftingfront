@@ -5,6 +5,7 @@ import {
   navigationStepAllowed,
   PATH_DIRS,
   reversesPreviousStep,
+  stepFromPreviousCell,
 } from "./navigation/grid";
 import { MinHeap } from "./navigation/heap";
 import { vehicleMovementCostsFor, type NavigationMobility } from "./terrainRules";
@@ -285,6 +286,8 @@ function occupancyAwareFlowStep(field: FlowField, x: number, y: number, opts: Fl
   let best: Vec2 | undefined;
   let bestTier = 99;
   let bestDistance = currentDistance;
+  let bestContinues = false;
+  const previous = stepFromPreviousCell(field.width, cx, cy, opts.previousCell);
 
   for (const direction of PATH_DIRS) {
     const nx = cx + direction.x;
@@ -304,10 +307,15 @@ function occupancyAwareFlowStep(field: FlowField, x: number, y: number, opts: Fl
     else if (free && allowNonImproving) tier = 1;
     else if (distance < currentDistance) tier = 2;
     else continue;
+    const continues = previous !== undefined && direction.x === previous.x && direction.y === previous.y;
 
-    if (tier < bestTier || (tier === bestTier && distance < bestDistance)) {
+    const betterTier = tier < bestTier;
+    const betterDistance = tier === bestTier && distance < bestDistance - 1e-9;
+    const sameDistance = tier === bestTier && Math.abs(distance - bestDistance) <= 1e-9;
+    if (betterTier || betterDistance || (sameDistance && continues && !bestContinues)) {
       bestTier = tier;
       bestDistance = distance;
+      bestContinues = continues;
       best = { x: nx, y: ny };
     }
   }
