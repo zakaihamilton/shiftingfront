@@ -15,18 +15,26 @@ export function BriefingObjectives({
 }) {
   return (
     <section className={styles.section} data-testid="mission-objectives">
-      <ConsoleLabel>Mission objectives</ConsoleLabel>
-      {doctrineNote ? <p className={styles.note} data-testid="doctrine-note">{doctrineNote}</p> : null}
-      {groundNote ? <p className={styles.note} data-testid="ground-note">{groundNote}</p> : null}
-      {proficiencyNote ? <p className={styles.note} data-testid="proficiency-note">{proficiencyNote}</p> : null}
-      <ol className={styles.list}>
-        {objectives.map((obj, i) => (
-          <li key={obj.id} className={styles.item}>
-            <span className={styles.index}>{String(i + 1).padStart(2, "0")}</span>
-            <span>{obj.text}</span>
-          </li>
-        ))}
-      </ol>
+      <details open className={styles.details}>
+        <summary className={styles.summary}>
+          <ConsoleLabel as="span">Mission objectives</ConsoleLabel>
+        </summary>
+        <div className={styles.content}>
+          {doctrineNote ? <p className={styles.note} data-testid="doctrine-note">{doctrineNote}</p> : null}
+          {groundNote ? <p className={styles.note} data-testid="ground-note">{groundNote}</p> : null}
+          {proficiencyNote ? <p className={styles.note} data-testid="proficiency-note">{proficiencyNote}</p> : null}
+          <div className={styles.scrollArea}>
+            <ol className={styles.list}>
+              {objectives.map((obj, i) => (
+                <li key={obj.id} className={styles.item}>
+                  <span className={styles.index}>{String(i + 1).padStart(2, "0")}</span>
+                  <span>{obj.text}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </details>
     </section>
   );
 }
