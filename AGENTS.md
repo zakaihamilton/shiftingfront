@@ -21,17 +21,10 @@ pnpm 10.33.0 is pinned in `package.json`. Use Node `24.22.1` from `.nvmrc`; `pac
 
 Environment install is `pnpm install --frozen-lockfile` plus `pnpm exec playwright install --with-deps chromium webkit`. Start launches `pnpm dev --hostname 0.0.0.0 --port 3000`; do not reinstall dependencies in start.
 
-Standard commands (defined in `package.json`, don't duplicate — reference there):
-
-- `pnpm dev` — Next.js dev server on port 3000 (this is the app; run it to test the UI).
-- `pnpm test` — Vitest unit suite, headless, no browser needed (hundreds of tests; check the run output for the current count).
-- `pnpm build` — production build.
-- `pnpm test:e2e` — Playwright. Its `webServer` runs `pnpm build && PORT=3100 ... pnpm start`, so it builds and serves its own production server on port 3100 (independent of the port-3000 dev server); it needs the Chromium installed during environment install.
-- `pnpm inspect <seed>` / `pnpm sim --seed <seed> --mission <n> --ticks <n>` — headless CLIs via `tsx`.
+Standard scripts and definitions are in `package.json`. The Playwright `webServer` for `pnpm test:e2e` builds and serves its own production app on port 3100, independent of the port-3000 dev server, and requires Chromium.
 
 Non-obvious caveats:
 
-- `pnpm lint` is clean on a checkout.
 - Welcome **TUTORIAL** opens `/tutorial` on seed `0000` with no time limit. Briefing/play smoke tests in `tests/e2e/smoke.spec.ts` launch a campaign from New Game → briefing; a separate smoke case covers menu → **TUTORIAL** → Exit Training → menu.
 - To manually reach the battlefield: New Game → enter a seed (or use ROLL) → Launch → briefing → Launch. The seed field is split into individual digit inputs, so ROLL is the most reliable way to seed it in automated/browser testing.
 - Open the Cloud Agent browser at `http://localhost:3000` (not `http://127.0.0.1:3000`). Next.js HMR origin checks can leave 127.0.0.1 unhydrated.
