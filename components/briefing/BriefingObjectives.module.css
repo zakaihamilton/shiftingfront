@@ -8,6 +8,42 @@
   border-top: 2px solid var(--chrome-gold-dim);
 }
 
+.details {
+  display: block;
+}
+
+.summary {
+  cursor: pointer;
+  display: list-item;
+  user-select: none;
+}
+
+.summary::marker {
+  color: var(--chrome-gold);
+}
+
+.summary:focus-visible {
+  outline: 2px solid var(--chrome-focus);
+  outline-offset: 2px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollArea {
+  max-height: clamp(8rem, 20vh, 14rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  margin-top: 0.5rem;
+  padding-right: 0.15rem;
+}
+
 .note {
   margin: 0.55rem 0 0;
   color: var(--chrome-gold);
@@ -19,7 +55,7 @@
 }
 
 .list {
-  margin: 0.5rem 0 0;
+  margin: 0;
   padding: 0;
   display: grid;
   gap: 0.35rem;
@@ -44,6 +80,10 @@
 @media (max-width: 1023px) {
   .section {
     padding: 0.55rem;
+  }
+
+  .scrollArea {
+    max-height: 10rem;
   }
 
   .item {
