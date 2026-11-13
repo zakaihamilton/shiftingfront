@@ -43,7 +43,7 @@ async function normalized(s, b, scale, anchor, destination, name, size=512) {
   if(left<0||top<0||left+w>size||top+h>size) throw new Error(`${name}: part exceeds calibrated canvas (${left},${top},${w},${h})`);
   const file=`${root}/${name}-v1.webp`;
   await sharp({create:{width:size,height:size,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).composite([{input:image,left,top}]).webp({quality:88,alphaQuality:100}).toFile(file);
-  return { source:"/"+file.replace(/^public\//,""), left,top,w,h };
+  return { source:`/${file.replace(/^public\//,"")}`, left,top,w,h };
 }
 
 for(let index=0;index<2;index++) {
@@ -115,11 +115,11 @@ for(let k=0;k<3;k++) {
         // Measure the planted feet, not an outstretched weapon, for the horizontal anchor.
         const feet=bounds(c.s,c.b.left,c.b.top+Math.floor(c.b.height*0.88),c.b.left+c.b.width,c.b.top+c.b.height);
         const file=await normalized(c.s,c.b,scale,[feet.left+feet.width/2,c.b.top+c.b.height],[256,500],`${kind}-${view}-${action}-${c.frame}`);
-        composites.push({input:await sharp("public"+file.source).toBuffer(),left:(c.frame%2)*512,top:Math.floor(c.frame/2)*512});
+        composites.push({input:await sharp(`public${file.source}`).toBuffer(),left:(c.frame%2)*512,top:Math.floor(c.frame/2)*512});
       }
       const path=`${root}/${kind}-${view}-${action}-v1.webp`;
       await sharp({create:{width:1024,height:1024,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).composite(composites).webp({quality:88,alphaQuality:100}).toFile(path);
-      byPose[action][view]="/"+path.replace(/^public\//,"");
+      byPose[action][view]=`/${path.replace(/^public\//,"")}`;
     }
   }
   manifest.poses[kind]=byPose;
@@ -130,7 +130,7 @@ if(inputs[6]) {
     const cells=Array.from({length:4},(_,f)=>bounds(correction,
       Math.floor(f%2*correction.width/2),Math.floor(Math.floor(f/2)*correction.height/2),
       Math.floor((f%2+1)*correction.width/2),Math.floor((Math.floor(f/2)+1)*correction.height/2)));
-    const {data,info}=await sharp("public"+manifest.poses[kind].idle[view]).extract({left:0,top:0,width:512,height:512}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    const {data,info}=await sharp(`public${manifest.poses[kind].idle[view]}`).extract({left:0,top:0,width:512,height:512}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
     const idle={data,width:info.width,height:info.height};
     const idleBounds=bounds(idle,0,0,512,512);
     let scale=idleBounds.height/Math.max(...cells.map(b=>b.height));
@@ -139,13 +139,13 @@ if(inputs[6]) {
     for(let f=0;f<4;f++){
       const b=cells[f],feet=bounds(correction,b.left,b.top+Math.floor(b.height*0.88),b.left+b.width,b.top+b.height);
       const part=await normalized(correction,b,scale,[feet.left+feet.width/2,b.top+b.height],[256,500],`${kind}-${view}-fire-${f}`);
-      frames.push({input:await sharp("public"+part.source).toBuffer(),left:f%2*512,top:Math.floor(f/2)*512});
+      frames.push({input:await sharp(`public${part.source}`).toBuffer(),left:f%2*512,top:Math.floor(f/2)*512});
     }
-    await sharp({create:{width:1024,height:1024,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).composite(frames).webp({quality:88,alphaQuality:100}).toFile("public"+manifest.poses[kind].fire[view]);
+    await sharp({create:{width:1024,height:1024,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).composite(frames).webp({quality:88,alphaQuality:100}).toFile(`public${manifest.poses[kind].fire[view]}`);
   }
 }
 // Individual temporary frames are retained only during export, never shipped.
 const {readdir,unlink}=await import("node:fs/promises");
 for(const file of await readdir(root))if(/-(idle|fire|treat)-[0-3]-v1\.webp$/.test(file))await unlink(`${root}/${file}`);
-await writeFile("lib/gen/unitAnimationManifest.json",JSON.stringify(manifest,null,2)+"\n");
+await writeFile("lib/gen/unitAnimationManifest.json",`${JSON.stringify(manifest,null,2)}\n`);
 console.log("Exported calibrated unit animation assets and manifest");

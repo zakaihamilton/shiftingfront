@@ -57,7 +57,7 @@ export type AssetRouteContext = { params: Promise<{ id: string }> };
 export function withAssetRoute(
   handler: (asset: CatalogAsset, request: Request) => Response | Promise<Response>,
 ) {
-  return function GET(request: Request, { params }: AssetRouteContext) {
+  return function assetGet(request: Request, { params }: AssetRouteContext) {
     return params.then((p) => {
       const { asset, errorResponse } = resolveAssetParam(p.id);
       if (!asset || errorResponse) return errorResponse;

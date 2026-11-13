@@ -9,7 +9,7 @@ if (configuredPath && !existsSync(configuredPath)) {
 }
 
 async function main() {
-  let browser;
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
   try {
     browser = await chromium.launch({
       headless: true,

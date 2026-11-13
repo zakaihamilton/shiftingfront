@@ -65,7 +65,14 @@ export function TutorialOverlay({
         </div>
         <span className={styles.progressLabel}>Step {step} / {TUTORIAL_STAGES.length}</span>
       </div>
-      <div className={styles.progress} aria-label={`Training progress: step ${step} of ${TUTORIAL_STAGES.length}`}>
+      <div
+        className={styles.progress}
+        role="progressbar"
+        aria-label={`Training progress: step ${step} of ${TUTORIAL_STAGES.length}`}
+        aria-valuemin={1}
+        aria-valuemax={TUTORIAL_STAGES.length}
+        aria-valuenow={step}
+      >
         {TUTORIAL_STAGES.map((item, index) => <span key={item} className={index <= stageIndex ? styles.progressActive : styles.progressPending} aria-hidden="true" />)}
       </div>
       <div className={styles.objective}>

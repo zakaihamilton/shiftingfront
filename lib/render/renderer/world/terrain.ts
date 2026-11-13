@@ -2,7 +2,7 @@ import { drawRenderCanvas, prepareRenderContext } from "../../canvasViewport";
 import { footprintOf } from "../../../catalog";
 import type { SimState } from "../../../types";
 import { animClock } from "../../anim";
-import { type Camera } from "../../../iso";
+import type { Camera } from "../../../iso";
 import { scrollLayerBlitOffset, scrollLayerNeedsRebuild, scrollLayerPaintCamera, terrainScrollPad } from "../../scrollLayer";
 import { paintBuildingPlates, paintTerrainWorld } from "../../terrainPaint";
 import { paintOreGlints, paintTerrainAtmosphere, paintTerrainWeather, paintWaterFx } from "../../terrainWeather";

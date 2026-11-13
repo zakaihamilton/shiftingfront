@@ -40,7 +40,7 @@ function parseArg(name: string, fallback: string): string {
     if (arg === `--${name}` && i + 1 < process.argv.length) {
       return process.argv[i + 1]!;
     }
-    if (arg && arg.startsWith(prefix)) {
+    if (arg?.startsWith(prefix)) {
       return arg.slice(prefix.length);
     }
   }

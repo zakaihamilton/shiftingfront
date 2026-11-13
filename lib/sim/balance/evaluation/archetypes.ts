@@ -58,17 +58,17 @@ export function archetypeFailureRecords(
   const failures = new Set<BalanceRecord>();
   for (const strategy of strategiesToCheck) {
     const strategyRecords = records.filter((record) => record.strategy === strategy);
-    strategyRecords.filter(isArchetypeFailure).forEach((record) => failures.add(record));
+    strategyRecords.filter(isArchetypeFailure).forEach((record) => { failures.add(record); });
     const strategySummary = summary.byStrategy[strategy];
     if (!strategySummary) continue;
     if (strategy === "infantry" || strategy === "vehicles") {
-      if (strategySummary.winRate > 0.90) strategyRecords.forEach((record) => failures.add(record));
+      if (strategySummary.winRate > 0.90) strategyRecords.forEach((record) => { failures.add(record); });
       continue;
     }
     for (const kind of cappedKindsForStrategy(strategy)) {
       const kindSummary = strategySummary.byMissionKind[kind];
       if (kindSummary && kindSummary.samples >= Math.max(4, minKindSamples) && kindSummary.winRate > archetypeWinCap(strategy, kind)) {
-        strategyRecords.filter((record) => record.kind === kind).forEach((record) => failures.add(record));
+        strategyRecords.filter((record) => record.kind === kind).forEach((record) => { failures.add(record); });
       }
     }
   }

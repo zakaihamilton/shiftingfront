@@ -90,7 +90,7 @@ export function useGameCamera({
       const progress = Math.min(1, Math.max(0, (now - startedAt) / durationMs));
       const eased = progress < 0.5
         ? 4 * progress * progress * progress
-        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+        : 1 - (-2 * progress + 2) ** 3 / 2;
       camRef.current.x = startX + (target.x - startX) * eased;
       camRef.current.y = startY + (target.y - startY) * eased;
       clampCamera(camRef.current, bounds);
@@ -104,7 +104,7 @@ export function useGameCamera({
       setPanAvail(next);
     };
     focusAnimationRef.current = requestAnimationFrame(animate);
-  }, [canvasRef, cancelFocusAnimation, focusTile, panAvailRef, setPanAvail, stateRef]);
+  }, [canvasRef, cancelFocusAnimation, focusTile, stateRef]);
 
   const jumpHome = useCallback(() => {
     const current = stateRef.current;
@@ -185,7 +185,7 @@ export function useGameCamera({
       observer?.disconnect();
       window.removeEventListener("resize", syncViewport);
     };
-  }, [camRef, cancelFocusAnimation, canvasRef, enabled, hostRef, panAvailRef, resetCamera, setPanAvail, stateRef]);
+  }, [cancelFocusAnimation, canvasRef, enabled, hostRef, resetCamera, stateRef]);
 
   return {
     camRef,

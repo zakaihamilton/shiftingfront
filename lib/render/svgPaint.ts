@@ -156,7 +156,7 @@ export function paintSvg(ctx: CanvasRenderingContext2D, svg: string): void {
   if (typeof DOMParser === "undefined") return;
   const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
   const root = doc.documentElement;
-  if (!root || root.tagName.toLowerCase() !== "svg") return;
+  if (root?.tagName.toLowerCase() !== "svg") return;
   ctx.save();
   ctx.lineJoin = "miter";
   ctx.lineCap = "square";

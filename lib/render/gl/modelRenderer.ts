@@ -224,10 +224,10 @@ export function draw3dModel(
       let specular = 0;
       if (mask === 7) {
         // Polished chrome / hydraulic rods
-        specular = Math.pow(dotH, 32) * 0.85;
+        specular = dotH ** 32 * 0.85;
       } else if (mask === 1 || mask === 2 || mask === 0 || mask === 5) {
         // Metallic armor and bronze vents
-        specular = Math.pow(dotH, 16) * 0.40;
+        specular = dotH ** 16 * 0.40;
       }
 
       // Height / Crevice Ambient Occlusion

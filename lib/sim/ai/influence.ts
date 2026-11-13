@@ -64,7 +64,10 @@ export function buildInfluenceMap(
 ): InfluenceMap {
   const playersKey = knownPlayersKey(knownPlayers);
   let ownerCache = influenceCache.get(state);
-  if (!ownerCache) influenceCache.set(state, ownerCache = new Map());
+  if (!ownerCache) {
+    ownerCache = new Map();
+    influenceCache.set(state, ownerCache);
+  }
   const cached = ownerCache.get(aiOwner);
   if (cached && cached.knownPlayersKey === playersKey && state.tick - cached.tick < INFLUENCE_CACHE_TICKS) {
     return cached.map;

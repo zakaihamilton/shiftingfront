@@ -50,8 +50,8 @@ export function oreVeinAt(state: AtlasWorld, mapX: number, mapY: number, context
   const seam = fbm(mapX * 0.72, mapY * 0.28, salt + 91);
   const crack = fbm(mapX * 0.31, mapY * 0.64, salt + 140);
   const ridge = Math.max(
-    Math.pow(1 - Math.abs(seam - 0.5) * 2, 2),
-    Math.pow(1 - Math.abs(crack - 0.48) * 2, 3) * 0.65,
+    (1 - Math.abs(seam - 0.5) * 2) ** 2,
+    (1 - Math.abs(crack - 0.48) * 2) ** 3 * 0.65,
   );
   const richness = Math.min(1, Math.max(0, amount / 900));
   return { ridge, intensity: ridge * (0.28 + richness * 0.72) };

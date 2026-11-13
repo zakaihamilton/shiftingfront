@@ -1,21 +1,30 @@
-import { replaceCampaignSave, savedSlotCount } from "./saveRepositoryHelpers";
-import { expect, test, type Locator, type Page } from "@playwright/test";
-import { waitForBattlefield, waitForBattlefieldReady } from "./battlefieldReady";
+import { expect, type Locator, type Page, test } from "@playwright/test";
+import { PLACEABLE, PRODUCIBLE } from "../../components/game/hooks/gameActions";
+import { PREVIEW_CYCLE_MS } from "../../components/shared/ambient/menuBackdropSim/cycle";
 import { BUILDING_KINDS, footprintOf } from "../../lib/catalog";
+import { listGeneratedAssets } from "../../lib/gen/assetCatalog";
 import { TILE_H, tileToScreen } from "../../lib/iso";
+import {
+  CAMPAIGN_PROGRESS_VERSION,
+  campaignKey,
+  freshCampaignProgress,
+} from "../../lib/persist/campaign";
+import {
+  SAVE_CONTENT_VERSION,
+  SAVE_VERSION,
+  SLOT_VERSION,
+  saveKey,
+  slotKey,
+} from "../../lib/persist/save";
+import { SETTINGS_KEY, SETTINGS_VERSION } from "../../lib/persist/settings";
 import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { createMission } from "../../lib/sim/api";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { createTutorialMission } from "../../lib/sim/tutorial";
-import { heightAt } from "../../lib/sim/world";
-import { findBuildSite, spawnBuilding } from "../../lib/sim/world";
-import { listGeneratedAssets } from "../../lib/gen/assetCatalog";
-import { PLACEABLE, PRODUCIBLE } from "../../components/game/hooks/gameActions";
-import { CAMPAIGN_PROGRESS_VERSION, campaignKey, freshCampaignProgress } from "../../lib/persist/campaign";
-import { SAVE_CONTENT_VERSION, SAVE_VERSION, saveKey, SLOT_VERSION, slotKey } from "../../lib/persist/save";
-import { SETTINGS_KEY, SETTINGS_VERSION } from "../../lib/persist/settings";
-import { isBuildingEntity, type Entity, type SimState } from "../../lib/types";
-import { PREVIEW_CYCLE_MS } from "../../components/shared/ambient/menuBackdropSim/cycle";
+import { findBuildSite, heightAt, spawnBuilding } from "../../lib/sim/world";
+import { type Entity, isBuildingEntity, type SimState } from "../../lib/types";
+import { waitForBattlefield, waitForBattlefieldReady } from "./battlefieldReady";
+import { replaceCampaignSave, savedSlotCount } from "./saveRepositoryHelpers";
 
 async function openBriefing(page: Page) {
   await page.goto("/");
@@ -36,7 +45,9 @@ async function deployToBattlefield(page: Page) {
 
 async function deployWithOperationalRadar(page: Page) {
   const state = createMission({ seed: 421, missionIndex: 0 });
-  const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+  const yard = state.entities.find(
+    (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+  );
   expect(yard).toBeDefined();
   const site = findBuildSite(state, "radar", (yard?.x ?? 8) + 4, yard?.y ?? 8, 18, 0);
   expect(site).toBeDefined();
@@ -132,12 +143,16 @@ async function tutorialTargetPoint(
     y: dimensions.height * focusYBias - focusAnchor.y,
     zoom: 1,
   };
-  clampCamera(camera, cameraPanBounds(world.width, world.height, dimensions.width, dimensions.height));
+  clampCamera(
+    camera,
+    cameraPanBounds(world.width, world.height, dimensions.width, dimensions.height),
+  );
 
   const targetX = Math.round(target.x);
   const targetY = Math.round(target.y);
   const screen = tileToScreen(target.x, target.y, camera, heightAt(world, targetX, targetY));
-  const entityBodyOffset = target.kind === "entity" && target.entityClass === "unit" ? TILE_H / 2 - 12 : TILE_H / 2;
+  const entityBodyOffset =
+    target.kind === "entity" && target.entityClass === "unit" ? TILE_H / 2 - 12 : TILE_H / 2;
   const scaleX = bounds.width / dimensions.width;
   const scaleY = bounds.height / dimensions.height;
   return {
@@ -158,7 +173,9 @@ async function clickTutorialTarget(
   let focus = targets[0];
   if (!target || !focus) throw new Error(`Tutorial target ${label} is missing`);
   if (label === "Move destination") {
-    const infantry = world.entities.find((entity) => entity.owner === 0 && entity.kind === "infantry");
+    const infantry = world.entities.find(
+      (entity) => entity.owner === 0 && entity.kind === "infantry",
+    );
     if (infantry) {
       // Selecting Infantry intentionally leaves the camera in place. Use the
       // selected unit as the camera anchor when calculating the destination.
@@ -196,7 +213,9 @@ async function battlefieldEntityGeometry(page: Page, state: SimState, entity: En
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Battlefield canvas has no layout bounds");
 
-  const yard = state.entities.find((candidate) => candidate.owner === 0 && candidate.kind === "constructionYard");
+  const yard = state.entities.find(
+    (candidate) => candidate.owner === 0 && candidate.kind === "constructionYard",
+  );
   if (!yard) throw new Error("Mission fixture has no construction yard");
   const origin = { x: 0, y: 0, zoom: 1 };
   const yardAnchor = tileToScreen(yard.x, yard.y, origin, heightAt(state, yard.x, yard.y));
@@ -205,13 +224,24 @@ async function battlefieldEntityGeometry(page: Page, state: SimState, entity: En
     y: dimensions.height / 3 - yardAnchor.y,
     zoom: 1,
   };
-  clampCamera(camera, cameraPanBounds(state.width, state.height, dimensions.width, dimensions.height));
+  clampCamera(
+    camera,
+    cameraPanBounds(state.width, state.height, dimensions.width, dimensions.height),
+  );
 
   const footprint = isBuildingEntity(entity) ? footprintOf(entity.kind) : undefined;
   const x = footprint ? entity.x + (footprint.w - 1) / 2 : entity.x;
   const y = footprint ? entity.y + (footprint.h - 1) / 2 : entity.y;
-  const screen = tileToScreen(x, y, camera, heightAt(state, Math.round(entity.x), Math.round(entity.y)));
-  const toCss = (value: number, axis: "x" | "y") => bounds[axis] + value * (bounds[axis === "x" ? "width" : "height"] / dimensions[axis === "x" ? "width" : "height"]);
+  const screen = tileToScreen(
+    x,
+    y,
+    camera,
+    heightAt(state, Math.round(entity.x), Math.round(entity.y)),
+  );
+  const toCss = (value: number, axis: "x" | "y") =>
+    bounds[axis] +
+    value *
+      (bounds[axis === "x" ? "width" : "height"] / dimensions[axis === "x" ? "width" : "height"]);
   return {
     bounds,
     dimensions,
@@ -231,24 +261,38 @@ async function canvasInkInScreenRegion(
   region: { x: number; y: number; width: number; height: number },
   scale: { x: number; y: number },
 ): Promise<number> {
-  return canvas.evaluate((element, args) => {
-    const canvasElement = element as HTMLCanvasElement;
-    const context = canvasElement.getContext("2d");
-    if (!context) throw new Error("Canvas context unavailable");
-    const left = Math.max(0, Math.floor(args.region.x * args.scale.x));
-    const top = Math.max(0, Math.floor(args.region.y * args.scale.y));
-    const right = Math.min(canvasElement.width, Math.ceil((args.region.x + args.region.width) * args.scale.x));
-    const bottom = Math.min(canvasElement.height, Math.ceil((args.region.y + args.region.height) * args.scale.y));
-    const data = context.getImageData(left, top, Math.max(0, right - left), Math.max(0, bottom - top)).data;
-    let ink = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const red = data[i] ?? 0;
-      const green = data[i + 1] ?? 0;
-      const blue = data[i + 2] ?? 0;
-      if (red + green + blue > 120) ink += 1;
-    }
-    return ink;
-  }, { region, scale });
+  return canvas.evaluate(
+    (element, args) => {
+      const canvasElement = element as HTMLCanvasElement;
+      const context = canvasElement.getContext("2d");
+      if (!context) throw new Error("Canvas context unavailable");
+      const left = Math.max(0, Math.floor(args.region.x * args.scale.x));
+      const top = Math.max(0, Math.floor(args.region.y * args.scale.y));
+      const right = Math.min(
+        canvasElement.width,
+        Math.ceil((args.region.x + args.region.width) * args.scale.x),
+      );
+      const bottom = Math.min(
+        canvasElement.height,
+        Math.ceil((args.region.y + args.region.height) * args.scale.y),
+      );
+      const data = context.getImageData(
+        left,
+        top,
+        Math.max(0, right - left),
+        Math.max(0, bottom - top),
+      ).data;
+      let ink = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const red = data[i] ?? 0;
+        const green = data[i + 1] ?? 0;
+        const blue = data[i + 2] ?? 0;
+        if (red + green + blue > 120) ink += 1;
+      }
+      return ink;
+    },
+    { region, scale },
+  );
 }
 
 async function goldTooltipPixels(canvas: Locator): Promise<number> {
@@ -262,7 +306,8 @@ async function goldTooltipPixels(canvas: Locator): Promise<number> {
       const red = data[i] ?? 0;
       const green = data[i + 1] ?? 0;
       const blue = data[i + 2] ?? 0;
-      if (red >= 145 && red <= 205 && green >= 130 && green <= 185 && blue >= 75 && blue <= 125) pixels += 1;
+      if (red >= 145 && red <= 205 && green >= 130 && green <= 185 && blue >= 75 && blue <= 125)
+        pixels += 1;
     }
     return pixels;
   });
@@ -275,7 +320,7 @@ async function loadSelectedPauseSlot(page: Page, notice: RegExp) {
   const confirmation = page.getByRole("dialog", { name: "Load mission?" });
   await expect(confirmation).toBeVisible();
   await confirmation.getByRole("button", { name: "Load mission" }).click();
-  await expect(page.getByRole("status")).toContainText(notice);
+  await expect(page.getByRole("status").filter({ hasText: notice })).toContainText(notice);
 }
 
 test("welcome tutorial opens the seed 0000 training range", async ({ page }) => {
@@ -305,7 +350,9 @@ test.describe("Retina battlefield", () => {
     { count: 80, before: 2, after: 1.5 },
     { count: 200, before: 1.5, after: 1 },
   ]) {
-    test(`keeps rendering and picking aligned across repeated ${count}-entity density changes`, async ({ page }) => {
+    test(`keeps rendering and picking aligned across repeated ${count}-entity density changes`, async ({
+      page,
+    }) => {
       // Placing/canceling a foundation crosses the army threshold without
       // reloading the mission, replacing the canvas, or using a debug API.
       const state = makeFixture({ seed: 421, width: 64, height: 64, win: { kind: "annihilate" } });
@@ -316,43 +363,52 @@ test.describe("Retina battlefield", () => {
       const infantry = addUnit(state, 0, "infantry", 29, 33);
       while (state.entities.length < count) {
         const i = state.entities.length;
-        addUnit(state, 0, "infantry", 3 + i % 14, 3 + Math.floor(i / 14)).idle = true;
+        addUnit(state, 0, "infantry", 3 + (i % 14), 3 + Math.floor(i / 14)).idle = true;
       }
       await page.addInitScript(({ key, raw }) => localStorage.setItem(key, raw), {
-        key: saveKey(state.seed), raw: saveEnvelope(state),
+        key: saveKey(state.seed),
+        raw: saveEnvelope(state),
       });
       await page.setViewportSize({ width: 1100, height: 700 });
       await page.goto("/play?seed=0421&mission=0&resume=1");
       await waitForBattlefield(page);
       const canvas = page.getByTestId("battlefield-canvas");
-      await canvas.evaluate(element => element.setAttribute("data-density-test", "same-canvas"));
+      await canvas.evaluate((element) => element.setAttribute("data-density-test", "same-canvas"));
       const { bounds, dimensions, camera } = await battlefieldEntityGeometry(page, state, infantry);
       const cssPoint = (x: number, y: number, offsetY = 0) => {
         const p = tileToScreen(x, y, camera, 0);
         return {
-          x: bounds.x + p.x * bounds.width / dimensions.width,
-          y: bounds.y + (p.y + offsetY) * bounds.height / dimensions.height,
+          x: bounds.x + (p.x * bounds.width) / dimensions.width,
+          y: bounds.y + ((p.y + offsetY) * bounds.height) / dimensions.height,
         };
       };
       const soldier = cssPoint(infantry.x, infantry.y, TILE_H / 2 - 12);
       const site = cssPoint(33, 33, TILE_H / 2);
       const empty = cssPoint(27, 34, TILE_H / 2);
       const ground = tileToScreen(27, 34, camera, 0);
-      const terrainColor = () => canvas.evaluate((element, point) => {
-        const source = element as HTMLCanvasElement;
-        const sample = document.createElement("canvas");
-        sample.width = sample.height = 1;
-        const context = sample.getContext("2d")!;
-        const sx = source.width / source.clientWidth;
-        const sy = source.height / source.clientHeight;
-        context.drawImage(source, point.x * sx, point.y * sy, 16 * sx, 16 * sy, 0, 0, 1, 1);
-        return Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3);
-      }, ground);
+      const terrainColor = () =>
+        canvas.evaluate((element, point) => {
+          const source = element as HTMLCanvasElement;
+          const sample = document.createElement("canvas");
+          sample.width = sample.height = 1;
+          const context = sample.getContext("2d")!;
+          const sx = source.width / source.clientWidth;
+          const sy = source.height / source.clientHeight;
+          context.drawImage(source, point.x * sx, point.y * sy, 16 * sx, 16 * sy, 0, 0, 1, 1);
+          return Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3);
+        }, ground);
       const expectDensity = async (density: number) => {
-        await expect.poll(() => canvas.evaluate(element => {
-          const target = element as HTMLCanvasElement;
-          return { x: target.width / target.clientWidth, y: target.height / target.clientHeight };
-        })).toEqual({ x: density, y: density });
+        await expect
+          .poll(() =>
+            canvas.evaluate((element) => {
+              const target = element as HTMLCanvasElement;
+              return {
+                x: target.width / target.clientWidth,
+                y: target.height / target.clientHeight,
+              };
+            }),
+          )
+          .toEqual({ x: density, y: density });
         await expect(canvas).toHaveAttribute("data-density-test", "same-canvas");
       };
       const expectPicking = async () => {
@@ -369,7 +425,10 @@ test.describe("Retina battlefield", () => {
       const expectTerrain = async () => {
         const color = await terrainColor();
         for (let channel = 0; channel < 3; channel++) {
-          expect(Math.abs(color[channel]! - baseline[channel]!), "terrain survives cache resizing").toBeLessThan(20);
+          expect(
+            Math.abs(color[channel]! - baseline[channel]!),
+            "terrain survives cache resizing",
+          ).toBeLessThan(20);
         }
       };
       for (let cycle = 0; cycle < 3; cycle++) {
@@ -393,10 +452,14 @@ test.describe("Retina battlefield", () => {
     await page.goto("/tutorial");
     await waitForBattlefield(page);
     const canvas = page.getByTestId("battlefield-canvas");
-    await expect.poll(() => canvas.evaluate(element => {
-      const target = element as HTMLCanvasElement;
-      return target.width / target.getBoundingClientRect().width;
-    })).toBeCloseTo(2, 1);
+    await expect
+      .poll(() =>
+        canvas.evaluate((element) => {
+          const target = element as HTMLCanvasElement;
+          return target.width / target.getBoundingClientRect().width;
+        }),
+      )
+      .toBeCloseTo(2, 1);
     await page.waitForTimeout(1000);
     await clickTutorialTarget(page, world, "Friendly Infantry");
     const coach = page.getByTestId("tutorial-overlay");
@@ -438,7 +501,9 @@ test("guides a player through the live tutorial flow", async ({ page }) => {
   await page.getByRole("tab", { name: "Selected" }).click();
   await expect(page.getByTestId("selected-kind")).toHaveText("Infantry");
   await clickTutorialTarget(page, world, "Drill target", "right", ["Control"]);
-  await expect(page.getByTestId("command-notice")).toContainText("order issued.", { timeout: 2000 });
+  await expect(page.getByTestId("command-notice")).toContainText("order issued.", {
+    timeout: 2000,
+  });
   // The drill is intentionally well away from the barracks. Allow the unit
   // to walk the route and finish the passive target before Repair can begin.
   await waitForTutorialStage(coach, "repair", 40000);
@@ -467,7 +532,9 @@ test("fresh battlefield cold opens straight into the playable mission", async ({
   await expect(page.getByTestId("battlefield-canvas")).toBeVisible();
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
   await expect(page.getByRole("button", { name: "Expand mission directive" })).toBeVisible();
-  await expect(page.getByTestId("battlefield-status").locator("[data-directive-expanded]")).toHaveAttribute("data-directive-expanded", "false");
+  await expect(
+    page.getByTestId("battlefield-status").locator("[data-directive-expanded]"),
+  ).toHaveAttribute("data-directive-expanded", "false");
   await expect(page.locator("#mission-directive-body")).toBeHidden();
 });
 
@@ -495,10 +562,14 @@ test("launches a seeded campaign from menu to battlefield", async ({ page }) => 
   await expect(page.getByTestId("time-remaining")).toHaveText(/Time remaining (?:14|15):\d{2}/);
 });
 
-test("keeps battlefield entities and hover tooltips visible after water effects", async ({ page }) => {
+test("keeps battlefield entities and hover tooltips visible after water effects", async ({
+  page,
+}) => {
   const seed = 5348;
   const state = createMission({ seed, missionIndex: 0 });
-  const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+  const yard = state.entities.find(
+    (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+  );
   const unit = state.entities.find((entity) => entity.owner === 0 && entity.class === "unit");
   expect(yard).toBeDefined();
   expect(unit).toBeDefined();
@@ -523,14 +594,22 @@ test("keeps battlefield entities and hover tooltips visible after water effects"
     width: 84,
     height: 68,
   };
-  await expect.poll(() => canvasInkInScreenRegion(canvas, yardRegion, {
-    x: yardGeometry.scaleX,
-    y: yardGeometry.scaleY,
-  })).toBeGreaterThan(80);
-  await expect.poll(() => canvasInkInScreenRegion(canvas, unitRegion, {
-    x: unitGeometry.scaleX,
-    y: unitGeometry.scaleY,
-  })).toBeGreaterThan(20);
+  await expect
+    .poll(() =>
+      canvasInkInScreenRegion(canvas, yardRegion, {
+        x: yardGeometry.scaleX,
+        y: yardGeometry.scaleY,
+      }),
+    )
+    .toBeGreaterThan(80);
+  await expect
+    .poll(() =>
+      canvasInkInScreenRegion(canvas, unitRegion, {
+        x: unitGeometry.scaleX,
+        y: unitGeometry.scaleY,
+      }),
+    )
+    .toBeGreaterThan(20);
 
   const tooltipBefore = await goldTooltipPixels(canvas);
   await page.mouse.move(yardGeometry.pointer.x, yardGeometry.pointer.y);
@@ -539,38 +618,49 @@ test("keeps battlefield entities and hover tooltips visible after water effects"
 
 test("keeps sidebar item portraits sharp across command tabs", async ({ page }) => {
   const state = createMission({ seed: 421, missionIndex: 0 });
-  const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+  const yard = state.entities.find(
+    (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+  );
   expect(yard).toBeDefined();
 
   await deployToBattlefield(page);
   await waitForBattlefield(page);
   const sidebar = page.getByTestId("command-sidebar");
 
-  const portraitMetrics = async () => sidebar.evaluate((element) => [...element.querySelectorAll("button[aria-label*='credits']")].map((button) => {
-    const canvas = button.querySelector("canvas");
-    const art = button.querySelector(".art") ?? button.firstElementChild;
-    if (!(canvas instanceof HTMLCanvasElement) || !art) throw new Error("Sidebar portrait is missing");
-    const cardBounds = button.getBoundingClientRect();
-    const canvasBounds = canvas.getBoundingClientRect();
-    const artBounds = art.getBoundingClientRect();
-    return {
-      card: {
-        left: cardBounds.left,
-        right: cardBounds.right,
-        top: cardBounds.top,
-        bottom: cardBounds.bottom,
-      },
-      backingWidth: canvas.width,
-      backingHeight: canvas.height,
-      cssWidth: canvasBounds.width,
-      cssHeight: canvasBounds.height,
-      artRatio: artBounds.width / artBounds.height,
-      imageRendering: getComputedStyle(canvas).imageRendering,
-    };
-  }));
+  const portraitMetrics = async () =>
+    sidebar.evaluate((element) =>
+      [...element.querySelectorAll("button[aria-label*='credits']")].map((button) => {
+        const canvas = button.querySelector("canvas");
+        const art = button.querySelector(".art") ?? button.firstElementChild;
+        if (!(canvas instanceof HTMLCanvasElement) || !art)
+          throw new Error("Sidebar portrait is missing");
+        const cardBounds = button.getBoundingClientRect();
+        const canvasBounds = canvas.getBoundingClientRect();
+        const artBounds = art.getBoundingClientRect();
+        return {
+          card: {
+            left: cardBounds.left,
+            right: cardBounds.right,
+            top: cardBounds.top,
+            bottom: cardBounds.bottom,
+          },
+          backingWidth: canvas.width,
+          backingHeight: canvas.height,
+          cssWidth: canvasBounds.width,
+          cssHeight: canvasBounds.height,
+          artRatio: artBounds.width / artBounds.height,
+          imageRendering: getComputedStyle(canvas).imageRendering,
+        };
+      }),
+    );
   const sidebarBounds = await sidebar.boundingBox();
   expect(sidebarBounds).not.toBeNull();
-  const expectInsideSidebar = (card: { left: number; right: number; top: number; bottom: number }) => {
+  const expectInsideSidebar = (card: {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  }) => {
     expect(card.left).toBeGreaterThanOrEqual(sidebarBounds!.x);
     expect(card.right).toBeLessThanOrEqual(sidebarBounds!.x + sidebarBounds!.width);
     expect(card.top).toBeGreaterThanOrEqual(sidebarBounds!.y);
@@ -589,8 +679,15 @@ test("keeps sidebar item portraits sharp across command tabs", async ({ page }) 
   await sidebar.getByRole("tab", { name: "Production" }).click();
   const productionPortraits = await portraitMetrics();
   expect(productionPortraits).toHaveLength(PRODUCIBLE.length);
-  productionPortraits.forEach((portrait) => expectInsideSidebar(portrait.card));
-  expect(productionPortraits.every((portrait) => portrait.backingWidth >= portrait.cssWidth && portrait.backingHeight >= portrait.cssHeight)).toBe(true);
+  productionPortraits.forEach((portrait) => {
+    expectInsideSidebar(portrait.card);
+  });
+  expect(
+    productionPortraits.every(
+      (portrait) =>
+        portrait.backingWidth >= portrait.cssWidth && portrait.backingHeight >= portrait.cssHeight,
+    ),
+  ).toBe(true);
 
   await page.keyboard.press("h");
   const geometry = await battlefieldEntityGeometry(page, state, yard!);
@@ -644,7 +741,9 @@ test("returns from the operations map with Escape", async ({ page }) => {
   await expect(page).toHaveURL(/\/$/);
 });
 
-test("keeps the unified menu and operations chrome inside the desktop viewport", async ({ page }) => {
+test("keeps the unified menu and operations chrome inside the desktop viewport", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "SHIFTING" })).toBeVisible();
@@ -653,7 +752,9 @@ test("keeps the unified menu and operations chrome inside the desktop viewport",
   await expect(page.getByTestId("menu-dashboard")).toBeVisible();
   await expect(page.getByTestId("menu-signal-overlay")).toBeAttached();
   await expect(page.getByRole("navigation", { name: "Main menu" })).toBeVisible();
-  await expect(page.getByTestId("menu-dashboard").getByRole("button", { name: "IMPORT SAVE" })).toHaveCount(0);
+  await expect(
+    page.getByTestId("menu-dashboard").getByRole("button", { name: "IMPORT SAVE" }),
+  ).toHaveCount(0);
 
   const expandedLock = page.locator("[data-lock][data-expanded='true']");
   await expect(expandedLock).toHaveCount(1, { timeout: 10_000 });
@@ -664,10 +765,15 @@ test("keeps the unified menu and operations chrome inside the desktop viewport",
   await expect.poll(() => canvasInk(expandedLock.locator("canvas"))).toBeGreaterThan(0);
 
   const nextExpandedLock = page.locator("[data-lock][data-expanded='true']");
-  await expect.poll(async () => {
-    const scenario = await nextExpandedLock.getAttribute("data-scenario");
-    return scenario ?? firstScenario;
-  }, { timeout: PREVIEW_CYCLE_MS + 10_000 }).not.toBe(firstScenario);
+  await expect
+    .poll(
+      async () => {
+        const scenario = await nextExpandedLock.getAttribute("data-scenario");
+        return scenario ?? firstScenario;
+      },
+      { timeout: PREVIEW_CYCLE_MS + 10_000 },
+    )
+    .not.toBe(firstScenario);
   await expect.poll(() => canvasInk(nextExpandedLock.locator("canvas"))).toBeGreaterThan(0);
   const lockBox = await expandedLock.boundingBox();
   const newGameBox = await page.getByRole("button", { name: "NEW GAME" }).boundingBox();
@@ -730,12 +836,16 @@ test("keeps the unified menu and operations chrome inside the desktop viewport",
   for (const lock of collapsedBoxes) {
     const otherBox = await lock.boundingBox();
     expect(otherBox).toBeTruthy();
-    const overlapX = lockBox!.x < otherBox!.x + otherBox!.width && lockBox!.x + lockBox!.width > otherBox!.x;
-    const overlapY = lockBox!.y < otherBox!.y + otherBox!.height && lockBox!.y + lockBox!.height > otherBox!.y;
+    const overlapX =
+      lockBox!.x < otherBox!.x + otherBox!.width && lockBox!.x + lockBox!.width > otherBox!.x;
+    const overlapY =
+      lockBox!.y < otherBox!.y + otherBox!.height && lockBox!.y + lockBox!.height > otherBox!.y;
     expect(overlapX && overlapY).toBe(false);
   }
 
-  const menuOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  const menuOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
   expect(menuOverflow).toBe(false);
 
   await page.getByRole("button", { name: "NEW GAME" }).click();
@@ -753,9 +863,10 @@ test("keeps the unified menu and operations chrome inside the desktop viewport",
     const codeButtons = codePane ? [...codePane.querySelectorAll<HTMLButtonElement>("button")] : [];
     const roll = codeButtons.find((button) => button.textContent?.trim() === "Roll");
     const thisWeek = codeButtons.find((button) => button.textContent?.trim() === "This Week");
-    const copy = codePane?.querySelector<HTMLButtonElement>("[data-testid=\"copy-campaign-link\"]");
+    const copy = codePane?.querySelector<HTMLButtonElement>('[data-testid="copy-campaign-link"]');
     const start = infoPane?.querySelector("button");
-    if (!codePane || !infoPane || !roll || !thisWeek || !copy || !start) throw new Error("Missing campaign pane or action");
+    if (!codePane || !infoPane || !roll || !thisWeek || !copy || !start)
+      throw new Error("Missing campaign pane or action");
     const codeRect = codePane.getBoundingClientRect();
     const infoRect = infoPane.getBoundingClientRect();
     return {
@@ -769,15 +880,21 @@ test("keeps the unified menu and operations chrome inside the desktop viewport",
   expect(campaignLayout.code.right).toBeLessThanOrEqual(campaignLayout.info.left + 1);
   expect(campaignLayout.copyInCodePane).toBe(true);
   expect(campaignLayout.startInInfoPane).toBe(true);
-  expect(Math.max(...campaignLayout.actionHeights) - Math.min(...campaignLayout.actionHeights)).toBeLessThanOrEqual(1);
+  expect(
+    Math.max(...campaignLayout.actionHeights) - Math.min(...campaignLayout.actionHeights),
+  ).toBeLessThanOrEqual(1);
 
-  const deployOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  const deployOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
   expect(deployOverflow).toBe(false);
 
   await page.goto("/campaign?seed=0421");
   await expect(page.getByRole("heading", { name: "Operations map" })).toBeVisible();
 
-  const operationsOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  const operationsOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
   expect(operationsOverflow).toBe(false);
   await expect(page.getByTestId("mission-detail")).toBeVisible();
 });
@@ -816,7 +933,8 @@ test("opens the campaign archive from the main menu", async ({ page }) => {
     let current: Element | null = element;
     while (current) {
       const overflowY = window.getComputedStyle(current).overflowY;
-      if (overflowY === "auto" || overflowY === "scroll") containers.push(current.tagName.toLowerCase());
+      if (overflowY === "auto" || overflowY === "scroll")
+        containers.push(current.tagName.toLowerCase());
       current = current.parentElement;
     }
     return containers;
@@ -831,9 +949,12 @@ test("exports and imports named save slots from the campaign archive", async ({ 
   const state = distinctiveSave();
   const slotId = "abcd1234abcd1234";
   const raw = slotEnvelope(state, "Bridgehead");
-  await page.addInitScript(({ key, raw: slotRaw }) => {
-    localStorage.setItem(key, slotRaw);
-  }, { key: slotKey(slotId), raw });
+  await page.addInitScript(
+    ({ key, raw: slotRaw }) => {
+      localStorage.setItem(key, slotRaw);
+    },
+    { key: slotKey(slotId), raw },
+  );
 
   await page.goto("/load");
   await expect(page.getByRole("button", { name: "Export save slot Bridgehead" })).toBeVisible();
@@ -845,7 +966,11 @@ test("exports and imports named save slots from the campaign archive", async ({ 
   const chooserPromise = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "IMPORT JSON" }).click();
   const chooser = await chooserPromise;
-  await chooser.setFiles({ name: "bridgehead.json", mimeType: "application/json", buffer: Buffer.from(raw) });
+  await chooser.setFiles({
+    name: "bridgehead.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(raw),
+  });
 
   await expect(page.getByRole("button", { name: "Resume Bridgehead" })).toHaveCount(2);
   expect(await savedSlotCount(page)).toBe(2);
@@ -880,7 +1005,9 @@ test("keeps briefing dialogue and battlefield status readable on mobile", async 
     const second = element.children[1]?.getBoundingClientRect();
     return {
       bodyOverflow: document.documentElement.scrollWidth > window.innerWidth,
-      sideBySide: Boolean(first && second && Math.abs(first.top - second.top) <= 1 && second.left >= first.right - 1),
+      sideBySide: Boolean(
+        first && second && Math.abs(first.top - second.top) <= 1 && second.left >= first.right - 1,
+      ),
     };
   });
   expect(statusGeometry.bodyOverflow).toBe(false);
@@ -895,7 +1022,10 @@ test("keeps Asset Bay selection synchronized with category filters", async ({ pa
   await expect(list.getByRole("option")).toHaveCount(listGeneratedAssets().length);
 
   await browser.getByRole("button", { name: "Buildings" }).click();
-  await expect(browser.getByRole("button", { name: "Buildings" })).toHaveAttribute("aria-pressed", "true");
+  await expect(browser.getByRole("button", { name: "Buildings" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(list.getByRole("option")).toHaveCount(BUILDING_KINDS.length);
   await expect(list.locator('[aria-selected="true"]')).toHaveCount(1);
   await expect(page.getByLabel("Command HQ preview")).toBeVisible();
@@ -913,8 +1043,14 @@ test("filters Portrait Lab groups without changing their accessible state", asyn
   await expect(page.getByRole("heading", { name: "Enemy leaders" })).toBeVisible();
 
   await page.getByRole("button", { name: "Commanders" }).click();
-  await expect(page.getByRole("button", { name: "Commanders" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "All roles" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "Commanders" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "All roles" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await expect(page.getByRole("heading", { name: "Commanders" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Advisors" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Enemy leaders" })).toHaveCount(0);
@@ -925,7 +1061,9 @@ test("filters Portrait Lab groups without changing their accessible state", asyn
 
 test("exposes Field Medic production on the first mission", async ({ page }) => {
   const state = createMission({ seed: 421, missionIndex: 0 });
-  const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+  const yard = state.entities.find(
+    (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+  );
   expect(yard).toBeDefined();
   spawnBuilding(state, 0, "barracks", (yard?.x ?? 8) + 4, yard?.y ?? 8);
   await page.addInitScript(({ key, raw }) => localStorage.setItem(key, raw), {
@@ -976,22 +1114,35 @@ test("keeps the tactical radar readable and usable across breakpoints", async ({
   expect(desktopStyles.sweepAnimation).toMatch(/radar-scan/);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect.poll(async () => radar.evaluate((element) => {
-    const sweep = element.parentElement?.querySelector("span");
-    return sweep ? getComputedStyle(sweep).animationName : "none";
-  })).toBe("none");
+  await expect
+    .poll(async () =>
+      radar.evaluate((element) => {
+        const sweep = element.parentElement?.querySelector("span");
+        return sweep ? getComputedStyle(sweep).animationName : "none";
+      }),
+    )
+    .toBe("none");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByTestId("mobile-command-toggle").click();
   const mobileRadar = page.getByTestId("command-sidebar").getByTestId("tactical-radar");
   await expect(mobileRadar).toBeVisible();
-  expect(await mobileRadar.evaluate((element) => element.getBoundingClientRect().width)).toBeGreaterThan(0);
-  await expect.poll(() => mobileRadar.evaluate((element) => {
-    const canvas = element as HTMLCanvasElement;
-    const context = canvas.getContext("2d");
-    if (!context) return 0;
-    return [...context.getImageData(0, 0, canvas.width, canvas.height).data].reduce((sum, channel) => sum + channel, 0);
-  })).toBeGreaterThan(0);
+  expect(
+    await mobileRadar.evaluate((element) => element.getBoundingClientRect().width),
+  ).toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      mobileRadar.evaluate((element) => {
+        const canvas = element as HTMLCanvasElement;
+        const context = canvas.getContext("2d");
+        if (!context) return 0;
+        return [...context.getImageData(0, 0, canvas.width, canvas.height).data].reduce(
+          (sum, channel) => sum + channel,
+          0,
+        );
+      }),
+    )
+    .toBeGreaterThan(0);
 });
 
 test("keeps tactical radar clicks anchored and cleans up interrupted drags", async ({ page }) => {
@@ -1042,7 +1193,9 @@ test("toggles music and sound from welcome options", async ({ page }) => {
   await expect(musicVolume).toHaveValue("0.5");
   await musicVolume.fill("0.3");
   await expect(musicVolume).toHaveValue("0.3");
-  await expect(page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}"), SETTINGS_KEY)).resolves.toMatchObject({
+  await expect(
+    page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}"), SETTINGS_KEY),
+  ).resolves.toMatchObject({
     version: SETTINGS_VERSION,
     settings: { musicVolume: 0.3 },
   });
@@ -1057,7 +1210,9 @@ test("toggles music and sound from welcome options", async ({ page }) => {
   await expect(page.getByRole("slider", { name: "Music volume" })).toHaveValue("0.3");
 });
 
-test("scrolls game options menu correctly without cutting off top at reduced vertical resolution", async ({ page }) => {
+test("scrolls game options menu correctly without cutting off top at reduced vertical resolution", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 480 });
   await page.goto("/");
   await page.getByRole("button", { name: "OPTIONS" }).click();
@@ -1124,7 +1279,9 @@ test("shows briefing portraits before launch", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Replay" })).toBeVisible();
 });
 
-test("does not expose soundtrack download controls from pause and mission result screens", async ({ page }) => {
+test("does not expose soundtrack download controls from pause and mission result screens", async ({
+  page,
+}) => {
   await deployToBattlefield(page);
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
   await page.keyboard.press("Escape");
@@ -1147,7 +1304,7 @@ test("replays the incoming transmission from the start", async ({ page }) => {
   await expect(page.getByTestId("briefing-dialogue")).toHaveAttribute("data-complete", "true");
   const lastLine = page.getByTestId("briefing-line").nth(2);
   await expect(lastLine).toBeVisible();
-  const lastText = (await lastLine.innerText()).trim();
+  const lastText = (await lastLine.textContent())?.trim() ?? "";
   expect(lastText.length).toBeGreaterThan(12);
   await page.getByRole("button", { name: "Replay" }).click();
   await expect(page.getByTestId("briefing-dialogue")).not.toContainText(lastText.slice(-24));
@@ -1169,14 +1326,21 @@ test("pauses and resumes from the battlefield", async ({ page }) => {
 
 test("opens the main pause menu from the command header", async ({ page }) => {
   await deployToBattlefield(page);
-  await page.getByRole("button", { name: "Open Shifting Front pause menu. F1 for controls" }).click();
+  await page
+    .getByRole("button", { name: "Open Shifting Front pause menu. F1 for controls" })
+    .click();
 
   await expect(page.getByRole("dialog", { name: "Game paused" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Game options" })).toHaveCount(0);
 });
 
 function saveEnvelope(state: SimState): string {
-  return JSON.stringify({ version: SAVE_VERSION, contentVersion: SAVE_CONTENT_VERSION, savedAt: Date.now(), state });
+  return JSON.stringify({
+    version: SAVE_VERSION,
+    contentVersion: SAVE_CONTENT_VERSION,
+    savedAt: Date.now(),
+    state,
+  });
 }
 
 function slotEnvelope(state: SimState, name: string): string {
@@ -1200,9 +1364,12 @@ function distinctiveSave(result: SimState["result"] = "playing"): SimState {
 
 test("resumes a seeded save from the menu", async ({ page }) => {
   const state = distinctiveSave();
-  await page.addInitScript(({ key, raw }) => {
-    localStorage.setItem(key, raw);
-  }, { key: saveKey(421), raw: saveEnvelope(state) });
+  await page.addInitScript(
+    ({ key, raw }) => {
+      localStorage.setItem(key, raw);
+    },
+    { key: saveKey(421), raw: saveEnvelope(state) },
+  );
 
   await page.goto("/");
   await page.getByRole("button", { name: "LOAD MISSION" }).click();
@@ -1215,9 +1382,12 @@ test("resumes a seeded save from the menu", async ({ page }) => {
 test("resumes a named save slot from the menu", async ({ page }) => {
   const state = distinctiveSave();
   const slotId = "abcd1234abcd1234";
-  await page.addInitScript(({ key, raw }) => {
-    localStorage.setItem(key, raw);
-  }, { key: slotKey(slotId), raw: slotEnvelope(state, "Bridgehead") });
+  await page.addInitScript(
+    ({ key, raw }) => {
+      localStorage.setItem(key, raw);
+    },
+    { key: slotKey(slotId), raw: slotEnvelope(state, "Bridgehead") },
+  );
 
   await page.goto("/");
   await page.getByRole("button", { name: "LOAD MISSION" }).click();
@@ -1226,13 +1396,18 @@ test("resumes a named save slot from the menu", async ({ page }) => {
   // normalizes the URL so a refresh resumes that restored state.
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0&resume=1/);
   await expect(page.getByTestId("credits")).toHaveText("9,876");
-  await expect(page.evaluate((key) => localStorage.getItem(key), slotKey(slotId))).resolves.not.toBeNull();
+  await expect(
+    page.evaluate((key) => localStorage.getItem(key), slotKey(slotId)),
+  ).resolves.not.toBeNull();
 });
 
 test("offers to reset an unreadable save from the campaign archive", async ({ page }) => {
-  await page.addInitScript(({ key }) => {
-    localStorage.setItem(key, "not valid json");
-  }, { key: saveKey(421) });
+  await page.addInitScript(
+    ({ key }) => {
+      localStorage.setItem(key, "not valid json");
+    },
+    { key: saveKey(421) },
+  );
 
   await page.goto("/");
   await page.getByRole("button", { name: "LOAD MISSION" }).click();
@@ -1252,7 +1427,7 @@ test("does not open an empty pause load view for an unreadable autosave", async 
   await expect(page.getByTestId("pause-menu")).toBeVisible();
   await page.getByRole("button", { name: "Load Mission" }).click();
 
-  await expect(page.getByRole("status")).toHaveText("No save slots.");
+  await expect(page.getByRole("status").filter({ hasText: "No save slots." })).toHaveText("No save slots.");
   await expect(page.getByRole("heading", { name: "Load mission" })).toHaveCount(0);
 });
 
@@ -1300,7 +1475,10 @@ test("starts a new same-seed mission after reloading before a fresh launch", asy
   await expect(page.getByTestId("credits")).toHaveText("9,876");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Main Menu" }).click();
-  await page.getByRole("dialog", { name: "Leave mission?" }).getByRole("button", { name: "Leave mission" }).click();
+  await page
+    .getByRole("dialog", { name: "Leave mission?" })
+    .getByRole("button", { name: "Leave mission" })
+    .click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId("menu-dashboard")).toBeVisible();
 
@@ -1316,9 +1494,12 @@ test("starts a new same-seed mission after reloading before a fresh launch", asy
 
 test("shows a mission result overlay from a finished save", async ({ page }) => {
   const state = distinctiveSave("won");
-  await page.addInitScript(({ key, raw }) => {
-    localStorage.setItem(key, raw);
-  }, { key: saveKey(421), raw: saveEnvelope(state) });
+  await page.addInitScript(
+    ({ key, raw }) => {
+      localStorage.setItem(key, raw);
+    },
+    { key: saveKey(421), raw: saveEnvelope(state) },
+  );
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/play?seed=0421&resume=1");
@@ -1327,7 +1508,10 @@ test("shows a mission result overlay from a finished save", async ({ page }) => 
   await expect(page.getByTestId("mission-result")).toHaveAttribute("data-result", "won");
   await expect(page.getByRole("heading", { name: "Mission complete" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Next briefing" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Next briefing" })).toHaveAttribute("data-default-action", "true");
+  await expect(page.getByRole("button", { name: "Next briefing" })).toHaveAttribute(
+    "data-default-action",
+    "true",
+  );
   await expect(page.getByRole("button", { name: "Share result" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Replay mission" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Campaign map" })).toHaveCount(0);
@@ -1338,9 +1522,16 @@ test("shows a mission result overlay from a finished save", async ({ page }) => 
   await page.setViewportSize({ width: 1280, height: 600 });
   await page.reload();
   await expect(page.getByTestId("mission-result")).toBeVisible();
-  await page.getByTestId("mission-result").locator("[role='dialog']").evaluate(async (panel) => {
-    await Promise.all(panel.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => undefined)));
-  });
+  await page
+    .getByTestId("mission-result")
+    .locator("[role='dialog']")
+    .evaluate(async (panel) => {
+      await Promise.all(
+        panel
+          .getAnimations({ subtree: true })
+          .map((animation) => animation.finished.catch(() => undefined)),
+      );
+    });
   const resultLayout = await page.getByTestId("mission-result").evaluate((element) => {
     const panel = element.querySelector<HTMLElement>("[role='dialog']");
     const actions = panel?.querySelector<HTMLElement>("[class*='actions']");
@@ -1402,21 +1593,30 @@ test("respects reduced motion on the mission result dialog", async ({ page }) =>
   await page.goto("/play?seed=0421&resume=1");
 
   await expect(page.getByRole("heading", { name: "Mission failed" })).toBeVisible();
-  const animationName = await page.getByTestId("mission-result").locator("[role='dialog']").evaluate((element) => getComputedStyle(element).animationName);
+  const animationName = await page
+    .getByTestId("mission-result")
+    .locator("[role='dialog']")
+    .evaluate((element) => getComputedStyle(element).animationName);
   expect(animationName).toBe("none");
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 });
 
 test("reflows failed mission actions without a share slot", async ({ page }) => {
   const state = distinctiveSave("lost");
-  await page.addInitScript(({ key, raw }) => {
-    localStorage.setItem(key, raw);
-  }, { key: saveKey(421), raw: saveEnvelope(state) });
+  await page.addInitScript(
+    ({ key, raw }) => {
+      localStorage.setItem(key, raw);
+    },
+    { key: saveKey(421), raw: saveEnvelope(state) },
+  );
 
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto("/play?seed=0421&resume=1");
   await expect(page.getByTestId("mission-result")).toHaveAttribute("data-result", "lost");
-  await expect(page.getByRole("button", { name: "Retry" })).toHaveAttribute("data-default-action", "true");
+  await expect(page.getByRole("button", { name: "Retry" })).toHaveAttribute(
+    "data-default-action",
+    "true",
+  );
   await expect(page.getByRole("button", { name: "Share result" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Menu" })).toBeVisible();

@@ -17,7 +17,7 @@ async function nameSave(page: import("@playwright/test").Page, name: string) {
 test("migrates legacy campaign and commits a named slot with its autosave", async ({ page }) => {
   await seedCampaign(page); await page.goto("/play?seed=0421&mission=0&resume=1"); await waitForBattlefield(page);
   expect((await readCampaignRecord(page, 421))?.revision).toBeGreaterThan(0);
-  await nameSave(page, "Transactional"); await expect(page.getByRole("status")).toContainText("Saved “Transactional”");
+  await nameSave(page, "Transactional"); await expect(page.getByRole("status").filter({ hasText: "Saved “Transactional”" })).toContainText("Saved “Transactional”");
   expect(await savedSlotCount(page)).toBe(1);
   const record = await readCampaignRecord(page, 421); expect(JSON.parse(record!.autosave!).state.credits[0]).toBe(9876);
   await page.reload(); await waitForBattlefield(page); await expect(page.getByTestId("credits")).toHaveText("9,876");
@@ -34,7 +34,7 @@ test("an aborted named-save transaction leaves slot and autosave unchanged", asy
       return original.apply(this, args);
     };
   });
-  await nameSave(page, "Aborted"); await expect(page.getByRole("status")).toContainText("Couldn't save");
+  await nameSave(page, "Aborted"); await expect(page.getByRole("status").filter({ hasText: "Couldn't save" })).toContainText("Couldn't save");
   expect(await savedSlotCount(page)).toBe(0); expect(await readCampaignRecord(page, 421)).toEqual(before);
 });
 

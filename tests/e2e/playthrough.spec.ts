@@ -69,7 +69,7 @@ async function loadAutosaveFromPause(page: Page) {
   const confirmation = page.getByRole("dialog", { name: "Load mission?" });
   await expect(confirmation).toBeVisible();
   await confirmation.getByRole("button", { name: "Load mission" }).click();
-  await expect(page.getByRole("status")).toContainText("Loaded the autosave");
+  await expect(page.getByRole("status").filter({ hasText: "Loaded the autosave" })).toContainText("Loaded the autosave");
 }
 
 async function pageCamera(page: Page, state: SimState) {
@@ -239,8 +239,8 @@ test("persists production rally points and control groups through save/load", as
   await expect(page.getByTestId("selected-kind")).toHaveText("Infantry");
 
   const saved = await savedState(page, true);
-  expect(saved?.entities.find((entity) => entity.id === barracks!.id)?.rallyPoint).toEqual(rally);
-  expect(saved?.controlGroups).toEqual({ 1: [infantry!.id] });
+  expect(saved?.entities.find((entity) => entity.id === barracks?.id)?.rallyPoint).toEqual(rally);
+  expect(saved?.controlGroups).toEqual({ 1: [infantry?.id] });
   await page.reload();
   await waitForBattlefield(page);
   await replaceCampaignSave(page, TEST_SEED, saveEnvelope(saved!));
@@ -248,8 +248,8 @@ test("persists production rally points and control groups through save/load", as
   await loadAutosaveFromPause(page);
   await page.getByRole("button", { name: "Resume Mission" }).click();
   const restored = await savedState(page);
-  expect(restored?.entities.find((entity) => entity.id === barracks!.id)?.rallyPoint).toEqual(rally);
-  expect(restored?.controlGroups).toEqual({ 1: [infantry!.id] });
+  expect(restored?.entities.find((entity) => entity.id === barracks?.id)?.rallyPoint).toEqual(rally);
+  expect(restored?.controlGroups).toEqual({ 1: [infantry?.id] });
 
   await page.getByRole("tab", { name: "Production" }).click();
   const infantryCameo = page.getByRole("button", { name: /Infantry, 75 credits/ });

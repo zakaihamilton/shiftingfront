@@ -116,7 +116,7 @@ export function landAircraft(state: SimState, ids: number[], runwayId: number): 
   return assigned ? [] : [{ type: "commandRejected", reason: "no eligible aircraft" }];
 }
 
-function beginReturn(state: SimState, aircraft: Entity, runway: Entity, events?: SimEvent[]): void {
+function beginReturn(_state: SimState, aircraft: Entity, runway: Entity, events?: SimEvent[]): void {
   if (aircraft.landingRunwayId === runway.id) return;
   aircraft.landingRunwayId = runway.id;
   aircraft.orderMode = "move";
@@ -217,7 +217,7 @@ export function tickAircraft(state: SimState, eventSink?: SimEvent[]): void {
     }
 
     const landingRunway = aircraft.landingRunwayId === undefined ? undefined : byId(state, aircraft.landingRunwayId);
-    if (aircraft.landingRunwayId !== undefined && (!landingRunway || landingRunway.kind !== "runway" || landingRunway.owner !== aircraft.owner || landingRunway.constructing > 0 || landingRunway.hp <= 0)) {
+    if (aircraft.landingRunwayId !== undefined && (landingRunway?.kind !== "runway" || landingRunway.owner !== aircraft.owner || landingRunway.constructing > 0 || landingRunway.hp <= 0)) {
       aircraft.landingRunwayId = undefined;
     }
     if (landingRunway && aircraft.landingRunwayId === landingRunway.id) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cx } from "@/lib/ui/cx";
 import styles from "./CreditsCounter.module.css";
 
@@ -28,10 +28,10 @@ export function CreditsCounter({ value }: { value: number }) {
   const digitsRef = useRef<HTMLElement>(null);
   const flashTimer = useRef<number | null>(null);
 
-  const writeDigits = () => {
+  const writeDigits = useCallback(() => {
     const el = digitsRef.current;
     if (el) el.textContent = formatCredits(shownRef.current);
-  };
+  }, []);
 
   useLayoutEffect(writeDigits);
 
@@ -61,10 +61,10 @@ export function CreditsCounter({ value }: { value: number }) {
       cancelAnimationFrame(raf);
       if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
     };
-  }, [value]);
+  }, [value, writeDigits]);
 
   return (
-    <div className={cx(styles.counter, flash === "up" && styles.up, flash === "down" && styles.down)} aria-label={`${value} available credits`}>
+    <div className={cx(styles.counter, flash === "up" && styles.up, flash === "down" && styles.down)} role="status" aria-label={`${value} available credits`}>
       <CreditsIcon />
       <span className={styles.label}>Available</span>
       <div className={styles.lcd}>

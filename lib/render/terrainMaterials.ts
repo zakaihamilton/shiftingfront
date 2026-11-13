@@ -267,11 +267,11 @@ export function rgb(r: number, g: number, b: number): Rgb {
 }
 
 export function clampByte(n: number): number {
-  return n < 0 ? 0 : n > 255 ? 255 : n;
+  return n < 0 ? 0 : Math.min(n , 255);
 }
 
 export function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
-  const u = t < 0 ? 0 : t > 1 ? 1 : t;
+  const u = t < 0 ? 0 : Math.min(t , 1);
   return {
     r: a.r + (b.r - a.r) * u,
     g: a.g + (b.g - a.g) * u,

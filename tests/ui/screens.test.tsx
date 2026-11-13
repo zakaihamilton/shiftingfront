@@ -24,23 +24,23 @@ vi.mock("@/components/menu/MenuHero", () => ({ MenuHero: () => <h1>Shifting Fron
 vi.mock("@/components/menu/MenuMainPanel", () => ({
   MenuMainPanel: ({ onNewGame, onTutorial, onLoadMission, onOptions }: { onNewGame: () => void; onTutorial: () => void; onLoadMission: () => void; onOptions: () => void }) => (
     <div>
-      <button onClick={onNewGame}>NEW GAME</button>
-      <button onClick={onTutorial}>TUTORIAL</button>
-      <button onClick={onLoadMission}>LOAD MISSION</button>
-      <button onClick={onOptions}>OPTIONS</button>
+      <button type="button" onClick={onNewGame}>NEW GAME</button>
+      <button type="button" onClick={onTutorial}>TUTORIAL</button>
+      <button type="button" onClick={onLoadMission}>LOAD MISSION</button>
+      <button type="button" onClick={onOptions}>OPTIONS</button>
     </div>
   ),
 }));
 vi.mock("@/components/menu/MenuOverlay", () => ({
   MenuOverlay: ({ view, onLaunch, onBack }: { view: string; onLaunch: () => void; onBack: () => void }) =>
-    view === "main" ? null : <div role="dialog"><span>{view}</span><button onClick={onLaunch}>Launch</button><button onClick={onBack}>Back</button></div>,
+    view === "main" ? null : <div role="dialog"><span>{view}</span><button type="button" onClick={onLaunch}>Launch</button><button type="button" onClick={onBack}>Back</button></div>,
 }));
 vi.mock("@/components/briefing/BriefingMast", () => ({ BriefingMast: () => <div data-testid="briefing-mast" /> }));
 vi.mock("@/components/briefing/BriefingStory", () => ({ BriefingStory: () => <div data-testid="briefing-story" /> }));
 vi.mock("@/components/briefing/BriefingObjectives", () => ({ BriefingObjectives: () => <div data-testid="briefing-objectives" /> }));
 vi.mock("@/components/briefing/BriefingActions", () => ({
   BriefingActions: ({ onLaunch, onReplay }: { onLaunch: () => void; onReplay: () => void }) => (
-    <div data-testid="briefing-actions"><button onClick={onLaunch}>Launch</button><button onClick={onReplay}>Replay</button></div>
+    <div data-testid="briefing-actions"><button type="button" onClick={onLaunch}>Launch</button><button type="button" onClick={onReplay}>Replay</button></div>
   ),
 }));
 

@@ -53,7 +53,7 @@ export const TOTAL_CAMPAIGN_TRACKS = 6;
 
 export function advanceMusicTrack(): void {
   if (cue !== "mission" || missionIndex === TUTORIAL_MUSIC_MISSION || missionIndex < 0) return;
-  const nextTrack = ((trackIndex < 0 ? 0 : trackIndex) + 1) % TOTAL_CAMPAIGN_TRACKS;
+  const nextTrack = ((Math.max(trackIndex , 0)) + 1) % TOTAL_CAMPAIGN_TRACKS;
   setTrackIndex(nextTrack);
   const next = composeMusic(seed, cue, nextTrack);
   applyPattern(next);

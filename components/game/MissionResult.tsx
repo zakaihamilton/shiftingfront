@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { StatusBadge } from "@/components/ui/Dossier";
 import { MetalPanel } from "@/components/ui/MetalPanel";
@@ -96,11 +96,11 @@ export function MissionResult({
             </dl>
           </aside>
         </header>
-        <div className={styles.resultGrid} role="region" aria-label="Mission results">
+        <section className={styles.resultGrid} aria-label="Mission results">
           <MissionOutcome debrief={debrief} draw={draw} />
           <MissionBattleRecord debrief={debrief} multiplayer={state.multiplayer === true} />
           <MissionForceDisposition debrief={debrief} multiplayer={state.multiplayer === true} />
-        </div>
+        </section>
         <MissionResultActions
           state={state}
           onNextBriefing={onNextBriefing}

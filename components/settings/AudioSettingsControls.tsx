@@ -11,7 +11,8 @@ const CONTROLS: { key: AudioVolumeKey; label: string }[] = [
 
 export function AudioSettingsControls({ settings, onChange }: { settings: GameSettings; onChange: (key: AudioVolumeKey, value: number) => void }) {
   return (
-    <div className={styles.volumeControls} aria-label="Volume controls">
+    <fieldset className={styles.volumeControls}>
+      <legend className="sr-only">Volume controls</legend>
       {CONTROLS.map(({ key, label }) => {
         const value = settings[key];
         return (
@@ -21,6 +22,6 @@ export function AudioSettingsControls({ settings, onChange }: { settings: GameSe
           </label>
         );
       })}
-    </div>
+    </fieldset>
   );
 }

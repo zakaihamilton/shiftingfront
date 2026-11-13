@@ -37,7 +37,7 @@ export function MenuScreen() {
           if (event.target instanceof Element) event.target.closest("button")?.focus();
         }}
       >
-        <header className={styles.topbar} aria-label="Shifting Front status">
+        <section className={styles.topbar} aria-label="Shifting Front status">
           <div className={styles.topbarBrand}>
             <span className={styles.brandMark}>SF</span>
             <span className={styles.topbarMuted}>COMMAND DESK</span>
@@ -47,7 +47,7 @@ export function MenuScreen() {
             <span>LOCAL CAMPAIGN LINK</span>
             <span className={styles.topbarCode}>SF-01</span>
           </div>
-        </header>
+        </section>
 
         <main className={styles.content}>
           <div className={styles.commandColumn}>

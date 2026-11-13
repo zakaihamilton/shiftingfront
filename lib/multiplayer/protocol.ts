@@ -21,7 +21,7 @@ function isRecordLike(value: unknown): value is Record<string, unknown> {
 function boundedEntries(value: Record<string, unknown>, maxEntries: number): [string, unknown][] | null {
   const entries: [string, unknown][] = [];
   for (const key in value) {
-    if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+    if (!Object.hasOwn(value, key)) continue;
     if (entries.length >= maxEntries) return null;
     entries.push([key, value[key]]);
   }
@@ -72,7 +72,7 @@ function isMultiplayerAiMemory(value: unknown, aiOwners: readonly Owner[], tick:
   if (!entries || entries.length !== aiOwners.length || entries.some(([owner, memory]) =>
     !/^(0|1|2|3)$/.test(owner) || !aiOwners.includes(Number(owner) as Owner) || !isAiMemoryShape(memory, tick, width, height),
   )) return false;
-  return aiOwners.every((owner) => Object.prototype.hasOwnProperty.call(value, String(owner)));
+  return aiOwners.every((owner) => Object.hasOwn(value, String(owner)));
 }
 
 export const SKIRMISH_MATCH_SETTINGS = Object.freeze({

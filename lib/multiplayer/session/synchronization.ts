@@ -78,7 +78,7 @@ export class MultiplayerSynchronization {
       const previous = this.repairs.get(peerId);
       const now = monotonicNow();
       if (previous?.tick === tick && previous.report === message.checksum) return true;
-      if (previous && previous.verified && now - previous.at < 60_000) { this.removeDivergentPeer(peerId); return true; }
+      if (previous?.verified && now - previous.at < 60_000) { this.removeDivergentPeer(peerId); return true; }
       if (previous && (!previous.verified || tick <= previous.tick)) return true;
       const state = this.snapshotSource?.();
       if (state) {

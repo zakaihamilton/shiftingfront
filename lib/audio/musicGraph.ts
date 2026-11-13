@@ -1,9 +1,9 @@
-import {
-  type MusicDrumEvent,
-  type MusicIntensity,
-  type MusicNoteEvent,
-  type MusicPattern,
-  type MusicStem,
+import type {
+  MusicDrumEvent,
+  MusicIntensity,
+  MusicNoteEvent,
+  MusicPattern,
+  MusicStem,
 } from "./compose";
 import { AUDIO_SAMPLE_RATE } from "./constants";
 import { prewarmMusicSamples } from "./musicSamples";

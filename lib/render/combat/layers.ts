@@ -26,7 +26,7 @@ function destructionSprite(
   burst: FxBurst,
   facing: Facing,
 ): SpriteSpec | undefined {
-  const palette = state.factions[burst.owner]?.palette ?? state.factions[0]!.palette;
+  const palette = state.factions[burst.owner]?.palette ?? state.factions[0]?.palette;
   const profile = generateVisualProfile(state.seed, burst.owner);
   const variant = burst.variant ?? burst.id;
   if (isUnitKind(burst.entityKind)) {

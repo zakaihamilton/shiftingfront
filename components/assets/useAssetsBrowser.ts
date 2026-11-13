@@ -53,7 +53,7 @@ export function useAssetsBrowser(onClose: () => void) {
         return;
       }
       const index = visibleAssets.findIndex((asset) => asset.id === selectedId);
-      const from = index < 0 ? 0 : index;
+      const from = Math.max(index , 0);
       const next = from + (command.type === "nextAsset" ? 1 : -1);
       const nextId = visibleAssets[Math.min(visibleAssets.length - 1, Math.max(0, next))]?.id;
       if (!nextId || nextId === selectedId) return;
@@ -67,7 +67,7 @@ export function useAssetsBrowser(onClose: () => void) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [assets, onClose, selectedId, visibleAssets]);
+  }, [onClose, selectedId, visibleAssets]);
 
   return {
     assets,

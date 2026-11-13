@@ -1,5 +1,5 @@
 import { BUILDING_DEFINITIONS, MAX_PRODUCTION_QUEUE, UNIT_STATS, isUnitAvailable, producerFor, productionQueueSize } from "../../catalog";
-import { type BuildingKind, type Entity, type SimEvent, type SimState, type UnitKind } from "../../types";
+import type { BuildingKind, Entity, SimEvent, SimState, UnitKind } from "../../types";
 import { byId, powerFor } from "../world";
 import { entitiesFor } from "../entities";
 import { commandOwner } from "./commandOwner";
@@ -9,7 +9,7 @@ export function startProduce(state: SimState, fromId: number, unit: UnitKind): S
   const owner = commandOwner(state);
   if (!isUnitAvailable(unit, state.missionIndex)) return [{ type: "commandRejected", reason: "unit unavailable" }];
   const b = byId(state, fromId);
-  if (!b || b.class !== "building" || b.owner !== owner || b.constructing > 0) return [{ type: "commandRejected", reason: "producer unavailable" }];
+  if (b?.class !== "building" || b.owner !== owner || b.constructing > 0) return [{ type: "commandRejected", reason: "producer unavailable" }];
   if (!BUILDING_DEFINITIONS[b.kind as BuildingKind].production?.includes(unit)) return [{ type: "commandRejected", reason: "wrong producer" }];
   const producerKind = producerFor(unit);
   if (isSharedProducerKind(producerKind)) {

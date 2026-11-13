@@ -1,4 +1,4 @@
-import { type Rng } from "../../seed/rng";
+import type { Rng } from "../../seed/rng";
 
 export function hashNoise(x: number, y: number, salt: number): number {
   let n = Math.imul(x + 374761393, 668265263) ^ Math.imul(y + salt, 1274126177);

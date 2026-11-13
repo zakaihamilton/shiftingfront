@@ -73,13 +73,13 @@ function HostWaitingRoom({ lobby }: { lobby: LobbyModel }) {
       <div className={styles.inviteCode} data-testid="multiplayer-invite-code">{lobby.inviteCode || "······"}</div>
       <ul className={styles.roster} data-testid="multiplayer-roster" aria-label="Room roster">
         {lobby.roster.map((player) => (
-          <li key={player.owner} data-testid={"multiplayer-roster-seat-" + player.owner}>
+          <li key={player.owner} data-testid={`multiplayer-roster-seat-${player.owner}`}>
             <span>{ownerLabel(player.owner)}</span>
             <span>{player.host ? "Host" : player.forfeited ? "Forfeited" : player.ai ? "AI opponent" : player.peerId ? player.connected ? "Connected" : "Reserved · reconnecting" : "Open User seat"}</span>
             {!player.host && !player.peerId ? (
               <button type="button" className={styles.seatToggle}
-                data-testid={"multiplayer-seat-toggle-" + player.owner}
-                aria-label={"Set " + ownerLabel(player.owner) + " to " + (player.ai ? "User" : "AI")}
+                data-testid={`multiplayer-seat-toggle-${player.owner}`}
+                aria-label={`Set ${ownerLabel(player.owner)} to ${player.ai ? "User" : "AI"}`}
                 onClick={() => lobby.setSeatAi(player.owner)}>
                 {player.ai ? "Switch to User" : "Switch to AI"}
               </button>
@@ -99,7 +99,7 @@ function HostWaitingRoom({ lobby }: { lobby: LobbyModel }) {
 function GuestWaitingRoom({ lobby }: { lobby: LobbyModel }) {
   return (
     <>
-      <p data-testid="multiplayer-seat">{lobby.guestOwner === null ? "Verifying your room seat…" : ownerLabel(lobby.guestOwner) + " is reserved."}</p>
+      <p data-testid="multiplayer-seat">{lobby.guestOwner === null ? "Verifying your room seat…" : `${ownerLabel(lobby.guestOwner)} is reserved.`}</p>
       <p>The host will start the match when ready. Your corner and the match seed are set by the host.</p>
       <ConsoleButton muted onClick={lobby.endCurrentMatch}>Leave room</ConsoleButton>
     </>
@@ -117,10 +117,10 @@ export function MultiplayerLobbyScreen({ lobby }: { lobby: LobbyModel }) {
     : lobby.mode === "joining" ? "Joining room" : "Multiplayer";
 
   return (
-    <main className={styles.screen + (hostSetup ? " " + styles.hostSetupScreen : "")}>
+    <main className={styles.screen + (hostSetup ? ` ${styles.hostSetupScreen}` : "")}>
       <MetalPanel
         as="section"
-        className={styles.panel + (hostSetup ? " " + styles.hostSetupPanel : "")}
+        className={styles.panel + (hostSetup ? ` ${styles.hostSetupPanel}` : "")}
         role="region"
         aria-labelledby="multiplayer-title"
       >

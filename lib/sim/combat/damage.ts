@@ -2,7 +2,7 @@ import type { Entity, SimEvent, SimState } from "../../types";
 import { isUnitEntity } from "../../types";
 import { isAirUnit } from "../../catalog";
 import { closestApproach, invalidateLivingCache } from "../world";
-import { canTarget, candidatesInSplash, isCombatTarget, statsFor, type CombatGrid } from "./grid";
+import { canTarget, candidatesInSplash, isCombatTarget, type statsFor, type CombatGrid } from "./grid";
 import { armorFor, damageMultiplier, domainDamageScale, heightMultiplier, lineOfSight } from "./targeting";
 import type { Rng } from "../../seed/rng";
 import { type PendingAlerts, notePlayerAlert } from "./alerts";

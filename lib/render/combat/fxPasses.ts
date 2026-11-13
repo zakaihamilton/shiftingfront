@@ -61,7 +61,7 @@ export function drawGroundFx(
     const p = fxProgress(burst, nowMs);
     const s = position(burst);
     if (!visible(s)) continue;
-    const pal = state.factions[burst.owner]?.palette ?? state.factions[0]!.palette;
+    const pal = state.factions[burst.owner]?.palette ?? state.factions[0]?.palette;
     const spec = burst.kind === "wreck" && isUnitKind(burst.entityKind)
       ? wreckSprite(burst.entityKind, pal)
       : isBuildingKind(burst.entityKind)
@@ -273,7 +273,7 @@ export function drawBurstFx(
       continue;
     }
 
-    const palette = state.factions[burst.owner]?.palette ?? state.factions[0]!.palette;
+    const palette = state.factions[burst.owner]?.palette ?? state.factions[0]?.palette;
     if (burst.kind === "build" || burst.kind === "deploy") {
       const radius = (10 + p * (burst.kind === "build" ? 36 : 24)) * z;
       ctx.globalAlpha = (reducedMotion ? 0.34 : 0.72) * fade;

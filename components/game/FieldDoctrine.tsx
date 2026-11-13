@@ -26,7 +26,7 @@ export function FieldDoctrine({ doctrineHints = [] }: { doctrineHints?: Doctrine
       // Session storage is optional.
     }
     const hintIds = doctrineKey.split("|").filter(Boolean);
-    hintIds.forEach((id) => next.add(id));
+    hintIds.forEach((id) => { next.add(id); });
     try {
       window.sessionStorage.setItem("shifting-front:doctrine", JSON.stringify([...next]));
     } catch {

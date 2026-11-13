@@ -39,7 +39,8 @@ export function SelectionOrders({
       >
         Stop
       </ConsoleButton>
-      <div className={styles.orderGroup} role="group" aria-label="Stance">
+      <fieldset className={styles.orderGroup}>
+        <legend className="sr-only">Stance</legend>
         {STANCE_OPTIONS.map((item) => (
           <ConsoleButton
             key={item.id}
@@ -55,8 +56,9 @@ export function SelectionOrders({
             {item.label}
           </ConsoleButton>
         ))}
-      </div>
-      <div className={styles.orderGroup} role="group" aria-label="Formation">
+      </fieldset>
+      <fieldset className={styles.orderGroup}>
+        <legend className="sr-only">Formation</legend>
         {FORMATION_OPTIONS.map((item) => (
           <ConsoleButton
             key={item.id}
@@ -72,7 +74,7 @@ export function SelectionOrders({
             {item.label}
           </ConsoleButton>
         ))}
-      </div>
+      </fieldset>
       {selectedKind === "tank" && onBrace ? (
         <ConsoleButton
           className={styles.order}

@@ -86,7 +86,7 @@ export function collectMovers(state: SimState, ids: number[], attackMove: boolea
   const movers: Entity[] = [];
   for (const id of ids) {
     const e = byId(state, id);
-    if (!e || e.class !== "unit" || e.owner !== owner || e.neutral) continue;
+    if (e?.class !== "unit" || e.owner !== owner || e.neutral) continue;
     if (attackMove && e.kind === "harvester") continue;
     movers.push(e);
   }

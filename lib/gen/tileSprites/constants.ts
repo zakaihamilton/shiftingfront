@@ -1,4 +1,4 @@
-import { type BiomeName, type TileContour } from "../../types";
+import type { BiomeName, TileContour } from "../../types";
 import { irregularIso as irregularIsoPrimitive } from "../shapePrimitives";
 export { ell, line, poly } from "../shapePrimitives";
 

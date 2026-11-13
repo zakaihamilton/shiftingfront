@@ -20,7 +20,7 @@ function mixTone(
   b: { r: number; g: number; b: number },
   t: number,
 ): { r: number; g: number; b: number } {
-  const u = t < 0 ? 0 : t > 1 ? 1 : t;
+  const u = t < 0 ? 0 : Math.min(t , 1);
   return {
     r: a.r + (b.r - a.r) * u,
     g: a.g + (b.g - a.g) * u,

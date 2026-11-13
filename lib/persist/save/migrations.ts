@@ -43,8 +43,16 @@ function migrateSharedProducerQueues(value: unknown): unknown {
   for (const producer of producers) {
     const owner = String(producer.owner);
     const kind = producer.kind as "barracks" | "factory";
-    const ownerQueues = productionQueues[owner] ??= {};
-    const ownerChoices = activeProducerIds[owner] ??= {};
+    let ownerQueues = productionQueues[owner];
+    if (!ownerQueues) {
+      ownerQueues = {};
+      productionQueues[owner] = ownerQueues;
+    }
+    let ownerChoices = activeProducerIds[owner];
+    if (!ownerChoices) {
+      ownerChoices = {};
+      activeProducerIds[owner] = ownerChoices;
+    }
     const sharedQueue = ownerQueues[kind];
     let recordQueue: Record<string, unknown>;
     if (!isRecord(sharedQueue) || !Array.isArray(sharedQueue.queue)) {

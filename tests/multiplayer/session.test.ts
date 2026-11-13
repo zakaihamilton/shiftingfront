@@ -193,7 +193,9 @@ describe("four-player canonical multiplayer command stream", () => {
   it("broadcasts host departure to all connected guests and cannot revive an ended room", () => {
     const messages: unknown[][] = [[], [], []];
     const host = new MultiplayerSession("host", 0, 42, { send() {} }, [0, 1, 2, 3]);
-    [1, 2, 3].forEach((owner) => host.addGuest(`g${owner}`, owner as Owner, { send: (value) => messages[owner - 1]!.push(value) }));
+    [1, 2, 3].forEach((owner) => {
+      host.addGuest(`g${owner}`, owner as Owner, { send: (value) => messages[owner - 1]!.push(value) });
+    });
     host.disconnectGuest("g2");
     host.end();
     expect(messages.map((items) => items.at(-1))).toEqual([{ type: "ended" }, undefined, { type: "ended" }]);

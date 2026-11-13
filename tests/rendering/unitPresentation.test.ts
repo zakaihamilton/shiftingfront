@@ -126,10 +126,10 @@ describe("unit presentation", () => {
     for(const [kind,poses] of Object.entries(UNIT_ACTION_ART))for(const [motion,views] of Object.entries(poses)){
       expect(Object.keys(views)).toHaveLength(8);
       for(const [view,path] of Object.entries(views)){
-        const metadata=await sharp("public"+path).metadata(); expect(metadata.hasAlpha).toBe(true); expect(metadata.width).toBe(1024); expect(metadata.height).toBe(1024);
+        const metadata=await sharp(`public${path}`).metadata(); expect(metadata.hasAlpha).toBe(true); expect(metadata.width).toBe(1024); expect(metadata.height).toBe(1024);
         for(const frame of [0,1,2,3] as const){
           const crop=unitWalkFrameCrop(frame);
-          const {data,info}=await sharp("public"+path).extract({left:crop.x,top:crop.y,width:crop.w,height:crop.h}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+          const {data,info}=await sharp(`public${path}`).extract({left:crop.x,top:crop.y,width:crop.w,height:crop.h}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
           const b=opaquePixelBounds(data,info.width,info.height)!;
           expect(b,`${kind} ${motion} ${view} ${frame}`).toBeDefined();
           expect(Math.abs(b.minY+b.height-500),`${kind} ${motion} ${view} ${frame}`).toBeLessThanOrEqual(1);
@@ -138,7 +138,7 @@ describe("unit presentation", () => {
     }
     for(const [kind,views] of Object.entries(UNIT_VEHICLE_LAYERS)){
       expect(Object.keys(views)).toHaveLength(8); expect(unitAnimationSources(kind as "tank"|"behemoth")).toHaveLength(24);
-      for(const parts of Object.values(views))for(const role of ["hull","turret","barrel"] as const){ const meta=await sharp("public"+parts[role]).metadata();expect(meta.hasAlpha).toBe(true);expect(meta.width).toBe(512); }
+      for(const parts of Object.values(views))for(const role of ["hull","turret","barrel"] as const){ const meta=await sharp(`public${parts[role]}`).metadata();expect(meta.hasAlpha).toBe(true);expect(meta.width).toBe(512); }
     }
     const action=unitSprite("infantry",state.factions[0]!.palette,{motion:"fire",animationFrame:2});
     expect(action.imageSrc).toContain("-fire-v1.webp");expect(action.imageAnchorY).toBe(1012/1024);

@@ -68,7 +68,7 @@ export function CampaignMissionQueue({
                     {status}
                   </StatusBadge>
                 </span>
-                <span className={styles.medals} aria-label={`${medals} of 3 medals`}>{missionMedalDisplay(medals)}</span>
+                <span className={styles.medals} role="img" aria-label={`${medals} of 3 medals`}>{missionMedalDisplay(medals)}</span>
               </span>
               <span className={styles.missionTitle}>{mission.name}</span>
               <span className={styles.missionMeta}>{biomeLabel(mission.biome)} · {mission.mapSize}×{mission.mapSize}</span>

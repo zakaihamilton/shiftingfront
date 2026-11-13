@@ -15,20 +15,20 @@ import styles from "./NewGameSetup.module.css";
 const LONG_FACTION_CHARS = 24;
 
 export function CampaignPreviewPane({ preview, onLaunch, className }: { preview: Campaign | null; onLaunch?: () => void; className?: string }) {
-  const factionLine = preview ? preview.factions[0].name + " vs " + preview.factions[1].name : "";
+  const factionLine = preview ? `${preview.factions[0].name} vs ${preview.factions[1].name}` : "";
   const wideFactions = factionLine.length > LONG_FACTION_CHARS;
-  const worldContext = preview ? biomeLabel(preview.world.biome) + " · " + preview.world.era : "";
-  const conflictLine = preview ? preview.world.conflict.charAt(0).toUpperCase() + preview.world.conflict.slice(1) + "." : "";
+  const worldContext = preview ? `${biomeLabel(preview.world.biome)} · ${preview.world.era}` : "";
+  const conflictLine = preview ? `${preview.world.conflict.charAt(0).toUpperCase() + preview.world.conflict.slice(1)}.` : "";
 
   return (
-    <div className={styles.infoPane + (className ? " " + className : "")} data-testid="campaign-info-pane">
+    <div className={styles.infoPane + (className ? ` ${className}` : "")} data-testid="campaign-info-pane">
       {preview ? (
         <>
           <div
             className={styles.backdrop}
-            style={{ "--campaign-art": "url(\"" + biomeArt(preview.world.biome) + "\")" } as CSSProperties}
+            style={{ "--campaign-art": `url("${biomeArt(preview.world.biome)}")` } as CSSProperties}
             role="img"
-            aria-label={biomeLabel(preview.world.biome) + " campaign backdrop"}
+            aria-label={`${biomeLabel(preview.world.biome)} campaign backdrop`}
             data-testid="campaign-backdrop"
           />
           <div className={styles.infoContent}>
@@ -42,7 +42,7 @@ export function CampaignPreviewPane({ preview, onLaunch, className }: { preview:
                 <strong>{preview.factions[0].name}</strong>
               </div>
               <span className={styles.factionVs}>VS</span>
-              <div className={styles.faction + " " + styles.opponent}>
+              <div className={`${styles.faction} ${styles.opponent}`}>
                 <span className={styles.detailLabel}>Enemy</span>
                 <strong>{preview.factions[1].name}</strong>
               </div>

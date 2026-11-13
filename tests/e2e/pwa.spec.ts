@@ -1,7 +1,8 @@
 import { chromium, expect, test } from "@playwright/test";
 import { waitForBattlefield } from "./battlefieldReady";
 
-test("launches the first battlefield offline after installing from the menu", async ({}, testInfo) => {
+test("launches the first battlefield offline after installing from the menu", async ({ page }, testInfo) => {
+  void page;
   test.skip(testInfo.project.name !== "desktop", "Chromium service worker coverage");
   // A loopback subdomain is a secure context while exercising the production
   // worker, whose development bypass only applies to localhost/127.0.0.1.

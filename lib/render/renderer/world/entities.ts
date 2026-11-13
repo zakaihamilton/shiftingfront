@@ -122,7 +122,7 @@ export function renderEntityPhase(
   }
 
   sortEntitiesForRender(drawList, depthCache, entityDrawOrder);
-  drawList.forEach((e, index) => entityDrawOrder.set(e.id, index));
+  drawList.forEach((e, index) => { entityDrawOrder.set(e.id, index); });
 
   drawFxLayer(ctx, state, cam, extras.fx, timeMs, "ground", extras.reducedMotion);
   unitWeaponSockets.clear();

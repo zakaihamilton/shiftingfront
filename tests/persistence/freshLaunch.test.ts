@@ -12,7 +12,7 @@ import { prepareInitialMission } from "../../components/game/hooks/useGameSessio
 const repositories: SaveRepository[] = [];
 
 afterEach(() => {
-  repositories.splice(0).forEach((repository) => repository.close());
+  repositories.splice(0).forEach((repository) => { repository.close(); });
   installSaveRepository(null);
   window.localStorage.clear();
   vi.restoreAllMocks();

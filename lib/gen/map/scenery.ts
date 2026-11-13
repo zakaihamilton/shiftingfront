@@ -10,7 +10,7 @@ import { biomeTuning } from "./config";
 import { terrainFeatureAt } from "./features";
 import { warpedFbm } from "./noise";
 import { idx } from "./terrain";
-import { type GeneratedMap } from "./generator";
+import type { GeneratedMap } from "./generator";
 
 export const MAP_SKIRT = 14;
 export const MAP_SKIRT_ALPHA = 0.6;

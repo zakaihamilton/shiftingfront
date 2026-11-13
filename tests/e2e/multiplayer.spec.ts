@@ -5,10 +5,11 @@ const contexts: BrowserContext[] = [];
 async function testContext(browser: Browser) {
   const context = await browser.newContext(); contexts.push(context); return context;
 }
-test.afterEach(async ({}, info) => {
+test.afterEach(async ({ page }, info) => {
+  void page;
   for (const context of contexts.splice(0)) {
     if (info.status !== info.expectedStatus) for (const page of context.pages()) {
-      console.log("multiplayer failure page", await page.locator("body").innerText().catch(() => "closed"));
+      console.log("multiplayer failure page", await page.locator("body").textContent().catch(() => "closed"));
     }
     await context.close();
   }
@@ -267,7 +268,7 @@ test("host starts a four-player corner skirmish after three guests verify their 
   await expect(host.getByTestId("multiplayer-start-button")).toBeEnabled();
   await host.getByTestId("multiplayer-start-button").click();
   const players = [host, ...guests];
-  players.forEach((page) => page.on("pageerror", (error) => console.log("multiplayer page error", error.message)));
+  players.forEach((page) => { page.on("pageerror", (error) => console.log("multiplayer page error", error.message)); });
   await Promise.all(players.map((page) => expect(page.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 })));
   await Promise.all(players.map(waitForBattlefieldReady));
   await Promise.all(players.map((page) => expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 })));

@@ -1,7 +1,7 @@
 {
   "name": "shiftingfront",
   "version": "1.1.6",
-  "description": "A seeded top-down RTS \u2014 one 4-digit code writes the war.",
+  "description": "A seeded top-down RTS — one 4-digit code writes the war.",
   "repository": {
     "type": "git",
     "url": "https://github.com/zakaihamilton/shiftingfront.git"
@@ -29,7 +29,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "biome lint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:fast": "vitest run --exclude tests/simulation/allSeeds --exclude tests/simulation/headlessBalance --exclude tests/simulation/balanceRegressions --exclude tests/simulation/terrain.test.ts --exclude tests/simulation/commander.test.ts --exclude tests/simulation/commanderGenerated.test.ts --exclude tests/generation/profile.test.ts --exclude tests/generation/profileMapValidity",
@@ -92,8 +92,6 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "@vitest/coverage-v8": "5.1.0",
     "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^9.39.5",
-    "eslint-config-next": "16.4.5",
     "fake-indexeddb": "^6.2.7",
     "jscpd": "^5.4.2",
     "jsdom": "^31.0.0",
@@ -107,8 +105,8 @@
     "vite": "^8.3.6",
     "vitest": "^5.1.0",
     "@axe-core/playwright": "^4.14.0",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
     "stylelint": "^18.0.0",
-    "stylelint-config-standard": "^41.0.0"
+    "stylelint-config-standard": "^41.0.0",
+    "@biomejs/biome": "2.6.6"
   }
 }

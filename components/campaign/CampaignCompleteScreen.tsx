@@ -130,11 +130,12 @@ export function CampaignCompleteScreen({ seed, mode = "record" }: { seed: number
               <h1 className={styles.title}>{operations ? "Operations map" : summary.isComplete ? "Campaign complete" : "Campaign record"}</h1>
               <p className={styles.subtitle}>{operations ? "SELECT DEPLOYMENT" : finale ? `${summary.completed} OPERATIONS SECURED // COMMAND RECORD FINALIZED` : summary.isComplete ? "CAMPAIGN SECURED" : "PROGRESS ARCHIVED"}</p>
             </div>
-            <div className={`${styles.headerContext} ${finale ? styles.finaleContext : ""}`} aria-label="Campaign context">
+            <fieldset className={`${styles.headerContext} ${finale ? styles.finaleContext : ""}`}>
+              <legend className="sr-only">Campaign context</legend>
               <span className={styles.contextSeed}>SEED {formatSeed(seed)}</span>
               <strong>{campaign.world.name}</strong>
               <span>{campaign.factions[0].name}</span>
-            </div>
+            </fieldset>
           </header>
 
           <MetricCluster

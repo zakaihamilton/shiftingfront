@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 function generateRetroSoundtrack(durationSec = 20, sampleRate = 44100): Buffer {
   const numSamples = Math.floor(durationSec * sampleRate);

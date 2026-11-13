@@ -22,7 +22,14 @@ export function BriefingMast({
         <ConsoleLabel className={styles.seed} data-testid="seed">
           Shifting Front · Seed {formatSeed(seed)} · Mission {mission + 1}/{campaign.missions.length}
         </ConsoleLabel>
-        <div className={styles.progressStrip} aria-label={`Operation progress: mission ${mission + 1} of ${campaign.missions.length}`}>
+        <div
+          className={styles.progressStrip}
+          role="progressbar"
+          aria-label={`Operation progress: mission ${mission + 1} of ${campaign.missions.length}`}
+          aria-valuemin={1}
+          aria-valuemax={campaign.missions.length}
+          aria-valuenow={mission + 1}
+        >
           {campaign.missions.map((item, index) => (
             <span key={item.index} className={index <= mission ? styles.progressActive : styles.progressPending} aria-hidden="true" />
           ))}

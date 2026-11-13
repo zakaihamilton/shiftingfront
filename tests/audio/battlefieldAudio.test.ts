@@ -135,7 +135,7 @@ describe("battlefield audio dispatch", () => {
       800,
       500,
     );
-    const playerGain = (play.mock.calls.find((call) => call[0] === "smallArms")?.[1] as { gain: number }).gain;
+    const playerGain = (play.mock.calls.find((call) => call[0] === "smallArms")?.[1] as { gain: number } | undefined)?.gain;
     play.mockClear();
     dispatchBattlefieldAudio(
       [combatEvent({ owner: 1, attackerKind: "infantry", weapon: "smallArms" })],
@@ -143,7 +143,7 @@ describe("battlefield audio dispatch", () => {
       800,
       500,
     );
-    const enemyGain = (play.mock.calls.find((call) => call[0] === "smallArms")?.[1] as { gain: number }).gain;
+    const enemyGain = (play.mock.calls.find((call) => call[0] === "smallArms")?.[1] as { gain: number } | undefined)?.gain;
     expect(enemyGain).toBe(playerGain);
   });
 

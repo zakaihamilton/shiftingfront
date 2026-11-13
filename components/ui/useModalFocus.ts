@@ -17,7 +17,7 @@ function focusableElements(root: HTMLElement): HTMLElement[] {
 
 export function useModalFocus(
   active: boolean,
-  resetKey?: string | number,
+  _resetKey?: string | number,
   initial: "dialog" | "first" = "first",
 ): RefObject<HTMLElement | null> {
   const ref = useRef<HTMLElement | null>(null);
@@ -64,7 +64,7 @@ export function useModalFocus(
       document.removeEventListener("keydown", onKeyDown, true);
       if (previous?.isConnected) previous.focus();
     };
-  }, [active, initial, resetKey]);
+  }, [active, initial]);
 
   return ref;
 }

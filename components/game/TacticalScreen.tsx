@@ -21,7 +21,9 @@ type TacticalScreenProps = GameRuntimeSurfaces & {
 export function TacticalScreen({ title, palette, playField, overlays, multiplayerPingMs, multiplayerHost }: TacticalScreenProps) {
   const { audioSettings } = overlays;
   return (
-    <div
+    <>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: The game surface suppresses the browser menu so right-click remains available for gameplay. */}
+      <div
       className={styles.shell}
       data-tutorial={overlays.tutorial ? "true" : undefined}
       data-high-contrast={audioSettings.highContrast ? "true" : "false"}
@@ -50,6 +52,7 @@ export function TacticalScreen({ title, palette, playField, overlays, multiplaye
           />
         ) : null}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

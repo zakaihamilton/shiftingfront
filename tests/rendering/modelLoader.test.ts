@@ -139,12 +139,12 @@ describe("modelLoader 3D meshes and parser", () => {
       lineTo: () => calls.push("lineTo"),
       fill: () => calls.push("fill"),
       stroke: () => calls.push("stroke"),
-      set lineWidth(val: number) {},
-      set lineJoin(val: CanvasLineJoin) {},
-      set shadowColor(val: string) {},
-      set shadowBlur(val: number) {},
-      set fillStyle(val: string | CanvasGradient | CanvasPattern) {},
-      set strokeStyle(val: string | CanvasGradient | CanvasPattern) {},
+      set lineWidth(_val: number) {},
+      set lineJoin(_val: CanvasLineJoin) {},
+      set shadowColor(_val: string) {},
+      set shadowBlur(_val: number) {},
+      set fillStyle(_val: string | CanvasGradient | CanvasPattern) {},
+      set strokeStyle(_val: string | CanvasGradient | CanvasPattern) {},
     } as unknown as CanvasRenderingContext2D;
 
     draw3dModel(fakeCtx, infantry, 100, 100, 1.0, 0, undefined, {

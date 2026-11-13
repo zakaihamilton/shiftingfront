@@ -210,7 +210,7 @@ export function groundOrders(state: SimState, ids: number[], x: number, y: numbe
   const movers: number[] = [];
   for (const id of ids) {
     const e = byId(state, id);
-    if (!e || e.class !== "unit" || e.owner !== owner || e.neutral) continue;
+    if (e?.class !== "unit" || e.owner !== owner || e.neutral) continue;
     if (e.kind === "harvester") harvesters.push(id);
     else movers.push(id);
   }

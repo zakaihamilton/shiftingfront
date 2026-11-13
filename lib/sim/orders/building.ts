@@ -48,7 +48,7 @@ export function cancelBuild(state: SimState, kind: BuildingKind): SimEvent[] {
 export function toggleRepair(state: SimState, buildingId: number): SimEvent[] {
   const owner = commandOwner(state);
   const e = byId(state, buildingId);
-  if (!e || e.class !== "building" || e.owner !== owner) return [];
+  if (e?.class !== "building" || e.owner !== owner) return [];
   if (e.repairing) {
     e.repairing = false;
     return [];

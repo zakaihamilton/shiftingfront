@@ -673,21 +673,21 @@ describe("useGameKeyboard", () => {
     act(() => {
       inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
     });
-    expect(result.current.keys.current["w"]).toBeFalsy();
+    expect(result.current.keys.current.w).toBeFalsy();
     document.body.removeChild(inputEl);
 
     // Normal key while playing should register
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     });
-    expect(result.current.keys.current["w"]).toBe(true);
+    expect(result.current.keys.current.w).toBe(true);
 
     // While paused, keys should not be registered as active movement keys
     pausedRef.current = true;
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "s" }));
     });
-    expect(result.current.keys.current["s"]).toBeFalsy();
+    expect(result.current.keys.current.s).toBeFalsy();
   });
 
   it("does not pan when a command is bound to a pan key", () => {
@@ -729,7 +729,7 @@ describe("useGameKeyboard", () => {
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     });
-    expect(result.current.keys.current["w"]).toBe(false);
+    expect(result.current.keys.current.w).toBe(false);
   });
 });
 

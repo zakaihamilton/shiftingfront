@@ -11,8 +11,8 @@ import { drawSprite, isRasterReady, rasterize, spriteContentBounds } from "../..
 import { drawUnitShadow, movementDustFill, paintUnitMovementFx } from "../../unitMotion";
 import { unitFacingLayers } from "../../unitFacingBlend";
 import { drawBlendedUnitSprites, type UnitSpriteLayer } from "../../unitSpriteBlend";
-import { type UnitDynamicTransform } from "../../gl/unitTransformTracker";
-import { type TerrainLightRig } from "../../terrainLighting";
+import type { UnitDynamicTransform } from "../../gl/unitTransformTracker";
+import type { TerrainLightRig } from "../../terrainLighting";
 import { litUnitRaster, type UnitLight, unitLightStrength } from "../../unitLighting";
 import { activeUnitGathering, activeUnitSupport, drawUnitWorkFx, unitBodyMotion } from "../../unitPresentation";
 import { drawLayeredVehicle, unitWeaponSockets } from "../../unitVehicleLayers";

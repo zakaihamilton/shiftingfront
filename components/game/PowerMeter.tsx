@@ -18,7 +18,7 @@ export function PowerMeter({ produced, used }: { produced: number; used: number 
   const label = deficit ? "Power deficit" : tight ? "Power grid near capacity" : "Base power surplus";
   const signed = surplus > 0 ? `+${surplus}` : String(surplus);
   return (
-    <div className={cx(styles.meter, deficit && styles.low, tight && styles.tight)} aria-label={`${label}: ${signed}, using ${used} of ${produced} power`}>
+    <div className={cx(styles.meter, deficit && styles.low, tight && styles.tight)} role="status" aria-label={`${label}: ${signed}, using ${used} of ${produced} power`}>
       <PowerIcon />
       <span className={styles.label}>Power</span>
       <div className={styles.lcd}>

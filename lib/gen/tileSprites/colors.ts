@@ -1,4 +1,4 @@
-import { type BiomeName, type Palette } from "../../types";
+import type { BiomeName, Palette } from "../../types";
 import { tileCx, tileCy, TILE_SPRITE_PAD_X, TILE_SPRITE_PAD_Y } from "./constants";
 
 export type Edge = { bit: number; a: [number, number]; b: [number, number] };

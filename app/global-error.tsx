@@ -84,7 +84,7 @@ export default function GlobalError({
             {error.message || "An unrecoverable application error occurred."}
           </p>
           <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-            <button
+            <button type="button"
               onClick={() => reset()}
               style={{
                 backgroundColor: "#ff4d4d",
