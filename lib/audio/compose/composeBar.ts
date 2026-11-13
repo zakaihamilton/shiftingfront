@@ -1,8 +1,17 @@
 import type { Rng } from "../../seed/rng";
+import { composeBarDrums } from "./composeBarDrums";
+import { chordToneMidi, midiToHz, mixEnergy, noteEvent } from "./helpers";
+import {
+  closeChord,
+  placeCounter,
+  placeHarmony,
+  placeMelody,
+  pulseStepsFor,
+  voiceLeadBass,
+  voiceLeadPad,
+} from "./stems";
 import {
   BARS_PER_SECTION,
-  MUSIC_BARS,
-  STEPS_PER_BAR,
   type BassHit,
   type MusicCue,
   type MusicDrumEvent,
@@ -12,16 +21,16 @@ import {
   type MusicSection,
   type MusicStem,
   type MusicStyleProfile,
+  STEPS_PER_BAR,
 } from "./types";
-import { chordToneMidi, drumEvent, grooveHits, midiToHz, mixEnergy, noteEvent, placePhraseFill } from "./helpers";
-import { closeChord, placeCounter, placeHarmony, placeMelody, placeStylePercussion, pulseStepsFor, voiceLeadBass, voiceLeadPad } from "./stems";
 
 function developMotif(motif: MusicMotif, pass: number): MusicMotif {
   if (pass <= 0) return motif;
-  const vary = (values: readonly (number | null)[], direction: number) => values.map((value, index) => {
-    if (value === null || index === 0 || index === values.length - 1) return value;
-    return (index + pass) % 3 === 0 ? value + direction : value;
-  });
+  const vary = (values: readonly (number | null)[], direction: number) =>
+    values.map((value, index) => {
+      if (value === null || index === 0 || index === values.length - 1) return value;
+      return (index + pass) % 3 === 0 ? value + direction : value;
+    });
   const direction = pass % 2 === 1 ? 1 : -1;
   const rhythm = [...motif.rhythm];
   const rhythmIndex = 1 + ((pass * 2) % Math.max(1, rhythm.length - 2));
@@ -100,11 +109,41 @@ export type ComposeBarInput = {
 /** Append one bar onto the stem arrays and advance the voice-leading memory. */
 export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCarry): void {
   const {
-    sections, phrasePlans, progressionA, progressionB, progressionC, progressionD,
-    bassRiffA, bassRiffB, bassRiffC, bassRiffD, arpFigureA, arpFigureB, arpFigureC, arpFigureD,
-    openHatA, openHatB, openHatC, openHatD, sparse, groove, arrangement, cue, style,
-    rootMidi, scalePick, hook, developmentMotif, motif, notes, drums, padRoot, padThird, padFifth,
-    padSeventh, drumRng,
+    sections,
+    phrasePlans,
+    progressionA,
+    progressionB,
+    progressionC,
+    progressionD,
+    bassRiffA,
+    bassRiffB,
+    bassRiffC,
+    bassRiffD,
+    arpFigureA,
+    arpFigureB,
+    arpFigureC,
+    arpFigureD,
+    openHatA,
+    openHatB,
+    openHatC,
+    openHatD,
+    sparse,
+    groove,
+    arrangement,
+    cue,
+    style,
+    rootMidi,
+    scalePick,
+    hook,
+    developmentMotif,
+    motif,
+    notes,
+    drums,
+    padRoot,
+    padThird,
+    padFifth,
+    padSeventh,
+    drumRng,
   } = input;
   let previousMelodyMidi = carry.previousMelodyMidi;
   let previousBassMidi = carry.previousBassMidi;
@@ -118,15 +157,17 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const materialIndex = materialIndexForSection(section.name);
   // Menu, briefing, battle, victory, and defeat each play as one song.
   const song = true;
-  const chorusReturn = section.name === "hook" || section.name === "climax" || section.name === "turnaround";
+  const chorusReturn =
+    section.name === "hook" || section.name === "climax" || section.name === "turnaround";
   const cycle = Math.floor(bar / (BARS_PER_SECTION * 2)) % 4;
   const recurringHookSection = chorusReturn;
   const progression = [progressionA, progressionB, progressionC, progressionD][materialIndex]!;
   // Every chorus, including the ending, sits on the hook's chords.
   const leadProgression = section.name === "turnaround" ? progressionC : progression;
-  const riff = section.name === "turnaround"
-    ? bassRiffC
-    : [bassRiffA, bassRiffB, bassRiffC, bassRiffD][materialIndex]!;
+  const riff =
+    section.name === "turnaround"
+      ? bassRiffC
+      : [bassRiffA, bassRiffB, bassRiffC, bassRiffD][materialIndex]!;
   const bedCycle = chorusReturn ? 1 : cycle;
   const arpFigure = [arpFigureA, arpFigureB, arpFigureC, arpFigureD][bedCycle]!;
   const openHatSteps = [openHatA, openHatB, openHatC, openHatD][bedCycle]!;
@@ -147,9 +188,11 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const dropPulse = dropTexture && !hookSection;
   const hole = holdBass && !chorusReturn && phraseBar < 8;
   const introDrums = !intro || phraseBar >= 8;
-  const fullDrums = !sparse && !dropTexture && !clearBreakdown && (cue === "victory" || (!hole && introDrums));
+  const fullDrums =
+    !sparse && !dropTexture && !clearBreakdown && (cue === "victory" || (!hole && introDrums));
   const phraseEnd = phraseBar === 7 || phraseBar === 15;
-  const lightDrums = sparse && !hole && !clearBreakdown && introDrums && (phraseBar % 2 === 0 || phraseEnd);
+  const lightDrums =
+    sparse && !hole && !clearBreakdown && introDrums && (phraseBar % 2 === 0 || phraseEnd);
   let usePulse = arrangement.pulseEnabled[sectionIndex]!;
   if (intro && phraseBar < 8) usePulse = false;
   if (hole) usePulse = false;
@@ -172,32 +215,46 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
     hookSection ||
     (breakdown && !clearBreakdown && phraseBar >= 8) ||
     (section.name === "escalation" && phraseBar >= 8);
-  const echoBar = arrangement.echoMelody && section.name === "groove" && phraseBar % 2 === 0 && !song;
-  const songSection = song && (section.name === "groove" || section.name === "development" || section.name === "escalation" || hookSection || bridge);
+  const echoBar =
+    arrangement.echoMelody && section.name === "groove" && phraseBar % 2 === 0 && !song;
+  const songSection =
+    song &&
+    (section.name === "groove" ||
+      section.name === "development" ||
+      section.name === "escalation" ||
+      hookSection ||
+      bridge);
   const useMelody =
     !restBar &&
     !echoBar &&
-    (songSection || (
-      arrangement.melodyEnabled[sectionIndex] &&
-      (section.name === "groove" ||
-        section.name === "development" ||
-        section.name === "escalation" ||
-        hookSection ||
-        (intro && phraseBar >= 12) ||
-        (breakdown && !clearBreakdown && phraseBar >= 8))
-    ));
-  const useCounter = !sparse && arrangement.counterEnabled[sectionIndex]! && (useMelody || echoBar) && response && halfPhrase >= 4;
+    (songSection ||
+      (arrangement.melodyEnabled[sectionIndex] &&
+        (section.name === "groove" ||
+          section.name === "development" ||
+          section.name === "escalation" ||
+          hookSection ||
+          (intro && phraseBar >= 12) ||
+          (breakdown && !clearBreakdown && phraseBar >= 8))));
+  const useCounter =
+    !sparse &&
+    arrangement.counterEnabled[sectionIndex]! &&
+    (useMelody || echoBar) &&
+    response &&
+    halfPhrase >= 4;
   const sequenceOffset = song || hookSection ? 0 : liftBar ? 2 : 0;
   const sequenceOctave = style.melodyOctave;
-  const variant = (song
-    ? 0
-    : climax
+  const variant =
+    (song
       ? 0
-      : section.name === "development"
-        ? 1
-        : section.name === "escalation" && !useHookLead
+      : climax
+        ? 0
+        : section.name === "development"
           ? 1
-          : 0) + arrangement.melodyDegreeOffset + sequenceOffset;
+          : section.name === "escalation" && !useHookLead
+            ? 1
+            : 0) +
+    arrangement.melodyDegreeOffset +
+    sequenceOffset;
   const preChorus = song && section.name === "escalation" && phraseBar < 8;
   const loopHarmony = song && !intro;
   const harmonyProgression = bridge
@@ -210,13 +267,16 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const chord = phraseEnd
     ? 0
     : loopHarmony
-      ? harmonyProgression[Math.floor(songCycle / 2)] ?? 0
-      : progression[Math.floor(phraseBar / 2)] ?? 0;
-  const leadChord = phraseEnd ? 0 : leadProgression[Math.floor(phraseBar / 2)] ?? 0;
+      ? (harmonyProgression[Math.floor(songCycle / 2)] ?? 0)
+      : (progression[Math.floor(phraseBar / 2)] ?? 0);
+  const leadChord = phraseEnd ? 0 : (leadProgression[Math.floor(phraseBar / 2)] ?? 0);
   const melodyProgression = bridge ? progressionB : preChorus ? progressionA : leadProgression;
-  const melodyChord = song && !intro
-    ? (songCycle === 7 ? 0 : (melodyProgression[Math.floor(songCycle / 2)] ?? 0))
-    : leadChord;
+  const melodyChord =
+    song && !intro
+      ? songCycle === 7
+        ? 0
+        : (melodyProgression[Math.floor(songCycle / 2)] ?? 0)
+      : leadChord;
 
   const padVoicing = voiceLeadPad(rootMidi, scalePick.notes, chord, previousPadVoicing);
   previousPadVoicing = padVoicing;
@@ -225,9 +285,8 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   padFifth.push(midiToHz(padVoicing[2]));
   padSeventh.push(midiToHz(padVoicing[3]));
 
-  const pianoSteps = intro || breakdown
-    ? []
-    : hookSection || section.name === "escalation" ? [0, 8] : [0];
+  const pianoSteps =
+    intro || breakdown ? [] : hookSection || section.name === "escalation" ? [0, 8] : [0];
   const pianoVoicing = closeChord(padVoicing.slice(0, 3), 58, 76);
   for (const pianoStep of pianoSteps) {
     placeHarmony(
@@ -242,9 +301,24 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   }
 
   const sectionBassStride = arrangement.bassStrides[chorusReturn ? 2 : sectionIndex]!;
-  const bassStride = holdBass && !chorusReturn ? 8 : intro ? Math.max(4, sectionBassStride) as 4 | 8 : sectionBassStride;
-  const addBass = (step: number, tone: number, octave: number, duration: number, velocity: number, accent = false) => {
-    const midi = voiceLeadBass(chordToneMidi(rootMidi, scalePick.notes, chord, tone, octave), previousBassMidi);
+  const bassStride =
+    holdBass && !chorusReturn
+      ? 8
+      : intro
+        ? (Math.max(4, sectionBassStride) as 4 | 8)
+        : sectionBassStride;
+  const addBass = (
+    step: number,
+    tone: number,
+    octave: number,
+    duration: number,
+    velocity: number,
+    accent = false,
+  ) => {
+    const midi = voiceLeadBass(
+      chordToneMidi(rootMidi, scalePick.notes, chord, tone, octave),
+      previousBassMidi,
+    );
     previousBassMidi = midi;
     noteEvent(notes.bass, step, midi, duration, velocity, accent);
   };
@@ -285,18 +359,21 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
 
   if (usePulse && style.pulseRole !== "none") {
     const sectionPulseStride = arrangement.pulseStrides[sectionIndex]!;
-    const requestedPulseStride = hole || (sparse && cue === "defeat")
-      ? 4
-      : hookSection && sectionPulseStride === 1
-        ? 2
-        : sectionPulseStride;
+    const requestedPulseStride =
+      hole || (sparse && cue === "defeat")
+        ? 4
+        : hookSection && sectionPulseStride === 1
+          ? 2
+          : sectionPulseStride;
     // Sixteenth-note arps read as a game-console texture. Let the drums
     // provide urgency at the peak while the fastest pulse stays musical.
     const pulseStride = Math.max(4, requestedPulseStride);
     for (const i of pulseStepsFor(style.pulseRole, pulseStride)) {
       const figureIndex = Math.floor(i / 2) % arpFigure.length;
       const velocity = climax
-        ? i % 2 === 0 ? 0.7 : 0.36
+        ? i % 2 === 0
+          ? 0.7
+          : 0.36
         : section.name === "hook" || section.name === "escalation"
           ? 0.56
           : 0.48;
@@ -314,11 +391,8 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   // Keep the written rhythm on the drum grid. A shift inside the bar wraps the
   // phrase's last sixteenths onto the downbeat.
   const phraseStepShift = 0;
-  const songMotif = (hookLead: boolean) => hookLead
-    ? hook
-    : section.name === "development"
-      ? developmentMotif
-      : motif;
+  const songMotif = (hookLead: boolean) =>
+    hookLead ? hook : section.name === "development" ? developmentMotif : motif;
   if (useMelody) {
     const baseLead = song
       ? songMotif(useHookLead)
@@ -328,13 +402,19 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
           ? developmentMotif
           : motif;
     const lead = song ? baseLead : developMotif(baseLead, phrasePass);
-    const leadBase = intro ? 0.58
-      : bridge ? 0.6
-      : clearBreakdown ? 0.52
-      : section.name === "hook" || section.name === "turnaround" ? 1
-      : climax ? 1
-      : section.name === "escalation" ? 0.9
-      : 0.72;
+    const leadBase = intro
+      ? 0.58
+      : bridge
+        ? 0.6
+        : clearBreakdown
+          ? 0.52
+          : section.name === "hook" || section.name === "turnaround"
+            ? 1
+            : climax
+              ? 1
+              : section.name === "escalation"
+                ? 0.9
+                : 0.72;
     const velocity = mixEnergy(leadBase, energy);
     const durationFor = (index: number, sounding: number, gap = 1) => {
       const last = index === sounding - 1;
@@ -434,73 +514,34 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
     );
   }
 
-  if (fullDrums || lightDrums) {
-    const grooveVariantNow = ((
-      chorusReturn
-        ? style.grooveVariant
-        : bar >= MUSIC_BARS / 2
-          ? style.grooveVariant + 1
-          : style.grooveVariant
-    ) % 3) as 0 | 1 | 2;
-    const hits = grooveHits(groove, cycle % 2 as 0 | 1, grooveVariantNow);
-    const density = Math.min(1, style.drumDensity * arrangement.drumDensity[sectionIndex]!);
-    const drumScale = intro ? 0.7 : hookSection ? 1.08 : section.name === "escalation" ? 1.02 : 1;
-    const drumGain = Math.min(
-      0.9,
-      mixEnergy(fullDrums ? 0.82 + density * 0.18 : 0.54 + density * 0.12, energy) * (cue === "mission" ? 0.78 : 1) * drumScale,
-    );
-    for (const step of hits.kick) drumEvent(drums, origin + step, "kick", (step === 0 ? 0.95 : 0.72) * drumGain, step === 0, drumRng);
-    for (const step of hits.snare) {
-      const accent = step === 4 || step === 12;
-      drumEvent(drums, origin + step, "snare", (accent ? 0.9 : 0.62) * drumGain, accent, drumRng);
-      if (!sparse && !hole && accent && chorusReturn && phraseBar % 4 === 0) {
-        drumEvent(drums, origin + step, "clap", 0.28 * drumGain, true, drumRng);
-      }
-    }
-    const hatSource = arrangement.hatStride[chorusReturn ? 2 : sectionIndex]!;
-    const requestedHatStride = sparse
-      ? Math.max(2, dropHats ? 4 : hatSource)
-      : chorusReturn
-        ? Math.max(2, hatSource)
-        : climax
-          ? 2
-          : dropHats
-            ? 4
-            : hatSource;
-    const hatStride = cue === "mission" ? Math.max(2, requestedHatStride) : requestedHatStride;
-    for (let step = 0; step < STEPS_PER_BAR; step += hatStride) {
-      const offbeat = climax ? step % 2 === 1 : step % 4 === 2;
-      drumEvent(drums, origin + step, "hat", (offbeat ? 0.36 : 0.26) * drumGain * (cue === "mission" ? 0.72 : 1), false, drumRng);
-    }
-    if (!sparse && !hole && !dropHats) {
-      const openHatHits = cue === "mission" ? openHatSteps.slice(0, 1) : openHatSteps;
-      if (cue !== "mission" || bar % 2 === 1) {
-        for (const step of openHatHits) drumEvent(drums, origin + step, "openHat", 0.44 * drumGain * (cue === "mission" ? 0.58 : 1), false, drumRng);
-      }
-    }
-    if (!sparse) placeStylePercussion(drums, origin, style.name, drumGain, dropHats, drumRng);
-  }
-
-  if ((chorusReturn || section.name === "escalation") && phraseBar === 0) {
-    drumEvent(drums, origin, "impact", mixEnergy(climax ? 0.9 : section.name === "hook" ? 0.46 : 0.62, energy), true, drumRng);
-  }
-
-  const chorusFill = chorusReturn && bar !== MUSIC_BARS - 1;
-  const fillStyle = arrangement.fillStyle[chorusFill ? 2 : sectionIndex]!;
-  if (miniFill && !clearBreakdown) {
-    placePhraseFill(drums, origin, fillStyle, { sparse, finalBar: false, mini: true, rng: drumRng });
-  }
-
-  if (fill && clearBreakdown) {
-    drumEvent(drums, origin + 12, "snare", mixEnergy(0.42, energy), true, drumRng);
-  } else if (fill) {
-    placePhraseFill(drums, origin, fillStyle, {
-      sparse: sparse || (hole && cue !== "victory"),
-      finalBar: bar === MUSIC_BARS - 1,
-      mini: false,
-      rng: drumRng,
-    });
-  }
+  composeBarDrums({
+    bar,
+    cycle,
+    origin,
+    phraseBar,
+    sectionIndex,
+    section,
+    cue,
+    sparse,
+    hole,
+    chorusReturn,
+    climax,
+    intro,
+    hookSection,
+    dropHats,
+    clearBreakdown,
+    fullDrums,
+    lightDrums,
+    fill,
+    miniFill,
+    energy,
+    groove,
+    style,
+    arrangement,
+    openHatSteps,
+    drums,
+    drumRng,
+  });
   carry.previousMelodyMidi = previousMelodyMidi;
   carry.previousBassMidi = previousBassMidi;
   carry.previousPadVoicing = previousPadVoicing;
