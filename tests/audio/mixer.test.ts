@@ -75,7 +75,9 @@ class FakeAudioContext {
 
 async function loadMixer(audio: FakeAudioContext) {
   vi.stubGlobal("window", {
-    AudioContext: vi.fn(() => audio),
+    AudioContext: vi.fn(function AudioContextMock() {
+      return audio;
+    }),
   });
   const context = await import("../../lib/audio/context");
   const mixer = await import("../../lib/audio/mixer");
@@ -185,7 +187,9 @@ describe("sfx mixer graph", () => {
   it("rebuilds the graph if the AudioContext instance changes", async () => {
     let currentAudio = new FakeAudioContext();
     vi.stubGlobal("window", {
-      AudioContext: vi.fn(() => currentAudio),
+      AudioContext: vi.fn(function AudioContextMock() {
+        return currentAudio;
+      }),
     });
     const context = await import("../../lib/audio/context");
     const mixer = await import("../../lib/audio/mixer");
