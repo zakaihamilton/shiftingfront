@@ -320,7 +320,7 @@ async function loadSelectedPauseSlot(page: Page, notice: RegExp) {
   const confirmation = page.getByRole("dialog", { name: "Load mission?" });
   await expect(confirmation).toBeVisible();
   await confirmation.getByRole("button", { name: "Load mission" }).click();
-  await expect(page.getByRole("status")).toContainText(notice);
+  await expect(page.getByRole("status").filter({ hasText: notice })).toContainText(notice);
 }
 
 test("welcome tutorial opens the seed 0000 training range", async ({ page }) => {
@@ -1427,7 +1427,7 @@ test("does not open an empty pause load view for an unreadable autosave", async 
   await expect(page.getByTestId("pause-menu")).toBeVisible();
   await page.getByRole("button", { name: "Load Mission" }).click();
 
-  await expect(page.getByRole("status")).toHaveText("No save slots.");
+  await expect(page.getByRole("status").filter({ hasText: "No save slots." })).toHaveText("No save slots.");
   await expect(page.getByRole("heading", { name: "Load mission" })).toHaveCount(0);
 });
 
