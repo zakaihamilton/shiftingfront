@@ -5,7 +5,8 @@ const contexts: BrowserContext[] = [];
 async function testContext(browser: Browser) {
   const context = await browser.newContext(); contexts.push(context); return context;
 }
-test.afterEach(async (_fixtures, info) => {
+test.afterEach(async ({ page }, info) => {
+  void page;
   for (const context of contexts.splice(0)) {
     if (info.status !== info.expectedStatus) for (const page of context.pages()) {
       console.log("multiplayer failure page", await page.locator("body").textContent().catch(() => "closed"));
