@@ -69,7 +69,7 @@ async function loadAutosaveFromPause(page: Page) {
   const confirmation = page.getByRole("dialog", { name: "Load mission?" });
   await expect(confirmation).toBeVisible();
   await confirmation.getByRole("button", { name: "Load mission" }).click();
-  await expect(page.getByRole("status")).toContainText("Loaded the autosave");
+  await expect(page.getByRole("status").filter({ hasText: "Loaded the autosave" })).toContainText("Loaded the autosave");
 }
 
 async function pageCamera(page: Page, state: SimState) {
