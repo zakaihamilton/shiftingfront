@@ -71,7 +71,7 @@ export function SelectionIdentity({
   const selectionTooltip = [
     selectionLabel,
     isUnitKind(selected.kind)
-      ? " · " + UNIT_STATS[selected.kind].armor + " armor · " + UNIT_STATS[selected.kind].weapon + " weapon"
+      ? ` · ${UNIT_STATS[selected.kind].armor} armor · ${UNIT_STATS[selected.kind].weapon} weapon`
       : "",
     onCenter ? " · Click to center camera" : "",
   ].join("");

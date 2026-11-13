@@ -183,7 +183,7 @@ describe("SpritePreview", () => {
     expect(mocks.unitMovementOffset).not.toHaveBeenCalled();
     expect(setIntervalSpy).not.toHaveBeenCalled();
 
-    previews.forEach(({ unmount }) => unmount());
+    previews.forEach(({ unmount }) => { unmount(); });
 
     expect(clearIntervalSpy).not.toHaveBeenCalled();
   });

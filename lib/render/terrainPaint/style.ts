@@ -5,7 +5,7 @@ export function rgbOf(c: Rgb): string {
 }
 
 export function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
-  const u = t < 0 ? 0 : t > 1 ? 1 : t;
+  const u = t < 0 ? 0 : Math.min(t , 1);
   return {
     r: Math.round(a.r + (b.r - a.r) * u),
     g: Math.round(a.g + (b.g - a.g) * u),

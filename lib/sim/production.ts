@@ -77,7 +77,7 @@ function productionRates(state: SimState, owners: readonly Owner[]): ProductionR
     const count = Math.max(ids.length, ready.get(key) ?? ids.length);
     const base = Math.floor(count / ids.length);
     const extra = count % ids.length;
-    ids.forEach((id, i) => entityRates.set(id, base + (i < extra ? 1 : 0)));
+    ids.forEach((id, i) => { entityRates.set(id, base + (i < extra ? 1 : 0)); });
   }
   return { entity: entityRates, shared: sharedRates };
 }
@@ -257,7 +257,10 @@ function notePlayerPowerShortage(state: SimState, events?: SimEvent[]): void {
   const owner = state.multiplayer ? state.viewOwner ?? 0 : 0;
   const ok = powerFor(state, owner) >= 0;
   let ownerMap = playerPowerOk.get(state);
-  if (!ownerMap) playerPowerOk.set(state, (ownerMap = new Map()));
+  if (!ownerMap) {
+    ownerMap = new Map();
+    playerPowerOk.set(state, ownerMap);
+  }
   const wasOk = ownerMap.get(owner) ?? true;
   if (wasOk && !ok) events?.push({ type: "powerShortage", owner });
   ownerMap.set(owner, ok);

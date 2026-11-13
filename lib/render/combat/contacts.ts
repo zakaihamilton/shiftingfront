@@ -18,6 +18,6 @@ export function isExtractableUnit(state: SimState, e: Entity): boolean {
     e.class === "unit" &&
     state.runtime?.kind === "extraction" &&
     Boolean(state.runtime.targetIds?.includes(e.id)) &&
-    !Boolean(state.runtime.extractedIds?.includes(e.id))
+    !state.runtime.extractedIds?.includes(e.id)
   );
 }

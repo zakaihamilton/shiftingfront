@@ -67,11 +67,6 @@ export function CommandCameo({
       className={styles.wrap}
       data-tooltip={tooltip}
       data-shortcut={displayShortcut}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onContextMenu?.();
-      }}
     >
       <button
         type="button"
@@ -84,6 +79,11 @@ export function CommandCameo({
         }}
         aria-label={ariaLabel}
         aria-keyshortcuts={displayShortcut}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onContextMenu?.();
+        }}
       >
         <span className={styles.art}>
           <SpritePreview kind={kind} palette={palette} profile={profile} className={styles.sprite} />

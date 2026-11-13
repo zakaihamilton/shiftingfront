@@ -17,6 +17,12 @@ function MaybeBoom() {
   return <p>systems nominal</p>;
 }
 
+function StickyBoom() {
+  const [boom, setBoom] = useState(false);
+  if (boom) throw new Error("sticky breach");
+  return <button type="button" onClick={() => setBoom(true)}>detonate</button>;
+}
+
 function renderCrashing(props: { title?: string; eyebrow?: string } = {}) {
   return render(
     <ErrorBoundary {...props}>
@@ -69,11 +75,6 @@ describe("ErrorBoundary", () => {
 
   it("remounts the crashed child when Try again is pressed", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    function StickyBoom() {
-      const [boom, setBoom] = useState(false);
-      if (boom) throw new Error("sticky breach");
-      return <button type="button" onClick={() => setBoom(true)}>detonate</button>;
-    }
     render(
       <ErrorBoundary>
         <StickyBoom />

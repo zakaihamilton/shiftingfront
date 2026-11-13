@@ -10,7 +10,7 @@ afterEach(() => cleanup());
 function TooltipPage({ showTarget, tooltipText = "Open the next page" }: { showTarget: boolean; tooltipText?: string }) {
   return (
     <>
-      {showTarget ? <button data-tooltip={tooltipText}>Open</button> : null}
+      {showTarget ? <button type="button" data-tooltip={tooltipText}>Open</button> : null}
       <TooltipLayer />
     </>
   );

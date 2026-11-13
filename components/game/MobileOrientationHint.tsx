@@ -58,7 +58,7 @@ export function MobileOrientationHint() {
       data-testid="orientation-hint"
     >
       <div className={styles.icon} aria-hidden="true">
-        <svg className={styles.iconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg aria-hidden="true" className={styles.iconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
           <path d="M12 18h.01" />
           <path d="M2 9l2-2 2 2" />

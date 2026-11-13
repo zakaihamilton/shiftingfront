@@ -83,7 +83,7 @@ export function convoyDestination(state: SimState, zone: Vec2, index: number): V
 
 export function tickEscort(state: SimState): void {
   const runtime = state.runtime;
-  if (!runtime || runtime.kind !== "escort") return;
+  if (runtime?.kind !== "escort") return;
 
   if (runtime.convoyStartTick !== undefined && state.tick >= runtime.convoyStartTick) {
     for (const [index, id] of runtime.targetIds.entries()) {

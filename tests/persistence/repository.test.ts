@@ -7,7 +7,7 @@ import { JOURNAL_PREFIX } from "@/lib/persist/rulesRetirement";
 import { addBuilding, makeFixture } from "@/lib/sim/fixtures";
 
 const repositories: SaveRepository[] = [];
-afterEach(() => { repositories.splice(0).forEach((repository) => repository.close()); vi.restoreAllMocks(); });
+afterEach(() => { repositories.splice(0).forEach((repository) => { repository.close(); }); vi.restoreAllMocks(); });
 async function open(storage = memoryStorage(), factory = new IDBFactory()) {
   const repository = new SaveRepository(storage, factory);
   repositories.push(repository);

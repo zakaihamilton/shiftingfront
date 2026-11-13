@@ -2,7 +2,7 @@ import type { DataConnection, Peer } from "peerjs";
 import type { Owner } from "@/lib/types";
 import { MultiplayerSession, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
 import type { Credential, LobbyMode, LobbyPlayer } from "./types";
-import { PeerLifecycle } from "./peerLifecycle";
+import type { PeerLifecycle } from "./peerLifecycle";
 import { ownerLabel, publicError } from "./utils";
 
 type Ref<T> = { current: T };

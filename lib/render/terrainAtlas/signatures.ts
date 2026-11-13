@@ -20,7 +20,6 @@ export function makeAtlasKey(state: AtlasWorld, grainGeneration: number): string
   return `${TERRAIN_ATLAS_REV}:${state.seed}:${state.missionIndex ?? 0}:${state.biome}:${state.width}x${state.height}:${terrainLayoutSignature(state.tiles, state.surfaces)}:${grainGeneration}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function atlasRectForTile(x: number, y: number, _mapWidth: number): { sx: number; sy: number; sw: number; sh: number } {
   return {
     sx: (x + MAP_SKIRT) * ATLAS_CELL,

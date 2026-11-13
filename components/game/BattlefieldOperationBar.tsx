@@ -17,7 +17,14 @@ export function BattlefieldOperationBar({
         <div className={styles.seed} data-testid="seed"><span className={styles.statusGlyph} aria-hidden="true">◆</span> Seed {formatSeed(seed)}</div>
         <div className={styles.level} data-testid="level-progress">
           <span>Operation {levelNumber} of {levelCount}</span>
-          <span className={styles.operationTicks} aria-label={`Operation ${levelNumber} of ${levelCount}`}>
+          <span
+            className={styles.operationTicks}
+            role="progressbar"
+            aria-label={`Operation ${levelNumber} of ${levelCount}`}
+            aria-valuemin={1}
+            aria-valuemax={levelCount}
+            aria-valuenow={levelNumber}
+          >
             {Array.from({ length: levelCount }, (_, index) => (
               <span key={index} className={index < levelNumber ? styles.operationTickActive : styles.operationTick} aria-hidden="true" />
             ))}
@@ -26,6 +33,7 @@ export function BattlefieldOperationBar({
         {multiplayerPingMs !== undefined ? (
           <div
             className={styles.networkPing}
+            role="status"
             data-testid="multiplayer-rtt"
             title={multiplayerHost ? "Average round-trip time across connected guests" : "Round-trip time to the host"}
             aria-label={`${multiplayerHost ? "Average peer" : "Host"} round-trip time: ${multiplayerPingMs === null ? "measuring" : `${multiplayerPingMs} milliseconds`}`}

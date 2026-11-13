@@ -4,7 +4,7 @@ import { cameraForPicking } from "@/lib/render/screenShake";
 import { canvasViewport } from "@/lib/render/canvasViewport";
 import type { CommandMarker } from "@/lib/render/renderOverlays";
 import { cameraPanBounds, canPan as cameraCanPan, panDirFromPointer, EDGE_PAN_BAND, type PanAvailability, type PanDir } from "@/lib/render/camera";
-import { type Camera } from "@/lib/iso";
+import type { Camera } from "@/lib/iso";
 import type { BuildingKind, Command, SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
 import { canvasPointerPos } from "./canvasPointer";

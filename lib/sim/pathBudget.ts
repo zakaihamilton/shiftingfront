@@ -29,7 +29,11 @@ export function tryFindPath(
   to: Vec2,
   opts?: FindPathOptions,
 ): Vec2[] | undefined {
-  const budget = state.pathBudget ?? (state.pathBudget = { remaining: PATH_BUDGET_PER_TICK, used: 0 });
+  let budget = state.pathBudget;
+  if (!budget) {
+    budget = { remaining: PATH_BUDGET_PER_TICK, used: 0 };
+    state.pathBudget = budget;
+  }
   if (budget.remaining <= 0) return undefined;
   budget.remaining -= 1;
   budget.used += 1;
@@ -42,7 +46,11 @@ export function tryFindPathDetailed(
   to: Vec2,
   opts?: FindPathOptions,
 ): PathSearchResult | undefined {
-  const budget = state.pathBudget ?? (state.pathBudget = { remaining: PATH_BUDGET_PER_TICK, used: 0 });
+  let budget = state.pathBudget;
+  if (!budget) {
+    budget = { remaining: PATH_BUDGET_PER_TICK, used: 0 };
+    state.pathBudget = budget;
+  }
   if (budget.remaining <= 0) return undefined;
   budget.remaining -= 1;
   budget.used += 1;

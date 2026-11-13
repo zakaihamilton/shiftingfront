@@ -60,7 +60,7 @@ describe("glMath 3D math and isometric utilities", () => {
   it("creates valid isometric View-Projection matrices", () => {
     const vp = mat4Create();
     createIsoViewProjMatrix(vp, 800, 600, 400, 300, 1.0);
-    expect(vp.some((val) => isNaN(val))).toBe(false);
+    expect(vp.some((val) => Number.isNaN(val))).toBe(false);
     expect(vp[15]).toBe(1);
   });
 

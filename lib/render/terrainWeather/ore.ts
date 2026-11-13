@@ -19,7 +19,7 @@ export function oreSparkle(timeMs: number, x: number, y: number, index: number):
   const phase = timeMs * 0.00032 + x * 1.13 + y * 0.67 + index * 2.09;
   return {
     sweep: (Math.sin(phase) + 1) * 0.5,
-    twinkle: Math.pow(Math.max(0, Math.sin(phase * 0.72 + 0.6)), 16),
+    twinkle: Math.max(0, Math.sin(phase * 0.72 + 0.6)) ** 16,
     glow: 0.05 + (Math.sin(phase * 0.14 + index) + 1) * 0.04,
   };
 }

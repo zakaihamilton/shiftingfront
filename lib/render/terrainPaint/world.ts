@@ -264,7 +264,7 @@ function paintCell(
         return;
       }
       ctx.beginPath();
-      ctx.moveTo(shorelineEdges[0]?.[0]?.x ?? vertices[0]!.x, shorelineEdges[0]?.[0]?.y ?? vertices[0]!.y);
+      ctx.moveTo(shorelineEdges[0]?.[0]?.x ?? vertices[0]?.x, shorelineEdges[0]?.[0]?.y ?? vertices[0]?.y);
       for (let edge = 0; edge < vertices.length; edge++) {
         const points = shorelineEdges[edge] ?? [vertices[edge]!, vertices[(edge + 1) % vertices.length]!];
         for (let point = 1; point < points.length; point++) {

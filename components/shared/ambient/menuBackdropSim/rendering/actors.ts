@@ -1,5 +1,5 @@
 import { unitSprite } from "@/lib/gen/assets";
-import { generateVisualProfile } from "@/lib/gen/visualProfile";
+import type { generateVisualProfile } from "@/lib/gen/visualProfile";
 import { TILE_H, tileToScreen, toIsometricFacing, type Camera } from "@/lib/iso";
 import { animFrame, unitMovementOffset, unitWalkCycle } from "@/lib/render/anim";
 import { drawSprite, isRasterReady, rasterize } from "@/lib/render/sprites";

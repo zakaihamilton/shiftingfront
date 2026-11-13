@@ -149,7 +149,7 @@ export function useGameActions({
     const access = terrainAccess(state, tx, ty);
     const groundOrder = unitIds.some((id) => {
       const entity = state.entities.find((candidate) => candidate.id === id);
-      return !entity || entity.class !== "unit" || !isAirUnit(entity.kind);
+      return entity?.class !== "unit" || !isAirUnit(entity.kind);
     });
     if (!unitIds.length || !Number.isInteger(tx) || !Number.isInteger(ty) || !inBounds(state, tx, ty) ||
       (groundOrder && !access.traversable) || (command === "harvest" && access.label !== "Ore field")) {

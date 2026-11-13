@@ -2,8 +2,14 @@ import type { AiBehavior, AiContact, MultiplayerAiMemory, Owner, SimState } from
 
 export function multiplayerAiMemory(state: SimState, owner: Owner): MultiplayerAiMemory {
   if (!state.multiplayer) throw new Error("Multiplayer AI memory requires a multiplayer state");
-  const memory = state.multiplayerAiMemory ?? (state.multiplayerAiMemory = {});
-  return memory[owner] ?? (memory[owner] = {});
+  const memory = state.multiplayerAiMemory ?? {};
+  if (!state.multiplayerAiMemory) state.multiplayerAiMemory = memory;
+  let ownerMemory = memory[owner];
+  if (!ownerMemory) {
+    ownerMemory = {};
+    memory[owner] = ownerMemory;
+  }
+  return ownerMemory;
 }
 
 export function aiBehavior(state: SimState, owner: Owner): AiBehavior | undefined {
@@ -36,7 +42,9 @@ export function setAiRetreatLocked(state: SimState, owner: Owner, locked: boolea
 export function aiContacts(state: SimState, owner: Owner): Record<string, AiContact> {
   if (state.multiplayer) {
     const memory = multiplayerAiMemory(state, owner);
-    return memory.contacts ?? (memory.contacts = {});
+    if (!memory.contacts) memory.contacts = {};
+    return memory.contacts;
   }
-  return state.aiContacts ?? (state.aiContacts = {});
+  if (!state.aiContacts) state.aiContacts = {};
+  return state.aiContacts;
 }

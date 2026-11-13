@@ -1,4 +1,4 @@
-import { type BuildingEntity, type BuildingKind, type Owner, type SharedProducerKind, type SharedProductionQueue, type SimState, type UnitKind } from "../types";
+import type { BuildingEntity, BuildingKind, Owner, SharedProducerKind, SharedProductionQueue, SimState, UnitKind } from "../types";
 
 export const SHARED_PRODUCER_KINDS: readonly SharedProducerKind[] = ["barracks", "factory"];
 
@@ -41,8 +41,13 @@ export function ensureActiveProducer(
   if (isReadyProducer(active, owner, kind)) return active;
 
   const next = readyProducers(state, owner, kind)[0];
-  const owners = state.activeProducerIds ??= {};
-  const choices = owners[owner] ??= {};
+  const owners = state.activeProducerIds ?? {};
+  if (!state.activeProducerIds) state.activeProducerIds = owners;
+  let choices = owners[owner];
+  if (!choices) {
+    choices = {};
+    owners[owner] = choices;
+  }
   if (next) choices[kind] = next.id;
   else delete choices[kind];
   return next;
@@ -51,8 +56,13 @@ export function ensureActiveProducer(
 export function activateProducer(state: SimState, owner: Owner, buildingId: number): BuildingEntity | undefined {
   const entity = state.entities.find((candidate) => candidate.id === buildingId);
   if (!entity || !isSharedProducerKind(entity.kind) || !isReadyProducer(entity, owner, entity.kind)) return undefined;
-  const owners = state.activeProducerIds ??= {};
-  const choices = owners[owner] ??= {};
+  const owners = state.activeProducerIds ?? {};
+  if (!state.activeProducerIds) state.activeProducerIds = owners;
+  let choices = owners[owner];
+  if (!choices) {
+    choices = {};
+    owners[owner] = choices;
+  }
   choices[entity.kind] = entity.id;
   return entity;
 }
@@ -123,8 +133,13 @@ export function sharedProductionQueue(
   owner: Owner,
   kind: SharedProducerKind,
 ): SharedProductionQueue {
-  const queues = state.productionQueues ??= {};
-  const byKind = queues[owner] ??= {};
+  const queues = state.productionQueues ?? {};
+  if (!state.productionQueues) state.productionQueues = queues;
+  let byKind = queues[owner];
+  if (!byKind) {
+    byKind = {};
+    queues[owner] = byKind;
+  }
   const existing = byKind[kind];
   if (existing) {
     absorbLegacyProducerJobs(state, owner, kind, existing);

@@ -23,7 +23,8 @@ export function compactDestroyedEntities(state: SimState): number {
   let removedIds: Set<number> | undefined;
   for (const entity of entities) {
     if (entity.hp > 0) continue;
-    (removedIds ??= new Set<number>()).add(entity.id);
+    if (!removedIds) removedIds = new Set<number>();
+    removedIds.add(entity.id);
   }
   if (!removedIds) return 0;
 

@@ -45,7 +45,7 @@ export function useTooltipTarget() {
       const shortcut = el.getAttribute("data-shortcut");
       setTip({
         text,
-        shortcut: shortcut && shortcut.trim() ? shortcut.trim() : null,
+        shortcut: shortcut?.trim() ? shortcut.trim() : null,
         pos: parseTooltipPos(el.getAttribute("data-tooltip-pos")),
         anchor: el.getBoundingClientRect(),
       });

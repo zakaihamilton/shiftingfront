@@ -6,6 +6,13 @@ import type { FacePortrait } from "./useFacePortrait";
 export const FACE_CANVAS_WIDTH = 200;
 export const FACE_CANVAS_HEIGHT = 240;
 
+function getOverlayCanvas(portrait: FacePortrait): HTMLCanvasElement {
+  if (!portrait.overlayRef.current) {
+    portrait.overlayRef.current = document.createElement("canvas");
+  }
+  return portrait.overlayRef.current;
+}
+
 export function paintFaceFrame(ctx: CanvasRenderingContext2D, dpr: number, t: number, who: Character, talking: boolean, tone: FaceTone, portrait: FacePortrait, lastSig: string): string {
   const asset = getPortraitAsset(who.face.portraitId);
   const image = portrait.imageRef.current;
@@ -19,8 +26,8 @@ export function paintFaceFrame(ctx: CanvasRenderingContext2D, dpr: number, t: nu
   ctx.fillRect(0, 0, FACE_CANVAS_WIDTH, FACE_CANVAS_HEIGHT);
   if (asset && image && loaded) {
     drawPortraitFrame(ctx, image, asset, 0, 0, 0, FACE_CANVAS_WIDTH, FACE_CANVAS_HEIGHT);
-    if (mouthOpen) drawPortraitClippedFrame(ctx, image, asset, 2, 0, 0, FACE_CANVAS_WIDTH, FACE_CANVAS_HEIGHT, [portrait.mouthClipRef.current], scalePortraitOffset(portrait.offsetsRef.current.talk, PORTRAIT_MEASURE_WIDTH, FACE_CANVAS_WIDTH), portrait.overlayRef.current ?? (portrait.overlayRef.current = document.createElement("canvas")));
-    if (blinking) drawPortraitClippedFrame(ctx, image, asset, 1, 0, 0, FACE_CANVAS_WIDTH, FACE_CANVAS_HEIGHT, PORTRAIT_EYE_CLIPS, portrait.offsetsRef.current.blink, portrait.overlayRef.current ?? (portrait.overlayRef.current = document.createElement("canvas")));
+    if (mouthOpen) drawPortraitClippedFrame(ctx, image, asset, 2, 0, 0, FACE_CANVAS_WIDTH, FACE_CANVAS_HEIGHT, [portrait.mouthClipRef.current], scalePortraitOffset(portrait.offsetsRef.current.talk, PORTRAIT_MEASURE_WIDTH, FACE_CANVAS_WIDTH), getOverlayCanvas(portrait));
+    if (blinking) drawPortraitClippedFrame(ctx, image, asset, 1, 0, 0, FACE_CANVAS_WIDTH, FACE_CANVAS_HEIGHT, PORTRAIT_EYE_CLIPS, portrait.offsetsRef.current.blink, getOverlayCanvas(portrait));
     ctx.fillStyle = tone === "enemy" ? "rgba(126, 48, 35, 0.08)" : "rgba(90, 218, 210, 0.035)";
     ctx.fillRect(0, 0, FACE_CANVAS_WIDTH, FACE_CANVAS_HEIGHT);
   } else drawPortraitBackdrop(ctx, FACE_CANVAS_WIDTH / 2, FACE_CANVAS_HEIGHT / 2 - 2, FACE_CANVAS_WIDTH * 0.9, tone);

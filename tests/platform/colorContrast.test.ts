@@ -24,7 +24,7 @@ function relativeLuminance(hex: string): number {
   const sG = g / 255;
   const sB = b / 255;
 
-  const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 
   return 0.2126 * toLinear(sR) + 0.7152 * toLinear(sG) + 0.0722 * toLinear(sB);
 }

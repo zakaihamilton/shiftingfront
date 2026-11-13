@@ -193,7 +193,7 @@ export function areRasterSourcesReady(srcs: readonly string[]): boolean {
   if (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom")) return true;
   for (const src of srcs) {
     const img = imageCache.get(src);
-    if (!img || !img.complete || img.naturalWidth <= 0) return false;
+    if (!img?.complete || img.naturalWidth <= 0) return false;
   }
   return true;
 }
@@ -260,7 +260,7 @@ export function rasterize(spec: SpriteSpec, onReady?: () => void): HTMLCanvasEle
   const hit = cache.get(key);
   if (spec.imageSrc && onReady) {
     const image = imageCache.get(spec.imageSrc);
-    if (!image || !image.complete || image.naturalWidth <= 0) {
+    if (!image?.complete || image.naturalWidth <= 0) {
       const callbacks = imageReadyCallbacks.get(key) ?? new Set<() => void>();
       callbacks.add(onReady);
       imageReadyCallbacks.set(key, callbacks);

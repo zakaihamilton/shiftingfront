@@ -731,7 +731,7 @@ describe("tactical expansion", () => {
     expect(state.missionKind).toBe("extraction");
     const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
     expect(yard).toBeDefined();
-    expect(state.runtime?.zone).toEqual({ x: yard!.x, y: yard!.y });
+    expect(state.runtime?.zone).toEqual({ x: yard?.x, y: yard?.y });
     expect(state.entities.some((entity) => entity.marked && entity.neutral)).toBe(true);
   });
 

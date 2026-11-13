@@ -62,7 +62,7 @@ export function useGameInputCursor(options: {
 
   useLayoutEffect(() => {
     syncCursor();
-  }, [options.placeKind, options.repairMode, options.sellMode, options.selectedIds, syncCursor]);
+  }, [syncCursor]);
 
   const onWheel = useCallback((event: WheelEvent) => {
     if (event.ctrlKey || event.metaKey) return;

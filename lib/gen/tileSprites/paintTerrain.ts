@@ -1,4 +1,4 @@
-import { type BiomeName, type Palette, type ShapeSpec } from "../../types";
+import type { BiomeName, Palette, ShapeSpec } from "../../types";
 import { hash, mixHex, pick, signed, ORE } from "../tilePalette";
 import { appendPropArtShapes, blockerPropPrims, blockerToneFromPalette } from "../blockerPropArt";
 import { blockerPropKind } from "../terrainDecorKinds";

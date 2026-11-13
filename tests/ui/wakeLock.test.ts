@@ -27,7 +27,7 @@ describe("Screen Wake Lock API utility", () => {
       released: false,
       release: vi.fn().mockImplementation(async () => {
         mockSentinel.released = true;
-        releaseListeners.forEach((fn) => fn());
+        releaseListeners.forEach((fn) => { fn(); });
       }),
       addEventListener: vi.fn().mockImplementation((event: string, listener: () => void) => {
         if (event === "release") releaseListeners.push(listener);

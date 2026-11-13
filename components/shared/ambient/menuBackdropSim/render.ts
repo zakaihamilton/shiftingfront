@@ -15,7 +15,7 @@ import { tick } from "@/lib/sim/api";
 import { spawnUnit } from "@/lib/sim/world";
 import { assignMove } from "@/lib/sim/ai/combat";
 import type { UnitKind } from "@/lib/types";
-import { type CinemaScene, type Shot } from "./scene";
+import type { CinemaScene, Shot } from "./scene";
 import { assignClashTargets } from "./combat";
 import { CINEMA_SCENARIOS } from "./scenarios";
 import { cinemaCamera, cinemaOrigin, paintCinemaStatic } from "./paint";

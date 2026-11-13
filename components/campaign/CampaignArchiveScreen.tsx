@@ -26,7 +26,7 @@ export function CampaignArchiveScreen() {
       <div className={styles.scanlines} />
 
       <div className={styles.uiLayer}>
-        <header className={styles.topbar} aria-label="Shifting Front campaign archive status">
+        <section className={styles.topbar} aria-label="Shifting Front campaign archive status">
           <div className={styles.topbarBrand}>
             <span className={styles.brandMark}>SF</span>
             <span>SHIFTING FRONT</span>
@@ -37,12 +37,12 @@ export function CampaignArchiveScreen() {
             <span className={styles.statusDot} aria-hidden="true" />
             <span>LOCAL SAVE INDEX</span>
           </div>
-        </header>
+        </section>
 
         <div className={styles.content}>
           <MetalPanel as="section" className={styles.panel} data-testid="campaign-archive" aria-labelledby="load-mission-title">
             <header className={styles.header}>
-              <ConsoleLabel>Shifting Front // Save slots</ConsoleLabel>
+              <ConsoleLabel>Shifting Front {/* Save slots */}</ConsoleLabel>
               <h1 id="load-mission-title" className={styles.title}>Load mission</h1>
               <p className={styles.subtitle}>SELECT A SAVE SLOT</p>
               <p className={styles.copy}>Resume a named save or an autosave, inspect its operations map, or remove a slot you no longer need.</p>

@@ -26,7 +26,10 @@ export function contestedResourcePoint(
   opponents: readonly Owner[] = [0],
 ): Vec2 | undefined {
   let ownerCache = resourcePointCache.get(state);
-  if (!ownerCache) resourcePointCache.set(state, ownerCache = new Map());
+  if (!ownerCache) {
+    ownerCache = new Map();
+    resourcePointCache.set(state, ownerCache);
+  }
   const cached = ownerCache.get(aiOwner);
   if (cached && state.tick - cached.tick < RESOURCE_SCAN_INTERVAL) return cached.point;
 

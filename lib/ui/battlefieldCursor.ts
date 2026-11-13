@@ -61,7 +61,7 @@ export function battlefieldCursor({
     selectedProducer?.owner === owner &&
     isBuildingEntity(selectedProducer) &&
     selectedProducer.constructing <= 0 &&
-    Boolean(BUILDING_DEFINITIONS[selectedProducer.kind].production)
+    BUILDING_DEFINITIONS[selectedProducer.kind].production
   ) {
     if (!hoverTile || hoverEntity) return "not-allowed";
     return isStaticWalkable(state, hoverTile.x, hoverTile.y) ? "cell" : "not-allowed";

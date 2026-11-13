@@ -55,7 +55,7 @@ export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete
 
   useEffect(() => {
     completedRef.current = false;
-  }, [playId, totalChars]);
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -95,7 +95,7 @@ export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete
       stopped = true;
       cancelAnimationFrame(raf);
     };
-  }, [playId, reducedMotion, totalChars]);
+  }, [reducedMotion, totalChars]);
 
   useEffect(() => {
     if (displayShown < totalChars || completedRef.current) return;
@@ -107,7 +107,7 @@ export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete
     const el = storyRef.current;
     if (!el || !autoFollowStoryRef.current) return;
     el.scrollTop = el.scrollHeight;
-  }, [displayShown]);
+  }, []);
 
   const revealedLines = briefingRevealedLines(lines, displayShown);
   const visibleLines = revealedLines.filter((line) => line.started);

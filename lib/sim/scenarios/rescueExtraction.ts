@@ -339,7 +339,7 @@ function returnStrandedUnitToBase(state: SimState, unit: Entity, yard: Entity | 
  */
 export function ensureRescueReturnTracking(state: SimState): void {
   const runtime = state.runtime;
-  if (!runtime || runtime.kind !== "rescue") return;
+  if (runtime?.kind !== "rescue") return;
   if (runtime.contactedIds !== undefined && runtime.rescuedIds !== undefined) return;
   if (!Array.isArray(runtime.targetIds)) return;
   const contacted = new Set<number>(runtime.contactedIds ?? []);

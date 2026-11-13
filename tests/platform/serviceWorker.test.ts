@@ -156,7 +156,7 @@ describe("Service Worker", () => {
         if (entry.isDirectory()) {
           results = results.concat(collectFiles(full, baseDir));
         } else {
-          results.push("/" + relative(baseDir, full).replace(/\\/g, "/"));
+          results.push(`/${relative(baseDir, full).replace(/\\/g, "/")}`);
         }
       }
       return results;

@@ -125,6 +125,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={styles.body}>
         <script
           type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD is serialized from trusted app metadata.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <ServiceWorkerRegister />

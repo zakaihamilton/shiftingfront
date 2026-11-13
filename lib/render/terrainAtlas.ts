@@ -89,8 +89,8 @@ export function isTerrainAtlasReady(state: AtlasWorld): boolean {
   const plateSrc = TERRAIN_ART[treatment];
   const bImg = grainImages.get(biomeSrc);
   const pImg = grainImages.get(plateSrc);
-  const bReady = Boolean(bImg && bImg.complete && bImg.naturalWidth > 0);
-  const pReady = Boolean(pImg && pImg.complete && pImg.naturalWidth > 0);
+  const bReady = Boolean(bImg?.complete && bImg.naturalWidth > 0);
+  const pReady = Boolean(pImg?.complete && pImg.naturalWidth > 0);
   return bReady && pReady && isTerrainAtlasBaked(state);
 }
 
@@ -117,7 +117,7 @@ export function preloadTerrainAtlas(
       const cached = grainImages.get(src);
       // Failed optional textures have finished too; a later visit can still
       // bake the base terrain instead of waiting for an event that already fired.
-      if (cached && cached.complete) {
+      if (cached?.complete) {
         resolve();
         return;
       }

@@ -99,7 +99,7 @@ export function Battlefield({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       />
-      <canvas ref={tooltipCanvasRef} className={styles.tooltipCanvas} aria-hidden="true" />
+      <canvas ref={tooltipCanvasRef} className={styles.tooltipCanvas} />
       {showHud ? <ScrollArrow dir="left" available={panAvail.left} hot={hotPan === "left"} /> : null}
       {showHud ? <ScrollArrow dir="right" available={panAvail.right} hot={hotPan === "right"} /> : null}
       {showHud ? <ScrollArrow dir="up" available={panAvail.up} hot={hotPan === "up"} /> : null}

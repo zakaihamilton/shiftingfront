@@ -53,7 +53,7 @@ export function useGameRuntimeState({
       preloadTerrainAtlas(boot, { rowsPerChunk: 1 }),
       preloadRasterSourcesAsync(sources),
     ]).catch(() => undefined);
-  }, [boot, mission, seed]);
+  }, [boot]);
 
   return {
     campaign,

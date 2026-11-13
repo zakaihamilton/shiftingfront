@@ -16,7 +16,7 @@ function eventTarget() {
       listeners.get(type)?.delete(listener);
     },
     dispatch(type: string) {
-      listeners.get(type)?.forEach((listener) => listener());
+      listeners.get(type)?.forEach((listener) => { listener(); });
     },
   };
 }

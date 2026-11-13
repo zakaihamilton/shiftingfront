@@ -46,6 +46,25 @@ import { initialMission } from "../../components/game/hooks/useGameSession";
 import { useGameRuntime } from "../../components/game/hooks/useGameRuntime";
 import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "../../components/game/hooks/runtime/surfaces";
 
+function Training({
+  onRuntime,
+  onHost,
+}: {
+  onRuntime: (runtime: ReturnType<typeof useGameRuntime>) => void;
+  onHost: (host: HTMLDivElement) => void;
+}) {
+  const runtime = useGameRuntime({ seed: 0, mission: 0, resume: false, tutorial: true });
+  onRuntime(runtime);
+  return (
+    <div ref={(node) => {
+      runtime.hostRef.current = node;
+      if (node) onHost(node);
+    }}>
+      <canvas ref={runtime.canvasRef} />
+    </div>
+  );
+}
+
 async function renderGameRuntime(options: Parameters<typeof useGameRuntime>[0]) {
   const rendered = renderHook(() => useGameRuntime(options));
   await waitFor(() => expect(startLoop).toHaveBeenCalledOnce());
@@ -71,26 +90,17 @@ beforeEach(() => {
 });
 
 it("keeps the first tutorial target centered through Strict Mode and viewport changes", async () => {
-  let runtime: ReturnType<typeof useGameRuntime>;
-  let host: HTMLDivElement;
-  function Training() {
-    runtime = useGameRuntime({ seed: 0, mission: 0, resume: false, tutorial: true });
-    return (
-      <div ref={(node) => {
-        runtime.hostRef.current = node;
-        if (node && node !== host) {
-          host = node;
-          Object.defineProperties(node, {
-            clientWidth: { configurable: true, value: 390 },
-            clientHeight: { configurable: true, value: 450 },
-          });
-        }
-      }}>
-        <canvas ref={runtime.canvasRef} />
-      </div>
-    );
-  }
-  render(<StrictMode><Training /></StrictMode>);
+  let runtime!: ReturnType<typeof useGameRuntime>;
+  let host!: HTMLDivElement;
+  const setHost = (node: HTMLDivElement) => {
+    if (node === host) return;
+    host = node;
+    Object.defineProperties(node, {
+      clientWidth: { configurable: true, value: 390 },
+      clientHeight: { configurable: true, value: 450 },
+    });
+  };
+  render(<StrictMode><Training onRuntime={(value) => { runtime = value; }} onHost={setHost} /></StrictMode>);
 
   function expectTargetCentered(x: number, y: number) {
     const target = tutorialTargets(runtime.state)[0]!;

@@ -1,5 +1,5 @@
 import { tileCliffGeometry } from "../../gen/cliffGeometry";
-import { cliffFaces, mixHex } from "../../gen/tilePalette";
+import { type cliffFaces, mixHex } from "../../gen/tilePalette";
 import type { TerrainLightRig } from "../terrainLighting";
 
 const SOFT_RAMP_LIGHT = "#f2efe4";

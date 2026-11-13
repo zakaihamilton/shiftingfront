@@ -29,8 +29,8 @@ describe("mission director", () => {
     state.tick = director!.pressureStart;
     const pressureEvents = tickMissionDirector(state);
 
-    expect(state.runtime?.director?.phase).toBe("pressure");
-    expect(state.runtime?.director?.eventCount).toBe(1);
+    expect(state.runtime!.director!.phase).toBe("pressure");
+    expect(state.runtime!.director!.eventCount).toBe(1);
     expect(state.entities.filter((entity) => entity.owner === 1 && entity.class === "unit").length).toBeGreaterThan(beforePressure);
     expect(pressureEvents).toHaveLength(1);
     expect(pressureEvents[0]).toMatchObject({
@@ -58,7 +58,7 @@ describe("mission director", () => {
 
     expect(tickMissionDirector(state)).toHaveLength(1);
     expect(tickMissionDirector(state)).toEqual([]);
-    expect(state.runtime!.director!.eventCount).toBe(1);
+    expect(state.runtime?.director?.eventCount).toBe(1);
   });
 
   it("warns once when an enemy enters the HQ threat radius", () => {
@@ -152,7 +152,7 @@ describe("mission director", () => {
 
     const events = tickMissionDirector(state);
 
-    expect(state.runtime!.director!.phase).toBe("pressure");
+    expect(state.runtime?.director?.phase).toBe("pressure");
     expect(state.runtime!.director!.finaleStart).toBe(originalFinaleStart + 180);
     expect(state.runtime!.director!.finaleStart).toBeLessThanOrEqual(Math.floor((state.runtime!.deadline ?? 3600) * 0.9));
     expect(events[0]).toMatchObject({ text: expect.stringContaining("recover") });

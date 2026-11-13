@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 require("tsx/cjs");
 
 const { parentPort, workerData } = require("node:worker_threads");

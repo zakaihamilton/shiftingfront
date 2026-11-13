@@ -27,7 +27,7 @@ function arg(name: string, fallback: string): string {
     if (item === `--${name}`) {
       return process.argv[i + 1] ?? fallback;
     }
-    if (item && item.startsWith(prefix)) {
+    if (item?.startsWith(prefix)) {
       return item.slice(prefix.length);
     }
   }

@@ -75,7 +75,7 @@ export function lerp(a: number, b: number, t: number): number {
 }
 
 export function clampShore(dist: number): number {
-  return dist > WATER_SHORE_MAX ? WATER_SHORE_MAX : dist;
+  return Math.min(dist , WATER_SHORE_MAX);
 }
 
 export function readShoreCell(

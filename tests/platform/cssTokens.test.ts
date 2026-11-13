@@ -113,7 +113,7 @@ describe("CSS Tokens and Design System Governance", () => {
 
           if (!isDefined) {
             unknownUsages.push({
-              file: file.replace(process.cwd() + "/", ""),
+              file: file.replace(`${process.cwd()}/`, ""),
               variable: varName,
               line: index + 1,
             });
@@ -144,7 +144,7 @@ describe("CSS Tokens and Design System Governance", () => {
 
           if (!isValid) {
             invalidFontUsages.push({
-              file: file.replace(process.cwd() + "/", ""),
+              file: file.replace(`${process.cwd()}/`, ""),
               line: index + 1,
               declaration: value,
             });

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useRouter } from "next/navigation";
 import type { DataConnection, Peer } from "peerjs";
 import type { Owner } from "@/lib/types";
-import { MultiplayerSession, type MultiplayerStatus } from "@/lib/multiplayer/session";
+import type { MultiplayerSession, MultiplayerStatus } from "@/lib/multiplayer/session";
 import { createCampaign } from "@/lib/gen/campaign";
 import type { Credential, LobbyPlayer } from "./types";
 import { PeerLifecycle } from "./peerLifecycle";

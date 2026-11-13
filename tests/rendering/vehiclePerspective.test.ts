@@ -57,7 +57,7 @@ describe("vehicle perspective consistency", () => {
               motion,
               animationFrame,
             });
-            const image = sharp("public" + spec.imageSrc!);
+            const image = sharp(`public${spec.imageSrc!}`);
             const metadata = await image.metadata();
             const crop = spec.imageCrop ?? {
               x: 0, y: 0, w: metadata.width!, h: metadata.height!,
@@ -68,7 +68,7 @@ describe("vehicle perspective consistency", () => {
               .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
             const bounds = opaquePixelBounds(data, info.width, info.height)!;
             const contactInCrop = bounds.minY + bounds.height;
-            const label = kind + " " + (motion ?? "static") + " view " + facing + " frame " + animationFrame;
+            const label = `${kind} ${motion ?? "static"} view ${facing} frame ${animationFrame}`;
             expect(spec.rotation, label).toBeUndefined();
             expect(spec.imageAnchorY! * crop.sourceH, label)
               .toBeCloseTo(crop.y + contactInCrop, 6);

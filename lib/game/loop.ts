@@ -35,7 +35,7 @@ export type FrameTiming = {
 
 export type LoopOptions = {
   /** Apply pending state replacements before capturing the state for this frame. */
-  beforeFrame?: () => boolean | void;
+  beforeFrame?: () => boolean | undefined;
   getState: () => SimState;
   setState: (s: SimState) => void;
   drainCommands: () => Command[];

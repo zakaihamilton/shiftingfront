@@ -123,6 +123,7 @@ export function MinimapFrame({
             {ping && interactive ? (
               <span
                 className={styles.ping}
+                role="img"
                 data-kind={ping.kind}
                 style={pingStyle}
                 aria-label={ping.kind === "urgent" ? "Urgent alert location" : "Objective transition"}

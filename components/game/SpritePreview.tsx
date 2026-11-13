@@ -31,7 +31,7 @@ export function SpritePreview({
   className?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const isUnit = isUnitKind(kind);
+  const _isUnit = isUnitKind(kind);
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
@@ -93,7 +93,7 @@ export function SpritePreview({
     return () => {
       disposed = true;
     };
-  }, [isUnit, kind, palette, profile]);
+  }, [kind, palette, profile]);
   return (
     <canvas
       ref={ref}

@@ -54,23 +54,23 @@ export function MissionOutcome({ debrief, draw = false }: { debrief: MissionDebr
       </div>
 
       {debrief.primaryObjectives.length ? (
-        <div className={styles.objectiveList} aria-label="Primary objectives" data-testid="required-objectives">
+        <section className={styles.objectiveList} aria-label="Primary objectives" data-testid="required-objectives">
           <div className={styles.listHeader}>
             <span>Primary objectives</span>
             <span>{debrief.primaryObjectives.filter((objective) => objective.completed).length}/{debrief.primaryObjectives.length}</span>
           </div>
           {debrief.primaryObjectives.map((objective) => <ObjectiveRow key={objective.id} objective={objective} />)}
-        </div>
+        </section>
       ) : null}
 
       {debrief.optionalObjectives.length ? (
-        <div className={styles.objectiveList} aria-label="Optional objectives" data-testid="optional-objectives">
+        <section className={styles.objectiveList} aria-label="Optional objectives" data-testid="optional-objectives">
           <div className={styles.listHeader}>
             <span>Bonus objectives</span>
             <span>{debrief.optionalObjectives.filter((objective) => objective.completed).length}/{debrief.optionalObjectives.length}</span>
           </div>
           {debrief.optionalObjectives.map((objective) => <ObjectiveRow key={objective.id} objective={objective} optional />)}
-        </div>
+        </section>
       ) : null}
 
       {debrief.retryGuidance ? (

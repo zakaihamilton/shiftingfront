@@ -1,6 +1,6 @@
 import { createCampaign } from "../../../lib/gen/campaign";
 import { generateMap } from "../../../lib/gen/map";
-import { createMission, createMissionFromData } from "../../../lib/sim/api";
+import { type createMission, createMissionFromData } from "../../../lib/sim/api";
 import { cloneMapForSimulation } from "../../../lib/sim/balance";
 
 export function missionFactory(seed: number, missionIndex: number) {

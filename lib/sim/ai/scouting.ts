@@ -27,7 +27,10 @@ function sameTile(a: { x: number; y: number } | undefined, b: { x: number; y: nu
 
 function scoutsFor(state: SimState, owner: Owner): ScoutRegistry {
   let ownerRegistries = scoutState.get(state);
-  if (!ownerRegistries) scoutState.set(state, ownerRegistries = new Map());
+  if (!ownerRegistries) {
+    ownerRegistries = new Map();
+    scoutState.set(state, ownerRegistries);
+  }
   let registry = ownerRegistries.get(owner);
   if (!registry) {
     const memory = state.multiplayer ? multiplayerAiMemory(state, owner) : undefined;

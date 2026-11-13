@@ -32,7 +32,7 @@ export function CreditsModal({ onBack }: { onBack: () => void }) {
       aria-modal="true"
       aria-labelledby="credits-title"
     >
-      <ConsoleLabel>Command Desk // Operational Archive</ConsoleLabel>
+      <ConsoleLabel>Command Desk {/* Operational Archive */}</ConsoleLabel>
       <h2 id="credits-title" className={styles.title}>
         Credits &amp; Attributions
       </h2>

@@ -110,7 +110,7 @@ export function applyBiomeGroundPattern(
     }
     case "rust canyons": {
       const stripe = ((mapX * 0.85 + mapY * 1.6) % 1 + 1) % 1;
-      const strata = Math.pow(Math.max(0, Math.cos(stripe * Math.PI * 2)), 10) * 0.14 + 0.025;
+      const strata = Math.max(0, Math.cos(stripe * Math.PI * 2)) ** 10 * 0.14 + 0.025;
       const scratch = smoothstep(0.72, 0.96, n) * 0.09;
       out = mixRgb(mixRgb(color, mats.patchB, strata), mats.patchA, scratch);
       break;

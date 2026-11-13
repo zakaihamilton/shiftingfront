@@ -45,8 +45,8 @@ describe("unitTransformTracker sub-tick interpolation and dynamics", () => {
     expect(typeof dyn.pitch).toBe("number");
     expect(typeof dyn.roll).toBe("number");
     expect(typeof dyn.yaw).toBe("number");
-    expect(isNaN(dyn.pitch)).toBe(false);
-    expect(isNaN(dyn.roll)).toBe(false);
+    expect(Number.isNaN(dyn.pitch)).toBe(false);
+    expect(Number.isNaN(dyn.roll)).toBe(false);
   });
 
   it("tracks target turret yaw independently from chassis", () => {

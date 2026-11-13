@@ -7,7 +7,7 @@ import { ensureRescueReturnTracking } from "../../sim/scenarios/rescueExtraction
 import { compactDestroyedEntities, compactedState } from "../../sim/world/lifecycle";
 import { isAirUnit, isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
 import {
-  SAVE_CONTENT_VERSION,
+  type SAVE_CONTENT_VERSION,
   isStateShape,
   isNumber,
   assertSupportedContentVersion,
@@ -229,7 +229,7 @@ function normalizeState(value: unknown): SimState {
     }
     if (entity.assignedRunwayId !== undefined) {
       const runway = livingEntities.get(entity.assignedRunwayId);
-      if (!runway || runway.class !== "building" || runway.kind !== "runway" || runway.owner !== entity.owner) {
+      if (runway?.class !== "building" || runway.kind !== "runway" || runway.owner !== entity.owner) {
         delete entity.assignedRunwayId;
         delete entity.landingRunwayId;
         if (entity.flightState === "servicing") {
@@ -241,13 +241,13 @@ function normalizeState(value: unknown): SimState {
     }
     if (entity.landingRunwayId !== undefined) {
       const runway = livingEntities.get(entity.landingRunwayId);
-      if (!runway || runway.class !== "building" || runway.kind !== "runway" || runway.owner !== entity.owner) {
+      if (runway?.class !== "building" || runway.kind !== "runway" || runway.owner !== entity.owner) {
         delete entity.landingRunwayId;
       }
     }
     if (entity.assignedPlaneId !== undefined) {
       const plane = livingEntities.get(entity.assignedPlaneId);
-      if (!plane || plane.class !== "unit" || !isAirUnit(plane.kind) || plane.owner !== entity.owner) {
+      if (plane?.class !== "unit" || !isAirUnit(plane.kind) || plane.owner !== entity.owner) {
         delete entity.assignedPlaneId;
       }
     }
