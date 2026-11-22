@@ -27,7 +27,10 @@ for (let missionIndex = 0; missionIndex < missionCount; missionIndex++) {
     assert.ok(entity.x >= 0 && entity.x <= state.width, `entity ${entity.id} x`);
     assert.ok(entity.y >= 0 && entity.y <= state.height, `entity ${entity.id} y`);
   }
-  assert.ok(state.entities.length < 500, `mission ${missionIndex} entity count ${state.entities.length}`);
+  assert.ok(
+    state.entities.length < 500,
+    `mission ${missionIndex} entity count ${state.entities.length}`,
+  );
 }
 
 collect();

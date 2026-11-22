@@ -1,5 +1,5 @@
-import type { Rng } from "../../seed/rng";
 import type { GeneratedMap } from "../../gen/map";
+import type { Rng } from "../../seed/rng";
 import type { MissionKind, MissionProfile, ReadonlyMissionDef, SimState, Vec2 } from "../../types";
 
 export type ScenarioProgress = {

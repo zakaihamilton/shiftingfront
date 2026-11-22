@@ -1,16 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { filterGeneratedAssets, listGeneratedAssets, type AssetCategoryFilter } from "@/lib/gen/assetCatalog";
+import {
+  type AssetCategoryFilter,
+  filterGeneratedAssets,
+  listGeneratedAssets,
+} from "@/lib/gen/assetCatalog";
 import { generateVisualProfile } from "@/lib/gen/visualProfile";
-import { assetsCommandFromKey, isEditableTarget } from "@/lib/ui/shortcuts";
-import type { Facing, FactionVisualProfile } from "@/lib/types";
 import type { UnitPose } from "@/lib/render/anim";
+import type { Facing, FactionVisualProfile } from "@/lib/types";
+import { assetsCommandFromKey, isEditableTarget } from "@/lib/ui/shortcuts";
 
 export function useAssetsBrowser(onClose: () => void) {
   const assets = useMemo(() => listGeneratedAssets(), []);
   const [selectedId, setSelectedId] = useState(assets[0]?.id ?? "");
   const [assetFilter, setAssetFilterState] = useState<AssetCategoryFilter>("all");
   const selected = assets.find((asset) => asset.id === selectedId) ?? assets[0];
-  const visibleAssets = useMemo(() => filterGeneratedAssets(assets, assetFilter), [assets, assetFilter]);
+  const visibleAssets = useMemo(
+    () => filterGeneratedAssets(assets, assetFilter),
+    [assets, assetFilter],
+  );
   const [facing, setFacing] = useState<Facing>(0);
   const [playing, setPlaying] = useState(true);
   const [pose, setPose] = useState<UnitPose>("idle");
@@ -19,7 +26,10 @@ export function useAssetsBrowser(onClose: () => void) {
   const [damage, setDamage] = useState<0 | 1 | 2>(0);
   const [designFamily, setDesignFamily] = useState<FactionVisualProfile["designFamily"]>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const profile = useMemo(() => ({ ...generateVisualProfile(421, 0), designFamily }), [designFamily]);
+  const profile = useMemo(
+    () => ({ ...generateVisualProfile(421, 0), designFamily }),
+    [designFamily],
+  );
 
   const selectAsset = (id: string) => {
     setSelectedId(id);
@@ -53,7 +63,7 @@ export function useAssetsBrowser(onClose: () => void) {
         return;
       }
       const index = visibleAssets.findIndex((asset) => asset.id === selectedId);
-      const from = Math.max(index , 0);
+      const from = Math.max(index, 0);
       const next = from + (command.type === "nextAsset" ? 1 : -1);
       const nextId = visibleAssets[Math.min(visibleAssets.length - 1, Math.max(0, next))]?.id;
       if (!nextId || nextId === selectedId) return;

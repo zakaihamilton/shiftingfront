@@ -14,7 +14,14 @@ export type Credential = {
 };
 
 export type LobbyMode = "choose" | "hostSetup" | "joining" | "waiting" | "battle";
-export type LobbyPlayer = { owner: Owner; peerId?: string; connected: boolean; host?: boolean; ai?: boolean; forfeited?: boolean };
+export type LobbyPlayer = {
+  owner: Owner;
+  peerId?: string;
+  connected: boolean;
+  host?: boolean;
+  ai?: boolean;
+  forfeited?: boolean;
+};
 export type PeerConstructor = typeof import("peerjs").Peer;
 
 declare global {
@@ -22,4 +29,3 @@ declare global {
     __SHIFTFRONT_PEER_FACTORY__?: () => PeerConstructor;
   }
 }
-

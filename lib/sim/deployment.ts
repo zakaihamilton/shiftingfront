@@ -5,7 +5,13 @@ import { spawnBuildingAt, trySpawnUnit } from "./world";
 /** Applies one chosen reward to a freshly created campaign mission. */
 export function applyDeploymentEdge(state: SimState, edge: DeploymentEdge | undefined): void {
   if (!edge || state.multiplayer || state.tutorialStage !== undefined) return;
-  const yard = state.entities.find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard" && entity.hp > 0);
+  const yard = state.entities.find(
+    (entity) =>
+      entity.owner === 0 &&
+      entity.class === "building" &&
+      entity.kind === "constructionYard" &&
+      entity.hp > 0,
+  );
   if (!yard) return;
   if (edge === "powerReserve") {
     state.powerReserve = POWER_RESERVE_BONUS;

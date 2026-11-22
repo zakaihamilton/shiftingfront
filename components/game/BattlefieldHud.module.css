@@ -1,0 +1,45 @@
+.status {
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 1rem;
+  padding: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  isolation: isolate;
+  text-shadow: 1px 1px #000;
+}
+
+.statusBackdrop {
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 auto;
+  height: var(--status-backdrop-height, 5.25rem);
+  background: linear-gradient(180deg, rgba(5, 8, 14, 0.86), rgba(5, 8, 14, 0.3) 65%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+@media (max-width: 799px) {
+  .status {
+    font-size: var(--text-xs);
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 1023px) and (orientation: portrait) {
+  .status {
+    --status-backdrop-height: 9rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    align-items: start;
+    gap: 0.35rem;
+    padding: max(0.55rem, env(safe-area-inset-top)) 0.6rem 0.45rem;
+    font-size: var(--text-2xs);
+  }
+}

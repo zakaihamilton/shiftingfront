@@ -1,11 +1,22 @@
 import type { Entity, SimState } from "../types";
-import { flowCellTaken, flowDistanceAt, flowFieldForGoals, flowStep, type FlowField } from "./flowField";
-import { navigationEdgeKey, navigationEdgeReserved, returnsToPreviousCell, stepFromPreviousCell } from "./navigation/grid";
-import { reversesPreviousStep } from "./pathfinding";
-import { tryFindPathDetailed } from "./pathBudget";
 import { entitiesFor } from "./entities";
-import { navigationMobilityFor } from "./terrainRules";
+import {
+  type FlowField,
+  flowCellTaken,
+  flowDistanceAt,
+  flowFieldForGoals,
+  flowStep,
+} from "./flowField";
+import {
+  navigationEdgeKey,
+  navigationEdgeReserved,
+  returnsToPreviousCell,
+  stepFromPreviousCell,
+} from "./navigation/grid";
 import { isPlayerControlledOwner } from "./ownership";
+import { tryFindPathDetailed } from "./pathBudget";
+import { reversesPreviousStep } from "./pathfinding";
+import { navigationMobilityFor } from "./terrainRules";
 
 const FLOW_PATH_PREFIX_LENGTH = 2;
 const MIN_CONGESTION_GROUP_SIZE = 16;
@@ -35,7 +46,12 @@ function buffersFor(state: SimState): FlowRoutingBuffers {
     cached.ranked.length = 0;
     return cached;
   }
-  const buffers = { fields: new Map<string, FlowField>(), followers: [], ranked: [], congestedGroups: new Map<string, CongestedGroup>() };
+  const buffers = {
+    fields: new Map<string, FlowField>(),
+    followers: [],
+    ranked: [],
+    congestedGroups: new Map<string, CongestedGroup>(),
+  };
   flowRoutingBuffers.set(state, buffers);
   return buffers;
 }
@@ -60,7 +76,14 @@ export function prepareFlowFieldRoutes(
 
   const groups = new Map<string, Entity[]>();
   for (const entity of entitiesFor(state)) {
-    if (entity.hp <= 0 || entity.class !== "unit" || skipIds?.has(entity.id) || !entity.flowGoal || !entity.orderDestination) continue;
+    if (
+      entity.hp <= 0 ||
+      entity.class !== "unit" ||
+      skipIds?.has(entity.id) ||
+      !entity.flowGoal ||
+      !entity.orderDestination
+    )
+      continue;
     const goal = entity.flowGoal;
     const key = `${Math.round(goal.x)}:${Math.round(goal.y)}:${navigationMobilityFor(entity)}`;
     const members = groups.get(key) ?? [];
@@ -83,19 +106,38 @@ export function prepareFlowFieldRoutes(
     const previous = congestedGroups.get(groupKey);
     if (previous && members.length < MIN_CONGESTION_GROUP_SIZE) continue;
     const arrivalGoals = members.map((entity) => ({ ...entity.orderDestination! }));
-    const sameOrder = previous && previous.size === members.length && sameGoalSet(previous.arrivalGoals, arrivalGoals);
-    congestedGroups.set(groupKey, previous && (members.length < previous.size || sameOrder) ? previous : {
-      size: members.length,
-      formed: members.some((entity) => entity.formation !== undefined),
-      arrivalGoals,
-    });
+    const sameOrder =
+      previous &&
+      previous.size === members.length &&
+      sameGoalSet(previous.arrivalGoals, arrivalGoals);
+    congestedGroups.set(
+      groupKey,
+      previous && (members.length < previous.size || sameOrder)
+        ? previous
+        : {
+            size: members.length,
+            formed: members.some((entity) => entity.formation !== undefined),
+            arrivalGoals,
+          },
+    );
   }
   for (const groupKey of congestedGroups.keys()) {
     if (!activeGroupKeys.has(groupKey)) congestedGroups.delete(groupKey);
   }
 
   if (congestedGroups.size === 0) {
-    prepareSmallGroupRoutes(state, occupancy, reserved, previousCells, fields, followers, ranked, skipIds, flowFields, edgeReservations);
+    prepareSmallGroupRoutes(
+      state,
+      occupancy,
+      reserved,
+      previousCells,
+      fields,
+      followers,
+      ranked,
+      skipIds,
+      flowFields,
+      edgeReservations,
+    );
     return;
   }
 
@@ -116,9 +158,13 @@ export function prepareFlowFieldRoutes(
       : congested
         ? Math.max(ARRIVAL_SWITCH_DISTANCE, Math.ceil(Math.sqrt(congested.size) * 3))
         : ARRIVAL_SWITCH_DISTANCE;
-    const ordered = members.slice().sort((a, b) =>
-      flowDistanceAt(approachField, a.x, a.y) - flowDistanceAt(approachField, b.x, b.y) || a.id - b.id,
-    );
+    const ordered = members
+      .slice()
+      .sort(
+        (a, b) =>
+          flowDistanceAt(approachField, a.x, a.y) - flowDistanceAt(approachField, b.x, b.y) ||
+          a.id - b.id,
+      );
 
     for (const entity of ordered) {
       // A bounded arrival search may leave a useful partial path. Let it run
@@ -139,8 +185,15 @@ export function prepareFlowFieldRoutes(
         settleAtArrivalSlot(entity);
         continue;
       }
-      if ((personalCheb <= ARRIVAL_DISTANCE || routeDistance <= arrivalSwitchDistance) &&
-        finishFlowFieldRoute(state, occupancy, entity, isPlayerControlledOwner(state, entity.owner) ? previousCells?.get(entity.id) : undefined)) {
+      if (
+        (personalCheb <= ARRIVAL_DISTANCE || routeDistance <= arrivalSwitchDistance) &&
+        finishFlowFieldRoute(
+          state,
+          occupancy,
+          entity,
+          isPlayerControlledOwner(state, entity.owner) ? previousCells?.get(entity.id) : undefined,
+        )
+      ) {
         flowOrder?.set(entity.id, order++);
         continue;
       }
@@ -156,13 +209,27 @@ export function prepareFlowFieldRoutes(
       followers.push(entity);
       flowOrder?.set(entity.id, order++);
       flowFields?.set(entity.id, fallbackField);
-      ranked.push({ entity, field: fallbackField, dist: flowDistanceAt(fallbackField, entity.x, entity.y) });
+      ranked.push({
+        entity,
+        field: fallbackField,
+        dist: flowDistanceAt(fallbackField, entity.x, entity.y),
+      });
     }
   }
 
   ranked.sort((a, b) => a.dist - b.dist || a.entity.id - b.entity.id);
   for (const { entity, field } of ranked) {
-    assignFlowPrefix(state, occupancy, reserved, previousCells, entity, field, plannedVacates, flowFields, edgeReservations);
+    assignFlowPrefix(
+      state,
+      occupancy,
+      reserved,
+      previousCells,
+      entity,
+      field,
+      plannedVacates,
+      flowFields,
+      edgeReservations,
+    );
   }
 }
 
@@ -174,15 +241,24 @@ function settleAtArrivalSlot(entity: Entity): void {
   entity.idle = true;
 }
 
-function sameGoalSet(a: readonly { x: number; y: number }[], b: readonly { x: number; y: number }[]): boolean {
+function sameGoalSet(
+  a: readonly { x: number; y: number }[],
+  b: readonly { x: number; y: number }[],
+): boolean {
   if (a.length !== b.length) return false;
   const normalize = (goals: readonly { x: number; y: number }[]) =>
-    goals.map((goal) => `${Math.round(goal.x)},${Math.round(goal.y)}`).sort().join(";");
+    goals
+      .map((goal) => `${Math.round(goal.x)},${Math.round(goal.y)}`)
+      .sort()
+      .join(";");
   return normalize(a) === normalize(b);
 }
 
 function goalSetKey(goals: readonly { x: number; y: number }[]): string {
-  return goals.map((goal) => `${Math.round(goal.x)},${Math.round(goal.y)}`).sort().join(";");
+  return goals
+    .map((goal) => `${Math.round(goal.x)},${Math.round(goal.y)}`)
+    .sort()
+    .join(";");
 }
 
 function prepareSmallGroupRoutes(
@@ -198,7 +274,14 @@ function prepareSmallGroupRoutes(
   edgeReservations?: Map<number, number>,
 ): void {
   for (const entity of entitiesFor(state)) {
-    if (entity.hp <= 0 || entity.class !== "unit" || skipIds?.has(entity.id) || !entity.flowGoal || !entity.orderDestination) continue;
+    if (
+      entity.hp <= 0 ||
+      entity.class !== "unit" ||
+      skipIds?.has(entity.id) ||
+      !entity.flowGoal ||
+      !entity.orderDestination
+    )
+      continue;
     if (entity.path.length > 0 && entity.routePending === false) continue;
     const destination = entity.orderDestination;
     const personalCheb = Math.max(
@@ -220,7 +303,9 @@ function prepareSmallGroupRoutes(
 
   for (const entity of followers) {
     const mobility = navigationMobilityFor(entity);
-    const sameMobilityFollowers = followers.filter((follower) => navigationMobilityFor(follower) === mobility);
+    const sameMobilityFollowers = followers.filter(
+      (follower) => navigationMobilityFor(follower) === mobility,
+    );
     const goals = sameMobilityFollowers.map((follower) => ({ ...follower.orderDestination! }));
     const goal = entity.flowGoal!;
     const key = `${state.navigationRevision ?? 0}:${mobility}:${Math.round(goal.x)}:${Math.round(goal.y)}:${goalSetKey(goals)}`;
@@ -230,7 +315,17 @@ function prepareSmallGroupRoutes(
   }
   ranked.sort((a, b) => a.dist - b.dist || a.entity.id - b.entity.id);
   for (const { entity, field } of ranked) {
-    assignFlowPrefix(state, occupancy, reserved, previousCells, entity, field, undefined, flowFields, edgeReservations);
+    assignFlowPrefix(
+      state,
+      occupancy,
+      reserved,
+      previousCells,
+      entity,
+      field,
+      undefined,
+      flowFields,
+      edgeReservations,
+    );
   }
 }
 
@@ -247,18 +342,46 @@ function assignFlowPrefix(
 ): void {
   let cursorX = Math.round(entity.x);
   let cursorY = Math.round(entity.y);
-  const previousCell = isPlayerControlledOwner(state, entity.owner) ? previousCells?.get(entity.id) : undefined;
+  const previousCell = isPlayerControlledOwner(state, entity.owner)
+    ? previousCells?.get(entity.id)
+    : undefined;
   const existing = entity.path[0];
-  const existingIsCurrent = existing && Math.round(existing.x) === cursorX && Math.round(existing.y) === cursorY;
+  const existingIsCurrent =
+    existing && Math.round(existing.x) === cursorX && Math.round(existing.y) === cursorY;
   const existingDistance = existing
-    ? field.distance[Math.round(existing.y) * field.width + Math.round(existing.x)] ?? -1
+    ? (field.distance[Math.round(existing.y) * field.width + Math.round(existing.x)] ?? -1)
     : -1;
   const currentDistance = field.distance[cursorY * field.width + cursorX] ?? -1;
   const existingFree = existing
-    ? !existingIsCurrent && existingDistance >= 0 && existingDistance < currentDistance &&
-      !returnsToPreviousCell(state.width, cursorX, cursorY, Math.round(existing.x), Math.round(existing.y), previousCell) &&
-      prefixCellOpen(state, occupancy, reserved, entity.id, existing.x, existing.y, plannedVacates) &&
-      !edgeBlocked(state, edgeReservations, entity.id, cursorX, cursorY, Math.round(existing.x), Math.round(existing.y))
+    ? !existingIsCurrent &&
+      existingDistance >= 0 &&
+      existingDistance < currentDistance &&
+      !returnsToPreviousCell(
+        state.width,
+        cursorX,
+        cursorY,
+        Math.round(existing.x),
+        Math.round(existing.y),
+        previousCell,
+      ) &&
+      prefixCellOpen(
+        state,
+        occupancy,
+        reserved,
+        entity.id,
+        existing.x,
+        existing.y,
+        plannedVacates,
+      ) &&
+      !edgeBlocked(
+        state,
+        edgeReservations,
+        entity.id,
+        cursorX,
+        cursorY,
+        Math.round(existing.x),
+        Math.round(existing.y),
+      )
     : false;
   const prefix: { x: number; y: number }[] = [];
   let priorCell = previousCell;
@@ -277,13 +400,15 @@ function assignFlowPrefix(
   const openingKey = openingStep
     ? Math.round(openingStep.y) * field.width + Math.round(openingStep.x)
     : -1;
-  const openingDistance = openingKey >= 0 ? field.distance[openingKey] ?? -1 : -1;
+  const openingDistance = openingKey >= 0 ? (field.distance[openingKey] ?? -1) : -1;
   // Only steal a short flow prefix. A saved cardinal that is a full step worse
   // than the diagonal is the staircase; a slightly shorter diagonal is not
   // worth abandoning a heading, and a finished arrival route must stay intact.
-  const diagonalOpens = entity.path.length > 0 &&
+  const diagonalOpens =
+    entity.path.length > 0 &&
     entity.path.length <= (plannedVacates ? 1 : FLOW_PATH_PREFIX_LENGTH) &&
-    existing !== undefined && openingStep !== undefined &&
+    existing !== undefined &&
+    openingStep !== undefined &&
     existingDistance > openingDistance + 0.5 &&
     diagonalSupersedesCardinal(cursorX, cursorY, existing, openingStep);
   for (let i = 0; i < (plannedVacates ? 1 : FLOW_PATH_PREFIX_LENGTH); i++) {
@@ -293,20 +418,53 @@ function assignFlowPrefix(
       : i === 0 && openingStep
         ? openingStep
         : flowStep(field, cursorX, cursorY, {
-          occupancy,
-          reserved,
-          ignoreId: entity.id,
-          state,
-          previousCell: priorCell,
-          vacating: plannedVacates,
-          edgeReservations,
-          allowNonImproving: (entity.blockedTicks ?? 0) >= 3,
-        });
-    if (!candidate || !prefixCellOpen(state, occupancy, reserved, entity.id, candidate.x, candidate.y, plannedVacates)) break;
-    if (edgeBlocked(state, edgeReservations, entity.id, cursorX, cursorY, Math.round(candidate.x), Math.round(candidate.y))) break;
+            occupancy,
+            reserved,
+            ignoreId: entity.id,
+            state,
+            previousCell: priorCell,
+            vacating: plannedVacates,
+            edgeReservations,
+            allowNonImproving: (entity.blockedTicks ?? 0) >= 3,
+          });
+    if (
+      !candidate ||
+      !prefixCellOpen(
+        state,
+        occupancy,
+        reserved,
+        entity.id,
+        candidate.x,
+        candidate.y,
+        plannedVacates,
+      )
+    )
+      break;
+    if (
+      edgeBlocked(
+        state,
+        edgeReservations,
+        entity.id,
+        cursorX,
+        cursorY,
+        Math.round(candidate.x),
+        Math.round(candidate.y),
+      )
+    )
+      break;
     prefix.push(candidate);
     reserved.set(Math.round(candidate.y) * state.width + Math.round(candidate.x), entity.id);
-    edgeReservations?.set(navigationEdgeKey(state.width, state.height, cursorX, cursorY, Math.round(candidate.x), Math.round(candidate.y)), entity.id);
+    edgeReservations?.set(
+      navigationEdgeKey(
+        state.width,
+        state.height,
+        cursorX,
+        cursorY,
+        Math.round(candidate.x),
+        Math.round(candidate.y),
+      ),
+      entity.id,
+    );
     priorCell = cursorY * state.width + cursorX;
     cursorX = Math.round(candidate.x);
     cursorY = Math.round(candidate.y);
@@ -358,7 +516,16 @@ function edgeBlocked(
   x1: number,
   y1: number,
 ): boolean {
-  return navigationEdgeReserved(edgeReservations, state.width, state.height, x0, y0, x1, y1, ignoreId);
+  return navigationEdgeReserved(
+    edgeReservations,
+    state.width,
+    state.height,
+    x0,
+    y0,
+    x1,
+    y1,
+    ignoreId,
+  );
 }
 
 function prefixCellOpen(
@@ -370,12 +537,28 @@ function prefixCellOpen(
   y: number,
   plannedVacates?: Map<number, number>,
 ): boolean {
-  return !flowCellTaken(occupancy, reserved, state.width, Math.round(x), Math.round(y), ignoreId, plannedVacates);
+  return !flowCellTaken(
+    occupancy,
+    reserved,
+    state.width,
+    Math.round(x),
+    Math.round(y),
+    ignoreId,
+    plannedVacates,
+  );
 }
 
-function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: Entity, previousCell?: number): boolean {
+function finishFlowFieldRoute(
+  state: SimState,
+  occupancy: Uint8Array,
+  entity: Entity,
+  previousCell?: number,
+): boolean {
   const destination = entity.orderDestination!;
-  if (Math.round(entity.x) === Math.round(destination.x) && Math.round(entity.y) === Math.round(destination.y)) {
+  if (
+    Math.round(entity.x) === Math.round(destination.x) &&
+    Math.round(entity.y) === Math.round(destination.y)
+  ) {
     entity.flowGoal = undefined;
     entity.path = [];
     entity.routePending = false;
@@ -386,7 +569,12 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     avoidUnits: true,
     ignoreId: entity.id,
     occupancy,
-    approach: stepFromPreviousCell(state.width, Math.round(entity.x), Math.round(entity.y), previousCell),
+    approach: stepFromPreviousCell(
+      state.width,
+      Math.round(entity.x),
+      Math.round(entity.y),
+      previousCell,
+    ),
   });
   if (!result) return false;
   if (result.status === "unreachable") return false;
@@ -401,16 +589,26 @@ function finishFlowFieldRoute(state: SimState, occupancy: Uint8Array, entity: En
     return true;
   }
   const first = result.path[0];
-  if (first && isPlayerControlledOwner(state, entity.owner) && entity.scenarioRole !== "convoy" && reversesPreviousStep(
-    state.width,
-    Math.round(entity.x),
-    Math.round(entity.y),
-    Math.round(first.x),
-    Math.round(first.y),
-    previousCell,
-  )) return false;
+  if (
+    first &&
+    isPlayerControlledOwner(state, entity.owner) &&
+    entity.scenarioRole !== "convoy" &&
+    reversesPreviousStep(
+      state.width,
+      Math.round(entity.x),
+      Math.round(entity.y),
+      Math.round(first.x),
+      Math.round(first.y),
+      previousCell,
+    )
+  )
+    return false;
   const last = result.path[result.path.length - 1];
-  if (last && (Math.round(last.x) !== Math.round(destination.x) || Math.round(last.y) !== Math.round(destination.y))) {
+  if (
+    last &&
+    (Math.round(last.x) !== Math.round(destination.x) ||
+      Math.round(last.y) !== Math.round(destination.y))
+  ) {
     return false;
   }
   // Keep the shared goal attached until the unit actually reaches its slot.

@@ -13,11 +13,7 @@ describe("UI Primitives", () => {
   describe("ConsoleButton", () => {
     it("renders with tooltips, shortcuts, and default action flag", () => {
       render(
-        <ConsoleButton
-          tooltip="Engage hostile forces"
-          shortcut="Enter"
-          tooltipPos="top"
-        >
+        <ConsoleButton tooltip="Engage hostile forces" shortcut="Enter" tooltipPos="top">
           Engage
         </ConsoleButton>,
       );
@@ -46,22 +42,14 @@ describe("UI Primitives", () => {
 
   describe("ProgressMeter", () => {
     it("renders percentage and detail string", () => {
-      render(
-        <ProgressMeter
-          label="Armor Integrity"
-          ratio={0.75}
-          detail="300 / 400"
-        />,
-      );
+      render(<ProgressMeter label="Armor Integrity" ratio={0.75} detail="300 / 400" />);
 
       expect(screen.getByText("Armor Integrity")).toBeInTheDocument();
       expect(screen.getByText("75% · 300 / 400")).toBeInTheDocument();
     });
 
     it("clamps ratio safely between 0% and 100%", () => {
-      const { rerender } = render(
-        <ProgressMeter label="Overcharged" ratio={1.4} />,
-      );
+      const { rerender } = render(<ProgressMeter label="Overcharged" ratio={1.4} />);
       expect(screen.getByText("100%")).toBeInTheDocument();
 
       rerender(<ProgressMeter label="Depleted" ratio={-0.3} />);

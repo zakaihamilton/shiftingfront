@@ -96,7 +96,11 @@ export function useTooltipTarget() {
     };
 
     const onBlur = (e: FocusEvent) => {
-      if (hoverRef.current && !hoverRef.current.contains(e.relatedTarget as Node | null) && hoverRef.current !== forcedEl()) {
+      if (
+        hoverRef.current &&
+        !hoverRef.current.contains(e.relatedTarget as Node | null) &&
+        hoverRef.current !== forcedEl()
+      ) {
         if (tooltipTarget(e.target) === hoverRef.current) hoverRef.current = null;
         paint();
       }

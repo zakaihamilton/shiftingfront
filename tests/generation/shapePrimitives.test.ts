@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { irregularIso as tileSpriteIrregularIso } from "../../lib/gen/tileSprites/constants";
 import { irregularIso } from "../../lib/gen/shapePrimitives";
+import { irregularIso as tileSpriteIrregularIso } from "../../lib/gen/tileSprites/constants";
 
 describe("tile sprite shape helpers", () => {
   it("preserves the legacy seed-only irregularIso call", () => {

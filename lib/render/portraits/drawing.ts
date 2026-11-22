@@ -1,5 +1,5 @@
 import type { PortraitAsset } from "../../gen/portraitCatalog";
-import type { FaceTone, PortraitFrameRect, PortraitClip, PortraitOffset } from "./types";
+import type { FaceTone, PortraitClip, PortraitFrameRect, PortraitOffset } from "./types";
 import { PORTRAIT_OFFSET_NONE } from "./types";
 
 function drawPortraitBooth(ctx: CanvasRenderingContext2D, tone: FaceTone): void {
@@ -18,7 +18,12 @@ function drawPortraitBooth(ctx: CanvasRenderingContext2D, tone: FaceTone): void 
   ctx.lineWidth = 2;
   ctx.strokeRect(-55, -71, 110, 146);
   ctx.fillStyle = rim;
-  for (const [x, y] of [[-52, -68], [48, -68], [-52, 70], [48, 70]]) {
+  for (const [x, y] of [
+    [-52, -68],
+    [48, -68],
+    [-52, 70],
+    [48, 70],
+  ]) {
     ctx.fillRect(x, y, 4, 4);
   }
   ctx.fillStyle = "rgba(8, 10, 8, 0.55)";

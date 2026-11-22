@@ -1,5 +1,5 @@
-import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import type { MusicStyleProfile } from "./compose";
+import type { AudioGraphContext, MusicGraph } from "./musicGraph";
 import { getMusicSample, type MusicSampleName } from "./musicSamples";
 
 const SAMPLE_GAIN: Record<MusicSampleName, number> = {
@@ -48,20 +48,25 @@ function playSample(
   source.start(time);
 }
 
-export function playKick(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, style = g.style): void {
+export function playKick(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  time: number,
+  velocity: number,
+  style = g.style,
+): void {
   const { drum } = style;
-  playSample(
-    audio,
-    g,
-    style,
-    "kick",
-    time,
-    velocity,
-    drum.noisePan * 0.35,
-  );
+  playSample(audio, g, style, "kick", time, velocity, drum.noisePan * 0.35);
 }
 
-export function playSnare(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, accent: boolean, style = g.style): void {
+export function playSnare(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  time: number,
+  velocity: number,
+  accent: boolean,
+  style = g.style,
+): void {
   const { drum } = style;
   playSample(
     audio,
@@ -76,7 +81,14 @@ export function playSnare(audio: AudioGraphContext, g: MusicGraph, time: number,
   );
 }
 
-export function playClap(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, accent: boolean, style = g.style): void {
+export function playClap(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  time: number,
+  velocity: number,
+  accent: boolean,
+  style = g.style,
+): void {
   const { drum } = style;
   playSample(
     audio,
@@ -91,7 +103,14 @@ export function playClap(audio: AudioGraphContext, g: MusicGraph, time: number, 
   );
 }
 
-export function playHat(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, open: boolean, style = g.style): void {
+export function playHat(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  time: number,
+  velocity: number,
+  open: boolean,
+  style = g.style,
+): void {
   const { drum } = style;
   const kind = open ? "openHat" : "hat";
   const frequency = open ? drum.openHatFrequency : drum.hatFrequency;
@@ -108,20 +127,44 @@ export function playHat(audio: AudioGraphContext, g: MusicGraph, time: number, v
   );
 }
 
-export function playTom(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, style = g.style): void {
+export function playTom(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  time: number,
+  velocity: number,
+  style = g.style,
+): void {
   const { drum } = style;
   playSample(audio, g, style, "tom", time, velocity, drum.noisePan + 0.08, 1, 0.06);
 }
 
-export function playImpact(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, style = g.style): void {
+export function playImpact(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  time: number,
+  velocity: number,
+  style = g.style,
+): void {
   const { drum } = style;
   playSample(audio, g, style, "impact", time, velocity, drum.noisePan, 1, 0.2);
 }
 
-export function playRim(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, style = g.style): void {
+export function playRim(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  time: number,
+  velocity: number,
+  style = g.style,
+): void {
   playSample(audio, g, style, "rim", time, velocity, style.drum.noisePan + 0.2, 1, 0.04);
 }
 
-export function playShaker(audio: AudioGraphContext, g: MusicGraph, time: number, velocity: number, style = g.style): void {
+export function playShaker(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  time: number,
+  velocity: number,
+  style = g.style,
+): void {
   playSample(audio, g, style, "shaker", time, velocity, -style.drum.noisePan, 1);
 }

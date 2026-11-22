@@ -50,11 +50,15 @@ export function formatMissionMinutes(minutes: number): string {
 /** Converts a generated mission deadline to a whole-minute player-facing label. */
 export function formatMissionMinutesFromTicks(ticks: number): string {
   const safeTicks = Math.max(0, ticks);
-  return formatMissionMinutes(safeTicks === 0 ? 0 : Math.max(1, Math.round(safeTicks / TICKS_PER_MINUTE)));
+  return formatMissionMinutes(
+    safeTicks === 0 ? 0 : Math.max(1, Math.round(safeTicks / TICKS_PER_MINUTE)),
+  );
 }
 
 export const MIN_MISSION_TICKS = minutesToTicks(MIN_MISSION_MINUTES);
 export const MAX_MISSION_TICKS = minutesToTicks(MAX_MISSION_MINUTES);
 export const MAX_DEADLINE_TICKS = minutesToTicks(MAX_DEADLINE_MINUTES);
 /** Longest player-facing fail-deadline, including escort staging and its approach buffer. */
-export const MAX_OPERATION_TICKS = minutesToTicks(MAX_DEADLINE_MINUTES + CONVOY_STAGING_MINUTES + CONVOY_COMPLETION_BUFFER_MINUTES);
+export const MAX_OPERATION_TICKS = minutesToTicks(
+  MAX_DEADLINE_MINUTES + CONVOY_STAGING_MINUTES + CONVOY_COMPLETION_BUFFER_MINUTES,
+);

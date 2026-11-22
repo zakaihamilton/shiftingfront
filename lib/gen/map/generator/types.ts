@@ -1,4 +1,11 @@
-import type { BiomeName, LandmarkKind, MapSpawnTopology, MissionProfileVariant, SurfaceKind, Vec2 } from "../../../types";
+import type {
+  BiomeName,
+  LandmarkKind,
+  MapSpawnTopology,
+  MissionProfileVariant,
+  SurfaceKind,
+  Vec2,
+} from "../../../types";
 
 export type MapAffordances = {
   routeLengths: number[];

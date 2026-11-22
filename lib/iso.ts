@@ -21,14 +21,22 @@ export function isoHeadingAngle(dx: number, dy: number): number {
 /** Center screen angle in radians [-PI, PI] for each of the 8 isometric facings. */
 export function isoFacingAngle(facing: Facing): number {
   switch (facing) {
-    case 0: return 0;
-    case 1: return Math.atan2(1, 2);
-    case 2: return Math.PI / 2;
-    case 3: return Math.atan2(1, -2);
-    case 4: return Math.PI;
-    case 5: return Math.atan2(-1, -2);
-    case 6: return -Math.PI / 2;
-    case 7: return Math.atan2(-1, 2);
+    case 0:
+      return 0;
+    case 1:
+      return Math.atan2(1, 2);
+    case 2:
+      return Math.PI / 2;
+    case 3:
+      return Math.atan2(1, -2);
+    case 4:
+      return Math.PI;
+    case 5:
+      return Math.atan2(-1, -2);
+    case 6:
+      return -Math.PI / 2;
+    case 7:
+      return Math.atan2(-1, 2);
   }
 }
 
@@ -77,7 +85,12 @@ export function createCamera(): Camera {
   return { x: 400, y: 80, zoom: 1 };
 }
 
-export function tileToScreen(tx: number, ty: number, cam: Camera, elev = 0): { x: number; y: number } {
+export function tileToScreen(
+  tx: number,
+  ty: number,
+  cam: Camera,
+  elev = 0,
+): { x: number; y: number } {
   return {
     x: (tx - ty) * (TILE_W / 2) * cam.zoom + cam.x,
     y: (tx + ty) * (TILE_H / 2) * cam.zoom + cam.y - elev * HEIGHT_STEP * cam.zoom,
@@ -100,7 +113,12 @@ export function cameraViewQuad(
   cam: Camera,
   screenW: number,
   screenH: number,
-): [{ x: number; y: number }, { x: number; y: number }, { x: number; y: number }, { x: number; y: number }] {
+): [
+  { x: number; y: number },
+  { x: number; y: number },
+  { x: number; y: number },
+  { x: number; y: number },
+] {
   return [
     screenToGroundTile(0, 0, cam),
     screenToGroundTile(screenW, 0, cam),

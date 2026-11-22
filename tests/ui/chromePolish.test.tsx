@@ -10,8 +10,8 @@ import { CommandTabs } from "../../components/game/CommandTabs";
 import { DocumentTitle } from "../../components/ui/DocumentTitle";
 import { PageFallback } from "../../components/ui/PageFallback";
 import { createCampaign } from "../../lib/gen/campaign";
-import { objectiveCardsFor } from "../../lib/ui/missionPresentation";
 import { makeFixture } from "../../lib/sim/fixtures";
+import { objectiveCardsFor } from "../../lib/ui/missionPresentation";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
@@ -64,12 +64,21 @@ describe("product chrome", () => {
         levelCount={campaign.missions.length}
         missionName="Recovery Zone"
         objective="Return the convoy"
-        briefingObjectives={[{ id: "win", text: "Contact and return 2 stranded units within 10 min" }]}
+        briefingObjectives={[
+          { id: "win", text: "Contact and return 2 stranded units within 10 min" },
+        ]}
         timeRemaining="Time remaining 00:09"
         timeRemainingTicks={9 * 12}
         timeLimitTicks={10 * 60 * 12}
         objectiveCards={[
-          { id: "primary", label: "Return the convoy", current: 1, target: 2, status: "active", primary: true },
+          {
+            id: "primary",
+            label: "Return the convoy",
+            current: 1,
+            target: 2,
+            status: "active",
+            primary: true,
+          },
           { id: "escort", label: "Protect the escort", current: 0, target: 1, status: "active" },
         ]}
         phaseLabel="Extraction phase"
@@ -78,7 +87,9 @@ describe("product chrome", () => {
 
     expect(screen.getByTestId("time-remaining")).toHaveAttribute("data-urgency", "critical");
     expect(screen.getByTestId("objective")).toHaveAttribute("data-status", "active");
-    expect(screen.getByTestId("objective")).toHaveTextContent("Contact and return 2 stranded units within 10 min");
+    expect(screen.getByTestId("objective")).toHaveTextContent(
+      "Contact and return 2 stranded units within 10 min",
+    );
     expect(screen.getByTestId("objective")).toHaveTextContent("1 / 2");
     expect(screen.getByTestId("secondary-objectives")).toHaveTextContent("Bonus objectives 0/1");
     expect(screen.getByTestId("mission-phase")).toHaveTextContent("Extraction phase");
@@ -101,7 +112,10 @@ describe("product chrome", () => {
     const timer = screen.getByTestId("time-remaining");
     expect(timer).toHaveAttribute("data-urgency", "normal");
     expect(timer).toHaveTextContent("Hold for 00:09");
-    expect(timer).toHaveAttribute("data-tooltip", "Survive until the timer reaches 00:00 to complete the primary objective.");
+    expect(timer).toHaveAttribute(
+      "data-tooltip",
+      "Survive until the timer reaches 00:00 to complete the primary objective.",
+    );
     expect(timer.querySelector('[aria-hidden="true"] span')).toHaveStyle({ width: "99%" });
   });
 
@@ -133,9 +147,31 @@ describe("product chrome", () => {
         missionName="Recovery Zone"
         objective="Return the convoy"
         objectiveCards={[
-          { id: "primary", label: "Return the convoy", current: 0, target: 1, status: "active", primary: true, priority: "primary" },
-          { id: "yard", label: "Keep Command HQ standing", current: 1, target: 1, status: "complete", priority: "primary" },
-          { id: "survivors", label: "Keep a combat unit alive", current: 0, target: 1, status: "active", priority: "optional" },
+          {
+            id: "primary",
+            label: "Return the convoy",
+            current: 0,
+            target: 1,
+            status: "active",
+            primary: true,
+            priority: "primary",
+          },
+          {
+            id: "yard",
+            label: "Keep Command HQ standing",
+            current: 1,
+            target: 1,
+            status: "complete",
+            priority: "primary",
+          },
+          {
+            id: "survivors",
+            label: "Keep a combat unit alive",
+            current: 0,
+            target: 1,
+            status: "active",
+            priority: "optional",
+          },
         ]}
       />,
     );
@@ -143,7 +179,9 @@ describe("product chrome", () => {
     expect(screen.getByTestId("primary-objectives")).toHaveTextContent("Primary objectives 1/1");
     expect(screen.getByTestId("primary-objectives")).toHaveTextContent("Keep Command HQ standing");
     expect(screen.getByTestId("secondary-objectives")).toHaveTextContent("Bonus objectives 0/1");
-    expect(screen.getByTestId("secondary-objectives")).toHaveTextContent("Keep a combat unit alive");
+    expect(screen.getByTestId("secondary-objectives")).toHaveTextContent(
+      "Keep a combat unit alive",
+    );
   });
 
   it("starts the mission directive collapsed and keeps its accessible control", () => {
@@ -157,7 +195,16 @@ describe("product chrome", () => {
         timeRemaining="Time remaining 08:00"
         timeRemainingTicks={8 * 60 * 12}
         timeLimitTicks={10 * 60 * 12}
-        objectiveCards={[{ id: "primary", label: "Return the convoy", current: 0, target: 1, status: "active", primary: true }]}
+        objectiveCards={[
+          {
+            id: "primary",
+            label: "Return the convoy",
+            current: 0,
+            target: 1,
+            status: "active",
+            primary: true,
+          },
+        ]}
       />,
     );
 
@@ -167,7 +214,10 @@ describe("product chrome", () => {
     expect(document.getElementById("mission-directive-body")).toHaveAttribute("hidden");
     expect(screen.getByTestId("time-remaining")).toHaveAttribute("data-placement", "collapsed");
     expect(screen.getByTestId("time-remaining")).toHaveTextContent("08:00");
-    expect(screen.getByTestId("time-remaining").parentElement).toHaveAttribute("data-directive-expanded", "false");
+    expect(screen.getByTestId("time-remaining").parentElement).toHaveAttribute(
+      "data-directive-expanded",
+      "false",
+    );
 
     fireEvent.click(expand);
     const collapse = screen.getByRole("button", { name: "Collapse mission directive" });
@@ -204,7 +254,16 @@ describe("product chrome", () => {
           timeRemaining="Time remaining 08:00"
           timeRemainingTicks={8 * 60 * 12}
           timeLimitTicks={10 * 60 * 12}
-          objectiveCards={[{ id: "primary", label: "Return the convoy", current: 0, target: 1, status: "active", primary: true }]}
+          objectiveCards={[
+            {
+              id: "primary",
+              label: "Return the convoy",
+              current: 0,
+              target: 1,
+              status: "active",
+              primary: true,
+            },
+          ]}
         />,
       );
 
@@ -277,7 +336,10 @@ describe("product chrome", () => {
       />,
     );
     expect(screen.getByTestId("multiplayer-rtt")).toHaveTextContent("RTT42 ms");
-    expect(screen.getByTestId("multiplayer-rtt")).toHaveAttribute("aria-label", "Host round-trip time: 42 milliseconds");
+    expect(screen.getByTestId("multiplayer-rtt")).toHaveAttribute(
+      "aria-label",
+      "Host round-trip time: 42 milliseconds",
+    );
 
     rerender(
       <BattlefieldHud

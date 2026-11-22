@@ -2,10 +2,10 @@ import {
   SURFACE_CONCRETE,
   SURFACE_NONE,
   SURFACE_ROAD,
+  type SurfaceKind,
   TILE_BLOCKED,
   TILE_CLEAR,
   TILE_WATER,
-  type SurfaceKind,
   type Vec2,
 } from "../../types";
 import { valueNoise } from "./noise";
@@ -29,7 +29,13 @@ export function neighbors8(x: number, y: number): Vec2[] {
   return out;
 }
 
-export function meanderingRoute(a: Vec2, b: Vec2, width: number, height: number, salt: number): Vec2[] {
+export function meanderingRoute(
+  a: Vec2,
+  b: Vec2,
+  width: number,
+  height: number,
+  salt: number,
+): Vec2[] {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const length = Math.hypot(dx, dy) || 1;
@@ -76,7 +82,8 @@ export function carveRoute(
         : 0;
       const cx = Math.round(a.x + dx * t + px * wander);
       const cy = Math.round(a.y + dy * t + py * wander);
-      const localRadius = radius + (valueNoise(cx * 0.35, cy * 0.35, noiseSalt + 91) > 0.62 ? 1 : 0);
+      const localRadius =
+        radius + (valueNoise(cx * 0.35, cy * 0.35, noiseSalt + 91) > 0.62 ? 1 : 0);
       for (let oy = -localRadius; oy <= localRadius; oy++) {
         for (let ox = -localRadius; ox <= localRadius; ox++) {
           if (Math.abs(ox) + Math.abs(oy) > localRadius + 1) continue;
@@ -131,9 +138,8 @@ export function paintBase(
       if (!inBounds(x, y, w, h) || Math.hypot(x - center.x, y - center.y) > radius) continue;
       const i = idx(x, y, w);
       tiles[i] = TILE_CLEAR;
-      surfaces[i] = Math.hypot(x - center.x, y - center.y) <= radius - 2
-        ? SURFACE_CONCRETE
-        : SURFACE_NONE;
+      surfaces[i] =
+        Math.hypot(x - center.x, y - center.y) <= radius - 2 ? SURFACE_CONCRETE : SURFACE_NONE;
     }
   }
 }
@@ -165,7 +171,12 @@ export function smoothWater(
 export function pruneWaterIslands(tiles: number[], w: number, h: number, heights?: number[]): void {
   const seen = new Uint8Array(tiles.length);
   const components: number[][] = [];
-  const dirs: Array<[number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const dirs: Array<[number, number]> = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ];
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -229,7 +240,14 @@ export function relaxHeights(heights: number[], tiles: number[], w: number, h: n
   for (let i = 0; i < heights.length; i++) heights[i] = next[i]!;
 }
 
-export function reachable(tiles: number[], heights: number[], w: number, h: number, start: Vec2, goal: Vec2): boolean {
+export function reachable(
+  tiles: number[],
+  heights: number[],
+  w: number,
+  h: number,
+  start: Vec2,
+  goal: Vec2,
+): boolean {
   const seen = new Uint8Array(w * h);
   const q: Vec2[] = [start];
   seen[idx(start.x, start.y, w)] = 1;
@@ -245,7 +263,13 @@ export function reachable(tiles: number[], heights: number[], w: number, h: numb
       if (n.x !== c.x && n.y !== c.y) {
         const sideA = idx(n.x, c.y, w);
         const sideB = idx(c.x, n.y, w);
-        if (tiles[sideA] === TILE_WATER || tiles[sideA] === TILE_BLOCKED || tiles[sideB] === TILE_WATER || tiles[sideB] === TILE_BLOCKED) continue;
+        if (
+          tiles[sideA] === TILE_WATER ||
+          tiles[sideA] === TILE_BLOCKED ||
+          tiles[sideB] === TILE_WATER ||
+          tiles[sideB] === TILE_BLOCKED
+        )
+          continue;
       }
       seen[i] = 1;
       q.push(n);

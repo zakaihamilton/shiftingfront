@@ -141,7 +141,11 @@ export function spriteContentBounds(image: HTMLCanvasElement): SpriteBounds | un
   const ctx = image.getContext("2d");
   if (!ctx || image.width <= 0 || image.height <= 0) return undefined;
   try {
-    const bounds = opaquePixelBounds(ctx.getImageData(0, 0, image.width, image.height).data, image.width, image.height);
+    const bounds = opaquePixelBounds(
+      ctx.getImageData(0, 0, image.width, image.height).data,
+      image.width,
+      image.height,
+    );
     if (bounds) contentBoundsCache.set(image, bounds);
     return bounds;
   } catch {
@@ -153,9 +157,10 @@ function rasterCacheKey(spec: SpriteSpec): string {
   const crop = spec.imageCrop
     ? `${spec.imageCrop.x},${spec.imageCrop.y},${spec.imageCrop.w},${spec.imageCrop.h}:${spec.imageCrop.sourceW},${spec.imageCrop.sourceH}:${spec.imageCrop.refW ?? ""}:${spec.imageCrop.refH ?? ""}`
     : "";
-  const imageAnchor = spec.imageAnchorX !== undefined || spec.imageAnchorY !== undefined
-    ? `:${spec.imageAnchorX ?? ""},${spec.imageAnchorY ?? ""}`
-    : "";
+  const imageAnchor =
+    spec.imageAnchorX !== undefined || spec.imageAnchorY !== undefined
+      ? `:${spec.imageAnchorX ?? ""},${spec.imageAnchorY ?? ""}`
+      : "";
   const texture = spec.imageTextureSrc
     ? `${spec.imageTextureSrc}:${spec.imageTextureOpacity ?? ""}:${spec.imageTextureOffset ?? 0}`
     : "";
@@ -205,7 +210,8 @@ export function preloadRasterSources(srcs: readonly string[]): void {
 
 export function preloadRasterSourcesAsync(srcs: readonly string[]): Promise<void> {
   if (typeof Image === "undefined") return Promise.resolve();
-  if (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom")) return Promise.resolve();
+  if (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))
+    return Promise.resolve();
 
   const pending = [...new Set(srcs)].map((src) => {
     const image = cachedImage(src);
@@ -312,17 +318,7 @@ export function rasterize(spec: SpriteSpec, onReady?: () => void): HTMLCanvasEle
         ctx.rect(destX, destY + dh - visible, dw, visible);
         ctx.clip();
       }
-      ctx.drawImage(
-        image,
-        crop.x,
-        crop.y,
-        crop.w,
-        crop.h,
-        destX,
-        destY,
-        dw,
-        dh,
-      );
+      ctx.drawImage(image, crop.x, crop.y, crop.w, crop.h, destX, destY, dw, dh);
       ctx.restore();
       if (spec.imageTint) {
         ctx.globalCompositeOperation = "source-atop";
@@ -398,7 +394,17 @@ export function drawSprite(
   if (smooth && "imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
   const draw = (x: number, y: number, width: number, height: number) => {
     if (source) {
-      ctx.drawImage(img, source.minX, source.minY, source.width, source.height, x, y, width, height);
+      ctx.drawImage(
+        img,
+        source.minX,
+        source.minY,
+        source.width,
+        source.height,
+        x,
+        y,
+        width,
+        height,
+      );
     } else {
       ctx.drawImage(img, x, y, width, height);
     }

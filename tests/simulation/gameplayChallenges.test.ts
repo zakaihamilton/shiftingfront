@@ -1,24 +1,46 @@
 import { describe, expect, it } from "vitest";
 import { createCampaign } from "../../lib/gen/campaign";
+import {
+  freshCampaignProgress,
+  normalizeCampaignProgress,
+  readCampaignProgress,
+  recordWonCampaignProgress,
+} from "../../lib/persist/campaign";
+import { memoryStorage } from "../../lib/persist/save";
+import { decodeSavedState, encodeSavedState } from "../../lib/persist/save/serialize";
 import { createMission, inspect } from "../../lib/sim/api";
 import { CHALLENGE_HOLD_TICKS, tickChallenges } from "../../lib/sim/challenges";
-import { makeFixture, addUnit, addBuilding } from "../../lib/sim/fixtures";
 import { missionMedals, missionScore } from "../../lib/sim/debrief";
-import { decodeSavedState, encodeSavedState } from "../../lib/persist/save/serialize";
-import { memoryStorage } from "../../lib/persist/save";
-import { evaluateElimination } from "../../lib/sim/scenarios/evaluators";
-import { tickRescueExtraction } from "../../lib/sim/scenarios/rescueExtraction";
-import { normalizeCampaignProgress, freshCampaignProgress, recordWonCampaignProgress, readCampaignProgress } from "../../lib/persist/campaign";
-import { secondaryProgress } from "../../lib/sim/objectives";
-import { reachableScenarioCells } from "../../lib/sim/scenarios/reachability";
-import { invalidateNavigation, invalidateEntityCaches } from "../../lib/sim/world";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { tickMovement } from "../../lib/sim/movement";
+import { secondaryProgress } from "../../lib/sim/objectives";
+import { evaluateElimination } from "../../lib/sim/scenarios/evaluators";
+import { reachableScenarioCells } from "../../lib/sim/scenarios/reachability";
+import { tickRescueExtraction } from "../../lib/sim/scenarios/rescueExtraction";
+import { invalidateEntityCaches, invalidateNavigation } from "../../lib/sim/world";
 
 function zoneFixture() {
   const state = makeFixture({ width: 24, height: 24, win: { kind: "holdTheLine", ticks: 9999 } });
   state.gameplayRulesVersion = 2;
-  state.runtime = { kind: "holdTheLine", phase: "active", targetIds: [], rescued: 0, required: 1,
-    secondary: [{ id: "bonus-ore", label: "Hold forward ore", kind: "secureZone", priority: "optional", zone: { x: 12, y: 12 }, radius: 3, target: CHALLENGE_HOLD_TICKS, progressTicks: 0 }] };
+  state.runtime = {
+    kind: "holdTheLine",
+    phase: "active",
+    targetIds: [],
+    rescued: 0,
+    required: 1,
+    secondary: [
+      {
+        id: "bonus-ore",
+        label: "Hold forward ore",
+        kind: "secureZone",
+        priority: "optional",
+        zone: { x: 12, y: 12 },
+        radius: 3,
+        target: CHALLENGE_HOLD_TICKS,
+        progressTicks: 0,
+      },
+    ],
+  };
   return state;
 }
 
@@ -59,14 +81,21 @@ describe("versioned gameplay and optional challenges", () => {
 
   it("does not award an optional medal when a constrained map has no bonus", () => {
     const state = zoneFixture();
-    state.runtime!.secondary = [{ id: "yard", kind: "preserveYard", priority: "primary", label: "Keep HQ" }];
+    state.runtime!.secondary = [
+      { id: "yard", kind: "preserveYard", priority: "primary", label: "Keep HQ" },
+    ];
     state.result = "won";
     state.losses.units[0] = 1;
     expect(missionMedals(state)).toBe(1);
   });
 
   it("keeps routes open around optional outposts on constrained maps", () => {
-    for (const [seed, missionIndex] of [[3, 2], [10, 0], [13, 1], [75, 1]]) {
+    for (const [seed, missionIndex] of [
+      [3, 2],
+      [10, 0],
+      [13, 1],
+      [75, 1],
+    ]) {
       const state = createMission({ seed, missionIndex, gameplayRulesVersion: 2 });
       const withOutpost = reachableScenarioCells(state)!;
       for (const entity of state.entities) if (entity.optionalChallenge) entity.hp = 0;
@@ -74,7 +103,9 @@ describe("versioned gameplay and optional challenges", () => {
       invalidateNavigation(state);
       const withoutOutpost = reachableScenarioCells(state)!;
       // Only the outpost footprint can become newly reachable when it is removed.
-      expect(withoutOutpost.reduce((n, cell, i) => n + (cell && !withOutpost[i] ? 1 : 0), 0)).toBeLessThanOrEqual(4);
+      expect(
+        withoutOutpost.reduce((n, cell, i) => n + (cell && !withOutpost[i] ? 1 : 0), 0),
+      ).toBeLessThanOrEqual(4);
     }
   });
   it("keeps an explicit rules 1 stamp separate from the current default", () => {
@@ -83,37 +114,55 @@ describe("versioned gameplay and optional challenges", () => {
     expect(current).toBe(createCampaign(0, 2));
     expect(legacy).toBe(createCampaign(0, 1));
     expect(current).not.toBe(legacy);
-    expect(legacy.missions.map(m => m.kind)).toEqual(current.missions.map(m => m.kind));
+    expect(legacy.missions.map((m) => m.kind)).toEqual(current.missions.map((m) => m.kind));
     expect(normalizeCampaignProgress({ seed: 0 }, 0).gameplayRulesVersion).toBe(1);
     expect(freshCampaignProgress(0).gameplayRulesVersion).toBe(2);
     expect(createMission({ seed: 0, missionIndex: 0 }).gameplayRulesVersion).toBe(2);
   });
 
-  it.each([1, 2] as const)("preserves rules %s for the next deployment after a save and win", rules => {
-    const storage = memoryStorage();
-    const state = decodeSavedState(encodeSavedState(createMission({ seed: 0, missionIndex: 0, gameplayRulesVersion: rules })));
-    state.result = "won";
-    expect(recordWonCampaignProgress(storage, state)).toBe(true);
-    const progress = readCampaignProgress(storage, 0);
-    expect(progress.gameplayRulesVersion).toBe(rules);
-    expect(createMission({ seed: 0, missionIndex: progress.unlockedMission, gameplayRulesVersion: progress.gameplayRulesVersion }).gameplayRulesVersion).toBe(rules);
-  });
+  it.each([1, 2] as const)(
+    "preserves rules %s for the next deployment after a save and win",
+    (rules) => {
+      const storage = memoryStorage();
+      const state = decodeSavedState(
+        encodeSavedState(createMission({ seed: 0, missionIndex: 0, gameplayRulesVersion: rules })),
+      );
+      state.result = "won";
+      expect(recordWonCampaignProgress(storage, state)).toBe(true);
+      const progress = readCampaignProgress(storage, 0);
+      expect(progress.gameplayRulesVersion).toBe(rules);
+      expect(
+        createMission({
+          seed: 0,
+          missionIndex: progress.unlockedMission,
+          gameplayRulesVersion: progress.gameplayRulesVersion,
+        }).gameplayRulesVersion,
+      ).toBe(rules);
+    },
+  );
 
   it("normalizes unversioned saves and rejects unsupported rules", () => {
-    const saved = encodeSavedState(createMission({ seed: 0, missionIndex: 0 })) as Record<string, unknown>;
+    const saved = encodeSavedState(createMission({ seed: 0, missionIndex: 0 })) as Record<
+      string,
+      unknown
+    >;
     delete saved.gameplayRulesVersion;
     expect(decodeSavedState(saved).gameplayRulesVersion).toBe(1);
     expect(() => decodeSavedState({ ...saved, gameplayRulesVersion: 3 })).toThrow();
   });
 
   it("places deterministic optional challenges without adding mandatory targets", () => {
-    for (const seed of [0, 1, 2, 3, 4, 5]) for (let missionIndex = 0; missionIndex < 6; missionIndex++) {
-      const state = createMission({ seed, missionIndex, gameplayRulesVersion: 2 });
-      const repeat = createMission({ seed, missionIndex, gameplayRulesVersion: 2 });
-      expect(state.runtime?.secondary).toEqual(repeat.runtime?.secondary);
-      expect(state.runtime?.secondary.filter(o => o.priority === "optional").length).toBeLessThanOrEqual(3);
-      for (const e of state.entities.filter(e => e.optionalChallenge)) expect(state.runtime?.targetIds).not.toContain(e.id);
-    }
+    for (const seed of [0, 1, 2, 3, 4, 5])
+      for (let missionIndex = 0; missionIndex < 6; missionIndex++) {
+        const state = createMission({ seed, missionIndex, gameplayRulesVersion: 2 });
+        const repeat = createMission({ seed, missionIndex, gameplayRulesVersion: 2 });
+        expect(state.runtime?.secondary).toEqual(repeat.runtime?.secondary);
+        expect(
+          state.runtime?.secondary.filter((o) => o.priority === "optional").length,
+        ).toBeLessThanOrEqual(3);
+        for (const e of state.entities.filter((e) => e.optionalChallenge))
+          expect(state.runtime?.targetIds).not.toContain(e.id);
+      }
   });
 
   it("requires a combat ground unit and resets when contested or abandoned", () => {
@@ -151,7 +200,7 @@ describe("versioned gameplay and optional challenges", () => {
     addBuilding(state, 0, "constructionYard", 1, 1);
     const outpost = addBuilding(state, 1, "objective", 8, 8);
     outpost.optionalChallenge = true;
-    expect(evaluateElimination(state, { filter: e => e.owner === 1 }).isComplete).toBe(true);
+    expect(evaluateElimination(state, { filter: (e) => e.owner === 1 }).isComplete).toBe(true);
     expect(inspect(state).objective.current).toBe(1);
   });
 
@@ -173,7 +222,16 @@ describe("versioned gameplay and optional challenges", () => {
     target.neutral = true;
     addUnit(state, 0, "tank", 12, 13);
     const guard = addUnit(state, 1, "infantry", 13, 12);
-    state.runtime = { kind: "rescue", phase: "active", targetIds: [target.id], rescued: 0, required: 1, contactedIds: [], rescuedIds: [], secondary: [] };
+    state.runtime = {
+      kind: "rescue",
+      phase: "active",
+      targetIds: [target.id],
+      rescued: 0,
+      required: 1,
+      contactedIds: [],
+      rescuedIds: [],
+      secondary: [],
+    };
     for (const version of [2, 1] as const) {
       state.gameplayRulesVersion = version;
       target.neutral = true;

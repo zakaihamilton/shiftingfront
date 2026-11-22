@@ -1,12 +1,27 @@
-import { BUILDING_DEFINITIONS, isAirUnit, UNIT_STATS, footprintOf } from "../catalog";
-import { isBuildingEntity, type BuildingKind, type Entity, type Owner, type SharedProducerKind, type SimEvent, type SimState } from "../types";
-import { frontTileNear, invalidatePowerCache, openTileNear, powerFor, trySpawnUnit } from "./world";
-import { assignMoveDestination } from "./orders/movement";
+import { BUILDING_DEFINITIONS, footprintOf, isAirUnit, UNIT_STATS } from "../catalog";
+import {
+  type BuildingKind,
+  type Entity,
+  isBuildingEntity,
+  type Owner,
+  type SharedProducerKind,
+  type SimEvent,
+  type SimState,
+} from "../types";
 import { runwayServicePoint } from "./aircraft";
 import { entitiesFor } from "./entities";
+import { assignMoveDestination } from "./orders/movement";
 import { powerShortageByOwner } from "./powerShortage";
-import { SHARED_PRODUCER_KINDS, ensureActiveProducer, isSharedProducerKind, reconcileSharedProducerJobs, sharedProductionQueue, shiftSharedResume } from "./producerState";
+import {
+  ensureActiveProducer,
+  isSharedProducerKind,
+  reconcileSharedProducerJobs,
+  SHARED_PRODUCER_KINDS,
+  sharedProductionQueue,
+  shiftSharedResume,
+} from "./producerState";
 import { refundOrphanedSharedQueue } from "./productionRefund";
+import { frontTileNear, invalidatePowerCache, openTileNear, powerFor, trySpawnUnit } from "./world";
 
 const playerPowerOk = new WeakMap<SimState, Map<number, boolean>>();
 
@@ -77,7 +92,9 @@ function productionRates(state: SimState, owners: readonly Owner[]): ProductionR
     const count = Math.max(ids.length, ready.get(key) ?? ids.length);
     const base = Math.floor(count / ids.length);
     const extra = count % ids.length;
-    ids.forEach((id, i) => { entityRates.set(id, base + (i < extra ? 1 : 0)); });
+    ids.forEach((id, i) => {
+      entityRates.set(id, base + (i < extra ? 1 : 0));
+    });
   }
   return { entity: entityRates, shared: sharedRates };
 }
@@ -85,7 +102,8 @@ function productionRates(state: SimState, owners: readonly Owner[]): ProductionR
 const EMPTY_EVENTS: SimEvent[] = [];
 
 function spawnRefineryHarvester(state: SimState, refinery: Entity, events?: SimEvent[]): boolean {
-  if (!isBuildingEntity(refinery) || refinery.kind !== "refinery" || refinery.constructing > 0) return false;
+  if (!isBuildingEntity(refinery) || refinery.kind !== "refinery" || refinery.constructing > 0)
+    return false;
   const spot = frontTileNear(state, refinery);
   const spawned = trySpawnUnit(state, refinery.owner, "harvester", spot.x, spot.y);
   if (!spawned) return false;
@@ -144,7 +162,8 @@ function tickSharedProduction(
     y: spawned.y,
     sourceId: producer.id,
   });
-  if (producer.rallyPoint) assignMoveDestination(state, spawned, producer.rallyPoint.x, producer.rallyPoint.y);
+  if (producer.rallyPoint)
+    assignMoveDestination(state, spawned, producer.rallyPoint.x, producer.rallyPoint.y);
   const resumed = shiftSharedResume(queue);
   if (resumed) queue.producing = resumed;
   else {
@@ -153,7 +172,11 @@ function tickSharedProduction(
   }
 }
 
-export function tickProduction(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
+export function tickProduction(
+  state: SimState,
+  eventSink?: SimEvent[],
+  collectEvents = true,
+): SimEvent[] {
   reconcileSharedProducerJobs(state);
   const events = eventSink ?? (collectEvents ? [] : undefined);
   const lowPower = powerShortageByOwner(state);
@@ -162,7 +185,12 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
   for (const e of entitiesFor(state)) {
     if (e.hp <= 0) continue;
     if (!e.queue) e.queue = [];
-    if (isBuildingEntity(e) && e.kind === "refinery" && e.constructing <= 0 && e.refineryHarvesterPending) {
+    if (
+      isBuildingEntity(e) &&
+      e.kind === "refinery" &&
+      e.constructing <= 0 &&
+      e.refineryHarvesterPending
+    ) {
       // A free refinery harvester does not consume production power. Keep the
       // request pending until the normal deployment search finds a tile.
       spawnRefineryHarvester(state, e, events);
@@ -187,7 +215,11 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
           x: e.x,
           y: e.y,
         });
-        if (isBuildingEntity(e) && e.kind === "refinery" && !spawnRefineryHarvester(state, e, events)) {
+        if (
+          isBuildingEntity(e) &&
+          e.kind === "refinery" &&
+          !spawnRefineryHarvester(state, e, events)
+        ) {
           e.refineryHarvesterPending = true;
         }
       }
@@ -219,7 +251,11 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
           spawned.y = spot.y;
           spawned.assignedRunwayId = e.id;
           spawned.flightState = "servicing";
-          spawned.facing = state.multiplayer ? (([1, 3, 5, 7] as const)[spawned.owner] ?? 1) : (spawned.owner === 0 ? 1 : 5);
+          spawned.facing = state.multiplayer
+            ? (([1, 3, 5, 7] as const)[spawned.owner] ?? 1)
+            : spawned.owner === 0
+              ? 1
+              : 5;
           spawned.serviceTicks = 0;
           spawned.ammo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo ?? 0;
           spawned.maxAmmo = UNIT_STATS[kind].ammoMax ?? spawned.maxAmmo;
@@ -238,15 +274,20 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
         });
         if (e.rallyPoint) assignMoveDestination(state, spawned, e.rallyPoint.x, e.rallyPoint.y);
         const next = e.queue.shift();
-        e.producing = next
-          ? { kind: next, remaining: UNIT_STATS[next].buildTicks }
-          : undefined;
+        e.producing = next ? { kind: next, remaining: UNIT_STATS[next].buildTicks } : undefined;
       }
     }
   }
   for (const owner of owners) {
     for (const kind of SHARED_PRODUCER_KINDS) {
-      tickSharedProduction(state, owner, kind, rates.shared.get(producerKey(owner, kind)) ?? 0, lowPower[owner], events);
+      tickSharedProduction(
+        state,
+        owner,
+        kind,
+        rates.shared.get(producerKey(owner, kind)) ?? 0,
+        lowPower[owner],
+        events,
+      );
     }
   }
   notePlayerPowerShortage(state, events);
@@ -254,7 +295,7 @@ export function tickProduction(state: SimState, eventSink?: SimEvent[], collectE
 }
 
 function notePlayerPowerShortage(state: SimState, events?: SimEvent[]): void {
-  const owner = state.multiplayer ? state.viewOwner ?? 0 : 0;
+  const owner = state.multiplayer ? (state.viewOwner ?? 0) : 0;
   const ok = powerFor(state, owner) >= 0;
   let ownerMap = playerPowerOk.get(state);
   if (!ownerMap) {

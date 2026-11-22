@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { campaignSummary, missionMedalDisplay } from "../../components/campaign/campaignSummary";
+import {
+  contextOrderNotice,
+  contextOrders,
+  isContactTarget,
+  mobileCommandOrders,
+} from "../../components/game/hooks/gameInputOrders";
 import { mobileCommandLabel } from "../../components/game/MobileTouchControls";
-import { contextOrders, contextOrderNotice, isContactTarget, mobileCommandOrders } from "../../components/game/hooks/gameInputOrders";
 import { dailySeed, menuLaunchPath } from "../../components/menu/menuLaunch";
 import { createCampaign } from "../../lib/gen/campaign";
 import { freshCampaignProgress } from "../../lib/persist/campaign";
@@ -31,7 +36,12 @@ describe("campaign summary policy", () => {
     progress.medals = { "0": 3, "1": 2 };
     const summary = campaignSummary(campaign, progress);
 
-    expect(summary).toMatchObject({ completed: 2, totalMedals: 5, possibleMedals: 18, isComplete: false });
+    expect(summary).toMatchObject({
+      completed: 2,
+      totalMedals: 5,
+      possibleMedals: 18,
+      isComplete: false,
+    });
     expect(missionMedalDisplay(2)).toBe("★★☆");
   });
 });
@@ -50,11 +60,15 @@ describe("mobile command policy", () => {
     expect(contextOrders(state, [unit.id], undefined, 6, 6)).toEqual([
       { type: "move", unitIds: [unit.id], x: 6, y: 6 },
     ]);
-    expect(contextOrderNotice(contextOrders(state, [unit.id], undefined, 6, 6))).toBe("Move order issued.");
+    expect(contextOrderNotice(contextOrders(state, [unit.id], undefined, 6, 6))).toBe(
+      "Move order issued.",
+    );
     expect(contextOrders(state, [unit.id], undefined, 6, 6, true)).toEqual([
       { type: "attackMove", unitIds: [unit.id], x: 6, y: 6 },
     ]);
-    expect(contextOrderNotice(contextOrders(state, [unit.id], undefined, 6, 6, true))).toBe("Attack-move order issued.");
+    expect(contextOrderNotice(contextOrders(state, [unit.id], undefined, 6, 6, true))).toBe(
+      "Attack-move order issued.",
+    );
     const harvester = addUnit(state, 0, "harvester", 3, 2);
     expect(contextOrderNotice(contextOrders(state, [harvester.id, unit.id], undefined, 6, 6))).toBe(
       "Harvest and move orders issued.",
@@ -113,6 +127,8 @@ describe("mobile command policy", () => {
     expect(mobileCommandOrders(state, "move", [barracks.id], undefined, 7, 7)).toEqual([
       { type: "rally", buildingId: barracks.id, x: 7, y: 7 },
     ]);
-    expect(contextOrders(state, [barracks.id], addUnit(state, 1, "infantry", 5, 5), 5, 5)).toEqual([]);
+    expect(contextOrders(state, [barracks.id], addUnit(state, 1, "infantry", 5, 5), 5, 5)).toEqual(
+      [],
+    );
   });
 });

@@ -1,4 +1,4 @@
-import { initAtlasBake, bakeAtlasRowSlice, finalizeAtlasBake } from "./terrainAtlasBake";
+import { bakeAtlasRowSlice, finalizeAtlasBake, initAtlasBake } from "./terrainAtlasBake";
 import type { AtlasWorld } from "./terrainMaterials";
 
 const scope = self as unknown as {
@@ -19,7 +19,10 @@ scope.onmessage = ({ data }) => {
       }
       if (token !== generation) return;
       const atlas = finalizeAtlasBake(context);
-      scope.postMessage({ id: data.id, generation: data.generation, atlas }, [atlas.data.buffer as ArrayBuffer, atlas.waterCells.buffer as ArrayBuffer]);
+      scope.postMessage({ id: data.id, generation: data.generation, atlas }, [
+        atlas.data.buffer as ArrayBuffer,
+        atlas.waterCells.buffer as ArrayBuffer,
+      ]);
     } catch {
       scope.postMessage({ id: data.id, generation: data.generation, error: true }, []);
     }

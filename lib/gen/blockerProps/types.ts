@@ -55,7 +55,13 @@ export type PropPrim =
     };
 
 function toHex(r: number, g: number, b: number): string {
-  return `#${[r, g, b].map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0")).join("")}`;
+  return `#${[r, g, b]
+    .map((n) =>
+      Math.max(0, Math.min(255, Math.round(n)))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
 function mutedHex(value: string, amount: number): string {

@@ -1,36 +1,41 @@
 import {
   BUILDING_STATS,
-  UNIT_STATS,
   isAirUnit,
   isSupportUnit,
   isUnitAvailable,
   producerFor,
   productionQueueSize,
+  UNIT_STATS,
 } from "../../catalog";
-import { isUnitEntity, type BuildingKind, type Command, type Entity, type SimState, type UnitKind } from "../../types";
 import {
-  canPlaceBuilding,
-  distToEntity,
-  findBuildSite,
-  powerBreakdown,
-  powerFor,
-} from "../world";
+  type BuildingKind,
+  type Command,
+  type Entity,
+  isUnitEntity,
+  type SimState,
+  type UnitKind,
+} from "../../types";
 import { isTimedRecovery } from "../policy";
 import {
+  isSharedProducerKind,
+  readSharedProductionQueue,
+  sharedProductionQueueSize,
+} from "../producerState";
+import { canPlaceBuilding, distToEntity, findBuildSite, powerBreakdown, powerFor } from "../world";
+import {
   BUILDING_RESERVE,
-  OFFENSIVE_KINDS,
-  STRUCTURE_QUOTA_KINDS,
-  YARD_THREAT_RADIUS,
   completedOrBuilding,
   enemyEntitiesView,
+  OFFENSIVE_KINDS,
   objectiveKind,
   playerBuildingsView,
   playerUnitsView,
   queuedUnitCount,
   readyProducers,
+  STRUCTURE_QUOTA_KINDS,
   totalUnitCount,
+  YARD_THREAT_RADIUS,
 } from "./queries";
-import { isSharedProducerKind, readSharedProductionQueue, sharedProductionQueueSize } from "../producerState";
 
 export function targetForProduction(state: SimState): UnitKind | undefined {
   const role = state.win.role;
@@ -48,7 +53,13 @@ export function targetForProduction(state: SimState): UnitKind | undefined {
 
   const enemyTanks = enemyEntitiesView(state).filter((entity) => entity.kind === "tank").length;
   const playerAntiArmor = totalUnitCount(state, "antiArmor") + queuedUnitCount(state, "antiArmor");
-  if (state.tick >= 2880 && OFFENSIVE_KINDS.has(objectiveKind(state)) && totalUnitCount(state, "behemoth") + queuedUnitCount(state, "behemoth") < 2 && readyProducers(state, "factory").length) return "behemoth";
+  if (
+    state.tick >= 2880 &&
+    OFFENSIVE_KINDS.has(objectiveKind(state)) &&
+    totalUnitCount(state, "behemoth") + queuedUnitCount(state, "behemoth") < 2 &&
+    readyProducers(state, "factory").length
+  )
+    return "behemoth";
   if (enemyTanks > playerAntiArmor) return "antiArmor";
 
   const desiredTanks = Math.min(4, 1 + Math.floor(state.missionIndex / 2));
@@ -59,18 +70,36 @@ export function targetForProduction(state: SimState): UnitKind | undefined {
 }
 
 export function supportNeed(state: SimState): UnitKind | undefined {
-  const humansWounded = playerUnitsView(
-    state,
-    (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].domain === "human" && entity.hp < entity.maxHp,
-  ).length > 0;
-  const vehiclesWounded = playerUnitsView(
-    state,
-    (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].domain === "vehicle" && entity.hp < entity.maxHp,
-  ).length > 0;
-  if (humansWounded && isUnitAvailable("medic", state.missionIndex) && totalUnitCount(state, "medic") + queuedUnitCount(state, "medic") === 0) {
+  const humansWounded =
+    playerUnitsView(
+      state,
+      (entity) =>
+        isUnitEntity(entity) &&
+        !isSupportUnit(entity.kind) &&
+        UNIT_STATS[entity.kind].domain === "human" &&
+        entity.hp < entity.maxHp,
+    ).length > 0;
+  const vehiclesWounded =
+    playerUnitsView(
+      state,
+      (entity) =>
+        isUnitEntity(entity) &&
+        !isSupportUnit(entity.kind) &&
+        UNIT_STATS[entity.kind].domain === "vehicle" &&
+        entity.hp < entity.maxHp,
+    ).length > 0;
+  if (
+    humansWounded &&
+    isUnitAvailable("medic", state.missionIndex) &&
+    totalUnitCount(state, "medic") + queuedUnitCount(state, "medic") === 0
+  ) {
     return "medic";
   }
-  if (vehiclesWounded && isUnitAvailable("repairTruck", state.missionIndex) && totalUnitCount(state, "repairTruck") + queuedUnitCount(state, "repairTruck") === 0) {
+  if (
+    vehiclesWounded &&
+    isUnitAvailable("repairTruck", state.missionIndex) &&
+    totalUnitCount(state, "repairTruck") + queuedUnitCount(state, "repairTruck") === 0
+  ) {
     return "repairTruck";
   }
   return undefined;
@@ -79,15 +108,23 @@ export function supportNeed(state: SimState): UnitKind | undefined {
 export function missingStructureQuota(state: SimState): BuildingKind | undefined {
   if (objectiveKind(state) !== "structureQuota" || !state.win.building) return undefined;
   const built = state.buildingsCompletedByKind[state.win.building] ?? 0;
-  const constructing = playerBuildingsView(state, state.win.building).filter((entity) => entity.constructing > 0).length;
+  const constructing = playerBuildingsView(state, state.win.building).filter(
+    (entity) => entity.constructing > 0,
+  ).length;
   return built + constructing < (state.win.target ?? Infinity) ? state.win.building : undefined;
 }
 
 function structureQuotaProgress(state: SimState, kind?: BuildingKind): number {
   if (kind) {
-    return (state.buildingsCompletedByKind[kind] ?? 0) + playerBuildingsView(state, kind).filter((entity) => entity.constructing > 0).length;
+    return (
+      (state.buildingsCompletedByKind[kind] ?? 0) +
+      playerBuildingsView(state, kind).filter((entity) => entity.constructing > 0).length
+    );
   }
-  return state.buildingsCompleted[0] + playerBuildingsView(state).filter((entity) => entity.constructing > 0).length;
+  return (
+    state.buildingsCompleted[0] +
+    playerBuildingsView(state).filter((entity) => entity.constructing > 0).length
+  );
 }
 
 function structureQuotaBuilding(state: SimState): BuildingKind | undefined {
@@ -97,7 +134,11 @@ function structureQuotaBuilding(state: SimState): BuildingKind | undefined {
   if (state.win.building) return state.win.building;
 
   return [...STRUCTURE_QUOTA_KINDS]
-    .sort((a, b) => structureQuotaProgress(state, a) - structureQuotaProgress(state, b) || BUILDING_STATS[a].cost - BUILDING_STATS[b].cost)
+    .sort(
+      (a, b) =>
+        structureQuotaProgress(state, a) - structureQuotaProgress(state, b) ||
+        BUILDING_STATS[a].cost - BUILDING_STATS[b].cost,
+    )
     .find((kind) => structureQuotaProgress(state, kind) < target);
 }
 
@@ -111,7 +152,8 @@ function shouldSaveForStructureQuota(state: SimState): boolean {
 
   const combatCount = playerUnitsView(
     state,
-    (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
+    (entity) =>
+      isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
   ).length;
   return combatCount >= 18 && state.credits[0] < BUILDING_STATS[kind].cost;
 }
@@ -128,16 +170,20 @@ function buildCommand(state: SimState, kind: BuildingKind, near: Entity): Comman
 export function planBuilding(state: SimState, yard: Entity): Command | undefined {
   const power = powerBreakdown(state, 0);
   const pending = playerBuildingsView(state).some((entity) => entity.constructing > 0);
-  if (power.surplus < 15 && !playerBuildingsView(state, "power").some((entity) => entity.constructing > 0)) {
+  if (
+    power.surplus < 15 &&
+    !playerBuildingsView(state, "power").some((entity) => entity.constructing > 0)
+  ) {
     const powerBuild = buildCommand(state, "power", yard);
     if (powerBuild) return powerBuild;
   }
 
   const threat = enemyEntitiesView(state).find(
-    (entity) => entity.class === "unit"
-      && entity.kind !== "harvester"
-      && !isAirUnit(entity.kind)
-      && distToEntity(yard, entity) <= YARD_THREAT_RADIUS,
+    (entity) =>
+      entity.class === "unit" &&
+      entity.kind !== "harvester" &&
+      !isAirUnit(entity.kind) &&
+      distToEntity(yard, entity) <= YARD_THREAT_RADIUS,
   );
   const airThreat = enemyEntitiesView(state).find(
     (entity) => entity.class === "unit" && isAirUnit(entity.kind),
@@ -145,8 +191,13 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
   const turretCount = completedOrBuilding(state, "turret");
   const antiAirCount = completedOrBuilding(state, "antiAirTurret");
   const timedRecovery = isTimedRecovery(objectiveKind(state));
-  const defensiveObjective = objectiveKind(state) === "rescue" || objectiveKind(state) === "holdTheLine";
-  const turretTarget = timedRecovery ? 1 : defensiveObjective ? 3 : 1 + Math.min(2, Math.ceil(state.missionIndex / 2));
+  const defensiveObjective =
+    objectiveKind(state) === "rescue" || objectiveKind(state) === "holdTheLine";
+  const turretTarget = timedRecovery
+    ? 1
+    : defensiveObjective
+      ? 3
+      : 1 + Math.min(2, Math.ceil(state.missionIndex / 2));
   if (threat && turretCount < turretTarget && !pending) {
     const turret = buildCommand(state, "turret", yard);
     if (turret) return turret;
@@ -162,20 +213,25 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
     if (barracks) return barracks;
   }
 
-  const needsFactory = objectiveKind(state) === "forceQuota" && state.win.role === "tank"
-    ? true
-    : timedRecovery || !defensiveObjective && (state.missionIndex >= 1 || objectiveKind(state) === "harvestQuota" || OFFENSIVE_KINDS.has(objectiveKind(state)));
+  const needsFactory =
+    objectiveKind(state) === "forceQuota" && state.win.role === "tank"
+      ? true
+      : timedRecovery ||
+        (!defensiveObjective &&
+          (state.missionIndex >= 1 ||
+            objectiveKind(state) === "harvestQuota" ||
+            OFFENSIVE_KINDS.has(objectiveKind(state))));
   if (needsFactory && !playerBuildingsView(state, "factory").length && !pending) {
     const factory = buildCommand(state, "factory", yard);
     if (factory) return factory;
   }
 
-  const defensiveTurretNeeded = power.surplus >= 15 && (
-    threat !== undefined ||
-    state.missionIndex >= 1 ||
-    OFFENSIVE_KINDS.has(objectiveKind(state)) ||
-    defensiveObjective
-  );
+  const defensiveTurretNeeded =
+    power.surplus >= 15 &&
+    (threat !== undefined ||
+      state.missionIndex >= 1 ||
+      OFFENSIVE_KINDS.has(objectiveKind(state)) ||
+      defensiveObjective);
   if (defensiveTurretNeeded && turretCount < turretTarget && !pending) {
     const turret = buildCommand(state, "turret", yard);
     if (turret) return turret;
@@ -188,15 +244,27 @@ export function planBuilding(state: SimState, yard: Entity): Command | undefined
   const objectiveBuilding = missingStructureQuota(state) ?? structureQuotaBuilding(state);
   const quotaCombatCount = playerUnitsView(
     state,
-    (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
+    (entity) =>
+      isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
   ).length;
   const quotaArmyReady = objectiveKind(state) !== "structureQuota" || quotaCombatCount >= 18;
-  if (objectiveBuilding && quotaArmyReady && !pending && !playerBuildingsView(state, objectiveBuilding).some((entity) => entity.constructing > 0)) {
+  if (
+    objectiveBuilding &&
+    quotaArmyReady &&
+    !pending &&
+    !playerBuildingsView(state, objectiveBuilding).some((entity) => entity.constructing > 0)
+  ) {
     const objectiveBuild = buildCommand(state, objectiveBuilding, yard);
     if (objectiveBuild) return objectiveBuild;
   }
 
-  if (!timedRecovery && !defensiveObjective && !playerBuildingsView(state, "factory").length && state.tick < 1800 && !pending) {
+  if (
+    !timedRecovery &&
+    !defensiveObjective &&
+    !playerBuildingsView(state, "factory").length &&
+    state.tick < 1800 &&
+    !pending
+  ) {
     const factory = buildCommand(state, "factory", yard);
     if (factory) return factory;
   }
@@ -213,7 +281,8 @@ export function planProduction(state: SimState): Command[] {
   if (offensive) {
     const combatCount = playerUnitsView(
       state,
-      (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
+      (entity) =>
+        isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
     ).length;
     const queuedCombat = ["infantry", "antiArmor", "tank"] as const;
     const queuedCount = queuedCombat.reduce((sum, kind) => sum + queuedUnitCount(state, kind), 0);
@@ -222,7 +291,8 @@ export function planProduction(state: SimState): Command[] {
   if (isTimedRecovery(objectiveKind(state))) {
     const combatCount = playerUnitsView(
       state,
-      (entity) => isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
+      (entity) =>
+        isUnitEntity(entity) && !isSupportUnit(entity.kind) && UNIT_STATS[entity.kind].damage > 0,
     ).length;
     const queuedCombat = ["infantry", "antiArmor", "tank"] as const;
     const queuedCount = queuedCombat.reduce((sum, kind) => sum + queuedUnitCount(state, kind), 0);
@@ -231,17 +301,22 @@ export function planProduction(state: SimState): Command[] {
     // the route and can prevent the final target from ever being contacted.
     if (combatCount + queuedCount >= 16) return commands;
   }
-  const role = state.win.role && isUnitAvailable(state.win.role, state.missionIndex)
-    && (state.unitsProducedByRole[state.win.role] ?? 0) + queuedUnitCount(state, state.win.role) < (state.win.target ?? Infinity)
-    ? state.win.role
-    : undefined;
-  const producers = [...readyProducers(state, "barracks"), ...readyProducers(state, "factory")]
-    .sort((a, b) => {
-      const priority = role ?? (lateHeavy ? "behemoth" : support);
-      const aPriority = priority && producerFor(priority) === a.kind ? 0 : 1;
-      const bPriority = priority && producerFor(priority) === b.kind ? 0 : 1;
-      return aPriority - bPriority || a.id - b.id;
-    });
+  const role =
+    state.win.role &&
+    isUnitAvailable(state.win.role, state.missionIndex) &&
+    (state.unitsProducedByRole[state.win.role] ?? 0) + queuedUnitCount(state, state.win.role) <
+      (state.win.target ?? Infinity)
+      ? state.win.role
+      : undefined;
+  const producers = [
+    ...readyProducers(state, "barracks"),
+    ...readyProducers(state, "factory"),
+  ].sort((a, b) => {
+    const priority = role ?? (lateHeavy ? "behemoth" : support);
+    const aPriority = priority && producerFor(priority) === a.kind ? 0 : 1;
+    const bPriority = priority && producerFor(priority) === b.kind ? 0 : 1;
+    return aPriority - bPriority || a.id - b.id;
+  });
   let availableCredits = state.credits[0];
   const handledKinds = new Set<string>();
   for (const producer of producers) {
@@ -251,7 +326,8 @@ export function planProduction(state: SimState): Command[] {
       ? sharedProductionQueueSize(readSharedProductionQueue(state, 0, producer.kind))
       : productionQueueSize(producer);
     if (queueSize >= 3) continue;
-    if (role && producerFor(role) !== producer.kind && availableCredits < UNIT_STATS[role].cost) continue;
+    if (role && producerFor(role) !== producer.kind && availableCredits < UNIT_STATS[role].cost)
+      continue;
     let desired: UnitKind | undefined;
     if (lateHeavy && producer.kind === "factory") {
       desired = "behemoth";
@@ -269,9 +345,12 @@ export function planProduction(state: SimState): Command[] {
       desired = antiArmor < antiArmorTarget ? "antiArmor" : "infantry";
     } else {
       const combat = targetForProduction(state);
-      desired = combat && producerFor(combat) === producer.kind
-        ? combat
-        : producer.kind === "factory" ? "tank" : "infantry";
+      desired =
+        combat && producerFor(combat) === producer.kind
+          ? combat
+          : producer.kind === "factory"
+            ? "tank"
+            : "infantry";
     }
     // New-rules campaigns need a second harvester before a factory can
     // sustain quota production. A pending force-quota role used to bypass the

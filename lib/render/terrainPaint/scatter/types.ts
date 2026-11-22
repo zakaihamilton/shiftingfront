@@ -1,8 +1,8 @@
+import { type BlockerPropKind, blockerPropKind } from "../../../gen/terrainDecorKinds";
 import type { BiomeName, SurfaceKind } from "../../../types";
-import { blockerPropKind, type BlockerPropKind } from "../../../gen/terrainDecorKinds";
 
-export { blockerPropKind };
 export type { BlockerPropKind };
+export { blockerPropKind };
 
 export type ScatterKind =
   | "pebble"
@@ -43,7 +43,12 @@ export type ScatterWorld = {
   surfaces: SurfaceKind[];
 };
 
-export const LUSH_SCATTER: ReadonlySet<ScatterKind> = new Set(["tuft", "shrub", "reed", "dryBrush"]);
+export const LUSH_SCATTER: ReadonlySet<ScatterKind> = new Set([
+  "tuft",
+  "shrub",
+  "reed",
+  "dryBrush",
+]);
 export const ARID_SCATTER: ReadonlySet<ScatterKind> = new Set([
   "pebble",
   "pebbleCluster",

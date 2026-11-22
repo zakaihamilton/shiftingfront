@@ -1,13 +1,13 @@
 import { dispatchBattlefieldAudio } from "@/lib/audio/battlefield";
-import { canvasViewport } from "@/lib/render/canvasViewport";
-import { setMusicCue, setMusicIntensity, type MusicIntensity } from "@/lib/audio/music";
+import { type MusicIntensity, setMusicCue, setMusicIntensity } from "@/lib/audio/music";
 import { playSfx } from "@/lib/audio/synth";
 import { playVoiceBark } from "@/lib/audio/voice";
+import { isUnitKind } from "@/lib/catalog";
+import type { Camera } from "@/lib/iso";
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import { burstsFromEvents, type FxBurst } from "@/lib/render/fx";
 import { addScreenShake, type ScreenShakeState } from "@/lib/render/screenShake";
-import type { Camera } from "@/lib/iso";
 import type { SimEvent, SimState } from "@/lib/types";
-import { isUnitKind } from "@/lib/catalog";
 import { commandRejectionMessage } from "@/lib/ui/copy";
 import { alertSfx, desiredMusicIntensity, firstAlert, rejectionSfx } from "../gameLoopEffects";
 
@@ -46,7 +46,8 @@ export function createPresentationCoordinator({
       if (won) setMusicCue("victory", state.seed, state.missionIndex);
       else if (lost) setMusicCue("defeat", state.seed, state.missionIndex);
       const alert = firstAlert(events);
-      if (alert?.kind === "warning") criticalUntilTick = Math.max(criticalUntilTick, state.tick + 24);
+      if (alert?.kind === "warning")
+        criticalUntilTick = Math.max(criticalUntilTick, state.tick + 24);
       const intensity = desiredMusicIntensity(
         state.runtime?.director?.phase,
         state.tick,
@@ -69,7 +70,11 @@ export function createPresentationCoordinator({
       if (events.some((event) => event.type === "lost")) playSfx("defeat", { force: true });
 
       const localOwner = state.viewOwner ?? 0;
-      const rejection = events.find((event) => event.type === "commandRejected" && (event.owner === undefined || event.owner === localOwner));
+      const rejection = events.find(
+        (event) =>
+          event.type === "commandRejected" &&
+          (event.owner === undefined || event.owner === localOwner),
+      );
       if (rejection?.type === "commandRejected") {
         playSfx(rejectionSfx(rejection.reason));
         const message = commandRejectionMessage(rejection.reason);
@@ -89,7 +94,11 @@ export function createPresentationCoordinator({
           }
         }
       }
-      if (events.some((event) => ["combat", "destroyed", "support", "built", "produced"].includes(event.type))) {
+      if (
+        events.some((event) =>
+          ["combat", "destroyed", "support", "built", "produced"].includes(event.type),
+        )
+      ) {
         const spawned = burstsFromEvents(events, state, now, fxSequence.current);
         fxSequence.current = spawned.nextId;
         fxRef.current.push(...spawned.bursts);

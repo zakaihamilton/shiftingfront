@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import styles from "@/app/legal.module.css";
 import { ConsoleNoticeLink } from "./ConsoleNotice";
 import { EscapeToHome } from "./EscapeToHome";
-import styles from "@/app/legal.module.css";
 
 export function LegalDocument({
   eyebrow,

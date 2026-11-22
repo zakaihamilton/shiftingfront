@@ -4,7 +4,9 @@
   flex-shrink: 0;
   border: 1px solid var(--chrome-inset);
   background: linear-gradient(var(--chrome-steel), var(--chrome-steel-lo));
-  box-shadow: inset 1px 1px var(--chrome-steel-hi), inset -1px -1px var(--chrome-void);
+  box-shadow:
+    inset 1px 1px var(--chrome-steel-hi),
+    inset -1px -1px var(--chrome-void);
   border-top: 2px solid var(--chrome-gold-dim);
 }
 

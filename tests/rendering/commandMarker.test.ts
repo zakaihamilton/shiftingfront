@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { createCamera } from "../../lib/iso";
 import { UNIT_STATS } from "../../lib/catalog";
-import { COMMAND_MARKER_COLORS, commandMarkerKind, commandMarkerReachedDestination, drawCommandMarker, drawRallyPoint } from "../../lib/render/renderOverlays";
+import { createCamera } from "../../lib/iso";
 import { drawCombatEffects } from "../../lib/render/renderCombat";
+import {
+  COMMAND_MARKER_COLORS,
+  commandMarkerKind,
+  commandMarkerReachedDestination,
+  drawCommandMarker,
+  drawRallyPoint,
+} from "../../lib/render/renderOverlays";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 function mockCtx() {
@@ -77,7 +83,13 @@ describe("command markers", () => {
     expect(ctx.ellipse).toHaveBeenCalledTimes(2);
 
     const expiredCtx = mockCtx();
-    drawCommandMarker(expiredCtx, state, cam, { x: 2, y: 2, bornMs: 0, expiresMs: 900, kind: "invalid" }, 900);
+    drawCommandMarker(
+      expiredCtx,
+      state,
+      cam,
+      { x: 2, y: 2, bornMs: 0, expiresMs: 900, kind: "invalid" },
+      900,
+    );
     expect(expiredCtx.ellipse).not.toHaveBeenCalled();
   });
 
@@ -88,7 +100,14 @@ describe("command markers", () => {
     unit.orderDestination = { x: 2, y: 2 };
     unit.idle = true;
     unit.routePending = false;
-    const marker = { x: 2, y: 2, bornMs: 0, kind: "attack" as const, mode: "attackMove" as const, unitIds: [unit.id] };
+    const marker = {
+      x: 2,
+      y: 2,
+      bornMs: 0,
+      kind: "attack" as const,
+      mode: "attackMove" as const,
+      unitIds: [unit.id],
+    };
 
     expect(commandMarkerReachedDestination(state, marker)).toBe(true);
     const ctx = mockCtx();
@@ -104,7 +123,14 @@ describe("command markers", () => {
     unit.idle = false;
     unit.routePending = false;
     unit.path = [{ x: 3, y: 2 }];
-    const marker = { x: 8, y: 2, bornMs: 0, kind: "attack" as const, mode: "attackMove" as const, unitIds: [unit.id] };
+    const marker = {
+      x: 8,
+      y: 2,
+      bornMs: 0,
+      kind: "attack" as const,
+      mode: "attackMove" as const,
+      unitIds: [unit.id],
+    };
 
     expect(commandMarkerReachedDestination(state, marker)).toBe(false);
     const ctx = mockCtx();
@@ -122,7 +148,15 @@ describe("command markers", () => {
     unit.idle = false;
     unit.routePending = false;
     unit.path = [];
-    const marker = { x: target.x, y: target.y, bornMs: 0, kind: "attack" as const, mode: "attack" as const, targetId: target.id, unitIds: [unit.id] };
+    const marker = {
+      x: target.x,
+      y: target.y,
+      bornMs: 0,
+      kind: "attack" as const,
+      mode: "attack" as const,
+      targetId: target.id,
+      unitIds: [unit.id],
+    };
 
     expect(commandMarkerReachedDestination(state, marker)).toBe(false);
     const ctx = mockCtx();
@@ -140,7 +174,15 @@ describe("command markers", () => {
     unit.idle = false;
     unit.routePending = false;
     unit.path = [];
-    const marker = { x: target.x, y: target.y, bornMs: 0, kind: "attack" as const, mode: "attack" as const, targetId: target.id, unitIds: [unit.id] };
+    const marker = {
+      x: target.x,
+      y: target.y,
+      bornMs: 0,
+      kind: "attack" as const,
+      mode: "attack" as const,
+      targetId: target.id,
+      unitIds: [unit.id],
+    };
 
     expect(commandMarkerReachedDestination(state, marker)).toBe(true);
     const ctx = mockCtx();

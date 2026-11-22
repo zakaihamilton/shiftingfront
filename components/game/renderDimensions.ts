@@ -21,5 +21,10 @@ export function renderPixelRatio(
   // Only raster resolution changes; the camera and hit targets stay fixed.
   // Coarse tiers avoid reallocating every canvas whenever one unit is lost.
   const armyLimit = entityCount > 200 ? 1 : entityCount > 80 ? 1.5 : 2;
-  return Math.min(density, armyLimit, touch ? 1.5 : 2, Math.sqrt(budget / Math.max(1, viewport.width * viewport.height)));
+  return Math.min(
+    density,
+    armyLimit,
+    touch ? 1.5 : 2,
+    Math.sqrt(budget / Math.max(1, viewport.width * viewport.height)),
+  );
 }

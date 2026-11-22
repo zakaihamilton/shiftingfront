@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ArchetypeCommander } from "../../../lib/sim/commander/archetypes";
 import { stratifiedBalanceScenarios } from "../../../lib/sim/balance";
+import { ArchetypeCommander } from "../../../lib/sim/commander/archetypes";
 import { simulationFingerprint } from "../../../lib/sim/replay";
 import { createScenarioRunner } from "../../../lib/sim/scenarioRunner";
 import { missionFactory } from "./helpers";
@@ -18,7 +18,10 @@ describe("headless balance mission kinds", () => {
         const referenceCommander = new ArchetypeCommander(strategy);
         const headlessCommander = new ArchetypeCommander(strategy);
         const referenceRunner = createScenarioRunner(reference);
-        const headlessRunner = createScenarioRunner(headless, { collectEvents: false, updateFog: false });
+        const headlessRunner = createScenarioRunner(headless, {
+          collectEvents: false,
+          updateFog: false,
+        });
 
         for (let i = 0; i < 180 && reference.result === "playing"; i += 1) {
           const referenceCommands = referenceCommander.plan(reference);

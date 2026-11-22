@@ -1,21 +1,27 @@
-import { drawRenderCanvas, prepareRenderContext } from "../../canvasViewport";
 import { footprintOf } from "../../../catalog";
+import type { Camera } from "../../../iso";
+import { TILE_H, TILE_W, tileToScreen } from "../../../iso";
+import { canPlaceBuilding, heightAt } from "../../../sim/world";
 import type { SimState } from "../../../types";
 import { animClock } from "../../anim";
-import type { Camera } from "../../../iso";
-import { scrollLayerBlitOffset, scrollLayerNeedsRebuild, scrollLayerPaintCamera, terrainScrollPad } from "../../scrollLayer";
-import { paintBuildingPlates, paintTerrainWorld } from "../../terrainPaint";
-import { paintOreGlints, paintTerrainAtmosphere, paintTerrainWeather, paintWaterFx } from "../../terrainWeather";
-import { drawObjectiveZone } from "../../renderOverlays";
-import { entityVisible, entityElev } from "../../renderPicking";
-import { canPlaceBuilding, heightAt } from "../../../sim/world";
-import { drawDiamond, type RenderExtras } from "../../renderOverlays";
-import { TILE_H, TILE_W, tileToScreen } from "../../../iso";
-
+import { drawRenderCanvas, prepareRenderContext } from "../../canvasViewport";
+import { drawDiamond, drawObjectiveZone, type RenderExtras } from "../../renderOverlays";
+import { entityElev, entityVisible } from "../../renderPicking";
 import {
-  ensureTerrainRenderCache,
-  terrainContentKey,
-} from "../cache";
+  scrollLayerBlitOffset,
+  scrollLayerNeedsRebuild,
+  scrollLayerPaintCamera,
+  terrainScrollPad,
+} from "../../scrollLayer";
+import { paintBuildingPlates, paintTerrainWorld } from "../../terrainPaint";
+import {
+  paintOreGlints,
+  paintTerrainAtmosphere,
+  paintTerrainWeather,
+  paintWaterFx,
+} from "../../terrainWeather";
+
+import { ensureTerrainRenderCache, terrainContentKey } from "../cache";
 
 function paintTerrain(ctx: CanvasRenderingContext2D, state: SimState, cam: Camera): void {
   paintTerrainWorld(ctx, state, cam);
@@ -64,7 +70,13 @@ export function renderTerrainPhase(
 
   if (extras.placeKind && hoverTile) {
     const fp = footprintOf(extras.placeKind);
-    const ok = canPlaceBuilding(state, extras.placeKind, hoverTile.x, hoverTile.y, state.viewOwner ?? 0);
+    const ok = canPlaceBuilding(
+      state,
+      extras.placeKind,
+      hoverTile.x,
+      hoverTile.y,
+      state.viewOwner ?? 0,
+    );
     for (let oy = 0; oy < fp.h; oy++) {
       for (let ox = 0; ox < fp.w; ox++) {
         const tx = hoverTile.x + ox;

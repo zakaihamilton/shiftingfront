@@ -1,5 +1,5 @@
 import type { CharacterRole } from "../types";
-import { portraitMouthCalibration, type PortraitMouthCalibration } from "./portraitCalibration";
+import { type PortraitMouthCalibration, portraitMouthCalibration } from "./portraitCalibration";
 
 export const PORTRAIT_FRAME_COUNT = 3;
 export const PORTRAIT_FRAME_WIDTH = 512;
@@ -68,7 +68,9 @@ export type PortraitPickOptions = {
 export function portraitCandidates(opts: PortraitPickOptions = {}): readonly PortraitAsset[] {
   const excludedIds = opts.excludeIds ? new Set(opts.excludeIds) : undefined;
   const excludedSheets = opts.excludeSheets ? new Set(opts.excludeSheets) : undefined;
-  const rolePool = opts.role ? PORTRAIT_ASSETS.filter((asset) => asset.role === opts.role) : PORTRAIT_ASSETS;
+  const rolePool = opts.role
+    ? PORTRAIT_ASSETS.filter((asset) => asset.role === opts.role)
+    : PORTRAIT_ASSETS;
   const unused = rolePool.filter((asset) => {
     if (excludedIds?.has(asset.id)) return false;
     if (excludedSheets?.has(asset.sheet)) return false;

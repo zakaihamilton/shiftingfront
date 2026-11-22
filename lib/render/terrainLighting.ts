@@ -1,7 +1,7 @@
+import { type SceneryWorld, sceneryAt } from "../gen/map";
 import { generateCampaignVisualProfile } from "../gen/visualProfile";
-import { sceneryAt, type SceneryWorld } from "../gen/map";
 import type { BiomeName, CampaignVisualProfile } from "../types";
-import { mixRgb, terrainVisualTuningFor, type Rgb } from "./terrainMaterials";
+import { mixRgb, type Rgb, terrainVisualTuningFor } from "./terrainMaterials";
 
 export type TerrainLightRig = {
   directionX: number;
@@ -33,7 +33,10 @@ function hash01(value: number): number {
   return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
 }
 
-function accentColors(accent: CampaignVisualProfile["terrainAccent"]): { key: Rgb; atmosphere: Rgb } {
+function accentColors(accent: CampaignVisualProfile["terrainAccent"]): {
+  key: Rgb;
+  atmosphere: Rgb;
+} {
   if (accent === "amber") {
     return {
       key: { r: 255, g: 211, b: 143 },
@@ -52,10 +55,7 @@ function accentColors(accent: CampaignVisualProfile["terrainAccent"]): { key: Rg
   };
 }
 
-export function terrainLightRigFor(
-  seed: number,
-  profile?: CampaignVisualProfile,
-): TerrainLightRig {
+export function terrainLightRigFor(seed: number, profile?: CampaignVisualProfile): TerrainLightRig {
   if (profile === undefined) {
     const cached = rigCache.get(seed);
     if (cached) return cached;
@@ -68,7 +68,8 @@ export function terrainLightRigFor(
     return cachedProfile;
   }
   const colors = accentColors(resolvedProfile.terrainAccent);
-  const familyContrast = resolvedProfile.family === 1 ? 0.96 : resolvedProfile.family === 2 ? 0.99 : 1;
+  const familyContrast =
+    resolvedProfile.family === 1 ? 0.96 : resolvedProfile.family === 2 ? 0.99 : 1;
   const rig: TerrainLightRig = {
     // Light arrives from the upper-left of the isometric diamond. Keeping this
     // direction stable makes cliffs, props, and tile materials read as one scene.
@@ -123,10 +124,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function terrainEdgeOcclusion(rig: TerrainLightRig, fx: number, fy: number): number {
-  return (
-    Math.max(0, fx - 0.56) * 0.55
-    + Math.max(0, fy - 0.56) * 0.7
-  ) * rig.occlusionStrength;
+  return (Math.max(0, fx - 0.56) * 0.55 + Math.max(0, fy - 0.56) * 0.7) * rig.occlusionStrength;
 }
 
 export function terrainEdgeDarkening(rig: TerrainLightRig, fx: number, fy: number): number {
@@ -147,8 +145,8 @@ export function terrainLightFactor(
 ): number {
   const faceX = Math.sin((0.5 - fx) * Math.PI) * rig.directionX;
   const faceY = Math.sin((0.5 - fy) * Math.PI) * rig.directionY;
-  const relief = (elev - eastElev) * rig.directionX * 0.08
-    + (elev - southElev) * rig.directionY * 0.1;
+  const relief =
+    (elev - eastElev) * rig.directionX * 0.08 + (elev - southElev) * rig.directionY * 0.1;
   const faceLight = (faceX + faceY) * rig.keyStrength * 0.72;
   return clamp(rig.ambient + faceLight + relief - terrainEdgeOcclusion(rig, fx, fy), 0.76, 1.12);
 }

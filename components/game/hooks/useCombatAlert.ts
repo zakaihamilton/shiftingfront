@@ -19,9 +19,12 @@ export function useCombatAlert() {
     }, 3000);
   }, []);
 
-  useEffect(() => () => {
-    if (clearRef.current) window.clearTimeout(clearRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (clearRef.current) window.clearTimeout(clearRef.current);
+    },
+    [],
+  );
 
   return { combatAlert, combatAlertKind, onAlert };
 }

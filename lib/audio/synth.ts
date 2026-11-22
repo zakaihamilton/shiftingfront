@@ -2,11 +2,11 @@ import { getAudioContext, isAudioUnlocked, resumeAudio } from "./context";
 import { getAudioBus, isAudioForeground, setAudioBusEnabled } from "./mixer";
 import {
   type BeepKind,
+  DEFAULT_INTERVALS,
+  playLayeredSfx,
   type SfxKind,
   type SfxOptions,
-  DEFAULT_INTERVALS,
   scheduleSfxTime,
-  playLayeredSfx,
 } from "./synth/index";
 
 export * from "./synth/index";

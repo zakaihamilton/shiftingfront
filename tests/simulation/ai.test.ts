@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { RETREAT_MAX_TICKS, RETREAT_RECOVER_HEALTH, tickAi } from "../../lib/sim/ai";
-import { createMission, tick } from "../../lib/sim/api";
 import { objectiveContractFor } from "../../lib/gen/profile";
+import { RETREAT_MAX_TICKS, RETREAT_RECOVER_HEALTH, tickAi } from "../../lib/sim/ai";
+import { assignAssault } from "../../lib/sim/ai/combat";
+import { queueUnit } from "../../lib/sim/ai/helpers";
+import { createMission, tick } from "../../lib/sim/api";
+import { missionDifficulty } from "../../lib/sim/difficulty";
 import { tickMissionDirector } from "../../lib/sim/director";
 import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
-import { missionDifficulty } from "../../lib/sim/difficulty";
 import { powerFor } from "../../lib/sim/world";
-import { queueUnit } from "../../lib/sim/ai/helpers";
-import { assignAssault } from "../../lib/sim/ai/combat";
 
 describe("enemy AI", () => {
   it("builds toward a contested resource lane before committing another wave", () => {
-    const s = makeFixture({ width: 36, height: 36, win: { kind: "destroyMarked", targetCount: 1 } });
+    const s = makeFixture({
+      width: 36,
+      height: 36,
+      win: { kind: "destroyMarked", targetCount: 1 },
+    });
     addBuilding(s, 1, "constructionYard", 4, 4);
     addBuilding(s, 1, "power", 7, 4);
     addBuilding(s, 1, "refinery", 4, 8);
@@ -31,48 +35,70 @@ describe("enemy AI", () => {
 
     s.tick = difficulty.enemyProductionStart;
     tickAi(s);
-    expect(s.entities.some((e) => e.owner === 1 && e.kind === "power" && e.constructing > 0 && e.x > 8)).toBe(true);
+    expect(
+      s.entities.some((e) => e.owner === 1 && e.kind === "power" && e.constructing > 0 && e.x > 8),
+    ).toBe(true);
 
-    const productionEvery = Math.round(difficulty.enemyProductionEvery * objectiveContractFor("destroyMarked")!.productionScale);
+    const productionEvery = Math.round(
+      difficulty.enemyProductionEvery * objectiveContractFor("destroyMarked")!.productionScale,
+    );
     s.tick = difficulty.enemyProductionStart + productionEvery;
     tickAi(s);
-    expect(s.entities.some((e) => e.owner === 1 && e.kind === "refinery" && e.constructing > 0 && e.x > 10)).toBe(true);
+    expect(
+      s.entities.some(
+        (e) => e.owner === 1 && e.kind === "refinery" && e.constructing > 0 && e.x > 10,
+      ),
+    ).toBe(true);
   });
 
   it("expands into an unserved resource lane on a generated campaign map", () => {
     const s = createMission({ seed: 0, missionIndex: 0 });
-    const initialBuildingIds = new Set(s.entities.filter((entity) => entity.owner === 1 && entity.class === "building").map((entity) => entity.id));
-    const yard = s.entities.find((entity) => entity.owner === 1 && entity.kind === "constructionYard")!;
+    const initialBuildingIds = new Set(
+      s.entities
+        .filter((entity) => entity.owner === 1 && entity.class === "building")
+        .map((entity) => entity.id),
+    );
+    const yard = s.entities.find(
+      (entity) => entity.owner === 1 && entity.kind === "constructionYard",
+    )!;
     const director = s.runtime!.director!;
     const difficulty = missionDifficulty(s.missionIndex);
     const productionEvery = difficulty.enemyProductionEvery * 4;
-    const productionTick = difficulty.enemyProductionStart
-      + Math.ceil((director.pressureStart - difficulty.enemyProductionStart) / productionEvery) * productionEvery;
+    const productionTick =
+      difficulty.enemyProductionStart +
+      Math.ceil((director.pressureStart - difficulty.enemyProductionStart) / productionEvery) *
+        productionEvery;
 
     s.tick = director.pressureStart;
     tickMissionDirector(s);
     s.tick = productionTick;
     tickAi(s);
 
-    expect(s.entities.some((entity) =>
-      entity.owner === 1 &&
-      entity.class === "building" &&
-      (entity.kind === "power" || entity.kind === "refinery") &&
-      entity.constructing > 0 &&
-      !initialBuildingIds.has(entity.id) &&
-      Math.hypot(entity.x - yard.x, entity.y - yard.y) >= 10,
-    )).toBe(true);
+    expect(
+      s.entities.some(
+        (entity) =>
+          entity.owner === 1 &&
+          entity.class === "building" &&
+          (entity.kind === "power" || entity.kind === "refinery") &&
+          entity.constructing > 0 &&
+          !initialBuildingIds.has(entity.id) &&
+          Math.hypot(entity.x - yard.x, entity.y - yard.y) >= 10,
+      ),
+    ).toBe(true);
 
     s.tick = productionTick + productionEvery;
     tickAi(s);
-    expect(s.entities.some((entity) =>
-      entity.owner === 1 &&
-      entity.class === "building" &&
-      entity.kind === "refinery" &&
-      entity.constructing > 0 &&
-      !initialBuildingIds.has(entity.id) &&
-      Math.hypot(entity.x - yard.x, entity.y - yard.y) >= 10,
-    )).toBe(true);
+    expect(
+      s.entities.some(
+        (entity) =>
+          entity.owner === 1 &&
+          entity.class === "building" &&
+          entity.kind === "refinery" &&
+          entity.constructing > 0 &&
+          !initialBuildingIds.has(entity.id) &&
+          Math.hypot(entity.x - yard.x, entity.y - yard.y) >= 10,
+      ),
+    ).toBe(true);
   });
 
   it("posts a combat unit on the contested resource lane", () => {
@@ -112,7 +138,9 @@ describe("enemy AI", () => {
 
     tickAi(s);
 
-    expect(s.entities.some((e) => e.owner === 1 && e.kind === "power" && e.constructing > 0)).toBe(true);
+    expect(s.entities.some((e) => e.owner === 1 && e.kind === "power" && e.constructing > 0)).toBe(
+      true,
+    );
     expect(s.entities.some((e) => e.kind === "factory")).toBe(false);
   });
 
@@ -143,7 +171,11 @@ describe("enemy AI", () => {
   });
 
   it("sends assault raiders at a player harvester and leaves a home guard", () => {
-    const s = makeFixture({ width: 24, height: 24, win: { kind: "destroyMarked", targetCount: 1 } });
+    const s = makeFixture({
+      width: 24,
+      height: 24,
+      win: { kind: "destroyMarked", targetCount: 1 },
+    });
     addBuilding(s, 1, "constructionYard", 2, 2);
     addBuilding(s, 0, "constructionYard", 18, 18);
     const guard = addUnit(s, 1, "infantry", 5, 2);
@@ -151,7 +183,8 @@ describe("enemy AI", () => {
     const extra = addUnit(s, 1, "tank", 9, 9);
     const harvester = addUnit(s, 0, "harvester", 12, 12);
     const playerYard = s.entities.find((e) => e.owner === 0 && e.kind === "constructionYard")!;
-    s.tick = missionDifficulty(0).enemyAssaultEvery + objectiveContractFor("destroyMarked")!.assaultDelay;
+    s.tick =
+      missionDifficulty(0).enemyAssaultEvery + objectiveContractFor("destroyMarked")!.assaultDelay;
 
     tickAi(s);
 
@@ -163,14 +196,19 @@ describe("enemy AI", () => {
   });
 
   it("splits two assault raiders between a harvester and the player yard", () => {
-    const s = makeFixture({ width: 24, height: 24, win: { kind: "destroyMarked", targetCount: 1 } });
+    const s = makeFixture({
+      width: 24,
+      height: 24,
+      win: { kind: "destroyMarked", targetCount: 1 },
+    });
     addBuilding(s, 1, "constructionYard", 2, 2);
     const playerYard = addBuilding(s, 0, "constructionYard", 18, 18);
     addUnit(s, 1, "infantry", 5, 2);
     const even = addUnit(s, 1, "infantry", 8, 8);
     const odd = addUnit(s, 1, "infantry", 9, 9);
     const harvester = addUnit(s, 0, "harvester", 12, 12);
-    s.tick = missionDifficulty(0).enemyAssaultEvery + objectiveContractFor("destroyMarked")!.assaultDelay;
+    s.tick =
+      missionDifficulty(0).enemyAssaultEvery + objectiveContractFor("destroyMarked")!.assaultDelay;
 
     tickAi(s);
 
@@ -215,7 +253,11 @@ describe("enemy AI", () => {
   });
 
   it("prioritizes a live convoy over the default harassment targets", () => {
-    const s = makeFixture({ width: 24, height: 24, win: { kind: "escort", targetCount: 1, ticks: 5000 } });
+    const s = makeFixture({
+      width: 24,
+      height: 24,
+      win: { kind: "escort", targetCount: 1, ticks: 5000 },
+    });
     addBuilding(s, 1, "constructionYard", 2, 2);
     addBuilding(s, 0, "constructionYard", 18, 18);
     addUnit(s, 1, "infantry", 5, 2);
@@ -252,7 +294,11 @@ describe("enemy AI", () => {
   });
 
   it("stations a guard near marked sabotage targets", () => {
-    const s = makeFixture({ width: 24, height: 24, win: { kind: "sabotage", targetCount: 1, ticks: 5000 } });
+    const s = makeFixture({
+      width: 24,
+      height: 24,
+      win: { kind: "sabotage", targetCount: 1, ticks: 5000 },
+    });
     addBuilding(s, 1, "constructionYard", 2, 2);
     const target = addBuilding(s, 1, "objective", 10, 10, 0, true);
     const guard = addUnit(s, 1, "infantry", 8, 8);
@@ -268,7 +314,9 @@ describe("enemy AI", () => {
     tickAi(s);
 
     expect(guard.orderMode).toBe("move");
-    expect(guard.path.at(-1)).toEqual(expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }));
+    expect(guard.path.at(-1)).toEqual(
+      expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+    );
   });
 
   it("keeps generated destroy-marked targets available to the AI guard logic", () => {
@@ -282,15 +330,24 @@ describe("enemy AI", () => {
     tickAi(s);
 
     const guards = s.entities.filter(
-      (entity) => entity.owner === 1 && entity.class === "unit" && entity.kind !== "harvester" && entity.orderMode === "move",
+      (entity) =>
+        entity.owner === 1 &&
+        entity.class === "unit" &&
+        entity.kind !== "harvester" &&
+        entity.orderMode === "move",
     );
     expect(guards.length).toBeGreaterThanOrEqual(targetIds.length);
     for (const targetId of targetIds) {
       const target = s.entities.find((entity) => entity.id === targetId)!;
-      expect(guards.some((guard) => {
-        const destination = guard.orderDestination;
-        return destination !== undefined && Math.hypot(destination.x - target.x, destination.y - target.y) <= 4;
-      })).toBe(true);
+      expect(
+        guards.some((guard) => {
+          const destination = guard.orderDestination;
+          return (
+            destination !== undefined &&
+            Math.hypot(destination.x - target.x, destination.y - target.y) <= 4
+          );
+        }),
+      ).toBe(true);
     }
   });
 
@@ -303,7 +360,9 @@ describe("enemy AI", () => {
     tickAi(s);
 
     expect(s.aiState).toBe("defense");
-    expect(s.entities.some((e) => e.owner === 1 && e.kind === "turret" && e.constructing > 0)).toBe(true);
+    expect(s.entities.some((e) => e.owner === 1 && e.kind === "turret" && e.constructing > 0)).toBe(
+      true,
+    );
   });
 
   it("retreats battered combat units to the enemy yard", () => {
@@ -322,23 +381,32 @@ describe("enemy AI", () => {
     expect(s.aiState).toBe("retreat");
     expect(wounded.attackTarget).toBeUndefined();
     expect(ally.attackTarget).toBeUndefined();
-    expect(wounded.path.at(-1)).toEqual(expect.objectContaining({
-      x: expect.any(Number),
-      y: expect.any(Number),
-    }));
+    expect(wounded.path.at(-1)).toEqual(
+      expect.objectContaining({
+        x: expect.any(Number),
+        y: expect.any(Number),
+      }),
+    );
     const end = wounded.path.at(-1)!;
     expect(Math.hypot(end.x - yard.x, end.y - yard.y)).toBeLessThan(4);
   });
 
   it("assigns an idle raider between assault waves", () => {
-    const s = makeFixture({ width: 24, height: 24, win: { kind: "destroyMarked", targetCount: 1 } });
+    const s = makeFixture({
+      width: 24,
+      height: 24,
+      win: { kind: "destroyMarked", targetCount: 1 },
+    });
     s.biome = "crystal flats";
     addBuilding(s, 1, "constructionYard", 2, 2);
     addBuilding(s, 0, "constructionYard", 18, 18);
     const guard = addUnit(s, 1, "infantry", 5, 2);
     const raider = addUnit(s, 1, "infantry", 8, 8);
     const harvester = addUnit(s, 0, "harvester", 12, 12);
-    s.tick = missionDifficulty(0).enemyAssaultEvery + objectiveContractFor("destroyMarked")!.assaultDelay + 1;
+    s.tick =
+      missionDifficulty(0).enemyAssaultEvery +
+      objectiveContractFor("destroyMarked")!.assaultDelay +
+      1;
 
     tickAi(s);
 
@@ -349,13 +417,18 @@ describe("enemy AI", () => {
   });
 
   it("leaves retreat after HP recovers and recommits raiders", () => {
-    const s = makeFixture({ width: 24, height: 24, win: { kind: "destroyMarked", targetCount: 1 } });
+    const s = makeFixture({
+      width: 24,
+      height: 24,
+      win: { kind: "destroyMarked", targetCount: 1 },
+    });
     addBuilding(s, 1, "constructionYard", 2, 2);
     addBuilding(s, 0, "constructionYard", 18, 18);
     const guard = addUnit(s, 1, "infantry", 5, 2);
     const raider = addUnit(s, 1, "tank", 9, 9);
     const harvester = addUnit(s, 0, "harvester", 12, 12);
-    s.tick = missionDifficulty(0).enemyAssaultEvery + objectiveContractFor("destroyMarked")!.assaultDelay;
+    s.tick =
+      missionDifficulty(0).enemyAssaultEvery + objectiveContractFor("destroyMarked")!.assaultDelay;
     raider.hp = 10;
     guard.hp = 10;
 
@@ -365,7 +438,10 @@ describe("enemy AI", () => {
     guard.hp = guard.maxHp;
     raider.hp = raider.maxHp;
     expect(raider.hp / raider.maxHp).toBeGreaterThanOrEqual(RETREAT_RECOVER_HEALTH);
-    s.tick = missionDifficulty(0).enemyAssaultEvery + objectiveContractFor("destroyMarked")!.assaultDelay + 1;
+    s.tick =
+      missionDifficulty(0).enemyAssaultEvery +
+      objectiveContractFor("destroyMarked")!.assaultDelay +
+      1;
     tickAi(s);
 
     expect(s.aiState).toBe("assault");
@@ -397,12 +473,22 @@ describe("enemy AI", () => {
 
   it("produces and assigns an attack during a short headless mission", () => {
     const state = createMission({ seed: 421, missionIndex: 1 });
-    for (let i = 0; i < missionDifficulty(state.missionIndex).enemyAssaultEvery + 240 && state.result === "playing"; i++) {
+    for (
+      let i = 0;
+      i < missionDifficulty(state.missionIndex).enemyAssaultEvery + 240 &&
+      state.result === "playing";
+      i++
+    ) {
       tick(state);
     }
     expect(state.unitsProduced[1]).toBeGreaterThan(0);
     const raider = state.entities.find(
-      (entity) => entity.owner === 1 && entity.class === "unit" && entity.kind !== "harvester" && entity.hp > 0 && entity.attackTarget !== undefined,
+      (entity) =>
+        entity.owner === 1 &&
+        entity.class === "unit" &&
+        entity.kind !== "harvester" &&
+        entity.hp > 0 &&
+        entity.attackTarget !== undefined,
     );
     expect(raider).toBeDefined();
   });
@@ -452,7 +538,9 @@ describe("enemy AI", () => {
 
     tickAi(s);
 
-    const spawned = s.entities.filter((e) => e.owner === 1 && e.class === "unit" && (e.kind === "tank" || e.kind === "infantry"));
+    const spawned = s.entities.filter(
+      (e) => e.owner === 1 && e.class === "unit" && (e.kind === "tank" || e.kind === "infantry"),
+    );
     expect(spawned.length).toBe(before + 1);
   });
 
@@ -479,6 +567,8 @@ describe("enemy AI", () => {
 
     tickAi(s);
 
-    expect(s.entities.some((e) => e.owner === 1 && e.kind === "refinery" && e.constructing > 0)).toBe(true);
+    expect(
+      s.entities.some((e) => e.owner === 1 && e.kind === "refinery" && e.constructing > 0),
+    ).toBe(true);
   });
 });

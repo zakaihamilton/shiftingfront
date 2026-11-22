@@ -1,11 +1,11 @@
-import type { MusicCue } from "./compose";
 import {
   cachedSessionStorage,
-  safeGetItem,
-  safeSetItem,
-  safeRemoveItem,
   type StorageAdapter,
+  safeGetItem,
+  safeRemoveItem,
+  safeSetItem,
 } from "@/lib/persist/save";
+import type { MusicCue } from "./compose";
 
 export const MUSIC_POSITION_KEY = "shiftingfront:music-position";
 export const MUSIC_POSITION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -21,7 +21,9 @@ export function musicTrackKey(cue: MusicCue, seed: number, missionIndex = 0): st
   return `${cue}:${seed}:${missionIndex}`;
 }
 
-export function readAllMusicPositions(storage: StorageAdapter = cachedSessionStorage()): MusicPositionMap {
+export function readAllMusicPositions(
+  storage: StorageAdapter = cachedSessionStorage(),
+): MusicPositionMap {
   const raw = safeGetItem(storage, MUSIC_POSITION_KEY);
   if (!raw) return {};
   try {

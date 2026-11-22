@@ -1,15 +1,21 @@
 import { isAirUnit } from "../catalog";
-import { isUnitEntity, type Entity, type SimEvent, type SimState, type UnitEntity } from "../types";
-import { tryFindPathDetailed } from "./pathBudget";
-import { routePendingFor } from "./pathfinding";
-import { prepareFlowFieldRoutes } from "./flowFieldRouting";
-import type { FlowField } from "./flowField";
-import { invalidateUnitAtCache, unitOccupancyFor } from "./world";
+import { type Entity, isUnitEntity, type SimEvent, type SimState, type UnitEntity } from "../types";
 import { tickAircraft } from "./aircraft";
 import { entitiesFor } from "./entities";
-import { isPlayerControlledOwner } from "./ownership";
-import { cellOf, goalDistance, holdingDestination, reversesPreviousStep, stepFromPreviousCell } from "./navigation";
+import type { FlowField } from "./flowField";
+import { prepareFlowFieldRoutes } from "./flowFieldRouting";
 import { isRecoveryReturn, stepMover } from "./movementStep";
+import {
+  cellOf,
+  goalDistance,
+  holdingDestination,
+  reversesPreviousStep,
+  stepFromPreviousCell,
+} from "./navigation";
+import { isPlayerControlledOwner } from "./ownership";
+import { tryFindPathDetailed } from "./pathBudget";
+import { routePendingFor } from "./pathfinding";
+import { invalidateUnitAtCache, unitOccupancyFor } from "./world";
 
 type MovementBuffers = {
   occupancy: Uint8Array;
@@ -58,24 +64,51 @@ function buffersFor(state: SimState): MovementBuffers {
 
 export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
   tickAircraft(state, eventSink);
-  const { occupancy, atTile, reserved, movers, previousCells, movementIntents, flowOrder, plannedVacates, flowFields, edgeReservations } = buffersFor(state);
+  const {
+    occupancy,
+    atTile,
+    reserved,
+    movers,
+    previousCells,
+    movementIntents,
+    flowOrder,
+    plannedVacates,
+    flowFields,
+    edgeReservations,
+  } = buffersFor(state);
   resetPreviousCellsForNewOrders(state, previousCells, movementIntents);
-  prepareFlowFieldRoutes(state, occupancy, reserved, previousCells, undefined, flowOrder, plannedVacates, flowFields, edgeReservations);
+  prepareFlowFieldRoutes(
+    state,
+    occupancy,
+    reserved,
+    previousCells,
+    undefined,
+    flowOrder,
+    plannedVacates,
+    flowFields,
+    edgeReservations,
+  );
   for (const e of entitiesFor(state)) {
     // Convoys are neutral so combat targeting ignores them, but they still
     // need the normal background repath when a bounded search returned only
     // a partial route. Other neutral scenario actors have no movement orders.
-    if (e.hp <= 0 || e.class !== "unit" || isAirUnit(e.kind) || (e.neutral && e.scenarioRole !== "convoy") || e.flowGoal || e.path.length || !e.orderDestination) continue;
+    if (
+      e.hp <= 0 ||
+      e.class !== "unit" ||
+      isAirUnit(e.kind) ||
+      (e.neutral && e.scenarioRole !== "convoy") ||
+      e.flowGoal ||
+      e.path.length ||
+      !e.orderDestination
+    )
+      continue;
     if (holdingDestination(e)) continue;
     const dest = e.orderDestination;
     const destX = Math.round(dest.x);
     const destY = Math.round(dest.y);
     const destCell = destY * state.width + destX;
     const destOccupied = occupancy[destCell] === 1 && destCell !== cellOf(state, e.x, e.y);
-    const cheb = Math.max(
-      Math.abs(Math.round(e.x) - destX),
-      Math.abs(Math.round(e.y) - destY),
-    );
+    const cheb = Math.max(Math.abs(Math.round(e.x) - destX), Math.abs(Math.round(e.y) - destY));
     // A returned recovery actor can occupy the shared return destination.
     // Other actors must still extend their bounded routes while far away;
     // only stop for the occupied final cell once they reach its perimeter.
@@ -89,18 +122,29 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
     }
     if (!e.routePending && !e.idle) continue;
     const result = tryFindPathDetailed(state, e, dest, {
-      approach: stepFromPreviousCell(state.width, Math.round(e.x), Math.round(e.y), previousCells.get(e.id)),
+      approach: stepFromPreviousCell(
+        state.width,
+        Math.round(e.x),
+        Math.round(e.y),
+        previousCells.get(e.id),
+      ),
     });
     if (!result) continue;
     const first = result.path[0];
-    if (first && isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && !returningActor && reversesPreviousStep(
-      state.width,
-      Math.round(e.x),
-      Math.round(e.y),
-      Math.round(first.x),
-      Math.round(first.y),
-      previousCells.get(e.id),
-    )) {
+    if (
+      first &&
+      isPlayerControlledOwner(state, e.owner) &&
+      e.scenarioRole !== "convoy" &&
+      !returningActor &&
+      reversesPreviousStep(
+        state.width,
+        Math.round(e.x),
+        Math.round(e.y),
+        Math.round(first.x),
+        Math.round(first.y),
+        previousCells.get(e.id),
+      )
+    ) {
       // A replan can end in a pocket with the only available route pointing
       // back through the tile the unit just left. Keep the unit settled until
       // the route can continue without visibly backtracking.
@@ -126,12 +170,24 @@ export function tickMovement(state: SimState, eventSink?: SimEvent[]): void {
     const aOrder = flowOrder.get(a.id);
     const bOrder = flowOrder.get(b.id);
     if (aOrder !== undefined || bOrder !== undefined) {
-      return (aOrder ?? Number.POSITIVE_INFINITY) - (bOrder ?? Number.POSITIVE_INFINITY) || a.id - b.id;
+      return (
+        (aOrder ?? Number.POSITIVE_INFINITY) - (bOrder ?? Number.POSITIVE_INFINITY) || a.id - b.id
+      );
     }
     return goalDistance(a) - goalDistance(b) || a.id - b.id;
   });
 
-  const step = { state, occupancy, atTile, reserved, previousCells, flowFields, edgeReservations, plannedVacates, movers };
+  const step = {
+    state,
+    occupancy,
+    atTile,
+    reserved,
+    previousCells,
+    flowFields,
+    edgeReservations,
+    plannedVacates,
+    movers,
+  };
   for (const e of movers) stepMover(e, step);
   // Positions changed during this tick are not reflected in the O(1) unitAt
   // cache used by placement and closest-approach queries.
@@ -152,4 +208,3 @@ function resetPreviousCellsForNewOrders(
     movementIntents.set(entity.id, intent);
   }
 }
-

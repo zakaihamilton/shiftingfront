@@ -19,7 +19,11 @@ class FakeParam {
     this.targets.push({ value, start, constant });
   }
   cancelScheduledValues(start: number): void {
-    this.targets.splice(0, this.targets.length, ...this.targets.filter((target) => target.start < start));
+    this.targets.splice(
+      0,
+      this.targets.length,
+      ...this.targets.filter((target) => target.start < start),
+    );
   }
 }
 

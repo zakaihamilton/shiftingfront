@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { turretTargetInRange, turretTargetPoint } from "../../lib/render/renderStructures/turret";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 describe("turret target rendering", () => {
   it("rejects a stale target outside the turret weapon range", () => {

@@ -1,19 +1,19 @@
+export { buildAntiAirTurretModel } from "./modelLoader/antiAirTurret";
+export { buildAntiArmorModel } from "./modelLoader/antiArmor";
+export { buildConvoyTruckModel } from "./modelLoader/convoyTruck";
+export { buildHarvesterModel } from "./modelLoader/harvester";
+export { buildUnitModel, parseObjModel } from "./modelLoader/index";
+export { buildInfantryModel } from "./modelLoader/infantry";
+export { buildStrikePlaneModel } from "./modelLoader/plane";
+export { buildTankModel } from "./modelLoader/tank";
+export { buildTurretHeadModel } from "./modelLoader/turret";
 export type { MeshData, ModelKind, ModelNode, UnitModel } from "./modelLoader/types";
 export {
   computeNormal,
   createBoxMesh,
-  createTrapezoidMesh,
   createCylinderMesh,
   createCylinderXMesh,
   createPolygonPrismMesh,
+  createTrapezoidMesh,
   mergeMeshes,
 } from "./modelLoader/types";
-export { buildTankModel } from "./modelLoader/tank";
-export { buildHarvesterModel } from "./modelLoader/harvester";
-export { buildInfantryModel } from "./modelLoader/infantry";
-export { buildAntiArmorModel } from "./modelLoader/antiArmor";
-export { buildTurretHeadModel } from "./modelLoader/turret";
-export { buildAntiAirTurretModel } from "./modelLoader/antiAirTurret";
-export { buildConvoyTruckModel } from "./modelLoader/convoyTruck";
-export { buildStrikePlaneModel } from "./modelLoader/plane";
-export { buildUnitModel, parseObjModel } from "./modelLoader/index";

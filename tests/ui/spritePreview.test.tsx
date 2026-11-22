@@ -47,7 +47,9 @@ vi.mock("@/lib/render/sprites", () => ({
 }));
 vi.mock("@/lib/render/unitMotion", () => ({ drawUnitShadow: mocks.drawUnitShadow }));
 vi.mock("@/lib/render/anim", () => ({ unitMovementOffset: mocks.unitMovementOffset }));
-vi.mock("@/lib/render/previewEffects", () => ({ paintBuildingAssetOverlay: mocks.paintBuildingAssetOverlay }));
+vi.mock("@/lib/render/previewEffects", () => ({
+  paintBuildingAssetOverlay: mocks.paintBuildingAssetOverlay,
+}));
 vi.mock("@/lib/render/gl/modelLoader", () => ({ buildTurretHeadModel: vi.fn() }));
 vi.mock("@/lib/render/gl/modelRenderer", () => ({ draw3dModel: vi.fn() }));
 
@@ -83,9 +85,7 @@ describe("SpritePreview", () => {
 
   beforeEach(() => {
     context = createContext();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
-      () => context,
-    );
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => context);
     Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 2 });
     vi.clearAllMocks();
   });
@@ -97,7 +97,9 @@ describe("SpritePreview", () => {
 
   it("renders building cards at high resolution with shared building accents", () => {
     const setIntervalSpy = vi.spyOn(window, "setInterval");
-    const { container } = render(<SpritePreview kind="power" palette={palette} profile={profile} />);
+    const { container } = render(
+      <SpritePreview kind="power" palette={palette} profile={profile} />,
+    );
 
     const canvas = container.querySelector("canvas");
     expect(canvas).not.toBeNull();
@@ -173,9 +175,9 @@ describe("SpritePreview", () => {
   it("keeps unit portraits static in the sidebar", () => {
     const setIntervalSpy = vi.spyOn(window, "setInterval");
     const clearIntervalSpy = vi.spyOn(window, "clearInterval");
-    const previews = (["infantry", "antiArmor", "medic"] as const).map((kind) => render(
-      <SpritePreview kind={kind} palette={palette} profile={profile} />,
-    ));
+    const previews = (["infantry", "antiArmor", "medic"] as const).map((kind) =>
+      render(<SpritePreview kind={kind} palette={palette} profile={profile} />),
+    );
 
     expect(previews.every(({ container }) => container.querySelector("canvas"))).toBe(true);
     expect(mocks.drawUnitShadow).toHaveBeenCalled();
@@ -183,7 +185,9 @@ describe("SpritePreview", () => {
     expect(mocks.unitMovementOffset).not.toHaveBeenCalled();
     expect(setIntervalSpy).not.toHaveBeenCalled();
 
-    previews.forEach(({ unmount }) => { unmount(); });
+    previews.forEach(({ unmount }) => {
+      unmount();
+    });
 
     expect(clearIntervalSpy).not.toHaveBeenCalled();
   });
@@ -210,8 +214,12 @@ describe("SpritePreview", () => {
       </>,
     );
 
-    expect(screen.getByRole("button", { name: /Power Plant, 300 credits/ }).querySelector("canvas")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Infantry, 100 credits/ }).querySelector("canvas")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Power Plant, 300 credits/ }).querySelector("canvas"),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Infantry, 100 credits/ }).querySelector("canvas"),
+    ).toBeTruthy();
   });
 
   it("renders a square cancel button on busy queued cameos", () => {

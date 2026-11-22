@@ -1,21 +1,36 @@
 import { footprintOf, isAirUnit } from "../../../catalog";
-import type { SimState } from "../../../types";
-import { TILE_H, TILE_W, tileToScreen, type Camera } from "../../../iso";
+import { type Camera, TILE_H, TILE_W, tileToScreen } from "../../../iso";
 import { canRepair } from "../../../sim/repair";
 import { canSell } from "../../../sim/sell";
-import { tutorialTargets, type TutorialWorldTarget } from "../../../sim/tutorialStage";
+import { type TutorialWorldTarget, tutorialTargets } from "../../../sim/tutorialStage";
 import { groundHeight, heightAt } from "../../../sim/world";
+import type { SimState } from "../../../types";
 import { selectionPulse } from "../../anim";
-import { AIR_UNIT_RENDER_ELEVATION, entityAtPointer, entityElev, visibleBuildingAt } from "../../renderPicking";
 import { unitRenderPosition } from "../../gl/unitTransformTracker";
+import {
+  drawDiamond,
+  drawDiamondStroke,
+  drawTooltip,
+  type RenderExtras,
+  tileTooltipLines,
+  tooltipLines,
+} from "../../renderOverlays";
+import {
+  AIR_UNIT_RENDER_ELEVATION,
+  entityAtPointer,
+  entityElev,
+  visibleBuildingAt,
+} from "../../renderPicking";
 import { strokeFootprint } from "../../renderStructures";
-import { drawDiamond, drawDiamondStroke, drawTooltip, tileTooltipLines, tooltipLines, type RenderExtras } from "../../renderOverlays";
 
-const tutorialTargetCache = new WeakMap<SimState, {
-  stage: SimState["tutorialStage"];
-  tick: number;
-  targets: TutorialWorldTarget[];
-}>();
+const tutorialTargetCache = new WeakMap<
+  SimState,
+  {
+    stage: SimState["tutorialStage"];
+    tick: number;
+    targets: TutorialWorldTarget[];
+  }
+>();
 
 export function renderHoverPhase(
   ctx: CanvasRenderingContext2D,
@@ -33,13 +48,13 @@ export function renderHoverPhase(
     const hovered = visibleBuildingAt(state, hoverTile.x, hoverTile.y);
     if (hovered && hovered.hp > 0) {
       const fp = footprintOf(hovered.kind as import("../../../types").BuildingKind);
-      const ok = hovered.owner === (state.viewOwner ?? 0) && (
-        extras.repairMode
-          ? hovered.repairing || canRepair(hovered)
-          : canSell(hovered)
-      );
+      const ok =
+        hovered.owner === (state.viewOwner ?? 0) &&
+        (extras.repairMode ? hovered.repairing || canRepair(hovered) : canSell(hovered));
       const tone = extras.repairMode
-        ? (hovered.repairing ? "220,190,70" : "90,220,200")
+        ? hovered.repairing
+          ? "220,190,70"
+          : "90,220,200"
         : "220,190,70";
       ctx.strokeStyle = ok ? `rgba(${tone},0.95)` : "rgba(220,70,70,0.95)";
       ctx.fillStyle = ok ? `rgba(${tone},0.16)` : "rgba(220,70,70,0.16)";
@@ -59,7 +74,12 @@ export function renderHoverPhase(
   }
 
   if (hoverTile && !extras.placeKind && !extras.repairMode && !extras.sellMode) {
-    const s = tileToScreen(hoverTile.x, hoverTile.y, cam, heightAt(state, hoverTile.x, hoverTile.y));
+    const s = tileToScreen(
+      hoverTile.x,
+      hoverTile.y,
+      cam,
+      heightAt(state, hoverTile.x, hoverTile.y),
+    );
     ctx.strokeStyle = "rgba(255,255,200,0.7)";
     ctx.lineWidth = 1.5;
     drawDiamondStroke(ctx, s.x, s.y, TILE_W * cam.zoom, TILE_H * cam.zoom);
@@ -73,10 +93,13 @@ export function renderHoverPhase(
 
   const cursor = extras.cursor;
   if (cursor) {
-    const clockMs = extras.clockMs ?? (typeof performance !== "undefined" ? performance.now() : state.tick * (1000 / 12));
+    const clockMs =
+      extras.clockMs ??
+      (typeof performance !== "undefined" ? performance.now() : state.tick * (1000 / 12));
     const ent = entityAtPointer(state, cursor.x, cursor.y, cam, clockMs);
     if (ent) {
-      const visual = ent.class === "unit" && isAirUnit(ent.kind) ? unitRenderPosition(ent, clockMs) : undefined;
+      const visual =
+        ent.class === "unit" && isAirUnit(ent.kind) ? unitRenderPosition(ent, clockMs) : undefined;
       const cx = visual?.x ?? ent.x;
       const cy = visual?.y ?? ent.y;
       const elev = visual
@@ -89,15 +112,44 @@ export function renderHoverPhase(
         const buildingCy = ent.y + (fp.h - 1) / 2;
         const s = tileToScreen(buildingCx, buildingCy, cam, elev);
         unitH = 55;
-        drawTooltip(tooltipCtx, s.x, s.y - unitH * cam.zoom, tooltipLines(state, ent, extras), w, h, true);
+        drawTooltip(
+          tooltipCtx,
+          s.x,
+          s.y - unitH * cam.zoom,
+          tooltipLines(state, ent, extras),
+          w,
+          h,
+          true,
+        );
       } else {
         unitH = ent.kind === "infantry" ? 44 : ent.kind === "antiArmor" ? 48 : 56;
         const s = tileToScreen(cx, cy, cam, elev);
-        drawTooltip(tooltipCtx, s.x, s.y - unitH * cam.zoom, tooltipLines(state, ent, extras), w, h, true);
+        drawTooltip(
+          tooltipCtx,
+          s.x,
+          s.y - unitH * cam.zoom,
+          tooltipLines(state, ent, extras),
+          w,
+          h,
+          true,
+        );
       }
     } else if (hoverTile) {
-      const s = tileToScreen(hoverTile.x, hoverTile.y, cam, heightAt(state, hoverTile.x, hoverTile.y));
-      drawTooltip(tooltipCtx, s.x, s.y - 18 * cam.zoom, tileTooltipLines(state, hoverTile.x, hoverTile.y), w, h, true);
+      const s = tileToScreen(
+        hoverTile.x,
+        hoverTile.y,
+        cam,
+        heightAt(state, hoverTile.x, hoverTile.y),
+      );
+      drawTooltip(
+        tooltipCtx,
+        s.x,
+        s.y - 18 * cam.zoom,
+        tileTooltipLines(state, hoverTile.x, hoverTile.y),
+        w,
+        h,
+        true,
+      );
     }
   }
 }
@@ -155,13 +207,16 @@ function targetTiles(state: SimState, target: TutorialWorldTarget): { x: number;
     }
     return tiles;
   }
-  const entity = state.entities.find((candidate) => candidate.id === target.entityId && candidate.hp > 0);
+  const entity = state.entities.find(
+    (candidate) => candidate.id === target.entityId && candidate.hp > 0,
+  );
   if (!entity) return [];
   if (entity.class === "unit") return [{ x: Math.round(entity.x), y: Math.round(entity.y) }];
   const footprint = footprintOf(entity.kind as import("../../../types").BuildingKind);
   const tiles: { x: number; y: number }[] = [];
   for (let y = 0; y < footprint.h; y++) {
-    for (let x = 0; x < footprint.w; x++) tiles.push({ x: Math.round(entity.x) + x, y: Math.round(entity.y) + y });
+    for (let x = 0; x < footprint.w; x++)
+      tiles.push({ x: Math.round(entity.x) + x, y: Math.round(entity.y) + y });
   }
   return tiles;
 }

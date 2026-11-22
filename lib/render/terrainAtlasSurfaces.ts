@@ -1,37 +1,31 @@
 import { sceneryAt } from "../gen/map";
-import {
-  SURFACE_CONCRETE,
-  SURFACE_ROAD,
-  TILE_BLOCKED,
-  TILE_RESOURCE,
-  TILE_WATER,
-} from "../types";
-import {
-  CONCRETE_STEEL,
-  CONCRETE_STEEL_DARK,
-  CONCRETE_STEEL_LIGHT,
-  artSalt,
-  clampByte,
-  fbm,
-  hash2,
-  materialsFor,
-  mixRgb,
-  resourceAt,
-  scaleRgb,
-  surfaceAt,
-  terrainVisualTuningFor,
-  type AtlasWorld,
-  type BiomeMaterials,
-  type Rgb,
-  type TerrainSample,
-} from "./terrainMaterials";
-import { tintGroundPatches } from "./terrainPatches";
+import { SURFACE_CONCRETE, SURFACE_ROAD, TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../types";
 import {
   gradeTerrainColor,
   restrainTerrainColor,
   terrainLightFactor,
   terrainLightRigForBiome,
 } from "./terrainLighting";
+import {
+  type AtlasWorld,
+  artSalt,
+  type BiomeMaterials,
+  CONCRETE_STEEL,
+  CONCRETE_STEEL_DARK,
+  CONCRETE_STEEL_LIGHT,
+  clampByte,
+  fbm,
+  hash2,
+  materialsFor,
+  mixRgb,
+  type Rgb,
+  resourceAt,
+  scaleRgb,
+  surfaceAt,
+  type TerrainSample,
+  terrainVisualTuningFor,
+} from "./terrainMaterials";
+import { tintGroundPatches } from "./terrainPatches";
 
 export const WATER_SHORE_MAX = 8;
 export const SHORELINE_MAX_DISPLACEMENT = 0.24;
@@ -50,11 +44,13 @@ export type TerrainMaterialContext = {
 };
 
 export function waterNeighbor(state: AtlasWorld, x: number, y: number): boolean {
-  return sceneryAt(state, x, y).kind === TILE_WATER
-    || sceneryAt(state, x + 1, y).kind === TILE_WATER
-    || sceneryAt(state, x - 1, y).kind === TILE_WATER
-    || sceneryAt(state, x, y + 1).kind === TILE_WATER
-    || sceneryAt(state, x, y - 1).kind === TILE_WATER;
+  return (
+    sceneryAt(state, x, y).kind === TILE_WATER ||
+    sceneryAt(state, x + 1, y).kind === TILE_WATER ||
+    sceneryAt(state, x - 1, y).kind === TILE_WATER ||
+    sceneryAt(state, x, y + 1).kind === TILE_WATER ||
+    sceneryAt(state, x, y - 1).kind === TILE_WATER
+  );
 }
 
 export function waterShoreDist(state: AtlasWorld, x: number, y: number): number {
@@ -75,7 +71,7 @@ export function lerp(a: number, b: number, t: number): number {
 }
 
 export function clampShore(dist: number): number {
-  return Math.min(dist , WATER_SHORE_MAX);
+  return Math.min(dist, WATER_SHORE_MAX);
 }
 
 export function readShoreCell(
@@ -132,12 +128,19 @@ export function signedShoreDistanceFromMask(
 export function shorelineWarp(mapX: number, mapY: number, salt: number): number {
   const broad = fbm(mapX * 0.42, mapY * 0.42, salt + 211);
   const detail = fbm(mapX * 1.15, mapY * 1.15, salt + 223);
-  const offset = ((broad - 0.5) * (SHORELINE_MAX_DISPLACEMENT * 1.5)
-    + (detail - 0.5) * (SHORELINE_MAX_DISPLACEMENT * 0.5)) * 3.2;
+  const offset =
+    ((broad - 0.5) * (SHORELINE_MAX_DISPLACEMENT * 1.5) +
+      (detail - 0.5) * (SHORELINE_MAX_DISPLACEMENT * 0.5)) *
+    3.2;
   return Math.max(-SHORELINE_MAX_DISPLACEMENT, Math.min(SHORELINE_MAX_DISPLACEMENT, offset));
 }
 
-export function warpedShoreDistance(distance: number, mapX: number, mapY: number, salt: number): number {
+export function warpedShoreDistance(
+  distance: number,
+  mapX: number,
+  mapY: number,
+  salt: number,
+): number {
   return distance + shorelineWarp(mapX, mapY, salt);
 }
 
@@ -158,23 +161,32 @@ export function bilinearFromNeighborhood(
   const north = fy < 0.5;
   const tx = west ? fx + 0.5 : fx - 0.5;
   const ty = north ? fy + 0.5 : fy - 0.5;
-  const a = north ? (west ? n00 : n10) : (west ? n01 : n11);
-  const b = north ? (west ? n10 : n20) : (west ? n11 : n21);
-  const c = north ? (west ? n01 : n11) : (west ? n02 : n12);
-  const d = north ? (west ? n11 : n21) : (west ? n12 : n22);
+  const a = north ? (west ? n00 : n10) : west ? n01 : n11;
+  const b = north ? (west ? n10 : n20) : west ? n11 : n21;
+  const c = north ? (west ? n01 : n11) : west ? n02 : n12;
+  const d = north ? (west ? n11 : n21) : west ? n12 : n22;
   return lerp(lerp(a, b, tx), lerp(c, d, tx), ty);
 }
 
-export function landEdgeDistFromScenery(state: AtlasWorld, x: number, y: number, fx: number, fy: number): number {
+export function landEdgeDistFromScenery(
+  state: AtlasWorld,
+  x: number,
+  y: number,
+  fx: number,
+  fy: number,
+): number {
   let dist = WATER_SHORE_MAX;
   if (sceneryAt(state, x + 1, y).kind !== TILE_WATER) dist = Math.min(dist, 1 - fx);
   if (sceneryAt(state, x - 1, y).kind !== TILE_WATER) dist = Math.min(dist, fx);
   if (sceneryAt(state, x, y + 1).kind !== TILE_WATER) dist = Math.min(dist, 1 - fy);
   if (sceneryAt(state, x, y - 1).kind !== TILE_WATER) dist = Math.min(dist, fy);
-  if (sceneryAt(state, x + 1, y + 1).kind !== TILE_WATER) dist = Math.min(dist, Math.hypot(1 - fx, 1 - fy));
+  if (sceneryAt(state, x + 1, y + 1).kind !== TILE_WATER)
+    dist = Math.min(dist, Math.hypot(1 - fx, 1 - fy));
   if (sceneryAt(state, x - 1, y - 1).kind !== TILE_WATER) dist = Math.min(dist, Math.hypot(fx, fy));
-  if (sceneryAt(state, x + 1, y - 1).kind !== TILE_WATER) dist = Math.min(dist, Math.hypot(1 - fx, fy));
-  if (sceneryAt(state, x - 1, y + 1).kind !== TILE_WATER) dist = Math.min(dist, Math.hypot(fx, 1 - fy));
+  if (sceneryAt(state, x + 1, y - 1).kind !== TILE_WATER)
+    dist = Math.min(dist, Math.hypot(1 - fx, fy));
+  if (sceneryAt(state, x - 1, y + 1).kind !== TILE_WATER)
+    dist = Math.min(dist, Math.hypot(fx, 1 - fy));
   return dist;
 }
 
@@ -195,7 +207,13 @@ export function waterPixelDist(state: AtlasWorld, mapX: number, mapY: number): n
   return Math.min(field, landEdgeDistFromScenery(state, x, y, fx, fy));
 }
 
-export function tintWater(mats: BiomeMaterials, dist: number, mapX: number, mapY: number, salt: number): Rgb {
+export function tintWater(
+  mats: BiomeMaterials,
+  dist: number,
+  mapX: number,
+  mapY: number,
+  salt: number,
+): Rgb {
   const wet = fbm(mapX * 0.42, mapY * 0.28, salt + 73);
   const current = fbm(mapX * 0.16 + mapY * 0.09, mapY * 0.2, salt + 101);
   const warpedDist = Math.max(0, dist + (wet - 0.5) * 0.75);
@@ -244,22 +262,37 @@ export function sampleTerrainMaterial(
     color = mixRgb(color, mats.light, 0.06 + micro * 0.08);
   } else {
     const elev = scenery.elev;
-    color = elev >= 3 ? mats.high : elev === 2 ? mixRgb(mats.mid, mats.high, 0.42) : elev <= 0 ? mats.low : mats.mid;
-    if (context.waterNeighbor ?? waterNeighbor(state, x, y)) color = mixRgb(color, mats.shore, 0.28);
+    color =
+      elev >= 3
+        ? mats.high
+        : elev === 2
+          ? mixRgb(mats.mid, mats.high, 0.42)
+          : elev <= 0
+            ? mats.low
+            : mats.mid;
+    if (context.waterNeighbor ?? waterNeighbor(state, x, y))
+      color = mixRgb(color, mats.shore, 0.28);
     if (ore) {
       color = mixRgb(color, mats.dark, 0.28);
       color = mixRgb(color, mats.ore, 0.22);
     }
     color = tintGroundPatches(color, mats, mapX, mapY, salt, tuning);
     if (scenery.kind === TILE_BLOCKED) color = mixRgb(color, mats.blocked, 0.42);
-    const slope = (scenery.elev - east.elev) * (0.08 + tuning.reliefStrength * 0.05)
-      + (scenery.elev - south.elev) * (0.12 + tuning.reliefStrength * 0.06);
-    color = scaleRgb(color, 0.88 + scenery.elev * 0.055 + slope + (grain - 0.5) * (0.15 + tuning.roughness * 0.24));
-    const restraint = scenery.kind === TILE_BLOCKED
-      ? 0.18
-      : Math.max(0.045, 0.12 - tuning.macroStrength * 0.18);
+    const slope =
+      (scenery.elev - east.elev) * (0.08 + tuning.reliefStrength * 0.05) +
+      (scenery.elev - south.elev) * (0.12 + tuning.reliefStrength * 0.06);
+    color = scaleRgb(
+      color,
+      0.88 + scenery.elev * 0.055 + slope + (grain - 0.5) * (0.15 + tuning.roughness * 0.24),
+    );
+    const restraint =
+      scenery.kind === TILE_BLOCKED ? 0.18 : Math.max(0.045, 0.12 - tuning.macroStrength * 0.18);
     color = restrainTerrainColor(color, restraint);
-    color = gradeTerrainColor(color, terrainLightFactor(rig, elev, east.elev, south.elev, fx, fy), rig);
+    color = gradeTerrainColor(
+      color,
+      terrainLightFactor(rig, elev, east.elev, south.elev, fx, fy),
+      rig,
+    );
   }
   if (water) {
     const light = terrainLightFactor(rig, scenery.elev, east.elev, south.elev, fx, fy);

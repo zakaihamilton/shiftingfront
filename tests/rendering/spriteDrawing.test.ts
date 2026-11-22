@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { unitSprite } from "../../lib/gen/svgArt";
-import { drawSprite } from "../../lib/render/sprites";
 import { unitSpriteDrawPosition } from "../../lib/render/renderer/world/entities";
+import { drawSprite } from "../../lib/render/sprites";
 import type { Palette, SpriteSpec } from "../../lib/types";
 
 const palette: Palette = {

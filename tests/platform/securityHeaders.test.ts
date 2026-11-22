@@ -12,7 +12,9 @@ describe("security headers", () => {
     expect(source).toContain("https://vitals.vercel-insights.com");
     expect(source).toContain("https://visitoring.vercel.app");
     expect(source).toContain("object-src 'none'");
-    expect(source).toContain("frame-ancestors 'self' https://*.itch.io https://itch.io https://*.newgrounds.com https://*.crazygames.com");
+    expect(source).toContain(
+      "frame-ancestors 'self' https://*.itch.io https://itch.io https://*.newgrounds.com https://*.crazygames.com",
+    );
   });
 
   it("permits fullscreen, autoplay, clipboard-write, and screen-wake-lock in Permissions-Policy", () => {

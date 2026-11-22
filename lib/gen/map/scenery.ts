@@ -1,16 +1,16 @@
 import {
+  type BiomeName,
+  type ReadonlyWinCategory,
   TILE_BLOCKED,
   TILE_CLEAR,
   TILE_RESOURCE,
   TILE_WATER,
-  type BiomeName,
-  type ReadonlyWinCategory,
 } from "../../types";
 import { biomeTuning } from "./config";
 import { terrainFeatureAt } from "./features";
+import type { GeneratedMap } from "./generator";
 import { warpedFbm } from "./noise";
 import { idx } from "./terrain";
-import type { GeneratedMap } from "./generator";
 
 export const MAP_SKIRT = 14;
 export const MAP_SKIRT_ALPHA = 0.6;
@@ -59,7 +59,9 @@ export function skirtSample(
   const riverBand = warpedFbm(x * 0.22, y * 0.22, salt + 113);
   const tuning = biomeTuning(biome);
   const feature = terrainFeatureAt({ seed, missionIndex, biome, width: mapW, height: mapH }, x, y);
-  const river = Math.abs(riverBand - 0.5) < 0.08 + feature.wetness * 0.01 || n < tuning.water * 0.85 + feature.wetness * 0.04;
+  const river =
+    Math.abs(riverBand - 0.5) < 0.08 + feature.wetness * 0.01 ||
+    n < tuning.water * 0.85 + feature.wetness * 0.04;
   if (river && dist <= 8 && n2 < 0.72) {
     return { kind: TILE_WATER, elev: 0 };
   }
@@ -68,7 +70,8 @@ export function skirtSample(
     const elev = dist >= 6 || n > mountain ? 3 : n > mountain - 0.2 ? 2 : 1;
     return { kind: TILE_BLOCKED, elev: Math.max(1, elev) };
   }
-  if (n2 > tuning.blockers - feature.blockers * 0.04) return { kind: TILE_BLOCKED, elev: dist >= 2 ? 2 : 1 };
+  if (n2 > tuning.blockers - feature.blockers * 0.04)
+    return { kind: TILE_BLOCKED, elev: dist >= 2 ? 2 : 1 };
   return { kind: TILE_CLEAR, elev: dist >= 2 ? 2 : 1 };
 }
 
@@ -101,16 +104,20 @@ export function featureEdgeMask(
   return { bank, ridge };
 }
 
-export function sceneryAt(
-  state: SceneryWorld,
-  x: number,
-  y: number,
-): ScenerySample {
+export function sceneryAt(state: SceneryWorld, x: number, y: number): ScenerySample {
   if (x >= 0 && y >= 0 && x < state.width && y < state.height) {
     const i = idx(x, y, state.width);
     return { kind: state.tiles[i]!, elev: state.heights[i] ?? 1 };
   }
-  const sample = skirtSample(state.seed ?? 0, state.biome, x, y, state.width, state.height, state.missionIndex ?? 0);
+  const sample = skirtSample(
+    state.seed ?? 0,
+    state.biome,
+    x,
+    y,
+    state.width,
+    state.height,
+    state.missionIndex ?? 0,
+  );
   const cx = Math.max(0, Math.min(state.width - 1, x));
   const cy = Math.max(0, Math.min(state.height - 1, y));
   const edge = state.tiles[idx(cx, cy, state.width)];
@@ -145,7 +152,16 @@ export function describeMap(map: GeneratedMap): {
     else if (el === 2) hills++;
     else mountain++;
   }
-  return { width: map.width, height: map.height, water, resources, valley, plains, hills, mountain };
+  return {
+    width: map.width,
+    height: map.height,
+    water,
+    resources,
+    valley,
+    plains,
+    hills,
+    mountain,
+  };
 }
 
 export function winNeedsMarked(win: ReadonlyWinCategory): boolean {

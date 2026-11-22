@@ -20,7 +20,9 @@
   overflow: auto;
   border: 1px solid var(--chrome-inset);
   background: var(--chrome-steel-lo);
-  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-steel-hi);
+  box-shadow:
+    inset 1px 1px var(--chrome-void),
+    inset -1px -1px var(--chrome-steel-hi);
 }
 
 .heading {

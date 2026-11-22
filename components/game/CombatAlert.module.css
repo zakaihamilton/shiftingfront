@@ -14,7 +14,9 @@
   transform: translateX(-50%);
   border: 1px solid color-mix(in srgb, var(--chrome-alert) 55%, var(--chrome-inset));
   background: color-mix(in srgb, var(--chrome-void) 88%, transparent);
-  box-shadow: 0 0 18px rgba(0, 0, 0, 0.55), inset 0 0 0 1px var(--chrome-inset);
+  box-shadow:
+    0 0 18px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px var(--chrome-inset);
   color: var(--chrome-alert);
   font-size: var(--text-sm);
   font-weight: 700;
@@ -66,13 +68,18 @@
 }
 
 @keyframes combat-alert-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
-    box-shadow: 0 0 18px rgba(0, 0, 0, 0.55), inset 0 0 0 1px var(--chrome-inset);
+    box-shadow:
+      0 0 18px rgba(0, 0, 0, 0.55),
+      inset 0 0 0 1px var(--chrome-inset);
   }
   50% {
     opacity: 0.88;
-    box-shadow: 0 0 22px color-mix(in srgb, var(--chrome-alert) 45%, transparent), inset 0 0 0 1px var(--chrome-inset);
+    box-shadow:
+      0 0 22px color-mix(in srgb, var(--chrome-alert) 45%, transparent),
+      inset 0 0 0 1px var(--chrome-inset);
   }
 }
 

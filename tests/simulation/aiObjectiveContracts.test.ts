@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { MissionKind, SimState, WinCategory } from "../../lib/types";
 import { createCampaign } from "../../lib/gen/campaign";
 import { objectiveContractFor } from "../../lib/gen/profile";
-import { missionDifficulty } from "../../lib/sim/difficulty";
-import { createMission } from "../../lib/sim/api";
 import { tickAi } from "../../lib/sim/ai";
 import { shouldAutoRepair } from "../../lib/sim/ai/helpers";
+import { createMission } from "../../lib/sim/api";
+import { missionDifficulty } from "../../lib/sim/difficulty";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import type { MissionKind, SimState, WinCategory } from "../../lib/types";
 
 function objectiveFixture(kind: MissionKind): SimState {
   const state = makeFixture({
@@ -29,8 +29,10 @@ function producesAt(kind: MissionKind, offset: number): boolean {
   state.credits[1] = 5000;
   state.tick = missionDifficulty(state.missionIndex).enemyProductionStart + offset;
   tickAi(state);
-  return state.productionQueues?.[1]?.barracks?.producing !== undefined
-    || state.productionQueues?.[1]?.factory?.producing !== undefined;
+  return (
+    state.productionQueues?.[1]?.barracks?.producing !== undefined ||
+    state.productionQueues?.[1]?.factory?.producing !== undefined
+  );
 }
 
 describe("objective-specific enemy AI contracts", () => {
@@ -50,14 +52,17 @@ describe("objective-specific enemy AI contracts", () => {
     "does not repair structures during %s",
     (kind) => {
       const state = objectiveFixture(kind);
-      const building = state.entities.find((entity) => entity.owner === 1 && entity.kind === "power")!;
+      const building = state.entities.find(
+        (entity) => entity.owner === 1 && entity.kind === "power",
+      )!;
       expect(shouldAutoRepair(state, building)).toBe(false);
     },
   );
 
   it("applies objective production cadence instead of the generic cadence", () => {
     const base = missionDifficulty(2).enemyProductionEvery;
-    const cadenceFor = (kind: MissionKind) => Math.max(1, Math.round(base * objectiveContractFor(kind)!.productionScale));
+    const cadenceFor = (kind: MissionKind) =>
+      Math.max(1, Math.round(base * objectiveContractFor(kind)!.productionScale));
 
     for (const kind of ["destroyMarked", "annihilate", "decapitate"] as const) {
       const cadence = cadenceFor(kind);
@@ -81,9 +86,9 @@ describe("objective-specific enemy AI contracts", () => {
         director: { phase: "finale", pressureStart: 100, finaleStart: 1000, eventCount: 2 },
       };
       const difficulty = missionDifficulty(state.missionIndex);
-      state.tick = difficulty.enemyProductionStart + Math.round(
-        difficulty.enemyProductionEvery * objectiveContractFor(kind)!.productionScale,
-      );
+      state.tick =
+        difficulty.enemyProductionStart +
+        Math.round(difficulty.enemyProductionEvery * objectiveContractFor(kind)!.productionScale);
 
       tickAi(state);
 
@@ -108,24 +113,46 @@ describe("objective-specific enemy AI contracts", () => {
       addBuilding(state, 0, "constructionYard", 26, 26);
       state.tick = tick;
       tickAi(state);
-      expect(state.aiState, `${kind} at tick ${tick}`).toBe(expectedAssault ? "assault" : "economy");
+      expect(state.aiState, `${kind} at tick ${tick}`).toBe(
+        expectedAssault ? "assault" : "economy",
+      );
     }
   });
 
   it("skips generic turret and tank support for decapitate openings", () => {
     const kind = "decapitate" as const;
-    const seed = Array.from({ length: 100 }, (_, candidateSeed) => candidateSeed).find((candidateSeed) =>
-      createCampaign(candidateSeed).missions.some((candidate) => candidate.win.kind === kind),
+    const seed = Array.from({ length: 100 }, (_, candidateSeed) => candidateSeed).find(
+      (candidateSeed) =>
+        createCampaign(candidateSeed).missions.some((candidate) => candidate.win.kind === kind),
     );
-    const mission = seed === undefined
-      ? undefined
-      : createCampaign(seed).missions.find((candidate) => candidate.win.kind === kind);
+    const mission =
+      seed === undefined
+        ? undefined
+        : createCampaign(seed).missions.find((candidate) => candidate.win.kind === kind);
     expect(mission).toBeDefined();
 
     const state = createMission({ seed: seed!, missionIndex: mission!.index });
-    const yard = state.entities.find((entity) => entity.owner === 1 && entity.kind === "constructionYard")!;
+    const yard = state.entities.find(
+      (entity) => entity.owner === 1 && entity.kind === "constructionYard",
+    )!;
 
-    expect(state.entities.some((entity) => entity.owner === 1 && entity.kind === "turret" && entity.x === yard.x + 2 && entity.y === yard.y)).toBe(false);
-    expect(state.entities.some((entity) => entity.owner === 1 && entity.kind === "tank" && entity.x === yard.x - 2 && entity.y === yard.y + 2)).toBe(false);
+    expect(
+      state.entities.some(
+        (entity) =>
+          entity.owner === 1 &&
+          entity.kind === "turret" &&
+          entity.x === yard.x + 2 &&
+          entity.y === yard.y,
+      ),
+    ).toBe(false);
+    expect(
+      state.entities.some(
+        (entity) =>
+          entity.owner === 1 &&
+          entity.kind === "tank" &&
+          entity.x === yard.x - 2 &&
+          entity.y === yard.y + 2,
+      ),
+    ).toBe(false);
   });
 });

@@ -42,7 +42,12 @@ export type OreCrystalCluster = {
   bursts: OreBurstOrigin[];
   shards: OreShardPose[];
 };
-export function oreVeinAt(state: AtlasWorld, mapX: number, mapY: number, context?: OreVeinContext): OreVeinSample {
+export function oreVeinAt(
+  state: AtlasWorld,
+  mapX: number,
+  mapY: number,
+  context?: OreVeinContext,
+): OreVeinSample {
   const x = Math.floor(mapX);
   const y = Math.floor(mapY);
   const amount = context?.amount ?? resourceAt(state, x, y);
@@ -86,19 +91,19 @@ export function oreShardCount(amount: number): number {
 }
 
 function variantMod(v: number, shift: number, mod: number): number {
-  return ((v >>> (shift & 31)) % mod);
+  return (v >>> (shift & 31)) % mod;
 }
 
 const ORE_BURST_SLOTS: ReadonlyArray<readonly [number, number]> = [
-  [0.20, 0.20],
+  [0.2, 0.2],
   [0.52, 0.18],
   [0.82, 0.24],
   [0.18, 0.52],
-  [0.50, 0.50],
+  [0.5, 0.5],
   [0.84, 0.54],
-  [0.22, 0.80],
-  [0.50, 0.84],
-  [0.80, 0.78],
+  [0.22, 0.8],
+  [0.5, 0.84],
+  [0.8, 0.78],
 ];
 
 const ORE_BURST_SETS_2: ReadonlyArray<readonly [number, number]> = [
@@ -124,19 +129,23 @@ const ORE_BURST_SETS_3: ReadonlyArray<readonly [number, number, number]> = [
 ];
 
 const ORE_BURST_DIRS: ReadonlyArray<readonly [number, number]> = [
-  [-1.00, 0.38],
+  [-1.0, 0.38],
   [-0.68, 0.82],
-  [-0.22, 1.00],
+  [-0.22, 1.0],
   [0.26, 0.96],
   [0.64, 0.78],
-  [0.98, 0.40],
+  [0.98, 0.4],
   [-0.86, 0.22],
   [0.88, 0.24],
   [-0.48, 0.58],
   [0.42, 0.52],
 ];
 
-export function oreCrystalCluster(state: AtlasWorld, x: number, y: number): OreCrystalCluster | null {
+export function oreCrystalCluster(
+  state: AtlasWorld,
+  x: number,
+  y: number,
+): OreCrystalCluster | null {
   const amount = resourceAt(state, x, y);
   if (amount <= ORE_CRYSTAL_MIN_AMOUNT) return null;
   const peak = oreVeinPeak(state, x, y);
@@ -145,9 +154,10 @@ export function oreCrystalCluster(state: AtlasWorld, x: number, y: number): OreC
   const burstCount = 2 + variantMod(v, 11, 2);
   let count = oreShardCount(amount) + variantMod(v, 7, 3) - 1;
   if (count < burstCount + 2) count = burstCount + 2;
-  const set = burstCount === 3
-    ? ORE_BURST_SETS_3[variantMod(v, 0, ORE_BURST_SETS_3.length)]!
-    : ORE_BURST_SETS_2[variantMod(v, 0, ORE_BURST_SETS_2.length)]!;
+  const set =
+    burstCount === 3
+      ? ORE_BURST_SETS_3[variantMod(v, 0, ORE_BURST_SETS_3.length)]!
+      : ORE_BURST_SETS_2[variantMod(v, 0, ORE_BURST_SETS_2.length)]!;
   const shiftU = (variantMod(v, 21, 7) - 3) * 0.028;
   const shiftV = (variantMod(v2, 21, 7) - 3) * 0.028;
   const bursts: OreBurstOrigin[] = [];
@@ -164,9 +174,10 @@ export function oreCrystalCluster(state: AtlasWorld, x: number, y: number): OreC
     const originDy = (u + vv) * 16;
     bursts.push({ dx: originDx, dy: originDy });
     const left = burstCount - b;
-    const n = b === burstCount - 1
-      ? remaining
-      : Math.min(remaining - (left - 1), Math.max(1, 1 + variantMod(v2, b * 4, 3)));
+    const n =
+      b === burstCount - 1
+        ? remaining
+        : Math.min(remaining - (left - 1), Math.max(1, 1 + variantMod(v2, b * 4, 3)));
     remaining -= n;
     const leanSign = variantMod(v, 17 + b, 2) === 0 ? -1 : 1;
     const dirStart = variantMod(v2, 8 + b * 6, ORE_BURST_DIRS.length);

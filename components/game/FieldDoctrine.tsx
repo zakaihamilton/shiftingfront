@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DoctrineHint } from "@/lib/ui/doctrine";
-import styles from "./Battlefield.module.css";
+import styles from "./FieldDoctrine.module.css";
 
 export function FieldDoctrine({ doctrineHints = [] }: { doctrineHints?: DoctrineHint[] }) {
   const [seenDoctrine] = useState<Set<string>>(() => {
@@ -26,7 +26,9 @@ export function FieldDoctrine({ doctrineHints = [] }: { doctrineHints?: Doctrine
       // Session storage is optional.
     }
     const hintIds = doctrineKey.split("|").filter(Boolean);
-    hintIds.forEach((id) => { next.add(id); });
+    hintIds.forEach((id) => {
+      next.add(id);
+    });
     try {
       window.sessionStorage.setItem("shifting-front:doctrine", JSON.stringify([...next]));
     } catch {
@@ -38,7 +40,9 @@ export function FieldDoctrine({ doctrineHints = [] }: { doctrineHints?: Doctrine
   if (!visibleDoctrine.length) return null;
   return (
     <section className={styles.doctrine} aria-label="Field doctrine" data-testid="field-doctrine">
-      <div className={styles.doctrineHeader}>Field doctrine <span>once per session</span></div>
+      <div className={styles.doctrineHeader}>
+        Field doctrine <span>once per session</span>
+      </div>
       <div className={styles.doctrineList}>
         {visibleDoctrine.map((hint) => (
           <div className={styles.doctrineItem} key={hint.id}>

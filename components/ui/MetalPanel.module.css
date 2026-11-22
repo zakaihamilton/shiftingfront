@@ -3,8 +3,12 @@
   border-radius: var(--chrome-radius);
   border: 1px solid color-mix(in srgb, var(--chrome-bevel) 46%, var(--chrome-inset));
   background:
-    linear-gradient(135deg, rgba(255,255,255,0.07), transparent 22%, rgba(0,0,0,0.35)),
-    linear-gradient(145deg, color-mix(in srgb, var(--chrome-raised) 88%, transparent), color-mix(in srgb, var(--chrome-steel-lo) 94%, transparent)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.07), transparent 22%, rgba(0, 0, 0, 0.35)),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--chrome-raised) 88%, transparent),
+      color-mix(in srgb, var(--chrome-steel-lo) 94%, transparent)
+    ),
     var(--texture-brushed) center / 380px 380px;
   background-blend-mode: screen, normal, soft-light;
   box-shadow:

@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from "react";
-import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { CodeInput } from "@/components/shared/CodeInput";
+import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./SeedEntry.module.css";
 
@@ -54,7 +54,11 @@ export function SeedEntry({
             <ConsoleButton
               muted
               className={styles.thisWeek}
-              tooltip={thisWeekDisabled ? "Already on this week's campaign" : "Return to this week's campaign"}
+              tooltip={
+                thisWeekDisabled
+                  ? "Already on this week's campaign"
+                  : "Return to this week's campaign"
+              }
               onClick={onThisWeek}
               disabled={thisWeekDisabled}
             >
@@ -66,7 +70,9 @@ export function SeedEntry({
       </div>
       <div className={`${styles.status} ${showPreviewLine ? "" : styles.statusCompact}`}>
         {showPreviewLine ? <p className={styles.preview}>{previewLine}</p> : null}
-        <p className={styles.error} aria-live="polite">{error || "\u00a0"}</p>
+        <p className={styles.error} aria-live="polite">
+          {error || "\u00a0"}
+        </p>
       </div>
     </div>
   );

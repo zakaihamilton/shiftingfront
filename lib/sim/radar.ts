@@ -4,12 +4,13 @@ import { powerFor } from "./world";
 export type MinimapPicture = "on" | "no-radar" | "low-power";
 
 function finishedRadar(state: Pick<SimState, "entities">, owner: Owner): boolean {
-  return state.entities.some((entity) =>
-    entity.class === "building"
-    && entity.kind === "radar"
-    && entity.owner === owner
-    && entity.hp > 0
-    && entity.constructing <= 0,
+  return state.entities.some(
+    (entity) =>
+      entity.class === "building" &&
+      entity.kind === "radar" &&
+      entity.owner === owner &&
+      entity.hp > 0 &&
+      entity.constructing <= 0,
   );
 }
 

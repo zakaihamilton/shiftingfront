@@ -25,12 +25,25 @@ export function drawDryBrush(
     ctx.lineWidth = Math.max(0.7, (0.78 + detailUnit(variant, 331 + i * 11) * 0.42) * s);
     ctx.beginPath();
     ctx.moveTo(x, 2.2 * s);
-    ctx.quadraticCurveTo(x + lean * 0.35, (-1.6 + detailSigned(variant, 347 + i, 0.6)) * s, x + lean, tipY);
+    ctx.quadraticCurveTo(
+      x + lean * 0.35,
+      (-1.6 + detailSigned(variant, 347 + i, 0.6)) * s,
+      x + lean,
+      tipY,
+    );
     ctx.stroke();
-    if (i % 2 === (variant % 2) || detailUnit(variant, 359 + i) > 0.72) {
+    if (i % 2 === variant % 2 || detailUnit(variant, 359 + i) > 0.72) {
       ctx.fillStyle = rgbOf(dust);
       ctx.beginPath();
-      ctx.ellipse(x + lean * 0.72, tipY + 0.7 * s, (1.0 + detailUnit(variant, 373 + i) * 0.7) * s, 0.7 * s, lean * 0.04, 0, Math.PI * 2);
+      ctx.ellipse(
+        x + lean * 0.72,
+        tipY + 0.7 * s,
+        (1.0 + detailUnit(variant, 373 + i) * 0.7) * s,
+        0.7 * s,
+        lean * 0.04,
+        0,
+        Math.PI * 2,
+      );
       ctx.fill();
     }
   }
@@ -57,7 +70,10 @@ export function drawTuft(
     const lean = t * 1.55 * s + detailSigned(variant, 479 + i * 3, 0.7) * s + wind * 0.35;
     const rise = (5.1 + detailUnit(variant, 503 + i * 5) * 2.6) * s;
     ctx.strokeStyle = i % 3 === 1 ? rgbOf(tip) : rgbOf(stem);
-    ctx.lineWidth = Math.max(0.75, (1.05 - Math.abs(t) * 0.1 + detailUnit(variant, 521 + i * 7) * 0.22) * s);
+    ctx.lineWidth = Math.max(
+      0.75,
+      (1.05 - Math.abs(t) * 0.1 + detailUnit(variant, 521 + i * 7) * 0.22) * s,
+    );
     ctx.beginPath();
     ctx.moveTo(t * 0.35 * s, 1.9 * s);
     ctx.quadraticCurveTo(lean * 0.45, -rise * 0.35, lean, -rise);
@@ -96,8 +112,10 @@ export function drawShrub(
     const lobe = spots[i]!;
     // Match the scene's upper-left key and cool shaded undersides.
     const light = ctx.createLinearGradient(
-      (lobe.x - lobe.rx * 0.6) * s, (lobe.y - lobe.ry) * s,
-      (lobe.x + lobe.rx * 0.5) * s, (lobe.y + lobe.ry) * s,
+      (lobe.x - lobe.rx * 0.6) * s,
+      (lobe.y - lobe.ry) * s,
+      (lobe.x + lobe.rx * 0.5) * s,
+      (lobe.y + lobe.ry) * s,
     );
     light.addColorStop(0, rgbOf(mixRgb(lobe.fill, hi, 0.35)));
     light.addColorStop(0.48, rgbOf(lobe.fill));
@@ -150,7 +168,15 @@ export function drawReed(
     ctx.stroke();
     ctx.fillStyle = rgbOf(i % 2 ? hi : mixRgb(stem, mats.high, 0.35));
     ctx.beginPath();
-    ctx.ellipse(tipX, tipY, (0.55 + detailUnit(variant, 877 + i) * 0.35) * s, 1.15 * s, 0.15, 0, Math.PI * 2);
+    ctx.ellipse(
+      tipX,
+      tipY,
+      (0.55 + detailUnit(variant, 877 + i) * 0.35) * s,
+      1.15 * s,
+      0.15,
+      0,
+      Math.PI * 2,
+    );
     ctx.fill();
   }
   paintDabs(ctx, s, variant, mixRgb(mats.patchA, mats.dark, 0.2), 2, 4.6, 1.4, 0.42, 0.18);

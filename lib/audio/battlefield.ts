@@ -1,4 +1,4 @@
-import { UNIT_STATS, isUnitKind } from "../catalog";
+import { isUnitKind, UNIT_STATS } from "../catalog";
 import type { Camera } from "../iso";
 import type { BuildingKind, Owner, SimEvent, UnitKind, WeaponType } from "../types";
 import { duckMusic } from "./mixer";
@@ -22,7 +22,10 @@ export function impactSfxFor(targetKind: UnitKind | BuildingKind): SfxKind {
   return UNIT_STATS[targetKind].domain === "human" ? "impactFlesh" : "impactMetal";
 }
 
-export function destructionCueFor(kind: UnitKind | BuildingKind): { kind: SfxKind; heavy: boolean } {
+export function destructionCueFor(kind: UnitKind | BuildingKind): {
+  kind: SfxKind;
+  heavy: boolean;
+} {
   if (!isUnitKind(kind)) return { kind: "destruction", heavy: true };
   return UNIT_STATS[kind].domain === "human"
     ? { kind: "wreckHuman", heavy: false }
@@ -62,7 +65,13 @@ export function dispatchBattlefieldAudio(
         if (event.weapon === "cannon" && shot.gain >= 0.78) duckMusic(0.82, 0.12);
       }
       if (!event.destroyed) {
-        const impact = spatialAudioForWorld(event.targetX, event.targetY, camera, screenWidth, screenHeight);
+        const impact = spatialAudioForWorld(
+          event.targetX,
+          event.targetY,
+          camera,
+          screenWidth,
+          screenHeight,
+        );
         if (impact.audible) {
           playSfx(impactSfxFor(event.targetKind), {
             pan: impact.pan,
@@ -80,16 +89,27 @@ export function dispatchBattlefieldAudio(
           gain: impact.gain * (cue.heavy ? 1.2 : 1),
           heavy: cue.heavy,
         });
-        if (cue.heavy || event.kind === "tank" || event.kind === "behemoth") duckMusic(cue.heavy ? 0.66 : 0.78, cue.heavy ? 0.28 : 0.18);
+        if (cue.heavy || event.kind === "tank" || event.kind === "behemoth")
+          duckMusic(cue.heavy ? 0.66 : 0.78, cue.heavy ? 0.28 : 0.18);
       }
     } else if (event.type === "sold") {
       playSfx("sell", { force: true });
     } else if (event.type === "repairStarted") {
       playSfx("repair", { force: true });
     } else if (event.type === "support") {
-      const support = spatialAudioForWorld(event.targetX, event.targetY, camera, screenWidth, screenHeight);
+      const support = spatialAudioForWorld(
+        event.targetX,
+        event.targetY,
+        camera,
+        screenWidth,
+        screenHeight,
+      );
       if (support.audible) {
-        playSfx(supportSfxFor(event.providerKind), { pan: support.pan, gain: support.gain * 0.9, minInterval: 0.18 });
+        playSfx(supportSfxFor(event.providerKind), {
+          pan: support.pan,
+          gain: support.gain * 0.9,
+          minInterval: 0.18,
+        });
       }
     } else if (event.type === "built" && event.owner === playerOwner) {
       built = true;

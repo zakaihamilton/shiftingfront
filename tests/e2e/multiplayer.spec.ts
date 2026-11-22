@@ -1,16 +1,25 @@
-import { expect, test, type Browser, type BrowserContext } from "@playwright/test";
+import { type Browser, type BrowserContext, expect, test } from "@playwright/test";
 import { waitForBattlefieldReady } from "./battlefieldReady";
 
 const contexts: BrowserContext[] = [];
 async function testContext(browser: Browser) {
-  const context = await browser.newContext(); contexts.push(context); return context;
+  const context = await browser.newContext();
+  contexts.push(context);
+  return context;
 }
 test.afterEach(async ({ page }, info) => {
   void page;
   for (const context of contexts.splice(0)) {
-    if (info.status !== info.expectedStatus) for (const page of context.pages()) {
-      console.log("multiplayer failure page", await page.locator("body").textContent().catch(() => "closed"));
-    }
+    if (info.status !== info.expectedStatus)
+      for (const page of context.pages()) {
+        console.log(
+          "multiplayer failure page",
+          await page
+            .locator("body")
+            .textContent()
+            .catch(() => "closed"),
+        );
+      }
     await context.close();
   }
 });
@@ -18,158 +27,216 @@ const roomCode = "ABCDEF";
 const hostPeerId = "host-peer-e2e";
 const guestPeerIds = ["guest-peer-1-e2e", "guest-peer-2-e2e", "guest-peer-3-e2e"];
 
-async function mockPeerTransport(page: import("@playwright/test").Page, networkId: string, openDelayMs = 0) {
-  await page.addInitScript(({ channelName, openDelay }) => {
-    type Listener = (...args: unknown[]) => void;
-    class Events {
-      private listeners = new Map<string, Set<Listener>>();
-      on(event: string, listener: Listener) {
-        const set = this.listeners.get(event) ?? new Set<Listener>();
-        set.add(listener);
-        this.listeners.set(event, set);
-        return this;
-      }
-      once(event: string, listener: Listener) {
-        const wrapped: Listener = (...args) => {
-          this.off(event, wrapped);
-          listener(...args);
-        };
-        return this.on(event, wrapped);
-      }
-      off(event: string, listener: Listener) {
-        this.listeners.get(event)?.delete(listener);
-        return this;
-      }
-      emit(event: string, ...args: unknown[]) {
-        for (const listener of this.listeners.get(event) ?? []) listener(...args);
-      }
-    }
-
-    class FakeConnection extends Events {
-      open = false;
-      constructor(readonly peer: string, readonly peerId: string, readonly id: string, private readonly channel: BroadcastChannel) { super(); }
-      send(data: unknown) {
-        if (!this.open) throw new Error("Mock data connection is closed");
-        const override = (window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean }).__SHIFTFRONT_INCOMPATIBLE__;
-        if (override && (data as { type?: string })?.type === "hello") {
-          const message = data as { settings: Record<string, unknown> };
-          data = { ...message, settings: { ...message.settings, simulationBuildId: "incompatible-e2e-build" } };
+async function mockPeerTransport(
+  page: import("@playwright/test").Page,
+  networkId: string,
+  openDelayMs = 0,
+) {
+  await page.addInitScript(
+    ({ channelName, openDelay }) => {
+      type Listener = (...args: unknown[]) => void;
+      class Events {
+        private listeners = new Map<string, Set<Listener>>();
+        on(event: string, listener: Listener) {
+          const set = this.listeners.get(event) ?? new Set<Listener>();
+          set.add(listener);
+          this.listeners.set(event, set);
+          return this;
         }
-        this.channel.postMessage({ kind: "data", to: this.peer, from: this.peerId, id: this.id, data });
+        once(event: string, listener: Listener) {
+          const wrapped: Listener = (...args) => {
+            this.off(event, wrapped);
+            listener(...args);
+          };
+          return this.on(event, wrapped);
+        }
+        off(event: string, listener: Listener) {
+          this.listeners.get(event)?.delete(listener);
+          return this;
+        }
+        emit(event: string, ...args: unknown[]) {
+          for (const listener of this.listeners.get(event) ?? []) listener(...args);
+        }
       }
-      close() {
-        if (!this.open) return;
-        this.open = false;
-        this.channel.postMessage({ kind: "close", to: this.peer, from: this.peerId, id: this.id });
-        this.emit("close");
-      }
-    }
 
-    class FakePeer extends Events {
-      open = false;
-      disconnected = false;
-      options: { token?: string; config?: RTCConfiguration };
-      connections: Record<string, FakeConnection[]> = {};
-      connectCount = 0;
-      private channel = new BroadcastChannel(channelName);
-      constructor(readonly id: string, options: { token?: string; config?: RTCConfiguration }) {
-        super();
-        this.options = options;
-        this.channel.onmessage = ({ data }) => {
-          if (!data || data.to !== this.id) return;
-          if (data.kind === "connect") {
-            const connection = new FakeConnection(data.from, this.id, data.id, this.channel);
-            connection.open = true;
-            this.connections[data.from] = [connection];
-            this.emit("connection", connection);
-            this.channel.postMessage({ kind: "ready", to: data.from, from: this.id, id: data.id });
-          } else if (data.kind === "ready") {
-            const connection = this.connections[data.from]?.find((item) => item.id === data.id);
-            if (connection) {
-              connection.open = true;
-              connection.emit("open");
-            }
-          } else if (data.kind === "data") {
-            const connection = this.connections[data.from]?.find((item) => item.id === data.id);
-            connection?.emit("data", data.data);
-          } else if (data.kind === "close") {
-            const connection = this.connections[data.from]?.find((item) => item.id === data.id);
-            if (connection) {
-              connection.open = false;
-              connection.emit("close");
-            }
+      class FakeConnection extends Events {
+        open = false;
+        constructor(
+          readonly peer: string,
+          readonly peerId: string,
+          readonly id: string,
+          private readonly channel: BroadcastChannel,
+        ) {
+          super();
+        }
+        send(data: unknown) {
+          if (!this.open) throw new Error("Mock data connection is closed");
+          const override = (window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean })
+            .__SHIFTFRONT_INCOMPATIBLE__;
+          if (override && (data as { type?: string })?.type === "hello") {
+            const message = data as { settings: Record<string, unknown> };
+            data = {
+              ...message,
+              settings: { ...message.settings, simulationBuildId: "incompatible-e2e-build" },
+            };
           }
-        };
-        window.setTimeout(() => {
+          this.channel.postMessage({
+            kind: "data",
+            to: this.peer,
+            from: this.peerId,
+            id: this.id,
+            data,
+          });
+        }
+        close() {
+          if (!this.open) return;
+          this.open = false;
+          this.channel.postMessage({
+            kind: "close",
+            to: this.peer,
+            from: this.peerId,
+            id: this.id,
+          });
+          this.emit("close");
+        }
+      }
+
+      class FakePeer extends Events {
+        open = false;
+        disconnected = false;
+        options: { token?: string; config?: RTCConfiguration };
+        connections: Record<string, FakeConnection[]> = {};
+        connectCount = 0;
+        private channel = new BroadcastChannel(channelName);
+        constructor(
+          readonly id: string,
+          options: { token?: string; config?: RTCConfiguration },
+        ) {
+          super();
+          this.options = options;
+          this.channel.onmessage = ({ data }) => {
+            if (!data || data.to !== this.id) return;
+            if (data.kind === "connect") {
+              const connection = new FakeConnection(data.from, this.id, data.id, this.channel);
+              connection.open = true;
+              this.connections[data.from] = [connection];
+              this.emit("connection", connection);
+              this.channel.postMessage({
+                kind: "ready",
+                to: data.from,
+                from: this.id,
+                id: data.id,
+              });
+            } else if (data.kind === "ready") {
+              const connection = this.connections[data.from]?.find((item) => item.id === data.id);
+              if (connection) {
+                connection.open = true;
+                connection.emit("open");
+              }
+            } else if (data.kind === "data") {
+              const connection = this.connections[data.from]?.find((item) => item.id === data.id);
+              connection?.emit("data", data.data);
+            } else if (data.kind === "close") {
+              const connection = this.connections[data.from]?.find((item) => item.id === data.id);
+              if (connection) {
+                connection.open = false;
+                connection.emit("close");
+              }
+            }
+          };
+          window.setTimeout(() => {
+            this.open = true;
+            this.emit("open", this.id);
+          }, openDelay);
+        }
+        connect(peerId: string) {
+          this.connectCount += 1;
+          const connection = new FakeConnection(
+            peerId,
+            this.id,
+            `${this.id}:${peerId}`,
+            this.channel,
+          );
+          this.connections[peerId] = [connection];
+          this.channel.postMessage({
+            kind: "connect",
+            to: peerId,
+            from: this.id,
+            id: connection.id,
+          });
+          return connection;
+        }
+        reconnect() {
+          // Keep the simulated signaling outage active until the test restores it.
+        }
+        restoreSignaling() {
+          this.disconnected = false;
           this.open = true;
           this.emit("open", this.id);
-        }, openDelay);
+        }
+        disconnect() {
+          this.disconnected = true;
+          this.open = false;
+          this.emit("disconnected", this.id);
+        }
+        destroy() {
+          this.channel.close();
+        }
       }
-      connect(peerId: string) {
-        this.connectCount += 1;
-        const connection = new FakeConnection(peerId, this.id, `${this.id}:${peerId}`, this.channel);
-        this.connections[peerId] = [connection];
-        this.channel.postMessage({ kind: "connect", to: peerId, from: this.id, id: connection.id });
-        return connection;
-      }
-      reconnect() {
-        // Keep the simulated signaling outage active until the test restores it.
-      }
-      restoreSignaling() {
-        this.disconnected = false;
-        this.open = true;
-        this.emit("open", this.id);
-      }
-      disconnect() {
-        this.disconnected = true;
-        this.open = false;
-        this.emit("disconnected", this.id);
-      }
-      destroy() {
-        this.channel.close();
-      }
-    }
 
-    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: FakePeer[] };
-    testWindow.__SHIFTFRONT_TEST_PEERS__ = [];
-    const PeerForTest = class extends FakePeer {
-      constructor(id: string, options: { token?: string; config?: RTCConfiguration }) {
-        super(id, options);
-        testWindow.__SHIFTFRONT_TEST_PEERS__?.push(this);
-      }
-    };
-    Object.defineProperty(window, "__SHIFTFRONT_PEER_FACTORY__", { value: () => PeerForTest, configurable: true });
-  }, { channelName: networkId, openDelay: openDelayMs });
+      const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: FakePeer[] };
+      testWindow.__SHIFTFRONT_TEST_PEERS__ = [];
+      const PeerForTest = class extends FakePeer {
+        constructor(id: string, options: { token?: string; config?: RTCConfiguration }) {
+          super(id, options);
+          testWindow.__SHIFTFRONT_TEST_PEERS__?.push(this);
+        }
+      };
+      Object.defineProperty(window, "__SHIFTFRONT_PEER_FACTORY__", {
+        value: () => PeerForTest,
+        configurable: true,
+      });
+    },
+    { channelName: networkId, openDelay: openDelayMs },
+  );
 }
 
-async function mockPeerovo(page: import("@playwright/test").Page, role: "host" | "guest", guestId = guestPeerIds[0]) {
+async function mockPeerovo(
+  page: import("@playwright/test").Page,
+  role: "host" | "guest",
+  guestId = guestPeerIds[0],
+) {
   await page.route("**/api/multiplayer/rooms", async (route) => {
     const request = route.request().postDataJSON() as { seed: number };
-    await route.fulfill({ json: {
-      code: roomCode,
-      seed: request.seed,
-      hostPeerId,
-      peerId: hostPeerId,
-      grant: "host-room-grant",
-      expiresAt: Date.now() + 3_600_000,
-      peerJs: { host: "signal.mock.test", port: 443, path: "/", key: "peerjs", secure: true },
-      peerToken: "short-host-token",
-      peerExpiresAt: Math.floor(Date.now() / 1000) + 600,
-      iceServers: [],
-    } });
+    await route.fulfill({
+      json: {
+        code: roomCode,
+        seed: request.seed,
+        hostPeerId,
+        peerId: hostPeerId,
+        grant: "host-room-grant",
+        expiresAt: Date.now() + 3_600_000,
+        peerJs: { host: "signal.mock.test", port: 443, path: "/", key: "peerjs", secure: true },
+        peerToken: "short-host-token",
+        peerExpiresAt: Math.floor(Date.now() / 1000) + 600,
+        iceServers: [],
+      },
+    });
   });
   await page.route("**/api/multiplayer/rooms/join", async (route) => {
-    await route.fulfill({ json: {
-      code: roomCode,
-      hostPeerId,
-      peerId: guestId,
-      grant: "guest-room-grant",
-      expiresAt: Date.now() + 3_600_000,
-      peerJs: { host: "signal.mock.test", port: 443, path: "/", key: "peerjs", secure: true },
-      peerToken: "short-guest-token",
-      peerExpiresAt: Math.floor(Date.now() / 1000) + 600,
-      iceServers: [],
-    } });
+    await route.fulfill({
+      json: {
+        code: roomCode,
+        hostPeerId,
+        peerId: guestId,
+        grant: "guest-room-grant",
+        expiresAt: Date.now() + 3_600_000,
+        peerJs: { host: "signal.mock.test", port: 443, path: "/", key: "peerjs", secure: true },
+        peerToken: "short-guest-token",
+        peerExpiresAt: Math.floor(Date.now() / 1000) + 600,
+        iceServers: [],
+      },
+    });
   });
   if (role === "host") {
     await page.route("**/api/multiplayer/handshake", async (route) => {
@@ -178,7 +245,9 @@ async function mockPeerovo(page: import("@playwright/test").Page, role: "host" |
   }
 }
 
-test("multiplayer menu uses a button and Escape follows host setup navigation", async ({ page }) => {
+test("multiplayer menu uses a button and Escape follows host setup navigation", async ({
+  page,
+}) => {
   await page.goto("/");
   await page.getByRole("button", { name: "MULTIPLAYER" }).click();
   await expect(page.getByRole("heading", { name: "Multiplayer" })).toBeVisible();
@@ -195,9 +264,13 @@ test("multiplayer menu uses a button and Escape follows host setup navigation", 
   await expect(preview.getByText("Skirmish preview")).toBeVisible();
   await expect(preview.getByRole("heading", { name: "Versus Skirmish" })).toBeVisible();
   await expect(preview).toContainText("Free-for-all");
-  await expect(preview.getByTestId("multiplayer-skirmish-details")).toContainText("80 × 80 · Four corner starts");
+  await expect(preview.getByTestId("multiplayer-skirmish-details")).toContainText(
+    "80 × 80 · Four corner starts",
+  );
   await expect(preview.getByTestId("multiplayer-skirmish-details")).toContainText("2–4");
-  await expect(preview.getByTestId("multiplayer-skirmish-details")).toContainText("Destroy enemy construction yards");
+  await expect(preview.getByTestId("multiplayer-skirmish-details")).toContainText(
+    "Destroy enemy construction yards",
+  );
   const initialBiome = await backdrop.getAttribute("aria-label");
   const initialArt = await backdrop.getAttribute("style");
   await page.getByTestId("multiplayer-seed-input").fill("0421");
@@ -216,7 +289,9 @@ test("multiplayer menu uses a button and Escape follows host setup navigation", 
   await expect(page.getByRole("button", { name: "NEW GAME" })).toBeVisible();
 });
 
-test("host starts a four-player corner skirmish after three guests verify their seats", async ({ browser }) => {
+test("host starts a four-player corner skirmish after three guests verify their seats", async ({
+  browser,
+}) => {
   test.setTimeout(60_000);
   const context = await testContext(browser);
   const host = await context.newPage();
@@ -224,10 +299,20 @@ test("host starts a four-player corner skirmish after three guests verify their 
   const networkId = `sf-multiplayer-${Date.now()}-${Math.random()}`;
   let releaseHandshake!: () => void;
   let markHandshakeStarted!: () => void;
-  const handshakeGate = new Promise<void>((resolve) => { releaseHandshake = resolve; });
-  const handshakeStarted = new Promise<void>((resolve) => { markHandshakeStarted = resolve; });
-  await Promise.all([mockPeerTransport(host, networkId, 800), ...guests.map((guest) => mockPeerTransport(guest, networkId))]);
-  await Promise.all([mockPeerovo(host, "host"), ...guests.map((guest, index) => mockPeerovo(guest, "guest", guestPeerIds[index]))]);
+  const handshakeGate = new Promise<void>((resolve) => {
+    releaseHandshake = resolve;
+  });
+  const handshakeStarted = new Promise<void>((resolve) => {
+    markHandshakeStarted = resolve;
+  });
+  await Promise.all([
+    mockPeerTransport(host, networkId, 800),
+    ...guests.map((guest) => mockPeerTransport(guest, networkId)),
+  ]);
+  await Promise.all([
+    mockPeerovo(host, "host"),
+    ...guests.map((guest, index) => mockPeerovo(guest, "guest", guestPeerIds[index])),
+  ]);
   await host.route("**/api/multiplayer/handshake", async (route) => {
     markHandshakeStarted();
     await handshakeGate;
@@ -261,17 +346,29 @@ test("host starts a four-player corner skirmish after three guests verify their 
     await guest.getByRole("button", { name: "MULTIPLAYER" }).click();
     await guest.getByTestId("multiplayer-code-input").fill(roomCode);
     await guest.getByRole("button", { name: "Join room" }).click();
-    await expect(guest.getByTestId("multiplayer-seat")).toContainText(index === 0 ? "Southeast" : "Southwest");
+    await expect(guest.getByTestId("multiplayer-seat")).toContainText(
+      index === 0 ? "Southeast" : "Southwest",
+    );
   }
 
   await expect(host.getByTestId("multiplayer-roster").locator("li")).toHaveCount(4);
   await expect(host.getByTestId("multiplayer-start-button")).toBeEnabled();
   await host.getByTestId("multiplayer-start-button").click();
   const players = [host, ...guests];
-  players.forEach((page) => { page.on("pageerror", (error) => console.log("multiplayer page error", error.message)); });
-  await Promise.all(players.map((page) => expect(page.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 })));
+  players.forEach((page) => {
+    page.on("pageerror", (error) => console.log("multiplayer page error", error.message));
+  });
+  await Promise.all(
+    players.map((page) =>
+      expect(page.getByTestId("battlefield-canvas")).toBeVisible({ timeout: 15_000 }),
+    ),
+  );
   await Promise.all(players.map(waitForBattlefieldReady));
-  await Promise.all(players.map((page) => expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 })));
+  await Promise.all(
+    players.map((page) =>
+      expect(page.getByTestId("command-sidebar")).toBeVisible({ timeout: 15_000 }),
+    ),
+  );
 
   const lateGuest = await context.newPage();
   await mockPeerTransport(lateGuest, networkId);
@@ -280,46 +377,82 @@ test("host starts a four-player corner skirmish after three guests verify their 
   await lateGuest.getByRole("button", { name: "MULTIPLAYER" }).click();
   await lateGuest.getByTestId("multiplayer-code-input").fill(roomCode);
   await lateGuest.getByRole("button", { name: "Join room" }).click();
-  await expect(lateGuest.locator("p[role=alert]")).toHaveText("That room is full or has already started.");
+  await expect(lateGuest.locator("p[role=alert]")).toHaveText(
+    "That room is full or has already started.",
+  );
 
   const hostPeerCount = await host.evaluate(() => {
-    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ id: string; disconnected: boolean; disconnect: () => void }> };
+    const testWindow = window as Window & {
+      __SHIFTFRONT_TEST_PEERS__?: Array<{
+        id: string;
+        disconnected: boolean;
+        disconnect: () => void;
+      }>;
+    };
     return testWindow.__SHIFTFRONT_TEST_PEERS__?.length ?? 0;
   });
   expect(hostPeerCount).toBe(1);
   await host.evaluate(() => {
-    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ disconnect: () => void }> };
+    const testWindow = window as Window & {
+      __SHIFTFRONT_TEST_PEERS__?: Array<{ disconnect: () => void }>;
+    };
     testWindow.__SHIFTFRONT_TEST_PEERS__?.[0]?.disconnect();
   });
   await expect(host.getByText("Signaling disconnected. Reconnecting…")).toBeVisible();
   await host.evaluate(() => {
-    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ restoreSignaling: () => void }> };
+    const testWindow = window as Window & {
+      __SHIFTFRONT_TEST_PEERS__?: Array<{ restoreSignaling: () => void }>;
+    };
     testWindow.__SHIFTFRONT_TEST_PEERS__?.[0]?.restoreSignaling();
   });
   await expect(host.getByText("Signaling disconnected. Reconnecting…")).toHaveCount(0);
 
   await firstGuest.evaluate((remotePeerId) => {
-    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ connections: Record<string, Array<{ close: () => void }>> }> };
+    const testWindow = window as Window & {
+      __SHIFTFRONT_TEST_PEERS__?: Array<{
+        connections: Record<string, Array<{ close: () => void }>>;
+      }>;
+    };
     testWindow.__SHIFTFRONT_TEST_PEERS__?.[0]?.connections[remotePeerId]?.[0]?.close();
   }, hostPeerId);
-  await expect(host.getByText("A player disconnected. The match is paused while they reconnect (60 seconds).")).toBeVisible();
-  await expect.poll(() => firstGuest.evaluate(() => {
-    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ connectCount: number }> };
-    return testWindow.__SHIFTFRONT_TEST_PEERS__?.[0]?.connectCount ?? 0;
-  })).toBe(2);
-  await expect(host.getByText("A player disconnected. The match is paused while they reconnect (60 seconds).")).toHaveCount(0);
+  await expect(
+    host.getByText("A player disconnected. The match is paused while they reconnect (60 seconds)."),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      firstGuest.evaluate(() => {
+        const testWindow = window as Window & {
+          __SHIFTFRONT_TEST_PEERS__?: Array<{ connectCount: number }>;
+        };
+        return testWindow.__SHIFTFRONT_TEST_PEERS__?.[0]?.connectCount ?? 0;
+      }),
+    )
+    .toBe(2);
+  await expect(
+    host.getByText("A player disconnected. The match is paused while they reconnect (60 seconds)."),
+  ).toHaveCount(0);
   await expect(firstGuest.getByRole("heading", { name: "Connection ended" })).toHaveCount(0);
   await expect(firstGuest.getByTestId("command-sidebar")).toBeVisible();
 
-  const hostSaves = await host.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("shiftingfront:save:")));
+  const hostSaves = await host.evaluate(() =>
+    Object.keys(localStorage).filter((key) => key.startsWith("shiftingfront:save:")),
+  );
   expect(hostSaves).toEqual([]);
   for (const guest of guests) {
-    const guestSaves = await guest.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("shiftingfront:save:")));
+    const guestSaves = await guest.evaluate(() =>
+      Object.keys(localStorage).filter((key) => key.startsWith("shiftingfront:save:")),
+    );
     expect(guestSaves).toEqual([]);
   }
   await host.evaluate((remotePeerId) => {
-    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ connections: Record<string, Array<{ send: (value: unknown) => void }>> }> };
-    testWindow.__SHIFTFRONT_TEST_PEERS__?.[0]?.connections[remotePeerId]?.[0]?.send({ type: "ended" });
+    const testWindow = window as Window & {
+      __SHIFTFRONT_TEST_PEERS__?: Array<{
+        connections: Record<string, Array<{ send: (value: unknown) => void }>>;
+      }>;
+    };
+    testWindow.__SHIFTFRONT_TEST_PEERS__?.[0]?.connections[remotePeerId]?.[0]?.send({
+      type: "ended",
+    });
   }, guestPeerIds[2]);
   await expect(guests[2]!.getByRole("heading", { name: "Connection ended" })).toBeVisible();
   await expect(guests[2]!.getByText("The host ended the skirmish.").last()).toBeVisible();
@@ -389,8 +522,9 @@ test("AI and a human guest occupy separate seats in the same skirmish", async ({
   await context.close();
 });
 
-
-test("cancelled join can be followed by a fresh join without stale peer callbacks", async ({ browser }) => {
+test("cancelled join can be followed by a fresh join without stale peer callbacks", async ({
+  browser,
+}) => {
   const context = await testContext(browser);
   const host = await context.newPage();
   const guest = await context.newPage();
@@ -408,10 +542,14 @@ test("cancelled join can be followed by a fresh join without stale peer callback
   await guest.goto("/multiplayer");
   await guest.getByTestId("multiplayer-code-input").fill(roomCode);
   await guest.getByRole("button", { name: "Join room" }).click();
-  await expect.poll(() => guest.evaluate(() => {
-    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: unknown[] };
-    return testWindow.__SHIFTFRONT_TEST_PEERS__?.length ?? 0;
-  })).toBe(1);
+  await expect
+    .poll(() =>
+      guest.evaluate(() => {
+        const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: unknown[] };
+        return testWindow.__SHIFTFRONT_TEST_PEERS__?.length ?? 0;
+      }),
+    )
+    .toBe(1);
   await guest.keyboard.press("Escape");
   await expect(guest.getByRole("button", { name: "Join room" })).toBeVisible();
   await guest.getByRole("button", { name: "Join room" }).click();
@@ -419,35 +557,64 @@ test("cancelled join can be followed by a fresh join without stale peer callback
   await expect(host.getByTestId("multiplayer-roster-seat-1")).toContainText("Connected");
   await expect(host.getByTestId("multiplayer-roster-seat-2")).toContainText("Open User seat");
   const peers = await guest.evaluate(() => {
-    const testWindow = window as Window & { __SHIFTFRONT_TEST_PEERS__?: Array<{ connectCount: number }> };
+    const testWindow = window as Window & {
+      __SHIFTFRONT_TEST_PEERS__?: Array<{ connectCount: number }>;
+    };
     return testWindow.__SHIFTFRONT_TEST_PEERS__?.map((peer) => peer.connectCount);
   });
   expect(peers).toEqual([0, 1]);
   await context.close();
 });
 
-
 test("mismatched builds cannot take a seat or reconnect", async ({ browser }) => {
-  const context = await testContext(browser); const host = await context.newPage(); const guest = await context.newPage();
+  const context = await testContext(browser);
+  const host = await context.newPage();
+  const guest = await context.newPage();
   const network = `sf-incompatible-${Date.now()}`;
-  await Promise.all([mockPeerTransport(host, network), mockPeerTransport(guest, network), mockPeerovo(host, "host"), mockPeerovo(guest, "guest")]);
-  await host.goto("/multiplayer"); await host.getByRole("button", { name: "Host a room" }).click();
-  await host.getByTestId("multiplayer-seed-input").fill("0421"); await host.getByRole("button", { name: "Create room" }).click();
+  await Promise.all([
+    mockPeerTransport(host, network),
+    mockPeerTransport(guest, network),
+    mockPeerovo(host, "host"),
+    mockPeerovo(guest, "guest"),
+  ]);
+  await host.goto("/multiplayer");
+  await host.getByRole("button", { name: "Host a room" }).click();
+  await host.getByTestId("multiplayer-seed-input").fill("0421");
+  await host.getByRole("button", { name: "Create room" }).click();
   await expect(host.getByTestId("multiplayer-invite-code")).toHaveText(roomCode);
   await guest.goto("/multiplayer");
-  await guest.evaluate(() => { (window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean }).__SHIFTFRONT_INCOMPATIBLE__ = true; });
-  await guest.getByTestId("multiplayer-code-input").fill(roomCode); await guest.getByRole("button", { name: "Join room" }).click();
+  await guest.evaluate(() => {
+    (window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean }).__SHIFTFRONT_INCOMPATIBLE__ =
+      true;
+  });
+  await guest.getByTestId("multiplayer-code-input").fill(roomCode);
+  await guest.getByRole("button", { name: "Join room" }).click();
   await expect(guest.locator("p[role=alert]")).toContainText("Game versions differ");
   await expect(host.getByTestId("multiplayer-roster-seat-1")).toContainText("Open User seat");
-  await guest.evaluate(() => { (window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean }).__SHIFTFRONT_INCOMPATIBLE__ = false; });
-  await guest.getByTestId("multiplayer-code-input").fill(roomCode); await guest.getByRole("button", { name: "Join room" }).click();
+  await guest.evaluate(() => {
+    (window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean }).__SHIFTFRONT_INCOMPATIBLE__ =
+      false;
+  });
+  await guest.getByTestId("multiplayer-code-input").fill(roomCode);
+  await guest.getByRole("button", { name: "Join room" }).click();
   await expect(guest.getByTestId("multiplayer-seat")).toContainText("Northeast");
-  await host.getByTestId("multiplayer-start-button").click(); await Promise.all([waitForBattlefieldReady(host), waitForBattlefieldReady(guest)]);
+  await host.getByTestId("multiplayer-start-button").click();
+  await Promise.all([waitForBattlefieldReady(host), waitForBattlefieldReady(guest)]);
   await guest.evaluate((peerId) => {
-    const testWindow = window as Window & { __SHIFTFRONT_INCOMPATIBLE__?: boolean; __SHIFTFRONT_TEST_PEERS__?: Array<{ connections: Record<string, Array<{ close: () => void }>> }> };
-    testWindow.__SHIFTFRONT_INCOMPATIBLE__ = true; testWindow.__SHIFTFRONT_TEST_PEERS__?.at(-1)?.connections[peerId]?.[0]?.close();
+    const testWindow = window as Window & {
+      __SHIFTFRONT_INCOMPATIBLE__?: boolean;
+      __SHIFTFRONT_TEST_PEERS__?: Array<{
+        connections: Record<string, Array<{ close: () => void }>>;
+      }>;
+    };
+    testWindow.__SHIFTFRONT_INCOMPATIBLE__ = true;
+    testWindow.__SHIFTFRONT_TEST_PEERS__?.at(-1)?.connections[peerId]?.[0]?.close();
   }, hostPeerId);
-  await expect(guest.locator("p[role=alert]")).toContainText("Game versions differ", { timeout: 15_000 });
-  await expect(host.getByText("A player disconnected. The match is paused while they reconnect (60 seconds).")).toBeVisible();
+  await expect(guest.locator("p[role=alert]")).toContainText("Game versions differ", {
+    timeout: 15_000,
+  });
+  await expect(
+    host.getByText("A player disconnected. The match is paused while they reconnect (60 seconds)."),
+  ).toBeVisible();
   await context.close();
 });

@@ -4,8 +4,8 @@ import { biomeLabel } from "@/lib/gen/names";
 import { objectiveHeadline } from "@/lib/gen/story";
 import { biomeArt } from "@/lib/gen/visualAssets";
 import type { CampaignProgress, ReadonlyCampaign } from "@/lib/types";
+import styles from "./CampaignMissionQueue.module.css";
 import { missionMedalDisplay } from "./campaignSummary";
-import styles from "./CampaignCompleteScreen.module.css";
 
 export function CampaignMissionQueue({
   campaign,
@@ -26,11 +26,19 @@ export function CampaignMissionQueue({
 }) {
   return (
     <DossierSection
-      className={`${styles.section} ${finale ? styles.finaleMissionQueue : ""}`}
+      className={`${styles.section} ${operations ? styles.operationsSection : ""} ${finale ? styles.finaleMissionQueue : ""}`}
       aria-labelledby="mission-record-title"
       label={operations ? "Operations" : "Mission record"}
-      title={<h2 id="mission-record-title" className={styles.sectionTitle}>{operations ? "Select an operation" : "Six operations"}</h2>}
-      aside={<span className={styles.sectionCount}>{completedCount}/{campaign.missions.length} complete</span>}
+      title={
+        <h2 id="mission-record-title" className={styles.sectionTitle}>
+          {operations ? "Select an operation" : "Six operations"}
+        </h2>
+      }
+      aside={
+        <span className={styles.sectionCount}>
+          {completedCount}/{campaign.missions.length} complete
+        </span>
+      }
     >
       <div className={styles.missions}>
         {campaign.missions.map((mission, index) => {
@@ -68,11 +76,17 @@ export function CampaignMissionQueue({
                     {status}
                   </StatusBadge>
                 </span>
-                <span className={styles.medals} role="img" aria-label={`${medals} of 3 medals`}>{missionMedalDisplay(medals)}</span>
+                <span className={styles.medals} role="img" aria-label={`${medals} of 3 medals`}>
+                  {missionMedalDisplay(medals)}
+                </span>
               </span>
               <span className={styles.missionTitle}>{mission.name}</span>
-              <span className={styles.missionMeta}>{biomeLabel(mission.biome)} · {mission.mapSize}×{mission.mapSize}</span>
-              {!operations ? <span className={styles.missionObjective}>{objectiveHeadline(mission.win)}</span> : null}
+              <span className={styles.missionMeta}>
+                {biomeLabel(mission.biome)} · {mission.mapSize}×{mission.mapSize}
+              </span>
+              {!operations ? (
+                <span className={styles.missionObjective}>{objectiveHeadline(mission.win)}</span>
+              ) : null}
               {!operations ? <span className={styles.missionRecord}>{record}</span> : null}
               <span className={styles.missionAction}>{action}</span>
             </button>

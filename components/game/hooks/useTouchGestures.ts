@@ -1,11 +1,11 @@
-import { useCallback, useMemo, useRef, type MutableRefObject, type PointerEvent } from "react";
-import { canvasViewport } from "@/lib/render/canvasViewport";
-import { cameraPanBounds, panCamera } from "@/lib/render/camera";
+import { type MutableRefObject, type PointerEvent, useCallback, useMemo, useRef } from "react";
 import type { Camera } from "@/lib/iso";
+import { cameraPanBounds, panCamera } from "@/lib/render/camera";
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import { cameraForPicking } from "@/lib/render/screenShake";
 import type { SimState } from "@/lib/types";
-import { selectionProjectionPoint, type SelectionBox } from "./selectionBox";
 import { triggerHaptic } from "@/lib/ui/haptics";
+import { type SelectionBox, selectionProjectionPoint } from "./selectionBox";
 
 function touchAnchor(x: number, y: number, cam: Camera) {
   return selectionProjectionPoint({ x, y }, cameraForPicking(cam));
@@ -29,121 +29,157 @@ export function useTouchGestures({
   const touchPoints = useRef(new Map<number, { x: number; y: number }>());
   const touchSelection = useRef(false);
   const touchMultiTouch = useRef(false);
-  const touchPan = useRef<{ pointerId: number; start: { x: number; y: number }; last: { x: number; y: number }; moved: boolean } | null>(null);
-  const longPress = useRef<{ pointerId: number; timer: number; x: number; y: number; fired: boolean } | null>(null);
+  const touchPan = useRef<{
+    pointerId: number;
+    start: { x: number; y: number };
+    last: { x: number; y: number };
+    moved: boolean;
+  } | null>(null);
+  const longPress = useRef<{
+    pointerId: number;
+    timer: number;
+    x: number;
+    y: number;
+    fired: boolean;
+  } | null>(null);
 
-  const beginTouch = useCallback((e: PointerEvent<HTMLCanvasElement>, p: { x: number; y: number }) => {
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // Synthetic pointer events used by accessibility and browser tests do not have capture targets.
-    }
-    touchPoints.current.set(e.pointerId, p);
-    if (touchPoints.current.size >= 2) {
-      const points = [...touchPoints.current.values()];
-      touchMultiTouch.current = true;
-      touchSelection.current = true;
-      selectionModeRef.current = true;
-      setSelectionMode?.(true);
-      triggerHaptic("selection");
-      touchPan.current = null;
-      boxRef.current = {
-        x0: points[0]!.x,
-        y0: points[0]!.y,
-        x1: points[1]!.x,
-        y1: points[1]!.y,
-        anchor: touchAnchor(points[0]!.x, points[0]!.y, camRef.current),
-      };
-      if (longPress.current) window.clearTimeout(longPress.current.timer);
-      longPress.current = null;
-      return;
-    }
-    touchPan.current = { pointerId: e.pointerId, start: p, last: p, moved: false };
-    if (selectionModeRef.current) {
-      boxRef.current = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, anchor: touchAnchor(p.x, p.y, camRef.current) };
-      return;
-    }
-    const timer = window.setTimeout(() => {
+  const beginTouch = useCallback(
+    (e: PointerEvent<HTMLCanvasElement>, p: { x: number; y: number }) => {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        // Synthetic pointer events used by accessibility and browser tests do not have capture targets.
+      }
+      touchPoints.current.set(e.pointerId, p);
+      if (touchPoints.current.size >= 2) {
+        const points = [...touchPoints.current.values()];
+        touchMultiTouch.current = true;
+        touchSelection.current = true;
+        selectionModeRef.current = true;
+        setSelectionMode?.(true);
+        triggerHaptic("selection");
+        touchPan.current = null;
+        boxRef.current = {
+          x0: points[0]!.x,
+          y0: points[0]!.y,
+          x1: points[1]!.x,
+          y1: points[1]!.y,
+          anchor: touchAnchor(points[0]!.x, points[0]!.y, camRef.current),
+        };
+        if (longPress.current) window.clearTimeout(longPress.current.timer);
+        longPress.current = null;
+        return;
+      }
+      touchPan.current = { pointerId: e.pointerId, start: p, last: p, moved: false };
+      if (selectionModeRef.current) {
+        boxRef.current = {
+          x0: p.x,
+          y0: p.y,
+          x1: p.x,
+          y1: p.y,
+          anchor: touchAnchor(p.x, p.y, camRef.current),
+        };
+        return;
+      }
+      const timer = window.setTimeout(() => {
+        const held = longPress.current;
+        if (
+          held &&
+          held.pointerId === e.pointerId &&
+          !held.fired &&
+          !touchSelection.current &&
+          !selectionModeRef.current
+        ) {
+          held.fired = true;
+          triggerHaptic("order");
+          issueContextOrder(stateRef.current, { x: held.x, y: held.y }, true);
+        }
+      }, 480);
+      longPress.current = { pointerId: e.pointerId, timer, x: p.x, y: p.y, fired: false };
+    },
+    [boxRef, camRef, issueContextOrder, selectionModeRef, setSelectionMode, stateRef],
+  );
+
+  const moveTouch = useCallback(
+    (e: PointerEvent<HTMLCanvasElement>, p: { x: number; y: number }): boolean => {
+      const s = stateRef.current;
+      const viewport = canvasViewport(e.currentTarget);
+      const bounds = s
+        ? cameraPanBounds(s.width, s.height, viewport.width, viewport.height)
+        : undefined;
+      touchPoints.current.set(e.pointerId, p);
+      if (touchPoints.current.size >= 2) {
+        const points = [...touchPoints.current.values()];
+        if (touchSelection.current && boxRef.current) {
+          boxRef.current.x0 = points[0]!.x;
+          boxRef.current.y0 = points[0]!.y;
+          boxRef.current.x1 = points[1]!.x;
+          boxRef.current.y1 = points[1]!.y;
+          boxRef.current.anchor = touchAnchor(points[0]!.x, points[0]!.y, camRef.current);
+        }
+        return true;
+      }
       const held = longPress.current;
-      if (held && held.pointerId === e.pointerId && !held.fired && !touchSelection.current && !selectionModeRef.current) {
+      if (held && Math.hypot(p.x - held.x, p.y - held.y) > 12) {
         held.fired = true;
-        triggerHaptic("order");
-        issueContextOrder(stateRef.current, { x: held.x, y: held.y }, true);
+        window.clearTimeout(held.timer);
       }
-    }, 480);
-    longPress.current = { pointerId: e.pointerId, timer, x: p.x, y: p.y, fired: false };
-  }, [boxRef, camRef, issueContextOrder, selectionModeRef, setSelectionMode, stateRef]);
-
-  const moveTouch = useCallback((e: PointerEvent<HTMLCanvasElement>, p: { x: number; y: number }): boolean => {
-    const s = stateRef.current;
-    const viewport = canvasViewport(e.currentTarget);
-    const bounds = s
-      ? cameraPanBounds(s.width, s.height, viewport.width, viewport.height)
-      : undefined;
-    touchPoints.current.set(e.pointerId, p);
-    if (touchPoints.current.size >= 2) {
-      const points = [...touchPoints.current.values()];
-      if (touchSelection.current && boxRef.current) {
-        boxRef.current.x0 = points[0]!.x;
-        boxRef.current.y0 = points[0]!.y;
-        boxRef.current.x1 = points[1]!.x;
-        boxRef.current.y1 = points[1]!.y;
-        boxRef.current.anchor = touchAnchor(points[0]!.x, points[0]!.y, camRef.current);
+      if (selectionModeRef.current) {
+        if (boxRef.current) {
+          boxRef.current.x1 = p.x;
+          boxRef.current.y1 = p.y;
+        }
+        return false;
       }
-      return true;
-    }
-    const held = longPress.current;
-    if (held && Math.hypot(p.x - held.x, p.y - held.y) > 12) {
-      held.fired = true;
-      window.clearTimeout(held.timer);
-    }
-    if (selectionModeRef.current) {
-      if (boxRef.current) {
-        boxRef.current.x1 = p.x;
-        boxRef.current.y1 = p.y;
+      const pan = touchPan.current;
+      if (pan && pan.pointerId === e.pointerId) {
+        const distance = Math.hypot(p.x - pan.start.x, p.y - pan.start.y);
+        if (distance > 10) pan.moved = true;
+        if (pan.moved) {
+          panCamera(
+            camRef.current,
+            { space: "screen", dx: p.x - pan.last.x, dy: p.y - pan.last.y },
+            bounds,
+          );
+          pan.last = p;
+        }
       }
       return false;
-    }
-    const pan = touchPan.current;
-    if (pan && pan.pointerId === e.pointerId) {
-      const distance = Math.hypot(p.x - pan.start.x, p.y - pan.start.y);
-      if (distance > 10) pan.moved = true;
-      if (pan.moved) {
-        panCamera(camRef.current, { space: "screen", dx: p.x - pan.last.x, dy: p.y - pan.last.y }, bounds);
-        pan.last = p;
-      }
-    }
-    return false;
-  }, [boxRef, camRef, selectionModeRef, stateRef]);
+    },
+    [boxRef, camRef, selectionModeRef, stateRef],
+  );
 
-  const endTouch = useCallback((e: PointerEvent<HTMLCanvasElement>, p?: { x: number; y: number }): boolean => {
-    if (p) touchPoints.current.set(e.pointerId, p);
-    if (touchSelection.current && boxRef.current) {
-      const points = [...touchPoints.current.values()];
-      if (points.length >= 2) {
-        boxRef.current.x0 = points[0]!.x;
-        boxRef.current.y0 = points[0]!.y;
-        boxRef.current.x1 = points[1]!.x;
-        boxRef.current.y1 = points[1]!.y;
-        boxRef.current.anchor = touchAnchor(points[0]!.x, points[0]!.y, camRef.current);
+  const endTouch = useCallback(
+    (e: PointerEvent<HTMLCanvasElement>, p?: { x: number; y: number }): boolean => {
+      if (p) touchPoints.current.set(e.pointerId, p);
+      if (touchSelection.current && boxRef.current) {
+        const points = [...touchPoints.current.values()];
+        if (points.length >= 2) {
+          boxRef.current.x0 = points[0]!.x;
+          boxRef.current.y0 = points[0]!.y;
+          boxRef.current.x1 = points[1]!.x;
+          boxRef.current.y1 = points[1]!.y;
+          boxRef.current.anchor = touchAnchor(points[0]!.x, points[0]!.y, camRef.current);
+        }
       }
-    }
-    const held = longPress.current;
-    touchPoints.current.delete(e.pointerId);
-    if (held?.pointerId === e.pointerId) {
-      window.clearTimeout(held.timer);
-      longPress.current = null;
-    }
-    if (touchPoints.current.size > 0) return true;
-    const wasSelection = touchSelection.current;
-    const wasGesture = touchMultiTouch.current || !!touchPan.current?.moved;
-    touchSelection.current = false;
-    touchMultiTouch.current = false;
-    touchPan.current = null;
-    // Leave the final two-finger pointer-up for the normal input resolver so
-    // the marquee is committed as a unit selection.
-    return wasSelection ? false : Boolean(held?.fired || wasGesture);
-  }, [boxRef, camRef]);
+      const held = longPress.current;
+      touchPoints.current.delete(e.pointerId);
+      if (held?.pointerId === e.pointerId) {
+        window.clearTimeout(held.timer);
+        longPress.current = null;
+      }
+      if (touchPoints.current.size > 0) return true;
+      const wasSelection = touchSelection.current;
+      const wasGesture = touchMultiTouch.current || !!touchPan.current?.moved;
+      touchSelection.current = false;
+      touchMultiTouch.current = false;
+      touchPan.current = null;
+      // Leave the final two-finger pointer-up for the normal input resolver so
+      // the marquee is committed as a unit selection.
+      return wasSelection ? false : Boolean(held?.fired || wasGesture);
+    },
+    [boxRef, camRef],
+  );
 
   const cancelTouch = useCallback(() => {
     if (longPress.current) window.clearTimeout(longPress.current.timer);

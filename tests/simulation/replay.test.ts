@@ -5,7 +5,9 @@ import { runReplay, simulationFingerprint } from "../../lib/sim/replay";
 describe("simulation replay", () => {
   it("applies scheduled orders at their simulation tick", () => {
     const mission = createMission({ seed: 421, missionIndex: 0 });
-    const unit = mission.entities.find((entity) => entity.owner === 0 && entity.class === "unit" && !entity.neutral);
+    const unit = mission.entities.find(
+      (entity) => entity.owner === 0 && entity.class === "unit" && !entity.neutral,
+    );
     expect(unit).toBeDefined();
 
     const result = runReplay({
@@ -28,7 +30,9 @@ describe("simulation replay", () => {
     second.state.entities = [...second.state.entities].reverse();
 
     expect(first.fingerprint).toBe(simulationFingerprint(second.state));
-    expect(first.fingerprint).toBe(runReplay({ seed: 421, missionIndex: 0, maxTicks: 120 }).fingerprint);
+    expect(first.fingerprint).toBe(
+      runReplay({ seed: 421, missionIndex: 0, maxTicks: 120 }).fingerprint,
+    );
     expect(first.inspect).toEqual(second.inspect);
     expect(first.events).toEqual(second.events);
   });
@@ -57,10 +61,12 @@ describe("simulation replay", () => {
       seed: 0,
       missionIndex: 0,
       maxTicks: deadline + 1,
-      orders: [{
-        tick: 0,
-        command: { type: "build", building: "constructionYard", x: 0, y: 0 },
-      }],
+      orders: [
+        {
+          tick: 0,
+          command: { type: "build", building: "constructionYard", x: 0, y: 0 },
+        },
+      ],
     });
 
     expect(result.terminalResult).toBe("lost");

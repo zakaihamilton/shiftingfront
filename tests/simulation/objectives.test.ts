@@ -1,12 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_SECOND } from "../../lib/catalog";
-import { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS, createMission, tick } from "../../lib/sim/api";
-import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
-import { formatHoldClock, inspect, objectiveProgress, evaluateObjectives, secondaryProgress } from "../../lib/sim/objectives";
 import { createCampaign } from "../../lib/gen/campaign";
-import { generateWinCategory, missionDurationMinutesFor, missionTimeLimitClock, missionTimeLimitLabel, missionTimeLimitTicks, secondaryObjectivesForMissionSeed } from "../../lib/gen/objectives";
-import { formatMissionClock, formatMissionClockFromTicks, MAX_OPERATION_TICKS, minutesToTicks } from "../../lib/gen/pacing";
+import {
+  generateWinCategory,
+  missionDurationMinutesFor,
+  missionTimeLimitClock,
+  missionTimeLimitLabel,
+  missionTimeLimitTicks,
+  secondaryObjectivesForMissionSeed,
+} from "../../lib/gen/objectives";
+import {
+  formatMissionClock,
+  formatMissionClockFromTicks,
+  MAX_OPERATION_TICKS,
+  minutesToTicks,
+} from "../../lib/gen/pacing";
 import { missionObjectives, objectiveHeadline } from "../../lib/gen/story";
+import {
+  CONVOY_COMPLETION_BUFFER_TICKS,
+  CONVOY_STAGING_TICKS,
+  createMission,
+  tick,
+} from "../../lib/sim/api";
+import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
+import {
+  evaluateObjectives,
+  formatHoldClock,
+  inspect,
+  objectiveProgress,
+  secondaryProgress,
+} from "../../lib/sim/objectives";
 import { tickScenario } from "../../lib/sim/scenarios";
 
 describe("win categories", () => {
@@ -120,11 +143,16 @@ describe("win categories", () => {
   it("uses the full escort limit for the speed secondary objective", () => {
     const activeWindow = minutesToTicks(8);
     expect(missionTimeLimitTicks({ kind: "sabotage", ticks: activeWindow })).toBe(activeWindow);
-    expect(missionTimeLimitTicks({ kind: "escort", ticks: activeWindow })).toBe(activeWindow + CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS);
+    expect(missionTimeLimitTicks({ kind: "escort", ticks: activeWindow })).toBe(
+      activeWindow + CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS,
+    );
     expect(missionTimeLimitClock({ kind: "escort", ticks: activeWindow })).toBe("14:00");
     expect(missionTimeLimitLabel({ kind: "escort", ticks: activeWindow })).toBe("14 min");
 
-    const secondary = secondaryObjectivesForMissionSeed(421, { index: 2, win: { kind: "escort", ticks: activeWindow } });
+    const secondary = secondaryObjectivesForMissionSeed(421, {
+      index: 2,
+      win: { kind: "escort", ticks: activeWindow },
+    });
     expect(secondary[1]).toMatchObject({
       label: "Speed bonus: complete the operation within 14 min total",
       target: activeWindow + CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS,
@@ -157,7 +185,15 @@ describe("win categories", () => {
       deadline: 100,
       rescued: 0,
       required: 1,
-      secondary: [{ id: "time", kind: "completeBefore", label: "Complete the operation within 8 min", target: 100, completed: true }],
+      secondary: [
+        {
+          id: "time",
+          kind: "completeBefore",
+          label: "Complete the operation within 8 min",
+          target: 100,
+          completed: true,
+        },
+      ],
     };
 
     expect(secondaryProgress(state)[0]).toMatchObject({ completed: false, failed: false });
@@ -175,7 +211,14 @@ describe("win categories", () => {
       targetIds: [],
       rescued: 0,
       required: 1,
-      secondary: [{ id: "survivors", kind: "keepUnits", label: "Keep at least one combat unit alive", target: 1 }],
+      secondary: [
+        {
+          id: "survivors",
+          kind: "keepUnits",
+          label: "Keep at least one combat unit alive",
+          target: 1,
+        },
+      ],
     };
 
     tickScenario(state);
@@ -237,7 +280,11 @@ describe("deadline warnings", () => {
       type: "deadlineWarning",
       remainingTicks: 10 * TICKS_PER_SECOND,
     });
-    expect(evaluateObjectives(rescueAt(2000 - 59 * TICKS_PER_SECOND)).some((event) => event.type === "deadlineWarning")).toBe(false);
+    expect(
+      evaluateObjectives(rescueAt(2000 - 59 * TICKS_PER_SECOND)).some(
+        (event) => event.type === "deadlineWarning",
+      ),
+    ).toBe(false);
   });
 
   it("does not ping the hold-the-line win clock", () => {
@@ -343,7 +390,6 @@ describe("generated structure quotas", () => {
       }
     }
   });
-
 });
 
 describe("mission briefing objectives", () => {
@@ -358,7 +404,9 @@ describe("mission briefing objectives", () => {
         expect(objectives[0]!.text).toContain(String(mission.win.target));
       }
       if (mission.win.kind === "forceQuota" && mission.win.role) {
-        expect(objectives[0]!.text.toLowerCase()).toContain(mission.win.role === "antiArmor" ? "anti-armor" : mission.win.role);
+        expect(objectives[0]!.text.toLowerCase()).toContain(
+          mission.win.role === "antiArmor" ? "anti-armor" : mission.win.role,
+        );
       }
     }
   });
@@ -367,9 +415,19 @@ describe("mission briefing objectives", () => {
     const campaign = createCampaign(421);
     for (const mission of campaign.missions) {
       const state = createMission({ seed: 421, missionIndex: mission.index });
-      const preview = secondaryObjectivesForMissionSeed(421, mission).map(({ id, kind, label, target }) => ({ id, kind, label, target }));
-      const runtime = state.runtime?.secondary.map(({ id, kind, label, target }) => ({ id, kind, label, target })) ?? [];
-      const challenge = runtime.find((objective) => objective.id === "bonus-ore" || objective.id === "bonus-outpost");
+      const preview = secondaryObjectivesForMissionSeed(421, mission).map(
+        ({ id, kind, label, target }) => ({ id, kind, label, target }),
+      );
+      const runtime =
+        state.runtime?.secondary.map(({ id, kind, label, target }) => ({
+          id,
+          kind,
+          label,
+          target,
+        })) ?? [];
+      const challenge = runtime.find(
+        (objective) => objective.id === "bonus-ore" || objective.id === "bonus-outpost",
+      );
       if (challenge) {
         expect(runtime[0]?.id).toBe("yard");
         expect(runtime.some((objective) => objective.id === challenge.id)).toBe(true);
@@ -377,8 +435,11 @@ describe("mission briefing objectives", () => {
         expect(preview).toEqual(runtime);
       }
       if (mission.win.ticks !== undefined) {
-        const staging = mission.win.kind === "escort" ? CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS : 0;
-        expect(mission.win.ticks + staging).toBe(minutesToTicks(missionDurationMinutesFor(421, mission.index, mission.win.kind)));
+        const staging =
+          mission.win.kind === "escort" ? CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS : 0;
+        expect(mission.win.ticks + staging).toBe(
+          minutesToTicks(missionDurationMinutesFor(421, mission.index, mission.win.kind)),
+        );
       }
     }
   });
@@ -410,8 +471,9 @@ describe("mission briefing objectives", () => {
 
     const fallbackEscort = { index: 2, win: { kind: "escort" as const } };
     expect(missionObjectives(fallbackEscort, campaign)[0]?.text).toContain("within 11 min");
-    expect(secondaryObjectivesForMissionSeed(421, fallbackEscort)[1]?.label)
-      .toBe("Speed bonus: complete the operation within 5 min total");
+    expect(secondaryObjectivesForMissionSeed(421, fallbackEscort)[1]?.label).toBe(
+      "Speed bonus: complete the operation within 5 min total",
+    );
   });
 });
 
@@ -443,7 +505,9 @@ describe("mission briefing dialogue", () => {
     for (let seed = 0; seed < 128; seed++) {
       const first = createCampaign(seed);
       const second = createCampaign(seed);
-      expect(second.missions.map((mission) => mission.briefing)).toEqual(first.missions.map((mission) => mission.briefing));
+      expect(second.missions.map((mission) => mission.briefing)).toEqual(
+        first.missions.map((mission) => mission.briefing),
+      );
       for (const mission of first.missions) lineCounts.add(mission.briefing.length);
     }
     expect(lineCounts).toEqual(new Set([3, 4, 5]));
@@ -456,14 +520,22 @@ describe("mission briefing dialogue", () => {
         const text = mission.briefing.map((line) => line.text).join(" ");
         expect(text.toLowerCase()).not.toContain(objectiveHeadline(mission.win).toLowerCase());
         const variant = mission.profile!.variant;
-        const hook = variant === "resourceRace" ? /ore|harvest/i
-          : variant === "forwardIndustry" ? /industry|refinery|power/i
-            : variant === "surgicalStrike" ? /breach|precision/i
-              : variant === "siege" ? /siege|layered|approach/i
-                : variant === "concentratedWaves" ? /one line|concentrating/i
-                  : variant === "crossfire" ? /two approach|split|flank/i
-                    : variant === "directRoute" ? /shortest route|direct route/i
-                      : /exposed|flanks|screen/i;
+        const hook =
+          variant === "resourceRace"
+            ? /ore|harvest/i
+            : variant === "forwardIndustry"
+              ? /industry|refinery|power/i
+              : variant === "surgicalStrike"
+                ? /breach|precision/i
+                : variant === "siege"
+                  ? /siege|layered|approach/i
+                  : variant === "concentratedWaves"
+                    ? /one line|concentrating/i
+                    : variant === "crossfire"
+                      ? /two approach|split|flank/i
+                      : variant === "directRoute"
+                        ? /shortest route|direct route/i
+                        : /exposed|flanks|screen/i;
         expect(text).toMatch(hook);
       }
     }
@@ -488,7 +560,9 @@ describe("mission briefing dialogue", () => {
         }
       }
       for (const speaker of ["advisor", "commander", "enemyLeader"] as const) {
-        const texts = campaign.missions.map((m) => m.briefing.find((l) => l.speaker === speaker)!.text);
+        const texts = campaign.missions.map(
+          (m) => m.briefing.find((l) => l.speaker === speaker)!.text,
+        );
         expect(new Set(texts).size).toBeGreaterThan(1);
       }
     }

@@ -1,6 +1,6 @@
-import type { BuildingKind, UnitKind } from "./types";
-import { UNIT_LABELS, isUnitKind } from "./catalog/units";
 import { BUILDING_LABELS } from "./catalog/buildings";
+import { isUnitKind, UNIT_LABELS } from "./catalog/units";
+import type { BuildingKind, UnitKind } from "./types";
 
 export const TICKS_PER_SECOND = 12;
 export const MAX_PRODUCTION_QUEUE = 10;
@@ -35,6 +35,6 @@ export const NEW_MISSION_KINDS: import("./types").MissionKind[] = [
   "extraction",
 ];
 
-export * from "./catalog/units";
 export * from "./catalog/buildings";
 export * from "./catalog/cameo";
+export * from "./catalog/units";

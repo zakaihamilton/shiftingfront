@@ -1,44 +1,52 @@
 import { createRng, type Rng } from "../../seed/rng";
 import {
-  SURFACE_NONE,
-  TILE_BLOCKED,
-  TILE_CLEAR,
-  TILE_RESOURCE,
-  TILE_WATER,
   type BiomeName,
   type LandmarkKind,
   type MapSpawnTopology,
   type ReadonlyMissionDef,
+  SURFACE_NONE,
   type SurfaceKind,
+  TILE_BLOCKED,
+  TILE_CLEAR,
+  TILE_RESOURCE,
+  TILE_WATER,
   type Vec2,
 } from "../../types";
-import { biomeTuning } from "./config";
-import { terrainFeatureSamplerFor, type TerrainFeatureSample } from "./features";
 import { resolveMissionProfile } from "../profile";
-import { fbm, warpedFbm, mixSalt } from "./noise";
+import { biomeTuning } from "./config";
+import { type TerrainFeatureSample, terrainFeatureSamplerFor } from "./features";
 import {
-  idx,
-  meanderingRoute,
-  carveRoute,
-  paintBase,
-  smoothWater,
-  pruneWaterIslands,
-  relaxHeights,
-} from "./terrain";
-import {
-  type GeneratedMap,
+  clampPoint,
   computeMapAffordances,
-  routeLength,
-  walkDistances,
-  routeReachable,
+  type GeneratedMap,
   pickSpawnTopology,
   resolveDynamicSpawns,
-  clampPoint,
+  routeLength,
+  routeReachable,
+  walkDistances,
 } from "./generator/index";
 import { rescueFlankCenter } from "./generator/rescuePlacement";
-import { applyBiomeLandmark, generateLandmarkResourceVeins, landmarkForBiome, type LandmarkContext } from "./landmarks";
+import {
+  applyBiomeLandmark,
+  generateLandmarkResourceVeins,
+  type LandmarkContext,
+  landmarkForBiome,
+} from "./landmarks";
+import { fbm, mixSalt, warpedFbm } from "./noise";
+import {
+  carveRoute,
+  idx,
+  meanderingRoute,
+  paintBase,
+  pruneWaterIslands,
+  relaxHeights,
+  smoothWater,
+} from "./terrain";
 
-export type MapMission = Pick<ReadonlyMissionDef, "index" | "win" | "mapSize" | "biome" | "profile">;
+export type MapMission = Pick<
+  ReadonlyMissionDef,
+  "index" | "win" | "mapSize" | "biome" | "profile"
+>;
 
 /** Mutable buffers for one map generation. Phases run in call order and share this object. */
 export type MapBuild = {
@@ -121,7 +129,17 @@ export function createMapBuild(seed: number, mission: MapMission): MapBuild {
 }
 
 export function paintTerrainNoise(build: MapBuild): void {
-  const { width, height, tiles, heights, salt, terrainFeatures, featureAt, protectedStart, tuning } = build;
+  const {
+    width,
+    height,
+    tiles,
+    heights,
+    salt,
+    terrainFeatures,
+    featureAt,
+    protectedStart,
+    tuning,
+  } = build;
   // 2. Base Noise & Natural Terrain Generation
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -137,7 +155,9 @@ export function paintTerrainNoise(build: MapBuild): void {
       const channel = Math.abs(warpedFbm(x * 0.16, y * 0.16, salt + 37) - 0.5);
       const waterScore = localWet * 0.48 + basinWet * 0.52;
       const basin = waterScore < tuning.water * 0.98 + feature.wetness * 0.045;
-      const river = channel < 0.035 + tuning.water * 0.025 + feature.wetness * 0.007 && basinWet < tuning.water + 0.16;
+      const river =
+        channel < 0.035 + tuning.water * 0.025 + feature.wetness * 0.007 &&
+        basinWet < tuning.water + 0.16;
       if (basin || river) tiles[i] = TILE_WATER;
     }
   }
@@ -166,7 +186,12 @@ export function paintTerrainNoise(build: MapBuild): void {
       }
       const grove = warpedFbm(x * 0.3, y * 0.3, salt + 211);
       const detail = fbm(x * 1.55, y * 1.55, salt + 223);
-      if (grove > tuning.blockers - 0.05 - feature.blockers * 0.045 && detail > 0.5 && heights[i]! < 3 && tiles[i] !== TILE_WATER) {
+      if (
+        grove > tuning.blockers - 0.05 - feature.blockers * 0.045 &&
+        detail > 0.5 &&
+        heights[i]! < 3 &&
+        tiles[i] !== TILE_WATER
+      ) {
         tiles[i] = TILE_BLOCKED;
       }
     }
@@ -194,7 +219,17 @@ export function injectLandmark(build: MapBuild): void {
 }
 
 export function paintBaseFootprints(build: MapBuild): void {
-  const { tiles, heights, surfaces, width, height, playerStart, enemyStart, enemyOutposts, startClear } = build;
+  const {
+    tiles,
+    heights,
+    surfaces,
+    width,
+    height,
+    playerStart,
+    enemyStart,
+    enemyOutposts,
+    startClear,
+  } = build;
   // 4. Base Footprints
   paintBase(tiles, heights, surfaces, width, height, playerStart, startClear);
   paintBase(tiles, heights, surfaces, width, height, enemyStart, startClear);
@@ -206,18 +241,37 @@ export function paintBaseFootprints(build: MapBuild): void {
 }
 
 export function carveRoutes(build: MapBuild): void {
-  const { tiles, heights, surfaces, width, height, playerStart, enemyStart, salt, mission, profile, enemyOutposts } = build;
+  const {
+    tiles,
+    heights,
+    surfaces,
+    width,
+    height,
+    playerStart,
+    enemyStart,
+    salt,
+    mission,
+    profile,
+    enemyOutposts,
+  } = build;
   // 5. Landmark Relaxation & Route Carving
   relaxHeights(heights, tiles, width, height);
 
   const upperRoute = meanderingRoute(playerStart, enemyStart, width, height, salt + 7);
-  const lowerRoute = meanderingRoute(playerStart, enemyStart, width, height, salt + 17).map((point, i) =>
-    i === 0 || i === 4
-      ? point
-      : {
-          x: Math.max(2, Math.min(width - 3, point.x + Math.round(height * 0.12 * (i % 2 ? -1 : 1)))),
-          y: Math.max(2, Math.min(height - 3, point.y + Math.round(width * 0.08 * (i % 2 ? 1 : -1)))),
-        },
+  const lowerRoute = meanderingRoute(playerStart, enemyStart, width, height, salt + 17).map(
+    (point, i) =>
+      i === 0 || i === 4
+        ? point
+        : {
+            x: Math.max(
+              2,
+              Math.min(width - 3, point.x + Math.round(height * 0.12 * (i % 2 ? -1 : 1))),
+            ),
+            y: Math.max(
+              2,
+              Math.min(height - 3, point.y + Math.round(width * 0.08 * (i % 2 ? 1 : -1))),
+            ),
+          },
   );
   carveRoute(tiles, heights, surfaces, width, height, upperRoute, 1, salt);
   carveRoute(tiles, heights, surfaces, width, height, lowerRoute, 1, salt + 11);
@@ -255,13 +309,28 @@ export function carveRoutes(build: MapBuild): void {
         height,
         salt + 47 + index * 13,
       );
-      carveRoute(tiles, heights, surfaces, width, height, extractionRoute, 2, salt + 53 + index * 13);
+      carveRoute(
+        tiles,
+        heights,
+        surfaces,
+        width,
+        height,
+        extractionRoute,
+        2,
+        salt + 53 + index * 13,
+      );
       scenarioRoutePlans.push(extractionRoute);
     }
   }
   if (enemyOutposts && enemyOutposts.length > 0) {
     for (const [index, outpost] of enemyOutposts.entries()) {
-      const outpostRoute = meanderingRoute(playerStart, outpost, width, height, salt + 61 + index * 17);
+      const outpostRoute = meanderingRoute(
+        playerStart,
+        outpost,
+        width,
+        height,
+        salt + 61 + index * 17,
+      );
       carveRoute(tiles, heights, surfaces, width, height, outpostRoute, 1, salt + 71 + index * 17);
       scenarioRoutePlans.push(outpostRoute);
     }
@@ -293,8 +362,20 @@ export function carveRoutes(build: MapBuild): void {
     const fallbackRoute: Vec2[] = [
       playerStart,
       {
-        x: Math.max(2, Math.min(width - 3, Math.round((playerStart.x + enemyStart.x) / 2 - (dy / lineLength) * offset))),
-        y: Math.max(2, Math.min(height - 3, Math.round((playerStart.y + enemyStart.y) / 2 + (dx / lineLength) * offset))),
+        x: Math.max(
+          2,
+          Math.min(
+            width - 3,
+            Math.round((playerStart.x + enemyStart.x) / 2 - (dy / lineLength) * offset),
+          ),
+        ),
+        y: Math.max(
+          2,
+          Math.min(
+            height - 3,
+            Math.round((playerStart.y + enemyStart.y) / 2 + (dx / lineLength) * offset),
+          ),
+        ),
       },
       enemyStart,
     ];
@@ -302,10 +383,26 @@ export function carveRoutes(build: MapBuild): void {
     routePlans.push(fallbackRoute);
     const repairedLengths = routePlans.map(routeLength).sort((a, b) => a - b);
     if (repairedLengths[1]! > repairedLengths[0]! * 1.8) {
-      const oppositeRoute: Vec2[] = [playerStart, {
-        x: Math.max(2, Math.min(width - 3, Math.round((playerStart.x + enemyStart.x) / 2 + (dy / lineLength) * offset))),
-        y: Math.max(2, Math.min(height - 3, Math.round((playerStart.y + enemyStart.y) / 2 - (dx / lineLength) * offset))),
-      }, enemyStart];
+      const oppositeRoute: Vec2[] = [
+        playerStart,
+        {
+          x: Math.max(
+            2,
+            Math.min(
+              width - 3,
+              Math.round((playerStart.x + enemyStart.x) / 2 + (dy / lineLength) * offset),
+            ),
+          ),
+          y: Math.max(
+            2,
+            Math.min(
+              height - 3,
+              Math.round((playerStart.y + enemyStart.y) / 2 - (dx / lineLength) * offset),
+            ),
+          ),
+        },
+        enemyStart,
+      ];
       carveRoute(tiles, heights, surfaces, width, height, oppositeRoute, 1, salt + 403, false);
       routePlans.push(oppositeRoute);
     }
@@ -319,8 +416,20 @@ export function carveRoutes(build: MapBuild): void {
 
 export function placeResources(build: MapBuild): void {
   const {
-    tiles, heights, surfaces, resourceAmount, width, height, distances, landmark,
-    playerStart, enemyStart, rng, salt, profile, mission,
+    tiles,
+    heights,
+    surfaces,
+    resourceAmount,
+    width,
+    height,
+    distances,
+    landmark,
+    playerStart,
+    enemyStart,
+    rng,
+    salt,
+    profile,
+    mission,
   } = build;
   // 7. Landmark-Shaped Resource Distribution
   const resourceRace = profile.variant === "resourceRace";
@@ -347,7 +456,11 @@ export function placeResources(build: MapBuild): void {
     rng,
   );
 
-  for (const [routeSalt, carveSalt] of [[137, 149], [173, 185], [211, 223]] as const) {
+  for (const [routeSalt, carveSalt] of [
+    [137, 149],
+    [173, 185],
+    [211, 223],
+  ] as const) {
     if (surfaces.filter((s) => s === 1).length > width * 2) break;
     const extraRoute = meanderingRoute(playerStart, enemyStart, width, height, salt + routeSalt);
     carveRoute(tiles, heights, surfaces, width, height, extraRoute, 1, salt + carveSalt);
@@ -360,8 +473,21 @@ export function placeResources(build: MapBuild): void {
 
 export function finishGeneratedMap(build: MapBuild): GeneratedMap {
   const {
-    width, height, tiles, heights, surfaces, biome, resourceAmount, playerStart, enemyStart,
-    enemyOutposts, profile, topology, landmarkKind, routePlans, mission,
+    width,
+    height,
+    tiles,
+    heights,
+    surfaces,
+    biome,
+    resourceAmount,
+    playerStart,
+    enemyStart,
+    enemyOutposts,
+    profile,
+    topology,
+    landmarkKind,
+    routePlans,
+    mission,
   } = build;
   let distances = build.distances;
   // 8. Marked Targets (destroyMarked)
@@ -372,7 +498,7 @@ export function finishGeneratedMap(build: MapBuild): GeneratedMap {
   const towardPlayer = { x: -towardEnemy.x, y: -towardEnemy.y };
   const targetLateral = { x: -towardPlayer.y, y: towardPlayer.x };
   const markedSpots: Vec2[] = [];
-  const markCount = mission.win.kind === "destroyMarked" ? mission.win.targetCount ?? 1 : 0;
+  const markCount = mission.win.kind === "destroyMarked" ? (mission.win.targetCount ?? 1) : 0;
   const markedDepth = profile.variant === "siege" ? 12 : 10;
   const markedSpacing = profile.variant === "siege" ? 4 : 3;
 
@@ -380,8 +506,14 @@ export function finishGeneratedMap(build: MapBuild): GeneratedMap {
     const laneOffset = (m % 2 === 0 ? -1 : 1) * (profile.variant === "siege" ? 3 : 2);
     const spot = clampPoint(
       {
-        x: enemyStart.x + towardPlayer.x * (markedDepth + m * markedSpacing) + targetLateral.x * laneOffset,
-        y: enemyStart.y + towardPlayer.y * (markedDepth + m * markedSpacing) + targetLateral.y * laneOffset,
+        x:
+          enemyStart.x +
+          towardPlayer.x * (markedDepth + m * markedSpacing) +
+          targetLateral.x * laneOffset,
+        y:
+          enemyStart.y +
+          towardPlayer.y * (markedDepth + m * markedSpacing) +
+          targetLateral.y * laneOffset,
       },
       width,
       height,
@@ -401,7 +533,9 @@ export function finishGeneratedMap(build: MapBuild): GeneratedMap {
     14_000 + mission.index * 3_000,
     mission.win.kind === "harvestQuota" ? Math.ceil((mission.win.target ?? 0) * 1.5) : 0,
   );
-  const resourceTiles = resourceAmount.map((amount, i) => (amount > 0 ? i : -1)).filter((i) => i >= 0);
+  const resourceTiles = resourceAmount
+    .map((amount, i) => (amount > 0 ? i : -1))
+    .filter((i) => i >= 0);
   let totalResources = resourceAmount.reduce((sum, amount) => sum + amount, 0);
   for (let i = 0; totalResources < requiredResources && resourceTiles.length; i++) {
     const ri = resourceTiles[i % resourceTiles.length]!;
@@ -411,7 +545,14 @@ export function finishGeneratedMap(build: MapBuild): GeneratedMap {
   }
 
   distances = walkDistances(tiles, heights, width, height, playerStart);
-  const affordances = computeMapAffordances(distances, resourceAmount, routePlans, playerStart, enemyStart, width);
+  const affordances = computeMapAffordances(
+    distances,
+    resourceAmount,
+    routePlans,
+    playerStart,
+    enemyStart,
+    width,
+  );
 
   return {
     width,

@@ -1,5 +1,12 @@
-export { spriteCacheKey, terrainContentKey, invalidateTerrainCache } from "./renderer/cache";
-export { pickTile, visibleBuildingAt, entityAtPointer, isExtractableUnit, isLockedContactUnit, isScenarioTarget } from "./renderer/pick";
-export { drawTooltip, tooltipLines, tileTooltipLines } from "./renderer/tooltip";
+export { invalidateTerrainCache, spriteCacheKey, terrainContentKey } from "./renderer/cache";
 export { drawUnitHealthMeter } from "./renderer/health";
-export { renderWorld, type RenderExtras } from "./renderer/world";
+export {
+  entityAtPointer,
+  isExtractableUnit,
+  isLockedContactUnit,
+  isScenarioTarget,
+  pickTile,
+  visibleBuildingAt,
+} from "./renderer/pick";
+export { drawTooltip, tileTooltipLines, tooltipLines } from "./renderer/tooltip";
+export { type RenderExtras, renderWorld } from "./renderer/world";

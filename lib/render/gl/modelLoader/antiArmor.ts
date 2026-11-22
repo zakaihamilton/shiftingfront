@@ -10,7 +10,13 @@ export function buildAntiArmorModel(): UnitModel {
   const launcherTubes = createBoxMesh(-0.28, 0.16, 0.48, 0.32, 0.36, 0.82, 4);
   const rocketTips = createBoxMesh(0.32, 0.18, 0.52, 0.38, 0.34, 0.78, 3);
   const torsoMesh = mergeMeshes([
-    torso, pauldrons, head, heavyVisor, missilePack, launcherTubes, rocketTips,
+    torso,
+    pauldrons,
+    head,
+    heavyVisor,
+    missilePack,
+    launcherTubes,
+    rocketTips,
   ]);
 
   const legL = createBoxMesh(-0.12, -0.1, -0.45, 0.12, 0.1, 0.0, 4);

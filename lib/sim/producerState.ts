@@ -1,4 +1,12 @@
-import type { BuildingEntity, BuildingKind, Owner, SharedProducerKind, SharedProductionQueue, SimState, UnitKind } from "../types";
+import type {
+  BuildingEntity,
+  BuildingKind,
+  Owner,
+  SharedProducerKind,
+  SharedProductionQueue,
+  SimState,
+  UnitKind,
+} from "../types";
 
 export const SHARED_PRODUCER_KINDS: readonly SharedProducerKind[] = ["barracks", "factory"];
 
@@ -6,10 +14,18 @@ export function isSharedProducerKind(kind: BuildingKind | string): kind is Share
   return kind === "barracks" || kind === "factory";
 }
 
-function isReadyProducer(entity: SimState["entities"][number] | undefined, owner: Owner, kind: SharedProducerKind): entity is BuildingEntity {
+function isReadyProducer(
+  entity: SimState["entities"][number] | undefined,
+  owner: Owner,
+  kind: SharedProducerKind,
+): entity is BuildingEntity {
   return Boolean(
-    entity && entity.class === "building" && entity.kind === kind && entity.owner === owner &&
-    entity.hp > 0 && entity.constructing <= 0,
+    entity &&
+      entity.class === "building" &&
+      entity.kind === kind &&
+      entity.owner === owner &&
+      entity.hp > 0 &&
+      entity.constructing <= 0,
   );
 }
 
@@ -25,7 +41,8 @@ export function activeProducerFor(
   kind: SharedProducerKind,
 ): BuildingEntity | undefined {
   const activeId = state.activeProducerIds?.[owner]?.[kind];
-  const active = activeId === undefined ? undefined : state.entities.find((entity) => entity.id === activeId);
+  const active =
+    activeId === undefined ? undefined : state.entities.find((entity) => entity.id === activeId);
   if (isReadyProducer(active, owner, kind)) return active;
   return readyProducers(state, owner, kind)[0];
 }
@@ -37,7 +54,8 @@ export function ensureActiveProducer(
   kind: SharedProducerKind,
 ): BuildingEntity | undefined {
   const activeId = state.activeProducerIds?.[owner]?.[kind];
-  const active = activeId === undefined ? undefined : state.entities.find((entity) => entity.id === activeId);
+  const active =
+    activeId === undefined ? undefined : state.entities.find((entity) => entity.id === activeId);
   if (isReadyProducer(active, owner, kind)) return active;
 
   const next = readyProducers(state, owner, kind)[0];
@@ -53,9 +71,14 @@ export function ensureActiveProducer(
   return next;
 }
 
-export function activateProducer(state: SimState, owner: Owner, buildingId: number): BuildingEntity | undefined {
+export function activateProducer(
+  state: SimState,
+  owner: Owner,
+  buildingId: number,
+): BuildingEntity | undefined {
   const entity = state.entities.find((candidate) => candidate.id === buildingId);
-  if (!entity || !isSharedProducerKind(entity.kind) || !isReadyProducer(entity, owner, entity.kind)) return undefined;
+  if (!entity || !isSharedProducerKind(entity.kind) || !isReadyProducer(entity, owner, entity.kind))
+    return undefined;
   const owners = state.activeProducerIds ?? {};
   if (!state.activeProducerIds) state.activeProducerIds = owners;
   let choices = owners[owner];
@@ -67,27 +90,42 @@ export function activateProducer(state: SimState, owner: Owner, buildingId: numb
   return entity;
 }
 
-function legacyQueue(state: SimState, owner: Owner, kind: SharedProducerKind): SharedProductionQueue {
+function legacyQueue(
+  state: SimState,
+  owner: Owner,
+  kind: SharedProducerKind,
+): SharedProductionQueue {
   const sources = state.entities
-    .filter((entity) => entity.class === "building" && entity.kind === kind && entity.owner === owner && entity.hp > 0)
+    .filter(
+      (entity) =>
+        entity.class === "building" &&
+        entity.kind === kind &&
+        entity.owner === owner &&
+        entity.hp > 0,
+    )
     .sort((a, b) => a.id - b.id);
   const jobs: { kind: UnitKind; remaining: number; order: number }[] = [];
   const queue: UnitKind[] = [];
   sources.forEach((source, order) => {
-    if (source.producing) jobs.push({ kind: source.producing.kind, remaining: source.producing.remaining, order });
+    if (source.producing)
+      jobs.push({ kind: source.producing.kind, remaining: source.producing.remaining, order });
     queue.push(...(source.queue ?? []));
   });
   jobs.sort((a, b) => a.remaining - b.remaining || a.order - b.order);
   const [first, ...rest] = jobs;
   return {
     ...(first ? { producing: { kind: first.kind, remaining: first.remaining } } : {}),
-    ...(rest.length ? { resume: rest.map(({ kind: unit, remaining }) => ({ kind: unit, remaining })) } : {}),
+    ...(rest.length
+      ? { resume: rest.map(({ kind: unit, remaining }) => ({ kind: unit, remaining })) }
+      : {}),
     queue,
   };
 }
 
 /** Take the next preserved in-progress job, if a legacy migration parked one. */
-export function shiftSharedResume(queue: SharedProductionQueue): { kind: UnitKind; remaining: number } | undefined {
+export function shiftSharedResume(
+  queue: SharedProductionQueue,
+): { kind: UnitKind; remaining: number } | undefined {
   const resumed = queue.resume?.shift();
   if (queue.resume && queue.resume.length === 0) delete queue.resume;
   return resumed;
@@ -121,7 +159,13 @@ function absorbLegacyProducerJobs(
     existing.queue = [...legacy.queue];
   }
   for (const entity of state.entities) {
-    if (entity.class !== "building" || entity.kind !== kind || entity.owner !== owner || entity.hp <= 0) continue;
+    if (
+      entity.class !== "building" ||
+      entity.kind !== kind ||
+      entity.owner !== owner ||
+      entity.hp <= 0
+    )
+      continue;
     delete entity.producing;
     entity.queue = [];
   }
@@ -161,8 +205,9 @@ export function sharedProductionQueue(
 export function reconcileSharedProducerJobs(state: SimState): void {
   const seen = new Set<string>();
   for (const entity of state.entities) {
-    if (entity.class !== "building" || entity.hp <= 0 || !isSharedProducerKind(entity.kind)) continue;
-    if (!entity.producing && !(entity.queue?.length)) continue;
+    if (entity.class !== "building" || entity.hp <= 0 || !isSharedProducerKind(entity.kind))
+      continue;
+    if (!entity.producing && !entity.queue?.length) continue;
     const key = `${entity.owner}:${entity.kind}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -175,7 +220,7 @@ export function sharedProductionQueueSize(queue: SharedProductionQueue): number 
 }
 
 export function activeProducerIdsFor(state: SimState, owner: Owner): number[] {
-  return SHARED_PRODUCER_KINDS
-    .map((kind) => activeProducerFor(state, owner, kind)?.id)
-    .filter((id): id is number => id !== undefined);
+  return SHARED_PRODUCER_KINDS.map((kind) => activeProducerFor(state, owner, kind)?.id).filter(
+    (id): id is number => id !== undefined,
+  );
 }

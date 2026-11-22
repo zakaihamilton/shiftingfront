@@ -1,20 +1,40 @@
-import { BUILDING_STATS, footprintOf, isAirUnit, isSupportUnit, isUnitAvailable } from "../../catalog";
-import { isUnitEntity, type Entity, type MissionDirectorPhase, type Owner, type SimState, type UnitKind } from "../../types";
-import type { Rng } from "../../seed/rng";
-import { adaptiveAirCapacity, adaptiveCombatWant, retreatEnterHealth } from "../proficiency";
+import {
+  BUILDING_STATS,
+  footprintOf,
+  isAirUnit,
+  isSupportUnit,
+  isUnitAvailable,
+} from "../../catalog";
 import type { MissionObjectiveContract, MissionProfileContract } from "../../gen/profile";
-import { byId, distToEntity, findBuildSite, powerFor, spawnBuilding, trySpawnUnit } from "../world";
-import { tryBuildAntiAir, tryBuildForwardInfrastructure, tryBuildPower, tryBuildRefinery, tryBuildRunway, tryBuildTurret } from "./building";
-import { assignAttack, assignAssault, assignMove, sendHome } from "./combat";
-import { queueUnit, shouldAutoRepair, shouldRetreat } from "./helpers";
-import { nearestKnownPlayer } from "./visibility";
-import { buildInfluenceMap } from "./influence";
-import { isActiveScout, updateScouts } from "./scouting";
-import { aiBehavior, setAiBehavior } from "./ownerState";
+import type { Rng } from "../../seed/rng";
+import {
+  type Entity,
+  isUnitEntity,
+  type MissionDirectorPhase,
+  type Owner,
+  type SimState,
+  type UnitKind,
+} from "../../types";
 import { isCombatTarget } from "../combat/grid";
-import { activeProducerFor } from "../producerState";
 import type { EnemyDoctrine } from "../fieldIdentity";
+import { activeProducerFor } from "../producerState";
+import { adaptiveAirCapacity, adaptiveCombatWant, retreatEnterHealth } from "../proficiency";
+import { byId, distToEntity, findBuildSite, powerFor, spawnBuilding, trySpawnUnit } from "../world";
+import {
+  tryBuildAntiAir,
+  tryBuildForwardInfrastructure,
+  tryBuildPower,
+  tryBuildRefinery,
+  tryBuildRunway,
+  tryBuildTurret,
+} from "./building";
+import { assignAssault, assignAttack, assignMove, sendHome } from "./combat";
 import { guardResourceLane, guardScenarioObjectives } from "./guards";
+import { queueUnit, shouldAutoRepair, shouldRetreat } from "./helpers";
+import { buildInfluenceMap } from "./influence";
+import { aiBehavior, setAiBehavior } from "./ownerState";
+import { isActiveScout, updateScouts } from "./scouting";
+import { nearestKnownPlayer } from "./visibility";
 
 export const YARD_DEFENSE_RANGE = 14;
 
@@ -51,15 +71,35 @@ export type AiOwnerTurn = {
 
 export function runProductionWindow(turn: AiOwnerTurn): void {
   const {
-    state, aiOwner, enemyBuildings, phase, knownPlayers, opponents, yard, hasHarvester,
-    difficultyMission, shift, rng, playerTanks, playerInfantry, playerAntiArmor, doctrine,
-    medicCount, repairTruckCount, woundedHumans, woundedVehicles, enemyAircraft, productionWindow,
+    state,
+    aiOwner,
+    enemyBuildings,
+    phase,
+    knownPlayers,
+    opponents,
+    yard,
+    hasHarvester,
+    difficultyMission,
+    shift,
+    rng,
+    playerTanks,
+    playerInfantry,
+    playerAntiArmor,
+    doctrine,
+    medicCount,
+    repairTruckCount,
+    woundedHumans,
+    woundedVehicles,
+    enemyAircraft,
+    productionWindow,
     powerDeficit,
   } = turn;
   if (productionWindow || powerDeficit) {
     const factory = activeProducerFor(state, aiOwner, "factory");
     const barracks = activeProducerFor(state, aiOwner, "barracks");
-    const runway = enemyBuildings.find((e) => e.kind === "runway" && e.constructing === 0 && !e.producing);
+    const runway = enemyBuildings.find(
+      (e) => e.kind === "runway" && e.constructing === 0 && !e.producing,
+    );
     const runwayCount = enemyBuildings.filter((e) => e.kind === "runway").length;
     // Introduce dedicated air infrastructure from mission 2 onward, after the
     // player has completed the opening mission and can answer the new threat.
@@ -75,12 +115,21 @@ export function runProductionWindow(turn: AiOwnerTurn): void {
     );
     const producer = want === "infantry" || want === "antiArmor" ? barracks : factory;
     const supportWant =
-      doctrine?.supportFirst && medicCount === 0 && isUnitAvailable("medic", state.missionIndex) ? "medic"
-        : doctrine?.supportFirst && repairTruckCount === 0 && isUnitAvailable("repairTruck", state.missionIndex) ? "repairTruck"
-          : woundedHumans && medicCount === 0 && isUnitAvailable("medic", state.missionIndex) ? "medic"
-            : woundedVehicles && repairTruckCount === 0 && isUnitAvailable("repairTruck", state.missionIndex) ? "repairTruck"
+      doctrine?.supportFirst && medicCount === 0 && isUnitAvailable("medic", state.missionIndex)
+        ? "medic"
+        : doctrine?.supportFirst &&
+            repairTruckCount === 0 &&
+            isUnitAvailable("repairTruck", state.missionIndex)
+          ? "repairTruck"
+          : woundedHumans && medicCount === 0 && isUnitAvailable("medic", state.missionIndex)
+            ? "medic"
+            : woundedVehicles &&
+                repairTruckCount === 0 &&
+                isUnitAvailable("repairTruck", state.missionIndex)
+              ? "repairTruck"
               : undefined;
-    const supportProducer = supportWant === "medic" ? barracks : supportWant === "repairTruck" ? factory : undefined;
+    const supportProducer =
+      supportWant === "medic" ? barracks : supportWant === "repairTruck" ? factory : undefined;
     const power = powerFor(state, aiOwner);
     if (power < 0) {
       // Restore the grid before expanding. If a plant is already under
@@ -88,17 +137,35 @@ export function runProductionWindow(turn: AiOwnerTurn): void {
       // falling through would spend the remaining budget on unrelated
       // barracks while the deficit is still active.
       tryBuildPower(state, yard.x, yard.y, aiOwner);
-    } else if (phase !== "opening" && tryBuildForwardInfrastructure(state, yard, knownPlayers, aiOwner, opponents)) {
+    } else if (
+      phase !== "opening" &&
+      tryBuildForwardInfrastructure(state, yard, knownPlayers, aiOwner, opponents)
+    ) {
       // Contest a remote resource lane before committing to another assault wave.
     } else if (!hasRefinery && tryBuildRefinery(state, yard.x, yard.y, aiOwner)) {
       // Keep ore income before spending on combat.
     } else if (!hasHarvester && factory && queueUnit(state, factory, "harvester", aiOwner)) {
       // Replace a lost harvester before more combat units.
-    } else if (airEnabled && phase !== "opening" && runwayCount < desiredRunways && tryBuildRunway(state, yard, desiredRunways, aiOwner)) {
+    } else if (
+      airEnabled &&
+      phase !== "opening" &&
+      runwayCount < desiredRunways &&
+      tryBuildRunway(state, yard, desiredRunways, aiOwner)
+    ) {
       // Establish dedicated air infrastructure before committing to a sortie.
-    } else if (airEnabled && phase !== "opening" && runway && enemyAircraft.length < aircraftCap && queueUnit(state, runway, "strikePlane", aiOwner)) {
+    } else if (
+      airEnabled &&
+      phase !== "opening" &&
+      runway &&
+      enemyAircraft.length < aircraftCap &&
+      queueUnit(state, runway, "strikePlane", aiOwner)
+    ) {
       // Runways each service one finite-ammunition strike plane.
-    } else if (supportWant && supportProducer && queueUnit(state, supportProducer, supportWant, aiOwner)) {
+    } else if (
+      supportWant &&
+      supportProducer &&
+      queueUnit(state, supportProducer, supportWant, aiOwner)
+    ) {
       // Add one support unit when the army has a matching damaged domain.
     } else if (producer && queueUnit(state, producer, want, aiOwner)) {
       // Counter-produce against the player mix.
@@ -106,7 +173,14 @@ export function runProductionWindow(turn: AiOwnerTurn): void {
       const spot = findBuildSite(state, "barracks", yard.x - 3, yard.y, 12, aiOwner);
       if (spot) {
         state.credits[aiOwner] -= BUILDING_STATS.barracks.cost;
-        spawnBuilding(state, aiOwner, "barracks", spot.x, spot.y, BUILDING_STATS.barracks.buildTicks);
+        spawnBuilding(
+          state,
+          aiOwner,
+          "barracks",
+          spot.x,
+          spot.y,
+          BUILDING_STATS.barracks.buildTicks,
+        );
       }
     } else if (state.credits[aiOwner] >= BUILDING_STATS.factory.cost && !factory) {
       const spot = findBuildSite(state, "factory", yard.x, yard.y - 3, 12, aiOwner);
@@ -122,10 +196,21 @@ export function runProductionWindow(turn: AiOwnerTurn): void {
 
 export function spawnHoldLineReinforcements(turn: AiOwnerTurn): void {
   const { shift, state, holdLineAssaultEvery, yard, rng, enemyUnits, aiOwner } = turn;
-  if (shift >= 0 && state.win.kind === "holdTheLine" && state.tick > 0 && state.tick % holdLineAssaultEvery === 0) {
+  if (
+    shift >= 0 &&
+    state.win.kind === "holdTheLine" &&
+    state.tick > 0 &&
+    state.tick % holdLineAssaultEvery === 0
+  ) {
     const fp = footprintOf("constructionYard");
     const spot = { x: yard.x - 1, y: yard.y + fp.h };
-    const spawned = trySpawnUnit(state, aiOwner, rng.chance(0.45) ? "tank" : "infantry", spot.x, spot.y);
+    const spawned = trySpawnUnit(
+      state,
+      aiOwner,
+      rng.chance(0.45) ? "tank" : "infantry",
+      spot.x,
+      spot.y,
+    );
     if (spawned) enemyUnits.push(spawned);
     if (state.missionIndex >= 4) {
       const extraSpawned = trySpawnUnit(state, aiOwner, "infantry", spot.x, spot.y + 1);
@@ -136,9 +221,21 @@ export function spawnHoldLineReinforcements(turn: AiOwnerTurn): void {
 
 export function directOwnerForces(turn: AiOwnerTurn): void {
   const {
-    state, yard, knownPlayers, aiOwner, opponents, enemyBuildings, doctrine, timedScenario,
-    recoveryRoutes, holdLineAssaultEvery, profileContract, objectiveContract, enemyUnits,
-    enemyAircraft, shift,
+    state,
+    yard,
+    knownPlayers,
+    aiOwner,
+    opponents,
+    enemyBuildings,
+    doctrine,
+    timedScenario,
+    recoveryRoutes,
+    holdLineAssaultEvery,
+    profileContract,
+    objectiveContract,
+    enemyUnits,
+    enemyAircraft,
+    shift,
   } = turn;
   const playerYard = nearestKnownPlayer(
     state,
@@ -148,13 +245,30 @@ export function directOwnerForces(turn: AiOwnerTurn): void {
     aiOwner,
     opponents,
   );
-  const pressureScale = timedScenario ? recoveryRoutes ? 4 : 2 : (!state.multiplayer && state.win.kind === "decapitate" && state.missionIndex < 2) ? 4 : 1;
-  const waveEvery = Math.max(240, Math.round((holdLineAssaultEvery
-    + (profileContract?.assaultEveryOffset ?? 0)
-    + (objectiveContract?.assaultDelay ?? 0)) * pressureScale * (doctrine?.assaultScale ?? 1)));
+  const pressureScale = timedScenario
+    ? recoveryRoutes
+      ? 4
+      : 2
+    : !state.multiplayer && state.win.kind === "decapitate" && state.missionIndex < 2
+      ? 4
+      : 1;
+  const waveEvery = Math.max(
+    240,
+    Math.round(
+      (holdLineAssaultEvery +
+        (profileContract?.assaultEveryOffset ?? 0) +
+        (objectiveContract?.assaultDelay ?? 0)) *
+        pressureScale *
+        (doctrine?.assaultScale ?? 1),
+    ),
+  );
   for (const b of enemyBuildings) {
     if (b.constructing > 0 || b.hp <= 0) continue;
-    const directorateRepair = doctrine?.thickTurrets === true && b.kind !== "objective" && !b.marked && b.hp < b.maxHp * 0.85;
+    const directorateRepair =
+      doctrine?.thickTurrets === true &&
+      b.kind !== "objective" &&
+      !b.marked &&
+      b.hp < b.maxHp * 0.85;
     if (b.hp < b.maxHp && (shouldAutoRepair(state, b) || directorateRepair)) b.repairing = true;
     else if (!shouldAutoRepair(state, b)) b.repairing = false;
   }
@@ -162,9 +276,14 @@ export function directOwnerForces(turn: AiOwnerTurn): void {
   const threat = nearestKnownPlayer(
     state,
     yard,
-    (e) => opponents.includes(e.owner) && isUnitEntity(e) && isCombatTarget(state, e) && e.kind !== "harvester" && !isSupportUnit(e.kind) && (
-      (!e.neutral || e.scenarioRole === "convoy")
-    ) && !(e.scenarioRole === "convoy" && state.runtime?.convoyStartTick !== undefined),
+    (e) =>
+      opponents.includes(e.owner) &&
+      isUnitEntity(e) &&
+      isCombatTarget(state, e) &&
+      e.kind !== "harvester" &&
+      !isSupportUnit(e.kind) &&
+      (!e.neutral || e.scenarioRole === "convoy") &&
+      !(e.scenarioRole === "convoy" && state.runtime?.convoyStartTick !== undefined),
     knownPlayers,
     aiOwner,
     opponents,
@@ -172,15 +291,31 @@ export function directOwnerForces(turn: AiOwnerTurn): void {
   const airThreat = nearestKnownPlayer(
     state,
     yard,
-    (e) => opponents.includes(e.owner) && isUnitEntity(e) && isAirUnit(e.kind) && e.hp > 0 && isCombatTarget(state, e),
+    (e) =>
+      opponents.includes(e.owner) &&
+      isUnitEntity(e) &&
+      isAirUnit(e.kind) &&
+      e.hp > 0 &&
+      isCombatTarget(state, e),
     knownPlayers,
     aiOwner,
     opponents,
   );
   const units = enemyUnits;
-  const averageHealth = units.length ? units.reduce((sum, unit) => sum + unit.hp / unit.maxHp, 0) / units.length : 1;
-  if (shouldRetreat(state, averageHealth, aiOwner, retreatEnterHealth(shift) + (doctrine?.retreatEnterBonus ?? 0))) setAiBehavior(state, aiOwner, "retreat");
-  else if (threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE) setAiBehavior(state, aiOwner, "defense");
+  const averageHealth = units.length
+    ? units.reduce((sum, unit) => sum + unit.hp / unit.maxHp, 0) / units.length
+    : 1;
+  if (
+    shouldRetreat(
+      state,
+      averageHealth,
+      aiOwner,
+      retreatEnterHealth(shift) + (doctrine?.retreatEnterBonus ?? 0),
+    )
+  )
+    setAiBehavior(state, aiOwner, "retreat");
+  else if (threat && distToEntity(yard, threat) <= YARD_DEFENSE_RANGE)
+    setAiBehavior(state, aiOwner, "defense");
   else if (playerYard && state.tick >= waveEvery) setAiBehavior(state, aiOwner, "assault");
   else if (units.length > 0 && state.tick % 180 === 0) setAiBehavior(state, aiOwner, "regroup");
   else setAiBehavior(state, aiOwner, "economy");
@@ -200,22 +335,34 @@ export function directOwnerForces(turn: AiOwnerTurn): void {
       assignAttack(state, u, threat);
     }
   } else if (behavior === "assault" && playerYard && state.tick > 0) {
-    assignAssault(state, units, yard, playerYard, state.tick % waveEvery === 0, knownPlayers, aiOwner, opponents, shift);
+    assignAssault(
+      state,
+      units,
+      yard,
+      playerYard,
+      state.tick % waveEvery === 0,
+      knownPlayers,
+      aiOwner,
+      opponents,
+      shift,
+    );
     for (const aircraft of enemyAircraft) {
       if (aircraft.attackTarget !== undefined && byId(state, aircraft.attackTarget)) continue;
-      const aircraftTarget = nearestKnownPlayer(
-        state,
-        aircraft,
-        (entity) => opponents.includes(entity.owner)
-          && entity.class === "unit"
-          && entity.kind !== "harvester"
-          && !isAirUnit(entity.kind)
-          && entity.hp > 0
-          && isCombatTarget(state, entity),
-        knownPlayers,
-        aiOwner,
-        opponents,
-      ) ?? playerYard;
+      const aircraftTarget =
+        nearestKnownPlayer(
+          state,
+          aircraft,
+          (entity) =>
+            opponents.includes(entity.owner) &&
+            entity.class === "unit" &&
+            entity.kind !== "harvester" &&
+            !isAirUnit(entity.kind) &&
+            entity.hp > 0 &&
+            isCombatTarget(state, entity),
+          knownPlayers,
+          aiOwner,
+          opponents,
+        ) ?? playerYard;
       assignAttack(state, aircraft, aircraftTarget);
     }
   } else if (behavior === "retreat") {
@@ -230,7 +377,10 @@ export function directOwnerForces(turn: AiOwnerTurn): void {
       sendHome(state, u, yard);
     }
     guardScenarioObjectives(state, units);
-    if (!state.runtime || (state.runtime.kind !== "sabotage" && state.runtime.kind !== "destroyMarked")) {
+    if (
+      !state.runtime ||
+      (state.runtime.kind !== "sabotage" && state.runtime.kind !== "destroyMarked")
+    ) {
       guardResourceLane(state, units, yard, knownPlayers, aiOwner, opponents);
     }
     // Escort has a hard completion deadline and its combat reserve must stay

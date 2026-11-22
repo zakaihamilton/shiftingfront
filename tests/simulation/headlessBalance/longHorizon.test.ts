@@ -13,7 +13,10 @@ describe("headless balance long horizons", () => {
       const referenceCommander = new ArchetypeCommander(strategy);
       const headlessCommander = new ArchetypeCommander(strategy);
       const referenceRunner = createScenarioRunner(reference);
-      const headlessRunner = createScenarioRunner(headless, { collectEvents: false, updateFog: false });
+      const headlessRunner = createScenarioRunner(headless, {
+        collectEvents: false,
+        updateFog: false,
+      });
 
       for (let i = 0; i < 1_200 && reference.result === "playing"; i += 1) {
         const referenceCommands = referenceCommander.plan(reference);

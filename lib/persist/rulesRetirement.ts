@@ -1,8 +1,10 @@
 import type { CampaignProgress, GameplayRulesVersion, SimState } from "../types";
 
 export const JOURNAL_PREFIX = "shiftingfront:journal:";
-export const RULES_REBUILD_NOTICE = "An in-progress operation from the previous campaign rules was rebuilt. Campaign progress was kept.";
-export const LEGACY_RULES_IMPORT_NOTICE = "That save used the previous campaign rules. Its battle was retired and its campaign record was kept.";
+export const RULES_REBUILD_NOTICE =
+  "An in-progress operation from the previous campaign rules was rebuilt. Campaign progress was kept.";
+export const LEGACY_RULES_IMPORT_NOTICE =
+  "That save used the previous campaign rules. Its battle was retired and its campaign record was kept.";
 
 export type RetiredSlot = {
   id: string;
@@ -48,7 +50,10 @@ function blankProgress(seed: number): CampaignProgress {
   };
 }
 
-function maxStats(left: Record<string, number>, right: Record<string, number>): Record<string, number> {
+function maxStats(
+  left: Record<string, number>,
+  right: Record<string, number>,
+): Record<string, number> {
   const merged = { ...left };
   for (const [key, value] of Object.entries(right)) {
     if (!/^[0-5]$/.test(key) || !Number.isFinite(value) || value < 0) continue;
@@ -57,12 +62,18 @@ function maxStats(left: Record<string, number>, right: Record<string, number>): 
   return merged;
 }
 
-export function mergeCampaignProgress(left: CampaignProgress, right: CampaignProgress): CampaignProgress {
+export function mergeCampaignProgress(
+  left: CampaignProgress,
+  right: CampaignProgress,
+): CampaignProgress {
   if (left.seed !== right.seed) return left;
   const completed = [...new Set([...left.completedMissions, ...right.completedMissions])]
     .filter((mission) => mission >= 0 && mission <= 5)
     .sort((a, b) => a - b);
-  const unlockedMission = Math.min(5, Math.max(left.unlockedMission, right.unlockedMission, ...completed, 0));
+  const unlockedMission = Math.min(
+    5,
+    Math.max(left.unlockedMission, right.unlockedMission, ...completed, 0),
+  );
   return {
     version: 1,
     seed: left.seed,
@@ -71,7 +82,8 @@ export function mergeCampaignProgress(left: CampaignProgress, right: CampaignPro
     completedMissions: completed.filter((mission) => mission <= unlockedMission),
     medals: maxStats(left.medals, right.medals),
     bestScores: maxStats(left.bestScores, right.bestScores),
-    gameplayRulesVersion: left.gameplayRulesVersion === 2 || right.gameplayRulesVersion === 2 ? 2 : 1,
+    gameplayRulesVersion:
+      left.gameplayRulesVersion === 2 || right.gameplayRulesVersion === 2 ? 2 : 1,
     deploymentEdge: right.deploymentEdge ?? left.deploymentEdge,
   };
 }
@@ -99,16 +111,29 @@ export function progressAfterRetiredBattlefield(
  * Returns null when the seed is already on the current rules.
  */
 export function planSeedRetirement(snapshot: RulesRetirementSnapshot): RulesRetirementPlan | null {
-  const legacySlots = snapshot.slots.filter((slot) => !isCurrentGameplayRules(slot.state.gameplayRulesVersion));
-  const legacyAutosave = snapshot.autosave && !isCurrentGameplayRules(snapshot.autosave.gameplayRulesVersion) ? snapshot.autosave : null;
-  const legacyJournal = snapshot.journal && !isCurrentGameplayRules(snapshot.journal.state.gameplayRulesVersion) ? snapshot.journal : null;
-  const legacyProgress = snapshot.progress !== null && !isCurrentGameplayRules(snapshot.progress.gameplayRulesVersion);
+  const legacySlots = snapshot.slots.filter(
+    (slot) => !isCurrentGameplayRules(slot.state.gameplayRulesVersion),
+  );
+  const legacyAutosave =
+    snapshot.autosave && !isCurrentGameplayRules(snapshot.autosave.gameplayRulesVersion)
+      ? snapshot.autosave
+      : null;
+  const legacyJournal =
+    snapshot.journal && !isCurrentGameplayRules(snapshot.journal.state.gameplayRulesVersion)
+      ? snapshot.journal
+      : null;
+  const legacyProgress =
+    snapshot.progress !== null && !isCurrentGameplayRules(snapshot.progress.gameplayRulesVersion);
   if (legacySlots.length === 0 && !legacyAutosave && !legacyJournal && !legacyProgress) return null;
 
   let progress = snapshot.progress ?? blankProgress(snapshot.seed);
   if (legacyJournal) progress = mergeCampaignProgress(progress, legacyJournal.progress);
   for (const slot of legacySlots) progress = mergeCampaignProgress(progress, slot.campaign);
-  const battlefields = [legacyAutosave, legacyJournal?.state, ...legacySlots.map((slot) => slot.state)];
+  const battlefields = [
+    legacyAutosave,
+    legacyJournal?.state,
+    ...legacySlots.map((slot) => slot.state),
+  ];
   for (const battlefield of battlefields) {
     if (!battlefield) continue;
     progress = {
@@ -121,7 +146,9 @@ export function planSeedRetirement(snapshot: RulesRetirementSnapshot): RulesReti
     version: 1,
     seed: snapshot.seed,
     gameplayRulesVersion: 2,
-    completedMissions: progress.completedMissions.filter((mission) => mission <= progress.unlockedMission),
+    completedMissions: progress.completedMissions.filter(
+      (mission) => mission <= progress.unlockedMission,
+    ),
   };
   return {
     progress,

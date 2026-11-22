@@ -1,17 +1,21 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { renderPixelRatio } from "../../components/game/renderDimensions";
 import { canvasPointerPos } from "../../components/game/hooks/canvasPointer";
+import { renderPixelRatio } from "../../components/game/renderDimensions";
 import { createCamera, TILE_H, tileToScreen } from "../../lib/iso";
-import { makeFixture } from "../../lib/sim/fixtures";
 import { cameraPanBounds, focusCameraAtTile } from "../../lib/render/camera";
-import { pickTile } from "../../lib/render/renderPicking";
 import {
-  canvasViewport, drawRenderCanvas, prepareRenderContext, resizeRenderCanvas, transformedCanvasPoint,
+  canvasViewport,
+  drawRenderCanvas,
+  prepareRenderContext,
+  resizeRenderCanvas,
+  transformedCanvasPoint,
 } from "../../lib/render/canvasViewport";
+import { pickTile } from "../../lib/render/renderPicking";
+import { makeFixture } from "../../lib/sim/fixtures";
 
 describe("display density and logical game coordinates", () => {
-  it.each([0.5, 1, 1.5, 2])("preserves camera focus and tile picking at %s× density", density => {
+  it.each([0.5, 1, 1.5, 2])("preserves camera focus and tile picking at %s× density", (density) => {
     const canvas = document.createElement("canvas");
     const viewport = { width: 800, height: 600 };
     resizeRenderCanvas(canvas, viewport, density);
@@ -27,7 +31,7 @@ describe("display density and logical game coordinates", () => {
     const point = canvasPointerPos({
       currentTarget: canvas,
       clientX: rect.left + tile.x,
-      clientY: rect.top + tile.y + TILE_H * camera.zoom / 2,
+      clientY: rect.top + tile.y + (TILE_H * camera.zoom) / 2,
     });
     expect(point.x).toBeCloseTo(400);
     expect(pickTile(state, point.x, point.y, camera)).toEqual({ x: 20, y: 20 });
@@ -64,7 +68,9 @@ describe("display density and logical game coordinates", () => {
     for (const touch of [false, true]) {
       const viewport = { width: 3840, height: 2160 };
       const ratio = renderPixelRatio(viewport, 3, touch);
-      expect(viewport.width * viewport.height * ratio ** 2).toBeLessThanOrEqual((touch ? 1_500_000 : 4_000_000) + 1);
+      expect(viewport.width * viewport.height * ratio ** 2).toBeLessThanOrEqual(
+        (touch ? 1_500_000 : 4_000_000) + 1,
+      );
     }
     expect(renderPixelRatio({ width: 800, height: 600 }, NaN, false)).toBe(1);
   });

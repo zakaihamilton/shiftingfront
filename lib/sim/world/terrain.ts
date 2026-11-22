@@ -1,8 +1,13 @@
 import { footprintOf, isAirUnit } from "../../catalog";
-import { isBuildingEntity, type SimState } from "../../types";
-import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../types";
-import { heightAt, inBounds, tileAt, unitOccupied } from "./queries";
+import {
+  isBuildingEntity,
+  type SimState,
+  TILE_BLOCKED,
+  TILE_RESOURCE,
+  TILE_WATER,
+} from "../../types";
 import { entitiesFor } from "../entities";
+import { heightAt, inBounds, tileAt, unitOccupied } from "./queries";
 
 export type TerrainAccess = {
   traversable: boolean;
@@ -35,7 +40,12 @@ export type StaticNavigation = {
 const navigationCache = new WeakMap<SimState, StaticNavigation>();
 const invalidatedBuildingIds = new WeakMap<SimState, Set<number>>();
 
-function geometryKey(width: number, height: number, walkable: Uint8Array, heights: number[]): string {
+function geometryKey(
+  width: number,
+  height: number,
+  walkable: Uint8Array,
+  heights: number[],
+): string {
   let hash = 2166136261;
   for (let index = 0; index < walkable.length; index++) {
     hash = Math.imul(hash ^ walkable[index]!, 16777619);
@@ -66,7 +76,9 @@ export function staticNavigationFor(state: SimState): StaticNavigation {
   const cached = navigationCache.get(state);
   if (
     cached &&
-    cached.seed === state.seed && cached.missionIndex === state.missionIndex && cached.biome === state.biome &&
+    cached.seed === state.seed &&
+    cached.missionIndex === state.missionIndex &&
+    cached.biome === state.biome &&
     cached.revision === revision &&
     cached.width === state.width &&
     cached.height === state.height &&
@@ -131,7 +143,8 @@ export function isStaticWalkable(state: SimState, x: number, y: number): boolean
 }
 
 export function isWalkable(state: SimState, x: number, y: number): boolean {
-  if (!inBounds(state, x, y) || staticNavigationFor(state).walkable[y * state.width + x] !== 1) return false;
+  if (!inBounds(state, x, y) || staticNavigationFor(state).walkable[y * state.width + x] !== 1)
+    return false;
   if (unitOccupied(state, x, y)) return false;
   return true;
 }
@@ -142,7 +155,11 @@ export function makeUnitOccupancy(state: SimState, ignoreId?: number): Uint8Arra
 }
 
 /** Fill a caller-owned occupancy buffer so movement can reuse it every tick. */
-export function fillUnitOccupancy(state: SimState, occupancy: Uint8Array, ignoreId?: number): Uint8Array {
+export function fillUnitOccupancy(
+  state: SimState,
+  occupancy: Uint8Array,
+  ignoreId?: number,
+): Uint8Array {
   occupancy.fill(0);
   for (const e of entitiesFor(state)) {
     if (e.hp <= 0 || e.class !== "unit" || isAirUnit(e.kind) || e.id === ignoreId) continue;

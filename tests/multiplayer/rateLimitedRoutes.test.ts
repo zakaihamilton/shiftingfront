@@ -1,15 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { POST as createRoom } from "@/app/api/multiplayer/rooms/route";
-import { POST as joinRoom } from "@/app/api/multiplayer/rooms/join/route";
 import { POST as handshake } from "@/app/api/multiplayer/handshake/route";
 import { POST as peerCredentials } from "@/app/api/multiplayer/peer-credentials/route";
+import { POST as joinRoom } from "@/app/api/multiplayer/rooms/join/route";
+import { POST as createRoom } from "@/app/api/multiplayer/rooms/route";
 import { MULTIPLAYER_RATE_LIMITS } from "@/lib/multiplayer/server/rateLimit";
 
 const { checkRateLimitMock } = vi.hoisted(() => ({ checkRateLimitMock: vi.fn() }));
 vi.mock("@vercel/firewall", () => ({ checkRateLimit: checkRateLimitMock }));
 
 const envKeys = ["NODE_ENV", "VERCEL", "MULTIPLAYER_EDGE_RATE_LIMIT_CONFIGURED"] as const;
-const savedEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]])) as Record<typeof envKeys[number], string | undefined>;
+const savedEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]])) as Record<
+  (typeof envKeys)[number],
+  string | undefined
+>;
 
 beforeEach(() => {
   Reflect.set(process.env, "NODE_ENV", "production");
@@ -33,7 +36,11 @@ describe("multiplayer route rate-limit gates", () => {
       { key: "createRoom", handler: createRoom, path: "/api/multiplayer/rooms" },
       { key: "joinRoom", handler: joinRoom, path: "/api/multiplayer/rooms/join" },
       { key: "handshake", handler: handshake, path: "/api/multiplayer/handshake" },
-      { key: "peerCredentials", handler: peerCredentials, path: "/api/multiplayer/peer-credentials" },
+      {
+        key: "peerCredentials",
+        handler: peerCredentials,
+        path: "/api/multiplayer/peer-credentials",
+      },
     ] as const;
 
     for (const endpoint of endpoints) {
@@ -46,19 +53,25 @@ describe("multiplayer route rate-limit gates", () => {
 
       const response = await endpoint.handler(request);
       expect(response.status).toBe(429);
-      expect(response.headers.get("Retry-After")).toBe(String(MULTIPLAYER_RATE_LIMITS[endpoint.key].retryAfterSeconds));
+      expect(response.headers.get("Retry-After")).toBe(
+        String(MULTIPLAYER_RATE_LIMITS[endpoint.key].retryAfterSeconds),
+      );
       expect(await response.json()).toEqual({ error: "rate_limited" });
-      expect(checkRateLimitMock).toHaveBeenCalledWith(MULTIPLAYER_RATE_LIMITS[endpoint.key].id, { request });
+      expect(checkRateLimitMock).toHaveBeenCalledWith(MULTIPLAYER_RATE_LIMITS[endpoint.key].id, {
+        request,
+      });
       expect(checkRateLimitMock).toHaveBeenCalledTimes(1);
     }
   });
 
   it("fails closed when a documented Firewall rule is missing", async () => {
     checkRateLimitMock.mockResolvedValue({ rateLimited: false, error: "not-found" });
-    const response = await peerCredentials(new Request("https://shiftingfront.test/api/multiplayer/peer-credentials", {
-      method: "POST",
-      body: "not-json",
-    }));
+    const response = await peerCredentials(
+      new Request("https://shiftingfront.test/api/multiplayer/peer-credentials", {
+        method: "POST",
+        body: "not-json",
+      }),
+    );
 
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: "rate_limit_unavailable" });

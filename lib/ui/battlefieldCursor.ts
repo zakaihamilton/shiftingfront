@@ -1,8 +1,14 @@
-import { canPlaceBuilding, isStaticWalkable } from "@/lib/sim/world";
+import { BUILDING_DEFINITIONS } from "@/lib/catalog";
 import { canRepair } from "@/lib/sim/repair";
 import { canSell } from "@/lib/sim/sell";
-import { BUILDING_DEFINITIONS } from "@/lib/catalog";
-import { isBuildingEntity, TILE_RESOURCE, type BuildingKind, type Entity, type SimState } from "@/lib/types";
+import { canPlaceBuilding, isStaticWalkable } from "@/lib/sim/world";
+import {
+  type BuildingKind,
+  type Entity,
+  isBuildingEntity,
+  type SimState,
+  TILE_RESOURCE,
+} from "@/lib/types";
 
 export type BattlefieldCursor = "crosshair" | "pointer" | "cell" | "not-allowed";
 
@@ -44,19 +50,24 @@ export function battlefieldCursor({
   const owner = state.viewOwner ?? 0;
   if (placeKind) {
     if (!hoverTile) return "cell";
-    return canPlaceBuilding(state, placeKind, hoverTile.x, hoverTile.y, owner) ? "cell" : "not-allowed";
+    return canPlaceBuilding(state, placeKind, hoverTile.x, hoverTile.y, owner)
+      ? "cell"
+      : "not-allowed";
   }
   if (repairMode) {
     if (!hoverEntity) return "not-allowed";
-    return hoverEntity.owner === owner && (hoverEntity.repairing || canRepair(hoverEntity)) ? "pointer" : "not-allowed";
+    return hoverEntity.owner === owner && (hoverEntity.repairing || canRepair(hoverEntity))
+      ? "pointer"
+      : "not-allowed";
   }
   if (sellMode) {
     if (!hoverEntity) return "not-allowed";
     return hoverEntity.owner === owner && canSell(hoverEntity) ? "pointer" : "not-allowed";
   }
-  const selectedProducer = selectedIds.length === 1
-    ? state.entities.find((entity) => entity.id === selectedIds[0] && entity.hp > 0)
-    : undefined;
+  const selectedProducer =
+    selectedIds.length === 1
+      ? state.entities.find((entity) => entity.id === selectedIds[0] && entity.hp > 0)
+      : undefined;
   if (
     selectedProducer?.owner === owner &&
     isBuildingEntity(selectedProducer) &&
@@ -69,7 +80,9 @@ export function battlefieldCursor({
   if (hoverEntity?.owner === owner) return "pointer";
   if (hoverEntity && hoverEntity.owner !== owner && !hoverEntity.neutral) {
     const selectedCombat = selectedIds.some((id) => {
-      const entity = state.entities.find((item) => item.id === id && item.hp > 0 && item.owner === owner && item.class === "unit");
+      const entity = state.entities.find(
+        (item) => item.id === id && item.hp > 0 && item.owner === owner && item.class === "unit",
+      );
       return Boolean(entity && !SUPPORT_KINDS.has(entity.kind));
     });
     return selectedCombat ? "crosshair" : "not-allowed";

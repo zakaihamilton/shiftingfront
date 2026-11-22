@@ -1,16 +1,39 @@
-import { BUILDING_DEFINITIONS, TICKS_PER_SECOND, UNIT_STATS, labelFor, sellRefundFor } from "../../catalog";
-import { inObjectiveZone, missionUsesObjectiveZone, SURFACE_CONCRETE, SURFACE_NONE, SURFACE_ROAD, TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../types";
-import { fogAt } from "../../sim/fog";
+import {
+  BUILDING_DEFINITIONS,
+  labelFor,
+  sellRefundFor,
+  TICKS_PER_SECOND,
+  UNIT_STATS,
+} from "../../catalog";
 import { isMountainScenery } from "../../gen/map";
 import { biomeLabel } from "../../gen/names";
-import { terrainAccess } from "../../sim/world";
+import { fogAt } from "../../sim/fog";
+import {
+  activeProducerFor,
+  isSharedProducerKind,
+  readSharedProductionQueue,
+} from "../../sim/producerState";
 import { canSell } from "../../sim/sell";
+import { terrainAccess } from "../../sim/world";
+import {
+  type BuildingKind,
+  type Entity,
+  inObjectiveZone,
+  isBuildingEntity,
+  missionUsesObjectiveZone,
+  type SimState,
+  SURFACE_CONCRETE,
+  SURFACE_NONE,
+  SURFACE_ROAD,
+  TILE_BLOCKED,
+  TILE_RESOURCE,
+  TILE_WATER,
+  type UnitKind,
+} from "../../types";
+import { chromeMonoFont } from "../../ui/chromeFont";
 import { isExtractableUnit, isLockedContactUnit } from "../renderCombat";
-import { isBuildingEntity, type BuildingKind, type Entity, type SimState, type UnitKind } from "../../types";
 import { SceneryMemo } from "../sceneryMemo";
 import type { RenderExtras } from "./types";
-import { chromeMonoFont } from "../../ui/chromeFont";
-import { activeProducerFor, isSharedProducerKind, readSharedProductionQueue } from "../../sim/producerState";
 
 const sceneryMemo = new SceneryMemo();
 
@@ -36,15 +59,23 @@ export function tileTooltipLines(state: SimState, x: number, y: number): string[
   if (surface === SURFACE_ROAD) terrain = "Dirt road";
   else if (surface === SURFACE_CONCRETE) terrain = "Concrete pad";
   const access = terrainAccess(state, x, y);
-  const lines = [terrain, biomeLabel(state.biome) || state.biome, `Height ${scenery.elev}`, access.traversable ? "Passable" : "Impassable"];
-  if (scenery.kind === TILE_RESOURCE) lines.push(`Ore ${state.resourceAmount[y * state.width + x] ?? 0}`);
+  const lines = [
+    terrain,
+    biomeLabel(state.biome) || state.biome,
+    `Height ${scenery.elev}`,
+    access.traversable ? "Passable" : "Impassable",
+  ];
+  if (scenery.kind === TILE_RESOURCE)
+    lines.push(`Ore ${state.resourceAmount[y * state.width + x] ?? 0}`);
   if (!access.buildable) lines.push("Construction blocked");
   if (fog === 1) lines.push("Shrouded");
   if (missionUsesObjectiveZone(state.runtime?.kind) && inObjectiveZone(x, y, state.runtime?.zone)) {
     lines.push(
       state.runtime?.kind === "escort"
         ? "Convoy destination"
-        : state.runtime?.kind === "rescue" ? "Command HQ zone" : "Extraction zone",
+        : state.runtime?.kind === "rescue"
+          ? "Command HQ zone"
+          : "Extraction zone",
     );
   }
   return lines;
@@ -75,20 +106,37 @@ export function tooltipLines(state: SimState, e: Entity, extras: RenderExtras): 
     lines.push(`Under construction (${Math.ceil(e.constructing / TICKS_PER_SECOND)}s)`);
   }
   const sharedKind = isBuildingEntity(e) && isSharedProducerKind(e.kind) ? e.kind : undefined;
-  const sharedQueue = sharedKind ? readSharedProductionQueue(state, e.owner, sharedKind) : undefined;
+  const sharedQueue = sharedKind
+    ? readSharedProductionQueue(state, e.owner, sharedKind)
+    : undefined;
   const producing = sharedKind ? sharedQueue?.producing : e.producing;
   if (sharedKind && friendly && e.constructing <= 0) {
     const active = activeProducerFor(state, e.owner, sharedKind);
-    lines.push(active?.id === e.id ? "ACTIVE · units deploy here" : active ? `Inactive · active #${active.id}` : "No active producer");
+    lines.push(
+      active?.id === e.id
+        ? "ACTIVE · units deploy here"
+        : active
+          ? `Inactive · active #${active.id}`
+          : "No active producer",
+    );
     if (active?.id !== e.id) lines.push("Double-click to activate");
   }
   if (producing) {
-    lines.push(`${sharedKind ? "Shared queue · " : ""}Training ${labelFor(producing.kind)} (${Math.ceil(producing.remaining / TICKS_PER_SECOND)}s)`);
+    lines.push(
+      `${sharedKind ? "Shared queue · " : ""}Training ${labelFor(producing.kind)} (${Math.ceil(producing.remaining / TICKS_PER_SECOND)}s)`,
+    );
     const queued = sharedQueue?.queue.length ?? e.queue?.length ?? 0;
     if (queued > 0) lines.push(`In queue: ${queued}`);
   }
-  if (isBuildingEntity(e) && friendly && e.constructing <= 0 && BUILDING_DEFINITIONS[e.kind].production) {
-    lines.push(e.rallyPoint ? `Rally point ${e.rallyPoint.x}, ${e.rallyPoint.y}` : "Rally point not set");
+  if (
+    isBuildingEntity(e) &&
+    friendly &&
+    e.constructing <= 0 &&
+    BUILDING_DEFINITIONS[e.kind].production
+  ) {
+    lines.push(
+      e.rallyPoint ? `Rally point ${e.rallyPoint.x}, ${e.rallyPoint.y}` : "Rally point not set",
+    );
   }
   if (e.repairing) lines.push("Repairing");
   if (e.marked && e.class === "building") lines.push("Marked objective");

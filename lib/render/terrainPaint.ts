@@ -1,20 +1,26 @@
 export { isoDiamondPath, roundedIsoDiamondPath } from "./isoDiamond";
-export { paintShroudCliffs, paintShroudMaskTile, paintShroudOverlay, shroudCornerRadii, drawAtlasDiamond } from "./terrainPaint/tile";
-export { smoothFogGain, drawBlockerProp, rgbMix, drawOreCrystals } from "./terrainPaint/details";
+export { drawBlockerProp, drawOreCrystals, rgbMix, smoothFogGain } from "./terrainPaint/details";
+export type { BlockerPropKind, ScatterItem, ScatterKind } from "./terrainPaint/scatter";
 export {
-  scatterForTile,
+  ARID_SCATTER,
   blockerPropKind,
   drawTerrainScatter,
   LUSH_SCATTER,
-  ARID_SCATTER,
+  scatterForTile,
 } from "./terrainPaint/scatter";
-export type { ScatterKind, ScatterItem, BlockerPropKind } from "./terrainPaint/scatter";
 export { withAlpha } from "./terrainPaint/style";
 export {
-  visibleTileRange,
-  paintTerrainWorld,
-  paintTerrainSurface,
+  drawAtlasDiamond,
+  paintShroudCliffs,
+  paintShroudMaskTile,
+  paintShroudOverlay,
+  shroudCornerRadii,
+} from "./terrainPaint/tile";
+export {
   paintTerrainBlockers,
+  paintTerrainSurface,
+  paintTerrainWorld,
+  visibleTileRange,
   WATER_COVER,
 } from "./terrainPaint/world";
 export { paintBuildingPlates } from "./terrainPlates";

@@ -1,22 +1,23 @@
-import { assertValidSeed, formatSeed } from "../../seed/rng";
-import { SURFACE_NONE } from "../../types";
-import type { SimState, SurfaceKind, UnitKind } from "../../types";
+import { isAirUnit, isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
 import { generateWorld } from "../../gen/world";
+import { assertValidSeed, formatSeed } from "../../seed/rng";
 import { expandFog, fogGridHeight, fogGridWidth } from "../../sim/fog";
 import { ensureRescueReturnTracking } from "../../sim/scenarios/rescueExtraction";
 import { compactDestroyedEntities, compactedState } from "../../sim/world/lifecycle";
-import { isAirUnit, isSupportUnit, UNIT_KINDS, UNIT_STATS } from "../../catalog";
-import {
-  type SAVE_CONTENT_VERSION,
-  isStateShape,
-  isNumber,
-  assertSupportedContentVersion,
-} from "./validation";
+import type { SimState, SurfaceKind, UnitKind } from "../../types";
+import { SURFACE_NONE } from "../../types";
 import { isRecord } from "../utils";
 import { migrateSaveContent } from "./migrations";
 import { decodeRle, encodeRle, isRleEncoded, isRleString } from "./rle";
+import {
+  assertSupportedContentVersion,
+  isNumber,
+  isStateShape,
+  type SAVE_CONTENT_VERSION,
+} from "./validation";
+
+export { decodeRle, encodeRle } from "./rle";
 export { SAVE_CONTENT_VERSION } from "./validation";
-export { encodeRle, decodeRle } from "./rle";
 
 export const SAVE_PREFIX = "shiftingfront:save:";
 export const SAVE_VERSION = 2;
@@ -31,8 +32,8 @@ export type SaveEnvelope = {
 };
 
 export function decodeSavedState(value: unknown): SimState {
-  const needsProducerMigration = isRecord(value)
-    && (!("productionQueues" in value) || !("activeProducerIds" in value));
+  const needsProducerMigration =
+    isRecord(value) && (!("productionQueues" in value) || !("activeProducerIds" in value));
   const migrated = needsProducerMigration
     ? migrateSaveContent(value, LEGACY_SAVE_CONTENT_VERSION)
     : value;
@@ -46,7 +47,10 @@ export function decodeSave(raw: string): { state: SimState; savedAt: number } {
   let value = parsed;
   let savedAt = 0;
   if (isRecord(parsed) && "state" in parsed) {
-    if ((parsed.version !== SAVE_VERSION && parsed.version !== LEGACY_SAVE_VERSION) || !isNumber(parsed.savedAt)) {
+    if (
+      (parsed.version !== SAVE_VERSION && parsed.version !== LEGACY_SAVE_VERSION) ||
+      !isNumber(parsed.savedAt)
+    ) {
       throw new Error("Unsupported save version");
     }
     const contentVersion = parsed.contentVersion ?? LEGACY_SAVE_CONTENT_VERSION;
@@ -83,8 +87,12 @@ export function encodeSavedState(state: SimState): unknown {
     ...compacted,
     tiles: Array.isArray(compacted.tiles) ? encodeRle(compacted.tiles) : compacted.tiles,
     heights: Array.isArray(compacted.heights) ? encodeRle(compacted.heights) : compacted.heights,
-    surfaces: Array.isArray(compacted.surfaces) ? encodeRle(compacted.surfaces) : compacted.surfaces,
-    resourceAmount: Array.isArray(compacted.resourceAmount) ? encodeRle(compacted.resourceAmount) : compacted.resourceAmount,
+    surfaces: Array.isArray(compacted.surfaces)
+      ? encodeRle(compacted.surfaces)
+      : compacted.surfaces,
+    resourceAmount: Array.isArray(compacted.resourceAmount)
+      ? encodeRle(compacted.resourceAmount)
+      : compacted.resourceAmount,
     fog: Array.isArray(compacted.fog) ? encodeRle(compacted.fog) : compacted.fog,
   };
 }
@@ -100,8 +108,14 @@ export function deserializeState(raw: string): SimState {
 function normalizeState(value: unknown): SimState {
   if (!isRecord(value)) throw new Error("Invalid save state");
   if (
-    typeof value.width !== "number" || !Number.isInteger(value.width) || value.width <= 0 || value.width > 256 ||
-    typeof value.height !== "number" || !Number.isInteger(value.height) || value.height <= 0 || value.height > 256
+    typeof value.width !== "number" ||
+    !Number.isInteger(value.width) ||
+    value.width <= 0 ||
+    value.width > 256 ||
+    typeof value.height !== "number" ||
+    !Number.isInteger(value.height) ||
+    value.height <= 0 ||
+    value.height > 256
   ) {
     throw new Error("Invalid save state");
   }
@@ -137,7 +151,9 @@ function normalizeState(value: unknown): SimState {
     s.losses = { units: [0, 0], buildings: [0, 0] };
   }
   if (!s.unitsProducedByRole || typeof s.unitsProducedByRole !== "object") {
-    s.unitsProducedByRole = Object.fromEntries(UNIT_KINDS.map((kind) => [kind, 0])) as SimState["unitsProducedByRole"];
+    s.unitsProducedByRole = Object.fromEntries(
+      UNIT_KINDS.map((kind) => [kind, 0]),
+    ) as SimState["unitsProducedByRole"];
   } else {
     for (const kind of UNIT_KINDS) {
       if (typeof s.unitsProducedByRole[kind] !== "number") s.unitsProducedByRole[kind] = 0;
@@ -146,19 +162,35 @@ function normalizeState(value: unknown): SimState {
   if (!s.buildingsCompletedByKind || typeof s.buildingsCompletedByKind !== "object") {
     s.buildingsCompletedByKind = {};
   }
-  if (!s.productionQueues || typeof s.productionQueues !== "object" || Array.isArray(s.productionQueues)) s.productionQueues = {};
-  if (!s.activeProducerIds || typeof s.activeProducerIds !== "object" || Array.isArray(s.activeProducerIds)) s.activeProducerIds = {};
+  if (
+    !s.productionQueues ||
+    typeof s.productionQueues !== "object" ||
+    Array.isArray(s.productionQueues)
+  )
+    s.productionQueues = {};
+  if (
+    !s.activeProducerIds ||
+    typeof s.activeProducerIds !== "object" ||
+    Array.isArray(s.activeProducerIds)
+  )
+    s.activeProducerIds = {};
   if (s.controlGroups === undefined) s.controlGroups = {};
   if (!Array.isArray(s.entities)) s.entities = [];
   const scenarioRole =
-    s.runtime?.kind === "escort" ? "convoy" :
-    s.runtime?.kind === "rescue" ? "stranded" :
-    s.runtime?.kind === "extraction" ? "cargo" :
-    undefined;
+    s.runtime?.kind === "escort"
+      ? "convoy"
+      : s.runtime?.kind === "rescue"
+        ? "stranded"
+        : s.runtime?.kind === "extraction"
+          ? "cargo"
+          : undefined;
   const scenarioTargetIds = new Set(s.runtime?.targetIds ?? []);
   for (const e of s.entities) {
-    const isLegacyEscortTarget = e.class === "unit" && e.kind === "tank" &&
-      (e.scenarioRole === "convoy" || (s.runtime?.kind === "escort" && scenarioTargetIds.has(e.id)));
+    const isLegacyEscortTarget =
+      e.class === "unit" &&
+      e.kind === "tank" &&
+      (e.scenarioRole === "convoy" ||
+        (s.runtime?.kind === "escort" && scenarioTargetIds.has(e.id)));
     if (isLegacyEscortTarget) {
       // Escort targets used to be serialized as tanks. Keep their current HP
       // and armor, but give them the non-combat convoy identity and behavior.
@@ -169,14 +201,22 @@ function normalizeState(value: unknown): SimState {
       delete e.attackTarget;
     }
     if (!e.queue) e.queue = [];
-    if (e.facing === undefined || !Number.isInteger(e.facing) || (e.facing as number) < 0 || (e.facing as number) > 7) {
-      e.facing = ((e.facing as unknown) === 8 ? 0 : (e.owner === 0 ? 0 : 4)) as import("../../types").Facing;
+    if (
+      e.facing === undefined ||
+      !Number.isInteger(e.facing) ||
+      (e.facing as number) < 0 ||
+      (e.facing as number) > 7
+    ) {
+      e.facing = (
+        (e.facing as unknown) === 8 ? 0 : e.owner === 0 ? 0 : 4
+      ) as import("../../types").Facing;
     }
     if (e.repairing === undefined) e.repairing = false;
     if (e.stance === undefined) e.stance = "aggressive";
     if (e.suppression === undefined) e.suppression = 0;
     if (e.class === "unit" && isSupportUnit(e.kind as UnitKind)) {
-      if (e.supportMode !== "auto" && e.supportMode !== "assigned" && e.supportMode !== "hold") e.supportMode = "auto";
+      if (e.supportMode !== "auto" && e.supportMode !== "assigned" && e.supportMode !== "hold")
+        e.supportMode = "auto";
     } else {
       delete e.supportTargetId;
       delete e.supportMode;
@@ -187,9 +227,12 @@ function normalizeState(value: unknown): SimState {
       e.ammo = typeof e.ammo === "number" && e.ammo >= 0 ? Math.min(e.ammo, e.maxAmmo) : e.maxAmmo;
       if (e.flightState !== "servicing" && e.flightState !== "airborne") e.flightState = "airborne";
       if (e.flightState === "servicing") {
-        e.serviceTicks = typeof e.serviceTicks === "number" && Number.isInteger(e.serviceTicks) && e.serviceTicks >= 0
-          ? e.serviceTicks
-          : 0;
+        e.serviceTicks =
+          typeof e.serviceTicks === "number" &&
+          Number.isInteger(e.serviceTicks) &&
+          e.serviceTicks >= 0
+            ? e.serviceTicks
+            : 0;
       } else {
         delete e.serviceTicks;
       }
@@ -202,7 +245,12 @@ function normalizeState(value: unknown): SimState {
       delete e.landingRunwayId;
     }
     if (e.class !== "building" || e.kind !== "runway") delete e.assignedPlaneId;
-    if (e.scenarioRole === undefined && e.class === "unit" && scenarioRole && scenarioTargetIds.has(e.id)) {
+    if (
+      e.scenarioRole === undefined &&
+      e.class === "unit" &&
+      scenarioRole &&
+      scenarioTargetIds.has(e.id)
+    ) {
       e.scenarioRole = scenarioRole;
     }
     if (e.routePending === undefined) delete e.routePending;
@@ -212,7 +260,8 @@ function normalizeState(value: unknown): SimState {
     delete s.aiRetreatTick;
   }
   if (s.aiRetreatLocked !== true) delete s.aiRetreatLocked;
-  if (!s.aiContacts || typeof s.aiContacts !== "object" || Array.isArray(s.aiContacts)) s.aiContacts = {};
+  if (!s.aiContacts || typeof s.aiContacts !== "object" || Array.isArray(s.aiContacts))
+    s.aiContacts = {};
   delete (s as { appliedUpgrades?: unknown }).appliedUpgrades;
   compactDestroyedEntities(s);
   const livingEntities = new Map(s.entities.map((entity) => [entity.id, entity]));
@@ -229,7 +278,11 @@ function normalizeState(value: unknown): SimState {
     }
     if (entity.assignedRunwayId !== undefined) {
       const runway = livingEntities.get(entity.assignedRunwayId);
-      if (runway?.class !== "building" || runway.kind !== "runway" || runway.owner !== entity.owner) {
+      if (
+        runway?.class !== "building" ||
+        runway.kind !== "runway" ||
+        runway.owner !== entity.owner
+      ) {
         delete entity.assignedRunwayId;
         delete entity.landingRunwayId;
         if (entity.flightState === "servicing") {
@@ -241,7 +294,11 @@ function normalizeState(value: unknown): SimState {
     }
     if (entity.landingRunwayId !== undefined) {
       const runway = livingEntities.get(entity.landingRunwayId);
-      if (runway?.class !== "building" || runway.kind !== "runway" || runway.owner !== entity.owner) {
+      if (
+        runway?.class !== "building" ||
+        runway.kind !== "runway" ||
+        runway.owner !== entity.owner
+      ) {
         delete entity.landingRunwayId;
       }
     }

@@ -1,9 +1,9 @@
+import { PauseOptions } from "@/components/settings/PauseOptions";
+import settingsStyles from "@/components/settings/SettingsPanel.module.css";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
-import { PauseOptions } from "@/components/settings/PauseOptions";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { GameSettings } from "@/lib/persist/settings";
-import settingsStyles from "@/components/settings/SettingsPanel.module.css";
 
 export function MenuOptions({
   settings,
@@ -55,7 +55,9 @@ export function MenuOptions({
         onBack={onBack}
         backTooltip="Return to the main menu"
       />
-      <p className={settingsStyles.hint}>U toggles music · M toggles sound · V toggles voice · Escape returns</p>
+      <p className={settingsStyles.hint}>
+        U toggles music · M toggles sound · V toggles voice · Escape returns
+      </p>
     </MetalPanel>
   );
 }

@@ -22,8 +22,8 @@ export function missionConfirmationFor(
       message: terminal
         ? "Return to the main menu?"
         : multiplayer
-        ? "Return to the main menu? You will forfeit your position in this skirmish."
-        : "Return to the main menu? Your mission progress will be saved.",
+          ? "Return to the main menu? You will forfeit your position in this skirmish."
+          : "Return to the main menu? Your mission progress will be saved.",
       confirmLabel: multiplayer ? "Leave skirmish" : "Leave mission",
     };
   }

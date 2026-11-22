@@ -1,16 +1,23 @@
 import { campaignKey, readCampaignProgress, writeCampaignProgress } from "../campaign";
+import {
+  isCurrentGameplayRules,
+  progressAfterRetiredBattlefield,
+  RULES_REBUILD_NOTICE,
+} from "../rulesRetirement";
 import { writeSave } from "./api";
 import { saveKey } from "./serialize";
 import type { ParsedSlot } from "./slots";
-import { safeGetItem, safeRemoveItem, safeSetItem, type StorageAdapter } from "./storage";
-import { isCurrentGameplayRules, progressAfterRetiredBattlefield, RULES_REBUILD_NOTICE } from "../rulesRetirement";
+import { type StorageAdapter, safeGetItem, safeRemoveItem, safeSetItem } from "./storage";
 
 /** Restore both records before changing the active mission or its URL. */
 export function restoreSlot(storage: StorageAdapter, slot: ParsedSlot): string | null {
   if (!isCurrentGameplayRules(slot.state.gameplayRulesVersion)) {
     const existingRaw = safeGetItem(storage, campaignKey(slot.state.seed));
     const existing = existingRaw ? readCampaignProgress(storage, slot.state.seed) : null;
-    const kept = writeCampaignProgress(storage, progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex));
+    const kept = writeCampaignProgress(
+      storage,
+      progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex),
+    );
     return kept
       ? RULES_REBUILD_NOTICE
       : "Couldn't preserve campaign progress from that slot because browser storage is unavailable. Your current mission is unchanged.";
@@ -27,9 +34,8 @@ export function restoreSlot(storage: StorageAdapter, slot: ParsedSlot): string |
     return "Couldn't load the slot because its autosave could not be written. Your current mission is unchanged.";
   }
   if (writeCampaignProgress(storage, slot.campaign)) return null;
-  const rolledBack = previous === null
-    ? safeRemoveItem(storage, key)
-    : safeSetItem(storage, key, previous);
+  const rolledBack =
+    previous === null ? safeRemoveItem(storage, key) : safeSetItem(storage, key, previous);
   return rolledBack
     ? "Couldn't restore campaign progress. The previous autosave was restored; your current mission is unchanged."
     : "Couldn't restore campaign progress or recover the previous autosave. Your current mission is still open; the named slot is intact. Free browser storage and load the slot again.";

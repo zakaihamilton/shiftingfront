@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { BUILDING_STATS } from "../../lib/catalog";
-import { makeFixture, addUnit, addBuilding, setTile, TILE_BLOCKED, TILE_RESOURCE } from "../../lib/sim/fixtures";
 import { issue, tick } from "../../lib/sim/api";
+import {
+  addBuilding,
+  addUnit,
+  makeFixture,
+  setTile,
+  TILE_BLOCKED,
+  TILE_RESOURCE,
+} from "../../lib/sim/fixtures";
 import { tutorialBuildTile, tutorialMoveTile } from "../../lib/sim/tutorial";
 import type { SimState } from "../../lib/types";
 
@@ -81,7 +88,10 @@ describe("tutorial coaching", () => {
     const s = makePlayingState();
     s.tutorialStage = "select";
     const events = issue(s, { type: "build", building: "power", x: 8, y: 8 });
-    expect(events).not.toContainEqual({ type: "commandRejected", reason: expect.stringContaining("training step") });
+    expect(events).not.toContainEqual({
+      type: "commandRejected",
+      reason: expect.stringContaining("training step"),
+    });
     expect(s.tutorialStage).toBe("select");
   });
 
@@ -90,7 +100,10 @@ describe("tutorial coaching", () => {
     s.tutorialStage = "select";
     const unit = s.entities.find((e) => e.kind === "infantry" && e.owner === 0)!;
     const events = issue(s, { type: "move", unitIds: [unit.id], x: 10, y: 10 });
-    expect(events).not.toContainEqual({ type: "commandRejected", reason: expect.stringContaining("training step") });
+    expect(events).not.toContainEqual({
+      type: "commandRejected",
+      reason: expect.stringContaining("training step"),
+    });
     expect(s.tutorialStage).toBe("select");
   });
 
@@ -187,12 +200,30 @@ describe("production rally points", () => {
     destroyed.hp = 0;
     setTile(s, 11, 11, TILE_BLOCKED);
 
-    expect(issue(s, { type: "rally", buildingId: enemy.id, x: 12, y: 12 })).toContainEqual({ type: "commandRejected", reason: "rally unavailable" });
-    expect(issue(s, { type: "rally", buildingId: power.id, x: 12, y: 12 })).toContainEqual({ type: "commandRejected", reason: "rally unavailable" });
-    expect(issue(s, { type: "rally", buildingId: unfinished.id, x: 12, y: 12 })).toContainEqual({ type: "commandRejected", reason: "rally unavailable" });
-    expect(issue(s, { type: "rally", buildingId: destroyed.id, x: 12, y: 12 })).toContainEqual({ type: "commandRejected", reason: "rally unavailable" });
-    expect(issue(s, { type: "rally", buildingId: barracks.id, x: 11, y: 11 })).toContainEqual({ type: "commandRejected", reason: "invalid rally target" });
-    expect(issue(s, { type: "rally", buildingId: barracks.id, x: -1, y: 2 })).toContainEqual({ type: "commandRejected", reason: "invalid rally target" });
+    expect(issue(s, { type: "rally", buildingId: enemy.id, x: 12, y: 12 })).toContainEqual({
+      type: "commandRejected",
+      reason: "rally unavailable",
+    });
+    expect(issue(s, { type: "rally", buildingId: power.id, x: 12, y: 12 })).toContainEqual({
+      type: "commandRejected",
+      reason: "rally unavailable",
+    });
+    expect(issue(s, { type: "rally", buildingId: unfinished.id, x: 12, y: 12 })).toContainEqual({
+      type: "commandRejected",
+      reason: "rally unavailable",
+    });
+    expect(issue(s, { type: "rally", buildingId: destroyed.id, x: 12, y: 12 })).toContainEqual({
+      type: "commandRejected",
+      reason: "rally unavailable",
+    });
+    expect(issue(s, { type: "rally", buildingId: barracks.id, x: 11, y: 11 })).toContainEqual({
+      type: "commandRejected",
+      reason: "invalid rally target",
+    });
+    expect(issue(s, { type: "rally", buildingId: barracks.id, x: -1, y: 2 })).toContainEqual({
+      type: "commandRejected",
+      reason: "invalid rally target",
+    });
     expect(barracks.rallyPoint).toEqual({ x: 10, y: 10 });
   });
 });

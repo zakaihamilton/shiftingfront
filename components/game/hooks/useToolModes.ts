@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState, type MutableRefObject } from "react";
-import { buildingLimitReached } from "@/lib/catalog";
+import { type MutableRefObject, useCallback, useRef, useState } from "react";
 import { beep } from "@/lib/audio/synth";
 import { voiceBarkForBeep } from "@/lib/audio/voice";
+import { buildingLimitReached } from "@/lib/catalog";
 import type { BuildingKind, SimState } from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
 import type { CommandNoticeKind } from "./useGameChrome";
@@ -31,14 +31,20 @@ export function useToolModes({
     setSellMode(false);
   }, []);
 
-  const chooseMobileCommand = useCallback((command: MobileCommand) => {
-    clearTools();
-    mobileCommand.current = command;
-    setMobileCommandState(command);
-    beep("select");
-    voiceBarkForBeep("select");
-    notify(`${command === "attackMove" ? "Attack-move" : command.charAt(0).toUpperCase() + command.slice(1)} ready — tap a destination.`, "info");
-  }, [clearTools, notify]);
+  const chooseMobileCommand = useCallback(
+    (command: MobileCommand) => {
+      clearTools();
+      mobileCommand.current = command;
+      setMobileCommandState(command);
+      beep("select");
+      voiceBarkForBeep("select");
+      notify(
+        `${command === "attackMove" ? "Attack-move" : command.charAt(0).toUpperCase() + command.slice(1)} ready — tap a destination.`,
+        "info",
+      );
+    },
+    [clearTools, notify],
+  );
 
   const cancelMobileCommand = useCallback(() => {
     mobileCommand.current = null;
@@ -53,23 +59,26 @@ export function useToolModes({
     setMobileCommandState(null);
   }, []);
 
-  const togglePlace = useCallback((kind: BuildingKind) => {
-    const owner = stateRef.current.viewOwner ?? 0;
-    if (place.current !== kind && buildingLimitReached(stateRef.current.entities, owner, kind)) {
-      notify("This structure is limited to one per mission.", "error");
-      return;
-    }
-    const next = place.current === kind ? null : kind;
-    place.current = next;
-    setPlaceKind(next);
-    if (next) {
-      repair.current = false;
-      setRepairMode(false);
-      sell.current = false;
-      setSellMode(false);
-    }
-    if (next) notify("Placement mode ready — choose a build site.", "info");
-  }, [notify, stateRef]);
+  const togglePlace = useCallback(
+    (kind: BuildingKind) => {
+      const owner = stateRef.current.viewOwner ?? 0;
+      if (place.current !== kind && buildingLimitReached(stateRef.current.entities, owner, kind)) {
+        notify("This structure is limited to one per mission.", "error");
+        return;
+      }
+      const next = place.current === kind ? null : kind;
+      place.current = next;
+      setPlaceKind(next);
+      if (next) {
+        repair.current = false;
+        setRepairMode(false);
+        sell.current = false;
+        setSellMode(false);
+      }
+      if (next) notify("Placement mode ready — choose a build site.", "info");
+    },
+    [notify, stateRef],
+  );
 
   const toggleRepair = useCallback(() => {
     const next = !repair.current;

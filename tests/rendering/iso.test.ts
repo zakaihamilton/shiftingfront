@@ -1,21 +1,21 @@
 import { describe, expect, it } from "vitest";
-import type { Facing } from "../../lib/types";
 import {
-  TILE_H,
-  TILE_W,
-  HEIGHT_STEP,
   cameraViewQuad,
   createCamera,
   expandIsoDiamond,
+  HEIGHT_STEP,
   isoAtlasTransform,
   isoFacingAngle,
   isoFacingAngleDegrees,
   screenAngleToFacing,
   screenToGroundTile,
   screenToTile,
+  TILE_H,
+  TILE_W,
   tileToScreen,
   toIsometricFacing,
 } from "../../lib/iso";
+import type { Facing } from "../../lib/types";
 
 describe("iso projection", () => {
   it("round-trips tile coordinates through screen space", () => {
@@ -72,14 +72,14 @@ describe("iso projection", () => {
     }
 
     // Facing angles match the 2:1 isometric projection of cardinal and diagonal tile steps
-    expect(toIsometricFacing(1, -1)).toBe(0);  // East
-    expect(toIsometricFacing(1, 0)).toBe(1);   // South-East
-    expect(toIsometricFacing(1, 1)).toBe(2);   // South
-    expect(toIsometricFacing(0, 1)).toBe(3);   // South-West
-    expect(toIsometricFacing(-1, 1)).toBe(4);  // West
-    expect(toIsometricFacing(-1, 0)).toBe(5);  // North-West
+    expect(toIsometricFacing(1, -1)).toBe(0); // East
+    expect(toIsometricFacing(1, 0)).toBe(1); // South-East
+    expect(toIsometricFacing(1, 1)).toBe(2); // South
+    expect(toIsometricFacing(0, 1)).toBe(3); // South-West
+    expect(toIsometricFacing(-1, 1)).toBe(4); // West
+    expect(toIsometricFacing(-1, 0)).toBe(5); // North-West
     expect(toIsometricFacing(-1, -1)).toBe(6); // North
-    expect(toIsometricFacing(0, -1)).toBe(7);  // North-East
+    expect(toIsometricFacing(0, -1)).toBe(7); // North-East
   });
 
   it("publishes screen-space facing degrees that match isoFacingAngle", () => {

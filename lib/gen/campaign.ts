@@ -1,15 +1,20 @@
 import { gameplayRulesVersion } from "../gameplayRules";
-import type { GameplayRulesVersion, MissionKind } from "../types";
 import { assertValidSeed, createRng, formatSeed } from "../seed/rng";
-import type { Campaign, MissionDef, ReadonlyCampaign } from "../types";
+import type {
+  Campaign,
+  GameplayRulesVersion,
+  MissionDef,
+  MissionKind,
+  ReadonlyCampaign,
+} from "../types";
 import { generateCharacters } from "./characters";
 import { generateFactions } from "./factions";
 import { mapSizeForMission } from "./map";
 import { genMissionTitle } from "./names";
 import { generateWinCategory, pickMissionKinds } from "./objectives";
+import { missionProfileFor } from "./profile";
 import { generateBriefing } from "./story";
 import { generateWorld } from "./world";
-import { missionProfileFor } from "./profile";
 
 const campaignCache = new Map<string, ReadonlyCampaign>();
 
@@ -18,7 +23,8 @@ export function campaignMapSize(index: number, kind: MissionKind): number {
   if (kind === "rescue") return 200;
   if (kind === "extraction") return 180;
   if (kind === "escort") return index >= 4 ? 150 : 144;
-  if (["annihilate", "razeAll", "decapitate", "destroyMarked", "sabotage"].includes(kind)) return Math.max(104, legacySize);
+  if (["annihilate", "razeAll", "decapitate", "destroyMarked", "sabotage"].includes(kind))
+    return Math.max(104, legacySize);
   return legacySize;
 }
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PORTRAIT_ASSETS, type PortraitAsset } from "@/lib/gen/portraitCatalog";
-import type { Character, CharacterRole } from "@/lib/types";
 import { FaceCanvas } from "@/components/portraits/FaceCanvas";
 import { useFacePortrait } from "@/components/portraits/useFacePortrait";
+import { PORTRAIT_ASSETS, type PortraitAsset } from "@/lib/gen/portraitCatalog";
 import type { FaceTone } from "@/lib/render/portraits";
+import type { Character, CharacterRole } from "@/lib/types";
 import styles from "./PortraitGallery.module.css";
 
 const GROUPS: readonly { role: CharacterRole; label: string; tone: FaceTone }[] = [
@@ -16,7 +16,8 @@ const GROUPS: readonly { role: CharacterRole; label: string; tone: FaceTone }[] 
 
 export function PortraitGallery() {
   const [activeRole, setActiveRole] = useState<CharacterRole | "all">("all");
-  const visibleGroups = activeRole === "all" ? GROUPS : GROUPS.filter((group) => group.role === activeRole);
+  const visibleGroups =
+    activeRole === "all" ? GROUPS : GROUPS.filter((group) => group.role === activeRole);
 
   return (
     <main className={styles.page} data-testid="portrait-gallery">
@@ -25,12 +26,26 @@ export function PortraitGallery() {
           <p className={styles.eyebrow}>Hidden developer surface / portrait calibration</p>
           <h1>Portrait Lab</h1>
           <p className={styles.description}>
-            Inspect every shipped character crop. Toggle a card to preview the production talking-mouth composite.
+            Inspect every shipped character crop. Toggle a card to preview the production
+            talking-mouth composite.
           </p>
           <div className={styles.filters} role="toolbar" aria-label="Filter portrait roles">
-            <button type="button" className={activeRole === "all" ? styles.filterActive : styles.filter} aria-pressed={activeRole === "all"} onClick={() => setActiveRole("all")}>All roles</button>
+            <button
+              type="button"
+              className={activeRole === "all" ? styles.filterActive : styles.filter}
+              aria-pressed={activeRole === "all"}
+              onClick={() => setActiveRole("all")}
+            >
+              All roles
+            </button>
             {GROUPS.map((group) => (
-              <button key={group.role} type="button" className={activeRole === group.role ? styles.filterActive : styles.filter} aria-pressed={activeRole === group.role} onClick={() => setActiveRole(group.role)}>
+              <button
+                key={group.role}
+                type="button"
+                className={activeRole === group.role ? styles.filterActive : styles.filter}
+                aria-pressed={activeRole === group.role}
+                onClick={() => setActiveRole(group.role)}
+              >
                 {group.label}
               </button>
             ))}
@@ -45,7 +60,11 @@ export function PortraitGallery() {
       {visibleGroups.map((group) => {
         const assets = PORTRAIT_ASSETS.filter((asset) => asset.role === group.role);
         return (
-          <section key={group.role} className={styles.section} aria-labelledby={`${group.role}-heading`}>
+          <section
+            key={group.role}
+            className={styles.section}
+            aria-labelledby={`${group.role}-heading`}
+          >
             <div className={styles.sectionHeader}>
               <h2 id={`${group.role}-heading`}>{group.label}</h2>
               <span>{assets.length.toString().padStart(2, "0")} portraits</span>
@@ -96,7 +115,9 @@ function PortraitCard({ asset, tone }: { asset: PortraitAsset; tone: FaceTone })
         <div className={styles.calibration}>
           <span>mouth y {asset.mouthCalibration.clip.cy.toFixed(3)}</span>
           <span>
-            talk {asset.mouthCalibration.talkOffset.dx === 0 && asset.mouthCalibration.talkOffset.dy === 0
+            talk{" "}
+            {asset.mouthCalibration.talkOffset.dx === 0 &&
+            asset.mouthCalibration.talkOffset.dy === 0
               ? "aligned"
               : `${formatOffset(asset.mouthCalibration.talkOffset.dx)},${formatOffset(asset.mouthCalibration.talkOffset.dy)}`}
           </span>

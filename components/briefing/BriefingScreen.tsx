@@ -1,31 +1,31 @@
 "use client";
 
-import { useMemo, useSyncExternalStore, type CSSProperties } from "react";
+import { type CSSProperties, useMemo, useSyncExternalStore } from "react";
+import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { ConsoleNotice } from "@/components/ui/ConsoleNotice";
 import { DocumentTitle } from "@/components/ui/DocumentTitle";
 import { MetalPanel } from "@/components/ui/MetalPanel";
-import { APP_NAME } from "@/lib/site";
-import { createMission } from "@/lib/sim/api";
 import { createCampaign } from "@/lib/gen/campaign";
 import { missionObjectives } from "@/lib/gen/story";
 import { biomeArt } from "@/lib/gen/visualAssets";
+import type { NavigationOrigin } from "@/lib/navigation/routes";
+import { cachedLocalStorage } from "@/lib/persist/save";
+import { readTelemetry } from "@/lib/persist/telemetry";
+import { createMission } from "@/lib/sim/api";
+import { fieldNotes } from "@/lib/sim/fieldIdentity";
+import { briefingProficiencyNote, campaignProficiencyBand } from "@/lib/sim/proficiency";
+import { APP_NAME } from "@/lib/site";
 import type { BriefingLine } from "@/lib/types";
+import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { BriefingActions } from "./BriefingActions";
 import { BriefingMast } from "./BriefingMast";
 import { BriefingObjectives } from "./BriefingObjectives";
-import { BriefingStory } from "./BriefingStory";
 import styles from "./BriefingScreen.module.css";
-import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
-import { cachedLocalStorage } from "@/lib/persist/save";
-import { readTelemetry } from "@/lib/persist/telemetry";
-import { briefingProficiencyNote, campaignProficiencyBand } from "@/lib/sim/proficiency";
-import { fieldNotes } from "@/lib/sim/fieldIdentity";
+import { BriefingStory } from "./BriefingStory";
 import { useBriefingController } from "./useBriefingController";
 import { useBriefingTypewriter } from "./useBriefingTypewriter";
-import type { NavigationOrigin } from "@/lib/navigation/routes";
-import { SHORTCUT } from "@/lib/ui/shortcuts";
 
 function subscribeProficiency(onStoreChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
@@ -36,14 +36,33 @@ function subscribeProficiency(onStoreChange: () => void): () => void {
 function useBriefingProficiencyNote(mission: number): string | undefined {
   return useSyncExternalStore(
     subscribeProficiency,
-    () => briefingProficiencyNote(campaignProficiencyBand(readTelemetry(cachedLocalStorage())), mission),
+    () =>
+      briefingProficiencyNote(
+        campaignProficiencyBand(readTelemetry(cachedLocalStorage())),
+        mission,
+      ),
     () => undefined,
   );
 }
 
-export function BriefingScreen({ seed, mission, returnToGame = false, replay = false, origin = "menu" }: { seed: number; mission: number; returnToGame?: boolean; replay?: boolean; origin?: NavigationOrigin }) {
+export function BriefingScreen({
+  seed,
+  mission,
+  returnToGame = false,
+  replay = false,
+  origin = "menu",
+}: {
+  seed: number;
+  mission: number;
+  returnToGame?: boolean;
+  replay?: boolean;
+  origin?: NavigationOrigin;
+}) {
   const progress = useCampaignProgress(seed);
-  const campaign = useMemo(() => createCampaign(seed, progress.gameplayRulesVersion), [seed, progress.gameplayRulesVersion]);
+  const campaign = useMemo(
+    () => createCampaign(seed, progress.gameplayRulesVersion),
+    [seed, progress.gameplayRulesVersion],
+  );
   const def = campaign.missions[mission];
   const lines: readonly BriefingLine[] = useMemo(() => def?.briefing ?? [], [def]);
   const typewriter = useBriefingTypewriter(lines);
@@ -56,15 +75,21 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
     replayTransmission: typewriter.replayTransmission,
     skipToEnd: typewriter.skipToEnd,
   });
-  const objectives = useMemo(
-    () => {
-      if (!def) return [];
-      const required = missionObjectives(def, campaign);
-      const preview = createMission({ seed, missionIndex: mission, gameplayRulesVersion: campaign.gameplayRulesVersion });
-      return [...required, ...(preview.runtime?.secondary ?? []).filter(o => o.priority === "optional").map(o => ({ id: o.id, text: `Optional: ${o.label}` }))];
-    },
-    [def, campaign, seed, mission],
-  );
+  const objectives = useMemo(() => {
+    if (!def) return [];
+    const required = missionObjectives(def, campaign);
+    const preview = createMission({
+      seed,
+      missionIndex: mission,
+      gameplayRulesVersion: campaign.gameplayRulesVersion,
+    });
+    return [
+      ...required,
+      ...(preview.runtime?.secondary ?? [])
+        .filter((o) => o.priority === "optional")
+        .map((o) => ({ id: o.id, text: `Optional: ${o.label}` })),
+    ];
+  }, [def, campaign, seed, mission]);
   const backLabel = returnToGame
     ? "Back to mission"
     : origin === "newGame"
@@ -80,7 +105,9 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
   if (!def) {
     return (
       <ConsoleNotice eyebrow="Transmission interrupted" title="This mission isn't available.">
-        <ConsoleButton muted onClick={controller.back} tooltip={backLabel} shortcut={SHORTCUT.back}>{backLabel}</ConsoleButton>
+        <ConsoleButton muted onClick={controller.back} tooltip={backLabel} shortcut={SHORTCUT.back}>
+          {backLabel}
+        </ConsoleButton>
       </ConsoleNotice>
     );
   }
@@ -91,12 +118,16 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
         title="Mission locked"
         detail="Complete the previous operation first."
       >
-        <ConsoleButton muted onClick={controller.back} tooltip={backLabel} shortcut={SHORTCUT.back}>{backLabel}</ConsoleButton>
+        <ConsoleButton muted onClick={controller.back} tooltip={backLabel} shortcut={SHORTCUT.back}>
+          {backLabel}
+        </ConsoleButton>
       </ConsoleNotice>
     );
   }
 
-  const liveRole = typewriter.isTalking ? typewriter.revealedLines.find((line) => line.started && !line.complete)?.speaker : undefined;
+  const liveRole = typewriter.isTalking
+    ? typewriter.revealedLines.find((line) => line.started && !line.complete)?.speaker
+    : undefined;
   const notes = fieldNotes(campaign.factions[1].name, def.biome);
 
   return (
@@ -125,7 +156,12 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
                 onStoryScroll={typewriter.onStoryScroll}
               />
             </section>
-            <BriefingObjectives objectives={objectives} proficiencyNote={proficiencyNote} groundNote={notes.ground} doctrineNote={notes.doctrine} />
+            <BriefingObjectives
+              objectives={objectives}
+              proficiencyNote={proficiencyNote}
+              groundNote={notes.ground}
+              doctrineNote={notes.doctrine}
+            />
           </div>
           <BriefingActions
             returnToGame={returnToGame}
@@ -137,7 +173,6 @@ export function BriefingScreen({ seed, mission, returnToGame = false, replay = f
             backLabel={backLabel}
           />
         </MetalPanel>
-
       </div>
     </div>
   );

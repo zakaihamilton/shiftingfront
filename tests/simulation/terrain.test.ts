@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { generateMap, sceneryAt, skirtSample, featureEdgeMask, isMountainScenery, MAP_SKIRT, MAP_SKIRT_ALPHA, skirtAlpha, terrainFeatureAt } from "../../lib/gen/map";
-import { createCampaign } from "../../lib/gen/campaign";
-import { createMission } from "../../lib/sim/api";
-import { validMap } from "../../lib/sim/balance";
-import { buildingAt, groundHeight, heightAt, INITIAL_BUILDING_EDGE_MARGIN, tileAt } from "../../lib/sim/world";
-import { makeFixture } from "../../lib/sim/fixtures";
 import { BUILDING_STATS, footprintOf } from "../../lib/catalog";
-import type { BuildingKind } from "../../lib/types";
-import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../lib/types";
+import { createCampaign } from "../../lib/gen/campaign";
+import {
+  featureEdgeMask,
+  generateMap,
+  isMountainScenery,
+  MAP_SKIRT,
+  MAP_SKIRT_ALPHA,
+  sceneryAt,
+  skirtAlpha,
+  skirtSample,
+  terrainFeatureAt,
+} from "../../lib/gen/map";
 import { cameraViewQuad, createCamera, TILE_H, TILE_W, tileToScreen } from "../../lib/iso";
 import {
   cameraFocusPoint,
@@ -24,6 +28,18 @@ import {
   panInputForDirection,
 } from "../../lib/render/camera";
 import { visibleTileRange } from "../../lib/render/terrainPaint";
+import { createMission } from "../../lib/sim/api";
+import { validMap } from "../../lib/sim/balance";
+import { makeFixture } from "../../lib/sim/fixtures";
+import {
+  buildingAt,
+  groundHeight,
+  heightAt,
+  INITIAL_BUILDING_EDGE_MARGIN,
+  tileAt,
+} from "../../lib/sim/world";
+import type { BuildingKind } from "../../lib/types";
+import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER } from "../../lib/types";
 
 const EXHAUSTIVE_TEST_TIMEOUT = 120_000;
 const IS_COVERAGE = Boolean(process.env.NODE_V8_COVERAGE || process.env.VITEST_COVERAGE);
@@ -47,7 +63,12 @@ describe("terrain height", () => {
   });
 
   it("generated maps have a heightmap with varied elevation", () => {
-    const map = generateMap(0, { index: 0, win: { kind: "annihilate" }, mapSize: 48, biome: "ash plains" });
+    const map = generateMap(0, {
+      index: 0,
+      win: { kind: "annihilate" },
+      mapSize: 48,
+      biome: "ash plains",
+    });
     expect(map.heights).toHaveLength(48 * 48);
     const stats = { 0: 0, 1: 0, 2: 0, 3: 0 };
     for (const h of map.heights) {
@@ -60,7 +81,12 @@ describe("terrain height", () => {
   });
 
   it("start areas are flat enough to place a construction yard", () => {
-    const map = generateMap(42, { index: 0, win: { kind: "razeAll" }, mapSize: 48, biome: "ash plains" });
+    const map = generateMap(42, {
+      index: 0,
+      win: { kind: "razeAll" },
+      mapSize: 48,
+      biome: "ash plains",
+    });
     const fp = BUILDING_STATS.constructionYard.footprint;
     const h0 = map.heights[map.playerStart.y * map.width + map.playerStart.x];
     for (let oy = 0; oy < fp.h; oy++) {
@@ -70,32 +96,44 @@ describe("terrain height", () => {
     }
   });
 
-  it.skipIf(IS_COVERAGE)("generates deterministic, funded, traversable maps across campaigns", () => {
-    for (let seed = 0; seed < 32; seed++) {
-      const campaign = createCampaign(seed);
-      for (const mission of campaign.missions) {
-        const a = generateMap(seed, mission);
-        const b = generateMap(seed, mission);
-        expect(a).toEqual(b);
-        expect(routeExists(a)).toBe(true);
-        expect(a.surfaces.filter((surface) => surface === 1).length).toBeGreaterThan(mission.mapSize * 2);
-        expect(a.affordances.alternateRouteLength).toBeLessThanOrEqual(a.affordances.baselineRouteLength * 1.8);
-        expect(a.resourceAmount.every((amount, index) => amount === 0 || a.tiles[index] === TILE_RESOURCE)).toBe(true);
-        const total = a.resourceAmount.reduce((sum, amount) => sum + amount, 0);
-        const required = Math.max(
-          14_000 + mission.index * 3_000,
-          mission.win.kind === "harvestQuota" ? Math.ceil((mission.win.target ?? 0) * 1.5) : 0,
-        );
-        expect(total).toBeGreaterThanOrEqual(required);
-        expect(nearestResource(a, a.playerStart)).toBeLessThanOrEqual(14);
-        expect(nearestResource(a, a.enemyStart)).toBeLessThanOrEqual(14);
-        for (const spot of a.markedSpots) {
-          expect(a.tiles[spot.y * a.width + spot.x]).toBe(0);
-          expect(a.heights[spot.y * a.width + spot.x]).toBe(1);
+  it.skipIf(IS_COVERAGE)(
+    "generates deterministic, funded, traversable maps across campaigns",
+    () => {
+      for (let seed = 0; seed < 32; seed++) {
+        const campaign = createCampaign(seed);
+        for (const mission of campaign.missions) {
+          const a = generateMap(seed, mission);
+          const b = generateMap(seed, mission);
+          expect(a).toEqual(b);
+          expect(routeExists(a)).toBe(true);
+          expect(a.surfaces.filter((surface) => surface === 1).length).toBeGreaterThan(
+            mission.mapSize * 2,
+          );
+          expect(a.affordances.alternateRouteLength).toBeLessThanOrEqual(
+            a.affordances.baselineRouteLength * 1.8,
+          );
+          expect(
+            a.resourceAmount.every(
+              (amount, index) => amount === 0 || a.tiles[index] === TILE_RESOURCE,
+            ),
+          ).toBe(true);
+          const total = a.resourceAmount.reduce((sum, amount) => sum + amount, 0);
+          const required = Math.max(
+            14_000 + mission.index * 3_000,
+            mission.win.kind === "harvestQuota" ? Math.ceil((mission.win.target ?? 0) * 1.5) : 0,
+          );
+          expect(total).toBeGreaterThanOrEqual(required);
+          expect(nearestResource(a, a.playerStart)).toBeLessThanOrEqual(14);
+          expect(nearestResource(a, a.enemyStart)).toBeLessThanOrEqual(14);
+          for (const spot of a.markedSpots) {
+            expect(a.tiles[spot.y * a.width + spot.x]).toBe(0);
+            expect(a.heights[spot.y * a.width + spot.x]).toBe(1);
+          }
         }
       }
-    }
-  }, EXHAUSTIVE_TEST_TIMEOUT);
+    },
+    EXHAUSTIVE_TEST_TIMEOUT,
+  );
 
   it("keeps extraction routes out of base-route fairness metrics", () => {
     const campaign = createCampaign(4);
@@ -107,7 +145,10 @@ describe("terrain height", () => {
   });
 });
 
-function nearestResource(map: ReturnType<typeof generateMap>, start: { x: number; y: number }): number {
+function nearestResource(
+  map: ReturnType<typeof generateMap>,
+  start: { x: number; y: number },
+): number {
   let best = Infinity;
   for (let y = 0; y < map.height; y++) {
     for (let x = 0; x < map.width; x++) {
@@ -164,26 +205,41 @@ describe("mission footprints", () => {
     }
   });
 
-  it("keeps initial ally and enemy buildings clear of the map edge", () => {
-    for (let seed = 0; seed < 32; seed++) {
-      const campaign = createCampaign(seed);
-      for (const mission of campaign.missions) {
-        const state = createMission({ seed, missionIndex: mission.index });
-        for (const building of state.entities.filter((entity) => entity.class === "building" && entity.hp > 0)) {
-          const footprint = footprintOf(building.kind as BuildingKind);
-          expect(building.x).toBeGreaterThanOrEqual(INITIAL_BUILDING_EDGE_MARGIN);
-          expect(building.y).toBeGreaterThanOrEqual(INITIAL_BUILDING_EDGE_MARGIN);
-          expect(building.x + footprint.w).toBeLessThanOrEqual(state.width - INITIAL_BUILDING_EDGE_MARGIN);
-          expect(building.y + footprint.h).toBeLessThanOrEqual(state.height - INITIAL_BUILDING_EDGE_MARGIN);
+  it(
+    "keeps initial ally and enemy buildings clear of the map edge",
+    () => {
+      for (let seed = 0; seed < 32; seed++) {
+        const campaign = createCampaign(seed);
+        for (const mission of campaign.missions) {
+          const state = createMission({ seed, missionIndex: mission.index });
+          for (const building of state.entities.filter(
+            (entity) => entity.class === "building" && entity.hp > 0,
+          )) {
+            const footprint = footprintOf(building.kind as BuildingKind);
+            expect(building.x).toBeGreaterThanOrEqual(INITIAL_BUILDING_EDGE_MARGIN);
+            expect(building.y).toBeGreaterThanOrEqual(INITIAL_BUILDING_EDGE_MARGIN);
+            expect(building.x + footprint.w).toBeLessThanOrEqual(
+              state.width - INITIAL_BUILDING_EDGE_MARGIN,
+            );
+            expect(building.y + footprint.h).toBeLessThanOrEqual(
+              state.height - INITIAL_BUILDING_EDGE_MARGIN,
+            );
+          }
         }
       }
-    }
-  }, EXHAUSTIVE_TEST_TIMEOUT);
+    },
+    EXHAUSTIVE_TEST_TIMEOUT,
+  );
 });
 
 describe("map skirt scenery", () => {
   it("generates deterministic mountains and water outside the playable map", () => {
-    const map = generateMap(42, { index: 0, win: { kind: "annihilate" }, mapSize: 24, biome: "ash plains" });
+    const map = generateMap(42, {
+      index: 0,
+      win: { kind: "annihilate" },
+      mapSize: 24,
+      biome: "ash plains",
+    });
     const world = { ...map, seed: 42 };
     const a = skirtSample(42, map.biome, -3, 8, map.width, map.height);
     const b = skirtSample(42, map.biome, -3, 8, map.width, map.height);
@@ -200,7 +256,9 @@ describe("map skirt scenery", () => {
     }
     expect(water).toBeGreaterThan(0);
     expect(mountain).toBeGreaterThan(0);
-    expect(sceneryAt(world, map.playerStart.x, map.playerStart.y).kind).toBe(map.tiles[map.playerStart.y * map.width + map.playerStart.x]);
+    expect(sceneryAt(world, map.playerStart.x, map.playerStart.y).kind).toBe(
+      map.tiles[map.playerStart.y * map.width + map.playerStart.x],
+    );
   });
 
   it("draws outside the playable map at a lower opacity", () => {
@@ -220,7 +278,12 @@ describe("map skirt scenery", () => {
   });
 
   it("marks river banks and mountain ridges on region edges", () => {
-    const map = generateMap(42, { index: 0, win: { kind: "annihilate" }, mapSize: 24, biome: "ash plains" });
+    const map = generateMap(42, {
+      index: 0,
+      win: { kind: "annihilate" },
+      mapSize: 24,
+      biome: "ash plains",
+    });
     const world = { ...map, seed: 42 };
     let banked = 0;
     let ridged = 0;
@@ -248,7 +311,12 @@ describe("map skirt scenery", () => {
 
 describe("organic map generation", () => {
   it("forms blob-like water instead of isolated speckle", () => {
-    const map = generateMap(0, { index: 0, win: { kind: "annihilate" }, mapSize: 48, biome: "ash plains" });
+    const map = generateMap(0, {
+      index: 0,
+      win: { kind: "annihilate" },
+      mapSize: 48,
+      biome: "ash plains",
+    });
     let water = 0;
     let neighborSum = 0;
     for (let y = 0; y < map.height; y++) {
@@ -281,7 +349,12 @@ describe("organic map generation", () => {
   }, 60_000);
 
   it("forms broad elevation regions and non-linear surface routes", () => {
-    const map = generateMap(832, { index: 0, win: { kind: "annihilate" }, mapSize: 48, biome: "ash plains" });
+    const map = generateMap(832, {
+      index: 0,
+      win: { kind: "annihilate" },
+      mapSize: 48,
+      biome: "ash plains",
+    });
     let elevated = 0;
     let adjacentElevated = 0;
     const roadDiagonals = new Set<number>();
@@ -304,7 +377,13 @@ describe("organic map generation", () => {
 
 describe("biome terrain regions", () => {
   it("selects deterministic, coherent feature regions for a mission", () => {
-    const world = { seed: 832, missionIndex: 3, biome: "rust canyons" as const, width: 72, height: 72 };
+    const world = {
+      seed: 832,
+      missionIndex: 3,
+      biome: "rust canyons" as const,
+      width: 72,
+      height: 72,
+    };
     const first = terrainFeatureAt(world, 22, 31);
     expect(terrainFeatureAt(world, 22, 31)).toEqual(first);
 
@@ -328,11 +407,20 @@ describe("biome terrain regions", () => {
   });
 
   it("uses the same mission-scoped feature field beyond the playable edge", () => {
-    const world = { seed: 421, missionIndex: 5, biome: "volcanic shelf" as const, width: 96, height: 96 };
+    const world = {
+      seed: 421,
+      missionIndex: 5,
+      biome: "volcanic shelf" as const,
+      width: 96,
+      height: 96,
+    };
     const outside = terrainFeatureAt(world, -4, 38);
     expect(terrainFeatureAt(world, -4, 38)).toEqual(outside);
-    expect(skirtSample(world.seed, world.biome, -4, 38, world.width, world.height, world.missionIndex))
-      .toEqual(skirtSample(world.seed, world.biome, -4, 38, world.width, world.height, world.missionIndex));
+    expect(
+      skirtSample(world.seed, world.biome, -4, 38, world.width, world.height, world.missionIndex),
+    ).toEqual(
+      skirtSample(world.seed, world.biome, -4, 38, world.width, world.height, world.missionIndex),
+    );
   });
 });
 
@@ -349,7 +437,12 @@ function waterComponentSizes(map: ReturnType<typeof generateMap>): number[] {
       size += 1;
       const x = current % map.width;
       const y = Math.floor(current / map.width);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ] as const) {
         const nx = x + dx;
         const ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height) continue;
@@ -435,7 +528,12 @@ describe("camera pan bounds", () => {
     expect(canPan(cam, bounds, "left")).toBe(false);
     expect(canPan(cam, bounds, "right")).toBe(false);
     expect(canPan(cam, bounds, "down")).toBe(true);
-    expect(panAvailability(cam, bounds)).toEqual({ left: false, right: false, up: false, down: true });
+    expect(panAvailability(cam, bounds)).toEqual({
+      left: false,
+      right: false,
+      up: false,
+      down: true,
+    });
 
     focusCameraAtTile(cam, 47, 47, bounds);
     expect(cameraFocusPoint(cam, bounds).x).toBeCloseTo(47);
@@ -444,7 +542,12 @@ describe("camera pan bounds", () => {
     expect(canPan(cam, bounds, "down")).toBe(false);
     expect(canPan(cam, bounds, "left")).toBe(false);
     expect(canPan(cam, bounds, "up")).toBe(true);
-    expect(panAvailability(cam, bounds)).toEqual({ left: false, right: false, up: true, down: false });
+    expect(panAvailability(cam, bounds)).toEqual({
+      left: false,
+      right: false,
+      up: true,
+      down: false,
+    });
   });
 
   it("blocks a screen-direction pan when either map axis is already at its boundary", () => {

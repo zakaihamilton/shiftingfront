@@ -4,7 +4,11 @@ import { simulationFingerprint } from "../../lib/sim/replay";
 
 describe("multi-instance simulation isolation", () => {
   it("produces identical deterministic fingerprints whether run in isolation or interleaved concurrently", () => {
-    const runSimScenario = (seed: number, missionIndex: number, moveTarget: { x: number; y: number }) => {
+    const runSimScenario = (
+      seed: number,
+      missionIndex: number,
+      moveTarget: { x: number; y: number },
+    ) => {
       const state = createMission({ seed, missionIndex });
       const mover = state.entities.find((e) => e.owner === 0 && e.class === "unit");
       if (mover) {

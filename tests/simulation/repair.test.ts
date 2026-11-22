@@ -94,7 +94,9 @@ describe("structure repair", () => {
 
   it("charges a positive cost for a repair tick", () => {
     expect(repairCostFor("power", repairHpPerTick("power"))).toBeGreaterThan(0);
-    expect(repairCostFor("constructionYard", repairHpPerTick("constructionYard"))).toBeGreaterThan(0);
+    expect(repairCostFor("constructionYard", repairHpPerTick("constructionYard"))).toBeGreaterThan(
+      0,
+    );
   });
 
   it("enemy bases auto-repair damaged structures", () => {

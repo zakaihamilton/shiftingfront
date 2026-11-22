@@ -2,7 +2,12 @@
 
 import { useSyncExternalStore } from "react";
 import { campaignKey, freshCampaignProgress, readCampaignProgress } from "@/lib/persist/campaign";
-import { cachedCampaignStorage, getSaveRepository, safeGetItem, readSave } from "@/lib/persist/save";
+import {
+  cachedCampaignStorage,
+  getSaveRepository,
+  readSave,
+  safeGetItem,
+} from "@/lib/persist/save";
 import type { CampaignProgress } from "@/lib/types";
 
 const snapshots = new Map<number, { raw: string | null; progress: CampaignProgress }>();
@@ -12,7 +17,10 @@ function subscribe(onStoreChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   const unsubscribe = getSaveRepository()?.subscribe(onStoreChange);
   window.addEventListener("storage", onStoreChange);
-  return () => { unsubscribe?.(); window.removeEventListener("storage", onStoreChange); };
+  return () => {
+    unsubscribe?.();
+    window.removeEventListener("storage", onStoreChange);
+  };
 }
 
 function clientSnapshot(seed: number): CampaignProgress {
@@ -37,5 +45,9 @@ function serverSnapshot(seed: number): CampaignProgress {
 }
 
 export function useCampaignProgress(seed: number): CampaignProgress {
-  return useSyncExternalStore(subscribe, () => clientSnapshot(seed), () => serverSnapshot(seed));
+  return useSyncExternalStore(
+    subscribe,
+    () => clientSnapshot(seed),
+    () => serverSnapshot(seed),
+  );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import type { MultiplayerSession } from "@/lib/multiplayer/session";
 import { createRuntimeCommandPort } from "./runtime/facade";
 import type { GameRuntime } from "./runtime/types";
 import { useGameChrome } from "./useGameChrome";
@@ -8,20 +9,52 @@ import { useGameRuntimeFeedback } from "./useGameRuntimeFeedback";
 import { useGameRuntimeInteraction } from "./useGameRuntimeInteraction";
 import { useGameRuntimeLifecycle } from "./useGameRuntimeLifecycle";
 import { useGameRuntimeState } from "./useGameRuntimeState";
-import type { MultiplayerSession } from "@/lib/multiplayer/session";
 
 /** Composition facade for the mission runtime. Rendering and simulation details live in focused hooks. */
-export function useGameRuntime({ seed, mission, resume, fresh = false, slot, tutorial = false, multiplayerSession, initialState }: { seed: number; mission: number; resume: boolean; fresh?: boolean; slot?: string; tutorial?: boolean; multiplayerSession?: MultiplayerSession; initialState?: import("@/lib/types").SimState }): GameRuntime {
+export function useGameRuntime({
+  seed,
+  mission,
+  resume,
+  fresh = false,
+  slot,
+  tutorial = false,
+  multiplayerSession,
+  initialState,
+}: {
+  seed: number;
+  mission: number;
+  resume: boolean;
+  fresh?: boolean;
+  slot?: string;
+  tutorial?: boolean;
+  multiplayerSession?: MultiplayerSession;
+  initialState?: import("@/lib/types").SimState;
+}): GameRuntime {
   const durable = useGameRuntimeState({
-    seed, mission, resume, fresh, slot, tutorial, initialState,
+    seed,
+    mission,
+    resume,
+    fresh,
+    slot,
+    tutorial,
+    initialState,
     multiplayerOwner: multiplayerSession?.owner,
     multiplayerOwners: multiplayerSession?.owners,
     multiplayerAiOwners: multiplayerSession?.aiOwners,
   });
   const chrome = useGameChrome(durable.state.result);
-  const commandPort = useMemo(() => createRuntimeCommandPort(chrome.cmdQ, multiplayerSession ? (command) => multiplayerSession.submit(command) : undefined), [chrome.cmdQ, multiplayerSession]);
+  const commandPort = useMemo(
+    () =>
+      createRuntimeCommandPort(
+        chrome.cmdQ,
+        multiplayerSession ? (command) => multiplayerSession.submit(command) : undefined,
+      ),
+    [chrome.cmdQ, multiplayerSession],
+  );
   const suppressImplicitSavesRef = useRef<() => void>(() => undefined);
-  useEffect(() => { multiplayerSession?.markIntroReady(); }, [multiplayerSession]);
+  useEffect(() => {
+    multiplayerSession?.markIntroReady();
+  }, [multiplayerSession]);
 
   const feedback = useGameRuntimeFeedback({
     seed,

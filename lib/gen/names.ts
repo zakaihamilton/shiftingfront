@@ -1,21 +1,65 @@
-import type { BiomeName, MissionKind, MissionProfile } from "../types";
 import type { Rng } from "../seed/rng";
+import type { BiomeName, MissionKind, MissionProfile } from "../types";
 import { profileContractFor } from "./profile";
 
 const FIRST_FEM = [
-  "Elena", "Irene", "Nadia", "Claire", "Helena", "Mara", "Lydia", "Kara", "Nina", "Ruth",
+  "Elena",
+  "Irene",
+  "Nadia",
+  "Claire",
+  "Helena",
+  "Mara",
+  "Lydia",
+  "Kara",
+  "Nina",
+  "Ruth",
 ];
 const FIRST_MASC = [
-  "Marcus", "Jonas", "Victor", "Dorian", "Felix", "Tomas", "Owen", "Adrian", "Caleb", "Hugo",
+  "Marcus",
+  "Jonas",
+  "Victor",
+  "Dorian",
+  "Felix",
+  "Tomas",
+  "Owen",
+  "Adrian",
+  "Caleb",
+  "Hugo",
 ];
 const LAST_NAMES = [
-  "Hale", "Voss", "Reed", "Cole", "Marsh", "Beck", "Nash", "Ward",
-  "Cross", "Frost", "Drake", "Shaw", "Pike", "Vance", "Holt", "Rook",
-  "Steele", "Ashford", "Crowe", "Graves",
+  "Hale",
+  "Voss",
+  "Reed",
+  "Cole",
+  "Marsh",
+  "Beck",
+  "Nash",
+  "Ward",
+  "Cross",
+  "Frost",
+  "Drake",
+  "Shaw",
+  "Pike",
+  "Vance",
+  "Holt",
+  "Rook",
+  "Steele",
+  "Ashford",
+  "Crowe",
+  "Graves",
 ];
 export const NEUTRAL_FACTION_ADJ = [
-  "Iron", "Solar", "Northern", "Crimson", "United", "Free",
-  "Eastern", "Western", "Outer", "Steel", "Amber",
+  "Iron",
+  "Solar",
+  "Northern",
+  "Crimson",
+  "United",
+  "Free",
+  "Eastern",
+  "Western",
+  "Outer",
+  "Steel",
+  "Amber",
 ] as const;
 
 export const BIOME_FACTION_ADJ: Record<BiomeName, readonly string[]> = {
@@ -29,18 +73,31 @@ export const BIOME_FACTION_ADJ: Record<BiomeName, readonly string[]> = {
   "volcanic shelf": ["Magma", "Basalt", "Ashen"],
 };
 
-const FACTION_ADJ = [
-  ...NEUTRAL_FACTION_ADJ,
-  "Ashen",
-];
+const FACTION_ADJ = [...NEUTRAL_FACTION_ADJ, "Ashen"];
 
 const FACTION_END = [
-  "Directorate", "Concord", "Legion", "Syndicate", "Mandate", "Pact",
-  "Circle", "Union", "Order", "Front", "Republic", "Coalition",
+  "Directorate",
+  "Concord",
+  "Legion",
+  "Syndicate",
+  "Mandate",
+  "Pact",
+  "Circle",
+  "Union",
+  "Order",
+  "Front",
+  "Republic",
+  "Coalition",
 ];
 
 export const NEUTRAL_PLACE_ADJ = [
-  "Iron", "Dust", "Red", "Black", "Amber", "Copper", "Stone",
+  "Iron",
+  "Dust",
+  "Red",
+  "Black",
+  "Amber",
+  "Copper",
+  "Stone",
 ] as const;
 
 export const BIOME_PLACE_ADJ: Record<BiomeName, readonly string[]> = {
@@ -54,30 +111,58 @@ export const BIOME_PLACE_ADJ: Record<BiomeName, readonly string[]> = {
   "volcanic shelf": ["Volcanic", "Magma", "Basalt", "Crag", "Smolder"],
 };
 
-const PLACE_ADJ = [
-  ...NEUTRAL_PLACE_ADJ,
-  "Ash", "Frost", "Glass", "Salt", "Rust",
-];
+const PLACE_ADJ = [...NEUTRAL_PLACE_ADJ, "Ash", "Frost", "Glass", "Salt", "Rust"];
 const PLACE = [
-  "Rift", "Expanse", "Wastes", "Basin", "Reach", "Marches", "Spires",
-  "Hollow", "Delta", "Ridge", "Flats", "Coast",
+  "Rift",
+  "Expanse",
+  "Wastes",
+  "Basin",
+  "Reach",
+  "Marches",
+  "Spires",
+  "Hollow",
+  "Delta",
+  "Ridge",
+  "Flats",
+  "Coast",
 ];
 const TONE = [
-  "grim", "cold", "war-weary", "fanatic", "pragmatic", "doctrinal",
-  "desperate", "calculated",
+  "grim",
+  "cold",
+  "war-weary",
+  "fanatic",
+  "pragmatic",
+  "doctrinal",
+  "desperate",
+  "calculated",
 ];
 const CONFLICT = [
-  "a resource war", "a broken ceasefire", "a succession crisis",
-  "an orbital blockade", "a terraforming collapse", "a border annexation",
-  "a relic excavation", "a civil split",
+  "a resource war",
+  "a broken ceasefire",
+  "a succession crisis",
+  "an orbital blockade",
+  "a terraforming collapse",
+  "a border annexation",
+  "a relic excavation",
+  "a civil split",
 ];
 const ERA = [
-  "Late Reconstruction", "the Second Expansion", "the Collapse Years",
-  "Open War", "the Ceasefire", "the Long Winter",
+  "Late Reconstruction",
+  "the Second Expansion",
+  "the Collapse Years",
+  "Open War",
+  "the Ceasefire",
+  "the Long Winter",
 ];
 export const BIOMES: BiomeName[] = [
-  "ash plains", "crystal flats", "rust canyons", "salt marshes", "glass desert",
-  "tundra grid", "jungle wreckage", "volcanic shelf",
+  "ash plains",
+  "crystal flats",
+  "rust canyons",
+  "salt marshes",
+  "glass desert",
+  "tundra grid",
+  "jungle wreckage",
+  "volcanic shelf",
 ];
 export const BIOME_LABELS: Record<BiomeName, string> = {
   "ash plains": "Ash Plains",
@@ -113,28 +198,49 @@ export function factionArchetype(name: string): FactionArchetype {
   return explicitFactionArchetype(name) ?? "legion";
 }
 
-export const FACTION_DOCTRINES: Record<FactionArchetype, {
-  doctrine: string;
-  motto: string;
-  dialectTerms: readonly string[];
-  rationale: (op: string) => string;
-}> = {
+export const FACTION_DOCTRINES: Record<
+  FactionArchetype,
+  {
+    doctrine: string;
+    motto: string;
+    dialectTerms: readonly string[];
+    rationale: (op: string) => string;
+  }
+> = {
   directorate: {
     doctrine: "Centralized Administrative Hegemony",
     motto: "Order through absolute compliance",
-    dialectTerms: ["protocol", "authorization", "compliance", "standard directive", "logistics priority"],
+    dialectTerms: [
+      "protocol",
+      "authorization",
+      "compliance",
+      "standard directive",
+      "logistics priority",
+    ],
     rationale: (op) => `Authorized by Central Command: ${op} to enforce administrative compliance.`,
   },
   concord: {
     doctrine: "Mutual Defense & Collective Sovereignty",
     motto: "Divided we fall, united we endure",
-    dialectTerms: ["coalition", "mutual defense", "collective security", "solidarity", "assembly resolution"],
+    dialectTerms: [
+      "coalition",
+      "mutual defense",
+      "collective security",
+      "solidarity",
+      "assembly resolution",
+    ],
     rationale: (op) => `Sanctioned by the Council: ${op} to safeguard our coalition border.`,
   },
   syndicate: {
     doctrine: "High-Margin Contract Enforcement",
     motto: "Every asset has its price",
-    dialectTerms: ["contract clause", "asset risk", "margin liability", "audit", "liquidation protocol"],
+    dialectTerms: [
+      "contract clause",
+      "asset risk",
+      "margin liability",
+      "audit",
+      "liquidation protocol",
+    ],
     rationale: (op) => `Contract stipulation: execute ${op} to secure high-value equity.`,
   },
   legion: {
@@ -191,9 +297,10 @@ export function genFactionPair(rng: Rng, biome?: BiomeName): [string, string] {
 }
 
 export function genPlace(rng: Rng, biome?: BiomeName): string {
-  const adjectives = biome && BIOME_PLACE_ADJ[biome]
-    ? [...new Set([...NEUTRAL_PLACE_ADJ, ...BIOME_PLACE_ADJ[biome]])]
-    : PLACE_ADJ;
+  const adjectives =
+    biome && BIOME_PLACE_ADJ[biome]
+      ? [...new Set([...NEUTRAL_PLACE_ADJ, ...BIOME_PLACE_ADJ[biome]])]
+      : PLACE_ADJ;
   return `${rng.pick(adjectives)} ${rng.pick(PLACE)}`;
 }
 

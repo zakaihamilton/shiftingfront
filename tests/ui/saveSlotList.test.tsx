@@ -79,13 +79,7 @@ describe("SaveSlotList UI component", () => {
   it("handles the delete confirmation modal flow safely", () => {
     const onDelete = vi.fn();
 
-    render(
-      <SaveSlotList
-        entries={[mockSlot]}
-        showActions
-        onDelete={onDelete}
-      />,
-    );
+    render(<SaveSlotList entries={[mockSlot]} showActions onDelete={onDelete} />);
 
     // Delete confirmation dialog is not open initially
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -117,13 +111,7 @@ describe("SaveSlotList UI component", () => {
   });
 
   it("dismisses delete dialog on Escape keypress", () => {
-    render(
-      <SaveSlotList
-        entries={[mockSlot]}
-        showActions
-        onDelete={vi.fn()}
-      />,
-    );
+    render(<SaveSlotList entries={[mockSlot]} showActions onDelete={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: `Delete save slot ${mockSlot.name}` }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();

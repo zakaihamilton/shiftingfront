@@ -2,8 +2,8 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+import { type ComponentProps, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useState, type ComponentProps } from "react";
 import { ErrorBoundary } from "../../components/ui/ErrorBoundary";
 
 vi.mock("next/link", () => ({
@@ -20,7 +20,11 @@ function MaybeBoom() {
 function StickyBoom() {
   const [boom, setBoom] = useState(false);
   if (boom) throw new Error("sticky breach");
-  return <button type="button" onClick={() => setBoom(true)}>detonate</button>;
+  return (
+    <button type="button" onClick={() => setBoom(true)}>
+      detonate
+    </button>
+  );
 }
 
 function renderCrashing(props: { title?: string; eyebrow?: string } = {}) {
@@ -61,8 +65,14 @@ describe("ErrorBoundary", () => {
       "href",
       expect.stringContaining("github.com/zakaihamilton/shiftingfront/issues/new"),
     );
-    expect(screen.getByTestId("issue-link")).toHaveAttribute("href", expect.stringContaining("template=crash.md"));
-    expect(screen.getByTestId("issue-link")).toHaveAttribute("href", expect.stringContaining("reactor"));
+    expect(screen.getByTestId("issue-link")).toHaveAttribute(
+      "href",
+      expect.stringContaining("template=crash.md"),
+    );
+    expect(screen.getByTestId("issue-link")).toHaveAttribute(
+      "href",
+      expect.stringContaining("reactor"),
+    );
     expect(screen.getByTestId("home-link")).toHaveAttribute("href", "/");
   });
 

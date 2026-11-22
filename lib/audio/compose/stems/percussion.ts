@@ -1,6 +1,6 @@
 import type { Rng } from "../../../seed/rng";
-import type { MusicDrumEvent, MusicStyleName } from "../types";
 import { drumEvent } from "../helpers";
+import type { MusicDrumEvent, MusicStyleName } from "../types";
 
 export function placeStylePercussion(
   drums: MusicDrumEvent[],
@@ -12,7 +12,8 @@ export function placeStylePercussion(
 ): void {
   if (name === "break-wire" || name === "disco-command" || name === "dune-cipher") {
     if (!dropHats) {
-      for (const step of [6, 14]) drumEvent(drums, origin + step, "shaker", 0.16 * drumGain, false, rng);
+      for (const step of [6, 14])
+        drumEvent(drums, origin + step, "shaker", 0.16 * drumGain, false, rng);
     }
   }
   if (name === "break-wire" || name === "dune-cipher") {

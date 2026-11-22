@@ -1,21 +1,21 @@
-import { canvasViewport } from "../../canvasViewport";
-import { isBuildingEntity, type Entity, type SimState } from "../../../types";
 import { BUILDING_DEFINITIONS, footprintOf } from "../../../catalog";
+import { type Camera, tileToScreen } from "../../../iso";
+import { activeProducerFor, SHARED_PRODUCER_KINDS } from "../../../sim/producerState";
+import { type Entity, isBuildingEntity, type SimState } from "../../../types";
 import { animClock } from "../../anim";
-import { tileToScreen, type Camera } from "../../../iso";
+import { canvasViewport } from "../../canvasViewport";
 import { isPerfHudEnabled, type WorldPhaseTimings } from "../../perfHud";
 import { drawCombatEffects, drawFxLayer } from "../../renderCombat";
-import { drawCommandMarker, drawRallyPoint, drawSelectBox } from "../../renderOverlays";
-import type { RenderExtras } from "../../renderOverlays";
 import { facingFor as resolveFacing } from "../../renderEntities";
+import type { RenderExtras } from "../../renderOverlays";
+import { drawCommandMarker, drawRallyPoint, drawSelectBox } from "../../renderOverlays";
 import { entityElev, pruneEntityVisibilityCache } from "../../renderPicking";
 import { strokeFootprint } from "../../renderStructures";
 import { pruneTurretAimCache } from "../../renderStructures/turret";
-import { activeProducerFor, SHARED_PRODUCER_KINDS } from "../../../sim/producerState";
 import { drawList, entityById } from "../cache";
-import { renderTerrainPhase } from "./terrain";
 import { renderEntityPhase } from "./entities";
 import { renderHoverPhase } from "./hover";
+import { renderTerrainPhase } from "./terrain";
 
 export type { RenderExtras };
 
@@ -67,22 +67,39 @@ export function renderWorld(
 
   lap("entities");
 
-  const selectedProducer = state.entities.find((entity) =>
-    selected.has(entity.id) &&
-    entity.hp > 0 &&
-    entity.owner === (state.viewOwner ?? 0) &&
-    isBuildingEntity(entity) &&
-    entity.constructing <= 0 &&
-    Boolean(BUILDING_DEFINITIONS[entity.kind].production) &&
-    Boolean(entity.rallyPoint),
+  const selectedProducer = state.entities.find(
+    (entity) =>
+      selected.has(entity.id) &&
+      entity.hp > 0 &&
+      entity.owner === (state.viewOwner ?? 0) &&
+      isBuildingEntity(entity) &&
+      entity.constructing <= 0 &&
+      Boolean(BUILDING_DEFINITIONS[entity.kind].production) &&
+      Boolean(entity.rallyPoint),
   );
   const rallyPoint = selectedProducer?.rallyPoint;
   if (selectedProducer && rallyPoint) {
-    drawRallyPoint(ctx, state, cam, { ...selectedProducer, rallyPoint }, clock ?? 0, extras.reducedMotion);
+    drawRallyPoint(
+      ctx,
+      state,
+      cam,
+      { ...selectedProducer, rallyPoint },
+      clock ?? 0,
+      extras.reducedMotion,
+    );
   }
 
   const timeMs = animClock(state.tick, clock);
-  drawCombatEffects(ctx, state, cam, drawList, entityById, (st: SimState, ent: Entity) => resolveFacing(st, ent, entityById), clock, extras.fx ?? []);
+  drawCombatEffects(
+    ctx,
+    state,
+    cam,
+    drawList,
+    entityById,
+    (st: SimState, ent: Entity) => resolveFacing(st, ent, entityById),
+    clock,
+    extras.fx ?? [],
+  );
   drawFxLayer(ctx, state, cam, extras.fx, timeMs, "burst", extras.reducedMotion);
   drawSelectBox(ctx, extras.selectBox);
   drawCommandMarker(ctx, state, cam, extras.commandMarker, timeMs, extras.reducedMotion);
@@ -92,7 +109,13 @@ export function renderWorld(
   return profile ? timings : null;
 }
 
-function drawActiveProducerIndicator(ctx: CanvasRenderingContext2D, state: SimState, cam: Camera, producer: Entity, selected: boolean): void {
+function drawActiveProducerIndicator(
+  ctx: CanvasRenderingContext2D,
+  state: SimState,
+  cam: Camera,
+  producer: Entity,
+  selected: boolean,
+): void {
   if (!isBuildingEntity(producer)) return;
   const footprint = footprintOf(producer.kind);
   const centerX = producer.x + (footprint.w - 1) / 2;

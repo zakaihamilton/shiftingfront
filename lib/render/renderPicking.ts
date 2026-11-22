@@ -1,8 +1,8 @@
-import { HEIGHT_STEP, TILE_H, TILE_W, screenToGroundTile, tileToScreen, type Camera } from "../iso";
-import { buildingAt, groundHeight, heightAt } from "../sim/world";
-import { fogAt } from "../sim/fog";
-import { isHiddenObjectiveAsset, isBuildingEntity, type Entity, type SimState } from "../types";
 import { footprintOf, isAirUnit } from "../catalog";
+import { type Camera, HEIGHT_STEP, screenToGroundTile, TILE_H, TILE_W, tileToScreen } from "../iso";
+import { fogAt } from "../sim/fog";
+import { buildingAt, groundHeight, heightAt } from "../sim/world";
+import { type Entity, isBuildingEntity, isHiddenObjectiveAsset, type SimState } from "../types";
 import { unitRenderPosition, updateUnitHistory } from "./gl/unitTransformTracker";
 
 /** Render-space altitude in terrain-height steps for airborne units. */
@@ -18,12 +18,26 @@ export function entityElev(state: SimState, e: Entity): number {
     : heightAt(state, Math.round(e.x), Math.round(e.y));
 }
 
-function pointInDiamond(px: number, py: number, x: number, y: number, w: number, h: number): boolean {
+function pointInDiamond(
+  px: number,
+  py: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): boolean {
   return diamondDistance(px, py, x, y, w, h) <= 1.02;
 }
 
 /** Normalized distance from a point to the center of a projected tile. */
-function diamondDistance(px: number, py: number, x: number, y: number, w: number, h: number): number {
+function diamondDistance(
+  px: number,
+  py: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): number {
   const cx = x;
   const cy = y + h / 2;
   return Math.abs(px - cx) / (w / 2) + Math.abs(py - cy) / (h / 2);

@@ -4,8 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConstructionCameos } from "../../components/game/ConstructionCameos";
-import { makeFixture } from "../../lib/sim/fixtures";
 import { generateVisualProfile } from "../../lib/gen/visualProfile";
+import { makeFixture } from "../../lib/sim/fixtures";
 
 vi.mock("../../components/game/SpritePreview", () => ({
   SpritePreview: () => <span data-testid="sprite-preview" />,
@@ -31,6 +31,9 @@ describe("construction cameo compact status", () => {
     const power = screen.getByRole("button", { name: /Power Plant/ });
     expect(screen.getByTestId("cameo-status-power")).toHaveTextContent("Need 300 cr");
     expect(power).toHaveAttribute("aria-label", expect.stringContaining("Need 300 more credits"));
-    expect(power.parentElement).toHaveAttribute("data-tooltip", expect.stringContaining("Need 300 more credits"));
+    expect(power.parentElement).toHaveAttribute(
+      "data-tooltip",
+      expect.stringContaining("Need 300 more credits"),
+    );
   });
 });

@@ -40,7 +40,9 @@ describe("docs and process drift", () => {
   });
 
   it("keeps APP_VERSION aligned with package.json", () => {
-    const pkg = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf-8")) as { version: string };
+    const pkg = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf-8")) as {
+      version: string;
+    };
     expect(APP_VERSION).toBe(pkg.version);
   });
 
@@ -63,8 +65,14 @@ describe("docs and process drift", () => {
   });
 
   it("ships crash and bug issue templates used by the in-game report links", () => {
-    const crash = readFileSync(resolve(process.cwd(), ".github/ISSUE_TEMPLATE", CRASH_ISSUE_TEMPLATE), "utf-8");
-    const bug = readFileSync(resolve(process.cwd(), ".github/ISSUE_TEMPLATE", FEEDBACK_ISSUE_TEMPLATE), "utf-8");
+    const crash = readFileSync(
+      resolve(process.cwd(), ".github/ISSUE_TEMPLATE", CRASH_ISSUE_TEMPLATE),
+      "utf-8",
+    );
+    const bug = readFileSync(
+      resolve(process.cwd(), ".github/ISSUE_TEMPLATE", FEEDBACK_ISSUE_TEMPLATE),
+      "utf-8",
+    );
     expect(crash).toContain("name: Crash");
     expect(bug).toContain("name: Bug or feedback");
   });

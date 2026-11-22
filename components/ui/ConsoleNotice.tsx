@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
-import { ConsoleLabel } from "./ConsoleLabel";
-import { MetalPanel } from "./MetalPanel";
+import type { ReactNode } from "react";
 import { cx } from "@/lib/ui/cx";
+import { ConsoleLabel } from "./ConsoleLabel";
 import styles from "./ConsoleNotice.module.css";
+import { MetalPanel } from "./MetalPanel";
 
 export function ConsoleNotice({
   eyebrow,

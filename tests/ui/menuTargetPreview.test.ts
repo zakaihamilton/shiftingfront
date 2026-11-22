@@ -1,30 +1,43 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   EXCLUDED_SCENARIO_KINDS,
+  normalMissionIndices,
   PREVIEW_CYCLE_MS,
   PREVIEW_IDLE_MS,
   PREVIEW_INITIAL_DELAY_MS,
   PREVIEW_LOCK_COUNT,
   PREVIEW_PLAY_MS,
-  normalMissionIndices,
   previewAt,
   previewMissionIndex,
   previewScenarioKind,
   previewSeed,
 } from "../../components/shared/ambient/menuBackdropSim/cycle";
-import { CINEMA_SHOTS, cinemaShotCamera, PIP_ZOOM, PREVIEW_SHOT_COUNT } from "../../components/shared/ambient/menuBackdropSim/shots";
 import { cinemaGroundWorld } from "../../components/shared/ambient/menuBackdropSim/paint";
+import {
+  isCinemaSceneReady,
+  prepareCinemaScene,
+} from "../../components/shared/ambient/menuBackdropSim/readiness";
 import { stepCinemaScene } from "../../components/shared/ambient/menuBackdropSim/render";
-import { isCinemaSceneReady, prepareCinemaScene } from "../../components/shared/ambient/menuBackdropSim/readiness";
-import { CINEMA_SCENARIO_KINDS, CINEMA_SEED, createCinemaScene, type Shot } from "../../components/shared/ambient/menuBackdropSim/scene";
 import { CINEMA_SCENARIOS } from "../../components/shared/ambient/menuBackdropSim/scenarios";
-import { createCampaign } from "../../lib/gen/campaign";
+import {
+  CINEMA_SCENARIO_KINDS,
+  CINEMA_SEED,
+  createCinemaScene,
+  type Shot,
+} from "../../components/shared/ambient/menuBackdropSim/scene";
+import {
+  CINEMA_SHOTS,
+  cinemaShotCamera,
+  PIP_ZOOM,
+  PREVIEW_SHOT_COUNT,
+} from "../../components/shared/ambient/menuBackdropSim/shots";
 import { footprintOf } from "../../lib/catalog";
-import { createMission } from "../../lib/sim/api";
-import { tileToScreen } from "../../lib/iso";
-import { isTerrainAtlasReady, preloadTerrainAtlas } from "../../lib/render/terrainAtlas";
-import { areRasterSourcesReady, preloadRasterSources } from "../../lib/render/sprites";
+import { createCampaign } from "../../lib/gen/campaign";
 import { listTacticalRasterSources } from "../../lib/gen/visualAssets";
+import { tileToScreen } from "../../lib/iso";
+import { areRasterSourcesReady, preloadRasterSources } from "../../lib/render/sprites";
+import { isTerrainAtlasReady, preloadTerrainAtlas } from "../../lib/render/terrainAtlas";
+import { createMission } from "../../lib/sim/api";
 import { terrainAccess } from "../../lib/sim/world";
 import type { BuildingEntity } from "../../lib/types";
 
@@ -33,19 +46,58 @@ describe("welcome target preview cycle", () => {
     expect(PREVIEW_INITIAL_DELAY_MS).toBe(5000);
     expect(PREVIEW_PLAY_MS).toBe(5000);
     expect(PREVIEW_IDLE_MS).toBe(3000);
-    expect(previewAt(0)).toEqual({ expanded: false, lockIndex: 0, shotIndex: 0, cycleIndex: 0, missionIndex: 0, scenarioKind: "baseAssault" });
-    expect(previewAt(PREVIEW_INITIAL_DELAY_MS - 1)).toMatchObject({ expanded: false, lockIndex: 0, cycleIndex: 0 });
-    expect(previewAt(PREVIEW_INITIAL_DELAY_MS)).toEqual({ expanded: true, lockIndex: 0, shotIndex: 0, cycleIndex: 0, missionIndex: 0, scenarioKind: "baseAssault" });
-    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_PLAY_MS - 1)).toMatchObject({ expanded: true, lockIndex: 0, shotIndex: 0, cycleIndex: 0 });
-    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_PLAY_MS)).toMatchObject({ expanded: false, lockIndex: 0, cycleIndex: 0 });
-    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_CYCLE_MS - 1)).toMatchObject({ expanded: false, lockIndex: 0, cycleIndex: 0 });
-    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_CYCLE_MS)).toMatchObject({ expanded: true, lockIndex: 1, shotIndex: 1, cycleIndex: 1, scenarioKind: "turretDefense" });
+    expect(previewAt(0)).toEqual({
+      expanded: false,
+      lockIndex: 0,
+      shotIndex: 0,
+      cycleIndex: 0,
+      missionIndex: 0,
+      scenarioKind: "baseAssault",
+    });
+    expect(previewAt(PREVIEW_INITIAL_DELAY_MS - 1)).toMatchObject({
+      expanded: false,
+      lockIndex: 0,
+      cycleIndex: 0,
+    });
+    expect(previewAt(PREVIEW_INITIAL_DELAY_MS)).toEqual({
+      expanded: true,
+      lockIndex: 0,
+      shotIndex: 0,
+      cycleIndex: 0,
+      missionIndex: 0,
+      scenarioKind: "baseAssault",
+    });
+    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_PLAY_MS - 1)).toMatchObject({
+      expanded: true,
+      lockIndex: 0,
+      shotIndex: 0,
+      cycleIndex: 0,
+    });
+    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_PLAY_MS)).toMatchObject({
+      expanded: false,
+      lockIndex: 0,
+      cycleIndex: 0,
+    });
+    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_CYCLE_MS - 1)).toMatchObject({
+      expanded: false,
+      lockIndex: 0,
+      cycleIndex: 0,
+    });
+    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_CYCLE_MS)).toMatchObject({
+      expanded: true,
+      lockIndex: 1,
+      shotIndex: 1,
+      cycleIndex: 1,
+      scenarioKind: "turretDefense",
+    });
   });
 
   it("rotates distinct scenario kinds across consecutive preview cycles", () => {
     for (let i = 0; i < CINEMA_SCENARIO_KINDS.length; i++) {
       expect(previewScenarioKind(i)).toBe(CINEMA_SCENARIO_KINDS[i]);
-      expect(previewAt(PREVIEW_INITIAL_DELAY_MS + i * PREVIEW_CYCLE_MS).scenarioKind).toBe(CINEMA_SCENARIO_KINDS[i]);
+      expect(previewAt(PREVIEW_INITIAL_DELAY_MS + i * PREVIEW_CYCLE_MS).scenarioKind).toBe(
+        CINEMA_SCENARIO_KINDS[i],
+      );
     }
   });
 
@@ -57,8 +109,12 @@ describe("welcome target preview cycle", () => {
     expect(second.lockIndex).toBe(1);
     expect(third.lockIndex).toBe(2);
     expect(new Set([first.shotIndex, second.shotIndex, third.shotIndex]).size).toBe(3);
-    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_CYCLE_MS * PREVIEW_LOCK_COUNT).lockIndex).toBe(0);
-    expect(previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_CYCLE_MS * PREVIEW_SHOT_COUNT).shotIndex).toBe(0);
+    expect(
+      previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_CYCLE_MS * PREVIEW_LOCK_COUNT).lockIndex,
+    ).toBe(0);
+    expect(
+      previewAt(PREVIEW_INITIAL_DELAY_MS + PREVIEW_CYCLE_MS * PREVIEW_SHOT_COUNT).shotIndex,
+    ).toBe(0);
   });
 
   it("treats negative time as the opening play window", () => {
@@ -98,11 +154,17 @@ describe("welcome target cinema shots", () => {
       const scene = createCinemaScene(CINEMA_SEED, 0, kind);
       const units = scene.state.entities
         .filter((entity) => entity.class === "unit" && entity.hp > 0)
-        .map((entity) => `${entity.owner}:${entity.kind}:${Math.round(entity.x - scene.combatEpicenter.x)}:${Math.round(entity.y - scene.combatEpicenter.y)}`)
+        .map(
+          (entity) =>
+            `${entity.owner}:${entity.kind}:${Math.round(entity.x - scene.combatEpicenter.x)}:${Math.round(entity.y - scene.combatEpicenter.y)}`,
+        )
         .sort()
         .join(",");
       const buildings = scene.buildings
-        .map((building) => `${building.owner}:${building.kind}:${Math.round(building.x - scene.combatEpicenter.x)}:${Math.round(building.y - scene.combatEpicenter.y)}`)
+        .map(
+          (building) =>
+            `${building.owner}:${building.kind}:${Math.round(building.x - scene.combatEpicenter.x)}:${Math.round(building.y - scene.combatEpicenter.y)}`,
+        )
         .sort()
         .join(",");
       const focus = `${scene.cameraFocus.x}:${scene.cameraFocus.y}:${scene.cameraFocusPoints.map((point) => `${point.x},${point.y}`).join(";")}`;
@@ -125,8 +187,9 @@ describe("welcome target cinema shots", () => {
     const second = createCinemaScene(previewSeed(1));
     expect(first.seed).not.toBe(second.seed);
     const sameTiles = first.map.tiles.every((tile, index) => tile === second.map.tiles[index]);
-    const samePalette = first.us.palette.primary === second.us.palette.primary
-      && first.them.palette.primary === second.them.palette.primary;
+    const samePalette =
+      first.us.palette.primary === second.us.palette.primary &&
+      first.them.palette.primary === second.them.palette.primary;
     expect(sameTiles && first.map.biome === second.map.biome && samePalette).toBe(false);
   });
 
@@ -146,7 +209,9 @@ describe("welcome target cinema shots", () => {
     const shots: { ax: number; ay: number; bx: number; by: number; life: number }[] = [];
     const before = scene.actors.map((actor) => ({ x: actor.x, y: actor.y, wi: actor.wi }));
     stepCinemaScene(scene, shots, 1);
-    const moved = scene.actors.some((actor, index) => actor.x !== before[index]!.x || actor.y !== before[index]!.y);
+    const moved = scene.actors.some(
+      (actor, index) => actor.x !== before[index]!.x || actor.y !== before[index]!.y,
+    );
     expect(moved).toBe(true);
     stepCinemaScene(scene, shots, 48);
     expect(shots.length).toBeGreaterThan(0);
@@ -190,8 +255,12 @@ describe("welcome target cinema shots", () => {
   it("keeps cinema destruction bursts domain-aware", () => {
     const scene = createCinemaScene(1847, 0, "baseAssault");
     const shots: Shot[] = [];
-    const target = scene.state.entities.find((entity) => entity.class === "unit" && entity.kind === "infantry");
-    const attacker = scene.state.entities.find((entity) => entity.class === "unit" && entity.kind === "tank");
+    const target = scene.state.entities.find(
+      (entity) => entity.class === "unit" && entity.kind === "infantry",
+    );
+    const attacker = scene.state.entities.find(
+      (entity) => entity.class === "unit" && entity.kind === "tank",
+    );
     expect(target).toBeDefined();
     expect(attacker).toBeDefined();
 
@@ -201,12 +270,20 @@ describe("welcome target cinema shots", () => {
     attacker!.attackTarget = target!.id;
     attacker!.cooldown = 0;
 
-    for (let frame = 0; frame < 30 && !scene.fx.some((burst) => burst.kind === "destruction"); frame++) {
+    for (
+      let frame = 0;
+      frame < 30 && !scene.fx.some((burst) => burst.kind === "destruction");
+      frame++
+    ) {
       stepCinemaScene(scene, shots, frame, frame * (1000 / 60));
     }
 
     const destruction = scene.fx.filter((burst) => burst.kind === "destruction");
-    expect(destruction.some((burst) => burst.entityKind === "infantry" && burst.targetDomain === "human")).toBe(true);
+    expect(
+      destruction.some(
+        (burst) => burst.entityKind === "infantry" && burst.targetDomain === "human",
+      ),
+    ).toBe(true);
   });
 
   it("includes real varied structures belonging to only one defending faction in every preview scenario", () => {
@@ -216,7 +293,9 @@ describe("welcome target cinema shots", () => {
 
     for (const kind of CINEMA_SCENARIO_KINDS) {
       const scene = createCinemaScene(CINEMA_SEED, 0, kind);
-      const activeBuildings = scene.state.entities.filter((entity) => entity.class === "building" && entity.hp > 0);
+      const activeBuildings = scene.state.entities.filter(
+        (entity) => entity.class === "building" && entity.hp > 0,
+      );
       expect(activeBuildings.length).toBeGreaterThanOrEqual(2);
 
       // Verify that all buildings belong strictly to one faction (either all player 0 or all enemy 1)
@@ -231,7 +310,15 @@ describe("welcome target cinema shots", () => {
       for (const shot of buildingShots) {
         const building = scene.buildings[shot.index];
         expect(building).toBeDefined();
-        expect(activeBuildings.some((entity) => entity.kind === building!.kind && entity.owner === building!.owner && entity.x === building!.x && entity.y === building!.y)).toBe(true);
+        expect(
+          activeBuildings.some(
+            (entity) =>
+              entity.kind === building!.kind &&
+              entity.owner === building!.owner &&
+              entity.x === building!.x &&
+              entity.y === building!.y,
+          ),
+        ).toBe(true);
       }
     }
     expect(structureKinds.size).toBeGreaterThanOrEqual(4);
@@ -293,7 +380,10 @@ describe("welcome target cinema shots", () => {
       }
 
       const healthChanged = scene.state.entities.some(
-        (entity) => entity.class === "unit" && initialHealth.has(entity.id) && entity.hp !== initialHealth.get(entity.id),
+        (entity) =>
+          entity.class === "unit" &&
+          initialHealth.has(entity.id) &&
+          entity.hp !== initialHealth.get(entity.id),
       );
       expect(scene.state.tick).toBeGreaterThan(warmupTick);
       expect(scene.state.result).toBe("playing");
@@ -352,7 +442,10 @@ describe("welcome target cinema shots", () => {
     for (const kind of CINEMA_SCENARIO_KINDS) {
       const scene = createCinemaScene(CINEMA_SEED, 0, kind);
       const clashCombatants = scene.state.entities.filter(
-        (e) => (e.class === "unit" || e.kind === "turret") && e.hp > 0 && Math.hypot(e.x - scene.combatEpicenter.x, e.y - scene.combatEpicenter.y) <= 6,
+        (e) =>
+          (e.class === "unit" || e.kind === "turret") &&
+          e.hp > 0 &&
+          Math.hypot(e.x - scene.combatEpicenter.x, e.y - scene.combatEpicenter.y) <= 6,
       );
       expect(clashCombatants.length).toBeGreaterThanOrEqual(6);
 
@@ -449,14 +542,17 @@ describe("welcome target cinema shots", () => {
   it("keeps each scenario's objective target and unit identity after setup", () => {
     for (const kind of CINEMA_SCENARIO_KINDS) {
       const scene = createCinemaScene(CINEMA_SEED, 0, kind);
-      const objective = scene.scenarioTargetId === undefined
-        ? undefined
-        : scene.state.entities.find((entity) => entity.id === scene.scenarioTargetId);
+      const objective =
+        scene.scenarioTargetId === undefined
+          ? undefined
+          : scene.state.entities.find((entity) => entity.id === scene.scenarioTargetId);
 
       if (kind === "armorClash") {
         const combatKinds = new Set(
           scene.state.entities
-            .filter((entity) => entity.class === "unit" && entity.hp > 0 && entity.kind !== "repairTruck")
+            .filter(
+              (entity) => entity.class === "unit" && entity.hp > 0 && entity.kind !== "repairTruck",
+            )
             .map((entity) => entity.kind),
         );
         expect(combatKinds).toEqual(new Set(["tank"]));
@@ -468,16 +564,28 @@ describe("welcome target cinema shots", () => {
 
       if (kind === "baseAssault" || kind === "turretDefense" || kind === "infantryStorm") {
         expect(objective.class).toBe("building");
-        const attackers = scene.state.entities.filter((entity) => entity.owner === (kind === "baseAssault" ? 0 : 1) && entity.attackTarget === objective.id);
+        const attackers = scene.state.entities.filter(
+          (entity) =>
+            entity.owner === (kind === "baseAssault" ? 0 : 1) &&
+            entity.attackTarget === objective.id,
+        );
         expect(attackers.length).toBeGreaterThan(0);
       } else if (kind === "harvesterAmbush") {
         expect(objective.kind).toBe("harvester");
-        expect(scene.state.entities.some((entity) => entity.owner === 0 && entity.attackTarget === objective.id)).toBe(true);
+        expect(
+          scene.state.entities.some(
+            (entity) => entity.owner === 0 && entity.attackTarget === objective.id,
+          ),
+        ).toBe(true);
       } else if (kind === "convoyRaid") {
         expect(objective.kind).toBe("convoyTruck");
         expect(scene.convoyRoute?.length).toBe(2);
         expect(objective.orderMode).toBe("move");
-        expect(scene.state.entities.some((entity) => entity.owner === 0 && entity.attackTarget === objective.id)).toBe(true);
+        expect(
+          scene.state.entities.some(
+            (entity) => entity.owner === 0 && entity.attackTarget === objective.id,
+          ),
+        ).toBe(true);
       }
     }
   });

@@ -54,7 +54,12 @@ export function paintCrack(
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(x * s, y * s);
-    ctx.quadraticCurveTo((x + length * 0.42 + lean) * s, (y - length * 0.16) * s, (x + length) * s, (y - length * 0.48) * s);
+    ctx.quadraticCurveTo(
+      (x + length * 0.42 + lean) * s,
+      (y - length * 0.16) * s,
+      (x + length) * s,
+      (y - length * 0.48) * s,
+    );
     ctx.stroke();
   });
 }

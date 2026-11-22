@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
+import {
+  AI_CONTACT_TTL_TICKS,
+  enemyKnownPlayerEntities,
+  nearestKnownPlayer,
+  updateAiContacts,
+} from "../../lib/sim/ai/visibility";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { AI_CONTACT_TTL_TICKS, enemyKnownPlayerEntities, nearestKnownPlayer, updateAiContacts } from "../../lib/sim/ai/visibility";
 
 describe("enemy visibility and contact memory", () => {
   it("keeps an unseen player harvester out of live enemy targeting", () => {
@@ -33,13 +38,17 @@ describe("enemy visibility and contact memory", () => {
     sensor.x = 2;
     sensor.y = 2;
     state.tick = 1;
-    expect(nearestKnownPlayer(state, { x: 2, y: 2 }, (entity) => entity.id === harvester.id)).toBeUndefined();
+    expect(
+      nearestKnownPlayer(state, { x: 2, y: 2 }, (entity) => entity.id === harvester.id),
+    ).toBeUndefined();
 
     state.tick = AI_CONTACT_TTL_TICKS;
     expect(enemyKnownPlayerEntities(state).some((entity) => entity.id === harvester.id)).toBe(true);
 
     state.tick += 1;
-    expect(enemyKnownPlayerEntities(state).some((entity) => entity.id === harvester.id)).toBe(false);
+    expect(enemyKnownPlayerEntities(state).some((entity) => entity.id === harvester.id)).toBe(
+      false,
+    );
   });
 
   it("reveals a player attack target as mission contact information", () => {

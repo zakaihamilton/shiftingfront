@@ -2,7 +2,7 @@ import type { MissionObjective } from "@/lib/gen/story";
 import type { DoctrineHint } from "@/lib/ui/doctrine";
 import type { ObjectiveCardModel } from "@/lib/ui/missionPresentation";
 import { FieldDoctrine } from "./FieldDoctrine";
-import styles from "./Battlefield.module.css";
+import styles from "./MissionDirectiveContent.module.css";
 
 export function MissionDirectiveContent({
   objective,
@@ -19,35 +19,59 @@ export function MissionDirectiveContent({
   doctrineHints?: DoctrineHint[];
   onObjectivePanelToggle?: () => void;
 }) {
-  const requiredCards = objectiveCards.filter((card) => !card.primary && card.priority === "primary");
-  const optionalCards = objectiveCards.filter((card) => !card.primary && card.priority !== "primary");
+  const requiredCards = objectiveCards.filter(
+    (card) => !card.primary && card.priority === "primary",
+  );
+  const optionalCards = objectiveCards.filter(
+    (card) => !card.primary && card.priority !== "primary",
+  );
   const primaryCard = objectiveCards.find((card) => card.primary) ?? objectiveCards[0];
-  const primaryObjective = briefingObjectives?.find((item) => item.id === "win")?.text
-    ?? briefingObjectives?.[0]?.text
-    ?? primaryCard?.label
-    ?? objective;
+  const primaryObjective =
+    briefingObjectives?.find((item) => item.id === "win")?.text ??
+    briefingObjectives?.[0]?.text ??
+    primaryCard?.label ??
+    objective;
 
   return (
     <>
-      <div className={styles.objective} data-testid="objective" data-status={primaryCard?.status ?? "active"}>
-        <span className={styles.objectivePriority}><span className={styles.priorityIcon} aria-hidden="true">!</span> Primary objective</span>
+      <div
+        className={styles.objective}
+        data-testid="objective"
+        data-status={primaryCard?.status ?? "active"}
+      >
+        <span className={styles.objectivePriority}>
+          <span className={styles.priorityIcon} aria-hidden="true">
+            !
+          </span>{" "}
+          Primary objective
+        </span>
         <strong>{primaryObjective}</strong>
         {primaryCard && primaryCard.target > 0 ? (
           <span className={styles.objectiveProgress}>
             <span>{primaryCard.label}</span>
             {primaryCard.showCount !== false ? (
-              <span className={styles.objectiveCount}>{Math.min(primaryCard.current, primaryCard.target)} / {primaryCard.target}</span>
+              <span className={styles.objectiveCount}>
+                {Math.min(primaryCard.current, primaryCard.target)} / {primaryCard.target}
+              </span>
             ) : null}
             {primaryCard.showProgressBar !== false ? (
               <span className={styles.objectiveBar} aria-hidden="true">
-                <span style={{ width: `${Math.round(Math.max(0, Math.min(1, primaryCard.current / primaryCard.target)) * 100)}%` }} />
+                <span
+                  style={{
+                    width: `${Math.round(Math.max(0, Math.min(1, primaryCard.current / primaryCard.target)) * 100)}%`,
+                  }}
+                />
               </span>
             ) : null}
           </span>
         ) : null}
       </div>
       {convoyDeparture ? (
-        <div className={styles.stagingWindow} data-testid="convoy-departure" data-tooltip="The convoy starts moving at 00:00. This wait is included in the mission time.">
+        <div
+          className={styles.stagingWindow}
+          data-testid="convoy-departure"
+          data-tooltip="The convoy starts moving at 00:00. This wait is included in the mission time."
+        >
           {convoyDeparture}
         </div>
       ) : null}
@@ -72,7 +96,11 @@ export function MissionDirectiveContent({
         />
       ) : null}
       {briefingObjectives?.length ? (
-        <section className={styles.briefingObjectives} aria-label="Mission objectives" data-testid="battlefield-objectives">
+        <section
+          className={styles.briefingObjectives}
+          aria-label="Mission objectives"
+          data-testid="battlefield-objectives"
+        >
           <details open onToggle={onObjectivePanelToggle}>
             <summary className={styles.briefingLabel}>Strategic directives</summary>
             <div className={styles.briefingList}>
@@ -108,16 +136,31 @@ function ObjectiveRail({
 }) {
   return (
     <section className={styles.secondaryRail} aria-label={ariaLabel} data-testid={testId}>
-      <div className={styles.secondaryHeader}>{label} <span>{cards.filter((card) => card.status === "complete").length}/{cards.length}</span></div>
+      <div className={styles.secondaryHeader}>
+        {label}{" "}
+        <span>
+          {cards.filter((card) => card.status === "complete").length}/{cards.length}
+        </span>
+      </div>
       <div className={styles.secondaryCards}>
         {cards.map((card) => (
           <div className={styles.secondaryCard} key={card.id} data-status={card.status}>
             <span className={styles.secondaryIcon} aria-hidden="true">
-              {card.status === "complete" ? "✓" : card.status === "failed" ? "×" : card.priority === "primary" ? "!" : "○"}
+              {card.status === "complete"
+                ? "✓"
+                : card.status === "failed"
+                  ? "×"
+                  : card.priority === "primary"
+                    ? "!"
+                    : "○"}
             </span>
             <span>{card.label}</span>
             <span className={styles.secondaryState}>
-              {card.status === "complete" ? completeLabel : card.status === "failed" ? "Failed" : activeLabel}
+              {card.status === "complete"
+                ? completeLabel
+                : card.status === "failed"
+                  ? "Failed"
+                  : activeLabel}
             </span>
           </div>
         ))}

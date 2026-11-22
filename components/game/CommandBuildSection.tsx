@@ -1,7 +1,7 @@
-import type { CommandBuildControls } from "./commandCatalogTypes";
 import { CommandCatalogContent } from "./CommandCatalogContent";
-import { CommandTabs } from "./CommandTabs";
 import styles from "./CommandSidebar.module.css";
+import { CommandTabs } from "./CommandTabs";
+import type { CommandBuildControls } from "./commandCatalogTypes";
 
 export function CommandBuildSection({
   state,
@@ -53,13 +53,14 @@ export function CommandBuildSection({
       selectedClassName={activeTab === "selected" ? styles.selectedBody : undefined}
     />
   );
-  const tutorialFocus = state.tutorialStage === "build"
-    ? "construction-tab"
-    : state.tutorialStage === "produce"
-      ? "production-tab"
-      : state.tutorialStage === "repair"
-        ? "repair-control"
-        : undefined;
+  const tutorialFocus =
+    state.tutorialStage === "build"
+      ? "construction-tab"
+      : state.tutorialStage === "produce"
+        ? "production-tab"
+        : state.tutorialStage === "repair"
+          ? "repair-control"
+          : undefined;
 
   return (
     <section className={styles.build} data-testid="build-progress">
@@ -79,7 +80,9 @@ export function CommandBuildSection({
           <div className={styles.selected} data-testid="selected-panel">
             {catalog}
           </div>
-        ) : catalog}
+        ) : (
+          catalog
+        )}
       </div>
     </section>
   );

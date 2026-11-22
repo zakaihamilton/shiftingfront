@@ -24,7 +24,9 @@ export function isDeploymentEdge(value: unknown): value is DeploymentEdge {
   return typeof value === "string" && (DEPLOYMENT_EDGES as readonly string[]).includes(value);
 }
 
-export function campaignIdentityActive(state: Pick<SimState, "multiplayer" | "tutorialStage">): boolean {
+export function campaignIdentityActive(
+  state: Pick<SimState, "multiplayer" | "tutorialStage">,
+): boolean {
   return state.multiplayer !== true && state.tutorialStage === undefined;
 }
 
@@ -58,9 +60,15 @@ export function enemyDoctrine(state: SimState, aiOwner: Owner = 1): EnemyDoctrin
   };
 }
 
-export function volcanicClosureCost(tick: number, kind: string, active: boolean): number | undefined {
+export function volcanicClosureCost(
+  tick: number,
+  kind: string,
+  active: boolean,
+): number | undefined {
   if (!active || kind !== "lavaScar") return undefined;
-  return tick % VOLCANIC_CLOSURE_PERIOD < VOLCANIC_CLOSURE_WINDOW ? VOLCANIC_CLOSURE_COST : undefined;
+  return tick % VOLCANIC_CLOSURE_PERIOD < VOLCANIC_CLOSURE_WINDOW
+    ? VOLCANIC_CLOSURE_COST
+    : undefined;
 }
 
 export function canyonGullyVehicleCost(kind: string, active: boolean): number | undefined {
@@ -70,7 +78,8 @@ export function canyonGullyVehicleCost(kind: string, active: boolean): number | 
 const GROUND_NOTES: Record<BiomeName, string> = {
   "ash plains": "Ash drifts cut sight by one tile.",
   "crystal flats": "Crystal ground extends sight, and power plants yield extra power.",
-  "rust canyons": "Gullies slow vehicles, so the shelf is the faster route. Units in a gully take less damage.",
+  "rust canyons":
+    "Gullies slow vehicles, so the shelf is the faster route. Units in a gully take less damage.",
   "salt marshes": "Mud slows vehicles.",
   "glass desert": "Open glass extends weapon range.",
   "tundra grid": "Packed frost lets vehicles move faster.",
@@ -85,7 +94,10 @@ const DOCTRINE_NOTES: Record<FactionArchetype, string> = {
   concord: "The enemy fields medics and repair trucks, then pulls its damaged units back.",
 };
 
-export function fieldNotes(enemyName: string, biome: BiomeName): { doctrine?: string; ground: string } {
+export function fieldNotes(
+  enemyName: string,
+  biome: BiomeName,
+): { doctrine?: string; ground: string } {
   const archetype = explicitFactionArchetype(enemyName);
   return {
     doctrine: archetype ? DOCTRINE_NOTES[archetype] : undefined,
@@ -97,6 +109,7 @@ export function deploymentEdgeForMission(
   progress: { unlockedMission: number; deploymentEdge?: DeploymentEdge },
   missionIndex: number,
 ): DeploymentEdge | undefined {
-  if (!progress.deploymentEdge || missionIndex <= 0 || missionIndex !== progress.unlockedMission) return undefined;
+  if (!progress.deploymentEdge || missionIndex <= 0 || missionIndex !== progress.unlockedMission)
+    return undefined;
   return progress.deploymentEdge;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { makeFixture, addUnit, addBuilding, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
 import { issue, tick } from "../../lib/sim/api";
 import { tickEconomy } from "../../lib/sim/economy";
+import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
 import { groundOrders } from "../../lib/sim/orders";
 import { battlefieldCursor } from "../../lib/ui/battlefieldCursor";
 

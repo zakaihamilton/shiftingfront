@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Suspense, type ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { PageFallback } from "@/components/ui/PageFallback";
 
 export const DynamicGameClient = dynamic(

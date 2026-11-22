@@ -1,5 +1,5 @@
-import type { BalanceRecord } from "./evaluation";
 import type { BalanceStrategy } from "../../types";
+import type { BalanceRecord } from "./evaluation";
 
 export type BalanceRecordWithScenario = BalanceRecord & {
   seed: string;

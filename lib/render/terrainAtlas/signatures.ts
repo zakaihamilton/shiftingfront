@@ -1,5 +1,5 @@
 import { MAP_SKIRT } from "../../gen/map";
-import { ATLAS_CELL, TERRAIN_ATLAS_REV, type AtlasWorld } from "../terrainMaterials";
+import { ATLAS_CELL, type AtlasWorld, TERRAIN_ATLAS_REV } from "../terrainMaterials";
 import type { TerrainAtlasData } from "./constants";
 
 export function resourceSignature(amounts: number[]): number {
@@ -20,7 +20,11 @@ export function makeAtlasKey(state: AtlasWorld, grainGeneration: number): string
   return `${TERRAIN_ATLAS_REV}:${state.seed}:${state.missionIndex ?? 0}:${state.biome}:${state.width}x${state.height}:${terrainLayoutSignature(state.tiles, state.surfaces)}:${grainGeneration}`;
 }
 
-export function atlasRectForTile(x: number, y: number, _mapWidth: number): { sx: number; sy: number; sw: number; sh: number } {
+export function atlasRectForTile(
+  x: number,
+  y: number,
+  _mapWidth: number,
+): { sx: number; sy: number; sw: number; sh: number } {
   return {
     sx: (x + MAP_SKIRT) * ATLAS_CELL,
     sy: (y + MAP_SKIRT) * ATLAS_CELL,
@@ -29,7 +33,11 @@ export function atlasRectForTile(x: number, y: number, _mapWidth: number): { sx:
   };
 }
 
-export function atlasPixelAtTile(atlas: TerrainAtlasData, tileX: number, tileY: number): [number, number, number] {
+export function atlasPixelAtTile(
+  atlas: TerrainAtlasData,
+  tileX: number,
+  tileY: number,
+): [number, number, number] {
   const rect = atlasRectForTile(tileX, tileY, atlas.mapWidth);
   const px = Math.min(atlas.width - 1, Math.max(0, rect.sx + (rect.sw >> 1)));
   const py = Math.min(atlas.height - 1, Math.max(0, rect.sy + (rect.sh >> 1)));

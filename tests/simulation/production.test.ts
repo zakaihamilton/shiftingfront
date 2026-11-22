@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { BUILDING_STATS, UNIT_STATS } from "../../lib/catalog";
-import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
+import { BUILDING_STATS, MAX_PRODUCTION_QUEUE, UNIT_STATS } from "../../lib/catalog";
+import { addBuilding, makeFixture, setTile, TILE_BLOCKED } from "../../lib/sim/fixtures";
 import { issue } from "../../lib/sim/orders";
 import { tickProduction } from "../../lib/sim/production";
-import { compactDestroyedEntities, powerFor, trySpawnUnit } from "../../lib/sim/world";
+import {
+  buildingAt,
+  canPlaceBuilding,
+  compactDestroyedEntities,
+  powerFor,
+  trySpawnUnit,
+} from "../../lib/sim/world";
 import { expectUniqueUnitCells } from "./helpers";
 
 function readyBase(width = 24, height = 16) {
@@ -20,12 +26,16 @@ describe("shared production leftovers", () => {
     const barracks = addBuilding(s, 0, "barracks", 6, 4);
     barracks.producing = { kind: "infantry", remaining: 5 };
     barracks.queue = ["infantry"];
-    s.productionQueues = { 0: { barracks: { producing: { kind: "infantry", remaining: 5 }, queue: [] } } };
+    s.productionQueues = {
+      0: { barracks: { producing: { kind: "infantry", remaining: 5 }, queue: [] } },
+    };
     tickProduction(s);
     expect(barracks.producing).toBeUndefined();
     expect(barracks.queue).toEqual([]);
     expect(s.productionQueues[0]?.barracks?.producing?.remaining).toBe(4);
-    expect(s.entities.some((entity) => entity.class === "unit" && entity.kind === "infantry")).toBe(false);
+    expect(s.entities.some((entity) => entity.class === "unit" && entity.kind === "infantry")).toBe(
+      false,
+    );
   });
 
   it("adopts a legacy barracks job when the shared queue is empty", () => {
@@ -87,7 +97,9 @@ describe("producer speed", () => {
     addBuilding(s, 0, "factory", 10, 4);
     issue(s, { type: "produce", fromId: factory.id, unit: "tank" });
     tickProduction(s);
-    expect(s.productionQueues?.[0]?.factory?.producing?.remaining).toBe(UNIT_STATS.tank.buildTicks - 2);
+    expect(s.productionQueues?.[0]?.factory?.producing?.remaining).toBe(
+      UNIT_STATS.tank.buildTicks - 2,
+    );
   });
 
   it("uses all ready Barracks to advance their shared queue", () => {
@@ -97,7 +109,9 @@ describe("producer speed", () => {
     issue(s, { type: "produce", fromId: a.id, unit: "infantry" });
     issue(s, { type: "produce", fromId: b.id, unit: "infantry" });
     tickProduction(s);
-    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(UNIT_STATS.infantry.buildTicks - 2);
+    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(
+      UNIT_STATS.infantry.buildTicks - 2,
+    );
     expect(s.productionQueues?.[0]?.barracks?.queue).toEqual(["infantry"]);
   });
 
@@ -107,7 +121,9 @@ describe("producer speed", () => {
     addBuilding(s, 0, "barracks", 9, 4, 40);
     issue(s, { type: "produce", fromId: barracks.id, unit: "infantry" });
     tickProduction(s);
-    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(UNIT_STATS.infantry.buildTicks - 1);
+    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(
+      UNIT_STATS.infantry.buildTicks - 1,
+    );
   });
 });
 
@@ -159,18 +175,22 @@ describe("refinery construction bonus", () => {
     expect(s.entities.filter((e) => e.owner === 0 && e.kind === "harvester")).toHaveLength(1);
     expect(s.unitsProduced[0]).toBe(1);
     expect(s.unitsProducedByRole.harvester).toBe(1);
-    expect(events).toContainEqual(expect.objectContaining({
-      type: "built",
-      owner: 0,
-      kind: "refinery",
-      id: refinery.id,
-    }));
-    expect(events).toContainEqual(expect.objectContaining({
-      type: "produced",
-      owner: 0,
-      kind: "harvester",
-      sourceId: refinery.id,
-    }));
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "built",
+        owner: 0,
+        kind: "refinery",
+        id: refinery.id,
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "produced",
+        owner: 0,
+        kind: "harvester",
+        sourceId: refinery.id,
+      }),
+    );
 
     expect(tickProduction(s).filter((event) => event.type === "produced")).toHaveLength(0);
     expect(s.entities.filter((e) => e.owner === 0 && e.kind === "harvester")).toHaveLength(1);
@@ -199,11 +219,13 @@ describe("refinery construction bonus", () => {
 
     expect(refinery.refineryHarvesterPending).toBeUndefined();
     expect(s.entities.filter((e) => e.owner === 0 && e.kind === "harvester")).toHaveLength(1);
-    expect(retryEvents).toContainEqual(expect.objectContaining({
-      type: "produced",
-      kind: "harvester",
-      sourceId: refinery.id,
-    }));
+    expect(retryEvents).toContainEqual(
+      expect.objectContaining({
+        type: "produced",
+        kind: "harvester",
+        sourceId: refinery.id,
+      }),
+    );
     expect(s.credits[0]).toBe(creditsBefore);
   });
 
@@ -216,12 +238,14 @@ describe("refinery construction bonus", () => {
     expect(s.entities.filter((e) => e.owner === 1 && e.kind === "harvester")).toHaveLength(1);
     expect(s.unitsProduced[1]).toBe(1);
     expect(s.unitsProducedByRole.harvester).toBe(0);
-    expect(events).toContainEqual(expect.objectContaining({
-      type: "produced",
-      owner: 1,
-      kind: "harvester",
-      sourceId: refinery.id,
-    }));
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "produced",
+        owner: 1,
+        kind: "harvester",
+        sourceId: refinery.id,
+      }),
+    );
   });
 });
 
@@ -229,11 +253,15 @@ describe("production rally routing", () => {
   it("spawns at the exit and gives produced units a normal move order to the rally point", () => {
     const s = readyBase();
     const barracks = addBuilding(s, 0, "barracks", 6, 4);
-    s.productionQueues![0] = { barracks: { producing: { kind: "infantry", remaining: 1 }, queue: [] } };
+    s.productionQueues![0] = {
+      barracks: { producing: { kind: "infantry", remaining: 1 }, queue: [] },
+    };
     barracks.rallyPoint = { x: 14, y: 10 };
 
     const events = tickProduction(s);
-    const produced = s.entities.find((entity) => entity.id === events.find((event) => event.type === "produced")?.id);
+    const produced = s.entities.find(
+      (entity) => entity.id === events.find((event) => event.type === "produced")?.id,
+    );
     expect(produced?.class).toBe("unit");
     expect(produced?.orderMode).toBe("move");
     expect(produced?.orderDestination).toEqual({ x: 14, y: 10 });
@@ -244,11 +272,170 @@ describe("production rally routing", () => {
   it("keeps the default idle spawn behavior when no rally point is set", () => {
     const s = readyBase();
     addBuilding(s, 0, "barracks", 6, 4);
-    s.productionQueues![0] = { barracks: { producing: { kind: "infantry", remaining: 1 }, queue: [] } };
+    s.productionQueues![0] = {
+      barracks: { producing: { kind: "infantry", remaining: 1 }, queue: [] },
+    };
 
     tickProduction(s);
-    const produced = s.entities.find((entity) => entity.class === "unit" && entity.kind === "infantry");
+    const produced = s.entities.find(
+      (entity) => entity.class === "unit" && entity.kind === "infantry",
+    );
     expect(produced?.orderDestination).toBeUndefined();
     expect(produced?.idle).toBe(true);
+  });
+});
+
+describe("production queue", () => {
+  it("queues up to 10 units and rejects the 11th", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    s.credits[0] = 50_000;
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    addBuilding(s, 0, "power", 2, 0);
+    const barracks = addBuilding(s, 0, "barracks", 6, 4);
+    const otherBarracks = addBuilding(s, 0, "barracks", 10, 4);
+    for (let i = 0; i < MAX_PRODUCTION_QUEUE; i++) {
+      const events = issue(s, {
+        type: "produce",
+        fromId: i % 2 === 0 ? barracks.id : otherBarracks.id,
+        unit: "infantry",
+      });
+      expect(events).toEqual([]);
+    }
+    expect(s.productionQueues?.[0]?.barracks?.producing?.kind).toBe("infantry");
+    expect(s.productionQueues?.[0]?.barracks?.queue).toHaveLength(MAX_PRODUCTION_QUEUE - 1);
+    const creditsAfterTen = s.credits[0];
+    issue(s, { type: "produce", fromId: otherBarracks.id, unit: "infantry" });
+    expect(s.productionQueues?.[0]?.barracks?.queue).toHaveLength(MAX_PRODUCTION_QUEUE - 1);
+    expect(s.credits[0]).toBe(creditsAfterTen);
+  });
+
+  it("starts the next queued unit after the current one finishes", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    s.credits[0] = 50_000;
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    addBuilding(s, 0, "power", 2, 0);
+    const barracks = addBuilding(s, 0, "barracks", 6, 4);
+    issue(s, { type: "produce", fromId: barracks.id, unit: "infantry" });
+    issue(s, { type: "produce", fromId: barracks.id, unit: "antiArmor" });
+    s.productionQueues![0]!.barracks!.producing!.remaining = 1;
+    tickProduction(s);
+    expect(s.entities.some((e) => e.class === "unit" && e.kind === "infantry")).toBe(true);
+    expect(s.productionQueues?.[0]?.barracks?.producing?.kind).toBe("antiArmor");
+    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(
+      UNIT_STATS.antiArmor.buildTicks,
+    );
+    expect(s.productionQueues?.[0]?.barracks?.queue).toHaveLength(0);
+  });
+});
+
+describe("cancel production and construction", () => {
+  it("allows multiple Barracks and Vehicle Plants per owner", () => {
+    const s = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
+    s.credits[0] = 50_000;
+    addBuilding(s, 0, "constructionYard", 0, 0);
+
+    expect(issue(s, { type: "build", building: "barracks", x: 4, y: 4 })).toEqual([]);
+    expect(issue(s, { type: "build", building: "barracks", x: 8, y: 4 })).toEqual([]);
+    expect(issue(s, { type: "build", building: "factory", x: 4, y: 8 })).toEqual([]);
+    expect(issue(s, { type: "build", building: "factory", x: 8, y: 8 })).toEqual([]);
+  });
+
+  it("refunds a queued unit before cancelling the unit in progress", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    s.credits[0] = 50_000;
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    addBuilding(s, 0, "power", 2, 0);
+    const barracks = addBuilding(s, 0, "barracks", 6, 4);
+    issue(s, { type: "produce", fromId: barracks.id, unit: "infantry" });
+    issue(s, { type: "produce", fromId: barracks.id, unit: "infantry" });
+    issue(s, { type: "produce", fromId: barracks.id, unit: "antiArmor" });
+    const afterQueue = s.credits[0];
+
+    issue(s, { type: "cancelProduce", unit: "infantry" });
+    expect(s.productionQueues?.[0]?.barracks?.producing?.kind).toBe("infantry");
+    expect(s.productionQueues?.[0]?.barracks?.queue).toEqual(["antiArmor"]);
+    expect(s.credits[0]).toBe(afterQueue + UNIT_STATS.infantry.cost);
+
+    issue(s, { type: "cancelProduce", unit: "infantry" });
+    expect(s.productionQueues?.[0]?.barracks?.producing?.kind).toBe("antiArmor");
+    expect(s.productionQueues?.[0]?.barracks?.producing?.remaining).toBe(
+      UNIT_STATS.antiArmor.buildTicks,
+    );
+    expect(s.productionQueues?.[0]?.barracks?.queue).toHaveLength(0);
+    expect(s.credits[0]).toBe(afterQueue + UNIT_STATS.infantry.cost * 2);
+  });
+
+  it("cancels an unfinished building, refunds its cost, and frees the tiles", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    s.credits[0] = 50_000;
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    issue(s, { type: "build", building: "power", x: 6, y: 4 });
+    const power = s.entities.find((e) => e.kind === "power");
+    expect(power?.constructing).toBeGreaterThan(0);
+    expect(buildingAt(s, 6, 4)?.id).toBe(power?.id);
+    const afterBuild = s.credits[0];
+
+    issue(s, { type: "cancelBuild", building: "power" });
+    expect(power?.hp).toBe(0);
+    expect(power?.constructing).toBe(0);
+    expect(buildingAt(s, 6, 4)).toBeUndefined();
+    expect(s.credits[0]).toBe(afterBuild + BUILDING_STATS.power.cost);
+    expect(canPlaceBuilding(s, "power", 6, 4)).toBe(true);
+  });
+
+  it("cancels the most recently placed building of that kind", () => {
+    const s = makeFixture({ width: 16, height: 12, win: { kind: "annihilate" } });
+    s.credits[0] = 50_000;
+    addBuilding(s, 0, "constructionYard", 0, 0);
+    issue(s, { type: "build", building: "turret", x: 6, y: 4 });
+    issue(s, { type: "build", building: "turret", x: 8, y: 4 });
+    const first = s.entities.find((e) => e.kind === "turret" && e.x === 6);
+    const second = s.entities.find((e) => e.kind === "turret" && e.x === 8);
+    expect(first?.constructing).toBeGreaterThan(0);
+    expect(second?.constructing).toBeGreaterThan(0);
+
+    issue(s, { type: "cancelBuild", building: "turret" });
+    expect(second?.hp).toBe(0);
+    expect(first?.hp).toBeGreaterThan(0);
+    expect(first?.constructing).toBeGreaterThan(0);
+  });
+});
+
+describe("production spawn exits", () => {
+  it("spawns barracks units from the front edge first", () => {
+    const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    addBuilding(s, 0, "power", 0, 0);
+    const barracks = addBuilding(s, 0, "barracks", 4, 4);
+    barracks.producing = { kind: "infantry", remaining: 1 };
+    tickProduction(s);
+    const unit = s.entities.find((e) => e.class === "unit");
+    expect(unit && Math.round(unit.x)).toBe(5);
+    expect(unit && Math.round(unit.y)).toBe(6);
+  });
+
+  it("spawns factory units from the camera-facing edge", () => {
+    const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    addBuilding(s, 0, "power", 0, 0);
+    const factory = addBuilding(s, 0, "factory", 4, 4);
+    factory.producing = { kind: "tank", remaining: 1 };
+    tickProduction(s);
+    const unit = s.entities.find((e) => e.class === "unit");
+    expect(unit && Math.round(unit.x)).toBe(5);
+    expect(unit && Math.round(unit.y)).toBe(6);
+  });
+
+  it("falls back behind a barracks when the front is blocked", () => {
+    const s = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
+    addBuilding(s, 0, "power", 0, 0);
+    const barracks = addBuilding(s, 0, "barracks", 4, 4);
+    for (let x = 3; x <= 7; x++) {
+      setTile(s, x, 6, TILE_BLOCKED);
+      setTile(s, 6, x - 2, TILE_BLOCKED);
+    }
+    barracks.producing = { kind: "infantry", remaining: 1 };
+    tickProduction(s);
+    const unit = s.entities.find((e) => e.class === "unit");
+    expect(unit).toBeTruthy();
+    expect(Math.round(unit!.y)).toBeLessThan(4);
   });
 });

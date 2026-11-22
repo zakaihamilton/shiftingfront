@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { TILE_W } from "../../lib/iso";
 import {
   CINEMA_SCROLL_PAD,
   emptyScrollLayer,
@@ -7,7 +8,6 @@ import {
   scrollLayerPaintCamera,
   terrainScrollPad,
 } from "../../lib/render/scrollLayer";
-import { TILE_W } from "../../lib/iso";
 
 describe("scroll layer cache", () => {
   it("rebuilds when the content key changes", () => {

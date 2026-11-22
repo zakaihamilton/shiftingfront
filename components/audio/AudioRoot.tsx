@@ -1,20 +1,20 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
+import { setAudioForeground, setAudioLevels, setGameplayAudioManaged } from "@/lib/audio/mixer";
 import {
-  TITLE_MUSIC_SEED,
-  TUTORIAL_MUSIC_MISSION,
   musicCueFromPath,
   pauseMusic,
+  saveAudibleMusicPosition,
   setMusicCue,
   setMusicEnabled,
+  TITLE_MUSIC_SEED,
+  TUTORIAL_MUSIC_MISSION,
   unlockAudio,
-  saveAudibleMusicPosition,
 } from "@/lib/audio/music";
 import { setSfxEnabled } from "@/lib/audio/synth";
 import { setVoiceEnabled, setVoiceVolume } from "@/lib/audio/voice";
-import { setAudioForeground, setAudioLevels, setGameplayAudioManaged } from "@/lib/audio/mixer";
 import { cachedLocalStorage } from "@/lib/persist/save";
 import { readSettings } from "@/lib/persist/settings";
 import { parseSeed } from "@/lib/seed/rng";

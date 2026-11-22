@@ -28,7 +28,9 @@ function runtimeFromEnvironment(): MultiplayerRateLimitRuntime {
 
 function isLoopbackRequest(request: Request): boolean {
   try {
-    return ["localhost", "127.0.0.1", "[::1]"].includes(new URL(request.url).hostname.toLowerCase());
+    return ["localhost", "127.0.0.1", "[::1]"].includes(
+      new URL(request.url).hostname.toLowerCase(),
+    );
   } catch {
     return false;
   }
@@ -42,7 +44,8 @@ export async function checkMultiplayerRateLimit(
   check: typeof checkRateLimit = checkRateLimit,
 ): Promise<MultiplayerRateLimitOutcome> {
   if (!runtime.production) return "allowed";
-  if (!runtime.vercel && runtime.localLoopbackBypass && isLoopbackRequest(request)) return "allowed";
+  if (!runtime.vercel && runtime.localLoopbackBypass && isLoopbackRequest(request))
+    return "allowed";
   if (!runtime.vercel) return runtime.externalLimiterConfigured ? "allowed" : "unavailable";
 
   try {

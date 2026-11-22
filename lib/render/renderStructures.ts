@@ -1,10 +1,10 @@
+export { drawBuildingFx, drawHarvestFx } from "./renderStructures/effects";
+export { footprintPath, strokeFootprint } from "./renderStructures/footprint";
+export { drawBuildingShadow } from "./renderStructures/shadow";
 export {
-  turretAimMap,
-  getTurretModel,
   drawTurretCannon,
+  getTurretModel,
+  turretAimMap,
   turretTargetInRange,
   turretTargetPoint,
 } from "./renderStructures/turret";
-export { footprintPath, strokeFootprint } from "./renderStructures/footprint";
-export { drawBuildingShadow } from "./renderStructures/shadow";
-export { drawBuildingFx, drawHarvestFx } from "./renderStructures/effects";

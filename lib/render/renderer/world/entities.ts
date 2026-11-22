@@ -1,23 +1,17 @@
-import type { Entity, SimState } from "../../../types";
-import { activeProducerFor, isSharedProducerKind } from "../../../sim/producerState";
-import { animClock } from "../../anim";
 import type { Camera } from "../../../iso";
+import { activeProducerFor, isSharedProducerKind } from "../../../sim/producerState";
+import type { Entity, SimState } from "../../../types";
+import { animClock } from "../../anim";
 import { computeUnitDynamicTransform, updateUnitHistory } from "../../gl/unitTransformTracker";
+import { isPerfHudEnabled, type WorldPhaseTimings } from "../../perfHud";
+import { drawFxLayer } from "../../renderCombat";
+import { depthOf, renderDepthOf } from "../../renderEntities";
+import { repairTargetIds } from "../../renderOverlays";
 import { terrainLightRigForBiome } from "../../terrainLighting";
 import { drawUnitGroundLights, unitLights } from "../../unitLighting";
 import { drawUnitTrails, updateUnitTrails } from "../../unitTrails";
 import { unitWeaponSockets } from "../../unitVehicleLayers";
-import { isPerfHudEnabled, type WorldPhaseTimings } from "../../perfHud";
-import { drawFxLayer } from "../../renderCombat";
-import { repairTargetIds } from "../../renderOverlays";
-import { depthOf, renderDepthOf } from "../../renderEntities";
-import {
-  drawList,
-  entityDrawOrder,
-  entityById,
-  lastReadySprite,
-  spriteSessionKey,
-} from "../cache";
+import { drawList, entityById, entityDrawOrder, lastReadySprite, spriteSessionKey } from "../cache";
 import { drawWorldEntity, unitSpriteDrawPosition } from "./drawWorldEntity";
 
 export { unitSpriteDrawPosition };
@@ -39,7 +33,7 @@ export function sortEntitiesForRender(
 ): void {
   entities.sort((a, b) => {
     const delta = depths.get(a.id)! - depths.get(b.id)!;
-    return delta || (a.id - b.id);
+    return delta || a.id - b.id;
   });
 
   let groupStart = 0;
@@ -53,7 +47,8 @@ export function sortEntitiesForRender(
     while (
       groupEnd < entities.length &&
       entities[groupEnd]!.class === "unit" &&
-      Math.abs(depths.get(entities[groupEnd]!.id)! - depths.get(entities[groupEnd - 1]!.id)!) <= stabilityEpsilon
+      Math.abs(depths.get(entities[groupEnd]!.id)! - depths.get(entities[groupEnd - 1]!.id)!) <=
+        stabilityEpsilon
     ) {
       groupEnd += 1;
     }
@@ -112,7 +107,10 @@ export function renderEntityPhase(
   const dynCache = new Map<number, ReturnType<typeof computeUnitDynamicTransform>>();
   for (const e of drawList) {
     if (e.class === "unit") {
-      dynCache.set(e.id, computeUnitDynamicTransform(e, state, extras.subTickAlpha ?? 0, timeMs, entityById));
+      dynCache.set(
+        e.id,
+        computeUnitDynamicTransform(e, state, extras.subTickAlpha ?? 0, timeMs, entityById),
+      );
     }
   }
 
@@ -122,11 +120,19 @@ export function renderEntityPhase(
   }
 
   sortEntitiesForRender(drawList, depthCache, entityDrawOrder);
-  drawList.forEach((e, index) => { entityDrawOrder.set(e.id, index); });
+  drawList.forEach((e, index) => {
+    entityDrawOrder.set(e.id, index);
+  });
 
   drawFxLayer(ctx, state, cam, extras.fx, timeMs, "ground", extras.reducedMotion);
   unitWeaponSockets.clear();
-  drawUnitTrails(ctx, state, cam, updateUnitTrails(state, dynCache, timeMs, extras.reducedMotion), timeMs);
+  drawUnitTrails(
+    ctx,
+    state,
+    cam,
+    updateUnitTrails(state, dynCache, timeMs, extras.reducedMotion),
+    timeMs,
+  );
   const lightRig = terrainLightRigForBiome(state.seed, state.biome);
   const lights = unitLights(state, cam, extras.fx ?? [], timeMs, extras.reducedMotion);
   drawUnitGroundLights(ctx, lights);
@@ -138,7 +144,8 @@ export function renderEntityPhase(
   for (const entity of drawList) {
     if (entity.class !== "building" || !isSharedProducerKind(entity.kind)) continue;
     if (!state.productionQueues?.[entity.owner]?.[entity.kind]?.producing) continue;
-    if (activeProducerFor(state, entity.owner, entity.kind)?.id === entity.id) activeProducingIds.add(entity.id);
+    if (activeProducerFor(state, entity.owner, entity.kind)?.id === entity.id)
+      activeProducingIds.add(entity.id);
   }
 
   const frame = {

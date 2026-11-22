@@ -1,6 +1,6 @@
-import type { MeshData } from "./types";
-import { computeNormal } from "./math";
 import { appendQuad, type MeshPoint } from "./buffers";
+import { computeNormal } from "./math";
+import type { MeshData } from "./types";
 
 export function createBoxMesh(
   minX: number,
@@ -19,17 +19,65 @@ export function createBoxMesh(
   const buffers = { p, n, m, idx };
 
   // +Z (top)
-  appendQuad(buffers, [minX, minY, maxZ], [maxX, minY, maxZ], [maxX, maxY, maxZ], [minX, maxY, maxZ], [0, 0, 1], mask);
+  appendQuad(
+    buffers,
+    [minX, minY, maxZ],
+    [maxX, minY, maxZ],
+    [maxX, maxY, maxZ],
+    [minX, maxY, maxZ],
+    [0, 0, 1],
+    mask,
+  );
   // -Z (bottom)
-  appendQuad(buffers, [minX, maxY, minZ], [maxX, maxY, minZ], [maxX, minY, minZ], [minX, minY, minZ], [0, 0, -1], mask);
+  appendQuad(
+    buffers,
+    [minX, maxY, minZ],
+    [maxX, maxY, minZ],
+    [maxX, minY, minZ],
+    [minX, minY, minZ],
+    [0, 0, -1],
+    mask,
+  );
   // +X (front)
-  appendQuad(buffers, [maxX, minY, minZ], [maxX, maxY, minZ], [maxX, maxY, maxZ], [maxX, minY, maxZ], [1, 0, 0], mask);
+  appendQuad(
+    buffers,
+    [maxX, minY, minZ],
+    [maxX, maxY, minZ],
+    [maxX, maxY, maxZ],
+    [maxX, minY, maxZ],
+    [1, 0, 0],
+    mask,
+  );
   // -X (back)
-  appendQuad(buffers, [minX, minY, maxZ], [minX, maxY, maxZ], [minX, maxY, minZ], [minX, minY, minZ], [-1, 0, 0], mask);
+  appendQuad(
+    buffers,
+    [minX, minY, maxZ],
+    [minX, maxY, maxZ],
+    [minX, maxY, minZ],
+    [minX, minY, minZ],
+    [-1, 0, 0],
+    mask,
+  );
   // +Y (left)
-  appendQuad(buffers, [minX, maxY, minZ], [maxX, maxY, minZ], [maxX, maxY, maxZ], [minX, maxY, maxZ], [0, 1, 0], mask);
+  appendQuad(
+    buffers,
+    [minX, maxY, minZ],
+    [maxX, maxY, minZ],
+    [maxX, maxY, maxZ],
+    [minX, maxY, maxZ],
+    [0, 1, 0],
+    mask,
+  );
   // -Y (right)
-  appendQuad(buffers, [minX, minY, maxZ], [maxX, minY, maxZ], [maxX, minY, minZ], [minX, minY, minZ], [0, -1, 0], mask);
+  appendQuad(
+    buffers,
+    [minX, minY, maxZ],
+    [maxX, minY, maxZ],
+    [maxX, minY, minZ],
+    [minX, minY, minZ],
+    [0, -1, 0],
+    mask,
+  );
 
   return {
     positions: new Float32Array(p),

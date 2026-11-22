@@ -35,7 +35,9 @@
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .cancelIcon {
@@ -62,21 +64,31 @@
   overflow: visible;
   border: 1px solid var(--chrome-inset);
   background: linear-gradient(var(--chrome-steel-hi), var(--chrome-steel-lo));
-  box-shadow: inset 1px 1px var(--chrome-bevel), inset -1px -1px var(--chrome-void);
+  box-shadow:
+    inset 1px 1px var(--chrome-bevel),
+    inset -1px -1px var(--chrome-void);
   color: var(--chrome-text);
   text-align: left;
   text-transform: uppercase;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    filter 0.16s ease;
 }
 
 .card:hover:not(:disabled),
 .active {
   border-color: var(--a, var(--chrome-cyan));
-  background: linear-gradient(color-mix(in srgb, var(--chrome-steel-hi) 55%, var(--chrome-bevel)), var(--chrome-steel));
+  background: linear-gradient(
+    color-mix(in srgb, var(--chrome-steel-hi) 55%, var(--chrome-bevel)),
+    var(--chrome-steel)
+  );
 }
 
 .active {
-  box-shadow: inset 0 0 0 1px var(--a, var(--chrome-cyan)), inset 1px 1px var(--chrome-bevel);
+  box-shadow:
+    inset 0 0 0 1px var(--a, var(--chrome-cyan)),
+    inset 1px 1px var(--chrome-bevel);
 }
 
 .card:disabled {
@@ -93,13 +105,20 @@
 .tutorialFocus {
   z-index: 3;
   border-color: var(--chrome-gold) !important;
-  box-shadow: 0 0 0 1px var(--chrome-gold), 0 0 16px color-mix(in srgb, var(--chrome-gold) 42%, transparent);
+  box-shadow:
+    0 0 0 1px var(--chrome-gold),
+    0 0 16px color-mix(in srgb, var(--chrome-gold) 42%, transparent);
   animation: tutorialCameoPulse 1.35s ease-in-out infinite;
 }
 
 @keyframes tutorialCameoPulse {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.25); }
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.25);
+  }
 }
 
 .art {
@@ -110,8 +129,16 @@
   overflow: hidden;
   aspect-ratio: 80 / 56;
   background:
-    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--a, var(--chrome-cyan)) 14%, transparent), transparent 68%),
-    repeating-linear-gradient(to bottom, transparent 0 3px, color-mix(in srgb, var(--chrome-cyan) 5%, transparent) 3px 4px),
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(in srgb, var(--a, var(--chrome-cyan)) 14%, transparent),
+      transparent 68%
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 3px,
+      color-mix(in srgb, var(--chrome-cyan) 5%, transparent) 3px 4px
+    ),
     var(--chrome-void);
 }
 
@@ -155,12 +182,11 @@
   left: 0;
   height: var(--cameo-remain, 100%);
   border-bottom: 2px solid var(--chrome-cyan);
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--chrome-void) 90%, transparent) 0 2px,
-      color-mix(in srgb, var(--chrome-steel-lo) 78%, transparent) 2px 4px
-    );
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--chrome-void) 90%, transparent) 0 2px,
+    color-mix(in srgb, var(--chrome-steel-lo) 78%, transparent) 2px 4px
+  );
   box-shadow: 0 1px 0 var(--chrome-cyan-dim);
 }
 
@@ -168,12 +194,11 @@
   height: 100%;
   border-bottom: 0;
   box-shadow: none;
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      color-mix(in srgb, var(--chrome-void) 84%, transparent) 0 6px,
-      color-mix(in srgb, var(--chrome-cyan-dim) 28%, var(--chrome-steel-lo)) 6px 12px
-    );
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--chrome-void) 84%, transparent) 0 6px,
+    color-mix(in srgb, var(--chrome-cyan-dim) 28%, var(--chrome-steel-lo)) 6px 12px
+  );
 }
 
 .count {
@@ -278,7 +303,8 @@
   text-transform: none;
 }
 
-@media (max-width: 799px) and (orientation: landscape), (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
+@media (max-width: 799px) and (orientation: landscape),
+  (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
   .caption b {
     font-size: var(--text-2xs);
     letter-spacing: 0.02em;

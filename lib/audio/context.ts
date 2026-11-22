@@ -18,7 +18,9 @@ export function getAudioContext(): AudioContext | null {
     unlocked = false;
   }
   if (!ctx) {
-    const C = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const C =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!C) return null;
     try {
       ctx = new C({ sampleRate: AUDIO_SAMPLE_RATE });

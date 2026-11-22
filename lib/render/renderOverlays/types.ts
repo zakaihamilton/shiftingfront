@@ -1,6 +1,6 @@
-import type { FxBurst } from "../fx";
-import type { BuildingKind } from "../../types";
 import type { ColorblindMode } from "../../persist/settings";
+import type { BuildingKind } from "../../types";
+import type { FxBurst } from "../fx";
 
 export type CommandMarkerKind = "move" | "attack" | "harvest" | "support" | "invalid";
 

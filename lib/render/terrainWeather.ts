@@ -1,15 +1,16 @@
-export type { WeatherKind, WeatherParticle, WaterCaustic } from "./terrainWeather/types";
+export { clearTerrainAtmosphereCache, paintTerrainAtmosphere } from "./terrainAtmosphere";
 
 export { resetFxTileIndex } from "./terrainWeather/core";
-
-export { paintWaterFx, waterFxNeedsClip, visibleFxTileCoords, waterCaustic } from "./terrainWeather/water";
-
-export { paintOreGlints, oreGlint, oreSparkle } from "./terrainWeather/ore";
-
+export { oreGlint, oreSparkle, paintOreGlints } from "./terrainWeather/ore";
+export type { WaterCaustic, WeatherKind, WeatherParticle } from "./terrainWeather/types";
+export {
+  paintWaterFx,
+  visibleFxTileCoords,
+  waterCaustic,
+  waterFxNeedsClip,
+} from "./terrainWeather/water";
 export {
   paintTerrainWeather,
   weatherKindForBiome,
   weatherParticleAt,
 } from "./terrainWeather/weather";
-
-export { clearTerrainAtmosphereCache, paintTerrainAtmosphere } from "./terrainAtmosphere";

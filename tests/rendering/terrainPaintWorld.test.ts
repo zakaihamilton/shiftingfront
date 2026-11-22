@@ -1,15 +1,24 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createCamera } from "../../lib/iso";
+import { invalidateTerrainAtlas } from "../../lib/render/terrainAtlas";
+import {
+  clearTerrainPaintCache,
+  paintTerrainSurface,
+  paintTerrainWorld,
+} from "../../lib/render/terrainPaint/world";
 import { makeFixture, setHeight, setTile, TILE_WATER } from "../../lib/sim/fixtures";
 import { SURFACE_CONCRETE } from "../../lib/types";
-import { createCamera } from "../../lib/iso";
-import { clearTerrainPaintCache, paintTerrainSurface, paintTerrainWorld } from "../../lib/render/terrainPaint/world";
-import { invalidateTerrainAtlas } from "../../lib/render/terrainAtlas";
 
 type DrawCall = unknown[];
 type PathCall = { name: string; args: unknown[] };
 
-function createContext(width: number, height: number, drawCalls: DrawCall[] = [], pathCalls: PathCall[] = []): CanvasRenderingContext2D {
+function createContext(
+  width: number,
+  height: number,
+  drawCalls: DrawCall[] = [],
+  pathCalls: PathCall[] = [],
+): CanvasRenderingContext2D {
   const target = {
     canvas: { width, height },
     globalAlpha: 1,
@@ -60,7 +69,12 @@ describe("live terrain surface renderer", () => {
 
   it("uses the continuous atlas for concrete terrain transitions", () => {
     const clearState = makeFixture({ width: 8, height: 8, seed: 832, win: { kind: "annihilate" } });
-    const concreteState = makeFixture({ width: 8, height: 8, seed: 832, win: { kind: "annihilate" } });
+    const concreteState = makeFixture({
+      width: 8,
+      height: 8,
+      seed: 832,
+      win: { kind: "annihilate" },
+    });
     const concreteIndex = 2 * concreteState.width + 2;
     concreteState.surfaces[concreteIndex] = SURFACE_CONCRETE;
 
@@ -83,9 +97,15 @@ describe("live terrain surface renderer", () => {
 
     paintTerrainSurface(createContext(640, 480, drawCalls), state, createCamera());
 
-    const waterDraw = drawCalls.findIndex((call) => call[1] === 17 * 8 - 1 && call[2] === 17 * 8 - 1);
-    const elevatedLandDraw = drawCalls.findIndex((call) => call[1] === 18 * 8 - 1 && call[2] === 17 * 8 - 1);
-    const elevatedNorthLandDraw = drawCalls.findIndex((call) => call[1] === 17 * 8 - 1 && call[2] === 16 * 8 - 1);
+    const waterDraw = drawCalls.findIndex(
+      (call) => call[1] === 17 * 8 - 1 && call[2] === 17 * 8 - 1,
+    );
+    const elevatedLandDraw = drawCalls.findIndex(
+      (call) => call[1] === 18 * 8 - 1 && call[2] === 17 * 8 - 1,
+    );
+    const elevatedNorthLandDraw = drawCalls.findIndex(
+      (call) => call[1] === 17 * 8 - 1 && call[2] === 16 * 8 - 1,
+    );
     expect(waterDraw).toBeGreaterThanOrEqual(0);
     expect(elevatedLandDraw).toBeGreaterThanOrEqual(0);
     expect(elevatedNorthLandDraw).toBeGreaterThanOrEqual(0);
@@ -101,20 +121,27 @@ describe("live terrain surface renderer", () => {
 
     clearTerrainPaintCache();
     invalidateTerrainAtlas();
-    const interiorState = makeFixture({ width: 96, height: 96, seed: 832, win: { kind: "annihilate" } });
+    const interiorState = makeFixture({
+      width: 96,
+      height: 96,
+      seed: 832,
+      win: { kind: "annihilate" },
+    });
     const interiorPaths: PathCall[] = [];
-    paintTerrainSurface(
-      createContext(640, 480, [], interiorPaths),
-      interiorState,
-      { x: 320, y: -784, zoom: 1 },
-    );
+    paintTerrainSurface(createContext(640, 480, [], interiorPaths), interiorState, {
+      x: 320,
+      y: -784,
+      zoom: 1,
+    });
     expect(interiorPaths.filter((call) => call.name === "arcTo")).toHaveLength(0);
     expect(interiorPaths.filter((call) => call.name === "lineTo").length).toBeGreaterThan(0);
   });
 
   it("reuses surface geometry across fog refreshes and rebuilds after camera or atlas changes", () => {
     const drawCalls: DrawCall[] = [];
-    vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(function (this: HTMLCanvasElement) {
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(function (
+      this: HTMLCanvasElement,
+    ) {
       return createContext(this.width, this.height, drawCalls);
     });
     const state = makeFixture({ width: 8, height: 8, seed: 832, win: { kind: "annihilate" } });

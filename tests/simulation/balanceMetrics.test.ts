@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkBalance, summarizeBalance, type BalanceRecord } from "../../lib/sim/balance";
+import { type BalanceRecord, checkBalance, summarizeBalance } from "../../lib/sim/balance";
 
 const records: BalanceRecord[] = [
   {
@@ -87,21 +87,24 @@ describe("balance metrics", () => {
   });
 
   it("checks mission kinds once enough samples are available", () => {
-    const kindRecords = Array.from({ length: 4 }, (_, index): BalanceRecord => ({
-      kind: "sabotage",
-      result: index === 0 ? "won" : "playing",
-      truncated: false,
-      duration: 100,
-      credits: 900,
-      unitsProduced: 2,
-      aiUnitsProduced: 3,
-      powerDeficit: false,
-      casualties: 0,
-      secondaryCompleted: 0,
-      mapValid: true,
-      commandsIssued: 1,
-      commandRejections: 0,
-    }));
+    const kindRecords = Array.from(
+      { length: 4 },
+      (_, index): BalanceRecord => ({
+        kind: "sabotage",
+        result: index === 0 ? "won" : "playing",
+        truncated: false,
+        duration: 100,
+        credits: 900,
+        unitsProduced: 2,
+        aiUnitsProduced: 3,
+        powerDeficit: false,
+        casualties: 0,
+        secondaryCompleted: 0,
+        mapValid: true,
+        commandsIssued: 1,
+        commandRejections: 0,
+      }),
+    );
     const result = checkBalance(summarizeBalance(kindRecords), {
       minWinRate: 0,
       maxTimeoutRate: 1,

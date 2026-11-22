@@ -1,17 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { makeFixture, addBuilding, addUnit, setTile } from "../../lib/sim/fixtures";
-import { TILE_WATER } from "../../lib/types";
-import {
-  buildInfluenceMap,
-  cellInfluence,
-  findWeakestFlank,
-} from "../../lib/sim/ai/influence";
+import { buildInfluenceMap, cellInfluence, findWeakestFlank } from "../../lib/sim/ai/influence";
 import {
   isActiveScout,
   pickScoutTarget,
   shouldScoutRetreat,
   updateScouts,
 } from "../../lib/sim/ai/scouting";
+import { addBuilding, addUnit, makeFixture, setTile } from "../../lib/sim/fixtures";
+import { TILE_WATER } from "../../lib/types";
 
 describe("strategic bot AI: influence maps and scouting", () => {
   it("builds spatial influence maps with friendly, threat, and tension metrics", () => {
@@ -54,8 +50,14 @@ describe("strategic bot AI: influence maps and scouting", () => {
     const state = makeFixture({ width: 32, height: 32, win: { kind: "annihilate" } });
     const playerYard = addBuilding(state, 0, "constructionYard", 16, 16);
     const candidates = [
-      [24, 16], [22, 22], [16, 24], [10, 22],
-      [8, 16], [10, 10], [16, 8], [22, 10],
+      [24, 16],
+      [22, 22],
+      [16, 24],
+      [10, 22],
+      [8, 16],
+      [10, 10],
+      [16, 8],
+      [22, 10],
     ];
     for (const [x, y] of candidates) {
       if (y !== 8) setTile(state, x, y, TILE_WATER);
@@ -97,7 +99,9 @@ describe("strategic bot AI: influence maps and scouting", () => {
     expect(shouldScoutRetreat(scout, threatMap)).toBe(true);
     const retreat = updateScouts(state, units, threatMap, false, yard);
     expect(retreat).toHaveLength(1);
-    expect(retreat[0]!.target).toEqual(expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }));
+    expect(retreat[0]!.target).toEqual(
+      expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+    );
   });
 
   it("keeps active patrols ahead of base-return orders and releases guarded scouts", () => {
@@ -123,7 +127,9 @@ describe("strategic bot AI: influence maps and scouting", () => {
     expect(maintained).toEqual([{ unit: scout, target: first[0]!.target }]);
 
     scout.scenarioGuardTargetId = 999;
-    expect(updateScouts(state, [scout, reserve], buildInfluenceMap(state), false, yard)).toHaveLength(0);
+    expect(
+      updateScouts(state, [scout, reserve], buildInfluenceMap(state), false, yard),
+    ).toHaveLength(0);
     expect(isActiveScout(state, scout.id)).toBe(false);
   });
 

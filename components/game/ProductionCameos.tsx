@@ -1,7 +1,16 @@
-import { TICKS_PER_SECOND, UNIT_STATS, isSupportUnit, isUnitAvailable, isUnitKind, labelFor, producerFor, unitCameoStatus } from "@/lib/catalog";
+import {
+  isSupportUnit,
+  isUnitAvailable,
+  isUnitKind,
+  labelFor,
+  producerFor,
+  TICKS_PER_SECOND,
+  UNIT_STATS,
+  unitCameoStatus,
+} from "@/lib/catalog";
+import { isSharedProducerKind, readSharedProductionQueue } from "@/lib/sim/producerState";
 import type { Entity, FactionVisualProfile, Palette, SimState, UnitKind } from "@/lib/types";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
-import { isSharedProducerKind, readSharedProductionQueue } from "@/lib/sim/producerState";
 import { CameoGrid } from "./CameoGrid";
 import { CommandCameo } from "./CommandCameo";
 import { PRODUCIBLE } from "./hooks/useGameActions";
@@ -34,8 +43,11 @@ export function ProductionCameos({
           : undefined;
         const cameo = unitCameoStatus(state.entities, owner, unit, sharedQueue);
         const producer = availableProducer(unit);
-        const canBuy = isUnitAvailable(unit, state.missionIndex)
-          && ownerCredits >= UNIT_STATS[unit].cost && !!producer && power >= 0;
+        const canBuy =
+          isUnitAvailable(unit, state.missionIndex) &&
+          ownerCredits >= UNIT_STATS[unit].cost &&
+          !!producer &&
+          power >= 0;
         const disabled = cameo.phase === "idle" && !canBuy;
         const blocker = disabled ? productionBlockerCopy(state, unit, power, producer) : undefined;
         const recommendation = unitRecommendationText(state, unit);
@@ -49,11 +61,19 @@ export function ProductionCameos({
             disabled={disabled}
             disabledReason={blocker?.reason}
             statusLabel={blocker?.status}
-            detail={cameo.phase === "progress"
-              ? `${Math.ceil((1 - cameo.ratio) * UNIT_STATS[unit].buildTicks / TICKS_PER_SECOND)}s remaining`
-              : cameo.phase === "waiting" ? "Queued — cancel available" : recommendation}
+            detail={
+              cameo.phase === "progress"
+                ? `${Math.ceil(((1 - cameo.ratio) * UNIT_STATS[unit].buildTicks) / TICKS_PER_SECOND)}s remaining`
+                : cameo.phase === "waiting"
+                  ? "Queued — cancel available"
+                  : recommendation
+            }
             cameo={cameo}
-            tutorialFocus={state.tutorialStage === "produce" && unit === "infantry" ? "infantry-cameo" : undefined}
+            tutorialFocus={
+              state.tutorialStage === "produce" && unit === "infantry"
+                ? "infantry-cameo"
+                : undefined
+            }
             shortcut={SHORTCUT.cameo[index]}
             onClick={() => onQueueUnit(unit)}
             onContextMenu={() => onCancelUnit(unit)}
@@ -70,11 +90,20 @@ export function unitRecommendationText(state: SimState, unit: UnitKind): string 
   if (unit === "antiArmor") return "Rocket launcher · effective vs heavy armor";
   if (unit !== "medic" && unit !== "repairTruck") return undefined;
   const domain = unit === "medic" ? "human" : "vehicle";
-  const wounded = state.entities.filter((entity) =>
-    entity.owner === (state.viewOwner ?? 0) && entity.class === "unit" && isUnitKind(entity.kind) && entity.hp > 0 && !entity.neutral && !isSupportUnit(entity.kind) &&
-    UNIT_STATS[entity.kind].domain === domain && entity.hp < entity.maxHp,
+  const wounded = state.entities.filter(
+    (entity) =>
+      entity.owner === (state.viewOwner ?? 0) &&
+      entity.class === "unit" &&
+      isUnitKind(entity.kind) &&
+      entity.hp > 0 &&
+      !entity.neutral &&
+      !isSupportUnit(entity.kind) &&
+      UNIT_STATS[entity.kind].domain === domain &&
+      entity.hp < entity.maxHp,
   ).length;
-  return wounded > 0 ? `Recommended · ${wounded} damaged ${domain} unit${wounded === 1 ? "" : "s"}` : undefined;
+  return wounded > 0
+    ? `Recommended · ${wounded} damaged ${domain} unit${wounded === 1 ? "" : "s"}`
+    : undefined;
 }
 
 export function productionBlockerText(
@@ -100,7 +129,11 @@ function productionBlockerCopy(
   let status: string | undefined;
   const producerKind = producerFor(unit);
   const producerEntities = state.entities.filter(
-    (entity) => entity.hp > 0 && entity.owner === (state.viewOwner ?? 0) && entity.class === "building" && entity.kind === producerKind,
+    (entity) =>
+      entity.hp > 0 &&
+      entity.owner === (state.viewOwner ?? 0) &&
+      entity.class === "building" &&
+      entity.kind === producerKind,
   );
 
   if (!producer) {

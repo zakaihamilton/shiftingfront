@@ -26,7 +26,7 @@ function hash2(a: number, b: number, lane: number): number {
 }
 
 function unitSigned(a: number, b: number, lane: number): number {
-  return hash2(a, b, lane) / 4294967295 * 2 - 1;
+  return (hash2(a, b, lane) / 4294967295) * 2 - 1;
 }
 
 function vertexOffset(vx: number, vy: number, scale: number): [number, number] {
@@ -77,9 +77,13 @@ export function elevationFace(
   const westTop: [number, number] = [-tw / 2, th / 2];
   const eastTop: [number, number] = [tw / 2, th / 2];
   const topA = side === "south" ? westTop : eastTop;
-  const topB: [number, number] = chamfer > 0
-    ? [topA[0] + (southTop[0] - topA[0]) * (1 - chamfer), topA[1] + (southTop[1] - topA[1]) * (1 - chamfer)]
-    : southTop;
+  const topB: [number, number] =
+    chamfer > 0
+      ? [
+          topA[0] + (southTop[0] - topA[0]) * (1 - chamfer),
+          topA[1] + (southTop[1] - topA[1]) * (1 - chamfer),
+        ]
+      : southTop;
   const verts = faceVertices(side, tileX, tileY);
   const jitterScale = heightStep * 0.14;
   const [adx, ady] = vertexOffset(verts.ax, verts.ay, jitterScale);
@@ -100,17 +104,18 @@ export function elevationFace(
     const wave = Math.sin(t * Math.PI);
     const bulge = edge
       ? 0
-      : wave * heightStep * (hillside ? 0.36 : 0.2)
-        + unitSigned(tileX, tileY, seed + 20 + i + (side === "south" ? 0 : 40)) * heightStep * (hillside ? 0.14 : 0.1);
+      : wave * heightStep * (hillside ? 0.36 : 0.2) +
+        unitSigned(tileX, tileY, seed + 20 + i + (side === "south" ? 0 : 40)) *
+          heightStep *
+          (hillside ? 0.14 : 0.1);
     const dropNudge = edge
-      ? unitSigned(i === 0 ? verts.ax : verts.bx, i === 0 ? verts.ay : verts.by, 7) * heightStep * 0.06
+      ? unitSigned(i === 0 ? verts.ax : verts.bx, i === 0 ? verts.ay : verts.by, 7) *
+        heightStep *
+        0.06
       : unitSigned(tileX, tileY, seed + 70 + i) * heightStep * (hillside ? 0.12 : 0.07);
     const along = -inset * (hillside ? 0.7 + wave * 0.5 : 1) + bulge;
     tops.push(top);
-    bots.push([
-      top[0] + ox * along + jx,
-      top[1] + drop + dropNudge + oy * along * 0.55 + jy,
-    ]);
+    bots.push([top[0] + ox * along + jx, top[1] + drop + dropNudge + oy * along * 0.55 + jy]);
   }
   const points: number[] = [];
   for (const top of tops) points.push(top[0], top[1]);
@@ -133,7 +138,7 @@ export function elevationFace(
     }
     const fissures = 1 + (hash2(tileX, tileY, seed + 90) % 2);
     for (let f = 0; f < fissures; f++) {
-      const col = 1 + hash2(tileX, tileY, seed + 91 + f) % Math.max(1, samples - 2);
+      const col = 1 + (hash2(tileX, tileY, seed + 91 + f) % Math.max(1, samples - 2));
       const t0 = 0.18 + (hash2(tileX, tileY, seed + 110 + f) % 20) / 100;
       const t1 = Math.min(0.92, t0 + 0.42);
       const x0 = tops[col]![0] + (bots[col]![0] - tops[col]![0]) * t0;
@@ -177,12 +182,18 @@ function cornerWedgePoints(
     southTop[1] + drop + by * out * 0.45 + jy,
   ];
   return [
-    s.top[0], s.top[1],
-    southTop[0], southTop[1],
-    e.top[0], e.top[1],
-    e.bot[0], e.bot[1],
-    cornerBot[0], cornerBot[1],
-    s.bot[0], s.bot[1],
+    s.top[0],
+    s.top[1],
+    southTop[0],
+    southTop[1],
+    e.top[0],
+    e.top[1],
+    e.bot[0],
+    e.bot[1],
+    cornerBot[0],
+    cornerBot[1],
+    s.bot[0],
+    s.bot[1],
   ];
 }
 
@@ -197,15 +208,26 @@ export function tileCliffGeometry(
   tileY = 0,
 ): TileCliffGeometry {
   const chamfer = dropE > 0 && dropS > 0 ? CLIFF_CORNER_CHAMFER : 0;
-  const south = dropS > 0
-    ? elevationFace("south", dropS, tw, th, heightStep, seed, { tileX, tileY, chamferSouth: chamfer })
-    : null;
-  const east = dropE > 0
-    ? elevationFace("east", dropE, tw, th, heightStep, seed, { tileX, tileY, chamferSouth: chamfer })
-    : null;
-  const wedge = south && east
-    ? cornerWedgePoints(south, east, tw, th, heightStep, dropE, dropS, tileX, tileY)
-    : null;
+  const south =
+    dropS > 0
+      ? elevationFace("south", dropS, tw, th, heightStep, seed, {
+          tileX,
+          tileY,
+          chamferSouth: chamfer,
+        })
+      : null;
+  const east =
+    dropE > 0
+      ? elevationFace("east", dropE, tw, th, heightStep, seed, {
+          tileX,
+          tileY,
+          chamferSouth: chamfer,
+        })
+      : null;
+  const wedge =
+    south && east
+      ? cornerWedgePoints(south, east, tw, th, heightStep, dropE, dropS, tileX, tileY)
+      : null;
   return { south, east, wedge };
 }
 

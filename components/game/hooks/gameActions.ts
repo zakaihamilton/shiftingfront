@@ -1,24 +1,61 @@
-import { BUILDING_DEFINITIONS, BUILDING_KINDS, MAX_PRODUCTION_QUEUE, isUnitAvailable, producerFor, productionQueueSize } from "@/lib/catalog";
+import {
+  BUILDING_DEFINITIONS,
+  BUILDING_KINDS,
+  isUnitAvailable,
+  MAX_PRODUCTION_QUEUE,
+  producerFor,
+  productionQueueSize,
+} from "@/lib/catalog";
+import {
+  activeProducerFor,
+  isSharedProducerKind,
+  readSharedProductionQueue,
+  sharedProductionQueueSize,
+} from "@/lib/sim/producerState";
 import type { BuildingKind, Entity, Owner, SimState, UnitKind } from "@/lib/types";
-import { activeProducerFor, isSharedProducerKind, readSharedProductionQueue, sharedProductionQueueSize } from "@/lib/sim/producerState";
 
 export const PLACEABLE: BuildingKind[] = BUILDING_KINDS.filter(
-  (kind) => BUILDING_DEFINITIONS[kind].aiRole !== "base" && BUILDING_DEFINITIONS[kind].aiRole !== "objective",
+  (kind) =>
+    BUILDING_DEFINITIONS[kind].aiRole !== "base" &&
+    BUILDING_DEFINITIONS[kind].aiRole !== "objective",
 );
-export const PRODUCIBLE: UnitKind[] = ["infantry", "antiArmor", "harvester", "tank", "scout", "medic", "repairTruck", "strikePlane", "behemoth"];
+export const PRODUCIBLE: UnitKind[] = [
+  "infantry",
+  "antiArmor",
+  "harvester",
+  "tank",
+  "scout",
+  "medic",
+  "repairTruck",
+  "strikePlane",
+  "behemoth",
+];
 
-export function leastLoadedProducer(state: SimState, owner: Owner, unit: UnitKind): Entity | undefined {
+export function leastLoadedProducer(
+  state: SimState,
+  owner: Owner,
+  unit: UnitKind,
+): Entity | undefined {
   if (!isUnitAvailable(unit, state.missionIndex)) return undefined;
   const kind = producerFor(unit);
   let best: Entity | undefined;
   let bestN = Infinity;
   for (const entity of state.entities) {
-    if (entity.hp <= 0 || entity.owner !== owner || entity.class !== "building" || entity.kind !== kind || entity.constructing > 0) continue;
-    if (kind === "runway" && (
-      entity.assignedPlaneId !== undefined ||
-      entity.producing !== undefined ||
-      entity.queue.length > 0
-    )) continue;
+    if (
+      entity.hp <= 0 ||
+      entity.owner !== owner ||
+      entity.class !== "building" ||
+      entity.kind !== kind ||
+      entity.constructing > 0
+    )
+      continue;
+    if (
+      kind === "runway" &&
+      (entity.assignedPlaneId !== undefined ||
+        entity.producing !== undefined ||
+        entity.queue.length > 0)
+    )
+      continue;
     const queued = productionQueueSize(entity);
     if (queued >= MAX_PRODUCTION_QUEUE) continue;
     if (queued < bestN) {
@@ -29,7 +66,11 @@ export function leastLoadedProducer(state: SimState, owner: Owner, unit: UnitKin
   return best;
 }
 
-export function productionBuildingFor(state: SimState, owner: Owner, unit: UnitKind): Entity | undefined {
+export function productionBuildingFor(
+  state: SimState,
+  owner: Owner,
+  unit: UnitKind,
+): Entity | undefined {
   const kind = producerFor(unit);
   if (!isSharedProducerKind(kind)) return leastLoadedProducer(state, owner, unit);
   const queue = readSharedProductionQueue(state, owner, kind);

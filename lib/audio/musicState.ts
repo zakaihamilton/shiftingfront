@@ -1,12 +1,12 @@
 import {
-  TITLE_MUSIC_SEED,
   type MusicCue,
   type MusicDrumEvent,
   type MusicIntensity,
   type MusicNoteEvent,
   type MusicPattern,
-  type MusicStyleProfile,
   type MusicStem,
+  type MusicStyleProfile,
+  TITLE_MUSIC_SEED,
 } from "./compose";
 
 export type AudioGraphContext = AudioContext | OfflineAudioContext;
@@ -91,22 +91,58 @@ export let graph: MusicGraph | null = null;
 export let fadeGen = 0;
 export let noiseBuf: AudioBuffer | null = null;
 
-export function setEnabled(v: boolean) { enabled = v; }
-export function setDucked(v: boolean) { ducked = v; }
-export function setPaused(v: boolean) { paused = v; }
-export function setIntensity(v: MusicIntensity) { intensity = v; }
-export function setPendingIntensity(v: MusicIntensity | null) { pendingIntensity = v; }
-export function setCue(v: MusicCue) { cue = v; }
-export function setSeed(v: number) { seed = v; }
-export function setMissionIndex(v: number) { missionIndex = v; }
-export function setTrackIndex(v: number) { trackIndex = v; }
-export function setTransitioning(v: boolean) { transitioning = v; }
-export function setPattern(v: MusicPattern | null) { pattern = v; }
-export function setTimer(v: number | null) { timer = v; }
-export function setNextNoteTime(v: number) { nextNoteTime = v; }
-export function setStep(v: number) { step = v; }
-export function setGraph(v: MusicGraph | null) { graph = v; }
-export function setFadeGen(v: number) { fadeGen = v; }
-export function setNoiseBuf(v: AudioBuffer | null) { noiseBuf = v; }
+export function setEnabled(v: boolean) {
+  enabled = v;
+}
+export function setDucked(v: boolean) {
+  ducked = v;
+}
+export function setPaused(v: boolean) {
+  paused = v;
+}
+export function setIntensity(v: MusicIntensity) {
+  intensity = v;
+}
+export function setPendingIntensity(v: MusicIntensity | null) {
+  pendingIntensity = v;
+}
+export function setCue(v: MusicCue) {
+  cue = v;
+}
+export function setSeed(v: number) {
+  seed = v;
+}
+export function setMissionIndex(v: number) {
+  missionIndex = v;
+}
+export function setTrackIndex(v: number) {
+  trackIndex = v;
+}
+export function setTransitioning(v: boolean) {
+  transitioning = v;
+}
+export function setPattern(v: MusicPattern | null) {
+  pattern = v;
+}
+export function setTimer(v: number | null) {
+  timer = v;
+}
+export function setNextNoteTime(v: number) {
+  nextNoteTime = v;
+}
+export function setStep(v: number) {
+  step = v;
+}
+export function setGraph(v: MusicGraph | null) {
+  graph = v;
+}
+export function setFadeGen(v: number) {
+  fadeGen = v;
+}
+export function setNoiseBuf(v: AudioBuffer | null) {
+  noiseBuf = v;
+}
 
-export function incrementFadeGen(): number { return ++fadeGen; }
+export function incrementFadeGen(): number {
+  return ++fadeGen;
+}

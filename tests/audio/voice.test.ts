@@ -142,9 +142,7 @@ describe("voice bark system", () => {
       });
     }
 
-    const randomSpy = vi.spyOn(Math, "random")
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.99);
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValueOnce(0).mockReturnValueOnce(0.99);
     resetVoiceCooldown();
     playVoiceBark("move", true);
     playVoiceBark("move", true);

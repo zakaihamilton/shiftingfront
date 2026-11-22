@@ -1,18 +1,18 @@
-import { inObjectiveZone } from "../../types";
 import { isAirUnit } from "../../catalog";
 import type { Command, Entity, SimState } from "../../types";
+import { inObjectiveZone } from "../../types";
+import { entitiesFor } from "../entities";
 import { distToEntity } from "../world";
 import {
-  OFFENSIVE_KINDS,
-  OFFENSIVE_RESPONSE_RADIUS,
-  OFFENSIVE_RESPONSE_KINDS,
-  YARD_THREAT_RADIUS,
   combatValue,
   enemyEntitiesView,
   isCombatEntity,
+  OFFENSIVE_KINDS,
+  OFFENSIVE_RESPONSE_KINDS,
+  OFFENSIVE_RESPONSE_RADIUS,
   objectiveKind,
+  YARD_THREAT_RADIUS,
 } from "./queries";
-import { entitiesFor } from "../entities";
 
 export function objectiveEntity(state: SimState): Entity | undefined {
   const kind = objectiveKind(state);
@@ -22,7 +22,10 @@ export function objectiveEntity(state: SimState): Entity | undefined {
       .map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0))
       .filter((entity): entity is Entity => !!entity);
     if (kind === "extraction") {
-      return targets.find((entity) => entity.neutral) ?? targets.find((entity) => !inObjectiveZone(entity.x, entity.y, state.runtime?.zone));
+      return (
+        targets.find((entity) => entity.neutral) ??
+        targets.find((entity) => !inObjectiveZone(entity.x, entity.y, state.runtime?.zone))
+      );
     }
     return targets.find((entity) => entity.neutral) ?? targets[0];
   }
@@ -31,17 +34,24 @@ export function objectiveEntity(state: SimState): Entity | undefined {
       .map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0))
       .find((entity): entity is Entity => !!entity);
   }
-  if (kind === "decapitate") return enemyEntitiesView(state).find((entity) => entity.kind === "constructionYard");
-  if (kind === "razeAll") return enemyEntitiesView(state).find((entity) => entity.class === "building");
+  if (kind === "decapitate")
+    return enemyEntitiesView(state).find((entity) => entity.kind === "constructionYard");
+  if (kind === "razeAll")
+    return enemyEntitiesView(state).find((entity) => entity.class === "building");
   if (kind === "annihilate") {
     const enemies = enemyEntitiesView(state);
     // Shut down enemy unit production before chasing the force it generates.
-    return enemies.find((entity) => entity.class === "building" && (entity.kind === "barracks" || entity.kind === "factory"))
-      ?? enemies.find((entity) => isCombatEntity(entity) && !isAirUnit(entity.kind))
-      ?? enemies.find((entity) => entity.class === "building")
-      ?? enemies.find((entity) => entity.class === "unit" && !isAirUnit(entity.kind))
-      ?? enemies.find(isCombatEntity)
-      ?? enemies[0];
+    return (
+      enemies.find(
+        (entity) =>
+          entity.class === "building" && (entity.kind === "barracks" || entity.kind === "factory"),
+      ) ??
+      enemies.find((entity) => isCombatEntity(entity) && !isAirUnit(entity.kind)) ??
+      enemies.find((entity) => entity.class === "building") ??
+      enemies.find((entity) => entity.class === "unit" && !isAirUnit(entity.kind)) ??
+      enemies.find(isCombatEntity) ??
+      enemies[0]
+    );
   }
   return undefined;
 }
@@ -53,33 +63,48 @@ export function objectiveEntity(state: SimState): Entity | undefined {
  * attrition check instead of a siege with a readable first target.
  */
 export function offensiveApproachTarget(state: SimState, objective: Entity): Entity {
-  if (objectiveKind(state) !== "decapitate" || objective.kind !== "constructionYard") return objective;
-  return enemyEntitiesView(state)
-    .filter((entity) => entity.kind === "turret" && entity.constructing === 0)
-    .sort((a, b) => distToEntity(objective, a) - distToEntity(objective, b) || a.id - b.id)[0] ?? objective;
+  if (objectiveKind(state) !== "decapitate" || objective.kind !== "constructionYard")
+    return objective;
+  return (
+    enemyEntitiesView(state)
+      .filter((entity) => entity.kind === "turret" && entity.constructing === 0)
+      .sort((a, b) => distToEntity(objective, a) - distToEntity(objective, b) || a.id - b.id)[0] ??
+    objective
+  );
 }
 
 export function parallelOffensiveTargets(state: SimState): Entity[] {
   if (objectiveKind(state) !== "sabotage" && objectiveKind(state) !== "destroyMarked") return [];
   const targetIds = state.win.targetIds ?? state.runtime?.targetIds ?? [];
   return targetIds
-    .map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0 && entity.owner === 1))
+    .map((id) =>
+      entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0 && entity.owner === 1),
+    )
     .filter((entity): entity is Entity => !!entity);
 }
 
 export function defensiveThreat(state: SimState, yard: Entity): Entity | undefined {
-  const responseRadius = OFFENSIVE_RESPONSE_KINDS.has(objectiveKind(state)) ? OFFENSIVE_RESPONSE_RADIUS : YARD_THREAT_RADIUS;
+  const responseRadius = OFFENSIVE_RESPONSE_KINDS.has(objectiveKind(state))
+    ? OFFENSIVE_RESPONSE_RADIUS
+    : YARD_THREAT_RADIUS;
   return enemyEntitiesView(state)
-    .filter((entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)))
+    .filter(
+      (entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)),
+    )
     .sort((a, b) => distToEntity(yard, a) - distToEntity(yard, b) || a.id - b.id)
     .find((entity) => distToEntity(yard, entity) <= responseRadius);
 }
 
 /** Three combat units or a tank in the HQ radius is a raid, not a scout. */
 export function yardRaid(state: SimState, yard: Entity): boolean {
-  const responseRadius = OFFENSIVE_RESPONSE_KINDS.has(objectiveKind(state)) ? OFFENSIVE_RESPONSE_RADIUS : YARD_THREAT_RADIUS;
+  const responseRadius = OFFENSIVE_RESPONSE_KINDS.has(objectiveKind(state))
+    ? OFFENSIVE_RESPONSE_RADIUS
+    : YARD_THREAT_RADIUS;
   const attackers = enemyEntitiesView(state).filter(
-    (entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)) && distToEntity(yard, entity) <= responseRadius,
+    (entity) =>
+      isCombatEntity(entity) &&
+      !(entity.class === "unit" && isAirUnit(entity.kind)) &&
+      distToEntity(yard, entity) <= responseRadius,
   );
   return attackers.length >= 3 || attackers.some((entity) => entity.kind === "tank");
 }
@@ -92,13 +117,17 @@ export function scenarioThreat(state: SimState): Entity | undefined {
     .filter((entity): entity is Entity => !!entity && (kind === "escort" || !entity.neutral));
   if (!scenarioTargets.length) return undefined;
   return enemyEntitiesView(state)
-    .filter((entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)))
+    .filter(
+      (entity) => isCombatEntity(entity) && !(entity.class === "unit" && isAirUnit(entity.kind)),
+    )
     .sort((a, b) => {
       const aDistance = Math.min(...scenarioTargets.map((target) => distToEntity(target, a)));
       const bDistance = Math.min(...scenarioTargets.map((target) => distToEntity(target, b)));
       return aDistance - bDistance || a.id - b.id;
     })
-    .find((entity) => scenarioTargets.some((target) => distToEntity(target, entity) <= YARD_THREAT_RADIUS));
+    .find((entity) =>
+      scenarioTargets.some((target) => distToEntity(target, entity) <= YARD_THREAT_RADIUS),
+    );
 }
 
 export function assaultReady(state: SimState, target: Entity, combat: Entity[]): boolean {
@@ -106,9 +135,10 @@ export function assaultReady(state: SimState, target: Entity, combat: Entity[]):
   const deadline = state.runtime?.deadline ?? state.win.ticks;
   const closeoutRatio = objectiveKind(state) === "decapitate" ? 0.28 : 0.4;
   const closeout = deadline !== undefined && state.tick >= deadline * closeoutRatio;
-  const minimumUnits = objectiveKind(state) === "annihilate" || objectiveKind(state) === "razeAll"
-    ? 5 + Math.floor(state.missionIndex / 2)
-    : 8 + Math.floor(state.missionIndex / 3);
+  const minimumUnits =
+    objectiveKind(state) === "annihilate" || objectiveKind(state) === "razeAll"
+      ? 5 + Math.floor(state.missionIndex / 2)
+      : 8 + Math.floor(state.missionIndex / 3);
   if (combat.length < minimumUnits && !closeout) return false;
   // Late offensive missions need a short staging window to let the opening
   // economy and local defense settle. Committing during the first exchange
@@ -125,7 +155,8 @@ export function assaultReady(state: SimState, target: Entity, combat: Entity[]):
   // they are the part of the production ring that makes a small assault trade
   // away its entire force. Count each completed turret as a defensive unit so
   // the competent commander stages a real counter advantage before pushing.
-  const turretStrength = defenders.filter((entity) => entity.kind === "turret" && entity.constructing === 0).length * 8;
+  const turretStrength =
+    defenders.filter((entity) => entity.kind === "turret" && entity.constructing === 0).length * 8;
   const defensiveStrength = enemyStrength + turretStrength;
   // A half-strength push can clear the first screen but leaves the player
   // force trading into the enemy production ring. Hold the assault until the
@@ -137,6 +168,7 @@ export function assaultReady(state: SimState, target: Entity, combat: Entity[]):
 
 export function orderKey(command: Command): string {
   if (command.type === "attack") return `attack:${command.targetId}`;
-  if (command.type === "move" || command.type === "attackMove") return `${command.type}:${command.x}:${command.y}`;
+  if (command.type === "move" || command.type === "attackMove")
+    return `${command.type}:${command.x}:${command.y}`;
   return command.type;
 }

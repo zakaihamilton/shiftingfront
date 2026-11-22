@@ -20,7 +20,9 @@ describe("unit spawning", () => {
     const second = trySpawnUnit(state, 0, "tank", first.x, first.y);
 
     expect(second).toBeDefined();
-    expect(`${Math.round(second!.x)},${Math.round(second!.y)}`).not.toBe(`${Math.round(first.x)},${Math.round(first.y)}`);
+    expect(`${Math.round(second!.x)},${Math.round(second!.y)}`).not.toBe(
+      `${Math.round(first.x)},${Math.round(first.y)}`,
+    );
     expectUniqueUnitCells(state);
   });
 

@@ -1,9 +1,20 @@
 import { BUILDING_STATS, footprintOf, isAirUnit } from "../../catalog";
-import { isBuildingEntity, type Entity, type Owner, type SimState, type TileKind, type Vec2 } from "../../types";
+import {
+  type Entity,
+  isBuildingEntity,
+  type Owner,
+  type SimState,
+  type TileKind,
+  type Vec2,
+} from "../../types";
 
 type LivingCache = { tick: number; entities: SimState["entities"]; value: Entity[] };
 const livingCache = new WeakMap<SimState, LivingCache>();
-type UnitAtCache = { tick: number; entities: SimState["entities"]; value: Array<Entity | undefined> };
+type UnitAtCache = {
+  tick: number;
+  entities: SimState["entities"];
+  value: Array<Entity | undefined>;
+};
 const unitAtCache = new WeakMap<SimState, UnitAtCache>();
 type UnitOccupancyCache = { tick: number; entities: SimState["entities"]; value: Uint8Array };
 const unitOccupancyCache = new WeakMap<SimState, UnitOccupancyCache>();
@@ -80,9 +91,10 @@ export function unitAt(state: SimState, x: number, y: number): Entity | undefine
   if (!inBounds(state, x, y)) return undefined;
   let cached = unitAtCache.get(state);
   if (!cached || cached.tick !== state.tick || cached.entities !== state.entities) {
-    const value = cached?.value.length === state.width * state.height
-      ? cached.value
-      : new Array<Entity | undefined>(state.width * state.height);
+    const value =
+      cached?.value.length === state.width * state.height
+        ? cached.value
+        : new Array<Entity | undefined>(state.width * state.height);
     value.fill(undefined);
     for (const entity of state.entities) {
       if (entity.hp <= 0 || entity.class !== "unit" || isAirUnit(entity.kind)) continue;
@@ -106,7 +118,10 @@ export function unitOccupied(state: SimState, x: number, y: number): boolean {
 export function unitOccupancyFor(state: SimState): Uint8Array {
   let cached = unitOccupancyCache.get(state);
   if (!cached || cached.tick !== state.tick || cached.entities !== state.entities) {
-    const value = cached?.value.length === state.width * state.height ? cached.value : new Uint8Array(state.width * state.height);
+    const value =
+      cached?.value.length === state.width * state.height
+        ? cached.value
+        : new Uint8Array(state.width * state.height);
     value.fill(0);
     for (const entity of state.entities) {
       if (entity.hp <= 0 || entity.class !== "unit" || isAirUnit(entity.kind)) continue;
@@ -179,7 +194,10 @@ export function powerBreakdownFor(state: SimState, owner: Owner): PowerTotals {
   for (const e of livingView(state)) {
     if (!isBuildingEntity(e) || e.constructing > 0) continue;
     const totals = value[e.owner];
-    const crystalPower = state.biome === "crystal flats" && state.tutorialStage === undefined && e.kind === "power" ? 20 : 0;
+    const crystalPower =
+      state.biome === "crystal flats" && state.tutorialStage === undefined && e.kind === "power"
+        ? 20
+        : 0;
     const watt = BUILDING_STATS[e.kind].power + crystalPower;
     if (watt >= 0) totals.produced += watt;
     else totals.used -= watt;

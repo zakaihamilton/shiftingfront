@@ -23,7 +23,10 @@ export const EXCLUDED_SCENARIO_KINDS = ["rescue", "extraction", "escort", "sabot
 export function normalMissionIndices(seed: number): number[] {
   const campaign = createCampaign(seed);
   const normal = campaign.missions
-    .filter((m) => !EXCLUDED_SCENARIO_KINDS.includes(m.win.kind as (typeof EXCLUDED_SCENARIO_KINDS)[number]))
+    .filter(
+      (m) =>
+        !EXCLUDED_SCENARIO_KINDS.includes(m.win.kind as (typeof EXCLUDED_SCENARIO_KINDS)[number]),
+    )
     .map((m) => m.index);
   return normal.length ? normal : [0];
 }
@@ -38,7 +41,9 @@ export function previewMissionIndex(cycleIndex: number, seed = CINEMA_SEED): num
 }
 
 export function previewScenarioKind(cycleIndex: number): CinemaScenarioKind {
-  const index = ((Math.max(0, cycleIndex | 0) % CINEMA_SCENARIO_KINDS.length) + CINEMA_SCENARIO_KINDS.length) % CINEMA_SCENARIO_KINDS.length;
+  const index =
+    ((Math.max(0, cycleIndex | 0) % CINEMA_SCENARIO_KINDS.length) + CINEMA_SCENARIO_KINDS.length) %
+    CINEMA_SCENARIO_KINDS.length;
   return CINEMA_SCENARIO_KINDS[index]!;
 }
 

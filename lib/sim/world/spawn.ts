@@ -1,9 +1,21 @@
-import { BUILDING_STATS, UNIT_STATS, footprintOf, isAirUnit } from "../../catalog";
-import { isBuildingEntity, type BuildingKind, type Entity, type Owner, type SimState, type UnitKind, type Vec2 } from "../../types";
-import { livingView, invalidateEntityCaches, distToEntity, powerBreakdownFor } from "./queries";
-import { isWalkable, canClimb } from "./terrain";
-import { DEFAULT_BUILDING_CLEARANCE, findBuildSite, INITIAL_BUILDING_EDGE_MARGIN } from "./building";
+import { BUILDING_STATS, footprintOf, isAirUnit, UNIT_STATS } from "../../catalog";
+import {
+  type BuildingKind,
+  type Entity,
+  isBuildingEntity,
+  type Owner,
+  type SimState,
+  type UnitKind,
+  type Vec2,
+} from "../../types";
 import { addEntity } from "../entities";
+import {
+  DEFAULT_BUILDING_CLEARANCE,
+  findBuildSite,
+  INITIAL_BUILDING_EDGE_MARGIN,
+} from "./building";
+import { distToEntity, invalidateEntityCaches, livingView, powerBreakdownFor } from "./queries";
+import { canClimb, isWalkable } from "./terrain";
 
 export function closestApproach(state: SimState, from: Vec2, e: Entity): Vec2 {
   if (!isBuildingEntity(e)) return { x: e.x, y: e.y };
@@ -63,7 +75,7 @@ export function makeUnit(
     queue: [],
     marked: false,
     idle: true,
-    facing: state.multiplayer ? (([1, 3, 5, 7] as const)[owner] ?? 1) : (owner === 0 ? 0 : 4),
+    facing: state.multiplayer ? (([1, 3, 5, 7] as const)[owner] ?? 1) : owner === 0 ? 0 : 4,
     stance: "aggressive",
     suppression: 0,
     armor: stats.armor,
@@ -101,7 +113,7 @@ export function makeBuilding(
     queue: [],
     marked,
     idle: true,
-    facing: state.multiplayer ? (([1, 3, 5, 7] as const)[owner] ?? 1) : (owner === 0 ? 0 : 4),
+    facing: state.multiplayer ? (([1, 3, 5, 7] as const)[owner] ?? 1) : owner === 0 ? 0 : 4,
     stance: "aggressive",
     suppression: 0,
     armor: stats.armor,
@@ -127,7 +139,10 @@ export function nearest(
   return best;
 }
 
-export function powerBreakdown(state: SimState, owner: Owner): { produced: number; used: number; surplus: number } {
+export function powerBreakdown(
+  state: SimState,
+  owner: Owner,
+): { produced: number; used: number; surplus: number } {
   return { ...powerBreakdownFor(state, owner) };
 }
 
@@ -228,5 +243,16 @@ export function spawnBuildingAt(
 }
 
 export function emptyRoleCounts(): Record<UnitKind, number> {
-  return { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0, convoyTruck: 0, strikePlane: 0, behemoth: 0, scout: 0 };
+  return {
+    harvester: 0,
+    infantry: 0,
+    antiArmor: 0,
+    tank: 0,
+    medic: 0,
+    repairTruck: 0,
+    convoyTruck: 0,
+    strikePlane: 0,
+    behemoth: 0,
+    scout: 0,
+  };
 }

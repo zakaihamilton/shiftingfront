@@ -1,16 +1,18 @@
-import { nearest, byId } from "@/lib/sim/world";
-import { assignAttack } from "@/lib/sim/ai/combat";
-import { assignSupportTarget } from "@/lib/sim/support";
 import { isSupportUnit, UNIT_STATS } from "@/lib/catalog";
-import type { Entity, UnitKind } from "@/lib/types";
+import { assignAttack } from "@/lib/sim/ai/combat";
 import type { createMission } from "@/lib/sim/api";
+import { assignSupportTarget } from "@/lib/sim/support";
+import { byId, nearest } from "@/lib/sim/world";
+import type { Entity, UnitKind } from "@/lib/types";
 import { CINEMA_SCENARIOS, type CinemaScenarioKind, type CinemaTargetPolicy } from "./scenarios";
 
 function isCombatUnit(entity: Entity): boolean {
-  return entity.class === "unit"
-    && entity.hp > 0
-    && !isSupportUnit(entity.kind as UnitKind)
-    && UNIT_STATS[entity.kind as UnitKind].damage > 0;
+  return (
+    entity.class === "unit" &&
+    entity.hp > 0 &&
+    !isSupportUnit(entity.kind as UnitKind) &&
+    UNIT_STATS[entity.kind as UnitKind].damage > 0
+  );
 }
 
 function objectiveFor(
@@ -24,9 +26,27 @@ function objectiveFor(
 
   if (policy === "enemyStructure" && unit.owner === 0 && objective.owner === 1) return objective;
   if (policy === "playerStructure" && unit.owner === 1 && objective.owner === 0) return objective;
-  if (policy === "infantry" && unit.owner === 1 && objective.owner === 0 && objective.class === "building") return objective;
-  if (policy === "harvester" && unit.owner === 0 && objective.class === "unit" && objective.kind === "harvester") return objective;
-  if (policy === "convoy" && unit.owner === 0 && objective.class === "unit" && objective.kind === "convoyTruck") return objective;
+  if (
+    policy === "infantry" &&
+    unit.owner === 1 &&
+    objective.owner === 0 &&
+    objective.class === "building"
+  )
+    return objective;
+  if (
+    policy === "harvester" &&
+    unit.owner === 0 &&
+    objective.class === "unit" &&
+    objective.kind === "harvester"
+  )
+    return objective;
+  if (
+    policy === "convoy" &&
+    unit.owner === 0 &&
+    objective.class === "unit" &&
+    objective.kind === "convoyTruck"
+  )
+    return objective;
   return undefined;
 }
 
@@ -38,17 +58,14 @@ function fallbackTarget(
   clashY: number,
   radius: number,
 ): Entity | undefined {
-  return nearest(
-    state,
-    unit,
-    (entity) => {
-      if (entity.owner === unit.owner || Math.hypot(entity.x - clashX, entity.y - clashY) > radius) return false;
-      if (!isCombatUnit(entity)) return false;
-      if (policy === "armor") return entity.kind === "tank" || entity.kind === "antiArmor";
-      if (policy === "infantry") return entity.kind === "infantry" || entity.kind === "antiArmor";
-      return true;
-    },
-  );
+  return nearest(state, unit, (entity) => {
+    if (entity.owner === unit.owner || Math.hypot(entity.x - clashX, entity.y - clashY) > radius)
+      return false;
+    if (!isCombatUnit(entity)) return false;
+    if (policy === "armor") return entity.kind === "tank" || entity.kind === "antiArmor";
+    if (policy === "infantry") return entity.kind === "infantry" || entity.kind === "antiArmor";
+    return true;
+  });
 }
 
 export function assignClashTargets(
@@ -67,13 +84,21 @@ export function assignClashTargets(
         const target = nearest(
           state,
           u,
-          (e) => e.owner === u.owner && e.hp > 0 && e.hp < e.maxHp && Math.hypot(e.x - clashX, e.y - clashY) <= radius,
+          (e) =>
+            e.owner === u.owner &&
+            e.hp > 0 &&
+            e.hp < e.maxHp &&
+            Math.hypot(e.x - clashX, e.y - clashY) <= radius,
         );
         if (target) assignSupportTarget(state, u, target);
       }
-    } else if (UNIT_STATS[u.kind as UnitKind].damage > 0 && (u.attackTarget === undefined || u.idle)) {
-      const target = objectiveFor(state, u, policy, objectiveId)
-        ?? fallbackTarget(state, u, policy, clashX, clashY, radius);
+    } else if (
+      UNIT_STATS[u.kind as UnitKind].damage > 0 &&
+      (u.attackTarget === undefined || u.idle)
+    ) {
+      const target =
+        objectiveFor(state, u, policy, objectiveId) ??
+        fallbackTarget(state, u, policy, clashX, clashY, radius);
       if (target) assignAttack(state, u, target);
     }
   }

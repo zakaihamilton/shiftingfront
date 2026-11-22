@@ -68,7 +68,8 @@ export class MinHeap {
       if (right < last) {
         const leftF = this.fs[left]!;
         const rightF = this.fs[right]!;
-        if (rightF < leftF || (rightF === leftF && this.seqs[right]! < this.seqs[left]!)) child = right;
+        if (rightF < leftF || (rightF === leftF && this.seqs[right]! < this.seqs[left]!))
+          child = right;
       }
       const childF = this.fs[child]!;
       const childSeq = this.seqs[child]!;

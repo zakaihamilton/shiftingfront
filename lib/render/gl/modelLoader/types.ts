@@ -5,10 +5,10 @@ export type { MeshData } from "../meshPrimitives";
 export {
   computeNormal,
   createBoxMesh,
-  createTrapezoidMesh,
   createCylinderMesh,
   createCylinderXMesh,
   createPolygonPrismMesh,
+  createTrapezoidMesh,
   mergeMeshes,
 } from "../meshPrimitives";
 

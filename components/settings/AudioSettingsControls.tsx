@@ -9,7 +9,13 @@ const CONTROLS: { key: AudioVolumeKey; label: string }[] = [
   { key: "voiceVolume", label: "Voice" },
 ];
 
-export function AudioSettingsControls({ settings, onChange }: { settings: GameSettings; onChange: (key: AudioVolumeKey, value: number) => void }) {
+export function AudioSettingsControls({
+  settings,
+  onChange,
+}: {
+  settings: GameSettings;
+  onChange: (key: AudioVolumeKey, value: number) => void;
+}) {
   return (
     <fieldset className={styles.volumeControls}>
       <legend className="sr-only">Volume controls</legend>
@@ -17,8 +23,20 @@ export function AudioSettingsControls({ settings, onChange }: { settings: GameSe
         const value = settings[key];
         return (
           <label key={key} className={styles.volumeControl}>
-            <span className={styles.volumeLabel}><span>{label}</span><output>{Math.round(value * 100)}%</output></span>
-            <input className={styles.volumeRange} type="range" min="0" max="1" step="0.05" value={value} aria-label={`${label} volume`} onChange={(event) => onChange(key, Number(event.currentTarget.value))} />
+            <span className={styles.volumeLabel}>
+              <span>{label}</span>
+              <output>{Math.round(value * 100)}%</output>
+            </span>
+            <input
+              className={styles.volumeRange}
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={value}
+              aria-label={`${label} volume`}
+              onChange={(event) => onChange(key, Number(event.currentTarget.value))}
+            />
           </label>
         );
       })}

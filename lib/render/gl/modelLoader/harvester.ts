@@ -12,7 +12,15 @@ export function buildHarvesterModel(): UnitModel {
   const leftTrack = createBoxMesh(-0.65, 0.32, 0.0, 0.55, 0.48, 0.48, 4);
   const rightTrack = createBoxMesh(-0.65, -0.48, 0.0, 0.55, -0.32, 0.48, 4);
   const chassisMesh = mergeMeshes([
-    mainCab, operatorCab, windshield, hazardBeacon, sideTanks, sideTanksR, cargoHopper, leftTrack, rightTrack,
+    mainCab,
+    operatorCab,
+    windshield,
+    hazardBeacon,
+    sideTanks,
+    sideTanksR,
+    cargoHopper,
+    leftTrack,
+    rightTrack,
   ]);
 
   const scoopArmL = createBoxMesh(0.0, 0.28, -0.08, 0.45, 0.38, 0.1, 2);

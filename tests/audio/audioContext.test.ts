@@ -51,7 +51,8 @@ describe("audio context", () => {
   });
 
   it("clears the unlock state when resume fails so a later gesture can retry", async () => {
-    const resume = vi.fn()
+    const resume = vi
+      .fn()
       .mockRejectedValueOnce(new Error("autoplay blocked"))
       .mockResolvedValue(undefined);
     class AudioContextStub {
@@ -120,7 +121,9 @@ describe("audio context", () => {
       }
     }
     vi.stubGlobal("window", { AudioContext: BrokenAudioStub });
-    const { getAudioContext, resumeAudio, unlockAudioContext } = await import("../../lib/audio/context");
+    const { getAudioContext, resumeAudio, unlockAudioContext } = await import(
+      "../../lib/audio/context"
+    );
 
     expect(getAudioContext()).toBeNull();
     expect(resumeAudio()).toBeNull();

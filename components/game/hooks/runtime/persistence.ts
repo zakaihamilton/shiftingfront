@@ -1,5 +1,11 @@
 import { recordWonCampaignProgress } from "@/lib/persist/campaign";
-import { cachedLocalStorage, getSaveRepository, saveKey, type SaveSession, type SaveWriteStatus } from "@/lib/persist/save";
+import {
+  cachedLocalStorage,
+  getSaveRepository,
+  type SaveSession,
+  type SaveWriteStatus,
+  saveKey,
+} from "@/lib/persist/save";
 import { recordTelemetry, telemetryFromMission } from "@/lib/persist/telemetry";
 import type { SimState } from "@/lib/types";
 import type { RuntimeCounters, RuntimePersistenceState } from "./types";
@@ -50,7 +56,10 @@ export function createPersistenceCoordinator({
 
   const saveImplicit = (state: SimState, now: number): void => {
     if (implicitSavesSuppressed) return;
-    if (saving) { pendingSave = true; return; }
+    if (saving) {
+      pendingSave = true;
+      return;
+    }
     const token = generation;
     const savedResult = state.result;
     const completed = (status: SaveWriteStatus, asynchronous = false) => {
@@ -67,24 +76,39 @@ export function createPersistenceCoordinator({
       saveRetry.retry = status === "failed";
       saveRetry.nextAttemptMs = now + CAMPAIGN_SAVE_RETRY_MS;
       if (status !== saveRetry.lastStatus) {
-        onAlert(status === "conflict"
-          ? "Autosave paused: this campaign changed in another tab. Use Save Mission or Load Mission to resolve it."
-          : status === "failed" ? "Progress could not be saved. Retrying; check available browser storage." : "Progress saved.");
+        onAlert(
+          status === "conflict"
+            ? "Autosave paused: this campaign changed in another tab. Use Save Mission or Load Mission to resolve it."
+            : status === "failed"
+              ? "Progress could not be saved. Retrying; check available browser storage."
+              : "Progress saved.",
+        );
       }
       saveRetry.lastStatus = status;
       if (status === "saved" && savedResult !== "playing") {
         terminalSaveRef.current = true;
-        if (getSaveRepository()?.mode === "indexeddb" && savedResult === "won") campaignRecordedRef.current = true;
+        if (getSaveRepository()?.mode === "indexeddb" && savedResult === "won")
+          campaignRecordedRef.current = true;
       }
-      if (pendingSave) { pendingSave = false; saveImplicit(stateRef.current, performance.now()); }
+      if (pendingSave) {
+        pendingSave = false;
+        saveImplicit(stateRef.current, performance.now());
+      }
     };
     const status = saveSession.write(state, "implicit");
-    if (status instanceof Promise) { saving = true; void status.then((status) => completed(status, true), () => completed("failed", true)); }
-    else completed(status);
+    if (status instanceof Promise) {
+      saving = true;
+      void status.then(
+        (status) => completed(status, true),
+        () => completed("failed", true),
+      );
+    } else completed(status);
   };
 
   const reset = () => {
-    generation++; saving = false; pendingSave = false;
+    generation++;
+    saving = false;
+    pendingSave = false;
     cancelIdle();
     implicitSavesSuppressed = false;
     saveRetry.state = null;
@@ -116,7 +140,12 @@ export function createPersistenceCoordinator({
     const state = stateRef.current;
     saveSession.writeJournal?.(state);
     saveImplicit(state, performance.now());
-    if (getSaveRepository()?.mode !== "indexeddb" && state.result === "won" && !campaignRecordedRef.current && recordWonCampaignProgress(cachedLocalStorage(), state)) {
+    if (
+      getSaveRepository()?.mode !== "indexeddb" &&
+      state.result === "won" &&
+      !campaignRecordedRef.current &&
+      recordWonCampaignProgress(cachedLocalStorage(), state)
+    ) {
       campaignRecordedRef.current = true;
     }
   };
@@ -130,10 +159,16 @@ export function createPersistenceCoordinator({
   if (suppressImplicitSavesRef) suppressImplicitSavesRef.current = suppressImplicitSaves;
 
   const onStorage = (event: StorageEvent) => {
-    if (saveSession.isStorageEventForSession && !saveSession.isStorageEventForSession(event.storageArea)) return;
+    if (
+      saveSession.isStorageEventForSession &&
+      !saveSession.isStorageEventForSession(event.storageArea)
+    )
+      return;
     if (event.key === saveKey(stateRef.current.seed)) saveSession.markExternalChange();
   };
-  const onVisibility = () => { if (document.visibilityState === "hidden") saveOnPageHide(); };
+  const onVisibility = () => {
+    if (document.visibilityState === "hidden") saveOnPageHide();
+  };
 
   return {
     reset,
@@ -142,7 +177,12 @@ export function createPersistenceCoordinator({
     onTickFrame(state: SimState, now: number) {
       if (!persistCampaign || implicitSavesSuppressed) return;
       if (saveRetry.retry && now >= saveRetry.nextAttemptMs) saveImplicit(state, now);
-      if (getSaveRepository()?.mode !== "indexeddb" && state.result === "won" && !campaignRecordedRef.current && now >= nextCampaignSaveAttemptMs) {
+      if (
+        getSaveRepository()?.mode !== "indexeddb" &&
+        state.result === "won" &&
+        !campaignRecordedRef.current &&
+        now >= nextCampaignSaveAttemptMs
+      ) {
         const recorded = recordWonCampaignProgress(cachedLocalStorage(), state);
         if (recorded) campaignRecordedRef.current = true;
         else {
@@ -155,10 +195,7 @@ export function createPersistenceCoordinator({
       if (!persistCampaign || implicitSavesSuppressed) return;
       cancelIdle();
       saveImplicit(state, now);
-      recordTelemetry(
-        cachedLocalStorage(),
-        telemetryFromMission(state, counters),
-      );
+      recordTelemetry(cachedLocalStorage(), telemetryFromMission(state, counters));
     },
     start() {
       window.addEventListener("pagehide", saveOnPageHide);

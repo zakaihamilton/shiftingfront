@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { battlefieldCursor } from "../../lib/ui/battlefieldCursor";
-import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE, TILE_WATER } from "../../lib/sim/fixtures";
+import {
+  addBuilding,
+  addUnit,
+  makeFixture,
+  setTile,
+  TILE_RESOURCE,
+  TILE_WATER,
+} from "../../lib/sim/fixtures";
 import { canPlaceBuilding } from "../../lib/sim/world";
+import { battlefieldCursor } from "../../lib/ui/battlefieldCursor";
 
-function cursorOpts(state: ReturnType<typeof makeFixture>, overrides: Partial<Parameters<typeof battlefieldCursor>[0]> = {}) {
+function cursorOpts(
+  state: ReturnType<typeof makeFixture>,
+  overrides: Partial<Parameters<typeof battlefieldCursor>[0]> = {},
+) {
   return {
     state,
     hoverTile: null as { x: number; y: number } | null,
@@ -32,8 +42,12 @@ describe("battlefieldCursor", () => {
     }
     expect(valid).not.toBeNull();
 
-    expect(battlefieldCursor(cursorOpts(state, { placeKind: "power", hoverTile: valid }))).toBe("cell");
-    expect(battlefieldCursor(cursorOpts(state, { placeKind: "power", hoverTile: { x: 10, y: 10 } }))).toBe("not-allowed");
+    expect(battlefieldCursor(cursorOpts(state, { placeKind: "power", hoverTile: valid }))).toBe(
+      "cell",
+    );
+    expect(
+      battlefieldCursor(cursorOpts(state, { placeKind: "power", hoverTile: { x: 10, y: 10 } })),
+    ).toBe("not-allowed");
   });
 
   it("uses pointer or not-allowed in repair and sell modes", () => {
@@ -43,10 +57,18 @@ describe("battlefieldCursor", () => {
     const enemy = addBuilding(state, 1, "power", 8, 8);
     power.hp = power.maxHp - 10;
 
-    expect(battlefieldCursor(cursorOpts(state, { repairMode: true, hoverEntity: power }))).toBe("pointer");
-    expect(battlefieldCursor(cursorOpts(state, { repairMode: true, hoverEntity: enemy }))).toBe("not-allowed");
-    expect(battlefieldCursor(cursorOpts(state, { sellMode: true, hoverEntity: power }))).toBe("pointer");
-    expect(battlefieldCursor(cursorOpts(state, { sellMode: true, hoverEntity: yard }))).toBe("not-allowed");
+    expect(battlefieldCursor(cursorOpts(state, { repairMode: true, hoverEntity: power }))).toBe(
+      "pointer",
+    );
+    expect(battlefieldCursor(cursorOpts(state, { repairMode: true, hoverEntity: enemy }))).toBe(
+      "not-allowed",
+    );
+    expect(battlefieldCursor(cursorOpts(state, { sellMode: true, hoverEntity: power }))).toBe(
+      "pointer",
+    );
+    expect(battlefieldCursor(cursorOpts(state, { sellMode: true, hoverEntity: yard }))).toBe(
+      "not-allowed",
+    );
   });
 
   it("points at friendlies, keeps a crosshair on enemies with combat selected, and cells ore for harvesters", () => {
@@ -57,17 +79,29 @@ describe("battlefieldCursor", () => {
     setTile(state, 5, 5, TILE_RESOURCE, 80);
 
     expect(battlefieldCursor(cursorOpts(state, { hoverEntity: infantry }))).toBe("pointer");
-    expect(battlefieldCursor(cursorOpts(state, { hoverEntity: enemy, selectedIds: [infantry.id] }))).toBe("crosshair");
+    expect(
+      battlefieldCursor(cursorOpts(state, { hoverEntity: enemy, selectedIds: [infantry.id] })),
+    ).toBe("crosshair");
     expect(battlefieldCursor(cursorOpts(state, { hoverEntity: enemy }))).toBe("not-allowed");
-    expect(battlefieldCursor(cursorOpts(state, { hoverEntity: enemy, selectedIds: [harvester.id] }))).toBe("not-allowed");
-    expect(battlefieldCursor(cursorOpts(state, {
-      hoverTile: { x: 5, y: 5 },
-      selectedIds: [harvester.id],
-    }))).toBe("cell");
+    expect(
+      battlefieldCursor(cursorOpts(state, { hoverEntity: enemy, selectedIds: [harvester.id] })),
+    ).toBe("not-allowed");
+    expect(
+      battlefieldCursor(
+        cursorOpts(state, {
+          hoverTile: { x: 5, y: 5 },
+          selectedIds: [harvester.id],
+        }),
+      ),
+    ).toBe("cell");
     const neutral = addUnit(state, 1, "infantry", 7, 7);
     neutral.neutral = true;
-    expect(battlefieldCursor(cursorOpts(state, { hoverEntity: neutral, selectedIds: [infantry.id] }))).toBe("crosshair");
-    expect(battlefieldCursor(cursorOpts(state, { hoverEntity: neutral, selectedIds: [harvester.id] }))).toBe("crosshair");
+    expect(
+      battlefieldCursor(cursorOpts(state, { hoverEntity: neutral, selectedIds: [infantry.id] })),
+    ).toBe("crosshair");
+    expect(
+      battlefieldCursor(cursorOpts(state, { hoverEntity: neutral, selectedIds: [harvester.id] })),
+    ).toBe("crosshair");
     expect(battlefieldCursor(cursorOpts(state))).toBe("crosshair");
   });
 });

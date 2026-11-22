@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { makeFixture, addUnit } from "../../lib/sim/fixtures";
+import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 import {
   corridorWalkableWidth,
-  trySidestep,
   stepBlockerAside,
+  trySidestep,
 } from "../../lib/sim/navigation/avoidance";
 import { unitOccupancyFor } from "../../lib/sim/world";
 
@@ -20,7 +20,10 @@ describe("predictive steering and navigation", () => {
   it("applies right-hand passing bias when dodging obstacles on equal rank", () => {
     const state = makeFixture({ width: 20, height: 20, win: { kind: "annihilate" } });
     const u1 = addUnit(state, 0, "tank", 10, 10);
-    u1.path = [{ x: 10, y: 12 }, { x: 10, y: 15 }];
+    u1.path = [
+      { x: 10, y: 12 },
+      { x: 10, y: 15 },
+    ];
     u1.orderDestination = { x: 10, y: 15 };
 
     const occupancy = unitOccupancyFor(state);
@@ -51,13 +54,7 @@ describe("predictive steering and navigation", () => {
     const occupancy = unitOccupancyFor(state);
     const reserved = new Map<number, number>();
 
-    const moved = stepBlockerAside(
-      state,
-      occupancy,
-      reserved,
-      blocker,
-      true,
-    );
+    const moved = stepBlockerAside(state, occupancy, reserved, blocker, true);
 
     expect(moved).toBe(true);
     expect(blocker.path[0]).toBeDefined();

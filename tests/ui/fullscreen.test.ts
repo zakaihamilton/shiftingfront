@@ -42,7 +42,10 @@ describe("fullscreen utility", () => {
     expect(isFullscreenSupported()).toBe(true);
     expect(isFullscreen()).toBe(false);
 
-    Object.defineProperty(document, "fullscreenElement", { value: document.body, configurable: true });
+    Object.defineProperty(document, "fullscreenElement", {
+      value: document.body,
+      configurable: true,
+    });
     expect(isFullscreen()).toBe(true);
   });
 
@@ -54,7 +57,10 @@ describe("fullscreen utility", () => {
     await enterFullscreen();
     expect(document.documentElement.requestFullscreen).toHaveBeenCalledTimes(1);
 
-    Object.defineProperty(document, "fullscreenElement", { value: document.documentElement, configurable: true });
+    Object.defineProperty(document, "fullscreenElement", {
+      value: document.documentElement,
+      configurable: true,
+    });
     await exitFullscreen();
     expect(document.exitFullscreen).toHaveBeenCalledTimes(1);
   });
@@ -67,7 +73,10 @@ describe("fullscreen utility", () => {
     await toggleFullscreen();
     expect(document.documentElement.requestFullscreen).toHaveBeenCalledTimes(1);
 
-    Object.defineProperty(document, "fullscreenElement", { value: document.documentElement, configurable: true });
+    Object.defineProperty(document, "fullscreenElement", {
+      value: document.documentElement,
+      configurable: true,
+    });
     await toggleFullscreen();
     expect(document.exitFullscreen).toHaveBeenCalledTimes(1);
   });
@@ -81,7 +90,10 @@ describe("fullscreen utility", () => {
     expect(result.current.isSupported).toBe(true);
 
     act(() => {
-      Object.defineProperty(document, "fullscreenElement", { value: document.documentElement, configurable: true });
+      Object.defineProperty(document, "fullscreenElement", {
+        value: document.documentElement,
+        configurable: true,
+      });
       document.dispatchEvent(new Event("fullscreenchange"));
     });
 

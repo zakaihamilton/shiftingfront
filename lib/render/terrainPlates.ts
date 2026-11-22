@@ -1,6 +1,7 @@
+import { type Camera, TILE_H, TILE_W, tileToScreen } from "../iso";
 import { fogAt } from "../sim/fog";
 import type { BuildingKind, Entity, SimState } from "../types";
-import { TILE_H, TILE_W, type Camera, tileToScreen } from "../iso";
+import { isoDiamondPath } from "./isoDiamond";
 import {
   CONCRETE_STEEL,
   CONCRETE_STEEL_DARK,
@@ -8,7 +9,6 @@ import {
   fogTerrainGain,
   tileVariant,
 } from "./terrainAtlas";
-import { isoDiamondPath } from "./isoDiamond";
 
 const SLAB_RUST = { r: 117, g: 81, b: 59 };
 const SLAB_RUST_LIGHT = { r: 189, g: 130, b: 88 };
@@ -20,7 +20,7 @@ function mixTone(
   b: { r: number; g: number; b: number },
   t: number,
 ): { r: number; g: number; b: number } {
-  const u = t < 0 ? 0 : Math.min(t , 1);
+  const u = t < 0 ? 0 : Math.min(t, 1);
   return {
     r: a.r + (b.r - a.r) * u,
     g: a.g + (b.g - a.g) * u,
@@ -33,7 +33,7 @@ function rgbCss(color: { r: number; g: number; b: number }): string {
 }
 
 function slabBit(v: number, shift: number, mod: number): number {
-  return ((v >>> shift) % mod + mod) % mod;
+  return (((v >>> shift) % mod) + mod) % mod;
 }
 
 function paintConcreteSlab(
@@ -74,7 +74,15 @@ function paintConcreteSlab(
   ctx.globalAlpha = alpha * (0.1 + age * 0.18);
   ctx.fillStyle = rgbCss(mixTone(CONCRETE_STEEL_DARK, SLAB_RUST, age * 0.4));
   ctx.beginPath();
-  ctx.ellipse(bloomX, bloomY, iw * (0.2 + slabBit(v, 2, 4) * 0.04), ih * (0.16 + slabBit(v, 8, 3) * 0.03), 0, 0, Math.PI * 2);
+  ctx.ellipse(
+    bloomX,
+    bloomY,
+    iw * (0.2 + slabBit(v, 2, 4) * 0.04),
+    ih * (0.16 + slabBit(v, 8, 3) * 0.03),
+    0,
+    0,
+    Math.PI * 2,
+  );
   ctx.fill();
 
   const grain = 2 + slabBit(v, 1, 3);

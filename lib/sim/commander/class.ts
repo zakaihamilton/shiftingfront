@@ -1,8 +1,8 @@
 import type { Command, Entity, MissionKind, SimState } from "../../types";
 import { canRepair } from "../repair";
-import { COMMANDER_CADENCE, playerBuildingsView, type CommanderMetrics } from "./queries";
-import { planBuilding, planProduction } from "./production";
 import { planFieldOrders } from "./fieldOrders";
+import { planBuilding, planProduction } from "./production";
+import { COMMANDER_CADENCE, type CommanderMetrics, playerBuildingsView } from "./queries";
 
 const COMMANDER_REPAIR_CREDIT_RESERVE = 0;
 const COMMANDER_YARD_REPAIR_THRESHOLD = 0.92;
@@ -25,11 +25,13 @@ function planRepair(state: SimState): Command | undefined {
 
   const target = playerBuildingsView(state)
     .filter((building) => canRepair(building))
-    .filter((building) => building.hp / building.maxHp <= (
-      building.kind === "constructionYard"
-        ? COMMANDER_YARD_REPAIR_THRESHOLD
-        : COMMANDER_STRUCTURE_REPAIR_THRESHOLD
-    ))
+    .filter(
+      (building) =>
+        building.hp / building.maxHp <=
+        (building.kind === "constructionYard"
+          ? COMMANDER_YARD_REPAIR_THRESHOLD
+          : COMMANDER_STRUCTURE_REPAIR_THRESHOLD),
+    )
     .sort((a, b) => repairPriority(a.kind) - repairPriority(b.kind) || a.id - b.id)[0];
   return target ? { type: "repair", buildingId: target.id } : undefined;
 }
@@ -42,7 +44,12 @@ export class CompetentCommander {
   private metrics: CommanderMetrics = { plans: 0, commands: 0, commandsByType: {} };
 
   plan(state: SimState): Command[] {
-    if (state.result !== "playing" || state.tutorialStage !== undefined || state.tick % COMMANDER_CADENCE !== 0) return [];
+    if (
+      state.result !== "playing" ||
+      state.tutorialStage !== undefined ||
+      state.tick % COMMANDER_CADENCE !== 0
+    )
+      return [];
     const yard = playerBuildingsView(state, "constructionYard")[0];
     if (!yard) return [];
 
@@ -69,7 +76,8 @@ export class CompetentCommander {
     this.lastCombatOrderTick = fieldMemory.lastCombatOrderTick;
     this.metrics.commands += commands.length;
     for (const command of commands) {
-      this.metrics.commandsByType[command.type] = (this.metrics.commandsByType[command.type] ?? 0) + 1;
+      this.metrics.commandsByType[command.type] =
+        (this.metrics.commandsByType[command.type] ?? 0) + 1;
     }
     return commands;
   }

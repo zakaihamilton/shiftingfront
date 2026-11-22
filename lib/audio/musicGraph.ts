@@ -1,3 +1,4 @@
+import { cinematicToneFor, cinematicWave } from "./cinematicWaves";
 import type {
   MusicDrumEvent,
   MusicIntensity,
@@ -9,13 +10,12 @@ import { AUDIO_SAMPLE_RATE } from "./constants";
 import { prewarmMusicSamples } from "./musicSamples";
 import type {
   AudioGraphContext,
-  MusicGraph,
   IntensityPatternIndex,
-  PatternIndex,
+  MusicGraph,
   MusicWaveformName,
+  PatternIndex,
 } from "./musicState";
 import { noiseBuf, setNoiseBuf } from "./musicState";
-import { cinematicToneFor, cinematicWave } from "./cinematicWaves";
 
 export type { AudioGraphContext, MusicGraph, PatternIndex };
 
@@ -38,9 +38,30 @@ export function masterGain(value: MusicIntensity = "calm", isDucked = false): nu
   return MASTER_GAIN * INTENSITY_MULTIPLIER[value] * (isDucked ? DUCK_RATIO : 1);
 }
 
-export function layerMultiplier(layer: "bass" | "pulse" | "harmony" | "counter" | "melody" | "guitar" | "drums", value: MusicIntensity = "calm"): number {
-  if (value === "critical") return layer === "drums" ? 1.08 : layer === "guitar" ? 1.14 : layer === "harmony" ? 0.94 : layer === "counter" ? 0.86 : 1.02;
-  if (value === "engaged") return layer === "drums" ? 1.02 : layer === "guitar" ? 1.08 : layer === "harmony" ? 0.82 : layer === "counter" ? 0.72 : 1;
+export function layerMultiplier(
+  layer: "bass" | "pulse" | "harmony" | "counter" | "melody" | "guitar" | "drums",
+  value: MusicIntensity = "calm",
+): number {
+  if (value === "critical")
+    return layer === "drums"
+      ? 1.08
+      : layer === "guitar"
+        ? 1.14
+        : layer === "harmony"
+          ? 0.94
+          : layer === "counter"
+            ? 0.86
+            : 1.02;
+  if (value === "engaged")
+    return layer === "drums"
+      ? 1.02
+      : layer === "guitar"
+        ? 1.08
+        : layer === "harmony"
+          ? 0.82
+          : layer === "counter"
+            ? 0.72
+            : 1;
   if (layer === "drums") return 0.88;
   if (layer === "counter") return 0.62;
   if (layer === "harmony") return 0.7;
@@ -64,7 +85,11 @@ function createSaturationCurve(amount: number): Float32Array<ArrayBuffer> {
   return curve;
 }
 
-function createImpulseResponse(audio: AudioGraphContext, seconds: number, decay: number): AudioBuffer {
+function createImpulseResponse(
+  audio: AudioGraphContext,
+  seconds: number,
+  decay: number,
+): AudioBuffer {
   const length = Math.max(1, Math.floor(audio.sampleRate * seconds));
   const impulse = audio.createBuffer(2, length, audio.sampleRate);
   let state = 0x6d2b79f5;
@@ -73,14 +98,16 @@ function createImpulseResponse(audio: AudioGraphContext, seconds: number, decay:
     for (let i = 0; i < data.length; i++) {
       state = Math.imul(state ^ (state >>> 15), 1 | state);
       state ^= state + Math.imul(state ^ (state >>> 7), 61 | state);
-      const noise = ((state ^ (state >>> 14)) >>> 0) / 4294967295 * 2 - 1;
+      const noise = (((state ^ (state >>> 14)) >>> 0) / 4294967295) * 2 - 1;
       data[i] = noise * (1 - i / data.length) ** decay * (channel === 0 ? 1 : 0.92);
     }
   }
   return impulse;
 }
 
-function createMusicWaveforms(audio: AudioGraphContext): Partial<Record<MusicWaveformName, PeriodicWave>> {
+function createMusicWaveforms(
+  audio: AudioGraphContext,
+): Partial<Record<MusicWaveformName, PeriodicWave>> {
   if (typeof audio.createPeriodicWave !== "function") return {};
   const profiles: Record<MusicWaveformName, readonly number[]> = {
     warm: [1, 0.42, 0.2, 0.12, 0.075, 0.05, 0.034, 0.022, 0.014],
@@ -91,7 +118,10 @@ function createMusicWaveforms(audio: AudioGraphContext): Partial<Record<MusicWav
     guitar: [1, 0.4, 0.25, 0.16, 0.095, 0.052, 0.026, 0.012],
   };
   const result: Partial<Record<MusicWaveformName, PeriodicWave>> = {};
-  for (const [name, partials] of Object.entries(profiles) as [MusicWaveformName, readonly number[]][]) {
+  for (const [name, partials] of Object.entries(profiles) as [
+    MusicWaveformName,
+    readonly number[],
+  ][]) {
     const real = new Float32Array(partials.length + 1);
     const imag = new Float32Array(partials.length + 1);
     for (let index = 0; index < partials.length; index++) imag[index + 1] = partials[index]!;
@@ -102,13 +132,17 @@ function createMusicWaveforms(audio: AudioGraphContext): Partial<Record<MusicWav
 
 export function getNoiseBuffer(audio: AudioGraphContext): AudioBuffer {
   if (noiseBuf && noiseBuf.sampleRate === audio.sampleRate) return noiseBuf;
-  const buf = audio.createBuffer(1, Math.max(1, Math.floor(audio.sampleRate * 0.8)), audio.sampleRate);
+  const buf = audio.createBuffer(
+    1,
+    Math.max(1, Math.floor(audio.sampleRate * 0.8)),
+    audio.sampleRate,
+  );
   const data = buf.getChannelData(0);
   let state = 0x4d595df4;
   for (let i = 0; i < data.length; i++) {
     state = Math.imul(state ^ (state >>> 15), 1 | state);
     state ^= state + Math.imul(state ^ (state >>> 7), 61 | state);
-    data[i] = ((state ^ (state >>> 14)) >>> 0) / 4294967295 * 2 - 1;
+    data[i] = (((state ^ (state >>> 14)) >>> 0) / 4294967295) * 2 - 1;
   }
   setNoiseBuf(buf);
   return buf;
@@ -164,14 +198,27 @@ export function indexPattern(p: MusicPattern): PatternIndex {
   return { notes, drums, intensityLayers };
 }
 
-export function syncGraphStyle(audio: AudioGraphContext, g: MusicGraph, p: MusicPattern, time = audio.currentTime): void {
+export function syncGraphStyle(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  p: MusicPattern,
+  time = audio.currentTime,
+): void {
   const t = Math.max(time, audio.currentTime);
   g.style = p.style;
   g.saturation.curve = createSaturationCurve(p.style.saturationAmount);
   g.reverb.buffer = createImpulseResponse(audio, p.style.reverbSeconds, p.style.reverbDecay);
-  g.reverbFilter.frequency.setTargetAtTime(Math.min(4_000, Math.max(1_400, p.cutoff * 2.6)), t, 0.04);
+  g.reverbFilter.frequency.setTargetAtTime(
+    Math.min(4_000, Math.max(1_400, p.cutoff * 2.6)),
+    t,
+    0.04,
+  );
   g.reverbSend.gain.setTargetAtTime(p.style.reverbSend, t, 0.04);
-  g.delayFilter.frequency.setTargetAtTime(Math.min(3_800, Math.max(1_300, p.cutoff * 2.2)), t, 0.04);
+  g.delayFilter.frequency.setTargetAtTime(
+    Math.min(3_800, Math.max(1_300, p.cutoff * 2.2)),
+    t,
+    0.04,
+  );
   g.delayFeedback.gain.setTargetAtTime(p.style.delayFeedback, t, 0.04);
   g.padFilter.Q.setTargetAtTime(p.style.padQ, t, 0.04);
   g.padReverbFilter.frequency.setTargetAtTime(Math.min(p.cutoff, 960), t, 0.04);
@@ -201,7 +248,11 @@ export function notePan(stem: MusicStem): number {
   return 0;
 }
 
-export function createGraph(audio: AudioGraphContext, destination: AudioNode, p: MusicPattern): MusicGraph {
+export function createGraph(
+  audio: AudioGraphContext,
+  destination: AudioNode,
+  p: MusicPattern,
+): MusicGraph {
   const master = audio.createGain();
   const highpass = audio.createBiquadFilter();
   const saturation = audio.createWaveShaper();
@@ -309,9 +360,15 @@ export function createGraph(audio: AudioGraphContext, destination: AudioNode, p:
   padOscC.setPeriodicWave(padWave);
   padOscD.setPeriodicWave(padWave);
   padOscA.frequency.setValueAtTime(p.padRoot[0] ?? p.rootHz, now);
-  padOscB.frequency.setValueAtTime((p.padThird[0] ?? (p.padRoot[0] ?? p.rootHz) * 1.25) * 1.002, now);
+  padOscB.frequency.setValueAtTime(
+    (p.padThird[0] ?? (p.padRoot[0] ?? p.rootHz) * 1.25) * 1.002,
+    now,
+  );
   padOscC.frequency.setValueAtTime((p.padFifth[0] ?? p.rootHz * 1.5) * 0.998, now);
-  padOscD.frequency.setValueAtTime((p.padSeventh[0] ?? (p.padRoot[0] ?? p.rootHz) * 1.78) * 1.001, now);
+  padOscD.frequency.setValueAtTime(
+    (p.padSeventh[0] ?? (p.padRoot[0] ?? p.rootHz) * 1.78) * 1.001,
+    now,
+  );
   padOscA.detune.setValueAtTime(p.style.padDetune[0], now);
   padOscB.detune.setValueAtTime(p.style.padDetune[1], now);
   padOscC.detune.setValueAtTime(p.style.padDetune[2], now);
@@ -403,11 +460,36 @@ export function disconnectGraph(g: MusicGraph): void {
   }
   for (const panner of [g.padPanA, g.padPanB, g.padPanC, g.padPanD]) panner.disconnect();
   for (const node of [
-    g.padFilter, g.padGain, g.padGate, g.padLfoGain, g.padReverbFilter, g.padReverbGate, g.padReverbSend,
-    ...g.padReverbVoices, g.delay, g.delayFeedback, g.delayWet,
-    g.reverb, g.reverbFilter, g.reverbSend, g.reverbWet, g.bassBus, g.bassDuck, g.rhythmBus, g.harmonyBus, g.pianoBus, g.guitarBus,
-    g.pulseBus, g.leadBus, g.counterBus, g.fxBus, g.highpass, g.saturation,
+    g.padFilter,
+    g.padGain,
+    g.padGate,
+    g.padLfoGain,
+    g.padReverbFilter,
+    g.padReverbGate,
+    g.padReverbSend,
+    ...g.padReverbVoices,
+    g.delay,
+    g.delayFeedback,
+    g.delayWet,
+    g.reverb,
+    g.reverbFilter,
+    g.reverbSend,
+    g.reverbWet,
+    g.bassBus,
+    g.bassDuck,
+    g.rhythmBus,
+    g.harmonyBus,
+    g.pianoBus,
+    g.guitarBus,
+    g.pulseBus,
+    g.leadBus,
+    g.counterBus,
+    g.fxBus,
+    g.highpass,
+    g.saturation,
     g.delayFilter,
-    g.compressor, g.master,
-  ]) node.disconnect();
+    g.compressor,
+    g.master,
+  ])
+    node.disconnect();
 }

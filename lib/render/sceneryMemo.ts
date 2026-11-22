@@ -1,4 +1,4 @@
-import { sceneryAt, type ScenerySample } from "../gen/map";
+import { type ScenerySample, sceneryAt } from "../gen/map";
 import type { AtlasWorld } from "./terrainMaterials";
 
 export type SceneryMemoWorld = AtlasWorld & { tick?: number };

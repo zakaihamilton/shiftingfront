@@ -1,7 +1,13 @@
 import { TICKS_PER_SECOND } from "../catalog";
 import { formatMissionClockFromTicks } from "../gen/pacing";
 import { fogAt } from "../sim/fog";
-import { objectivePriorityFor, objectiveProgress, secondaryProgress, type ObjectiveProgress, type ObjectivePriority } from "../sim/objectives";
+import {
+  type ObjectivePriority,
+  type ObjectiveProgress,
+  objectivePriorityFor,
+  objectiveProgress,
+  secondaryProgress,
+} from "../sim/objectives";
 import type { MissionRuntime, SimState } from "../types";
 
 export type ObjectiveCardStatus = "active" | "complete" | "failed";
@@ -47,7 +53,8 @@ function objectiveCardLabel(progress: ObjectiveProgress): string {
 
 export function objectiveCardsFor(state: SimState): ObjectiveCardModel[] {
   const primary = objectiveProgress(state);
-  const primaryComplete = state.result === "won" || (primary.target > 0 && primary.current >= primary.target);
+  const primaryComplete =
+    state.result === "won" || (primary.target > 0 && primary.current >= primary.target);
   const primaryFailed = state.result === "lost";
   return [
     {
@@ -55,7 +62,10 @@ export function objectiveCardsFor(state: SimState): ObjectiveCardModel[] {
       label: objectiveCardLabel(primary),
       current: primary.current,
       target: primary.target,
-      showCount: state.win.kind !== "holdTheLine" && state.win.kind !== "annihilate" && state.win.kind !== "razeAll",
+      showCount:
+        state.win.kind !== "holdTheLine" &&
+        state.win.kind !== "annihilate" &&
+        state.win.kind !== "razeAll",
       showProgressBar: state.win.kind !== "annihilate" && state.win.kind !== "razeAll",
       status: primaryFailed ? "failed" : primaryComplete ? "complete" : "active",
       priority: "primary",
@@ -67,7 +77,11 @@ export function objectiveCardsFor(state: SimState): ObjectiveCardModel[] {
       current: objective.completed ? 1 : 0,
       target: 1,
       priority: objectivePriorityFor(objective.id, objective.priority),
-      status: objective.failed ? "failed" as const : objective.completed ? "complete" as const : "active" as const,
+      status: objective.failed
+        ? ("failed" as const)
+        : objective.completed
+          ? ("complete" as const)
+          : ("active" as const),
     })),
   ];
 }
@@ -88,13 +102,15 @@ export function minimapPingFor(state: SimState, kind: "urgent" | "objective") {
   const runtime = state.runtime;
   const target = runtime?.targetIds
     ?.map((id) => state.entities.find((entity) => entity.id === id && entity.hp > 0))
-    .find((entity): entity is SimState["entities"][number] =>
-      entity !== undefined && fogAt(state, Math.round(entity.x), Math.round(entity.y)) === 2,
+    .find(
+      (entity): entity is SimState["entities"][number] =>
+        entity !== undefined && fogAt(state, Math.round(entity.x), Math.round(entity.y)) === 2,
     );
-  const point = target
-    ?? runtime?.zone
-    ?? state.entities.find((entity) => entity.owner === 1 && entity.kind === "constructionYard" && entity.hp > 0)
-    ?? { x: state.width / 2, y: state.height / 2 };
+  const point = target ??
+    runtime?.zone ??
+    state.entities.find(
+      (entity) => entity.owner === 1 && entity.kind === "constructionYard" && entity.hp > 0,
+    ) ?? { x: state.width / 2, y: state.height / 2 };
   if (fogAt(state, Math.round(point.x), Math.round(point.y)) !== 2) return undefined;
   return {
     kind,

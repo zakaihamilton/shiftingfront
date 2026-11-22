@@ -2,7 +2,16 @@ import { createRng } from "../seed/rng";
 import type { MusicDrumKit, MusicDrumProfile } from "./compose";
 import type { AudioGraphContext } from "./musicGraph";
 
-export type MusicSampleName = "kick" | "snare" | "clap" | "hat" | "openHat" | "tom" | "impact" | "rim" | "shaker";
+export type MusicSampleName =
+  | "kick"
+  | "snare"
+  | "clap"
+  | "hat"
+  | "openHat"
+  | "tom"
+  | "impact"
+  | "rim"
+  | "shaker";
 
 const DURATIONS: Record<MusicSampleName, number> = {
   kick: 0.52,
@@ -65,7 +74,7 @@ function renderSample(
   let phase = 0;
   let previousNoise = 0;
   let highNoise = 0;
-  const noiseFeedback = Math.exp(-2 * Math.PI * drum.snareNoise / sampleRate);
+  const noiseFeedback = Math.exp((-2 * Math.PI * drum.snareNoise) / sampleRate);
   let peak = 0;
 
   for (let i = 0; i < length; i++) {
@@ -77,7 +86,7 @@ function renderSample(
 
     if (kind === "kick") {
       const frequency = drum.kickEnd + (drum.kickStart - drum.kickEnd) * Math.exp(-time * 19);
-      phase += Math.PI * 2 * frequency / sampleRate;
+      phase += (Math.PI * 2 * frequency) / sampleRate;
       const envelope = Math.exp(-time * (3 / Math.max(0.04, drum.kickTail)));
       const body = Math.sin(phase) + Math.sin(phase * 2) * 0.2 + Math.sin(phase * 3) * 0.055;
       const click = Math.exp(-time * 110) * (noise * 0.12 + Math.sin(phase * 8) * 0.05);
@@ -87,40 +96,46 @@ function renderSample(
       const tone = Math.sin(Math.PI * 2 * drum.snareBody * time) * Math.exp(-time * 27);
       const noiseEnvelope = Math.exp(-time * (kit === "analog-808" ? 19 : 15));
       sample = highNoise * noiseEnvelope * (0.56 + character.grit * 0.3) + tone * 0.34;
-      if (kit === "industrial") sample += Math.sin(Math.PI * 2 * 620 * time) * Math.exp(-time * 35) * 0.08;
+      if (kit === "industrial")
+        sample += Math.sin(Math.PI * 2 * 620 * time) * Math.exp(-time * 35) * 0.08;
     } else if (kind === "clap") {
       let burst = 0;
       for (const onset of [0, 0.012, 0.024, 0.039]) {
         const elapsed = time - onset;
-        if (elapsed >= 0) burst += Math.exp(-elapsed * (elapsed < 0.012 ? 210 : 39)) * (elapsed < 0.012 ? 0.56 : 0.22);
+        if (elapsed >= 0)
+          burst +=
+            Math.exp(-elapsed * (elapsed < 0.012 ? 210 : 39)) * (elapsed < 0.012 ? 0.56 : 0.22);
       }
       sample = highNoise * burst * (kit === "industrial" ? 0.64 : 0.52);
     } else if (kind === "hat" || kind === "openHat") {
       const decay = kind === "openHat" ? 8 : 36;
       const noiseLayer = highNoise * Math.exp(-time * decay) * (kind === "openHat" ? 0.2 : 0.28);
-      const metal = (
-        Math.sin(Math.PI * 2 * 3177 * time) +
-        Math.sin(Math.PI * 2 * 4219 * time + 0.4) * 0.72 +
-        Math.sin(Math.PI * 2 * 5633 * time + 1.3) * 0.48 +
-        Math.sin(Math.PI * 2 * 6871 * time + 2.1) * 0.3
-      ) * Math.exp(-time * decay) * character.metallic;
+      const metal =
+        (Math.sin(Math.PI * 2 * 3177 * time) +
+          Math.sin(Math.PI * 2 * 4219 * time + 0.4) * 0.72 +
+          Math.sin(Math.PI * 2 * 5633 * time + 1.3) * 0.48 +
+          Math.sin(Math.PI * 2 * 6871 * time + 2.1) * 0.3) *
+        Math.exp(-time * decay) *
+        character.metallic;
       sample = noiseLayer + metal;
       if (kit === "chip-noise") sample = Math.tanh(sample * 1.8);
     } else if (kind === "tom") {
       const frequency = drum.tomEnd + (drum.tomStart - drum.tomEnd) * Math.exp(-time * 4.5);
-      phase += Math.PI * 2 * frequency / sampleRate;
+      phase += (Math.PI * 2 * frequency) / sampleRate;
       sample = Math.sin(phase) * Math.exp(-time * 9) + highNoise * Math.exp(-time * 47) * 0.08;
     } else if (kind === "impact") {
-      const frequency = drum.impactEnd + (drum.impactStart - drum.impactEnd) * Math.exp(-time * 5.2);
-      phase += Math.PI * 2 * frequency / sampleRate;
-      sample = Math.sin(phase) * Math.exp(-time * 5.5) * 0.8 + highNoise * Math.exp(-time * 9) * 0.22;
+      const frequency =
+        drum.impactEnd + (drum.impactStart - drum.impactEnd) * Math.exp(-time * 5.2);
+      phase += (Math.PI * 2 * frequency) / sampleRate;
+      sample =
+        Math.sin(phase) * Math.exp(-time * 5.5) * 0.8 + highNoise * Math.exp(-time * 9) * 0.22;
       if (kit === "industrial") sample += Math.sin(phase * 2.03) * Math.exp(-time * 8) * 0.12;
     } else if (kind === "rim") {
-      sample = (
-        Math.sin(Math.PI * 2 * 820 * time) * 0.52 +
-        Math.sin(Math.PI * 2 * 1340 * time) * 0.18 +
-        highNoise * 0.32
-      ) * Math.exp(-time * 48);
+      sample =
+        (Math.sin(Math.PI * 2 * 820 * time) * 0.52 +
+          Math.sin(Math.PI * 2 * 1340 * time) * 0.18 +
+          highNoise * 0.32) *
+        Math.exp(-time * 48);
     } else {
       const gate = time % 0.024 < 0.009 ? 1 : 0.28;
       sample = highNoise * Math.exp(-time * 7) * gate * 0.32;
@@ -154,6 +169,11 @@ export function getMusicSample(
   return sample;
 }
 
-export function prewarmMusicSamples(audio: AudioGraphContext, kit: MusicDrumKit, drum: MusicDrumProfile): void {
-  for (const kind of Object.keys(DURATIONS) as MusicSampleName[]) getMusicSample(audio, kit, drum, kind);
+export function prewarmMusicSamples(
+  audio: AudioGraphContext,
+  kit: MusicDrumKit,
+  drum: MusicDrumProfile,
+): void {
+  for (const kind of Object.keys(DURATIONS) as MusicSampleName[])
+    getMusicSample(audio, kit, drum, kind);
 }

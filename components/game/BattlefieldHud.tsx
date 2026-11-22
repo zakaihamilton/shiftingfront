@@ -1,8 +1,8 @@
 import { deadlineUrgency } from "@/lib/ui/missionPresentation";
-import { BattlefieldOperationBar } from "./BattlefieldOperationBar";
+import styles from "./BattlefieldHud.module.css";
 import type { BattlefieldHudProps } from "./BattlefieldHud.types";
+import { BattlefieldOperationBar } from "./BattlefieldOperationBar";
 import { MissionDirectivePanel } from "./MissionDirectivePanel";
-import styles from "./Battlefield.module.css";
 
 export type { BattlefieldHudProps } from "./BattlefieldHud.types";
 

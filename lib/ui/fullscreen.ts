@@ -25,7 +25,9 @@ export async function enterFullscreen(element?: HTMLElement): Promise<boolean> {
       await target.requestFullscreen();
       return true;
     }
-    const webkitTarget = target as unknown as { webkitRequestFullscreen?: () => Promise<void> | void };
+    const webkitTarget = target as unknown as {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    };
     if (webkitTarget.webkitRequestFullscreen) {
       await webkitTarget.webkitRequestFullscreen();
       return true;
@@ -66,13 +68,14 @@ let fullscreenShortcutSubscribers = 0;
 
 function onFullscreenShortcut(event: KeyboardEvent) {
   const isF11 = event.key === "F11" || event.code === "F11";
-  const isMacCommand = typeof navigator !== "undefined"
-    && isMacPlatform(navigator.platform, navigator.userAgent)
-    && event.key.toLowerCase() === "f"
-    && event.ctrlKey
-    && event.metaKey
-    && !event.altKey
-    && !event.shiftKey;
+  const isMacCommand =
+    typeof navigator !== "undefined" &&
+    isMacPlatform(navigator.platform, navigator.userAgent) &&
+    event.key.toLowerCase() === "f" &&
+    event.ctrlKey &&
+    event.metaKey &&
+    !event.altKey &&
+    !event.shiftKey;
   if (!isF11 && !isMacCommand) return;
   event.preventDefault();
   if (event.repeat) return;
@@ -98,9 +101,8 @@ function subscribeFullscreen(callback: () => void) {
 }
 
 const noopSubscribe = () => () => undefined;
-const getMacSnapshot = () => (
-  typeof navigator !== "undefined" && isMacPlatform(navigator.platform, navigator.userAgent)
-);
+const getMacSnapshot = () =>
+  typeof navigator !== "undefined" && isMacPlatform(navigator.platform, navigator.userAgent);
 const getMacServerSnapshot = () => false;
 
 export function useFullscreen(): {
@@ -109,16 +111,8 @@ export function useFullscreen(): {
   shortcut: string;
   toggle: () => void;
 } {
-  const fullscreenActive = useSyncExternalStore(
-    subscribeFullscreen,
-    isFullscreen,
-    () => false,
-  );
-  const supported = useSyncExternalStore(
-    noopSubscribe,
-    isFullscreenSupported,
-    () => false,
-  );
+  const fullscreenActive = useSyncExternalStore(subscribeFullscreen, isFullscreen, () => false);
+  const supported = useSyncExternalStore(noopSubscribe, isFullscreenSupported, () => false);
   const isMac = useSyncExternalStore(noopSubscribe, getMacSnapshot, getMacServerSnapshot);
 
   const toggle = () => {

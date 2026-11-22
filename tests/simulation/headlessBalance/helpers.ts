@@ -8,13 +8,14 @@ export function missionFactory(seed: number, missionIndex: number) {
   const mission = campaign.missions[missionIndex];
   if (!mission) throw new Error(`No mission ${missionIndex} for seed ${seed}`);
   const map = generateMap(seed, mission);
-  return () => createMissionFromData({
-    seed,
-    missionIndex,
-    campaign,
-    mission,
-    map: cloneMapForSimulation(map),
-  });
+  return () =>
+    createMissionFromData({
+      seed,
+      missionIndex,
+      campaign,
+      mission,
+      map: cloneMapForSimulation(map),
+    });
 }
 
 export function withoutFog(state: ReturnType<typeof createMission>) {

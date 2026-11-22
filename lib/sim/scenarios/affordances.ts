@@ -1,7 +1,7 @@
 import type { SimState } from "../../types";
+import { entitiesFor } from "../entities";
 import { findPathDetailed } from "../pathfinding";
 import { convoyDestination } from "./escort";
-import { entitiesFor } from "../entities";
 
 export type ScenarioAffordances = {
   /** First-target aliases retained for existing callers and reports. */
@@ -24,18 +24,35 @@ export type ScenarioAffordances = {
 /** Measures the generated scenario without adding metadata to persisted state. */
 export function scenarioAffordances(state: SimState): ScenarioAffordances {
   const playerYard = entitiesFor(state).find(
-    (entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard" && entity.hp > 0,
+    (entity) =>
+      entity.owner === 0 &&
+      entity.class === "building" &&
+      entity.kind === "constructionYard" &&
+      entity.hp > 0,
   );
   const enemyYard = entitiesFor(state).find(
-    (entity) => entity.owner === 1 && !entity.optionalChallenge && entity.class === "building" && entity.kind === "constructionYard" && entity.hp > 0,
+    (entity) =>
+      entity.owner === 1 &&
+      !entity.optionalChallenge &&
+      entity.class === "building" &&
+      entity.kind === "constructionYard" &&
+      entity.hp > 0,
   );
   const targetIds = state.runtime?.targetIds ?? [];
   const targets = targetIds.length
     ? targetIds.map((id) => entitiesFor(state).find((entity) => entity.id === id))
     : state.win.kind === "razeAll"
-      ? entitiesFor(state).filter((entity) => entity.owner === 1 && !entity.optionalChallenge && entity.class === "building" && entity.hp > 0)
+      ? entitiesFor(state).filter(
+          (entity) =>
+            entity.owner === 1 &&
+            !entity.optionalChallenge &&
+            entity.class === "building" &&
+            entity.hp > 0,
+        )
       : state.win.kind === "annihilate"
-        ? entitiesFor(state).filter((entity) => entity.owner === 1 && !entity.optionalChallenge && entity.hp > 0)
+        ? entitiesFor(state).filter(
+            (entity) => entity.owner === 1 && !entity.optionalChallenge && entity.hp > 0,
+          )
         : [enemyYard];
   if (!playerYard || targets.length === 0 || targets.some((target) => !target)) {
     return {
@@ -53,33 +70,48 @@ export function scenarioAffordances(state: SimState): ScenarioAffordances {
     };
   }
 
-  const baseDistance = enemyYard ? Math.max(1, Math.hypot(enemyYard.x - playerYard.x, enemyYard.y - playerYard.y)) : 1;
+  const baseDistance = enemyYard
+    ? Math.max(1, Math.hypot(enemyYard.x - playerYard.x, enemyYard.y - playerYard.y))
+    : 1;
   const resolvedTargets = targets as NonNullable<(typeof targets)[number]>[];
-  const targetDepths = resolvedTargets.map((target) => Math.min(1, Math.hypot(target.x - playerYard.x, target.y - playerYard.y) / baseDistance));
+  const targetDepths = resolvedTargets.map((target) =>
+    Math.min(1, Math.hypot(target.x - playerYard.x, target.y - playerYard.y) / baseDistance),
+  );
   // Generation diagnostics may exhaust the realtime search budget on large maps.
   const search = { maxNodes: state.width * state.height };
-  const targetRoutes = resolvedTargets.map((target) => findPathDetailed(state, playerYard, target, search));
+  const targetRoutes = resolvedTargets.map((target) =>
+    findPathDetailed(state, playerYard, target, search),
+  );
   const baseRoute = enemyYard ? findPathDetailed(state, playerYard, enemyYard, search) : undefined;
   const baseRouteLength = baseRoute?.status === "complete" ? baseRoute.path.length : 0;
-  const targetRouteLengths = targetRoutes.map((route) => route.status === "complete" ? route.path.length : 0);
+  const targetRouteLengths = targetRoutes.map((route) =>
+    route.status === "complete" ? route.path.length : 0,
+  );
   const effectiveRoutes = resolvedTargets.map((target, index) => {
     if (state.runtime?.kind === "escort" && state.runtime.zone) {
       return findPathDetailed(state, target, convoyDestination(state, state.runtime.zone, index));
     }
     return targetRoutes[index]!;
   });
-  const effectiveRouteLengths = effectiveRoutes.map((route) => route.status === "complete" ? route.path.length : 0);
-  const rescueReturnRoutes = state.runtime?.kind === "rescue"
-    ? resolvedTargets.map((target) => findPathDetailed(state, target, playerYard, search))
-    : [];
-  const rescueReturnRouteLengths = rescueReturnRoutes.map((route) => route.status === "complete" ? route.path.length : 0);
-  const allTargetsReachable = targetRoutes.every((route) => route.status === "complete") &&
+  const effectiveRouteLengths = effectiveRoutes.map((route) =>
+    route.status === "complete" ? route.path.length : 0,
+  );
+  const rescueReturnRoutes =
+    state.runtime?.kind === "rescue"
+      ? resolvedTargets.map((target) => findPathDetailed(state, target, playerYard, search))
+      : [];
+  const rescueReturnRouteLengths = rescueReturnRoutes.map((route) =>
+    route.status === "complete" ? route.path.length : 0,
+  );
+  const allTargetsReachable =
+    targetRoutes.every((route) => route.status === "complete") &&
     effectiveRoutes.every((route) => route.status === "complete") &&
     rescueReturnRoutes.every((route) => route.status === "complete");
   const maxMapDiagonal = Math.hypot(state.width, state.height);
   const effectiveBaseline = Math.max(baseRouteLength, maxMapDiagonal * 0.5);
   const routeBudget = baseRouteLength > 0 ? effectiveBaseline * 1.65 + 12 : Infinity;
-  const materiallyFair = allTargetsReachable &&
+  const materiallyFair =
+    allTargetsReachable &&
     targetRouteLengths.every((length) => length <= routeBudget) &&
     effectiveRouteLengths.every((length) => length <= routeBudget) &&
     rescueReturnRouteLengths.every((length) => length <= routeBudget);

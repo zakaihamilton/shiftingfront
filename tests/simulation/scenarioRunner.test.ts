@@ -7,8 +7,12 @@ describe("scenario runner", () => {
   it("steps through the same simulation transition as tick", () => {
     const reference = createMission({ seed: 421, missionIndex: 0 });
     const stepped = createMission({ seed: 421, missionIndex: 0 });
-    const referenceUnit = reference.entities.find((entity) => entity.owner === 0 && entity.class === "unit");
-    const steppedUnit = stepped.entities.find((entity) => entity.owner === 0 && entity.class === "unit");
+    const referenceUnit = reference.entities.find(
+      (entity) => entity.owner === 0 && entity.class === "unit",
+    );
+    const steppedUnit = stepped.entities.find(
+      (entity) => entity.owner === 0 && entity.class === "unit",
+    );
     expect(referenceUnit).toBeDefined();
     expect(steppedUnit).toBeDefined();
     const referenceResult = tick(reference, [{ type: "stop", unitIds: [referenceUnit!.id] }]);
@@ -38,9 +42,18 @@ describe("scenario runner", () => {
     expect(result).toEqual({ state, ticksRun: 3, stopReason: "tickLimit" });
     expect(state.tick).toBe(3);
     expect(order).toEqual([
-      "before:0", "commands:0", "issued:0", "after:1",
-      "before:1", "commands:1", "issued:1", "after:2",
-      "before:2", "commands:2", "issued:2", "after:3",
+      "before:0",
+      "commands:0",
+      "issued:0",
+      "after:1",
+      "before:1",
+      "commands:1",
+      "issued:1",
+      "after:2",
+      "before:2",
+      "commands:2",
+      "issued:2",
+      "after:3",
     ]);
   });
 
@@ -68,14 +81,18 @@ describe("scenario runner", () => {
     const runner = createScenarioRunner(state);
     let commandCalls = 0;
 
-    expect(() => runner.run({
-      maxTicks: 1,
-      beforeTick: () => { throw new Error("deadline"); },
-      commandsForTick: () => {
-        commandCalls += 1;
-        return undefined;
-      },
-    })).toThrow("deadline");
+    expect(() =>
+      runner.run({
+        maxTicks: 1,
+        beforeTick: () => {
+          throw new Error("deadline");
+        },
+        commandsForTick: () => {
+          commandCalls += 1;
+          return undefined;
+        },
+      }),
+    ).toThrow("deadline");
     expect(state.tick).toBe(0);
     expect(commandCalls).toBe(0);
   });

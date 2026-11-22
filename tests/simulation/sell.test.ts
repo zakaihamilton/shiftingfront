@@ -52,11 +52,13 @@ describe("structure selling", () => {
     });
 
     const events = tickProduction(s);
-    expect(events).toContainEqual(expect.objectContaining({
-      type: "produced",
-      kind: "infantry",
-      sourceId: otherBarracks.id,
-    }));
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "produced",
+        kind: "infantry",
+        sourceId: otherBarracks.id,
+      }),
+    );
   });
 
   it("refuses enemy, constructing, yard, objective, and unit targets", () => {
@@ -88,6 +90,8 @@ describe("structure selling", () => {
 
   it("charges a positive refund for a finished structure", () => {
     expect(sellRefundFor("power", BUILDING_STATS.power.hp)).toBeGreaterThan(0);
-    expect(sellRefundFor("turret", BUILDING_STATS.turret.hp)).toBe(Math.round(BUILDING_STATS.turret.cost * 0.5));
+    expect(sellRefundFor("turret", BUILDING_STATS.turret.hp)).toBe(
+      Math.round(BUILDING_STATS.turret.cost * 0.5),
+    );
   });
 });

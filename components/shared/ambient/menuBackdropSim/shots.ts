@@ -1,10 +1,8 @@
-import { HEIGHT_STEP, TILE_H, TILE_W, tileToScreen, type Camera } from "@/lib/iso";
 import { footprintOf } from "@/lib/catalog";
+import { type Camera, HEIGHT_STEP, TILE_H, TILE_W, tileToScreen } from "@/lib/iso";
 import type { CinemaScene } from "./scene";
 
-export type CinemaShot =
-  | { type: "actor"; index: number }
-  | { type: "building"; index: number };
+export type CinemaShot = { type: "actor"; index: number } | { type: "building"; index: number };
 
 /** Distinct PIP framings: mobile engagements and real structures under fire. */
 export const CINEMA_SHOTS: readonly CinemaShot[] = [
@@ -33,7 +31,9 @@ function cinemaCameraAtZoom(
   return {
     zoom,
     x: Math.round(w / 2 - (target.x - target.y) * (TILE_W / 2) * zoom + offset.x),
-    y: Math.round(h / 2 - (target.x + target.y) * (TILE_H / 2) * zoom + elev * HEIGHT_STEP * zoom + offset.y),
+    y: Math.round(
+      h / 2 - (target.x + target.y) * (TILE_H / 2) * zoom + elev * HEIGHT_STEP * zoom + offset.y,
+    ),
   };
 }
 
@@ -43,11 +43,13 @@ function cinemaEntityProjection(
   cam: Camera,
 ): { x: number; y: number; halfWidth: number; halfHeight: number } {
   const isBuilding = entity.class === "building";
-  const footprint = isBuilding ? footprintOf(entity.kind as Parameters<typeof footprintOf>[0]) : undefined;
+  const footprint = isBuilding
+    ? footprintOf(entity.kind as Parameters<typeof footprintOf>[0])
+    : undefined;
   const x = isBuilding ? entity.x + (footprint!.w - 1) / 2 : entity.x;
   const y = isBuilding ? entity.y + (footprint!.h - 1) / 2 : entity.y;
   const elev = isBuilding
-    ? scene.map.heights[Math.floor(entity.y) * scene.map.width + Math.floor(entity.x)] ?? 1
+    ? (scene.map.heights[Math.floor(entity.y) * scene.map.width + Math.floor(entity.x)] ?? 1)
     : smoothElevAt(scene.map, x, y);
   const screen = tileToScreen(x, y, cam, elev);
   return {
@@ -71,10 +73,12 @@ function cinemaFitZoom(
     return entities.every((entity) => {
       if (entity.hp <= 0) return true;
       const projected = cinemaEntityProjection(scene, entity, cam);
-      return projected.x - projected.halfWidth >= CINEMA_VIEW_MARGIN
-        && projected.x + projected.halfWidth <= w - CINEMA_VIEW_MARGIN
-        && projected.y - projected.halfHeight >= CINEMA_VIEW_MARGIN
-        && projected.y + projected.halfHeight <= h - CINEMA_VIEW_MARGIN;
+      return (
+        projected.x - projected.halfWidth >= CINEMA_VIEW_MARGIN &&
+        projected.x + projected.halfWidth <= w - CINEMA_VIEW_MARGIN &&
+        projected.y - projected.halfHeight >= CINEMA_VIEW_MARGIN &&
+        projected.y + projected.halfHeight <= h - CINEMA_VIEW_MARGIN
+      );
     });
   };
 
@@ -99,7 +103,11 @@ export const SHOT_OFFSETS: readonly { x: number; y: number }[] = [
   { x: 12, y: -2 },
 ];
 
-function smoothElevAt(map: { width: number; height: number; heights: number[] }, tx: number, ty: number): number {
+function smoothElevAt(
+  map: { width: number; height: number; heights: number[] },
+  tx: number,
+  ty: number,
+): number {
   const x0 = Math.max(0, Math.min(map.width - 1, Math.floor(tx)));
   const y0 = Math.max(0, Math.min(map.height - 1, Math.floor(ty)));
   const x1 = Math.min(map.width - 1, x0 + 1);
@@ -122,9 +130,11 @@ export function cinemaShotCamera(
   w: number,
   h: number,
 ): Camera {
-  const shot = CINEMA_SHOTS[((shotIndex % CINEMA_SHOTS.length) + CINEMA_SHOTS.length) % CINEMA_SHOTS.length]!;
+  const shot =
+    CINEMA_SHOTS[((shotIndex % CINEMA_SHOTS.length) + CINEMA_SHOTS.length) % CINEMA_SHOTS.length]!;
   const focus = shot.type === "actor" ? scene.actors[shot.index]! : scene.buildings[shot.index]!;
-  const off = SHOT_OFFSETS[((shotIndex % SHOT_OFFSETS.length) + SHOT_OFFSETS.length) % SHOT_OFFSETS.length]!;
+  const off =
+    SHOT_OFFSETS[((shotIndex % SHOT_OFFSETS.length) + SHOT_OFFSETS.length) % SHOT_OFFSETS.length]!;
 
   // Keep the camera stable for a play window while still giving each scenario
   // a distinct subject. The focus points are captured before simulation starts

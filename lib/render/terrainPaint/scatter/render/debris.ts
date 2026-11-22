@@ -17,28 +17,34 @@ export function drawDebris(
   paintLayeredShadow(ctx, s, 6.9, 2.15, 2.7, mats.dark);
   ctx.fillStyle = rgbOf(iron);
   fillPoly(ctx, [
-    (-6.8 + tilt) * s, 1.0 * s,
-    (-2.3 + tilt * 0.5) * s, -1.7 * s,
-    2.2 * s, (-2.4 + tilt * 0.4) * s,
-    6.8 * s, 0.6 * s,
-    5.4 * s, 3.2 * s,
-    -5.2 * s, 3.4 * s,
+    (-6.8 + tilt) * s,
+    1.0 * s,
+    (-2.3 + tilt * 0.5) * s,
+    -1.7 * s,
+    2.2 * s,
+    (-2.4 + tilt * 0.4) * s,
+    6.8 * s,
+    0.6 * s,
+    5.4 * s,
+    3.2 * s,
+    -5.2 * s,
+    3.4 * s,
   ]);
   ctx.fillStyle = rgbOf(rust);
   fillPoly(ctx, [
-    (-3.2 + tilt * 0.3) * s, -0.2 * s,
-    (1.5 + tilt * 0.4) * s, -2.1 * s,
-    4.0 * s, -2.4 * s,
-    5.0 * s, 0.6 * s,
-    -1.6 * s, 1.8 * s,
+    (-3.2 + tilt * 0.3) * s,
+    -0.2 * s,
+    (1.5 + tilt * 0.4) * s,
+    -2.1 * s,
+    4.0 * s,
+    -2.4 * s,
+    5.0 * s,
+    0.6 * s,
+    -1.6 * s,
+    1.8 * s,
   ]);
   ctx.fillStyle = rgbOf(mixRgb(iron, mats.light, 0.18));
-  fillPoly(ctx, [
-    -5.4 * s, 0.6 * s,
-    -1.2 * s, -0.8 * s,
-    0.4 * s, 0.4 * s,
-    -4.2 * s, 2.2 * s,
-  ]);
+  fillPoly(ctx, [-5.4 * s, 0.6 * s, -1.2 * s, -0.8 * s, 0.4 * s, 0.4 * s, -4.2 * s, 2.2 * s]);
   ctx.strokeStyle = rgbOf(mixRgb(seam, iron, 0.18));
   ctx.lineWidth = Math.max(0.55, 0.65 * s);
   ctx.beginPath();

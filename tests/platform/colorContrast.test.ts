@@ -68,7 +68,9 @@ describe("WCAG 2.1 Color Contrast and Legibility Matrix", () => {
 
     for (const surface of surfaces) {
       const ratio = contrastRatio(textColor, surface);
-      expect(ratio, `Primary text on ${surface} must meet WCAG AAA (7:1)`).toBeGreaterThanOrEqual(7.0);
+      expect(ratio, `Primary text on ${surface} must meet WCAG AAA (7:1)`).toBeGreaterThanOrEqual(
+        7.0,
+      );
     }
   });
 
@@ -77,7 +79,9 @@ describe("WCAG 2.1 Color Contrast and Legibility Matrix", () => {
 
     for (const surface of surfaces) {
       const ratio = contrastRatio(bodyColor, surface);
-      expect(ratio, `Body text on ${surface} must meet WCAG AA (4.5:1)`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio, `Body text on ${surface} must meet WCAG AA (4.5:1)`).toBeGreaterThanOrEqual(
+        4.5,
+      );
     }
   });
 
@@ -86,7 +90,10 @@ describe("WCAG 2.1 Color Contrast and Legibility Matrix", () => {
 
     for (const surface of darkSurfaces) {
       const ratio = contrastRatio(mutedColor, surface);
-      expect(ratio, `Muted caption text on ${surface} must meet WCAG AA (4.5:1)`).toBeGreaterThanOrEqual(4.5);
+      expect(
+        ratio,
+        `Muted caption text on ${surface} must meet WCAG AA (4.5:1)`,
+      ).toBeGreaterThanOrEqual(4.5);
     }
   });
 
@@ -95,10 +102,16 @@ describe("WCAG 2.1 Color Contrast and Legibility Matrix", () => {
 
     for (const surface of darkSurfaces) {
       const cyanRatio = contrastRatio(cyanColor, surface);
-      expect(cyanRatio, `Cyan accent on ${surface} must meet WCAG AAA (7:1)`).toBeGreaterThanOrEqual(7.0);
+      expect(
+        cyanRatio,
+        `Cyan accent on ${surface} must meet WCAG AAA (7:1)`,
+      ).toBeGreaterThanOrEqual(7.0);
 
       const goldRatio = contrastRatio(goldColor, surface);
-      expect(goldRatio, `Gold accent on ${surface} must meet WCAG AAA (7:1)`).toBeGreaterThanOrEqual(7.0);
+      expect(
+        goldRatio,
+        `Gold accent on ${surface} must meet WCAG AAA (7:1)`,
+      ).toBeGreaterThanOrEqual(7.0);
     }
   });
 
@@ -107,7 +120,10 @@ describe("WCAG 2.1 Color Contrast and Legibility Matrix", () => {
 
     for (const surface of surfaces) {
       const ratio = contrastRatio(focusColor, surface);
-      expect(ratio, `Focus ring on ${surface} must meet non-text contrast (3:1)`).toBeGreaterThanOrEqual(3.0);
+      expect(
+        ratio,
+        `Focus ring on ${surface} must meet non-text contrast (3:1)`,
+      ).toBeGreaterThanOrEqual(3.0);
     }
   });
 

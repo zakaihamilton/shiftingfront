@@ -334,7 +334,11 @@ describe("combat targeting", () => {
   });
 
   it("does not reacquire a contacted rescue evacuee", () => {
-    const s = makeFixture({ width: 16, height: 12, win: { kind: "rescue", targetCount: 1, ticks: 500 } });
+    const s = makeFixture({
+      width: 16,
+      height: 12,
+      win: { kind: "rescue", targetCount: 1, ticks: 500 },
+    });
     const stranded = addUnit(s, 0, "infantry", 4, 4);
     stranded.neutral = false;
     stranded.scenarioRole = "stranded";
@@ -356,7 +360,11 @@ describe("combat targeting", () => {
   });
 });
 describe("combat damage model", () => {
-  function strikeDamage(kind: "infantry" | "antiArmor" | "tank", target: "infantry" | "tank" | "power", seed = 7) {
+  function strikeDamage(
+    kind: "infantry" | "antiArmor" | "tank",
+    target: "infantry" | "tank" | "power",
+    seed = 7,
+  ) {
     const s = makeFixture({ seed, width: 16, height: 12, win: { kind: "annihilate" } });
     addUnit(s, 0, kind, 4, 4);
     const foe = target === "power" ? addBuilding(s, 1, "power", 5, 4) : addUnit(s, 1, target, 5, 4);
@@ -490,7 +498,11 @@ describe("combat alerts", () => {
     addUnit(s, 0, "harvester", 5, 4);
     addUnit(s, 1, "infantry", 4, 4);
 
-    expect(tickCombat(s)).toContainEqual({ type: "alert", kind: "contact", text: "Harvester under attack" });
+    expect(tickCombat(s)).toContainEqual({
+      type: "alert",
+      kind: "contact",
+      text: "Harvester under attack",
+    });
   });
 
   it("emits a warning when an enemy strikes the player construction yard", () => {
@@ -520,7 +532,11 @@ describe("combat alerts", () => {
     addUnit(s, 0, "tank", 5, 4);
     addUnit(s, 1, "infantry", 4, 4);
 
-    expect(tickCombat(s)).toContainEqual({ type: "alert", kind: "contact", text: "Unit under attack" });
+    expect(tickCombat(s)).toContainEqual({
+      type: "alert",
+      kind: "contact",
+      text: "Unit under attack",
+    });
   });
 
   it("emits a contact alert when an enemy strikes a non-yard building", () => {
@@ -528,7 +544,11 @@ describe("combat alerts", () => {
     addBuilding(s, 0, "power", 5, 4);
     addUnit(s, 1, "infantry", 4, 4);
 
-    expect(tickCombat(s)).toContainEqual({ type: "alert", kind: "contact", text: "Base under attack" });
+    expect(tickCombat(s)).toContainEqual({
+      type: "alert",
+      kind: "contact",
+      text: "Base under attack",
+    });
   });
 
   it("keeps the construction-yard warning when infantry is also hit", () => {
@@ -617,6 +637,6 @@ describe("combat alerts", () => {
     expect(primaryTarget.hp).toBeLessThan(320);
     // Cluster target within 2.2 splash radius receives collateral damage and suppression
     expect(clusterTarget.hp).toBeLessThan(70);
-    expect((clusterTarget.suppression ?? 0)).toBeGreaterThan(0);
+    expect(clusterTarget.suppression ?? 0).toBeGreaterThan(0);
   });
 });

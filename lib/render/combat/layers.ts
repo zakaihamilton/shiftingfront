@@ -1,13 +1,13 @@
-import { canvasViewport } from "../canvasViewport";
 import { footprintOf } from "../../catalog";
-import { drawBurstFx, drawGroundFx } from "./fxPasses";
 import { buildingSprite, unitSprite } from "../../gen/assets";
 import { generateVisualProfile } from "../../gen/visualProfile";
-import { isBuildingKind, isUnitKind, type FxBurst } from "../fx";
-import { TILE_H, tileToScreen, type Camera } from "../../iso";
-import { drawSprite, rasterize } from "../sprites";
+import { type Camera, TILE_H, tileToScreen } from "../../iso";
 import type { Facing, SimState, SpriteSpec } from "../../types";
+import { canvasViewport } from "../canvasViewport";
+import { type FxBurst, isBuildingKind, isUnitKind } from "../fx";
+import { drawSprite, rasterize } from "../sprites";
 import { unitWeaponSockets } from "../unitVehicleLayers";
+import { drawBurstFx, drawGroundFx } from "./fxPasses";
 
 const DESTRUCTION_SPRITE_END = 0.58;
 const DESTRUCTION_BLAST_END = 0.84;
@@ -86,12 +86,8 @@ function drawDestructionFx(
 
   if (spec && progress < DESTRUCTION_SPRITE_END) {
     const collapse = smoothstep(progress / (isOrganicUnit ? 0.66 : DESTRUCTION_SPRITE_END));
-    const scaleX = isOrganicUnit
-      ? 1 + collapse * 0.06
-      : 1 + collapse * (isBuilding ? 0.12 : 0.18);
-    const scaleY = isOrganicUnit
-      ? 1 - collapse * 0.88
-      : 1 - collapse * (isBuilding ? 0.78 : 0.72);
+    const scaleX = isOrganicUnit ? 1 + collapse * 0.06 : 1 + collapse * (isBuilding ? 0.12 : 0.18);
+    const scaleY = isOrganicUnit ? 1 - collapse * 0.88 : 1 - collapse * (isBuilding ? 0.78 : 0.72);
     const alpha = isOrganicUnit
       ? 1 - clamp01((progress - 0.16) / 0.46)
       : progress < 0.38
@@ -99,7 +95,9 @@ function drawDestructionFx(
         : 1 - clamp01((progress - 0.38) / 0.2);
     const rotation = reducedMotion
       ? 0
-      : ((variant & 1) === 0 ? -1 : 1) * collapse * (isOrganicUnit ? 0.18 : isBuilding ? 0.07 : 0.12);
+      : ((variant & 1) === 0 ? -1 : 1) *
+        collapse *
+        (isOrganicUnit ? 0.18 : isBuilding ? 0.07 : 0.12);
     const dw = spec.w * z;
     const dh = spec.h * z;
     const ax = (spec.anchorX ?? spec.w / 2) * z;
@@ -207,7 +205,10 @@ export function drawFxLayer(
   if (!fx?.length) return;
   const z = cam.zoom;
   const position = (burst: FxBurst) => {
-    const socket = burst.kind === "muzzle" && burst.sourceEntityId !== undefined ? unitWeaponSockets.get(burst.sourceEntityId) : undefined;
+    const socket =
+      burst.kind === "muzzle" && burst.sourceEntityId !== undefined
+        ? unitWeaponSockets.get(burst.sourceEntityId)
+        : undefined;
     if (socket) return { x: socket.x, y: socket.y - 4 * z };
     let cx = burst.x;
     let cy = burst.y;
@@ -220,7 +221,12 @@ export function drawFxLayer(
   };
   const visible = (s: { x: number; y: number }) => {
     const pad = 140 * Math.max(1, z);
-    return s.x >= -pad && s.y >= -pad && s.x <= canvasViewport(ctx.canvas).width + pad && s.y <= canvasViewport(ctx.canvas).height + pad;
+    return (
+      s.x >= -pad &&
+      s.y >= -pad &&
+      s.x <= canvasViewport(ctx.canvas).width + pad &&
+      s.y <= canvasViewport(ctx.canvas).height + pad
+    );
   };
 
   if (layer === "ground") {

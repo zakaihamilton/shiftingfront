@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
+import {
+  tryBuildForwardInfrastructure,
+  tryBuildPower,
+  tryBuildTurret,
+} from "../../lib/sim/ai/building";
 import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
-import { tryBuildForwardInfrastructure, tryBuildPower, tryBuildTurret } from "../../lib/sim/ai/building";
 import { living } from "../../lib/sim/world";
 
 function enemyState() {

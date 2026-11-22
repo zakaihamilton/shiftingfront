@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { evaluateAuditOutput } from "../../scripts/audit";
@@ -26,14 +26,25 @@ describe("vulnerability audit configuration", () => {
     const mockOutput = JSON.stringify({
       advisories: {
         "1": {
-          id: 1, title: "Sample Low Risk", module_name: "sample-pkg", severity: "low",
-          url: "https://example.com/advisory", recommendation: "Upgrade", patched_versions: ">=1.0.1", cves: [],
+          id: 1,
+          title: "Sample Low Risk",
+          module_name: "sample-pkg",
+          severity: "low",
+          url: "https://example.com/advisory",
+          recommendation: "Upgrade",
+          patched_versions: ">=1.0.1",
+          cves: [],
           findings: [{ version: "1.0.0", paths: ["sample-pkg"] }],
         },
         "2": {
-          id: 2, title: "Sample Critical RCE", module_name: "critical-pkg", severity: "critical",
-          url: "https://example.com/advisory/critical", recommendation: "Upgrade immediately",
-          patched_versions: ">=2.0.0", cves: ["CVE-2026-0001"],
+          id: 2,
+          title: "Sample Critical RCE",
+          module_name: "critical-pkg",
+          severity: "critical",
+          url: "https://example.com/advisory/critical",
+          recommendation: "Upgrade immediately",
+          patched_versions: ">=2.0.0",
+          cves: ["CVE-2026-0001"],
           findings: [{ version: "1.0.0", paths: ["critical-pkg > vulnerable-dep"] }],
         },
       },

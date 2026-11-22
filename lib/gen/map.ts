@@ -1,37 +1,42 @@
-export { type GeneratedMap, type MapAffordances, mapSizeForMission, generateMap } from "./map/generator";
-export {
-  MAP_SKIRT,
-  MAP_SKIRT_ALPHA,
-  type ScenerySample,
-  type SceneryWorld,
-  outsideDist,
-  skirtAlpha,
-  skirtSample,
-  isMountainScenery,
-  featureEdgeMask,
-  sceneryAt,
-  describeMap,
-  winNeedsMarked,
-} from "./map/scenery";
-export { hashNoise, valueNoise, fbm, warpedFbm, mixSalt } from "./map/noise";
 export {
   ACTIVE_TERRAIN_RULE_INTENSITY,
-  terrainFeatureAt,
-  terrainFeatureSamplerFor,
   type TerrainFeatureKind,
   type TerrainFeatureSample,
   type TerrainFeatureWorld,
+  terrainFeatureAt,
+  terrainFeatureSamplerFor,
 } from "./map/features";
 export {
-  idx,
-  inBounds,
-  neighbors8,
-  meanderingRoute,
+  type GeneratedMap,
+  generateMap,
+  type MapAffordances,
+  mapSizeForMission,
+} from "./map/generator";
+export { fbm, hashNoise, mixSalt, valueNoise, warpedFbm } from "./map/noise";
+export {
+  describeMap,
+  featureEdgeMask,
+  isMountainScenery,
+  MAP_SKIRT,
+  MAP_SKIRT_ALPHA,
+  outsideDist,
+  type ScenerySample,
+  type SceneryWorld,
+  sceneryAt,
+  skirtAlpha,
+  skirtSample,
+  winNeedsMarked,
+} from "./map/scenery";
+export {
   carveRoute,
   flattenArea,
+  idx,
+  inBounds,
+  meanderingRoute,
+  neighbors8,
   paintBase,
-  smoothWater,
   pruneWaterIslands,
-  relaxHeights,
   reachable,
+  relaxHeights,
+  smoothWater,
 } from "./map/terrain";

@@ -27,12 +27,24 @@ describe("weapon sound recipes", () => {
       1,
       audio,
       destination,
-      expect.objectContaining({ duration: 0.25, frequency: 3200, endFrequency: 520, type: "bandpass", pan: -0.3 }),
+      expect.objectContaining({
+        duration: 0.25,
+        frequency: 3200,
+        endFrequency: 520,
+        type: "bandpass",
+        pan: -0.3,
+      }),
     );
     expect(soundNodes.tone).toHaveBeenCalledWith(
       audio,
       destination,
-      expect.objectContaining({ frequency: 760, endFrequency: 180, duration: 0.3, type: "sine", pan: -0.3 }),
+      expect.objectContaining({
+        frequency: 760,
+        endFrequency: 180,
+        duration: 0.3,
+        type: "sine",
+        pan: -0.3,
+      }),
     );
     expect(soundNodes.noise).toHaveBeenNthCalledWith(
       2,
@@ -47,7 +59,11 @@ describe("weapon sound recipes", () => {
 
     expect(soundNodes.noise).toHaveBeenCalledTimes(4);
     expect(soundNodes.tone).toHaveBeenCalledTimes(3);
-    expect(soundNodes.noise.mock.calls.slice(0, 3).map(([, , options]) => options.delay ?? 0)).toEqual([0, 0.045, 0.09]);
-    expect(soundNodes.tone.mock.calls.map(([, , options]) => options.delay ?? 0)).toEqual([0, 0.045, 0.09]);
+    expect(
+      soundNodes.noise.mock.calls.slice(0, 3).map(([, , options]) => options.delay ?? 0),
+    ).toEqual([0, 0.045, 0.09]);
+    expect(soundNodes.tone.mock.calls.map(([, , options]) => options.delay ?? 0)).toEqual([
+      0, 0.045, 0.09,
+    ]);
   });
 });

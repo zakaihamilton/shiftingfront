@@ -1,27 +1,51 @@
-import { BUILDING_DEFINITIONS, BUILDING_STATS, buildingLimitReached, sellRefundFor } from "../../catalog";
-import { isBuildingEntity, type BuildingKind, type Entity, type SimEvent, type SimState } from "../../types";
-import { byId, canPlaceBuilding, inBounds, invalidateEntityCaches, invalidateNavigation, isStaticWalkable, spawnBuilding, terrainAccess } from "../world";
+import {
+  BUILDING_DEFINITIONS,
+  BUILDING_STATS,
+  buildingLimitReached,
+  sellRefundFor,
+} from "../../catalog";
+import {
+  type BuildingKind,
+  type Entity,
+  isBuildingEntity,
+  type SimEvent,
+  type SimState,
+} from "../../types";
+import { entitiesFor } from "../entities";
+import { refundQueuedUnits } from "../productionRefund";
 import { canRepair } from "../repair";
 import { canSell } from "../sell";
-import { refundQueuedUnits } from "../productionRefund";
-import { entitiesFor } from "../entities";
+import {
+  byId,
+  canPlaceBuilding,
+  inBounds,
+  invalidateEntityCaches,
+  invalidateNavigation,
+  isStaticWalkable,
+  spawnBuilding,
+  terrainAccess,
+} from "../world";
 import { commandOwner } from "./commandOwner";
 
 export { refundQueuedUnits };
 
 export function startBuild(state: SimState, kind: BuildingKind, x: number, y: number): SimEvent[] {
   const owner = commandOwner(state);
-  if (kind === "constructionYard" || kind === "objective") return [{ type: "commandRejected", reason: "invalid building" }];
-  if (buildingLimitReached(entitiesFor(state), owner, kind)) return [{ type: "commandRejected", reason: "building limit reached" }];
+  if (kind === "constructionYard" || kind === "objective")
+    return [{ type: "commandRejected", reason: "invalid building" }];
+  if (buildingLimitReached(entitiesFor(state), owner, kind))
+    return [{ type: "commandRejected", reason: "building limit reached" }];
   const tx = Math.round(x);
   const ty = Math.round(y);
-  if (!canPlaceBuilding(state, kind, tx, ty, owner)) return [{ type: "commandRejected", reason: "invalid placement" }];
+  if (!canPlaceBuilding(state, kind, tx, ty, owner))
+    return [{ type: "commandRejected", reason: "invalid placement" }];
   const yard = entitiesFor(state).find(
     (e) => e.owner === owner && e.kind === "constructionYard" && e.hp > 0 && e.constructing === 0,
   );
   if (!yard) return [{ type: "commandRejected", reason: "construction yard unavailable" }];
   const cost = BUILDING_STATS[kind].cost;
-  if (state.credits[owner] < cost) return [{ type: "commandRejected", reason: "insufficient credits" }];
+  if (state.credits[owner] < cost)
+    return [{ type: "commandRejected", reason: "insufficient credits" }];
   state.credits[owner] -= cost;
   spawnBuilding(state, owner, kind, tx, ty, BUILDING_STATS[kind].buildTicks);
   return [];
@@ -58,7 +82,12 @@ export function toggleRepair(state: SimState, buildingId: number): SimEvent[] {
   return [{ type: "repairStarted", x: e.x, y: e.y }];
 }
 
-export function setRallyPoint(state: SimState, buildingId: number, x: number, y: number): SimEvent[] {
+export function setRallyPoint(
+  state: SimState,
+  buildingId: number,
+  x: number,
+  y: number,
+): SimEvent[] {
   const owner = commandOwner(state);
   const building = byId(state, buildingId);
   if (
@@ -74,7 +103,11 @@ export function setRallyPoint(state: SimState, buildingId: number, x: number, y:
 
   const tx = Math.round(x);
   const ty = Math.round(y);
-  if (!inBounds(state, tx, ty) || !terrainAccess(state, tx, ty).traversable || !isStaticWalkable(state, tx, ty)) {
+  if (
+    !inBounds(state, tx, ty) ||
+    !terrainAccess(state, tx, ty).traversable ||
+    !isStaticWalkable(state, tx, ty)
+  ) {
     return [{ type: "commandRejected", reason: "invalid rally target" }];
   }
   building.rallyPoint = { x: tx, y: ty };

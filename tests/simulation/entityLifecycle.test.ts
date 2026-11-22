@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { compactDestroyedEntities } from "../../lib/sim/world";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { tick } from "../../lib/sim/api";
 import { deserializeState, serializeState } from "../../lib/persist/save";
+import { tick } from "../../lib/sim/api";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { tickProduction } from "../../lib/sim/production";
+import { compactDestroyedEntities } from "../../lib/sim/world";
 
 describe("destroyed entity lifecycle", () => {
   it("compacts dead entities and clears references without changing counters", () => {
@@ -29,7 +29,11 @@ describe("destroyed entity lifecycle", () => {
   });
 
   it("compacts after objective evaluation while preserving target IDs", () => {
-    const state = makeFixture({ width: 16, height: 12, win: { kind: "destroyMarked", targetCount: 1 } });
+    const state = makeFixture({
+      width: 16,
+      height: 12,
+      win: { kind: "destroyMarked", targetCount: 1 },
+    });
     addBuilding(state, 0, "constructionYard", 1, 1);
     const target = addBuilding(state, 1, "objective", 10, 6, 0, true);
     state.win.targetIds = [target.id];
@@ -52,7 +56,11 @@ describe("destroyed entity lifecycle", () => {
   });
 
   it("removes dead entities from saved payloads while retaining objective identity", () => {
-    const state = makeFixture({ width: 12, height: 12, win: { kind: "destroyMarked", targetCount: 1 } });
+    const state = makeFixture({
+      width: 12,
+      height: 12,
+      win: { kind: "destroyMarked", targetCount: 1 },
+    });
     const target = addBuilding(state, 1, "objective", 8, 8, 0, true);
     target.hp = 0;
     state.win.targetIds = [target.id];
@@ -89,11 +97,13 @@ describe("destroyed entity lifecycle", () => {
     expect(state.credits[0]).toBe(startCredits);
     expect(state.entities.some((entity) => entity.id === barracks.id)).toBe(false);
     const events = tickProduction(state);
-    expect(events).toContainEqual(expect.objectContaining({
-      type: "produced",
-      kind: "infantry",
-      sourceId: spareBarracks.id,
-    }));
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "produced",
+        kind: "infantry",
+        sourceId: spareBarracks.id,
+      }),
+    );
     expect(state.productionQueues?.[0]?.barracks?.producing?.kind).toBe("antiArmor");
     expect(state.credits[0]).toBe(startCredits);
   });

@@ -1,5 +1,5 @@
-import type { MeshData } from "./types";
 import { appendCap, appendQuad } from "./buffers";
+import type { MeshData } from "./types";
 
 export function createCylinderMesh(
   cx: number,
@@ -51,10 +51,18 @@ export function createCylinderMesh(
 
   // Cap Bottom
   if (capBottom) {
-    appendCap(buffers, [cx, cy, minZ], [0, 0, -1], segments, mask, (i) => {
-      const a = (i / segments) * Math.PI * 2;
-      return [cx + rBot * Math.cos(a), cy + rBot * Math.sin(a), minZ];
-    }, true);
+    appendCap(
+      buffers,
+      [cx, cy, minZ],
+      [0, 0, -1],
+      segments,
+      mask,
+      (i) => {
+        const a = (i / segments) * Math.PI * 2;
+        return [cx + rBot * Math.cos(a), cy + rBot * Math.sin(a), minZ];
+      },
+      true,
+    );
   }
 
   return {
@@ -97,10 +105,26 @@ export function createCylinderXMesh(
     const len = Math.hypot(nx, ny, nz) || 1;
     const norm: [number, number, number] = [nx / len, ny / len, nz / len];
 
-    const p0: [number, number, number] = [minX, cy + rBack * Math.cos(a0), cz + rBack * Math.sin(a0)];
-    const p1: [number, number, number] = [minX, cy + rBack * Math.cos(a1), cz + rBack * Math.sin(a1)];
-    const p2: [number, number, number] = [maxX, cy + rFront * Math.cos(a1), cz + rFront * Math.sin(a1)];
-    const p3: [number, number, number] = [maxX, cy + rFront * Math.cos(a0), cz + rFront * Math.sin(a0)];
+    const p0: [number, number, number] = [
+      minX,
+      cy + rBack * Math.cos(a0),
+      cz + rBack * Math.sin(a0),
+    ];
+    const p1: [number, number, number] = [
+      minX,
+      cy + rBack * Math.cos(a1),
+      cz + rBack * Math.sin(a1),
+    ];
+    const p2: [number, number, number] = [
+      maxX,
+      cy + rFront * Math.cos(a1),
+      cz + rFront * Math.sin(a1),
+    ];
+    const p3: [number, number, number] = [
+      maxX,
+      cy + rFront * Math.cos(a0),
+      cz + rFront * Math.sin(a0),
+    ];
 
     appendQuad(buffers, p0, p1, p2, p3, norm, mask);
   }
@@ -115,10 +139,18 @@ export function createCylinderXMesh(
 
   // Cap Back (-X)
   if (capBack) {
-    appendCap(buffers, [minX, cy, cz], [-1, 0, 0], segments, mask, (i) => {
-      const a = (i / segments) * Math.PI * 2;
-      return [minX, cy + rBack * Math.cos(a), cz + rBack * Math.sin(a)];
-    }, true);
+    appendCap(
+      buffers,
+      [minX, cy, cz],
+      [-1, 0, 0],
+      segments,
+      mask,
+      (i) => {
+        const a = (i / segments) * Math.PI * 2;
+        return [minX, cy + rBack * Math.cos(a), cz + rBack * Math.sin(a)];
+      },
+      true,
+    );
   }
 
   return {

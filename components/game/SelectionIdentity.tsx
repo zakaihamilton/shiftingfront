@@ -1,12 +1,12 @@
-import { isAirUnit, isUnitKind, UNIT_STATS, labelFor } from "@/lib/catalog";
+import { isAirUnit, isUnitKind, labelFor, UNIT_STATS } from "@/lib/catalog";
 import { isEntrenched } from "@/lib/sim/verbs";
-import { cx } from "@/lib/ui/cx";
 import type { Entity, FactionVisualProfile, Palette, Stance } from "@/lib/types";
 import { SUPPORT_MODE_LABEL, stanceLabel } from "@/lib/ui/copy";
-import { SHORTCUT } from "@/lib/ui/shortcuts";
+import { cx } from "@/lib/ui/cx";
 import { triggerHaptic } from "@/lib/ui/haptics";
-import { SpritePreview } from "./SpritePreview";
+import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./SelectionPanel.module.css";
+import { SpritePreview } from "./SpritePreview";
 
 export function SelectionIdentity({
   selected,
@@ -21,34 +21,40 @@ export function SelectionIdentity({
   stance: Stance;
   onCenter?: () => void;
 }) {
-  const currentOrder = selected.class === "unit"
-    ? selected.repairing
-      ? "Repairing"
-      : selected.gatherX !== undefined
-        ? "Harvesting"
-        : selected.orderMode === "attackMove"
-          ? "Attack-move"
-          : selected.orderMode === "attack"
-            ? "Engaging"
-            : selected.orderMode === "move"
-              ? "Moving"
-              : selected.idle ? "Idle" : "Holding position"
-    : undefined;
+  const currentOrder =
+    selected.class === "unit"
+      ? selected.repairing
+        ? "Repairing"
+        : selected.gatherX !== undefined
+          ? "Harvesting"
+          : selected.orderMode === "attackMove"
+            ? "Attack-move"
+            : selected.orderMode === "attack"
+              ? "Engaging"
+              : selected.orderMode === "move"
+                ? "Moving"
+                : selected.idle
+                  ? "Idle"
+                  : "Holding position"
+      : undefined;
   const healthText = `Health ${Math.ceil(selected.hp)} / ${selected.maxHp}`;
   const stanceText = `Stance ${stanceLabel(stance)}`;
-  const supportText = selected.supportMode ? `Support: ${SUPPORT_MODE_LABEL[selected.supportMode]}` : "";
+  const supportText = selected.supportMode
+    ? `Support: ${SUPPORT_MODE_LABEL[selected.supportMode]}`
+    : "";
   const orderText = currentOrder ? `Order: ${currentOrder}` : "";
   const suppressionText = `Suppressed ${Math.ceil(selected.suppression ?? 0)}%`;
   const entrenched = isEntrenched(selected);
-  const planeText = selected.kind === "strikePlane"
-    ? selected.flightState === "servicing"
-      ? `Rearming ${selected.ammo ?? 0}/${selected.maxAmmo ?? 0}`
-      : selected.landingRunwayId !== undefined && (selected.ammo ?? 0) <= 0
-        ? "Returning to the runway to rearm"
-        : (selected.ammo ?? 0) <= 0
-          ? "Out of bombs. A runway rearms the plane."
-          : `Bombs ${selected.ammo ?? 0}/${selected.maxAmmo ?? 0}`
-    : "";
+  const planeText =
+    selected.kind === "strikePlane"
+      ? selected.flightState === "servicing"
+        ? `Rearming ${selected.ammo ?? 0}/${selected.maxAmmo ?? 0}`
+        : selected.landingRunwayId !== undefined && (selected.ammo ?? 0) <= 0
+          ? "Returning to the runway to rearm"
+          : (selected.ammo ?? 0) <= 0
+            ? "Out of bombs. A runway rearms the plane."
+            : `Bombs ${selected.ammo ?? 0}/${selected.maxAmmo ?? 0}`
+      : "";
   const plantedText = selected.bombard
     ? `Bombarding for ${Math.ceil(selected.bombard.remaining / 12)}s`
     : selected.braced
@@ -58,10 +64,14 @@ export function SelectionIdentity({
         : "";
   const veteranText = selected.veteranRank === 1 ? "Veteran" : "";
   const cargoText = `Cargo ${selected.carry} / ${UNIT_STATS.harvester.carryMax}`;
-  const ammoText = selected.class === "unit" && isAirUnit(selected.kind)
-    ? `Ammo ${selected.ammo ?? 0} / ${selected.maxAmmo ?? UNIT_STATS[selected.kind].ammoMax ?? 0}${selected.flightState === "servicing" ? " · Servicing runway" : selected.landingRunwayId !== undefined ? " · Returning to runway" : ""}`
-    : "";
-  const runwayText = selected.assignedPlaneId !== undefined ? `Assigned plane #${selected.assignedPlaneId}` : "Ready for aircraft";
+  const ammoText =
+    selected.class === "unit" && isAirUnit(selected.kind)
+      ? `Ammo ${selected.ammo ?? 0} / ${selected.maxAmmo ?? UNIT_STATS[selected.kind].ammoMax ?? 0}${selected.flightState === "servicing" ? " · Servicing runway" : selected.landingRunwayId !== undefined ? " · Returning to runway" : ""}`
+      : "";
+  const runwayText =
+    selected.assignedPlaneId !== undefined
+      ? `Assigned plane #${selected.assignedPlaneId}`
+      : "Ready for aircraft";
   const warningText = selected.neutral
     ? "Stranded — cannot move until freed"
     : selected.marked && selected.class === "unit"
@@ -105,28 +115,66 @@ export function SelectionIdentity({
             {selectionLabel}
           </strong>
         )}
-        <span className={styles.stat} data-tooltip={healthText}>{healthText}</span>
+        <span className={styles.stat} data-tooltip={healthText}>
+          {healthText}
+        </span>
         {selected.neutral ? (
-          <span className={styles.warning} data-testid="selected-status" data-tooltip={warningText}>{warningText}</span>
+          <span className={styles.warning} data-testid="selected-status" data-tooltip={warningText}>
+            {warningText}
+          </span>
         ) : selected.marked && selected.class === "unit" ? (
-          <span className={styles.warning} data-testid="selected-status" data-tooltip={warningText}>{warningText}</span>
-        ) : selected.class === "unit" ? <span className={styles.stat} data-tooltip={stanceText}>{stanceText}</span> : null}
+          <span className={styles.warning} data-testid="selected-status" data-tooltip={warningText}>
+            {warningText}
+          </span>
+        ) : selected.class === "unit" ? (
+          <span className={styles.stat} data-tooltip={stanceText}>
+            {stanceText}
+          </span>
+        ) : null}
         {selected.class === "unit" && selected.supportMode ? (
-          <span className={styles.stat} data-testid="selected-support-status" data-tooltip={supportText}>
+          <span
+            className={styles.stat}
+            data-testid="selected-support-status"
+            data-tooltip={supportText}
+          >
             {supportText}
           </span>
         ) : null}
-        {currentOrder ? <span className={styles.orderStatus} data-testid="selected-order" data-tooltip={orderText}>{orderText}</span> : null}
-        {(selected.suppression ?? 0) > 0 ? <span className={styles.stat} data-tooltip={suppressionText}>{suppressionText}</span> : null}
-        {veteranText ? <span className={styles.stat} data-testid="selected-veteran">{veteranText}</span> : null}
-        {plantedText ? <span className={styles.stat} data-testid="selected-planted">{plantedText}</span> : null}
+        {currentOrder ? (
+          <span
+            className={styles.orderStatus}
+            data-testid="selected-order"
+            data-tooltip={orderText}
+          >
+            {orderText}
+          </span>
+        ) : null}
+        {(selected.suppression ?? 0) > 0 ? (
+          <span className={styles.stat} data-tooltip={suppressionText}>
+            {suppressionText}
+          </span>
+        ) : null}
+        {veteranText ? (
+          <span className={styles.stat} data-testid="selected-veteran">
+            {veteranText}
+          </span>
+        ) : null}
+        {plantedText ? (
+          <span className={styles.stat} data-testid="selected-planted">
+            {plantedText}
+          </span>
+        ) : null}
         {selected.kind === "harvester" ? (
           <span className={styles.carry} data-tooltip={cargoText}>
             {cargoText}
           </span>
         ) : null}
         {selected.class === "unit" && isAirUnit(selected.kind) ? (
-          <span className={styles.stat} data-testid="selected-ammo" data-tooltip={planeText || ammoText}>
+          <span
+            className={styles.stat}
+            data-testid="selected-ammo"
+            data-tooltip={planeText || ammoText}
+          >
             {planeText || ammoText}
           </span>
         ) : null}

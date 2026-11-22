@@ -3,8 +3,8 @@ import { Face } from "@/components/shared/Face";
 import { characterLabel } from "@/lib/gen/names";
 import type { FaceTone } from "@/lib/render/portraits";
 import type { BriefingLine, Campaign, CharacterRole } from "@/lib/types";
-import { TypewriterBody } from "./TypewriterBody";
 import styles from "./BriefingStory.module.css";
+import { TypewriterBody } from "./TypewriterBody";
 
 function characterFor(campaign: Campaign, role: CharacterRole) {
   if (role === "advisor") return campaign.characters.advisor;
@@ -83,7 +83,9 @@ export function BriefingStory({
                     <span>{channelLabel(line.speaker)}</span>
                     <span>{characterLabel(who)}</span>
                   </p>
-                  <p className={styles.faction} data-testid="briefing-faction">{factionFor(campaign, line.speaker)}</p>
+                  <p className={styles.faction} data-testid="briefing-faction">
+                    {factionFor(campaign, line.speaker)}
+                  </p>
                   <TypewriterBody text={line.text} visible={line.visible} live={live} />
                 </div>
               </article>

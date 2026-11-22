@@ -29,7 +29,9 @@ describe("authoritative catalogs", () => {
       const definition = BUILDING_DEFINITIONS[kind];
       expect(definition.label).toBeTruthy();
       expect(definition.renderKey).toBe(kind);
-      expect(["base", "economy", "production", "defense", "support", "objective"]).toContain(definition.aiRole);
+      expect(["base", "economy", "production", "defense", "support", "objective"]).toContain(
+        definition.aiRole,
+      );
       expect(definition.footprint.w).toBeGreaterThan(0);
       expect(definition.footprint.h).toBeGreaterThan(0);
       expect(definition.requiresFlatGround).toBe(true);
@@ -39,22 +41,15 @@ describe("authoritative catalogs", () => {
 
   it("uses reduced durability for non-turret buildings while preserving turret HP", () => {
     expect(BUILDING_KINDS.map((kind) => BUILDING_STATS[kind].hp)).toEqual([
-      2400,
-      390,
-      825,
-      675,
-      975,
-      480,
-      750,
-      420,
-      560,
-      1350,
+      2400, 390, 825, 675, 975, 480, 750, 420, 560, 1350,
     ]);
     expect(BUILDING_STATS.turret.hp).toBe(480);
   });
 
   it("is stable across repeated serialization", () => {
     const snapshot = JSON.stringify({ units: UNIT_DEFINITIONS, buildings: BUILDING_DEFINITIONS });
-    expect(JSON.stringify({ units: UNIT_DEFINITIONS, buildings: BUILDING_DEFINITIONS })).toBe(snapshot);
+    expect(JSON.stringify({ units: UNIT_DEFINITIONS, buildings: BUILDING_DEFINITIONS })).toBe(
+      snapshot,
+    );
   });
 });

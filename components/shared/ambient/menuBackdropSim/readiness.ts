@@ -1,12 +1,6 @@
 import { listMissionRasterSources } from "@/lib/gen/visualAssets";
-import {
-  areRasterSourcesReady,
-  preloadRasterSources,
-} from "@/lib/render/sprites";
-import {
-  isTerrainAtlasReady,
-  preloadTerrainAtlas,
-} from "@/lib/render/terrainAtlas";
+import { areRasterSourcesReady, preloadRasterSources } from "@/lib/render/sprites";
+import { isTerrainAtlasReady, preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
 import type { CinemaScene } from "./scene";
 
 export const PREVIEW_ATLAS_ROWS_PER_CHUNK = 32;

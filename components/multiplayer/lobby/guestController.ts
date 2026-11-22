@@ -1,9 +1,13 @@
-import type { FormEvent } from "react";
 import type { DataConnection, Peer } from "peerjs";
+import type { FormEvent } from "react";
+import {
+  MultiplayerSession,
+  SKIRMISH_MATCH_SETTINGS,
+  validSkirmishMatchSettings,
+} from "@/lib/multiplayer/session";
 import type { Owner } from "@/lib/types";
-import { MultiplayerSession, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
-import type { Credential, LobbyMode } from "./types";
 import type { PeerLifecycle } from "./peerLifecycle";
+import type { Credential, LobbyMode } from "./types";
 import { ownerLabel, publicError, validAiOwners, validOwners } from "./utils";
 
 type Ref<T> = { current: T };
@@ -29,28 +33,36 @@ type GuestRecoveryOptions = {
 export function createGuestRecoveryAction(options: GuestRecoveryOptions) {
   const { lifecycle, refs } = options;
   return (credential: Credential, peer: Peer, delayMs = 1800) => {
-    lifecycle.retryGuest(credential, peer, {
-      canRetry: () => refs.mounted.current && !refs.connection.current?.open && refs.session.current?.status !== "ended",
-      connect: () => {
-        const previous = refs.connection.current;
-        refs.connection.current = null;
-        refs.connecting.current = false;
-        previous?.close();
-        refs.beginConnection.current(credential, peer);
+    lifecycle.retryGuest(
+      credential,
+      peer,
+      {
+        canRetry: () =>
+          refs.mounted.current &&
+          !refs.connection.current?.open &&
+          refs.session.current?.status !== "ended",
+        connect: () => {
+          const previous = refs.connection.current;
+          refs.connection.current = null;
+          refs.connecting.current = false;
+          previous?.close();
+          refs.beginConnection.current(credential, peer);
+        },
+        expired: () => {
+          refs.connecting.current = false;
+          if (refs.session.current && refs.session.current.status !== "ended") {
+            refs.session.current.end();
+            options.destroyPeer();
+            options.setStatus("The host did not reconnect. The skirmish has ended.");
+          } else {
+            options.destroyPeer();
+            options.setMode("choose");
+            options.setError("The host could not be reached. Ask them to create a new room.");
+          }
+        },
       },
-      expired: () => {
-        refs.connecting.current = false;
-        if (refs.session.current && refs.session.current.status !== "ended") {
-          refs.session.current.end();
-          options.destroyPeer();
-          options.setStatus("The host did not reconnect. The skirmish has ended.");
-        } else {
-          options.destroyPeer();
-          options.setMode("choose");
-          options.setError("The host could not be reached. Ask them to create a new room.");
-        }
-      },
-    }, delayMs);
+      delayMs,
+    );
   };
 }
 
@@ -66,20 +78,34 @@ export function createGuestLobbyController(options: {
   setSession: (session: MultiplayerSession | null) => void;
   destroyPeer: () => void;
   showBattle: (session: MultiplayerSession, seed: number) => void;
-  startPeer: (credential: Credential, role: "host" | "guest", operation: number) => Promise<Peer | null>;
+  startPeer: (
+    credential: Credential,
+    role: "host" | "guest",
+    operation: number,
+  ) => Promise<Peer | null>;
   scheduleGuestRetry: (credential: Credential, peer: Peer, delayMs?: number) => void;
 }) {
   const { lifecycle, refs } = options;
 
   const beginGuestConnection = (credential: Credential, peer: Peer) => {
-    if (!refs.mounted.current || !lifecycle.owns(peer) || peer.disconnected || refs.connecting.current ||
-        refs.connection.current?.open || refs.session.current?.status === "ended") return;
+    if (
+      !refs.mounted.current ||
+      !lifecycle.owns(peer) ||
+      peer.disconnected ||
+      refs.connecting.current ||
+      refs.connection.current?.open ||
+      refs.session.current?.status === "ended"
+    )
+      return;
     refs.connecting.current = true;
     const connection = peer.connect(credential.hostPeerId, { reliable: true });
     refs.connection.current = connection;
     lifecycle.trackConnection(connection);
     const operation = lifecycle.operation;
-    const isCurrentConnection = () => refs.mounted.current && lifecycle.isCurrent(operation) && refs.connection.current === connection;
+    const isCurrentConnection = () =>
+      refs.mounted.current &&
+      lifecycle.isCurrent(operation) &&
+      refs.connection.current === connection;
     connection.on("data", (raw) => {
       if (!isCurrentConnection()) return;
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
@@ -104,7 +130,12 @@ export function createGuestLobbyController(options: {
         options.setError(publicError(new Error("room_full")));
         return;
       }
-      if (message.type === "seat" && Number.isInteger(message.owner) && Number(message.owner) >= 1 && Number(message.owner) <= 3) {
+      if (
+        message.type === "seat" &&
+        Number.isInteger(message.owner) &&
+        Number(message.owner) >= 1 &&
+        Number(message.owner) <= 3
+      ) {
         const owner = Number(message.owner) as Owner;
         refs.owner.current = owner;
         options.setGuestOwner(owner);
@@ -116,18 +147,38 @@ export function createGuestLobbyController(options: {
       if (message.type === "start" && !refs.session.current) {
         const seedValue = Number(message.seed);
         const owner = message.owner;
-        if (!Number.isInteger(message.seed) || seedValue < 0 || seedValue > 9999 ||
-            !validSkirmishMatchSettings(message.settings) || (owner !== 1 && owner !== 2 && owner !== 3) ||
-            !validOwners(message.owners, owner) || !validAiOwners(message.aiOwners, message.owners, owner)) {
+        if (
+          !Number.isInteger(message.seed) ||
+          seedValue < 0 ||
+          seedValue > 9999 ||
+          !validSkirmishMatchSettings(message.settings) ||
+          (owner !== 1 && owner !== 2 && owner !== 3) ||
+          !validOwners(message.owners, owner) ||
+          !validAiOwners(message.aiOwners, message.owners, owner)
+        ) {
           options.setError("The host sent incompatible match settings.");
           connection.close();
           return;
         }
-        const sender = { send: (value: unknown) => { if (connection.open) connection.send(value); } };
-        const next = new MultiplayerSession("guest", owner, seedValue, sender, message.owners, message.aiOwners);
+        const sender = {
+          send: (value: unknown) => {
+            if (connection.open) connection.send(value);
+          },
+        };
+        const next = new MultiplayerSession(
+          "guest",
+          owner,
+          seedValue,
+          sender,
+          message.owners,
+          message.aiOwners,
+        );
         next.armIntroBarrier();
         if (message.reconnect === true) {
-          next.receive({ type: "intro-release", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion });
+          next.receive({
+            type: "intro-release",
+            protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+          });
         }
         refs.owner.current = owner;
         options.setGuestOwner(owner);
@@ -137,7 +188,11 @@ export function createGuestLobbyController(options: {
       }
       if (message.type === "reconnected") {
         lifecycle.finishGuestRecovery();
-        refs.session.current?.attach({ send: (value: unknown) => { if (connection.open) connection.send(value); } });
+        refs.session.current?.attach({
+          send: (value: unknown) => {
+            if (connection.open) connection.send(value);
+          },
+        });
         connection.send({ type: "resume" });
         options.setStatus("Reconnected. Resynchronizing the match.");
         return;
@@ -150,7 +205,11 @@ export function createGuestLobbyController(options: {
         return;
       }
       refs.connecting.current = false;
-      connection.send({ type: "hello", grant: credential.grant, settings: SKIRMISH_MATCH_SETTINGS });
+      connection.send({
+        type: "hello",
+        grant: credential.grant,
+        settings: SKIRMISH_MATCH_SETTINGS,
+      });
     });
     connection.on("close", () => {
       if (!isCurrentConnection()) return;
@@ -161,12 +220,16 @@ export function createGuestLobbyController(options: {
         refs.session.current.setDisconnected();
         options.setStatus("Host connection lost. Reconnecting for 60 seconds…");
         lifecycle.clearTimer("guest-disconnect");
-        lifecycle.schedule("guest-disconnect", () => {
-          if (refs.session.current?.status === "disconnected") {
-            refs.session.current.end();
-            options.setStatus("The host left. The skirmish has ended.");
-          }
-        }, Math.max(0, lifecycle.guestRetryUntil - Date.now()));
+        lifecycle.schedule(
+          "guest-disconnect",
+          () => {
+            if (refs.session.current?.status === "disconnected") {
+              refs.session.current.end();
+              options.setStatus("The host left. The skirmish has ended.");
+            }
+          },
+          Math.max(0, lifecycle.guestRetryUntil - Date.now()),
+        );
       } else {
         options.setStatus("Host connection lost. Retrying for 60 seconds…");
       }
@@ -200,7 +263,9 @@ export function createGuestLobbyController(options: {
     options.setError("");
     options.setStatus("Looking up room…");
     try {
-      const credential = await lifecycle.request<Credential>("/api/multiplayer/rooms/join", { code: normalized });
+      const credential = await lifecycle.request<Credential>("/api/multiplayer/rooms/join", {
+        code: normalized,
+      });
       if (!refs.mounted.current || !lifecycle.isCurrent(operation)) return;
       lifecycle.beginGuestRecovery();
       options.setStatus("Connecting to host…");

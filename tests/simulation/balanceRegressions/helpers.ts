@@ -1,7 +1,15 @@
 import { createCampaign } from "../../../lib/gen/campaign";
 import { generateMap } from "../../../lib/gen/map";
 import { MAX_OPERATION_TICKS } from "../../../lib/gen/pacing";
-import { balanceFailureReason, cloneMapForSimulation, runOne, stableBalanceRecords, validMap, type BalanceScenario, type SharedScenarioData } from "../../../lib/sim/balance";
+import {
+  type BalanceScenario,
+  balanceFailureReason,
+  cloneMapForSimulation,
+  runOne,
+  type SharedScenarioData,
+  stableBalanceRecords,
+  validMap,
+} from "../../../lib/sim/balance";
 
 export const COMPETENT_EDGE_SCENARIOS: BalanceScenario[] = [
   { seed: 1, mission: 5 },
@@ -28,32 +36,48 @@ const PREPARED_EDGE_SCENARIOS = COMPETENT_EDGE_SCENARIOS.map(({ seed, mission })
 });
 
 export function runEdgeScenarios(start: number, end: number) {
-  return PREPARED_EDGE_SCENARIOS.slice(start, end).map(({ seed, mission, campaign, map, sharedScenario }) => runOne(
-    seed,
-    mission,
-    "competent",
-    MAX_OPERATION_TICKS,
-    campaign,
-    cloneMapForSimulation(map),
-    sharedScenario,
-  ));
+  return PREPARED_EDGE_SCENARIOS.slice(start, end).map(
+    ({ seed, mission, campaign, map, sharedScenario }) =>
+      runOne(
+        seed,
+        mission,
+        "competent",
+        MAX_OPERATION_TICKS,
+        campaign,
+        cloneMapForSimulation(map),
+        sharedScenario,
+      ),
+  );
 }
 
-export function assertEdgeScenarioRecords(records: ReturnType<typeof runEdgeScenarios>, expectedLabels: string[]): void {
+export function assertEdgeScenarioRecords(
+  records: ReturnType<typeof runEdgeScenarios>,
+  expectedLabels: string[],
+): void {
   const stable = stableBalanceRecords(records);
   const labels = records.map((record) => `${record.seed} / M${record.mission ?? -1}`);
-  if (JSON.stringify(labels) !== JSON.stringify(expectedLabels)) throw new Error(`Unexpected records: ${labels.join(", ")}`);
+  if (JSON.stringify(labels) !== JSON.stringify(expectedLabels))
+    throw new Error(`Unexpected records: ${labels.join(", ")}`);
   expectStableRecords(stable);
 }
 
 function expectStableRecords(records: ReturnType<typeof stableBalanceRecords>): void {
   for (const record of records) {
-    if (!record.mapValid || !record.targetReachable || record.commandRejections !== 0 || record.powerDeficit || record.nonFiniteState) throw new Error("Infrastructure failure");
+    if (
+      !record.mapValid ||
+      !record.targetReachable ||
+      record.commandRejections !== 0 ||
+      record.powerDeficit ||
+      record.nonFiniteState
+    )
+      throw new Error("Infrastructure failure");
     if (record.result === "lost") {
-      if (!record.lossReason || record.failureReason !== record.lossReason) throw new Error("Missing loss reason");
+      if (!record.lossReason || record.failureReason !== record.lossReason)
+        throw new Error("Missing loss reason");
     } else if (record.result === "playing" && (record.truncated || record.duration <= 0)) {
       throw new Error("Unexpected truncated record");
     }
-    if (record.failureReason !== balanceFailureReason(record)) throw new Error("Unexpected failure classification");
+    if (record.failureReason !== balanceFailureReason(record))
+      throw new Error("Unexpected failure classification");
   }
 }

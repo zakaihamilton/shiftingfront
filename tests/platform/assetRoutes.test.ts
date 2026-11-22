@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import {
+  GET as getPreview,
+  OPTIONS as previewOptions,
+} from "../../app/api/assets/[id]/preview/route";
+import { OPTIONS as assetOptions, GET as getAsset } from "../../app/api/assets/[id]/route";
 import { GET, OPTIONS } from "../../app/api/assets/route";
-import { GET as getAsset, OPTIONS as assetOptions } from "../../app/api/assets/[id]/route";
-import { GET as getPreview, OPTIONS as previewOptions } from "../../app/api/assets/[id]/preview/route";
 import { ASSET_API_VERSION } from "../../lib/gen/assetApi";
 import { listGeneratedAssets } from "../../lib/gen/assetCatalog";
 
@@ -22,7 +25,7 @@ describe("GET /api/assets", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.get("Cache-Control")).toContain("max-age=3600");
 
-    const body = await response.json() as {
+    const body = (await response.json()) as {
       apiVersion: number;
       name: string;
       categories: string[];
@@ -41,7 +44,7 @@ describe("GET /api/assets", () => {
   it("filters by category and rejects unknown categories", async () => {
     const units = GET(request("/api/assets?category=unit"));
     expect(units.status).toBe(200);
-    const unitBody = await units.json() as { count: number; assets: Array<{ category: string }> };
+    const unitBody = (await units.json()) as { count: number; assets: Array<{ category: string }> };
     expect(unitBody.assets.every((asset) => asset.category === "unit")).toBe(true);
     expect(unitBody.count).toBe(unitBody.assets.length);
     expect(unitBody.count).toBeGreaterThan(0);
@@ -52,13 +55,15 @@ describe("GET /api/assets", () => {
   });
 
   it("answers OPTIONS with CORS preflight headers", () => {
-    const response = OPTIONS(request("/api/assets", {
-      method: "OPTIONS",
-      headers: {
-        "Access-Control-Request-Method": "GET",
-        "Access-Control-Request-Headers": "X-Asset-Client",
-      },
-    }));
+    const response = OPTIONS(
+      request("/api/assets", {
+        method: "OPTIONS",
+        headers: {
+          "Access-Control-Request-Method": "GET",
+          "Access-Control-Request-Headers": "X-Asset-Client",
+        },
+      }),
+    );
     expect(response.status).toBe(200);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.get("Cache-Control")).toContain("max-age=3600");
@@ -70,10 +75,16 @@ describe("GET /api/assets", () => {
 
 describe("GET /api/assets/:id", () => {
   it("returns one catalog item", async () => {
-    const response = await getAsset(request("/api/assets/unit:infantry"), assetContext("unit:infantry"));
+    const response = await getAsset(
+      request("/api/assets/unit:infantry"),
+      assetContext("unit:infantry"),
+    );
     expect(response.status).toBe(200);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
-    const body = await response.json() as { apiVersion: number; asset: { id: string; render: { supportsFacing: boolean } } };
+    const body = (await response.json()) as {
+      apiVersion: number;
+      asset: { id: string; render: { supportsFacing: boolean } };
+    };
     expect(body.apiVersion).toBe(ASSET_API_VERSION);
     expect(body.asset.id).toBe("unit:infantry");
     expect(body.asset.render.supportsFacing).toBe(true);
@@ -85,7 +96,7 @@ describe("GET /api/assets/:id", () => {
       assetContext("unit%3Aharvester"),
     );
     expect(encoded.status).toBe(200);
-    expect((await encoded.json() as { asset: { id: string } }).asset.id).toBe("unit:harvester");
+    expect(((await encoded.json()) as { asset: { id: string } }).asset.id).toBe("unit:harvester");
 
     const missing = await getAsset(request("/api/assets/unit:nope"), assetContext("unit:nope"));
     expect(missing.status).toBe(404);
@@ -123,14 +134,18 @@ describe("GET /api/assets/:id/preview", () => {
       assetContext("building:power"),
     );
     expect(buildingFacing.status).toBe(400);
-    expect(await buildingFacing.json()).toEqual({ error: "This asset does not support directional previews" });
+    expect(await buildingFacing.json()).toEqual({
+      error: "This asset does not support directional previews",
+    });
 
     const fractionalFacing = await getPreview(
       request("/api/assets/unit:infantry/preview?facing=1.5"),
       assetContext("unit:infantry"),
     );
     expect(fractionalFacing.status).toBe(400);
-    expect(await fractionalFacing.json()).toEqual({ error: "facing must be an integer from 0 to 7" });
+    expect(await fractionalFacing.json()).toEqual({
+      error: "facing must be an integer from 0 to 7",
+    });
   });
 
   it("redirects raster building previews to the art plate", async () => {

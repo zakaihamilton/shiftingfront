@@ -1,12 +1,12 @@
-import { existsSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { existsSync, readdirSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { BUILDING_KINDS, UNIT_KINDS } from "../../lib/catalog";
 import {
-  CLIFF_EDGE_SAMPLES,
   buildingSprite,
+  CLIFF_EDGE_SAMPLES,
   cliffCornerWedge,
   cliffFaces,
   elevationFace,
@@ -17,21 +17,21 @@ import {
 } from "../../lib/gen/assets";
 import { generateFactions } from "../../lib/gen/factions";
 import {
-  listTacticalRasterSources,
-  listMissionRasterSources,
   AIR_SUPPORT_ART,
   ANTI_AIR_TURRET_BASE_CROP,
+  listMissionRasterSources,
+  listTacticalRasterSources,
   RETIRED_UNIT_DIRECTION_ART,
   SPRITE_ART,
-  TEXTURE_ART,
   STRIKE_PLANE_DIRECTION_ART,
+  TEXTURE_ART,
   UNIT_DIRECTION_ART,
   UNIT_WALK_CYCLE_ART,
   unitWalkFrameCrop,
 } from "../../lib/gen/visualAssets";
 import { opaquePixelBounds, rotatedSpriteBounds } from "../../lib/render/sprites";
-import { fogIndex } from "../../lib/sim/fog";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { fogIndex } from "../../lib/sim/fog";
 
 describe("tactical procedural assets", () => {
   const palette = generateFactions(421)[0].palette;
@@ -51,7 +51,11 @@ describe("tactical procedural assets", () => {
       const ids = new Set<string>();
       for (let facing = 0; facing < 8; facing++) {
         for (const animationFrame of [0, 1, 2, 3] as const) {
-          const spec = unitSprite(kind, palette, { facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, animationFrame, variant: 11 });
+          const spec = unitSprite(kind, palette, {
+            facing: facing as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+            animationFrame,
+            variant: 11,
+          });
           ids.add(spec.id);
           validateSpec(spec);
         }
@@ -86,7 +90,11 @@ describe("tactical procedural assets", () => {
       const ids = new Set<string>();
       for (const constructionStage of [0, 1, 2, 3] as const) {
         for (const damageStage of [0, 1, 2] as const) {
-          const spec = buildingSprite(kind, palette, { constructionStage, damageStage, variant: 13 });
+          const spec = buildingSprite(kind, palette, {
+            constructionStage,
+            damageStage,
+            variant: 13,
+          });
           ids.add(spec.id);
           validateSpec(spec);
         }
@@ -144,7 +152,10 @@ describe("tactical procedural assets", () => {
         expect(metadata.height).toBe(1024);
         expect(metadata.hasAlpha).toBe(true);
 
-        const { data, info } = await sharp(path).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+        const { data, info } = await sharp(path)
+          .ensureAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
         let transparentPixels = 0;
         const frameAnchors = [0, 1, 2, 3].map((frame) => {
           const offsetX = (frame & 1) * 512;
@@ -170,7 +181,11 @@ describe("tactical procedural assets", () => {
       }
     }
 
-    const moving = unitSprite("infantry", palette, { facing: 2, animationFrame: 2, motion: "walk" });
+    const moving = unitSprite("infantry", palette, {
+      facing: 2,
+      animationFrame: 2,
+      motion: "walk",
+    });
     const staticSprite = unitSprite("infantry", palette, { facing: 2, animationFrame: 2 });
     const vehicle = unitSprite("tank", palette, { facing: 2, animationFrame: 2, motion: "walk" });
     expect(moving.imageSrc).toContain("/walk-cycle/");
@@ -239,14 +254,19 @@ describe("tactical procedural assets", () => {
       expect(metadata.height, source).toBe(512);
       expect(metadata.hasAlpha, source).toBe(true);
 
-      const { data, info } = await sharp(sourcePath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const { data, info } = await sharp(sourcePath)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
       const bounds = opaquePixelBounds(data, info.width, info.height);
       expect(bounds, source).toBeDefined();
       expect(bounds!.minY + bounds!.height - 1, `${source} tread baseline`).toBe(474);
       expect(bounds!.minX).toBeGreaterThan(0);
       expect(bounds!.minX + bounds!.width - 1).toBeLessThan(511);
       const fingerprint = createHash("sha256").update(data).digest("hex");
-      expect(fingerprints.has(fingerprint), `${source} should be a unique authored view`).toBe(false);
+      expect(fingerprints.has(fingerprint), `${source} should be a unique authored view`).toBe(
+        false,
+      );
       fingerprints.add(fingerprint);
     }
   });
@@ -256,7 +276,10 @@ describe("tactical procedural assets", () => {
     for (const kind of UNIT_KINDS) {
       const views = UNIT_DIRECTION_ART[kind];
       expect(Object.keys(views)).toHaveLength(8);
-      if (kind === "strikePlane") expect(new Set(Object.values(views))).toEqual(new Set(Object.values(STRIKE_PLANE_DIRECTION_ART)));
+      if (kind === "strikePlane")
+        expect(new Set(Object.values(views))).toEqual(
+          new Set(Object.values(STRIKE_PLANE_DIRECTION_ART)),
+        );
       else expect(new Set(Object.values(views)).size).toBe(8);
     }
   });
@@ -331,7 +354,9 @@ describe("tactical procedural assets", () => {
   it("does not keep unused sleek-modular sprites in the asset bay", () => {
     const used = new Set([
       ...Object.values(SPRITE_ART).map((src) => basename(src)),
-      ...Object.values(UNIT_DIRECTION_ART).flatMap((views) => Object.values(views).map((src) => basename(src))),
+      ...Object.values(UNIT_DIRECTION_ART).flatMap((views) =>
+        Object.values(views).map((src) => basename(src)),
+      ),
       ...RETIRED_UNIT_DIRECTION_ART.map((src) => basename(src)),
     ]);
     const dir = resolve(process.cwd(), "public/art/sprites/sleek-modular");
@@ -358,11 +383,29 @@ describe("tactical procedural assets", () => {
       const framed = buildingSprite(kind, palette, { constructionStage: 1, variant: 13 });
       const roofed = buildingSprite(kind, palette, { constructionStage: 2, variant: 13 });
       const finished = buildingSprite(kind, palette, { constructionStage: 3, variant: 13 });
-      const damaged = buildingSprite(kind, palette, { constructionStage: 3, damageStage: 1, variant: 13 });
-      const wrecked = buildingSprite(kind, palette, { constructionStage: 3, damageStage: 2, variant: 13 });
-      expect([foundation, framed, roofed, finished, damaged, wrecked].every((spec) => Boolean(spec.imageSrc))).toBe(true);
-      expect([foundation, framed, roofed, finished, damaged, wrecked].every((spec) => spec.svg === undefined)).toBe(true);
-      expect(new Set([foundation.id, framed.id, roofed.id, finished.id, damaged.id, wrecked.id]).size).toBe(6);
+      const damaged = buildingSprite(kind, palette, {
+        constructionStage: 3,
+        damageStage: 1,
+        variant: 13,
+      });
+      const wrecked = buildingSprite(kind, palette, {
+        constructionStage: 3,
+        damageStage: 2,
+        variant: 13,
+      });
+      expect(
+        [foundation, framed, roofed, finished, damaged, wrecked].every((spec) =>
+          Boolean(spec.imageSrc),
+        ),
+      ).toBe(true);
+      expect(
+        [foundation, framed, roofed, finished, damaged, wrecked].every(
+          (spec) => spec.svg === undefined,
+        ),
+      ).toBe(true);
+      expect(
+        new Set([foundation.id, framed.id, roofed.id, finished.id, damaged.id, wrecked.id]).size,
+      ).toBe(6);
       expect(foundation.imageReveal).toBeLessThan(framed.imageReveal ?? 1);
       expect(framed.imageReveal).toBeLessThan(roofed.imageReveal ?? 1);
       expect(roofed.imageReveal).toBeLessThan(finished.imageReveal ?? 1);
@@ -496,11 +539,23 @@ describe("tactical procedural assets", () => {
     const width = 8;
     const height = 6;
     const data = new Uint8ClampedArray(width * height * 4);
-    for (const [x, y] of [[2, 1], [3, 1], [2, 2], [3, 2]] as const) {
+    for (const [x, y] of [
+      [2, 1],
+      [3, 1],
+      [2, 2],
+      [3, 2],
+    ] as const) {
       data[(y * width + x) * 4 + 3] = 255;
     }
-    expect(opaquePixelBounds(data, width, height)).toEqual({ minX: 2, minY: 1, width: 2, height: 2 });
-    expect(opaquePixelBounds(new Uint8ClampedArray(width * height * 4), width, height)).toBeUndefined();
+    expect(opaquePixelBounds(data, width, height)).toEqual({
+      minX: 2,
+      minY: 1,
+      width: 2,
+      height: 2,
+    });
+    expect(
+      opaquePixelBounds(new Uint8ClampedArray(width * height * 4), width, height),
+    ).toBeUndefined();
   });
 });
 
@@ -514,7 +569,17 @@ function cliffBottomNearStart(face: { points: number[] }): [number, number] {
   return [face.points[i]!, face.points[i + 1]!];
 }
 
-function validateSpec(spec: { w: number; h: number; pixelScale?: number; anchorX?: number; anchorY?: number; kind: string; imageSrc?: string; svg?: string; shapes: Array<{ x: number; y: number; w: number; h: number; points?: number[] }> }): void {
+function validateSpec(spec: {
+  w: number;
+  h: number;
+  pixelScale?: number;
+  anchorX?: number;
+  anchorY?: number;
+  kind: string;
+  imageSrc?: string;
+  svg?: string;
+  shapes: Array<{ x: number; y: number; w: number; h: number; points?: number[] }>;
+}): void {
   expect(spec.w).toBeGreaterThan(0);
   expect(spec.h).toBeGreaterThan(0);
   expect(spec.pixelScale).toBe(1);

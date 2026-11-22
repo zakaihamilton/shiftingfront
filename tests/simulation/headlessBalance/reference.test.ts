@@ -12,7 +12,10 @@ describe("headless balance reference transitions", () => {
     const referenceCommander = new ArchetypeCommander("rush");
     const headlessCommander = new ArchetypeCommander("rush");
     const referenceRunner = createScenarioRunner(reference);
-    const headlessRunner = createScenarioRunner(headless, { collectEvents: false, updateFog: false });
+    const headlessRunner = createScenarioRunner(headless, {
+      collectEvents: false,
+      updateFog: false,
+    });
 
     for (let i = 0; i < 240 && reference.result === "playing"; i += 1) {
       const referenceCommands = referenceCommander.plan(reference);

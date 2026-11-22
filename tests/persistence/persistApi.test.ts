@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  memoryStorage,
-  writeSave,
-  readSave,
-  removeSave,
+  createSaveSession,
+  hasSaveForSeed,
   listSaves,
   listUnreadableSaves,
-  hasSaveForSeed,
-  createSaveSession,
+  memoryStorage,
+  readSave,
+  removeSave,
   saveKey,
+  writeSave,
 } from "../../lib/persist/save";
 import { makeFixture } from "../../lib/sim/fixtures";
 
@@ -113,7 +113,9 @@ describe("SaveSession", () => {
 
   it("reports failed when the underlying storage rejects a write", () => {
     const storage = memoryStorage();
-    storage.setItem = () => { throw new Error("quota"); };
+    storage.setItem = () => {
+      throw new Error("quota");
+    };
     const session = createSaveSession(storage, 421);
 
     expect(session.write(makeState(421), "implicit")).toBe("failed");

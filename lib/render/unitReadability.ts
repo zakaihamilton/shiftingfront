@@ -22,12 +22,17 @@ export function drawInfantryMarker(
   ctx.lineJoin = "round";
   ctx.beginPath();
   if (entity.kind === "medic") {
-    ctx.moveTo(-2.5, 0); ctx.lineTo(2.5, 0);
-    ctx.moveTo(0, -2.5); ctx.lineTo(0, 2.5);
+    ctx.moveTo(-2.5, 0);
+    ctx.lineTo(2.5, 0);
+    ctx.moveTo(0, -2.5);
+    ctx.lineTo(0, 2.5);
   } else if (entity.kind === "antiArmor") {
-    ctx.moveTo(-3, 1); ctx.lineTo(0, -1.5); ctx.lineTo(3, 1);
+    ctx.moveTo(-3, 1);
+    ctx.lineTo(0, -1.5);
+    ctx.lineTo(3, 1);
   } else {
-    ctx.moveTo(-3, 0); ctx.lineTo(3, 0);
+    ctx.moveTo(-3, 0);
+    ctx.lineTo(3, 0);
   }
   // A dark surround protects the mark against bright ore and paved ground.
   ctx.strokeStyle = "#071017";

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { composeMusic } from "../../lib/audio/compose";
-import { indexPattern, type AudioGraphContext, type MusicGraph } from "../../lib/audio/musicGraph";
+import { type AudioGraphContext, indexPattern, type MusicGraph } from "../../lib/audio/musicGraph";
 
 const playSynthTone = vi.hoisted(() => vi.fn());
 
@@ -30,12 +30,14 @@ describe("harmony scheduling", () => {
     const pattern = composeMusic(421, "mission", 3);
     const harmonyEvent = pattern.notes.harmony[0]!;
     const pianoBus = {} as GainNode;
-    const gainNode = { gain: {
-      value: 0.09,
-      cancelScheduledValues: vi.fn(),
-      setValueAtTime: vi.fn(),
-      linearRampToValueAtTime: vi.fn(),
-    } };
+    const gainNode = {
+      gain: {
+        value: 0.09,
+        cancelScheduledValues: vi.fn(),
+        setValueAtTime: vi.fn(),
+        linearRampToValueAtTime: vi.fn(),
+      },
+    };
     const graph = {
       style: pattern.style,
       index: indexPattern(pattern),
@@ -54,7 +56,14 @@ describe("harmony scheduling", () => {
     } as unknown as MusicGraph;
 
     playSynthTone.mockClear();
-    scheduleStep({ currentTime: 0 } as AudioGraphContext, graph, pattern, 0, harmonyEvent.step, "engaged");
+    scheduleStep(
+      { currentTime: 0 } as AudioGraphContext,
+      graph,
+      pattern,
+      0,
+      harmonyEvent.step,
+      "engaged",
+    );
 
     expect(playSynthTone).toHaveBeenCalledWith(
       expect.anything(),

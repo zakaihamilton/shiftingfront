@@ -1,5 +1,11 @@
 import { createRng } from "../seed/rng";
-import type { MissionFamily, MissionKind, MissionProfile, MissionProfileVariant, UnitKind } from "../types";
+import type {
+  MissionFamily,
+  MissionKind,
+  MissionProfile,
+  MissionProfileVariant,
+  UnitKind,
+} from "../types";
 
 export type MissionProfileContract = {
   label: string;
@@ -72,13 +78,23 @@ const OBJECTIVE_CONTRACTS: Partial<Record<MissionKind, MissionObjectiveContract>
 };
 
 export function missionFamilyFor(kind: MissionKind): MissionFamily {
-  if (kind === "harvestQuota" || kind === "forceQuota" || kind === "structureQuota") return "economy";
-  if (kind === "destroyMarked" || kind === "razeAll" || kind === "decapitate" || kind === "annihilate") return "assault";
+  if (kind === "harvestQuota" || kind === "forceQuota" || kind === "structureQuota")
+    return "economy";
+  if (
+    kind === "destroyMarked" ||
+    kind === "razeAll" ||
+    kind === "decapitate" ||
+    kind === "annihilate"
+  )
+    return "assault";
   if (kind === "holdTheLine") return "defense";
   return "operation";
 }
 
-const PROFILE_VARIANTS: Record<MissionFamily, readonly [MissionProfileVariant, MissionProfileVariant]> = {
+const PROFILE_VARIANTS: Record<
+  MissionFamily,
+  readonly [MissionProfileVariant, MissionProfileVariant]
+> = {
   economy: ["resourceRace", "forwardIndustry"],
   assault: ["surgicalStrike", "siege"],
   defense: ["concentratedWaves", "crossfire"],
@@ -124,7 +140,8 @@ const PROFILE_CONTRACTS: Record<MissionProfileVariant, MissionProfileContract> =
   surgicalStrike: {
     label: "Surgical Strike",
     emphasis: "Use a concentrated force to exploit a narrow breach.",
-    openingOrder: "Find the breach, keep the strike force together, and leave before the line closes.",
+    openingOrder:
+      "Find the breach, keep the strike force together, and leave before the line closes.",
     fallback: "A slower flank remains open for regrouping and support.",
     routeHint: "The direct lane is fastest; the flank is safer when the breach closes.",
     alert: "The breach is closing.",
@@ -219,7 +236,11 @@ const PROFILE_CONTRACTS: Record<MissionProfileVariant, MissionProfileContract> =
   },
 };
 
-export function missionProfileFor(seed: number, missionIndex: number, kind: MissionKind): MissionProfile {
+export function missionProfileFor(
+  seed: number,
+  missionIndex: number,
+  kind: MissionKind,
+): MissionProfile {
   const key = `${seed}:${missionIndex}:${kind}`;
   const cached = missionProfileCache.get(key);
   if (cached) return cached;

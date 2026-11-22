@@ -19,8 +19,19 @@
 
 .vignette {
   background:
-    radial-gradient(ellipse at 50% 45%, transparent 18%, color-mix(in srgb, var(--chrome-void) 54%, transparent) 72%, color-mix(in srgb, var(--chrome-void) 88%, transparent) 100%),
-    linear-gradient(to bottom, color-mix(in srgb, var(--chrome-bg) 35%, transparent), transparent 20%, transparent 80%, color-mix(in srgb, var(--chrome-bg) 66%, transparent));
+    radial-gradient(
+      ellipse at 50% 45%,
+      transparent 18%,
+      color-mix(in srgb, var(--chrome-void) 54%, transparent) 72%,
+      color-mix(in srgb, var(--chrome-void) 88%, transparent) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--chrome-bg) 35%, transparent),
+      transparent 20%,
+      transparent 80%,
+      color-mix(in srgb, var(--chrome-bg) 66%, transparent)
+    );
 }
 
 .scanlines {
@@ -124,7 +135,11 @@
   border-radius: var(--chrome-radius-lg);
   padding: clamp(1rem, 3vw, 2rem);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--chrome-raised) 24%, transparent), transparent 22%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--chrome-raised) 24%, transparent),
+      transparent 22%
+    ),
     linear-gradient(145deg, rgba(40, 54, 66, 0.82), rgba(8, 13, 20, 0.96)),
     var(--texture-brushed) center / 420px 420px;
   box-shadow:
@@ -222,7 +237,9 @@
   border: 1px solid color-mix(in srgb, var(--chrome-cyan) 28%, var(--chrome-line));
   border-left: 3px solid var(--chrome-cyan);
   background: linear-gradient(105deg, rgba(24, 54, 63, 0.68), rgba(8, 14, 21, 0.46));
-  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.025), inset -1px -1px var(--chrome-inset);
+  box-shadow:
+    inset 1px 1px rgba(255, 255, 255, 0.025),
+    inset -1px -1px var(--chrome-inset);
 }
 
 .archiveHeader h2 {
@@ -294,7 +311,11 @@
   border-radius: var(--chrome-radius);
   border: 1px solid color-mix(in srgb, var(--chrome-alert) 55%, var(--chrome-inset));
   border-left: 3px solid var(--chrome-alert);
-  background: linear-gradient(105deg, color-mix(in srgb, var(--chrome-alert) 16%, var(--chrome-void)), rgba(8, 14, 21, 0.72));
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--chrome-alert) 16%, var(--chrome-void)),
+    rgba(8, 14, 21, 0.72)
+  );
   color: var(--chrome-warning);
   font-size: 0.76rem;
 }
@@ -327,7 +348,8 @@
 
 @media (max-width: 639px) {
   .uiLayer {
-    padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.65rem, env(safe-area-inset-bottom));
+    padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem
+      max(0.65rem, env(safe-area-inset-bottom));
   }
 
   .topbar,

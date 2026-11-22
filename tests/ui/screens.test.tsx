@@ -19,28 +19,79 @@ vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/lib/audio/music", () => ({ setMusicEnabled: vi.fn(), clearMusicPosition: vi.fn() }));
 vi.mock("@/lib/audio/synth", () => ({ setSfxEnabled: vi.fn(), beep: vi.fn() }));
 vi.mock("@/lib/audio/mixer", () => ({ setAudioLevels: vi.fn() }));
-vi.mock("@/components/shared/MenuBackdrop", () => ({ MenuBackdrop: () => <div data-testid="menu-backdrop" /> }));
+vi.mock("@/components/shared/MenuBackdrop", () => ({
+  MenuBackdrop: () => <div data-testid="menu-backdrop" />,
+}));
 vi.mock("@/components/menu/MenuHero", () => ({ MenuHero: () => <h1>Shifting Front</h1> }));
 vi.mock("@/components/menu/MenuMainPanel", () => ({
-  MenuMainPanel: ({ onNewGame, onTutorial, onLoadMission, onOptions }: { onNewGame: () => void; onTutorial: () => void; onLoadMission: () => void; onOptions: () => void }) => (
+  MenuMainPanel: ({
+    onNewGame,
+    onTutorial,
+    onLoadMission,
+    onOptions,
+  }: {
+    onNewGame: () => void;
+    onTutorial: () => void;
+    onLoadMission: () => void;
+    onOptions: () => void;
+  }) => (
     <div>
-      <button type="button" onClick={onNewGame}>NEW GAME</button>
-      <button type="button" onClick={onTutorial}>TUTORIAL</button>
-      <button type="button" onClick={onLoadMission}>LOAD MISSION</button>
-      <button type="button" onClick={onOptions}>OPTIONS</button>
+      <button type="button" onClick={onNewGame}>
+        NEW GAME
+      </button>
+      <button type="button" onClick={onTutorial}>
+        TUTORIAL
+      </button>
+      <button type="button" onClick={onLoadMission}>
+        LOAD MISSION
+      </button>
+      <button type="button" onClick={onOptions}>
+        OPTIONS
+      </button>
     </div>
   ),
 }));
 vi.mock("@/components/menu/MenuOverlay", () => ({
-  MenuOverlay: ({ view, onLaunch, onBack }: { view: string; onLaunch: () => void; onBack: () => void }) =>
-    view === "main" ? null : <div role="dialog"><span>{view}</span><button type="button" onClick={onLaunch}>Launch</button><button type="button" onClick={onBack}>Back</button></div>,
+  MenuOverlay: ({
+    view,
+    onLaunch,
+    onBack,
+  }: {
+    view: string;
+    onLaunch: () => void;
+    onBack: () => void;
+  }) =>
+    view === "main" ? null : (
+      <div role="dialog">
+        <span>{view}</span>
+        <button type="button" onClick={onLaunch}>
+          Launch
+        </button>
+        <button type="button" onClick={onBack}>
+          Back
+        </button>
+      </div>
+    ),
 }));
-vi.mock("@/components/briefing/BriefingMast", () => ({ BriefingMast: () => <div data-testid="briefing-mast" /> }));
-vi.mock("@/components/briefing/BriefingStory", () => ({ BriefingStory: () => <div data-testid="briefing-story" /> }));
-vi.mock("@/components/briefing/BriefingObjectives", () => ({ BriefingObjectives: () => <div data-testid="briefing-objectives" /> }));
+vi.mock("@/components/briefing/BriefingMast", () => ({
+  BriefingMast: () => <div data-testid="briefing-mast" />,
+}));
+vi.mock("@/components/briefing/BriefingStory", () => ({
+  BriefingStory: () => <div data-testid="briefing-story" />,
+}));
+vi.mock("@/components/briefing/BriefingObjectives", () => ({
+  BriefingObjectives: () => <div data-testid="briefing-objectives" />,
+}));
 vi.mock("@/components/briefing/BriefingActions", () => ({
   BriefingActions: ({ onLaunch, onReplay }: { onLaunch: () => void; onReplay: () => void }) => (
-    <div data-testid="briefing-actions"><button type="button" onClick={onLaunch}>Launch</button><button type="button" onClick={onReplay}>Replay</button></div>
+    <div data-testid="briefing-actions">
+      <button type="button" onClick={onLaunch}>
+        Launch
+      </button>
+      <button type="button" onClick={onReplay}>
+        Replay
+      </button>
+    </div>
   ),
 }));
 
@@ -74,7 +125,9 @@ describe("MenuScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "NEW GAME" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("newGame");
     fireEvent.click(screen.getByRole("button", { name: "Launch" }));
-    expect(router.push).toHaveBeenCalledWith(expect.stringMatching(/^\/briefing\?seed=\d{4}&mission=0&from=newGame$/));
+    expect(router.push).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/briefing\?seed=\d{4}&mission=0&from=newGame$/),
+    );
   });
 
   it("opens the training range from the welcome tutorial action", () => {
@@ -183,7 +236,9 @@ describe("CampaignArchiveScreen", () => {
   it("cancels an open delete dialog with Escape instead of leaving", async () => {
     writeSave(localStorageAdapter(), makeFixture({ seed: 421, win: { kind: "annihilate" } }));
     render(<CampaignArchiveScreen />);
-    await waitFor(() => expect(screen.getByRole("button", { name: /Delete autosave for/ })).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Delete autosave for/ })).toBeVisible(),
+    );
     fireEvent.click(screen.getByRole("button", { name: /Delete autosave for/ }));
     expect(screen.getByRole("dialog", { name: "Delete autosave?" })).toBeVisible();
     fireEvent.keyDown(window, { key: "Escape" });
@@ -201,7 +256,9 @@ describe("CampaignArchiveScreen", () => {
     expect(written.ok).toBe(true);
     if (!written.ok) return;
     render(<CampaignArchiveScreen />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Resume Bridgehead" })).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Resume Bridgehead" })).toBeVisible(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Resume Bridgehead" }));
     expect(router.push).toHaveBeenCalledWith(`/play?seed=0421&mission=0&slot=${written.id}`);
   });
@@ -223,9 +280,13 @@ describe("CampaignArchiveScreen", () => {
     render(<CampaignArchiveScreen />);
     const file = new File([raw!], "portable.json", { type: "application/json" });
     Object.defineProperty(file, "text", { value: async () => raw });
-    fireEvent.change(screen.getByLabelText("Import named save slot JSON"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Import named save slot JSON"), {
+      target: { files: [file] },
+    });
 
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Imported save as a new named slot."));
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Imported save as a new named slot."),
+    );
     expect(screen.getByRole("button", { name: "Resume Portable" })).toBeVisible();
   });
 
@@ -234,7 +295,9 @@ describe("CampaignArchiveScreen", () => {
     state.missionIndex = 2;
     writeSave(localStorageAdapter(), state);
     render(<CampaignArchiveScreen />);
-    await waitFor(() => expect(screen.getByRole("button", { name: /Resume .* autosave/ })).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Resume .* autosave/ })).toBeVisible(),
+    );
     fireEvent.click(screen.getByRole("button", { name: /Resume .* autosave/ }));
     expect(router.push).toHaveBeenCalledWith("/play?seed=0421&resume=1&mission=2");
   });
@@ -308,7 +371,9 @@ describe("CampaignCompleteScreen", () => {
     expect(router.push).toHaveBeenCalledWith("/briefing?seed=0421&mission=1&from=campaign");
     fireEvent.click(screen.getByTestId("mission-card-0"));
     fireEvent.click(screen.getByTestId("launch-selected-mission"));
-    expect(router.push).toHaveBeenCalledWith("/briefing?seed=0421&mission=0&from=campaign&replay=1");
+    expect(router.push).toHaveBeenCalledWith(
+      "/briefing?seed=0421&mission=0&from=campaign&replay=1",
+    );
   });
 
   it("deploys the first operation to briefing without training", () => {

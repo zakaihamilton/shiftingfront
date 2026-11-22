@@ -17,13 +17,7 @@ describe("KeybindingsModal UI component", () => {
   };
 
   it("renders keybindings dialog with accessible roles and labels", () => {
-    render(
-      <KeybindingsModal
-        bindings={initialBindings}
-        onSave={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<KeybindingsModal bindings={initialBindings} onSave={vi.fn()} onClose={vi.fn()} />);
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAttribute("aria-modal", "true");
@@ -35,13 +29,7 @@ describe("KeybindingsModal UI component", () => {
   });
 
   it("enters listening mode when an action button is clicked", () => {
-    render(
-      <KeybindingsModal
-        bindings={initialBindings}
-        onSave={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<KeybindingsModal bindings={initialBindings} onSave={vi.fn()} onClose={vi.fn()} />);
 
     const panUpButton = screen.getByRole("button", { name: "Rebind Pan Camera Up" });
     expect(panUpButton).toHaveTextContent("W");
@@ -53,13 +41,7 @@ describe("KeybindingsModal UI component", () => {
 
   it("rebinds a key on keydown and persists changes via onSave", () => {
     const onSave = vi.fn();
-    render(
-      <KeybindingsModal
-        bindings={initialBindings}
-        onSave={onSave}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<KeybindingsModal bindings={initialBindings} onSave={onSave} onClose={vi.fn()} />);
 
     const panUpButton = screen.getByRole("button", { name: "Rebind Pan Camera Up" });
     fireEvent.click(panUpButton);
@@ -77,32 +59,22 @@ describe("KeybindingsModal UI component", () => {
 
   it("swaps the previous key onto the command it displaces", () => {
     const onSave = vi.fn();
-    render(
-      <KeybindingsModal
-        bindings={initialBindings}
-        onSave={onSave}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<KeybindingsModal bindings={initialBindings} onSave={onSave} onClose={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rebind Stop Selected Units" }));
     fireEvent.keyDown(window, { key: "w" });
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ stop: "w", panUp: "x" }));
     expect(screen.getByRole("status")).toHaveTextContent("Pan Camera Up moved to X.");
-    expect(screen.getByRole("button", { name: "Rebind Stop Selected Units" })).toHaveTextContent("W");
+    expect(screen.getByRole("button", { name: "Rebind Stop Selected Units" })).toHaveTextContent(
+      "W",
+    );
     expect(screen.getByRole("button", { name: "Rebind Pan Camera Up" })).toHaveTextContent("X");
   });
 
   it("cancels listening state without saving when Escape is pressed", () => {
     const onSave = vi.fn();
-    render(
-      <KeybindingsModal
-        bindings={initialBindings}
-        onSave={onSave}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<KeybindingsModal bindings={initialBindings} onSave={onSave} onClose={vi.fn()} />);
 
     const stopButton = screen.getByRole("button", { name: "Rebind Stop Selected Units" });
     fireEvent.click(stopButton);
@@ -124,13 +96,7 @@ describe("KeybindingsModal UI component", () => {
       stop: "q",
     };
 
-    render(
-      <KeybindingsModal
-        bindings={customBindings}
-        onSave={onSave}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<KeybindingsModal bindings={customBindings} onSave={onSave} onClose={vi.fn()} />);
 
     const resetButton = screen.getByRole("button", { name: "Reset Defaults" });
     fireEvent.click(resetButton);
@@ -140,13 +106,7 @@ describe("KeybindingsModal UI component", () => {
 
   it("calls onClose when clicking Done or backdrop", () => {
     const onClose = vi.fn();
-    render(
-      <KeybindingsModal
-        bindings={initialBindings}
-        onSave={vi.fn()}
-        onClose={onClose}
-      />,
-    );
+    render(<KeybindingsModal bindings={initialBindings} onSave={vi.fn()} onClose={onClose} />);
 
     const doneButton = screen.getByRole("button", { name: "Done" });
     fireEvent.click(doneButton);

@@ -1,27 +1,7 @@
-import { MAP_SKIRT, terrainFeatureSamplerFor, type TerrainFeatureSample } from "../gen/map";
+import { MAP_SKIRT, type TerrainFeatureSample, terrainFeatureSamplerFor } from "../gen/map";
 import { SURFACE_CONCRETE, SURFACE_ROAD, TILE_RESOURCE, TILE_WATER } from "../types";
 import {
-  ATLAS_CELL,
-  artSalt,
-  materialsFor,
-  surfaceAt,
-  type AtlasWorld,
-} from "./terrainMaterials";
-import {
-  terrainEdgeDarkening,
-  terrainLightRigForBiome,
-} from "./terrainLighting";
-import {
-  sampleTerrainMaterial,
-  waterShoreDist,
-  waterNeighbor,
-} from "./terrainAtlasSurfaces";
-import {
-  CONCRETE_CELL_CLASS,
-  GROUND_CELL_CLASS,
-  ORE_CELL_CLASS,
-  ROAD_CELL_CLASS,
-  WATER_CELL_CLASS,
+  type AtlasBakeContext,
   atlasKindAt,
   atlasPixelAtTile,
   atlasRectForTile,
@@ -31,25 +11,32 @@ import {
   bakeAtlasSceneryGrid,
   bakeOrganicCornerBridges,
   bakeWaterShoreDist,
+  CONCRETE_CELL_CLASS,
   cellColor,
+  GROUND_CELL_CLASS,
   makeAtlasKey,
+  ORE_CELL_CLASS,
+  ROAD_CELL_CLASS,
   resourceSignature,
-  terrainLayoutSignature,
-  type AtlasBakeContext,
   type TerrainAtlasData,
-} from "./terrainAtlas/index";
-
-export type { TerrainAtlasData, AtlasBakeContext };
-export {
-  resourceSignature,
   terrainLayoutSignature,
-  makeAtlasKey,
-  atlasRectForTile,
+  WATER_CELL_CLASS,
+} from "./terrainAtlas/index";
+import { sampleTerrainMaterial, waterNeighbor, waterShoreDist } from "./terrainAtlasSurfaces";
+import { terrainEdgeDarkening, terrainLightRigForBiome } from "./terrainLighting";
+import { ATLAS_CELL, type AtlasWorld, artSalt, materialsFor, surfaceAt } from "./terrainMaterials";
+
+export type { AtlasBakeContext, TerrainAtlasData };
+export {
   atlasPixelAtTile,
+  atlasRectForTile,
   bakeAtlasRowSlice,
+  makeAtlasKey,
+  resourceSignature,
   sampleTerrainMaterial,
-  waterShoreDist,
+  terrainLayoutSignature,
   waterNeighbor,
+  waterShoreDist,
 };
 
 export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBakeContext {
@@ -63,7 +50,10 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
   const salt = artSalt(state);
   const mats = materialsFor(state);
   const rig = terrainLightRigForBiome(state.seed, state.biome);
-  const pixelFractions = Array.from({ length: ATLAS_CELL }, (_, index) => (index + 0.5) / ATLAS_CELL);
+  const pixelFractions = Array.from(
+    { length: ATLAS_CELL },
+    (_, index) => (index + 0.5) / ATLAS_CELL,
+  );
   const edgeFactors = Array.from({ length: ATLAS_CELL * ATLAS_CELL }, (_, index) => {
     const lx = index % ATLAS_CELL;
     const ly = Math.floor(index / ATLAS_CELL);
@@ -77,15 +67,18 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
       const kind = atlasKindAt(sceneryGrid, col, row);
       const feature = featureAt(gx, gy);
       const scenery = atlasSceneryAt(sceneryGrid, col, row);
-      const color = kind === TILE_WATER ? { r: 0, g: 0, b: 0 } : cellColor(state, gx, gy, {
-        scenery,
-        east: atlasSceneryAt(sceneryGrid, col + 1, row),
-        south: atlasSceneryAt(sceneryGrid, col, row + 1),
-        mats,
-        rig,
-        salt,
-        waterNeighbor: (sceneryGrid.waterNeighbors[row * cols + col] ?? 0) !== 0,
-      });
+      const color =
+        kind === TILE_WATER
+          ? { r: 0, g: 0, b: 0 }
+          : cellColor(state, gx, gy, {
+              scenery,
+              east: atlasSceneryAt(sceneryGrid, col + 1, row),
+              south: atlasSceneryAt(sceneryGrid, col, row + 1),
+              mats,
+              rig,
+              salt,
+              waterNeighbor: (sceneryGrid.waterNeighbors[row * cols + col] ?? 0) !== 0,
+            });
       const i = (row * cols + col) * 3;
       colors[i] = color.r;
       colors[i + 1] = color.g;
@@ -94,15 +87,16 @@ export function initAtlasBake(state: AtlasWorld, grainGeneration = 0): AtlasBake
       features[cellIndex] = feature;
       waterCells[row * cols + col] = kind === TILE_WATER ? 1 : 0;
       const surface = surfaceAt(state, gx, gy);
-      classes[row * cols + col] = kind === TILE_WATER
-        ? WATER_CELL_CLASS
-        : surface === SURFACE_ROAD
-          ? ROAD_CELL_CLASS
-          : surface === SURFACE_CONCRETE
-            ? CONCRETE_CELL_CLASS
-            : kind === TILE_RESOURCE
-              ? ORE_CELL_CLASS
-              : GROUND_CELL_CLASS;
+      classes[row * cols + col] =
+        kind === TILE_WATER
+          ? WATER_CELL_CLASS
+          : surface === SURFACE_ROAD
+            ? ROAD_CELL_CLASS
+            : surface === SURFACE_CONCRETE
+              ? CONCRETE_CELL_CLASS
+              : kind === TILE_RESOURCE
+                ? ORE_CELL_CLASS
+                : GROUND_CELL_CLASS;
     }
   }
 

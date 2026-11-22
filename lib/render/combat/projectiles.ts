@@ -1,11 +1,18 @@
-import { BUILDING_STATS, UNIT_STATS, ammoEffectForWeapon } from "../../catalog";
+import { ammoEffectForWeapon, BUILDING_STATS, UNIT_STATS } from "../../catalog";
+import { type Camera, tileToScreen } from "../../iso";
+import { distToEntity } from "../../sim/world";
+import {
+  type AmmoEffect,
+  type Entity,
+  type Facing,
+  isBuildingEntity,
+  isUnitEntity,
+  type SimState,
+} from "../../types";
 import { animClock, facingVector } from "../anim";
-import { tileToScreen, type Camera } from "../../iso";
+import type { FxBurst } from "../fx";
 import { entityElev } from "../renderPicking";
 import { turretAimMap, turretTargetInRange, turretTargetPoint } from "../renderStructures";
-import { distToEntity } from "../../sim/world";
-import { isBuildingEntity, isUnitEntity, type AmmoEffect, type Entity, type Facing, type SimState } from "../../types";
-import type { FxBurst } from "../fx";
 import { unitWeaponSockets } from "../unitVehicleLayers";
 
 const launchOffsets = new WeakMap<FxBurst, { x: number; y: number }>();
@@ -96,7 +103,15 @@ function drawProjectile(
       ctx.globalAlpha = alpha * (0.32 - i * 0.045);
       ctx.fillStyle = i % 2 ? "#737b78" : "#a5a8a0";
       ctx.beginPath();
-      ctx.ellipse(-back * scale, Math.sin(progress * 8 + i) * scale, (2.1 + i * 0.55) * scale, (1.5 + i * 0.35) * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        -back * scale,
+        Math.sin(progress * 8 + i) * scale,
+        (2.1 + i * 0.55) * scale,
+        (1.5 + i * 0.35) * scale,
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.fill();
     }
     ctx.globalAlpha = alpha;
@@ -185,7 +200,8 @@ export function drawCombatProjectileBursts(
       burst.sourceY === undefined ||
       burst.targetX === undefined ||
       burst.targetY === undefined
-    ) continue;
+    )
+      continue;
     const age = nowMs - burst.bornMs;
     if (age < 0 || age >= duration) continue;
     const progress = Math.max(0, Math.min(1, age / duration));
@@ -205,16 +221,26 @@ export function drawCombatProjectileBursts(
       ax = mountX + Math.cos(aim) * 24 * z;
       ay = mountY + Math.sin(aim) * 24 * z;
     } else {
-      const muzzle = burst.entityKind === "infantry" ? 14 : burst.entityKind === "behemoth" ? 28 : burst.entityClass === "building" ? 18 : 20;
-      ax = source.x + dx / distance * muzzle * z;
-      ay = source.y + 6 * z + dy / distance * muzzle * z;
+      const muzzle =
+        burst.entityKind === "infantry"
+          ? 14
+          : burst.entityKind === "behemoth"
+            ? 28
+            : burst.entityClass === "building"
+              ? 18
+              : 20;
+      ax = source.x + (dx / distance) * muzzle * z;
+      ay = source.y + 6 * z + (dy / distance) * muzzle * z;
     }
 
     // Preserve the authored muzzle at launch, then keep the shot's source fixed
     // even when its firing unit moves or the camera pans and zooms.
     let offset = launchOffsets.get(burst);
     if (!offset) {
-      const socket = burst.sourceEntityId !== undefined ? unitWeaponSockets.get(burst.sourceEntityId) : undefined;
+      const socket =
+        burst.sourceEntityId !== undefined
+          ? unitWeaponSockets.get(burst.sourceEntityId)
+          : undefined;
       offset = { x: ((socket?.x ?? ax) - source.x) / z, y: ((socket?.y ?? ay) - source.y) / z };
       launchOffsets.set(burst, offset);
     }
@@ -259,9 +285,17 @@ export function drawCombatProjectiles(
       const range = UNIT_STATS[e.kind].range;
       // Combat can leave a target assigned while the unit is chasing it, or
       // for the death/cleanup frame. Never render a stale lock as a projectile.
-      if (range <= 0 || target.owner === e.owner || target.neutral || distToEntity(e, target) > range) continue;
+      if (
+        range <= 0 ||
+        target.owner === e.owner ||
+        target.neutral ||
+        distToEntity(e, target) > range
+      )
+        continue;
     }
-    const maxCooldown = isUnitEntity(e) ? UNIT_STATS[e.kind].cooldown : buildingCombat?.cooldown ?? 0;
+    const maxCooldown = isUnitEntity(e)
+      ? UNIT_STATS[e.kind].cooldown
+      : (buildingCombat?.cooldown ?? 0);
     if (maxCooldown <= 0) continue;
 
     const effect = ammoEffectFor(e);
@@ -290,7 +324,10 @@ export function drawCombatProjectiles(
       ax = a.x + dir.x * muzzle * z;
       ay = a.y + 6 * z + dir.y * muzzle * z;
       const socket = unitWeaponSockets.get(e.id);
-      if (socket) { ax = socket.x; ay = socket.y; }
+      if (socket) {
+        ax = socket.x;
+        ay = socket.y;
+      }
     }
     const bx = b.x;
     const by = b.y + 9 * z;

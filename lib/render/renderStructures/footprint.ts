@@ -1,4 +1,4 @@
-import { TILE_H, TILE_W, tileToScreen, type Camera } from "../../iso";
+import { type Camera, TILE_H, TILE_W, tileToScreen } from "../../iso";
 import { heightAt } from "../../sim/world";
 import type { SimState } from "../../types";
 
@@ -13,7 +13,11 @@ export function footprintPath(
 ): void {
   const e0 = heightAt(state, Math.round(x), Math.round(y));
   const e1 = heightAt(state, Math.min(state.width - 1, Math.round(x + w - 1)), Math.round(y));
-  const e2 = heightAt(state, Math.min(state.width - 1, Math.round(x + w - 1)), Math.min(state.height - 1, Math.round(y + h - 1)));
+  const e2 = heightAt(
+    state,
+    Math.min(state.width - 1, Math.round(x + w - 1)),
+    Math.min(state.height - 1, Math.round(y + h - 1)),
+  );
   const e3 = heightAt(state, Math.round(x), Math.min(state.height - 1, Math.round(y + h - 1)));
   const top = tileToScreen(x, y, cam, e0);
   const right = tileToScreen(x + w, y, cam, e1);

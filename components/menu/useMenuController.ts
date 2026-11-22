@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAudioPreferences } from "@/components/audio/useAudioPreferences";
 import { useCampaignProgress } from "@/components/shared/useCampaignProgress";
 import { createCampaign } from "@/lib/gen/campaign";
+import { playResumePath, tutorialPath } from "@/lib/navigation/routes";
 import {
   cachedCampaignStorage,
   cachedLocalStorage,
@@ -9,12 +11,10 @@ import {
   listSaves,
   type SaveMeta,
 } from "@/lib/persist/save";
-import { defaultSettings, readSettings, type GameSettings } from "@/lib/persist/settings";
+import { defaultSettings, type GameSettings, readSettings } from "@/lib/persist/settings";
 import { formatSeed, parseSeed } from "@/lib/seed/rng";
 import { isEditableTarget, menuCommandFromKey } from "@/lib/ui/shortcuts";
-import { useAudioPreferences } from "@/components/audio/useAudioPreferences";
 import type { MenuView } from "./MenuOverlay";
-import { playResumePath, tutorialPath } from "@/lib/navigation/routes";
 import { menuLaunchPath, rollSeed, weeklySeed } from "./menuLaunch";
 
 export function useMenuController() {
@@ -27,7 +27,17 @@ export function useMenuController() {
   const [settings, setSettings] = useState<GameSettings>(() => defaultSettings());
   const inputRef = useRef<HTMLInputElement>(null);
   const copyTimer = useRef(0);
-  const { toggleSound, toggleMusic, toggleVoice, toggleReducedMotion, toggleHighContrast, cycleColorblind, cycleHudScale, updateKeyBindings, updateVolume } = useAudioPreferences(settings, setSettings);
+  const {
+    toggleSound,
+    toggleMusic,
+    toggleVoice,
+    toggleReducedMotion,
+    toggleHighContrast,
+    cycleColorblind,
+    cycleHudScale,
+    updateKeyBindings,
+    updateVolume,
+  } = useAudioPreferences(settings, setSettings);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -75,7 +85,7 @@ export function useMenuController() {
   }, [code, progress.gameplayRulesVersion]);
 
   const openNewGame = useCallback(() => {
-    setCode((current) => current.length === 4 ? current : weeklySeed());
+    setCode((current) => (current.length === 4 ? current : weeklySeed()));
     setError("");
     setCopied(false);
     setView("newGame");
@@ -111,13 +121,16 @@ export function useMenuController() {
       setError("Could not copy the campaign link.");
       return;
     }
-    return navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      window.clearTimeout(copyTimer.current);
-      copyTimer.current = window.setTimeout(() => setCopied(false), 2500);
-    }).catch(() => {
-      setError("Could not copy the campaign link.");
-    });
+    return navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setCopied(true);
+        window.clearTimeout(copyTimer.current);
+        copyTimer.current = window.setTimeout(() => setCopied(false), 2500);
+      })
+      .catch(() => {
+        setError("Could not copy the campaign link.");
+      });
   }, [code]);
 
   const launch = useCallback(() => {
@@ -134,7 +147,13 @@ export function useMenuController() {
     const onKey = (e: KeyboardEvent) => {
       // Let focused controls handle Enter themselves (Back, Roll, toggles,
       // links, and the code input all have their own activation behavior).
-      if (e.defaultPrevented || (e.key === "Enter" && e.target instanceof Element && e.target.closest("button, a[href], input, summary"))) return;
+      if (
+        e.defaultPrevented ||
+        (e.key === "Enter" &&
+          e.target instanceof Element &&
+          e.target.closest("button, a[href], input, summary"))
+      )
+        return;
       if (view === "credits") return;
       const command = menuCommandFromKey(e, {
         typing: isEditableTarget(e.target),
@@ -156,7 +175,18 @@ export function useMenuController() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [view, openNewGame, openTutorial, openLoadMission, openOptions, toggleSound, toggleMusic, toggleVoice, launch, randomize]);
+  }, [
+    view,
+    openNewGame,
+    openTutorial,
+    openLoadMission,
+    openOptions,
+    toggleSound,
+    toggleMusic,
+    toggleVoice,
+    launch,
+    randomize,
+  ]);
 
   return {
     code,

@@ -32,8 +32,22 @@ export type BalanceRecord = {
   firstDamageTick?: number;
   runOutcome?: "won" | "deadlineLoss" | "missionLoss" | "runnerTruncated" | "unfinishedUntimed";
   unitsProducedByRole?: Partial<Record<UnitKind, number>>;
-  objectiveHistory?: Array<{ tick: number; current: number; target: number; credits: number; casualties: number; unitsProduced: number }>;
-  remainingEnemies?: Array<{ id: number; kind: string; hp: number; x: number; y: number; blockedTicks: number }>;
+  objectiveHistory?: Array<{
+    tick: number;
+    current: number;
+    target: number;
+    credits: number;
+    casualties: number;
+    unitsProduced: number;
+  }>;
+  remainingEnemies?: Array<{
+    id: number;
+    kind: string;
+    hp: number;
+    x: number;
+    y: number;
+    blockedTicks: number;
+  }>;
   firstPressureTick?: number;
   firstHqThreatTick?: number;
   hqHealthAtPressure?: number;
@@ -181,7 +195,9 @@ export type BalanceCheck = {
   failures: string[];
 };
 
-export function balanceFailureReason(record: Pick<BalanceRecord, "result" | "truncated" | "lossReason">): string | undefined {
+export function balanceFailureReason(
+  record: Pick<BalanceRecord, "result" | "truncated" | "lossReason">,
+): string | undefined {
   if (record.result === "won") return undefined;
   if (record.result === "lost") return record.lossReason ?? "unknown";
   return record.truncated ? "truncated" : "timeout";

@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createCampaign } from "../../../lib/gen/campaign";
 import { generateMap } from "../../../lib/gen/map";
 import { MAX_OPERATION_TICKS } from "../../../lib/gen/pacing";
-import { cloneMapForSimulation, runOne, validMap, type SharedScenarioData } from "../../../lib/sim/balance";
+import {
+  cloneMapForSimulation,
+  runOne,
+  type SharedScenarioData,
+  validMap,
+} from "../../../lib/sim/balance";
 
 function runCurrentScenario(seed: number, mission: number) {
   const campaign = createCampaign(seed, 2);

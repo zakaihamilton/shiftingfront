@@ -1,17 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
 import { cinematicHarmonics } from "../../lib/audio/cinematicWaves";
-import { playSynthTone, schedulePadGate } from "../../lib/audio/musicSynth";
 import { composeMusic } from "../../lib/audio/compose";
 import type { AudioGraphContext, MusicGraph } from "../../lib/audio/musicGraph";
+import { playSynthTone, schedulePadGate } from "../../lib/audio/musicSynth";
 
 class RecordedParam {
   value = 0;
   actions: { method: string; args: number[] }[] = [];
 
-  setValueAtTime(...args: number[]) { this.actions.push({ method: "setValueAtTime", args }); }
-  exponentialRampToValueAtTime(...args: number[]) { this.actions.push({ method: "exponentialRampToValueAtTime", args }); }
-  linearRampToValueAtTime(...args: number[]) { this.actions.push({ method: "linearRampToValueAtTime", args }); }
-  setTargetAtTime(...args: number[]) { this.actions.push({ method: "setTargetAtTime", args }); }
+  setValueAtTime(...args: number[]) {
+    this.actions.push({ method: "setValueAtTime", args });
+  }
+  exponentialRampToValueAtTime(...args: number[]) {
+    this.actions.push({ method: "exponentialRampToValueAtTime", args });
+  }
+  linearRampToValueAtTime(...args: number[]) {
+    this.actions.push({ method: "linearRampToValueAtTime", args });
+  }
+  setTargetAtTime(...args: number[]) {
+    this.actions.push({ method: "setTargetAtTime", args });
+  }
 }
 
 function createAudioMocks() {
@@ -84,7 +92,9 @@ describe("cinematic music synthesis", () => {
     expect(pattern.style.voiceEngine).toBe("cinematic");
     expect(oscillators[0]?.setPeriodicWave).toHaveBeenCalledOnce();
     expect(oscillators.map(({ type }) => type)).not.toContain("square");
-    expect(oscillators.filter(({ setPeriodicWave }) => setPeriodicWave.mock.calls.length === 1)).toHaveLength(3);
+    expect(
+      oscillators.filter(({ setPeriodicWave }) => setPeriodicWave.mock.calls.length === 1),
+    ).toHaveLength(3);
     const leadSpectrum = periodicWaves[0]!.imag;
     expect(Array.from(leadSpectrum).filter((amplitude) => amplitude > 0)).toHaveLength(6);
     expect(leadSpectrum[1]).toBeGreaterThan(leadSpectrum[2]!);
@@ -111,7 +121,11 @@ describe("cinematic music synthesis", () => {
 
     const envelopeActions = gains[0]?.gain.actions ?? [];
     expect(envelopeActions.at(-1)?.method).toBe("setTargetAtTime");
-    expect(envelopeActions.some(({ method, args }) => method === "exponentialRampToValueAtTime" && args[0] === 0.0001)).toBe(false);
+    expect(
+      envelopeActions.some(
+        ({ method, args }) => method === "exponentialRampToValueAtTime" && args[0] === 0.0001,
+      ),
+    ).toBe(false);
     expect(oscillators[0]?.setPeriodicWave).toHaveBeenCalledOnce();
   });
 
@@ -119,8 +133,12 @@ describe("cinematic music synthesis", () => {
     const actions: { method: string; args: number[] }[] = [];
     const gain = {
       cancelScheduledValues: () => undefined,
-      setValueAtTime: (...args: number[]) => { actions.push({ method: "setValueAtTime", args }); },
-      linearRampToValueAtTime: (...args: number[]) => { actions.push({ method: "linearRampToValueAtTime", args }); },
+      setValueAtTime: (...args: number[]) => {
+        actions.push({ method: "setValueAtTime", args });
+      },
+      linearRampToValueAtTime: (...args: number[]) => {
+        actions.push({ method: "linearRampToValueAtTime", args });
+      },
     };
     const gate = { gain };
     schedulePadGate(

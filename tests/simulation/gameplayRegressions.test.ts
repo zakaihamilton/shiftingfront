@@ -1,18 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { UNIT_STATS } from "../../lib/catalog";
+import { decodeSavedState } from "../../lib/persist/save/serialize";
+import { isEntity } from "../../lib/persist/save/validation";
 import { createSkirmish, issue, tick } from "../../lib/sim/api";
-import { addBuilding, addUnit, makeFixture, setHeight, setTile, TILE_BLOCKED, TILE_RESOURCE } from "../../lib/sim/fixtures";
+import { tickCombat } from "../../lib/sim/combat";
+import { CompetentCommander } from "../../lib/sim/commander";
 import { bestResource, nearestResource, tickEconomy } from "../../lib/sim/economy";
+import {
+  addBuilding,
+  addUnit,
+  makeFixture,
+  setHeight,
+  setTile,
+  TILE_BLOCKED,
+  TILE_RESOURCE,
+} from "../../lib/sim/fixtures";
 import { tickMovement } from "../../lib/sim/movement";
 import { resetPathBudget } from "../../lib/sim/pathBudget";
 import { tickProduction } from "../../lib/sim/production";
 import { tickRepair } from "../../lib/sim/repair";
 import { tickSupport } from "../../lib/sim/support";
 import { invalidateNavigation } from "../../lib/sim/world";
-import { tickCombat } from "../../lib/sim/combat";
-import { decodeSavedState } from "../../lib/persist/save/serialize";
-import { isEntity } from "../../lib/persist/save/validation";
-import { CompetentCommander } from "../../lib/sim/commander";
 
 describe("multiplayer production rally determinism", () => {
   it("routes every owner's reinforcements identically on all four clients", () => {
@@ -20,8 +28,12 @@ describe("multiplayer production rally determinism", () => {
       const { state } = createSkirmish(421, viewer, [0, 1, 2, 3]);
       for (const owner of [0, 1, 2, 3] as const) {
         const barracks = state.entities.find((e) => e.owner === owner && e.kind === "barracks")!;
-        expect(issue(state, { type: "rally", owner, buildingId: barracks.id, x: 40, y: 40 })).toEqual([]);
-        expect(issue(state, { type: "produce", owner, fromId: barracks.id, unit: "infantry" })).toEqual([]);
+        expect(
+          issue(state, { type: "rally", owner, buildingId: barracks.id, x: 40, y: 40 }),
+        ).toEqual([]);
+        expect(
+          issue(state, { type: "produce", owner, fromId: barracks.id, unit: "infantry" }),
+        ).toEqual([]);
         state.productionQueues![owner]!.barracks!.producing!.remaining = 1;
       }
       const firstProducedId = state.nextId;
@@ -71,8 +83,18 @@ describe("commander siege after repair corrections", () => {
     const infantry = addUnit(state, 0, "infantry", 32, 31);
     const reinforcements = addUnit(state, 0, "tank", 15, 15);
     const orders = new CompetentCommander().plan(state);
-    expect(orders).toContainEqual({ type: "attack", unitIds: [tank.id, infantry.id], targetId: target.id });
-    expect(orders).toContainEqual({ type: "attackMove", unitIds: [reinforcements.id], x: target.x, y: target.y, formation: "wedge" });
+    expect(orders).toContainEqual({
+      type: "attack",
+      unitIds: [tank.id, infantry.id],
+      targetId: target.id,
+    });
+    expect(orders).toContainEqual({
+      type: "attackMove",
+      unitIds: [reinforcements.id],
+      x: target.x,
+      y: target.y,
+      formation: "wedge",
+    });
   });
 });
 
@@ -134,27 +156,35 @@ describe("repair requires an enemy firing position", () => {
     expect(building.hp).toBe(repairedHp);
   });
 
-  it.each(["empty", "servicing", "landing", "wrongDomain"] as const)("does not block repair with a %s aircraft or weapon", (condition) => {
-    const state = makeFixture({ win: { kind: "holdTheLine" } });
-    const building = addBuilding(state, 0, "power", 5, 5);
-    const attacker = condition === "wrongDomain"
-      ? addBuilding(state, 1, "antiAirTurret", 5, 8)
-      : addUnit(state, 1, "strikePlane", 5, 8);
-    building.hp -= 100;
-    building.repairing = true;
-    attacker.attackTarget = building.id;
-    if (condition === "empty") attacker.ammo = 0;
-    if (condition === "servicing") attacker.flightState = "servicing";
-    if (condition === "landing") attacker.landingRunwayId = 999;
-    const hp = building.hp;
-    tickRepair(state);
-    expect(building.hp).toBeGreaterThan(hp);
-  });
+  it.each(["empty", "servicing", "landing", "wrongDomain"] as const)(
+    "does not block repair with a %s aircraft or weapon",
+    (condition) => {
+      const state = makeFixture({ win: { kind: "holdTheLine" } });
+      const building = addBuilding(state, 0, "power", 5, 5);
+      const attacker =
+        condition === "wrongDomain"
+          ? addBuilding(state, 1, "antiAirTurret", 5, 8)
+          : addUnit(state, 1, "strikePlane", 5, 8);
+      building.hp -= 100;
+      building.repairing = true;
+      attacker.attackTarget = building.id;
+      if (condition === "empty") attacker.ammo = 0;
+      if (condition === "servicing") attacker.flightState = "servicing";
+      if (condition === "landing") attacker.landingRunwayId = 999;
+      const hp = building.hp;
+      tickRepair(state);
+      expect(building.hp).toBeGreaterThan(hp);
+    },
+  );
 });
 
 describe("reachable harvesting", () => {
   function dividedField() {
-    const state = makeFixture({ width: 20, height: 20, win: { kind: "harvestQuota", target: 99999 } });
+    const state = makeFixture({
+      width: 20,
+      height: 20,
+      win: { kind: "harvestQuota", target: 99999 },
+    });
     for (let y = 0; y < state.height; y++) setTile(state, 10, y, TILE_BLOCKED);
     setTile(state, 12, 5, TILE_RESOURCE, 1000);
     setTile(state, 2, 16, TILE_RESOURCE, 1000);
@@ -227,58 +257,75 @@ describe("reachable harvesting", () => {
 });
 
 describe("manual travel takes priority over automation", () => {
-  it.each([false, true])("keeps a loaded harvester's %s group travel until arrival, then unloads", (group) => {
-    const state = makeFixture({ width: 20, height: 20, win: { kind: "harvestQuota", target: 99999 } });
-    addBuilding(state, 0, "refinery", 2, 2);
-    const harvester = addUnit(state, 0, "harvester", 8, 8);
-    harvester.carry = UNIT_STATS.harvester.carryMax;
-    const escort = addUnit(state, 0, "infantry", 8, 9);
-    issue(state, { type: "move", unitIds: group ? [harvester.id, escort.id] : [harvester.id], x: 14, y: 14 });
-    const destination = { ...harvester.orderDestination! };
-    const flowGoal = harvester.flowGoal;
-    tickEconomy(state);
-    expect(harvester.orderDestination).toEqual(destination);
-    expect(harvester.flowGoal).toEqual(flowGoal);
-    for (let i = 0; i < 300 && harvester.moveToHarvest; i++) {
-      resetPathBudget(state);
-      tickMovement(state);
+  it.each([false, true])(
+    "keeps a loaded harvester's %s group travel until arrival, then unloads",
+    (group) => {
+      const state = makeFixture({
+        width: 20,
+        height: 20,
+        win: { kind: "harvestQuota", target: 99999 },
+      });
+      addBuilding(state, 0, "refinery", 2, 2);
+      const harvester = addUnit(state, 0, "harvester", 8, 8);
+      harvester.carry = UNIT_STATS.harvester.carryMax;
+      const escort = addUnit(state, 0, "infantry", 8, 9);
+      issue(state, {
+        type: "move",
+        unitIds: group ? [harvester.id, escort.id] : [harvester.id],
+        x: 14,
+        y: 14,
+      });
+      const destination = { ...harvester.orderDestination! };
+      const flowGoal = harvester.flowGoal;
       tickEconomy(state);
-      state.tick += 1;
-    }
-    expect(harvester.moveToHarvest).toBeUndefined();
-    expect(Math.hypot(harvester.x - destination.x, harvester.y - destination.y)).toBeLessThanOrEqual(0.1);
-    expect(harvester.orderDestination).not.toEqual(destination);
-    for (let i = 0; i < 350 && harvester.carry > 0; i++) {
-      resetPathBudget(state);
-      tickEconomy(state);
-      tickMovement(state);
-      state.tick += 1;
-    }
-    expect(state.creditsEarned[0]).toBe(UNIT_STATS.harvester.carryMax);
-  });
+      expect(harvester.orderDestination).toEqual(destination);
+      expect(harvester.flowGoal).toEqual(flowGoal);
+      for (let i = 0; i < 300 && harvester.moveToHarvest; i++) {
+        resetPathBudget(state);
+        tickMovement(state);
+        tickEconomy(state);
+        state.tick += 1;
+      }
+      expect(harvester.moveToHarvest).toBeUndefined();
+      expect(
+        Math.hypot(harvester.x - destination.x, harvester.y - destination.y),
+      ).toBeLessThanOrEqual(0.1);
+      expect(harvester.orderDestination).not.toEqual(destination);
+      for (let i = 0; i < 350 && harvester.carry > 0; i++) {
+        resetPathBudget(state);
+        tickEconomy(state);
+        tickMovement(state);
+        state.tick += 1;
+      }
+      expect(state.creditsEarned[0]).toBe(UNIT_STATS.harvester.carryMax);
+    },
+  );
 
-  it.each(["medic", "repairTruck"] as const)("keeps a %s's group retreat and resumes support after arrival", (kind) => {
-    const state = makeFixture({ width: 20, height: 20, win: { kind: "holdTheLine" } });
-    const provider = addUnit(state, 0, kind, 8, 8);
-    const wounded = addUnit(state, 0, kind === "medic" ? "infantry" : "tank", 8, 9);
-    const escort = addUnit(state, 0, "infantry", 9, 8);
-    wounded.hp -= 40;
-    issue(state, { type: "attackMove", unitIds: [provider.id, escort.id], x: 3, y: 3 });
-    const destination = { ...provider.orderDestination! };
-    const flowGoal = provider.flowGoal;
-    expect(tickSupport(state)).toEqual([]);
-    expect(provider.orderDestination).toEqual(destination);
-    expect(provider.flowGoal).toEqual(flowGoal);
-    let reached = false;
-    for (let i = 0; i < 250; i++) {
-      resetPathBudget(state);
-      tickMovement(state);
-      reached ||= Math.hypot(provider.x - destination.x, provider.y - destination.y) <= 0.1;
-      tickSupport(state);
-      state.tick += 1;
-      if (provider.supportTargetId !== undefined) break;
-    }
-    expect(reached).toBe(true);
-    expect(provider.supportTargetId).toBe(wounded.id);
-  });
+  it.each(["medic", "repairTruck"] as const)(
+    "keeps a %s's group retreat and resumes support after arrival",
+    (kind) => {
+      const state = makeFixture({ width: 20, height: 20, win: { kind: "holdTheLine" } });
+      const provider = addUnit(state, 0, kind, 8, 8);
+      const wounded = addUnit(state, 0, kind === "medic" ? "infantry" : "tank", 8, 9);
+      const escort = addUnit(state, 0, "infantry", 9, 8);
+      wounded.hp -= 40;
+      issue(state, { type: "attackMove", unitIds: [provider.id, escort.id], x: 3, y: 3 });
+      const destination = { ...provider.orderDestination! };
+      const flowGoal = provider.flowGoal;
+      expect(tickSupport(state)).toEqual([]);
+      expect(provider.orderDestination).toEqual(destination);
+      expect(provider.flowGoal).toEqual(flowGoal);
+      let reached = false;
+      for (let i = 0; i < 250; i++) {
+        resetPathBudget(state);
+        tickMovement(state);
+        reached ||= Math.hypot(provider.x - destination.x, provider.y - destination.y) <= 0.1;
+        tickSupport(state);
+        state.tick += 1;
+        if (provider.supportTargetId !== undefined) break;
+      }
+      expect(reached).toBe(true);
+      expect(provider.supportTargetId).toBe(wounded.id);
+    },
+  );
 });

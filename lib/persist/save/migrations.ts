@@ -1,5 +1,5 @@
-import { SAVE_CONTENT_VERSION, assertSupportedContentVersion } from "./validation";
 import { isRecord } from "../utils";
+import { assertSupportedContentVersion, SAVE_CONTENT_VERSION } from "./validation";
 
 export type SaveMigration = (state: unknown) => unknown;
 
@@ -13,28 +13,35 @@ function migrateSharedProducerQueues(value: unknown): unknown {
 
   const entities = Array.isArray(value.entities) ? value.entities : [];
   const productionQueues: Record<string, Record<string, unknown>> = isRecord(value.productionQueues)
-    ? Object.fromEntries(Object.entries(value.productionQueues).map(([owner, queues]) => [
-      owner,
-      isRecord(queues) ? { ...queues } : {},
-    ]))
+    ? Object.fromEntries(
+        Object.entries(value.productionQueues).map(([owner, queues]) => [
+          owner,
+          isRecord(queues) ? { ...queues } : {},
+        ]),
+      )
     : {};
-  const activeProducerIds: Record<string, Record<string, unknown>> = isRecord(value.activeProducerIds)
-    ? Object.fromEntries(Object.entries(value.activeProducerIds).map(([owner, choices]) => [
-      owner,
-      isRecord(choices) ? { ...choices } : {},
-    ]))
+  const activeProducerIds: Record<string, Record<string, unknown>> = isRecord(
+    value.activeProducerIds,
+  )
+    ? Object.fromEntries(
+        Object.entries(value.activeProducerIds).map(([owner, choices]) => [
+          owner,
+          isRecord(choices) ? { ...choices } : {},
+        ]),
+      )
     : {};
   const producers = entities
-    .filter((entity): entity is Record<string, unknown> =>
-      isRecord(entity)
-      && entity.class === "building"
-      && (entity.kind === "barracks" || entity.kind === "factory")
-      && typeof entity.owner === "number"
-      && Number.isInteger(entity.owner)
-      && entity.owner >= 0
-      && entity.owner <= 3
-      && typeof entity.hp === "number"
-      && entity.hp > 0,
+    .filter(
+      (entity): entity is Record<string, unknown> =>
+        isRecord(entity) &&
+        entity.class === "building" &&
+        (entity.kind === "barracks" || entity.kind === "factory") &&
+        typeof entity.owner === "number" &&
+        Number.isInteger(entity.owner) &&
+        entity.owner >= 0 &&
+        entity.owner <= 3 &&
+        typeof entity.hp === "number" &&
+        entity.hp > 0,
     )
     .sort((a, b) => Number(a.id) - Number(b.id));
 
@@ -62,10 +69,18 @@ function migrateSharedProducerQueues(value: unknown): unknown {
       recordQueue = sharedQueue;
     }
     const queuedUnits = recordQueue.queue as unknown[];
-    if (isRecord(producer.producing) && typeof producer.producing.kind === "string" && typeof producer.producing.remaining === "number") {
+    if (
+      isRecord(producer.producing) &&
+      typeof producer.producing.kind === "string" &&
+      typeof producer.producing.remaining === "number"
+    ) {
       const key = `${owner}:${kind}`;
       const jobs = jobsByKey.get(key) ?? [];
-      jobs.push({ kind: producer.producing.kind, remaining: producer.producing.remaining, order: jobOrder });
+      jobs.push({
+        kind: producer.producing.kind,
+        remaining: producer.producing.remaining,
+        order: jobOrder,
+      });
       jobOrder += 1;
       jobsByKey.set(key, jobs);
     }
@@ -74,7 +89,11 @@ function migrateSharedProducerQueues(value: unknown): unknown {
     delete producer.producing;
     producer.queue = [];
 
-    if (!(kind in ownerChoices) && typeof producer.constructing === "number" && producer.constructing <= 0) {
+    if (
+      !(kind in ownerChoices) &&
+      typeof producer.constructing === "number" &&
+      producer.constructing <= 0
+    ) {
       ownerChoices[kind] = producer.id;
     }
   }
@@ -83,7 +102,9 @@ function migrateSharedProducerQueues(value: unknown): unknown {
     const separator = key.indexOf(":");
     const owner = key.slice(0, separator);
     const kind = key.slice(separator + 1);
-    const recordQueue = (productionQueues[owner] as Record<string, Record<string, unknown>> | undefined)?.[kind];
+    const recordQueue = (
+      productionQueues[owner] as Record<string, Record<string, unknown>> | undefined
+    )?.[kind];
     if (!recordQueue) continue;
     const sorted = [...jobs].sort((a, b) => a.remaining - b.remaining || a.order - b.order);
     const parked = sorted.map(({ kind: unit, remaining }) => ({ kind: unit, remaining }));

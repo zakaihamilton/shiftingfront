@@ -59,26 +59,35 @@ describe("PWA icons and manifest", () => {
     ]);
   });
 
-  it.each(ICONS)("%s is %d px, fully opaque, and matches rasterize-icons", async (file, size, generate) => {
-    const path = resolve(process.cwd(), file);
-    const onDisk = readFileSync(path);
-    const meta = await sharp(onDisk).metadata();
-    expect(meta.width).toBe(size);
-    expect(meta.height).toBe(size);
-    const { data } = await sharp(onDisk).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-    let transparent = 0;
-    for (let i = 3; i < data.length; i += 4) {
-      if (data[i]! < 255) transparent += 1;
-    }
-    expect(transparent).toBe(0);
-    expect(await rawRgba(onDisk)).toEqual(await rawRgba(await generate()));
-  });
+  it.each(ICONS)(
+    "%s is %d px, fully opaque, and matches rasterize-icons",
+    async (file, size, generate) => {
+      const path = resolve(process.cwd(), file);
+      const onDisk = readFileSync(path);
+      const meta = await sharp(onDisk).metadata();
+      expect(meta.width).toBe(size);
+      expect(meta.height).toBe(size);
+      const { data } = await sharp(onDisk)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      let transparent = 0;
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i]! < 255) transparent += 1;
+      }
+      expect(transparent).toBe(0);
+      expect(await rawRgba(onDisk)).toEqual(await rawRgba(await generate()));
+    },
+  );
 
   it("ships a 16 and 32 px BMP favicon.ico, not PNG-in-ICO", async () => {
     const file = readFileSync(resolve(process.cwd(), "app/favicon.ico"));
     expect(file.readUInt16LE(2)).toBe(1);
     const directory = icoDirectory(file);
-    expect({ count: directory.count, sizes: directory.sizes }).toEqual({ count: 2, sizes: [16, 32] });
+    expect({ count: directory.count, sizes: directory.sizes }).toEqual({
+      count: 2,
+      sizes: [16, 32],
+    });
     for (const payload of directory.payloads) {
       expect(payload.subarray(0, 8).equals(PNG_MAGIC)).toBe(false);
       expect(payload.readUInt32LE(0)).toBe(BITMAPINFOHEADER_SIZE);

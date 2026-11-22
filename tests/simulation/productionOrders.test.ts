@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { MAX_PRODUCTION_QUEUE, UNIT_STATS } from "../../lib/catalog";
 import { PRODUCIBLE } from "../../components/game/hooks/gameActions";
+import { MAX_PRODUCTION_QUEUE, UNIT_STATS } from "../../lib/catalog";
 import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
 import { cancelProduce, startProduce } from "../../lib/sim/orders/production";
 
@@ -95,7 +95,9 @@ describe("startProduce rejection branches", () => {
     const s = readyBase();
     const barracks = s.entities.find((e) => e.kind === "barracks" && e.owner === 0)!;
     const powers = s.entities.filter((e) => e.kind === "power" && e.owner === 0);
-    for (const p of powers) { p.hp = 0; }
+    for (const p of powers) {
+      p.hp = 0;
+    }
     const events = startProduce(s, barracks.id, "infantry");
     expect(events).toEqual([{ type: "commandRejected", reason: "power shortage" }]);
   });
@@ -107,7 +109,10 @@ describe("startProduce queue behavior", () => {
     const barracks = s.entities.find((e) => e.kind === "barracks" && e.owner === 0)!;
     const otherBarracks = addBuilding(s, 0, "barracks", 5, 10);
     startProduce(s, barracks.id, "infantry");
-    expect(s.productionQueues?.[0]?.barracks?.producing).toEqual({ kind: "infantry", remaining: UNIT_STATS.infantry.buildTicks });
+    expect(s.productionQueues?.[0]?.barracks?.producing).toEqual({
+      kind: "infantry",
+      remaining: UNIT_STATS.infantry.buildTicks,
+    });
     startProduce(s, otherBarracks.id, "antiArmor");
     expect(s.productionQueues?.[0]?.barracks?.queue).toContain("antiArmor");
   });

@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { generateCharacters } from "../../lib/gen/characters";
 import { generateFace } from "../../lib/gen/faces";
-import { PORTRAIT_ASSETS, getPortraitAsset, portraitCandidates, portraitSheetNumber } from "../../lib/gen/portraitCatalog";
 import {
   DEFAULT_PORTRAIT_MOUTH_CALIBRATION,
   PORTRAIT_MOUTH_CALIBRATIONS,
@@ -13,12 +12,18 @@ import {
 } from "../../lib/gen/portraitCalibration";
 import { GENERATED_PORTRAIT_MOUTH_CALIBRATIONS } from "../../lib/gen/portraitCalibration.generated";
 import {
-  PORTRAIT_EYE_CLIPS,
-  PORTRAIT_MOUTH_CLIP,
-  PORTRAIT_OFFSET_NONE,
+  getPortraitAsset,
+  PORTRAIT_ASSETS,
+  portraitCandidates,
+  portraitSheetNumber,
+} from "../../lib/gen/portraitCatalog";
+import {
   choosePortraitMouthClip,
   detectPortraitMouthClip,
   measurePortraitOffset,
+  PORTRAIT_EYE_CLIPS,
+  PORTRAIT_MOUTH_CLIP,
+  PORTRAIT_OFFSET_NONE,
   portraitBlinking,
   portraitClipWindow,
   portraitFrameIndex,
@@ -26,8 +31,8 @@ import {
   portraitHasDrift,
   portraitRegistrationWindow,
   portraitSpeechFrame,
-  resolvePortraitBlinkAlignment,
   resolvePortraitAnimation,
+  resolvePortraitBlinkAlignment,
   scalePortraitOffset,
 } from "../../lib/render/portraits";
 import { createRng } from "../../lib/seed/rng";
@@ -65,12 +70,25 @@ describe("portrait DNA", () => {
         portraitSheetNumber(c.enemyLeader.face.portraitId),
       ];
       expect(new Set(sheets).size, `seed ${seed} sheets ${sheets.join(",")}`).toBe(3);
-      expect(new Set([c.commander.face.portraitId, c.advisor.face.portraitId, c.enemyLeader.face.portraitId]).size).toBe(3);
+      expect(
+        new Set([
+          c.commander.face.portraitId,
+          c.advisor.face.portraitId,
+          c.enemyLeader.face.portraitId,
+        ]).size,
+      ).toBe(3);
     }
   });
 
   it("marks commander and enemy sheets 07, 09, and 11 as masculine", () => {
-    for (const id of ["commander-07", "commander-09", "commander-11", "enemy-leader-07", "enemy-leader-09", "enemy-leader-11"]) {
+    for (const id of [
+      "commander-07",
+      "commander-09",
+      "commander-11",
+      "enemy-leader-07",
+      "enemy-leader-09",
+      "enemy-leader-11",
+    ]) {
       expect(getPortraitAsset(id)?.feminine).toBe(false);
     }
     expect(getPortraitAsset("commander-01")?.feminine).toBe(true);
@@ -129,13 +147,21 @@ describe("portrait DNA", () => {
     expect(lower?.talkOffset).toEqual({ dx: 9, dy: 0 });
     expect(generatedLower?.clip.cy).toBeGreaterThan(0.7);
     expect(generatedUpper?.clip.cy).toBeGreaterThan(0.7);
-    expect(getPortraitAsset("enemy-leader-01")?.mouthCalibration.talkOffset).toEqual({ dx: 6, dy: 0 });
+    expect(getPortraitAsset("enemy-leader-01")?.mouthCalibration.talkOffset).toEqual({
+      dx: 6,
+      dy: 0,
+    });
     expect(getPortraitAsset("enemy-leader-04")?.mouthCalibration.clip.cy).toBeCloseTo(0.7);
-    expect(getPortraitAsset("enemy-leader-04")?.mouthCalibration.talkOffset).toEqual({ dx: 1, dy: -3 });
+    expect(getPortraitAsset("enemy-leader-04")?.mouthCalibration.talkOffset).toEqual({
+      dx: 1,
+      dy: -3,
+    });
     expect(getPortraitAsset("commander-12")?.mouthCalibration.clip.cy).toBeCloseTo(0.65);
     expect(getPortraitAsset("enemy-leader-07")?.mouthCalibration.clip.cy).toBeCloseTo(0.79);
     expect(generatedLower).not.toBe(generatedUpper);
-    expect(portraitMouthCalibration("missing-portrait")).toEqual(DEFAULT_PORTRAIT_MOUTH_CALIBRATION);
+    expect(portraitMouthCalibration("missing-portrait")).toEqual(
+      DEFAULT_PORTRAIT_MOUTH_CALIBRATION,
+    );
   });
 
   it("keeps generated calibration values distinct and in bounds", () => {
@@ -162,12 +188,16 @@ describe("portrait DNA", () => {
       expect(portraitCandidates({ role }).length).toBeGreaterThan(0);
       expect(portraitCandidates({ role, feminine: true }).length).toBeGreaterThan(0);
       expect(portraitCandidates({ role, feminine: false }).length).toBeGreaterThan(0);
-      expect(portraitCandidates({ role, excludeSheets: [7] }).every((asset) => asset.sheet !== 7)).toBe(true);
+      expect(
+        portraitCandidates({ role, excludeSheets: [7] }).every((asset) => asset.sheet !== 7),
+      ).toBe(true);
     }
   });
 
   it("holds speech visemes long enough to read at briefing size", () => {
-    const sequence = Array.from({ length: 800 }, (_, time) => portraitSpeechFrame(time, "commander-01", 3));
+    const sequence = Array.from({ length: 800 }, (_, time) =>
+      portraitSpeechFrame(time, "commander-01", 3),
+    );
     let longestOpen = 0;
     let longestClosed = 0;
     let openRun = 0;
@@ -191,7 +221,9 @@ describe("portrait DNA", () => {
   });
 
   it("alternates bitmap mouth frames while a portrait is speaking", () => {
-    const sequence = Array.from({ length: 240 }, (_, time) => portraitSpeechFrame(time, "commander-01", 3));
+    const sequence = Array.from({ length: 240 }, (_, time) =>
+      portraitSpeechFrame(time, "commander-01", 3),
+    );
     expect(new Set(sequence)).toEqual(new Set([0, 2]));
     expect(sequence.some((frame, index) => index > 0 && frame === sequence[index - 1])).toBe(true);
     expect(sequence.some((frame, index) => index > 0 && frame !== sequence[index - 1])).toBe(true);
@@ -199,11 +231,15 @@ describe("portrait DNA", () => {
   });
 
   it("keeps idle portraits blinking without opening the mouth", () => {
-    const frames = Array.from({ length: 400 }, (_, time) => portraitFrameIndex(time, false, 3, "commander-01"));
+    const frames = Array.from({ length: 400 }, (_, time) =>
+      portraitFrameIndex(time, false, 3, "commander-01"),
+    );
     expect(frames).toContain(0);
     expect(frames).toContain(1);
     expect(frames).not.toContain(2);
-    expect(frames.every((frame, time) => frame === (portraitBlinking(time, "commander-01") ? 1 : 0))).toBe(true);
+    expect(
+      frames.every((frame, time) => frame === (portraitBlinking(time, "commander-01") ? 1 : 0)),
+    ).toBe(true);
   });
 
   it("clips blink and speech onto the idle frame instead of swapping the whole sheet", () => {
@@ -229,11 +265,15 @@ describe("portrait DNA", () => {
     );
     expect(new Set(samples)).toEqual(new Set([false, true]));
     expect(portraitBlinking(0, "commander-01")).toBe(portraitBlinking(0, "commander-01"));
-    const commanderTimeline = Array.from({ length: 600 }, (_, time) => portraitBlinking(time, portraitIds[0]!));
+    const commanderTimeline = Array.from({ length: 600 }, (_, time) =>
+      portraitBlinking(time, portraitIds[0]!),
+    );
     expect(
-      portraitIds.slice(1).some((portraitId) =>
-        commanderTimeline.some((value, time) => portraitBlinking(time, portraitId) !== value),
-      ),
+      portraitIds
+        .slice(1)
+        .some((portraitId) =>
+          commanderTimeline.some((value, time) => portraitBlinking(time, portraitId) !== value),
+        ),
     ).toBe(true);
   });
 
@@ -259,9 +299,17 @@ describe("portrait DNA", () => {
     const height = 64;
     const idle = rgbaSquare(width, height, 24, 36, 16, 10);
     const drifted = rgbaSquare(width, height, 24 + 3, 36, 16, 10);
-    const window = portraitClipWindow([{ cx: 0.5, cy: 0.635, rx: 0.18, ry: 0.09 }], width, height, 4);
+    const window = portraitClipWindow(
+      [{ cx: 0.5, cy: 0.635, rx: 0.18, ry: 0.09 }],
+      width,
+      height,
+      4,
+    );
     expect(window.y0).toBeGreaterThan(20);
-    expect(measurePortraitOffset(idle, drifted, width, height, 8, window)).toEqual({ dx: -3, dy: 0 });
+    expect(measurePortraitOffset(idle, drifted, width, height, 8, window)).toEqual({
+      dx: -3,
+      dy: 0,
+    });
   });
 
   it("detects the idle lip line for the mouth clip", () => {
@@ -306,9 +354,9 @@ describe("portrait DNA", () => {
   });
 
   it("keeps generic mouth clips when detection latches onto a collar", () => {
-    expect(
-      choosePortraitMouthClip({ cx: 0.5, cy: 0.82, rx: 0.15, ry: 0.075 }),
-    ).toEqual(PORTRAIT_MOUTH_CLIP);
+    expect(choosePortraitMouthClip({ cx: 0.5, cy: 0.82, rx: 0.15, ry: 0.075 })).toEqual(
+      PORTRAIT_MOUTH_CLIP,
+    );
     const nearby = choosePortraitMouthClip({ cx: 0.49, cy: 0.63, rx: 0.15, ry: 0.075 });
     expect(nearby.cx).toBeCloseTo(0.49);
     expect(nearby.cy).toBeCloseTo(0.63);
@@ -317,9 +365,9 @@ describe("portrait DNA", () => {
   });
 
   it("keeps generic mouth clips when detection latches onto a nose", () => {
-    expect(
-      choosePortraitMouthClip({ cx: 0.5, cy: 0.53, rx: 0.15, ry: 0.075 }),
-    ).toEqual(PORTRAIT_MOUTH_CLIP);
+    expect(choosePortraitMouthClip({ cx: 0.5, cy: 0.53, rx: 0.15, ry: 0.075 })).toEqual(
+      PORTRAIT_MOUTH_CLIP,
+    );
     const lifted = choosePortraitMouthClip({ cx: 0.5, cy: 0.56, rx: 0.15, ry: 0.075 });
     expect(lifted.cy - lifted.ry).toBeGreaterThanOrEqual(0.52);
   });

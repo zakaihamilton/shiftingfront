@@ -1,10 +1,5 @@
-import { useCallback, type MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
-import { cachedLocalStorage, getSaveRepository, type SaveSession } from "@/lib/persist/save";
-import { recordWonCampaignProgress } from "@/lib/persist/campaign";
-import { clearResultReturnSnapshot, stashResultReturnSnapshot } from "@/lib/persist/navigation";
-import type { SimState } from "@/lib/types";
-import { MISSION_MAX } from "@/lib/seed/rng";
+import { type MutableRefObject, useCallback } from "react";
 import {
   briefingPath,
   campaignCompletePath,
@@ -14,6 +9,11 @@ import {
   resultPrimaryPath,
   tutorialPath,
 } from "@/lib/navigation/routes";
+import { recordWonCampaignProgress } from "@/lib/persist/campaign";
+import { clearResultReturnSnapshot, stashResultReturnSnapshot } from "@/lib/persist/navigation";
+import { cachedLocalStorage, getSaveRepository, type SaveSession } from "@/lib/persist/save";
+import { MISSION_MAX } from "@/lib/seed/rng";
+import type { SimState } from "@/lib/types";
 
 export function useMissionRoutes({
   stateRef,
@@ -28,33 +28,51 @@ export function useMissionRoutes({
 }) {
   const router = useRouter();
 
-  const prepareLeave = useCallback((leaveWithoutSave: () => void = () => undefined) => {
-    if (tutorial) return true;
-    const state = stateRef.current;
-    if (state.multiplayer) return true;
-    if (getSaveRepository()?.mode !== "indexeddb" && !recordWonCampaignProgress(cachedLocalStorage(), state)) {
-      onSaveError("Couldn't save campaign progress. Check browser storage, then try leaving again.", leaveWithoutSave);
-      return false;
-    }
-    const status = saveSession.write(state, "implicit");
-    const finish = (result: import("@/lib/persist/save").SaveWriteStatus) => {
-      if (stateRef.current !== state) return false;
-      if (result === "saved") return true;
-      onSaveError(result === "conflict"
-        ? "This campaign changed in another tab. Use Save Mission or Load Mission to resolve it before leaving."
-        : "Couldn't save your latest progress. Check browser storage, then try leaving again.", leaveWithoutSave);
-      return false;
-    };
-    return status instanceof Promise ? status.then(finish) : finish(status);
-  }, [onSaveError, saveSession, stateRef, tutorial]);
+  const prepareLeave = useCallback(
+    (leaveWithoutSave: () => void = () => undefined) => {
+      if (tutorial) return true;
+      const state = stateRef.current;
+      if (state.multiplayer) return true;
+      if (
+        getSaveRepository()?.mode !== "indexeddb" &&
+        !recordWonCampaignProgress(cachedLocalStorage(), state)
+      ) {
+        onSaveError(
+          "Couldn't save campaign progress. Check browser storage, then try leaving again.",
+          leaveWithoutSave,
+        );
+        return false;
+      }
+      const status = saveSession.write(state, "implicit");
+      const finish = (result: import("@/lib/persist/save").SaveWriteStatus) => {
+        if (stateRef.current !== state) return false;
+        if (result === "saved") return true;
+        onSaveError(
+          result === "conflict"
+            ? "This campaign changed in another tab. Use Save Mission or Load Mission to resolve it before leaving."
+            : "Couldn't save your latest progress. Check browser storage, then try leaving again.",
+          leaveWithoutSave,
+        );
+        return false;
+      };
+      return status instanceof Promise ? status.then(finish) : finish(status);
+    },
+    [onSaveError, saveSession, stateRef, tutorial],
+  );
 
-  const navigate = useCallback((path: string) => {
-    if (stateRef.current.multiplayer && path !== menuPath()) return;
-    clearResultReturnSnapshot();
-    const saved = prepareLeave(() => router.push(path));
-    if (saved instanceof Promise) void saved.then((ok) => { if (ok) router.push(path); });
-    else if (saved) router.push(path);
-  }, [prepareLeave, router, stateRef]);
+  const navigate = useCallback(
+    (path: string) => {
+      if (stateRef.current.multiplayer && path !== menuPath()) return;
+      clearResultReturnSnapshot();
+      const saved = prepareLeave(() => router.push(path));
+      if (saved instanceof Promise)
+        void saved.then((ok) => {
+          if (ok) router.push(path);
+        });
+      else if (saved) router.push(path);
+    },
+    [prepareLeave, router, stateRef],
+  );
 
   const viewMissionBriefing = useCallback(() => {
     navigate(briefingPath(stateRef.current.seed, stateRef.current.missionIndex, true, "result"));
@@ -92,7 +110,8 @@ export function useMissionRoutes({
     if (world.multiplayer) return;
     if (world.result) stashResultReturnSnapshot(world);
     const path = replayBriefingPath(world.seed, world.missionIndex, "result");
-    if (getSaveRepository()?.mode !== "indexeddb") recordWonCampaignProgress(cachedLocalStorage(), world);
+    if (getSaveRepository()?.mode !== "indexeddb")
+      recordWonCampaignProgress(cachedLocalStorage(), world);
 
     // Keep the terminal snapshot as a best-effort save; it must not trap replay behind a conflict.
     const continueToBriefing = () => router.push(path);

@@ -1,6 +1,6 @@
+import type { Rng } from "../../seed/rng";
 import type { Vec2 } from "../../types";
 import { TILE_BLOCKED, TILE_CLEAR, TILE_WATER } from "../../types";
-import type { Rng } from "../../seed/rng";
 import { idx } from "./terrain";
 
 /** Terrain buffers for one landmark stamp. Only the selected stamp runs. */
@@ -118,7 +118,8 @@ export function stampCanyon(field: LandmarkField): void {
 }
 
 export function stampDelta(field: LandmarkField): void {
-  const { tiles, heights, width, height, center, radius, perp, dx, dy, len, isProtectedBase } = field;
+  const { tiles, heights, width, height, center, radius, perp, dx, dy, len, isProtectedBase } =
+    field;
   // Shallow lagoon expanses crossed by dry-ground causeways.
   const deltaRadius = radius + 2;
   for (let y = 0; y < height; y++) {

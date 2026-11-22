@@ -1,10 +1,23 @@
 import { footprintOf } from "../../catalog";
-import { isBuildingEntity, type BuildingEntity, type BuildingKind, type Owner, type SimState, type Vec2 } from "../../types";
+import {
+  type BuildingEntity,
+  type BuildingKind,
+  isBuildingEntity,
+  type Owner,
+  type SimState,
+  type Vec2,
+} from "../../types";
+import { entitiesFor } from "../entities";
 import { heightAt, inBounds } from "./queries";
 import { isWalkable, terrainAccess } from "./terrain";
-import { entitiesFor } from "../entities";
 
-export function footprintFlat(state: SimState, x: number, y: number, w: number, h: number): boolean {
+export function footprintFlat(
+  state: SimState,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): boolean {
   const h0 = heightAt(state, x, y);
   for (let oy = 0; oy < h; oy++) {
     for (let ox = 0; ox < w; ox++) {
@@ -94,7 +107,11 @@ export function canPlaceBuilding(
   const fp = footprintOf(kind);
   if (edgeMargin > 0 && !withinMapMargin(state, x, y, fp.w, fp.h, edgeMargin)) return false;
   if (!hasBuildingClearance(state, x, y, fp.w, fp.h, minClearance)) return false;
-  if (requireNetwork && buildingNetworkDistance(state, owner, x, y, fp.w, fp.h) > BUILDING_PLACEMENT_RADIUS) return false;
+  if (
+    requireNetwork &&
+    buildingNetworkDistance(state, owner, x, y, fp.w, fp.h) > BUILDING_PLACEMENT_RADIUS
+  )
+    return false;
   for (let oy = 0; oy < fp.h; oy++) {
     for (let ox = 0; ox < fp.w; ox++) {
       const tx = x + ox;
@@ -121,8 +138,8 @@ export function findBuildSite(
   const cx = Math.round(nearX);
   const cy = Math.round(nearY);
   const canUseSite = (x: number, y: number) =>
-    canPlaceBuilding(state, kind, x, y, owner, requireNetwork, minClearance, edgeMargin)
-    && (siteFilter?.(x, y) ?? true);
+    canPlaceBuilding(state, kind, x, y, owner, requireNetwork, minClearance, edgeMargin) &&
+    (siteFilter?.(x, y) ?? true);
   if (canUseSite(cx, cy)) return { x: cx, y: cy };
   for (let r = 1; r <= maxR; r++) {
     for (let dy = -r; dy <= r; dy++) {
@@ -135,7 +152,18 @@ export function findBuildSite(
     }
   }
   if (minClearance > BUILDING_CLEARANCE) {
-    return findBuildSite(state, kind, nearX, nearY, maxR, owner, requireNetwork, BUILDING_CLEARANCE, edgeMargin, siteFilter);
+    return findBuildSite(
+      state,
+      kind,
+      nearX,
+      nearY,
+      maxR,
+      owner,
+      requireNetwork,
+      BUILDING_CLEARANCE,
+      edgeMargin,
+      siteFilter,
+    );
   }
   return undefined;
 }

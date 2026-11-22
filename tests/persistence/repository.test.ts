@@ -1,13 +1,32 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
-import { SAVE_DATABASE_NAME, SaveRepository } from "@/lib/persist/save/repository";
-import { memoryStorage, readSave, writeSave, saveKey, listSlots, readSlot, slotKey, writeSlot } from "@/lib/persist/save";
-import { campaignKey, freshCampaignProgress, readCampaignProgress, writeCampaignProgress } from "@/lib/persist/campaign";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  campaignKey,
+  freshCampaignProgress,
+  readCampaignProgress,
+  writeCampaignProgress,
+} from "@/lib/persist/campaign";
 import { JOURNAL_PREFIX } from "@/lib/persist/rulesRetirement";
+import {
+  listSlots,
+  memoryStorage,
+  readSave,
+  readSlot,
+  saveKey,
+  slotKey,
+  writeSave,
+  writeSlot,
+} from "@/lib/persist/save";
+import { SAVE_DATABASE_NAME, SaveRepository } from "@/lib/persist/save/repository";
 import { addBuilding, makeFixture } from "@/lib/sim/fixtures";
 
 const repositories: SaveRepository[] = [];
-afterEach(() => { repositories.splice(0).forEach((repository) => { repository.close(); }); vi.restoreAllMocks(); });
+afterEach(() => {
+  repositories.splice(0).forEach((repository) => {
+    repository.close();
+  });
+  vi.restoreAllMocks();
+});
 async function open(storage = memoryStorage(), factory = new IDBFactory()) {
   const repository = new SaveRepository(storage, factory);
   repositories.push(repository);
@@ -20,7 +39,11 @@ const state = () => {
   next.gameplayRulesVersion = 2;
   return next;
 };
-async function replaceCampaignProgress(factory: IDBFactory, seed: number, progress: string): Promise<void> {
+async function replaceCampaignProgress(
+  factory: IDBFactory,
+  seed: number,
+  progress: string,
+): Promise<void> {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     const opening = factory.open(SAVE_DATABASE_NAME);
     opening.onsuccess = () => resolve(opening.result);
@@ -60,11 +83,15 @@ describe("transactional save repository", () => {
     first.repository.close();
 
     let release!: () => void;
-    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const proto = SaveRepository.prototype as unknown as { migrateLegacy(): Promise<void> };
     const original = proto.migrateLegacy;
     let stalled: Promise<void> | undefined;
-    const spy = vi.spyOn(proto, "migrateLegacy").mockImplementation(function (this: SaveRepository) {
+    const spy = vi.spyOn(proto, "migrateLegacy").mockImplementation(function (
+      this: SaveRepository,
+    ) {
       stalled = gate.then(() => original.call(this));
       return stalled;
     });
@@ -96,7 +123,9 @@ describe("transactional save repository", () => {
     expect(repository.writeJournal(current)).toBe(true);
     const key = `${JOURNAL_PREFIX}0421`;
     const journal = JSON.parse(storage.getItem(key)!) as { autosave: string };
-    const autosave = JSON.parse(journal.autosave) as { state: { entities: Record<string, unknown>[] } };
+    const autosave = JSON.parse(journal.autosave) as {
+      state: { entities: Record<string, unknown>[] };
+    };
     const [firstEntity, ...rest] = autosave.state.entities;
     const keys = Object.keys(firstEntity!);
     const rotated: Record<string, unknown> = {};
@@ -111,65 +140,92 @@ describe("transactional save repository", () => {
   });
   it("migrates idempotently, keeps originals, quarantines malformed records and recovers later legacy changes", async () => {
     const storage = memoryStorage({ [saveKey(422)]: "broken" });
-    const original = state(); writeSave(storage, original);
+    const original = state();
+    writeSave(storage, original);
     const first = await open(storage);
     expect(readSave(first.repository.storage, 421)?.tick).toBe(0);
     expect(first.repository.storage.getItem(saveKey(422))).toBe("broken");
-    original.tick = 10; await first.repository.save(original);
+    original.tick = 10;
+    await first.repository.save(original);
     first.repository.close();
     const second = await open(storage, first.factory);
     expect(listSlots(second.repository.storage)).toHaveLength(0);
     second.repository.close();
-    original.tick = 5; writeSave(storage, original);
+    original.tick = 5;
+    writeSave(storage, original);
     const third = await open(storage, first.factory);
     expect(readSave(third.repository.storage, 421)?.tick).toBe(10);
     expect(listSlots(third.repository.storage)).toHaveLength(1);
     expect(storage.getItem(saveKey(421))).not.toBeNull();
   });
   it("captures mutable states before waiting and serializes session revisions", async () => {
-    const { repository } = await open(); const current = state(); const session = repository.createSession(421);
-    const first = session.write(current, "implicit"); current.tick = 30;
-    const second = session.write(current, "implicit"); current.tick = 90;
-    expect(await first).toBe("saved"); expect(await second).toBe("saved");
+    const { repository } = await open();
+    const current = state();
+    const session = repository.createSession(421);
+    const first = session.write(current, "implicit");
+    current.tick = 30;
+    const second = session.write(current, "implicit");
+    current.tick = 90;
+    expect(await first).toBe("saved");
+    expect(await second).toBe("saved");
     expect(readSave(repository.storage, 421)?.tick).toBe(30);
   });
   it("compares revisions inside transactions across independent repositories", async () => {
-    const first = await open(); const second = await open(first.storage, first.factory);
-    const a = first.repository.createSession(421); const b = second.repository.createSession(421);
+    const first = await open();
+    const second = await open(first.storage, first.factory);
+    const a = first.repository.createSession(421);
+    const b = second.repository.createSession(421);
     expect(await a.write(state(), "implicit")).toBe("saved");
     expect(await b.write(state(), "implicit")).toBe("conflict");
     expect(await b.write(state(), "explicit")).toBe("saved");
     expect(await a.write(state(), "implicit")).toBe("conflict");
   });
-  it.each(["implicit", "explicit"] as const)("keeps its own %s commit revision when another tab writes before refresh", async (mode) => {
-    const first = await open(); const second = await open(first.storage, first.factory);
-    const session = first.repository.createSession(421);
-    const refreshable = first.repository as unknown as { refresh(): Promise<void> };
-    const refresh = refreshable.refresh.bind(first.repository);
-    let release!: () => void; let entered!: () => void;
-    const gate = new Promise<void>((resolve) => { release = resolve; });
-    const refreshing = new Promise<void>((resolve) => { entered = resolve; });
-    vi.spyOn(refreshable, "refresh").mockImplementationOnce(async () => {
-      entered(); await gate; await refresh();
-    });
-    const current = state(); current.tick = 10;
-    const writing = session.write(current, mode);
-    await refreshing;
-    try {
-      const newer = state(); newer.tick = 80;
-      expect(await second.repository.save(newer)).toBe("saved");
-    } finally { release(); }
-    expect(await writing).toBe("saved");
-    expect(readSave(first.repository.storage, 421)?.tick).toBe(80);
-    current.tick = 20;
-    expect(await session.write(current, "implicit")).toBe("conflict");
-    expect(readSave(second.repository.storage, 421)?.tick).toBe(80);
-    expect(await session.write(current, "explicit")).toBe("saved");
-    current.tick = 30;
-    expect(await session.write(current, "implicit")).toBe("saved");
-  });
+  it.each(["implicit", "explicit"] as const)(
+    "keeps its own %s commit revision when another tab writes before refresh",
+    async (mode) => {
+      const first = await open();
+      const second = await open(first.storage, first.factory);
+      const session = first.repository.createSession(421);
+      const refreshable = first.repository as unknown as { refresh(): Promise<void> };
+      const refresh = refreshable.refresh.bind(first.repository);
+      let release!: () => void;
+      let entered!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const refreshing = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      vi.spyOn(refreshable, "refresh").mockImplementationOnce(async () => {
+        entered();
+        await gate;
+        await refresh();
+      });
+      const current = state();
+      current.tick = 10;
+      const writing = session.write(current, mode);
+      await refreshing;
+      try {
+        const newer = state();
+        newer.tick = 80;
+        expect(await second.repository.save(newer)).toBe("saved");
+      } finally {
+        release();
+      }
+      expect(await writing).toBe("saved");
+      expect(readSave(first.repository.storage, 421)?.tick).toBe(80);
+      current.tick = 20;
+      expect(await session.write(current, "implicit")).toBe("conflict");
+      expect(readSave(second.repository.storage, 421)?.tick).toBe(80);
+      expect(await session.write(current, "explicit")).toBe("saved");
+      current.tick = 30;
+      expect(await session.write(current, "implicit")).toBe("saved");
+    },
+  );
   it("commits terminal progress and autosave together", async () => {
-    const { repository } = await open(); const won = state(); won.result = "won";
+    const { repository } = await open();
+    const won = state();
+    won.result = "won";
     expect(await repository.save(won)).toBe("saved");
     expect(readSave(repository.storage, 421)?.result).toBe("won");
     expect(readCampaignProgress(repository.storage, 421).completedMissions).toEqual([0]);
@@ -208,39 +264,71 @@ describe("transactional save repository", () => {
     expect(progress.deploymentEdge).toBe("airSortie");
   });
   it("aborts named save, autosave and progress when the transaction fails after a slot write", async () => {
-    const { repository } = await open(); const current = state(); await repository.save(current);
+    const { repository } = await open();
+    const current = state();
+    await repository.save(current);
     const put = IDBObjectStore.prototype.put;
-    vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<typeof put>) {
+    vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore,
+      ...args: Parameters<typeof put>
+    ) {
       if (this.name === "campaigns") throw new DOMException("quota", "QuotaExceededError");
       return put.apply(this, args);
     });
     current.tick = 120;
-    expect(await repository.saveSlot({ name: "Atomic", state: current, campaign: freshCampaignProgress(421) })).toEqual({ ok: false });
+    expect(
+      await repository.saveSlot({
+        name: "Atomic",
+        state: current,
+        campaign: freshCampaignProgress(421),
+      }),
+    ).toEqual({ ok: false });
     expect(listSlots(repository.storage)).toHaveLength(0);
     expect(readSave(repository.storage, 421)?.tick).toBe(0);
   });
   it("restores progress and autosave atomically and preserves portable exports", async () => {
-    const { repository } = await open(); const current = state(); current.tick = 40;
-    const saved = await repository.saveSlot({ name: "Earlier", state: current, campaign: { ...freshCampaignProgress(421), unlockedMission: 2 } });
-    expect(saved.ok).toBe(true); if (!saved.ok) return;
+    const { repository } = await open();
+    const current = state();
+    current.tick = 40;
+    const saved = await repository.saveSlot({
+      name: "Earlier",
+      state: current,
+      campaign: { ...freshCampaignProgress(421), unlockedMission: 2 },
+    });
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
     const slot = readSlot(repository.storage, saved.id)!;
-    current.tick = 100; await repository.save(current);
+    current.tick = 100;
+    await repository.save(current);
     expect(await repository.restoreSlot(slot)).toBeNull();
     expect(readSave(repository.storage, 421)?.tick).toBe(40);
     expect(readCampaignProgress(repository.storage, 421).unlockedMission).toBe(2);
-    expect((await repository.importSlot(repository.storage.getItem(slotKey(saved.id))!)).ok).toBe(true);
+    expect((await repository.importSlot(repository.storage.getItem(slotKey(saved.id))!)).ok).toBe(
+      true,
+    );
     expect(listSlots(repository.storage)).toHaveLength(2);
   });
-  it.each([false, true])("recovers journals without overwriting conflicts (conflict=%s)", async (conflict) => {
-    const { repository, storage, factory } = await open(); const current = state(); await repository.save(current);
-    current.tick = 60; current.result = "won"; expect(repository.writeJournal(current)).toBe(true);
-    if (conflict) { current.tick = 80; await repository.save(current); }
-    repository.close(); const next = await open(storage, factory);
-    expect(readSave(next.repository.storage, 421)?.tick).toBe(conflict ? 80 : 60);
-    expect(listSlots(next.repository.storage)).toHaveLength(conflict ? 1 : 0);
-    expect(readCampaignProgress(next.repository.storage, 421).completedMissions).toEqual([0]);
-    expect(storage.keys().some((key) => key.includes("journal"))).toBe(false);
-  });
+  it.each([false, true])(
+    "recovers journals without overwriting conflicts (conflict=%s)",
+    async (conflict) => {
+      const { repository, storage, factory } = await open();
+      const current = state();
+      await repository.save(current);
+      current.tick = 60;
+      current.result = "won";
+      expect(repository.writeJournal(current)).toBe(true);
+      if (conflict) {
+        current.tick = 80;
+        await repository.save(current);
+      }
+      repository.close();
+      const next = await open(storage, factory);
+      expect(readSave(next.repository.storage, 421)?.tick).toBe(conflict ? 80 : 60);
+      expect(listSlots(next.repository.storage)).toHaveLength(conflict ? 1 : 0);
+      expect(readCampaignProgress(next.repository.storage, 421).completedMissions).toEqual([0]);
+      expect(storage.keys().some((key) => key.includes("journal"))).toBe(false);
+    },
+  );
   it("restores a deployment edge from a journal when the won battlefield is already saved", async () => {
     const { repository, storage, factory } = await open();
     const won = state();
@@ -289,7 +377,10 @@ describe("transactional save repository", () => {
     expect(await repository.save(won)).toBe("saved");
     expect(await repository.setDeploymentEdge(421, "veteranSquad")).toBe(true);
     const put = IDBObjectStore.prototype.put;
-    const failing = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<typeof put>) {
+    const failing = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore,
+      ...args: Parameters<typeof put>
+    ) {
       if (this.name === "campaigns") throw new DOMException("aborted", "AbortError");
       return put.apply(this, args);
     });
@@ -308,7 +399,10 @@ describe("transactional save repository", () => {
     won.result = "won";
     expect(await repository.save(won)).toBe("saved");
     const put = IDBObjectStore.prototype.put;
-    const failing = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<typeof put>) {
+    const failing = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore,
+      ...args: Parameters<typeof put>
+    ) {
       if (this.name === "campaigns") throw new DOMException("aborted", "AbortError");
       return put.apply(this, args);
     });
@@ -397,13 +491,18 @@ describe("transactional save repository", () => {
     expect(listSlots(next.repository.storage)).toHaveLength(1);
   });
   it("invalidates old queued session work when a mission is adopted", async () => {
-    const { repository } = await open(); const session = repository.createSession(421);
-    const old = session.write(state(), "implicit"); session.adoptCurrent();
-    expect(await old).toBe("conflict"); expect(readSave(repository.storage, 421)).toBeNull();
+    const { repository } = await open();
+    const session = repository.createSession(421);
+    const old = session.write(state(), "implicit");
+    session.adoptCurrent();
+    expect(await old).toBe("conflict");
+    expect(readSave(repository.storage, 421)).toBeNull();
   });
   it("quarantines malformed recovery journals without changing the campaign", async () => {
-    const { repository, storage, factory } = await open(); await repository.save(state());
-    storage.setItem("shiftingfront:journal:0421", "malformed"); repository.close();
+    const { repository, storage, factory } = await open();
+    await repository.save(state());
+    storage.setItem("shiftingfront:journal:0421", "malformed");
+    repository.close();
     const next = await open(storage, factory);
     expect(readSave(next.repository.storage, 421)?.tick).toBe(0);
     expect(next.repository.storage.getItem(slotKey("journal0421"))).toBe("malformed");
@@ -411,24 +510,45 @@ describe("transactional save repository", () => {
     expect(storage.getItem("shiftingfront:journal:0421")).toBeNull();
   });
   it("can resume an interrupted migration from retained originals", async () => {
-    const storage = memoryStorage(); writeSave(storage, state());
-    const other = state(); other.seed = 422; writeSave(storage, other);
-    const factory = new IDBFactory(); const put = IDBObjectStore.prototype.put; let records = 0;
-    const failed = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<typeof put>) {
-      if (this.name === "campaigns" && ++records === 2) { this.transaction.abort(); throw new Error("Interrupted migration"); }
+    const storage = memoryStorage();
+    writeSave(storage, state());
+    const other = state();
+    other.seed = 422;
+    writeSave(storage, other);
+    const factory = new IDBFactory();
+    const put = IDBObjectStore.prototype.put;
+    let records = 0;
+    const failed = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore,
+      ...args: Parameters<typeof put>
+    ) {
+      if (this.name === "campaigns" && ++records === 2) {
+        this.transaction.abort();
+        throw new Error("Interrupted migration");
+      }
       return put.apply(this, args);
     });
-    const repository = new SaveRepository(storage, factory); repositories.push(repository); await repository.initialize();
-    expect(repository.mode).toBe("legacy"); failed.mockRestore(); repository.close();
+    const repository = new SaveRepository(storage, factory);
+    repositories.push(repository);
+    await repository.initialize();
+    expect(repository.mode).toBe("legacy");
+    failed.mockRestore();
+    repository.close();
     const resumed = await open(storage, factory);
-    expect(readSave(resumed.repository.storage, 421)).not.toBeNull(); expect(readSave(resumed.repository.storage, 422)).not.toBeNull();
+    expect(readSave(resumed.repository.storage, 421)).not.toBeNull();
+    expect(readSave(resumed.repository.storage, 422)).not.toBeNull();
     expect(listSlots(resumed.repository.storage)).toHaveLength(0);
   });
   it("clears both backends, journals and migration metadata", async () => {
-    const storage = memoryStorage(); writeSave(storage, state()); const { repository, factory } = await open(storage);
-    repository.writeJournal(state()); expect(await repository.clear()).toBe(true);
-    expect(storage.keys()).toEqual([]); expect(repository.storage.keys()).toEqual([]);
-    repository.close(); expect((await open(storage, factory)).repository.storage.keys()).toEqual([]);
+    const storage = memoryStorage();
+    writeSave(storage, state());
+    const { repository, factory } = await open(storage);
+    repository.writeJournal(state());
+    expect(await repository.clear()).toBe(true);
+    expect(storage.keys()).toEqual([]);
+    expect(repository.storage.keys()).toEqual([]);
+    repository.close();
+    expect((await open(storage, factory)).repository.storage.keys()).toEqual([]);
   });
   it("retires a rules 1 battlefield and keeps the campaign record", async () => {
     const storage = memoryStorage();
@@ -457,12 +577,15 @@ describe("transactional save repository", () => {
         bestScores: { "1": 100 },
       },
     });
-    storage.setItem("shiftingfront:journal:0421", JSON.stringify({
-      revision: 0,
-      autosave: storage.getItem(saveKey(421)),
-      progress: storage.getItem(campaignKey(421)),
-      savedAt: 1,
-    }));
+    storage.setItem(
+      "shiftingfront:journal:0421",
+      JSON.stringify({
+        revision: 0,
+        autosave: storage.getItem(saveKey(421)),
+        progress: storage.getItem(campaignKey(421)),
+        savedAt: 1,
+      }),
+    );
     const current = state();
     current.seed = 422;
     writeSave(storage, current);
@@ -486,13 +609,25 @@ describe("transactional save repository", () => {
     legacy.gameplayRulesVersion = 1;
     legacy.missionIndex = 1;
     writeSave(storage, legacy);
-    writeCampaignProgress(storage, { ...freshCampaignProgress(421), gameplayRulesVersion: 1, unlockedMission: 1, completedMissions: [0], medals: { "0": 3 }, bestScores: { "0": 50 } });
+    writeCampaignProgress(storage, {
+      ...freshCampaignProgress(421),
+      gameplayRulesVersion: 1,
+      unlockedMission: 1,
+      completedMissions: [0],
+      medals: { "0": 3 },
+      bestScores: { "0": 50 },
+    });
     const repository = new SaveRepository(storage, undefined);
     repositories.push(repository);
     await repository.initialize();
     expect(repository.mode).toBe("legacy");
     expect(readSave(storage, 421)).toBeNull();
-    expect(readCampaignProgress(storage, 421)).toMatchObject({ gameplayRulesVersion: 2, unlockedMission: 1, completedMissions: [0], medals: { "0": 3 } });
+    expect(readCampaignProgress(storage, 421)).toMatchObject({
+      gameplayRulesVersion: 2,
+      unlockedMission: 1,
+      completedMissions: [0],
+      medals: { "0": 3 },
+    });
     expect(repository.notice).toContain("rebuilt");
     expect(repository.notice).toContain("reduced");
   });
@@ -505,7 +640,14 @@ describe("transactional save repository", () => {
     const written = writeSlot(exported, {
       name: "Old export",
       state: legacy,
-      campaign: { ...freshCampaignProgress(421), gameplayRulesVersion: 1, unlockedMission: 1, completedMissions: [0], medals: { "0": 2 }, bestScores: { "0": 20 } },
+      campaign: {
+        ...freshCampaignProgress(421),
+        gameplayRulesVersion: 1,
+        unlockedMission: 1,
+        completedMissions: [0],
+        medals: { "0": 2 },
+        bestScores: { "0": 20 },
+      },
     });
     expect(written.ok).toBe(true);
     if (!written.ok) return;
@@ -513,7 +655,12 @@ describe("transactional save repository", () => {
     expect(result).toEqual({ ok: false, reason: "legacy-rules" });
     expect(listSlots(repository.storage)).toHaveLength(0);
     expect(readSave(repository.storage, 421)).toBeNull();
-    expect(readCampaignProgress(repository.storage, 421)).toMatchObject({ gameplayRulesVersion: 2, unlockedMission: 1, completedMissions: [0], medals: { "0": 2 } });
+    expect(readCampaignProgress(repository.storage, 421)).toMatchObject({
+      gameplayRulesVersion: 2,
+      unlockedMission: 1,
+      completedMissions: [0],
+      medals: { "0": 2 },
+    });
   });
   it("keeps a crash journal when legacy campaign progress is only restamped", async () => {
     const { repository, storage, factory } = await open();
@@ -521,7 +668,10 @@ describe("transactional save repository", () => {
     playing.tick = 10;
     expect(await repository.save(playing)).toBe("saved");
     const progress = readCampaignProgress(repository.storage, 421);
-    storage.setItem(campaignKey(421), JSON.stringify({ version: 1, savedAt: Date.now() + 5_000, progress }));
+    storage.setItem(
+      campaignKey(421),
+      JSON.stringify({ version: 1, savedAt: Date.now() + 5_000, progress }),
+    );
     playing.tick = 40;
     expect(repository.writeJournal(playing)).toBe(true);
     repository.close();
@@ -537,7 +687,9 @@ describe("transactional save repository", () => {
     next.repository.close();
     const third = await open(storage, factory);
     expect(readSave(third.repository.storage, 421)?.tick).toBe(40);
-    expect(listSlots(third.repository.storage).map((slot) => slot.name)).not.toContain("Recovered legacy progress");
+    expect(listSlots(third.repository.storage).map((slot) => slot.name)).not.toContain(
+      "Recovered legacy progress",
+    );
   });
   it("applies a newer legacy reward clear without replacing the crash journal", async () => {
     const { repository, storage, factory } = await open();
@@ -547,7 +699,10 @@ describe("transactional save repository", () => {
     expect(await repository.setDeploymentEdge(421, "airSortie")).toBe(true);
     const progress = readCampaignProgress(repository.storage, 421);
     delete progress.deploymentEdge;
-    storage.setItem(campaignKey(421), JSON.stringify({ version: 1, savedAt: Date.now() + 10_000, progress }));
+    storage.setItem(
+      campaignKey(421),
+      JSON.stringify({ version: 1, savedAt: Date.now() + 10_000, progress }),
+    );
     const playing = state();
     playing.tick = 40;
     expect(repository.writeJournal(playing)).toBe(true);
@@ -581,14 +736,20 @@ describe("transactional save repository", () => {
     playing.tick = 10;
     expect(await repository.save(playing)).toBe("saved");
     const progress = readCampaignProgress(repository.storage, 421);
-    storage.setItem(campaignKey(421), JSON.stringify({ version: 1, savedAt: Date.now(), progress }));
+    storage.setItem(
+      campaignKey(421),
+      JSON.stringify({ version: 1, savedAt: Date.now(), progress }),
+    );
     repository.close();
     const seeded = await open(storage, factory);
     const changed = readCampaignProgress(seeded.repository.storage, 421);
     changed.unlockedMission = 2;
     changed.completedMissions = [0, 1];
     changed.medals = { ...changed.medals, "0": 2, "1": 1 };
-    storage.setItem(campaignKey(421), JSON.stringify({ version: 1, savedAt: Date.now() + 5_000, progress: changed }));
+    storage.setItem(
+      campaignKey(421),
+      JSON.stringify({ version: 1, savedAt: Date.now() + 5_000, progress: changed }),
+    );
     seeded.repository.close();
 
     const next = await open(storage, factory);
@@ -598,12 +759,24 @@ describe("transactional save repository", () => {
       completedMissions: [0, 1],
       medals: { "0": 2, "1": 1 },
     });
-    expect(listSlots(next.repository.storage).map((slot) => slot.name)).toContain("Recovered legacy progress");
+    expect(listSlots(next.repository.storage).map((slot) => slot.name)).toContain(
+      "Recovered legacy progress",
+    );
   });
   it("reports failed legacy writes and exposes reduced reliability", async () => {
-    const storage = memoryStorage(); const broken = { ...storage, setItem() { throw new Error("quota"); } };
-    const repository = new SaveRepository(broken, undefined); repositories.push(repository); await repository.initialize();
-    expect(repository.notice).toContain("reduced"); expect(await repository.save(state())).toBe("failed");
-    expect(storage.getItem(saveKey(421))).toBeNull(); expect(storage.getItem(campaignKey(421))).toBeNull();
+    const storage = memoryStorage();
+    const broken = {
+      ...storage,
+      setItem() {
+        throw new Error("quota");
+      },
+    };
+    const repository = new SaveRepository(broken, undefined);
+    repositories.push(repository);
+    await repository.initialize();
+    expect(repository.notice).toContain("reduced");
+    expect(await repository.save(state())).toBe("failed");
+    expect(storage.getItem(saveKey(421))).toBeNull();
+    expect(storage.getItem(campaignKey(421))).toBeNull();
   });
 });

@@ -1,4 +1,9 @@
-export function paintAmbientSignals(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void {
+export function paintAmbientSignals(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  t: number,
+): void {
   const minDimension = Math.min(w, h);
   const sweep = ((t * 0.006) % 1) * Math.PI * 2;
   const radarX = w * 0.84;

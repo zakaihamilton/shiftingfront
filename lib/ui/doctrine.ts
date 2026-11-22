@@ -34,7 +34,10 @@ export function doctrineHintsFor(state: SimState): DoctrineHint[] {
       text: "Medics restore human units and Repair Trucks restore vehicles; assign them before replacing a damaged force.",
     });
   }
-  if (["escort", "rescue", "extraction", "sabotage"].includes(state.win.kind) || profile.routeHint) {
+  if (
+    ["escort", "rescue", "extraction", "sabotage"].includes(state.win.kind) ||
+    profile.routeHint
+  ) {
     hints.push({ id: "routes", label: "Routes", text: profile.routeHint });
   }
   if ((state.runtime?.secondary.length ?? 0) > 0) {

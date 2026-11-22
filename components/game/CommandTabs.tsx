@@ -1,6 +1,6 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
-import type { CommandTab } from "@/lib/ui/shortcuts";
 import { cx } from "@/lib/ui/cx";
+import type { CommandTab } from "@/lib/ui/shortcuts";
 import { CommandTabIcon } from "./CommandTabIcon";
 import styles from "./CommandTabs.module.css";
 

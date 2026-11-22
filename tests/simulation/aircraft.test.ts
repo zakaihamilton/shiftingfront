@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { issue } from "../../lib/sim/api";
 import { tickAircraft } from "../../lib/sim/aircraft";
+import { issue } from "../../lib/sim/api";
 import { tickCombat } from "../../lib/sim/combat";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { evaluateObjectives } from "../../lib/sim/objectives";
 import { compactDestroyedEntities } from "../../lib/sim/world/lifecycle";
 

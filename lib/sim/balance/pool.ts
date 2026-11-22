@@ -1,6 +1,7 @@
 import { Worker } from "node:worker_threads";
-import { defaultBalanceJobs, balanceScenarios } from "./sampling";
+import type { BalanceRecord } from "./evaluation";
 import { assertWithinDeadline, runBalanceSweepJob } from "./runner";
+import { balanceScenarios, defaultBalanceJobs } from "./sampling";
 import type {
   BalanceProgress,
   BalanceRecordWithScenario,
@@ -9,17 +10,21 @@ import type {
   BalanceScenario,
   BalanceSweepJob,
 } from "./types";
-import type { BalanceRecord } from "./evaluation";
 
 export type BalanceSweepWorkItem = {
   scenarios: BalanceScenario[];
   strategies: BalanceSweepJob["strategies"];
 };
 
-export function sortBalanceRecords(records: BalanceRecordWithScenario[]): BalanceRecordWithScenario[] {
-  return [...records].sort((a, b) => Number(a.seed) - Number(b.seed)
-    || a.mission - b.mission
-    || (a.strategy ?? "competent").localeCompare(b.strategy ?? "competent"));
+export function sortBalanceRecords(
+  records: BalanceRecordWithScenario[],
+): BalanceRecordWithScenario[] {
+  return [...records].sort(
+    (a, b) =>
+      Number(a.seed) - Number(b.seed) ||
+      a.mission - b.mission ||
+      (a.strategy ?? "competent").localeCompare(b.strategy ?? "competent"),
+  );
 }
 
 export function runWorker(
@@ -41,10 +46,17 @@ export function runWorker(
         scenarios: job.scenarios,
       },
     });
-    worker.on("message", (message: { type: "progress" | "complete"; record?: BalanceRecordWithScenario; records?: BalanceRecordWithScenario[] }) => {
-      if (message.type === "progress" && message.record) onRecord?.(message.record);
-      if (message.type === "complete" && message.records) resolve(message.records);
-    });
+    worker.on(
+      "message",
+      (message: {
+        type: "progress" | "complete";
+        record?: BalanceRecordWithScenario;
+        records?: BalanceRecordWithScenario[];
+      }) => {
+        if (message.type === "progress" && message.record) onRecord?.(message.record);
+        if (message.type === "complete" && message.records) resolve(message.records);
+      },
+    );
     worker.once("error", reject);
     worker.once("exit", (code) => {
       if (code !== 0) reject(new Error(`Balance worker exited with code ${code}`));
@@ -79,10 +91,12 @@ export function scenarioWorkItems(
     bySeed.set(scenario.seed, group);
   }
   const seedGroups = [...bySeed.values()];
-  return strategies.flatMap((strategy) => seedGroups.map((group) => ({
-    scenarios: group,
-    strategies: [strategy],
-  })));
+  return strategies.flatMap((strategy) =>
+    seedGroups.map((group) => ({
+      scenarios: group,
+      strategies: [strategy],
+    })),
+  );
 }
 
 export function runSweepWorkerPool(
@@ -112,7 +126,11 @@ export function runSweepWorkerPool(
         entry.worker.postMessage({ type: "close" });
         return;
       }
-      entry.worker.postMessage({ type: "run", scenarios: workItem.scenarios, strategies: workItem.strategies });
+      entry.worker.postMessage({
+        type: "run",
+        scenarios: workItem.scenarios,
+        strategies: workItem.strategies,
+      });
     };
 
     for (let index = 0; index < workerCount; index++) {
@@ -181,7 +199,11 @@ export async function runBalanceSweepScenarios(
   const report = (record: BalanceRecordWithScenario) => {
     assertWithinDeadline(options.deadlineAt);
     completed += 1;
-    options.onProgress?.({ completed, total: scenarios.length * options.strategies.length, record });
+    options.onProgress?.({
+      completed,
+      total: scenarios.length * options.strategies.length,
+      record,
+    });
   };
   const jobOptions = {
     from: options.from,

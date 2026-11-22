@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { VISITORING_SITE_KEY, shouldLoadVisitoring } from "../../lib/site";
+import { shouldLoadVisitoring, VISITORING_SITE_KEY } from "../../lib/site";
 
 describe("Visitoring Analytics integration", () => {
   it("provides the configured tracking key", () => {
@@ -15,7 +15,9 @@ describe("Visitoring Analytics integration", () => {
     expect(shouldLoadVisitoring({ NODE_ENV: "production" })).toBe(false);
     expect(shouldLoadVisitoring({ NODE_ENV: "development" })).toBe(false);
     expect(shouldLoadVisitoring({ NODE_ENV: "test" })).toBe(false);
-    expect(shouldLoadVisitoring({ NODE_ENV: "test", NEXT_PUBLIC_VISITORING_SITE_KEY: "vk_test" })).toBe(true);
+    expect(
+      shouldLoadVisitoring({ NODE_ENV: "test", NEXT_PUBLIC_VISITORING_SITE_KEY: "vk_test" }),
+    ).toBe(true);
   });
 
   it("wraps the app with VisitoringProvider behind shouldLoadVisitoring in RootLayout", () => {

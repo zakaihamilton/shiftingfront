@@ -3,8 +3,8 @@ import {
   destructionCueFor,
   dispatchBattlefieldAudio,
   fireSfxFor,
-  impactSfxFor,
   impactDelayFor,
+  impactSfxFor,
   supportSfxFor,
 } from "../../lib/audio/battlefield";
 import { duckMusic } from "../../lib/audio/mixer";
@@ -29,7 +29,9 @@ function onScreenCamera() {
   return camera;
 }
 
-function combatEvent(overrides: Partial<Extract<SimEvent, { type: "combat" }>> = {}): Extract<SimEvent, { type: "combat" }> {
+function combatEvent(
+  overrides: Partial<Extract<SimEvent, { type: "combat" }>> = {},
+): Extract<SimEvent, { type: "combat" }> {
   return {
     type: "combat",
     owner: 0,
@@ -92,15 +94,19 @@ describe("battlefield audio dispatch", () => {
   });
 
   it("plays spatial combat and impact cues", () => {
-    dispatchBattlefieldAudio(
-      [combatEvent()],
-      onScreenCamera(),
-      800,
-      500,
+    dispatchBattlefieldAudio([combatEvent()], onScreenCamera(), 800, 500);
+    expect(play).toHaveBeenCalledWith(
+      "cannon",
+      expect.objectContaining({ pan: expect.any(Number), gain: expect.any(Number) }),
     );
-    expect(play).toHaveBeenCalledWith("cannon", expect.objectContaining({ pan: expect.any(Number), gain: expect.any(Number) }));
-    expect(play).toHaveBeenCalledWith("impactFlesh", expect.objectContaining({ pan: expect.any(Number) }));
-    expect(play).toHaveBeenCalledWith("impactFlesh", expect.objectContaining({ delay: impactDelayFor("cannon") }));
+    expect(play).toHaveBeenCalledWith(
+      "impactFlesh",
+      expect.objectContaining({ pan: expect.any(Number) }),
+    );
+    expect(play).toHaveBeenCalledWith(
+      "impactFlesh",
+      expect.objectContaining({ delay: impactDelayFor("cannon") }),
+    );
     expect(duck).toHaveBeenCalled();
   });
 
@@ -108,21 +114,60 @@ describe("battlefield audio dispatch", () => {
     dispatchBattlefieldAudio(
       [
         combatEvent({ attackerKind: "infantry", weapon: "smallArms", targetKind: "tank" }),
-        combatEvent({ attackerKind: "antiArmor", weapon: "antiArmor", targetKind: "tank", x: 6.5, y: 6.5 }),
+        combatEvent({
+          attackerKind: "antiArmor",
+          weapon: "antiArmor",
+          targetKind: "tank",
+          x: 6.5,
+          y: 6.5,
+        }),
         combatEvent({ attackerKind: "tank", weapon: "cannon", targetKind: "power", x: 7, y: 7 }),
-        combatEvent({ attackerKind: "turret", weapon: "cannon", targetKind: "harvester", x: 8, y: 8 }),
-        combatEvent({ attackerKind: "strikePlane", weapon: "airStrike", targetKind: "power", x: 8.5, y: 8.5 }),
-        combatEvent({ attackerKind: "antiAirTurret", weapon: "antiAir", targetKind: "strikePlane", x: 9, y: 9 }),
+        combatEvent({
+          attackerKind: "turret",
+          weapon: "cannon",
+          targetKind: "harvester",
+          x: 8,
+          y: 8,
+        }),
+        combatEvent({
+          attackerKind: "strikePlane",
+          weapon: "airStrike",
+          targetKind: "power",
+          x: 8.5,
+          y: 8.5,
+        }),
+        combatEvent({
+          attackerKind: "antiAirTurret",
+          weapon: "antiAir",
+          targetKind: "strikePlane",
+          x: 9,
+          y: 9,
+        }),
       ],
       onScreenCamera(),
       800,
       500,
     );
-    expect(play).toHaveBeenCalledWith("smallArms", expect.objectContaining({ gain: expect.any(Number) }));
-    expect(play).toHaveBeenCalledWith("antiArmor", expect.objectContaining({ gain: expect.any(Number) }));
-    expect(play).toHaveBeenCalledWith("cannon", expect.objectContaining({ gain: expect.any(Number) }));
-    expect(play).toHaveBeenCalledWith("airStrike", expect.objectContaining({ gain: expect.any(Number) }));
-    expect(play).toHaveBeenCalledWith("antiAir", expect.objectContaining({ gain: expect.any(Number) }));
+    expect(play).toHaveBeenCalledWith(
+      "smallArms",
+      expect.objectContaining({ gain: expect.any(Number) }),
+    );
+    expect(play).toHaveBeenCalledWith(
+      "antiArmor",
+      expect.objectContaining({ gain: expect.any(Number) }),
+    );
+    expect(play).toHaveBeenCalledWith(
+      "cannon",
+      expect.objectContaining({ gain: expect.any(Number) }),
+    );
+    expect(play).toHaveBeenCalledWith(
+      "airStrike",
+      expect.objectContaining({ gain: expect.any(Number) }),
+    );
+    expect(play).toHaveBeenCalledWith(
+      "antiAir",
+      expect.objectContaining({ gain: expect.any(Number) }),
+    );
     expect(play.mock.calls.filter(([kind]) => kind === "cannon")).toHaveLength(2);
     expect(play).toHaveBeenCalledWith("impactMetal", expect.any(Object));
     expect(play).toHaveBeenCalledWith("impact", expect.any(Object));
@@ -135,7 +180,9 @@ describe("battlefield audio dispatch", () => {
       800,
       500,
     );
-    const playerGain = (play.mock.calls.find((call) => call[0] === "smallArms")?.[1] as { gain: number } | undefined)?.gain;
+    const playerGain = (
+      play.mock.calls.find((call) => call[0] === "smallArms")?.[1] as { gain: number } | undefined
+    )?.gain;
     play.mockClear();
     dispatchBattlefieldAudio(
       [combatEvent({ owner: 1, attackerKind: "infantry", weapon: "smallArms" })],
@@ -143,7 +190,9 @@ describe("battlefield audio dispatch", () => {
       800,
       500,
     );
-    const enemyGain = (play.mock.calls.find((call) => call[0] === "smallArms")?.[1] as { gain: number } | undefined)?.gain;
+    const enemyGain = (
+      play.mock.calls.find((call) => call[0] === "smallArms")?.[1] as { gain: number } | undefined
+    )?.gain;
     expect(enemyGain).toBe(playerGain);
   });
 

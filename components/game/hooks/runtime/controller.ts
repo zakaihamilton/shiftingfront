@@ -1,10 +1,10 @@
-import { startLoop, type LoopHandle } from "@/lib/game/loop";
 import { TICKS_PER_SECOND } from "@/lib/catalog";
-import { createScenarioRunner } from "@/lib/sim/scenarioRunner";
-import { entitiesFor } from "@/lib/sim/entities";
-import { isPerfHudEnabled } from "@/lib/render/perfHud";
-import type { SimEvent, SimState } from "@/lib/types";
+import { type LoopHandle, startLoop } from "@/lib/game/loop";
 import { canonicalCommandRejectionReason, type MissionUxTelemetry } from "@/lib/persist/telemetry";
+import { isPerfHudEnabled } from "@/lib/render/perfHud";
+import { entitiesFor } from "@/lib/sim/entities";
+import { createScenarioRunner } from "@/lib/sim/scenarioRunner";
+import type { SimEvent, SimState } from "@/lib/types";
 import { createFrameCoordinator } from "./frame";
 import { createPersistenceCoordinator } from "./persistence";
 import { createPresentationCoordinator } from "./presentation";
@@ -134,19 +134,24 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
           if (scenarioRunner.state !== state) scenarioRunner = createScenarioRunner(state);
           return scenarioRunner.step(commands);
         },
-        isPaused: () => (multiplayer ? (!multiplayer.connected || multiplayer.introReleased === false) : simRefs.pausedRef.current),
+        isPaused: () =>
+          multiplayer
+            ? !multiplayer.connected || multiplayer.introReleased === false
+            : simRefs.pausedRef.current,
         canStep: (state) => (multiplayer ? multiplayer.canAdvance(state) : true),
         getExtraTicks: (state) => (multiplayer ? multiplayer.queuedFramesCount(state) : 0),
         onTick: controller.onTick,
         onFrame: controller.onFrame,
-        onFrameTiming: isPerfHudEnabled() ? ({ workMs, intervalMs }) => {
-          const canvas = renderRefs.canvasRef.current;
-          if (!canvas) return;
-          canvas.dataset.perfFrameMs = workMs.toFixed(2);
-          canvas.dataset.perfFrameIntervalMs = intervalMs.toFixed(2);
-          canvas.dataset.perfTick = String(simRefs.stateRef.current.tick);
-          canvas.dataset.perfFrameSequence = String(++measuredFrames);
-        } : undefined,
+        onFrameTiming: isPerfHudEnabled()
+          ? ({ workMs, intervalMs }) => {
+              const canvas = renderRefs.canvasRef.current;
+              if (!canvas) return;
+              canvas.dataset.perfFrameMs = workMs.toFixed(2);
+              canvas.dataset.perfFrameIntervalMs = intervalMs.toFixed(2);
+              canvas.dataset.perfTick = String(simRefs.stateRef.current.tick);
+              canvas.dataset.perfFrameSequence = String(++measuredFrames);
+            }
+          : undefined,
       });
     },
     stop() {
@@ -170,27 +175,48 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
       syncSession(state);
       multiplayer?.checkState(state);
       const localOwner = state.viewOwner ?? 0;
-      const rejections = events.filter((event) => event.type === "commandRejected" && (event.owner === undefined || event.owner === localOwner));
+      const rejections = events.filter(
+        (event) =>
+          event.type === "commandRejected" &&
+          (event.owner === undefined || event.owner === localOwner),
+      );
       lifecycle.counters.commandRejections += rejections.length;
       for (const event of rejections) {
         if (event.type === "commandRejected") {
           const reason = canonicalCommandRejectionReason(event.reason);
-          lifecycle.counters.ux.commandRejectionsByReason[reason] = (lifecycle.counters.ux.commandRejectionsByReason[reason] ?? 0) + 1;
+          lifecycle.counters.ux.commandRejectionsByReason[reason] =
+            (lifecycle.counters.ux.commandRejectionsByReason[reason] ?? 0) + 1;
         }
       }
-      if (lifecycle.counters.firstCombatTick === undefined && events.some((event) => event.type === "combat" && event.owner === 0)) {
+      if (
+        lifecycle.counters.firstCombatTick === undefined &&
+        events.some((event) => event.type === "combat" && event.owner === 0)
+      ) {
         lifecycle.counters.firstCombatTick = state.tick;
       }
       const directorPhase = state.runtime?.director?.phase;
-      if (lifecycle.counters.firstPressureTick === undefined && directorPhase !== undefined && directorPhase !== "opening") {
+      if (
+        lifecycle.counters.firstPressureTick === undefined &&
+        directorPhase !== undefined &&
+        directorPhase !== "opening"
+      ) {
         lifecycle.counters.firstPressureTick = state.tick;
-        const yard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
+        const yard = entitiesFor(state).find(
+          (entity) =>
+            entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard",
+        );
         if (yard) lifecycle.counters.hqHealthAtPressure = yard.hp / Math.max(1, yard.maxHp);
       }
       if (lifecycle.counters.firstHqThreatTick === undefined) {
         const entities = entitiesFor(state);
-        const yard = entities.find((entity) => entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard");
-        if (yard && entities.some((entity) => entity.owner === 1 && entity.attackTarget === yard.id)) {
+        const yard = entities.find(
+          (entity) =>
+            entity.owner === 0 && entity.class === "building" && entity.kind === "constructionYard",
+        );
+        if (
+          yard &&
+          entities.some((entity) => entity.owner === 1 && entity.attackTarget === yard.id)
+        ) {
           lifecycle.counters.firstHqThreatTick = state.tick;
         }
       }
@@ -213,7 +239,12 @@ export function createRuntimeController(kernel: RuntimeKernel): RuntimeControlle
       frame.onFrame(state, now, paused, frameMs);
       if (state.result !== "playing" && !lifecycle.terminalPresented) {
         lifecycle.terminalPresented = true;
-        const yard = entitiesFor(state).find((entity) => entity.owner === (state.viewOwner ?? 0) && entity.class === "building" && entity.kind === "constructionYard");
+        const yard = entitiesFor(state).find(
+          (entity) =>
+            entity.owner === (state.viewOwner ?? 0) &&
+            entity.class === "building" &&
+            entity.kind === "constructionYard",
+        );
         lifecycle.counters.hqHealthAtEnd = yard ? yard.hp / Math.max(1, yard.maxHp) : 0;
         persistence.onTerminal(state, now, lifecycle.counters);
         simPorts.setState({ ...state, entities: [...state.entities] });

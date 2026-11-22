@@ -1,6 +1,9 @@
-import { generateVisualProfile } from "@/lib/gen/visualProfile";
+import { isSupportUnit, UNIT_STATS } from "@/lib/catalog";
 import { frameTickBudget, TICK_MS } from "@/lib/game/loop";
-import { tileToScreen, type Camera } from "@/lib/iso";
+import { generateVisualProfile } from "@/lib/gen/visualProfile";
+import { type Camera, tileToScreen } from "@/lib/iso";
+import { burstsFromEvents, cullFx } from "@/lib/render/fx";
+import { renderWorld } from "@/lib/render/renderer";
 import {
   CINEMA_SCROLL_PAD,
   scrollLayerBlitOffset,
@@ -8,26 +11,23 @@ import {
   scrollLayerPaintCamera,
   terrainScrollPad,
 } from "@/lib/render/scrollLayer";
-import { isSupportUnit, UNIT_STATS } from "@/lib/catalog";
-import { burstsFromEvents, cullFx } from "@/lib/render/fx";
-import { renderWorld } from "@/lib/render/renderer";
+import { assignMove } from "@/lib/sim/ai/combat";
 import { tick } from "@/lib/sim/api";
 import { spawnUnit } from "@/lib/sim/world";
-import { assignMove } from "@/lib/sim/ai/combat";
 import type { UnitKind } from "@/lib/types";
-import type { CinemaScene, Shot } from "./scene";
 import { assignClashTargets } from "./combat";
-import { CINEMA_SCENARIOS } from "./scenarios";
 import { cinemaCamera, cinemaOrigin, paintCinemaStatic } from "./paint";
 import {
-  type CinemaTerrainCache,
-  type RenderCinemaOptions,
-  CINEMA_TERRAIN_CACHE_LIMIT,
   CINEMA_REFERENCE_FRAME_MS,
   CINEMA_SHOT_LIFETIME_MS,
-  paintCinemaActor,
+  CINEMA_TERRAIN_CACHE_LIMIT,
+  type CinemaTerrainCache,
   paintAmbientSignals,
+  paintCinemaActor,
+  type RenderCinemaOptions,
 } from "./rendering/index";
+import { CINEMA_SCENARIOS } from "./scenarios";
+import type { CinemaScene, Shot } from "./scene";
 
 export * from "./rendering/index";
 
@@ -113,7 +113,13 @@ function stepCinemaSimulation(scene: CinemaScene, shots: Shot[]): void {
     const now = typeof performance !== "undefined" ? performance.now() : Date.now();
     for (const ev of events) {
       if (ev.type === "combat") {
-        shots.push({ ax: ev.x, ay: ev.y, bx: ev.targetX, by: ev.targetY, life: CINEMA_SHOT_LIFETIME_MS });
+        shots.push({
+          ax: ev.x,
+          ay: ev.y,
+          bx: ev.targetX,
+          by: ev.targetY,
+          life: CINEMA_SHOT_LIFETIME_MS,
+        });
       }
     }
     const destroyedEvents = events.filter((event) => event.type === "destroyed");
@@ -125,7 +131,10 @@ function stepCinemaSimulation(scene: CinemaScene, shots: Shot[]): void {
 
     for (const e of scene.state.entities) {
       if (e.class !== "unit" || e.hp <= 0) continue;
-      if (e.orderDestination && Math.hypot(e.orderDestination.x - cx, e.orderDestination.y - cy) > 10) {
+      if (
+        e.orderDestination &&
+        Math.hypot(e.orderDestination.x - cx, e.orderDestination.y - cy) > 10
+      ) {
         e.path = [];
         e.routePending = false;
         e.orderDestination = undefined;
@@ -135,10 +144,20 @@ function stepCinemaSimulation(scene: CinemaScene, shots: Shot[]): void {
     }
 
     const pCombat = scene.state.entities.filter(
-      (e) => e.owner === 0 && e.class === "unit" && e.hp > 0 && !isSupportUnit(e.kind as UnitKind) && UNIT_STATS[e.kind as UnitKind].damage > 0,
+      (e) =>
+        e.owner === 0 &&
+        e.class === "unit" &&
+        e.hp > 0 &&
+        !isSupportUnit(e.kind as UnitKind) &&
+        UNIT_STATS[e.kind as UnitKind].damage > 0,
     );
     const eCombat = scene.state.entities.filter(
-      (e) => e.owner === 1 && e.class === "unit" && e.hp > 0 && !isSupportUnit(e.kind as UnitKind) && UNIT_STATS[e.kind as UnitKind].damage > 0,
+      (e) =>
+        e.owner === 1 &&
+        e.class === "unit" &&
+        e.hp > 0 &&
+        !isSupportUnit(e.kind as UnitKind) &&
+        UNIT_STATS[e.kind as UnitKind].damage > 0,
     );
 
     // Keep active combat alive so the preview camera never frames an empty battlefield
@@ -155,27 +174,35 @@ function stepCinemaSimulation(scene: CinemaScene, shots: Shot[]): void {
       eCombat.push(newE);
     }
 
-    const convoy = scene.scenarioKind === "convoyRaid" && scene.scenarioTargetId !== undefined
-      ? scene.state.entities.find((entity) => entity.id === scene.scenarioTargetId)
-      : undefined;
+    const convoy =
+      scene.scenarioKind === "convoyRaid" && scene.scenarioTargetId !== undefined
+        ? scene.state.entities.find((entity) => entity.id === scene.scenarioTargetId)
+        : undefined;
     if (convoy?.class === "unit" && scene.convoyRoute?.length) {
       const waypoint = scene.convoyRoute[scene.convoyRouteIndex % scene.convoyRoute.length]!;
       const reached = Math.hypot(convoy.x - waypoint.x, convoy.y - waypoint.y) < 0.75;
       if (reached) scene.convoyRouteIndex = (scene.convoyRouteIndex + 1) % scene.convoyRoute.length;
       const nextWaypoint = scene.convoyRoute[scene.convoyRouteIndex % scene.convoyRoute.length]!;
-      if (reached || convoy.orderMode !== "move" || convoy.idle) assignMove(scene.state, convoy, nextWaypoint);
+      if (reached || convoy.orderMode !== "move" || convoy.idle)
+        assignMove(scene.state, convoy, nextWaypoint);
     }
 
     assignClashTargets(scene.state, scene.scenarioKind, scene.scenarioTargetId, cx, cy, 10);
   }
 }
 
-export function stepCinemaScene(scene: CinemaScene, shots: Shot[], t: number, nowMs?: number): void {
+export function stepCinemaScene(
+  scene: CinemaScene,
+  shots: Shot[],
+  t: number,
+  nowMs?: number,
+): void {
   const frameNow = nowMs ?? t * CINEMA_REFERENCE_FRAME_MS;
   const previousNow = scene.lastStepMs;
-  const frameScale = previousNow === undefined
-    ? 1
-    : Math.min(12, Math.max(0, frameNow - previousNow) / CINEMA_REFERENCE_FRAME_MS);
+  const frameScale =
+    previousNow === undefined
+      ? 1
+      : Math.min(12, Math.max(0, frameNow - previousNow) / CINEMA_REFERENCE_FRAME_MS);
   scene.lastStepMs = frameNow;
 
   for (const a of scene.actors) {

@@ -1,11 +1,27 @@
 import { isUnitAvailable, UNIT_STATS } from "../../catalog";
-import { TILE_RESOURCE } from "../../types";
-import type { Entity, Owner, SimState, UnitKind, Vec2 } from "../../types";
-import { BUILDING_PLACEMENT_RADIUS, canPlaceBuilding, findBuildSite, livingView, powerFor } from "../world";
 import { objectiveContractFor } from "../../gen/profile";
+import type { Entity, Owner, SimState, UnitKind, Vec2 } from "../../types";
+import { TILE_RESOURCE } from "../../types";
+import {
+  isSharedProducerKind,
+  sharedProductionQueue,
+  sharedProductionQueueSize,
+} from "../producerState";
+import {
+  BUILDING_PLACEMENT_RADIUS,
+  canPlaceBuilding,
+  findBuildSite,
+  livingView,
+  powerFor,
+} from "../world";
+import {
+  aiBehavior,
+  aiRetreatLocked,
+  aiRetreatTick,
+  setAiRetreatLocked,
+  setAiRetreatTick,
+} from "./ownerState";
 import { nearestKnownPlayer } from "./visibility";
-import { aiBehavior, aiRetreatLocked, aiRetreatTick, setAiRetreatLocked, setAiRetreatTick } from "./ownerState";
-import { isSharedProducerKind, sharedProductionQueue, sharedProductionQueueSize } from "../producerState";
 
 export const RETREAT_ENTER_HEALTH = 0.35;
 export const RETREAT_RECOVER_HEALTH = 0.5;
@@ -70,7 +86,13 @@ export function contestedResourcePoint(
   return point;
 }
 
-export function hasBuildingNear(state: SimState, kind: "power" | "refinery", point: Vec2, radius: number, owner: Owner = 1): boolean {
+export function hasBuildingNear(
+  state: SimState,
+  kind: "power" | "refinery",
+  point: Vec2,
+  radius: number,
+  owner: Owner = 1,
+): boolean {
   const radius2 = radius * radius;
   for (const entity of livingView(state)) {
     if (entity.owner !== owner || entity.class !== "building" || entity.kind !== kind) continue;
@@ -81,7 +103,12 @@ export function hasBuildingNear(state: SimState, kind: "power" | "refinery", poi
   return false;
 }
 
-export function forwardRelaySite(state: SimState, yard: Entity, point: Vec2, owner: Owner = 1): Vec2 | undefined {
+export function forwardRelaySite(
+  state: SimState,
+  yard: Entity,
+  point: Vec2,
+  owner: Owner = 1,
+): Vec2 | undefined {
   const dx = point.x - yard.x;
   const dy = point.y - yard.y;
   const length = Math.hypot(dx, dy);
@@ -101,7 +128,12 @@ export function forwardRelaySite(state: SimState, yard: Entity, point: Vec2, own
   return undefined;
 }
 
-export function forwardRefinerySite(state: SimState, yard: Entity, point: Vec2, owner: Owner = 1): Vec2 | undefined {
+export function forwardRefinerySite(
+  state: SimState,
+  yard: Entity,
+  point: Vec2,
+  owner: Owner = 1,
+): Vec2 | undefined {
   const cx = Math.round(point.x);
   const cy = Math.round(point.y);
   for (let radius = 0; radius <= 10; radius += 1) {
@@ -117,10 +149,20 @@ export function forwardRefinerySite(state: SimState, yard: Entity, point: Vec2, 
   return undefined;
 }
 
-export function queueUnit(state: SimState, producer: Entity, kind: UnitKind, owner: Owner = 1): boolean {
+export function queueUnit(
+  state: SimState,
+  producer: Entity,
+  kind: UnitKind,
+  owner: Owner = 1,
+): boolean {
   if (!isUnitAvailable(kind, state.missionIndex)) return false;
   if (producer.class !== "building" || producer.constructing > 0) return false;
-  if (producer.owner !== owner || state.credits[owner] < UNIT_STATS[kind].cost || powerFor(state, owner) < 0) return false;
+  if (
+    producer.owner !== owner ||
+    state.credits[owner] < UNIT_STATS[kind].cost ||
+    powerFor(state, owner) < 0
+  )
+    return false;
   if (isSharedProducerKind(producer.kind)) {
     const queue = sharedProductionQueue(state, owner, producer.kind);
     if (sharedProductionQueueSize(queue) > 0) return false;

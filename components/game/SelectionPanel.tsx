@@ -1,8 +1,25 @@
-import { BUILDING_DEFINITIONS, BUILDING_STATS, MAX_PRODUCTION_QUEUE, TICKS_PER_SECOND, UNIT_STATS, isDefensiveTurret, labelFor } from "@/lib/catalog";
-import { ProgressMeter } from "@/components/ui/ProgressMeter";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
+import { ProgressMeter } from "@/components/ui/ProgressMeter";
+import {
+  BUILDING_DEFINITIONS,
+  BUILDING_STATS,
+  isDefensiveTurret,
+  labelFor,
+  MAX_PRODUCTION_QUEUE,
+  TICKS_PER_SECOND,
+  UNIT_STATS,
+} from "@/lib/catalog";
+import {
+  type Entity,
+  type FactionVisualProfile,
+  type Formation,
+  isBuildingEntity,
+  type Owner,
+  type Palette,
+  type SharedProductionQueue,
+  type Stance,
+} from "@/lib/types";
 import { cx } from "@/lib/ui/cx";
-import { isBuildingEntity, type Entity, type FactionVisualProfile, type Formation, type Owner, type Palette, type SharedProductionQueue, type Stance } from "@/lib/types";
 import { SelectionIdentity } from "./SelectionIdentity";
 import { SelectionOrders } from "./SelectionOrders";
 import styles from "./SelectionPanel.module.css";
@@ -40,21 +57,38 @@ export function SelectionPanel({
   onBrace?: () => void;
   onBombard?: () => void;
 }) {
-  const friendlyUnit = selected && selected.owner === playerOwner && selected.class === "unit" && !selected.neutral;
-  const friendlyProducer = selected && isBuildingEntity(selected) && selected.owner === playerOwner && selected.constructing <= 0 && Boolean(BUILDING_DEFINITIONS[selected.kind].production);
+  const friendlyUnit =
+    selected && selected.owner === playerOwner && selected.class === "unit" && !selected.neutral;
+  const friendlyProducer =
+    selected &&
+    isBuildingEntity(selected) &&
+    selected.owner === playerOwner &&
+    selected.constructing <= 0 &&
+    Boolean(BUILDING_DEFINITIONS[selected.kind].production);
   const stance = selected?.stance ?? "aggressive";
   const formation = selected?.formation;
   const producing = sharedQueue ? sharedQueue.producing : selected?.producing;
   const queuedUnits = sharedQueue
     ? [...(sharedQueue.resume?.map((job) => job.kind) ?? []), ...sharedQueue.queue]
-    : selected?.queue ?? [];
+    : (selected?.queue ?? []);
   return (
     <section className={cx(styles.section, className)}>
-      <ConsoleLabel className={styles.label}>{selectionCount > 1 ? `${selectionCount} units selected` : "Selected"}</ConsoleLabel>
+      <ConsoleLabel className={styles.label}>
+        {selectionCount > 1 ? `${selectionCount} units selected` : "Selected"}
+      </ConsoleLabel>
       {selected ? (
         <div className={styles.body}>
-          <SelectionIdentity selected={selected} palette={palette} profile={profile} stance={stance} onCenter={onCenter} />
-          {selected.kind === "radar" && selected.owner === playerOwner && selected.hp > 0 && selected.constructing <= 0 ? (
+          <SelectionIdentity
+            selected={selected}
+            palette={palette}
+            profile={profile}
+            stance={stance}
+            onCenter={onCenter}
+          />
+          {selected.kind === "radar" &&
+          selected.owner === playerOwner &&
+          selected.hp > 0 &&
+          selected.constructing <= 0 ? (
             <span className={styles.orderStatus} data-testid="radar-minimap-status">
               {power !== undefined && power < 0
                 ? "Minimap offline until power is restored"
@@ -62,7 +96,9 @@ export function SelectionPanel({
             </span>
           ) : null}
           {selected.kind === "scout" ? (
-            <span className={styles.orderStatus}>Fast recon · strong vs infantry, weak vs vehicles</span>
+            <span className={styles.orderStatus}>
+              Fast recon · strong vs infantry, weak vs vehicles
+            </span>
           ) : null}
           {selected.class === "unit" ? (
             <ProgressMeter
@@ -90,7 +126,12 @@ export function SelectionPanel({
               detail={`${Math.ceil(selected.constructing / TICKS_PER_SECOND)}s`}
             />
           ) : null}
-          {isBuildingEntity(selected) && selected.owner === playerOwner && selected.constructing <= 0 && isDefensiveTurret(selected.kind) && power !== undefined && power < 0 ? (
+          {isBuildingEntity(selected) &&
+          selected.owner === playerOwner &&
+          selected.constructing <= 0 &&
+          isDefensiveTurret(selected.kind) &&
+          power !== undefined &&
+          power < 0 ? (
             <div className={styles.powerWarning} data-testid="turret-power-shortage" role="status">
               ⚡ Low Power: 50% Fire Rate · -25% Range
             </div>
@@ -106,14 +147,20 @@ export function SelectionPanel({
               }
             />
           ) : null}
-          {friendlyProducer && isBuildingEntity(selected) && (selected.kind === "barracks" || selected.kind === "factory") ? (
+          {friendlyProducer &&
+          isBuildingEntity(selected) &&
+          (selected.kind === "barracks" || selected.kind === "factory") ? (
             <span className={styles.orderStatus} data-testid="active-producer-status">
-              {activeProducerId === selected.id ? "Active production building" : `Inactive · active building #${activeProducerId ?? "none"}`}
+              {activeProducerId === selected.id
+                ? "Active production building"
+                : `Inactive · active building #${activeProducerId ?? "none"}`}
             </span>
           ) : null}
           {friendlyProducer ? (
             <span className={styles.orderStatus} data-testid="rally-status">
-              {selected.rallyPoint ? `Rally point ${selected.rallyPoint.x}, ${selected.rallyPoint.y}` : "Rally point not set"}
+              {selected.rallyPoint
+                ? `Rally point ${selected.rallyPoint.x}, ${selected.rallyPoint.y}`
+                : "Rally point not set"}
             </span>
           ) : null}
           {selected.repairing ? (
@@ -123,7 +170,9 @@ export function SelectionPanel({
             />
           ) : null}
         </div>
-      ) : <p className={styles.empty}>Awaiting selection</p>}
+      ) : (
+        <p className={styles.empty}>Awaiting selection</p>
+      )}
     </section>
   );
 }

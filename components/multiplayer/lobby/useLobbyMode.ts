@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type RefObject } from "react";
+import { type RefObject, useCallback, useEffect, useState } from "react";
 import type { MultiplayerSession } from "@/lib/multiplayer/session";
 import type { LobbyMode } from "./types";
 
@@ -32,11 +32,24 @@ export function useLobbyMode(escapeRef: RefObject<LobbyEscapeHandlers>) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented || event.repeat ||
-          event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (
+        event.key !== "Escape" ||
+        event.defaultPrevented ||
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+      )
+        return;
       const current = escapeRef.current;
-      if (current.mode === "battle" && current.session &&
-          current.session.status !== "disconnected" && current.session.status !== "ended") return;
+      if (
+        current.mode === "battle" &&
+        current.session &&
+        current.session.status !== "disconnected" &&
+        current.session.status !== "ended"
+      )
+        return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if (current.mode === "choose") current.backToMenu();

@@ -3,10 +3,10 @@ import {
   decodeSave,
   decodeSavedState,
   deserializeState,
-  saveKey,
-  serializeState,
   SAVE_PREFIX,
   SAVE_VERSION,
+  saveKey,
+  serializeState,
 } from "../../lib/persist/save/serialize";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 
@@ -18,7 +18,9 @@ describe("serializeState / deserializeState", () => {
   it("rejects invalid seeds at both write and read boundaries", () => {
     const invalidSeedState = { ...baseState(), seed: 10000 };
     expect(() => serializeState(invalidSeedState)).toThrow(RangeError);
-    expect(() => decodeSavedState({ ...invalidSeedState, biome: undefined })).toThrow("Invalid save state");
+    expect(() => decodeSavedState({ ...invalidSeedState, biome: undefined })).toThrow(
+      "Invalid save state",
+    );
   });
 
   it("round-trips a state through JSON", () => {
@@ -58,7 +60,9 @@ describe("serializeState / deserializeState", () => {
 
     const restored = deserializeState(serializeState(state));
 
-    expect(restored.entities.find((entity) => entity.id === refinery.id)?.refineryHarvesterPending).toBe(true);
+    expect(
+      restored.entities.find((entity) => entity.id === refinery.id)?.refineryHarvesterPending,
+    ).toBe(true);
   });
 });
 
@@ -275,12 +279,16 @@ describe("normalizeState edge cases", () => {
 
   it("deletes supportTargetId from non-support units", () => {
     const state = baseState(1000);
-    for (const unit of state.entities.filter((e) => e.class === "unit" && e.kind !== "medic" && e.kind !== "repairTruck")) {
+    for (const unit of state.entities.filter(
+      (e) => e.class === "unit" && e.kind !== "medic" && e.kind !== "repairTruck",
+    )) {
       (unit as { supportTargetId: unknown }).supportTargetId = 5;
     }
     const raw = serializeState(state);
     const restored = deserializeState(raw);
-    for (const u of restored.entities.filter((e) => e.class === "unit" && e.kind !== "medic" && e.kind !== "repairTruck")) {
+    for (const u of restored.entities.filter(
+      (e) => e.class === "unit" && e.kind !== "medic" && e.kind !== "repairTruck",
+    )) {
       expect((u as { supportTargetId?: unknown }).supportTargetId).toBeUndefined();
     }
   });
@@ -344,14 +352,18 @@ describe("normalizeState edge cases", () => {
 });
 
 describe("save allocation limits", () => {
-  it.each([[257, 1], [1, 257], [1e9, 1e9], [Infinity, 1]])(
-    "rejects dimensions %s × %s before reading map arrays",
-    (width, height) => {
-      const state = { ...baseState(), width, height };
-      Object.defineProperty(state, "heights", {
-        get() { throw new Error("map allocation path reached"); },
-      });
-      expect(() => decodeSavedState(state)).toThrow("Invalid save state");
-    },
-  );
+  it.each([
+    [257, 1],
+    [1, 257],
+    [1e9, 1e9],
+    [Infinity, 1],
+  ])("rejects dimensions %s × %s before reading map arrays", (width, height) => {
+    const state = { ...baseState(), width, height };
+    Object.defineProperty(state, "heights", {
+      get() {
+        throw new Error("map allocation path reached");
+      },
+    });
+    expect(() => decodeSavedState(state)).toThrow("Invalid save state");
+  });
 });

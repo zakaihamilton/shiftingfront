@@ -1,31 +1,37 @@
 import { describe, expect, it } from "vitest";
+import { impactSfxFor } from "../../lib/audio/battlefield";
 import { createRng } from "../../lib/seed/rng";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { createMission, issue } from "../../lib/sim/api";
 import { tickAircraft } from "../../lib/sim/aircraft";
-import { chase, strike } from "../../lib/sim/combat/damage";
-import { statsFor } from "../../lib/sim/combat/grid";
+import { createMission, issue } from "../../lib/sim/api";
 import { configureChallenge, tickChallenges } from "../../lib/sim/challenges";
 import { tickCombat } from "../../lib/sim/combat";
+import { chase, strike } from "../../lib/sim/combat/damage";
+import { statsFor } from "../../lib/sim/combat/grid";
 import { battleLesson } from "../../lib/sim/debrief";
 import { applyDeploymentEdge } from "../../lib/sim/deployment";
 import { tickMissionDirector } from "../../lib/sim/director";
 import {
   CACHE_CREDITS,
   CACHE_FINALE_PULL_TICKS,
+  CANYON_GULLY_VEHICLE_COST,
   canyonGullyVehicleCost,
   deploymentEdgeForMission,
   enemyDoctrine,
-  fieldNotes,
-  volcanicClosureCost,
-  VOLCANIC_CLOSURE_COST,
-  CANYON_GULLY_VEHICLE_COST,
-  VETERAN_DAMAGE,
   FINALE_WARNING_TICKS,
+  fieldNotes,
+  VETERAN_DAMAGE,
+  VOLCANIC_CLOSURE_COST,
+  volcanicClosureCost,
 } from "../../lib/sim/fieldIdentity";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { tickMovement } from "../../lib/sim/movement";
-import { impactSfxFor } from "../../lib/audio/battlefield";
-import { BOMBARD_RADIUS, bombardInRange, bombardPointFor, noteDamageDealt, tickBombards } from "../../lib/sim/verbs";
+import {
+  BOMBARD_RADIUS,
+  bombardInRange,
+  bombardPointFor,
+  noteDamageDealt,
+  tickBombards,
+} from "../../lib/sim/verbs";
 import { invalidateLivingCache, powerBreakdown } from "../../lib/sim/world";
 import type { SimEvent } from "../../lib/types";
 
@@ -34,7 +40,11 @@ describe("field identity", () => {
     const state = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     expect(enemyDoctrine(state)).toBeUndefined();
     state.factions[1]!.name = "Iron Legion";
-    expect(enemyDoctrine(state)).toMatchObject({ assaultScale: 0.82, thinTurrets: true, raidHarvesters: false });
+    expect(enemyDoctrine(state)).toMatchObject({
+      assaultScale: 0.82,
+      thinTurrets: true,
+      raidHarvesters: false,
+    });
     state.tutorialStage = "move";
     expect(enemyDoctrine(state)).toBeUndefined();
     expect(fieldNotes("TestB", "ash plains").doctrine).toBeUndefined();
@@ -85,9 +95,15 @@ describe("campaign memory", () => {
   });
 
   it("applies a deployment edge once on the next unlocked mission", () => {
-    expect(deploymentEdgeForMission({ unlockedMission: 1, deploymentEdge: "powerReserve" }, 1)).toBe("powerReserve");
-    expect(deploymentEdgeForMission({ unlockedMission: 2, deploymentEdge: "powerReserve" }, 1)).toBeUndefined();
-    expect(deploymentEdgeForMission({ unlockedMission: 0, deploymentEdge: "veteranSquad" }, 0)).toBeUndefined();
+    expect(
+      deploymentEdgeForMission({ unlockedMission: 1, deploymentEdge: "powerReserve" }, 1),
+    ).toBe("powerReserve");
+    expect(
+      deploymentEdgeForMission({ unlockedMission: 2, deploymentEdge: "powerReserve" }, 1),
+    ).toBeUndefined();
+    expect(
+      deploymentEdgeForMission({ unlockedMission: 0, deploymentEdge: "veteranSquad" }, 0),
+    ).toBeUndefined();
 
     const state = makeFixture({ width: 20, height: 16, win: { kind: "annihilate" } });
     addBuilding(state, 0, "constructionYard", 2, 2);
@@ -99,7 +115,9 @@ describe("campaign memory", () => {
     expect(powerBreakdown(state, 0).surplus - powerBreakdown(plain, 0).surplus).toBe(40);
 
     applyDeploymentEdge(state, "veteranSquad");
-    const veterans = state.entities.filter((entity) => entity.kind === "infantry" && entity.veteranRank === 1);
+    const veterans = state.entities.filter(
+      (entity) => entity.kind === "infantry" && entity.veteranRank === 1,
+    );
     expect(veterans.length).toBe(4);
 
     const launched = createMission({ seed: 4, missionIndex: 1, deploymentEdge: "powerReserve" });
@@ -163,7 +181,9 @@ describe("field verbs", () => {
     ]);
     expect(distant.bombard).toBeUndefined();
     const before = enemy.hp;
-    expect(issue(state, { type: "bombard", unitIds: [behemoth.id], x: enemy.x, y: enemy.y })).toEqual([]);
+    expect(
+      issue(state, { type: "bombard", unitIds: [behemoth.id], x: enemy.x, y: enemy.y }),
+    ).toEqual([]);
     expect(behemoth.bombard?.remaining).toBe(36);
     chase(state, behemoth, enemy);
     expect(behemoth.path).toEqual([]);
@@ -182,7 +202,9 @@ describe("field verbs", () => {
     expect(nearSide).toEqual({ x: 2, y: 9 });
     expect(bombardInRange(structure, gunner, building.x, building.y)).toBe(false);
     const beforeBuilding = building.hp;
-    expect(issue(structure, { type: "bombard", unitIds: [gunner.id], x: nearSide!.x, y: nearSide!.y })).toEqual([]);
+    expect(
+      issue(structure, { type: "bombard", unitIds: [gunner.id], x: nearSide!.x, y: nearSide!.y }),
+    ).toEqual([]);
     for (let tick = 0; tick < 36; tick += 1) tickBombards(structure);
     expect(building.hp).toBeLessThan(beforeBuilding);
   });
@@ -208,8 +230,12 @@ describe("field verbs", () => {
       destroyed: false,
       areaRadius: BOMBARD_RADIUS,
     });
-    expect(impactSfxFor(combat && combat.type === "combat" ? combat.targetKind : "infantry")).toBe("impactMetal");
-    expect(events).toContainEqual(expect.objectContaining({ type: "destroyed", id: infantry.id, owner: 1, kind: "infantry" }));
+    expect(impactSfxFor(combat && combat.type === "combat" ? combat.targetKind : "infantry")).toBe(
+      "impactMetal",
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: "destroyed", id: infantry.id, owner: 1, kind: "infantry" }),
+    );
     expect(tank.hp).toBeGreaterThan(0);
 
     const miss = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
@@ -225,7 +251,9 @@ describe("field verbs", () => {
       destroyed: false,
       areaRadius: BOMBARD_RADIUS,
     });
-    expect(impactSfxFor(empty && empty.type === "combat" ? empty.targetKind : "infantry")).toBe("impact");
+    expect(impactSfxFor(empty && empty.type === "combat" ? empty.targetKind : "infantry")).toBe(
+      "impact",
+    );
   });
 
   it("says when a strike plane is returning to rearm", () => {
@@ -239,7 +267,9 @@ describe("field verbs", () => {
     const events: SimEvent[] = [];
     tickAircraft(state, events);
     tickAircraft(state, events);
-    const alerts = events.filter((event) => event.type === "alert" && event.text.includes("out of bombs"));
+    const alerts = events.filter(
+      (event) => event.type === "alert" && event.text.includes("out of bombs"),
+    );
     expect(alerts).toHaveLength(1);
   });
 });
@@ -260,7 +290,9 @@ describe("mission drama", () => {
       playerStart: { x: 4, y: 24 },
       enemyStart: { x: 44, y: 24 },
     } as Parameters<typeof configureChallenge>[1]);
-    const guard = state.entities.find((entity) => entity.kind === "antiArmor" && entity.optionalChallenge);
+    const guard = state.entities.find(
+      (entity) => entity.kind === "antiArmor" && entity.optionalChallenge,
+    );
     expect(guard).toBeDefined();
     expect(guard!.stance).toBe("defensive");
 
@@ -294,8 +326,21 @@ describe("mission drama", () => {
       required: 0,
       director: { phase: "opening", pressureStart: 1000, finaleStart: 4000, eventCount: 0 },
       secondary: [
-        { id: "bonus-cache", kind: "destroyTarget", priority: "optional", targetId: cache.id, label: "cache" },
-        { id: "bonus-mechanic", kind: "secureZone", priority: "optional", zone: { x: 6, y: 6 }, target: 1, label: "mechanic" },
+        {
+          id: "bonus-cache",
+          kind: "destroyTarget",
+          priority: "optional",
+          targetId: cache.id,
+          label: "cache",
+        },
+        {
+          id: "bonus-mechanic",
+          kind: "secureZone",
+          priority: "optional",
+          zone: { x: 6, y: 6 },
+          target: 1,
+          label: "mechanic",
+        },
       ],
     };
     cache.hp = 0;
@@ -310,7 +355,9 @@ describe("mission drama", () => {
     tickChallenges(state);
     expect(mechanic.owner).toBe(0);
     expect(mechanic.recruitable).toBeUndefined();
-    expect(state.runtime.secondary.find((objective) => objective.id === "bonus-mechanic")?.completed).toBe(true);
+    expect(
+      state.runtime.secondary.find((objective) => objective.id === "bonus-mechanic")?.completed,
+    ).toBe(true);
   });
 
   it("warns once before the finale and names the loss that decided the battle", () => {
@@ -330,7 +377,9 @@ describe("mission drama", () => {
     const finale = tickMissionDirector(state);
     expect(director.phase).toBe("finale");
     expect(finale[0]).toMatchObject({ type: "alert" });
-    expect(String(finale[0] && "text" in finale[0] ? finale[0].text : "")).not.toContain("ten seconds");
+    expect(String(finale[0] && "text" in finale[0] ? finale[0].text : "")).not.toContain(
+      "ten seconds",
+    );
 
     const lost = makeFixture({ width: 12, height: 12, win: { kind: "annihilate" } });
     lost.result = "lost";
@@ -369,8 +418,22 @@ describe("mission drama", () => {
       targetIds: [],
       rescued: 0,
       required: 0,
-      director: { phase: "pressure", pressureStart: 1000, finaleStart: 4000, eventCount: 1, finaleWarned: true },
-      secondary: [{ id: "bonus-cache", kind: "destroyTarget", priority: "optional", targetId: cache.id, label: "cache" }],
+      director: {
+        phase: "pressure",
+        pressureStart: 1000,
+        finaleStart: 4000,
+        eventCount: 1,
+        finaleWarned: true,
+      },
+      secondary: [
+        {
+          id: "bonus-cache",
+          kind: "destroyTarget",
+          priority: "optional",
+          targetId: cache.id,
+          label: "cache",
+        },
+      ],
     };
     cache.hp = 0;
     tickChallenges(state);
@@ -395,17 +458,35 @@ describe("mission drama", () => {
       targetIds: [],
       rescued: 0,
       required: 0,
-      director: { phase: "pressure", pressureStart: 1000, finaleStart: 4000, eventCount: 1, finaleWarned: true },
-      secondary: [{ id: "bonus-cache", kind: "destroyTarget", priority: "optional", targetId: lateCache.id, label: "cache" }],
+      director: {
+        phase: "pressure",
+        pressureStart: 1000,
+        finaleStart: 4000,
+        eventCount: 1,
+        finaleWarned: true,
+      },
+      secondary: [
+        {
+          id: "bonus-cache",
+          kind: "destroyTarget",
+          priority: "optional",
+          targetId: lateCache.id,
+          label: "cache",
+        },
+      ],
     };
     lateCache.hp = 0;
     tickChallenges(rushed);
     expect(rushed.runtime.director!.finaleStart).toBe(3760);
     const arriving = tickMissionDirector(rushed);
-    expect(arriving[0]).toMatchObject({ text: "Advisor: The final push is arriving now. Commit or pull the line back." });
+    expect(arriving[0]).toMatchObject({
+      text: "Advisor: The final push is arriving now. Commit or pull the line back.",
+    });
     expect(rushed.runtime.director?.phase).not.toBe("finale");
     const finale = tickMissionDirector(rushed);
     expect(rushed.runtime.director?.phase).toBe("finale");
-    expect(String(finale[0] && "text" in finale[0] ? finale[0].text : "")).not.toContain("ten seconds");
+    expect(String(finale[0] && "text" in finale[0] ? finale[0].text : "")).not.toContain(
+      "ten seconds",
+    );
   });
 });

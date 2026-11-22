@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createMission, inspect, tick } from "../../lib/sim/api";
-import { ARCHETYPE_STRATEGIES, ArchetypeCommander } from "../../lib/sim/commander/archetypes";
 import { hasNonFiniteState } from "../../lib/sim/balance";
+import { ARCHETYPE_STRATEGIES, ArchetypeCommander } from "../../lib/sim/commander/archetypes";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { createScenarioRunner } from "../../lib/sim/scenarioRunner";
 import { simulationFingerprint } from "../../lib/sim/replay";
+import { createScenarioRunner } from "../../lib/sim/scenarioRunner";
 import type { Command, Entity, MissionKind, SimState } from "../../lib/types";
 
 describe("player archetype commanders", () => {
@@ -16,7 +16,9 @@ describe("player archetype commanders", () => {
     createScenarioRunner(state).run({
       maxTicks: 480,
       commandsForTick: () => commander.plan(state),
-      onCommands: (_state, commands) => { commandCount += commands?.length ?? 0; },
+      onCommands: (_state, commands) => {
+        commandCount += commands?.length ?? 0;
+      },
       onTick: (_state, result) => {
         rejections += result.events.filter((event) => event.type === "commandRejected").length;
       },
@@ -30,17 +32,27 @@ describe("player archetype commanders", () => {
     const vehicles = createMission({ seed: 0, missionIndex: 0 });
     const infantryCommander = new ArchetypeCommander("infantry");
     const vehiclesCommander = new ArchetypeCommander("vehicles");
-    createScenarioRunner(infantry).run({ maxTicks: 1_200, commandsForTick: () => infantryCommander.plan(infantry) });
-    createScenarioRunner(vehicles).run({ maxTicks: 1_200, commandsForTick: () => vehiclesCommander.plan(vehicles) });
-    expect(infantry.unitsProducedByRole.infantry + infantry.unitsProducedByRole.antiArmor)
-      .toBeGreaterThan(vehicles.unitsProducedByRole.tank);
+    createScenarioRunner(infantry).run({
+      maxTicks: 1_200,
+      commandsForTick: () => infantryCommander.plan(infantry),
+    });
+    createScenarioRunner(vehicles).run({
+      maxTicks: 1_200,
+      commandsForTick: () => vehiclesCommander.plan(vehicles),
+    });
+    expect(
+      infantry.unitsProducedByRole.infantry + infantry.unitsProducedByRole.antiArmor,
+    ).toBeGreaterThan(vehicles.unitsProducedByRole.tank);
     expect(vehicles.unitsProducedByRole.tank).toBeGreaterThan(infantry.unitsProducedByRole.tank);
   });
 
   it("makes greed establish harvest capacity before barracks production", () => {
     const state = createMission({ seed: 0, missionIndex: 0 });
     const commander = new ArchetypeCommander("greed");
-    createScenarioRunner(state).run({ maxTicks: 1_200, commandsForTick: () => commander.plan(state) });
+    createScenarioRunner(state).run({
+      maxTicks: 1_200,
+      commandsForTick: () => commander.plan(state),
+    });
     expect(state.unitsProducedByRole.harvester).toBeGreaterThan(0);
   });
 
@@ -64,7 +76,10 @@ describe("player archetype commanders", () => {
   }
 
   function combatOrder(commands: Command[]) {
-    return commands.find((command) => command.type === "move" || command.type === "attackMove" || command.type === "attack");
+    return commands.find(
+      (command) =>
+        command.type === "move" || command.type === "attackMove" || command.type === "attack",
+    );
   }
 
   it("holds turtle combat at the yard on rescue after the late-commit tick", () => {
@@ -81,17 +96,20 @@ describe("player archetype commanders", () => {
       y: yard.y,
       formation: "line",
     });
-    expect(commands.some((command) =>
-      (command.type === "move" || command.type === "attackMove") &&
-      command.x === target.x &&
-      command.y === target.y,
-    )).toBe(false);
+    expect(
+      commands.some(
+        (command) =>
+          (command.type === "move" || command.type === "attackMove") &&
+          command.x === target.x &&
+          command.y === target.y,
+      ),
+    ).toBe(false);
   });
 
   it("late-counterattacks turtle combat on offensive missions after commit", () => {
-    const { infantry, target, commands } = turtleCommitPlan("destroyMarked", (state) => (
-      addBuilding(state, 1, "power", 24, 24, 0, true)
-    ));
+    const { infantry, target, commands } = turtleCommitPlan("destroyMarked", (state) =>
+      addBuilding(state, 1, "power", 24, 24, 0, true),
+    );
     expect(combatOrder(commands)).toEqual({
       type: "attackMove",
       unitIds: [infantry.id],
@@ -103,7 +121,9 @@ describe("player archetype commanders", () => {
 
   it("makes turtle repair its highest-priority damaged building", () => {
     const state = createMission({ seed: 421, missionIndex: 0 });
-    const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+    const yard = state.entities.find(
+      (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+    );
     expect(yard).toBeDefined();
     yard!.hp -= 100;
     const commander = new ArchetypeCommander("turtle");

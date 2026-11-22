@@ -1,65 +1,90 @@
-import { composeMusic, midiToHz, STEPS_PER_BAR, BARS_PER_SECTION, TUTORIAL_MUSIC_MISSION, type MusicIntensity, type MusicPattern, type MusicStem, type MusicVoiceType } from "./compose";
+import {
+  BARS_PER_SECTION,
+  composeMusic,
+  type MusicIntensity,
+  type MusicPattern,
+  type MusicStem,
+  type MusicVoiceType,
+  midiToHz,
+  STEPS_PER_BAR,
+  TUTORIAL_MUSIC_MISSION,
+} from "./compose";
 import { getAudioContext, peekAudioContext, resumeAudio } from "./context";
 import { getAudioBus } from "./mixer";
 import {
+  playClap,
+  playHat,
+  playImpact,
+  playKick,
+  playRim,
+  playShaker,
+  playSnare,
+  playTom,
+} from "./musicDrums";
+import type { AudioGraphContext, MusicGraph } from "./musicGraph";
+import {
   createGraph,
   disconnectGraph,
+  indexPattern,
   layerMultiplier,
   masterGain,
   padGainFor,
   SCHEDULE_AHEAD_S,
   SCHEDULER_MS,
   stemBus,
-  indexPattern,
   syncGraphStyle,
 } from "./musicGraph";
-import type { AudioGraphContext, MusicGraph } from "./musicGraph";
-import { playSynthTone, playTransition, retunePad, schedulePadGate, syncDelay } from "./musicSynth";
-import { playKick, playSnare, playClap, playHat, playTom, playImpact, playRim, playShaker } from "./musicDrums";
+import { clearMusicPosition, readMusicPosition, saveMusicPosition } from "./musicPosition";
 import { prewarmMusicSamples } from "./musicSamples";
 import {
-  intensity,
-  pendingIntensity,
-  setIntensity,
-  setPendingIntensity,
-  graph,
-  setGraph,
-  pattern,
-  setPattern,
-  timer,
-  setTimer,
-  nextNoteTime,
-  setNextNoteTime,
-  step,
-  setStep,
-  enabled,
-  paused,
-  ducked,
   cue,
-  seed,
-  missionIndex,
-  trackIndex,
-  setTrackIndex,
-  transitioning,
-  setTransitioning,
+  ducked,
+  enabled,
   fadeGen,
+  graph,
   incrementFadeGen,
+  intensity,
+  missionIndex,
+  nextNoteTime,
+  pattern,
+  paused,
+  pendingIntensity,
+  seed,
+  setGraph,
+  setIntensity,
+  setNextNoteTime,
+  setPattern,
+  setPendingIntensity,
+  setStep,
+  setTimer,
+  setTrackIndex,
+  setTransitioning,
+  step,
+  timer,
+  trackIndex,
+  transitioning,
 } from "./musicState";
-import { readMusicPosition, saveMusicPosition, clearMusicPosition } from "./musicPosition";
+import { playSynthTone, playTransition, retunePad, schedulePadGate, syncDelay } from "./musicSynth";
 
-export { readMusicPosition, saveMusicPosition, clearMusicPosition };
+export { clearMusicPosition, readMusicPosition, saveMusicPosition };
 
 export const TOTAL_CAMPAIGN_TRACKS = 6;
 
 export function advanceMusicTrack(): void {
   if (cue !== "mission" || missionIndex === TUTORIAL_MUSIC_MISSION || missionIndex < 0) return;
-  const nextTrack = ((Math.max(trackIndex , 0)) + 1) % TOTAL_CAMPAIGN_TRACKS;
+  const nextTrack = (Math.max(trackIndex, 0) + 1) % TOTAL_CAMPAIGN_TRACKS;
   setTrackIndex(nextTrack);
   const next = composeMusic(seed, cue, nextTrack);
   applyPattern(next);
 }
 
-export function applyIntensityAt(audio: AudioGraphContext, g: MusicGraph, value: MusicIntensity, time: number, isDucked = ducked): void {
+export function applyIntensityAt(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  value: MusicIntensity,
+  time: number,
+  isDucked = ducked,
+): void {
   const t = Math.max(time, audio.currentTime);
   const ramp = value === "critical" ? 0.08 : 0.16;
   const set = (node: GainNode, target: number) => {
@@ -76,9 +101,21 @@ export function applyIntensityAt(audio: AudioGraphContext, g: MusicGraph, value:
   set(g.counterBus, value === "calm" ? 0.24 : value === "critical" ? 0.38 : 0.3);
   set(g.fxBus, value === "critical" ? 0.26 : value === "engaged" ? 0.18 : 0.12);
   g.highpass.frequency.setTargetAtTime(value === "critical" ? 48 : 38, t, ramp);
-  g.padFilter.frequency.setTargetAtTime(value === "critical" ? 1_100 : value === "engaged" ? 900 : 720, t, ramp);
-  g.reverbWet.gain.setTargetAtTime(g.style.reverbWet * (value === "critical" ? 0.78 : value === "engaged" ? 0.92 : 1.08), t, ramp);
-  g.delayWet.gain.setTargetAtTime(g.style.delayWet * (value === "critical" ? 0.82 : value === "engaged" ? 1.04 : 0.9), t, ramp);
+  g.padFilter.frequency.setTargetAtTime(
+    value === "critical" ? 1_100 : value === "engaged" ? 900 : 720,
+    t,
+    ramp,
+  );
+  g.reverbWet.gain.setTargetAtTime(
+    g.style.reverbWet * (value === "critical" ? 0.78 : value === "engaged" ? 0.92 : 1.08),
+    t,
+    ramp,
+  );
+  g.delayWet.gain.setTargetAtTime(
+    g.style.delayWet * (value === "critical" ? 0.82 : value === "engaged" ? 1.04 : 0.9),
+    t,
+    ramp,
+  );
   g.padBase = padGainFor(value);
   set(g.padGain, g.padBase);
 }
@@ -110,7 +147,14 @@ function duckBass(audio: AudioGraphContext, g: MusicGraph, time: number): void {
   g.bassDuck.gain.linearRampToValueAtTime(1, t + 0.15);
 }
 
-export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPattern, when: number, index: number, value: MusicIntensity): void {
+export function scheduleStep(
+  audio: AudioGraphContext,
+  g: MusicGraph,
+  p: MusicPattern,
+  when: number,
+  index: number,
+  value: MusicIntensity,
+): void {
   const stepDuration = 60 / p.bpm / 4;
   const t = when + (index % 2 === 1 ? p.swing * stepDuration : 0);
   const bar = Math.floor(index / STEPS_PER_BAR);
@@ -118,7 +162,14 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
   if (index % STEPS_PER_BAR === 0) {
     retunePad(audio, g, p, bar, t);
     if (bar % BARS_PER_SECTION === BARS_PER_SECTION - 1 && bar < p.bars - 1) {
-      playTransition(audio, g, t + stepDuration * 5, stepDuration * 9, true, p.padRoot[(bar + 1) % p.bars] ?? p.rootHz);
+      playTransition(
+        audio,
+        g,
+        t + stepDuration * 5,
+        stepDuration * 9,
+        true,
+        p.padRoot[(bar + 1) % p.bars] ?? p.rootHz,
+      );
     }
     if (bar % BARS_PER_SECTION === 0 && bar > 0) {
       playTransition(audio, g, t, stepDuration * 3, false, p.padRoot[bar % p.bars] ?? p.rootHz);
@@ -135,11 +186,12 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
     ["counter", p.counterType, p.cutoff],
     ["melody", p.melodyType, p.cutoff + 360],
   ];
-  const activeLayers = value === "critical"
-    ? ["engaged", "critical"] as const
-    : value === "engaged"
-      ? ["engaged"] as const
-      : [];
+  const activeLayers =
+    value === "critical"
+      ? (["engaged", "critical"] as const)
+      : value === "engaged"
+        ? (["engaged"] as const)
+        : [];
   for (const [stem, voice, cutoff] of stemVoices) {
     const events = [...(g.index.notes[stem].get(index) ?? [])];
     for (const layerName of activeLayers) {
@@ -147,10 +199,37 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
     }
     if (events.length === 0) continue;
     for (const event of events) {
-      const duration = Math.max(stepDuration * event.duration, stepDuration * (stem === "pulse" ? 0.55 : 0.7));
-      playSynthTone(audio, g, stemBus(g, stem), midiToHz(event.midi), t, duration, voice, event.velocity * layerMultiplier(stem === "pulse" ? "pulse" : stem, value), cutoff, stem, !!event.accent);
+      const duration = Math.max(
+        stepDuration * event.duration,
+        stepDuration * (stem === "pulse" ? 0.55 : 0.7),
+      );
+      playSynthTone(
+        audio,
+        g,
+        stemBus(g, stem),
+        midiToHz(event.midi),
+        t,
+        duration,
+        voice,
+        event.velocity * layerMultiplier(stem === "pulse" ? "pulse" : stem, value),
+        cutoff,
+        stem,
+        !!event.accent,
+      );
       if (value === "critical" && stem === "bass" && event.accent) {
-        playSynthTone(audio, g, g.bassBus, midiToHz(event.midi - 12), t, duration * 0.9, "triangle", event.velocity * 0.42, 340, "bass", true);
+        playSynthTone(
+          audio,
+          g,
+          g.bassBus,
+          midiToHz(event.midi - 12),
+          t,
+          duration * 0.9,
+          "triangle",
+          event.velocity * 0.42,
+          340,
+          "bass",
+          true,
+        );
       }
     }
   }
@@ -160,7 +239,8 @@ export function scheduleStep(audio: AudioGraphContext, g: MusicGraph, p: MusicPa
     drumEvents.push(...(g.index.intensityLayers?.[layerName]?.drums.get(index) ?? []));
   }
   for (const event of drumEvents) {
-    if (value === "calm" && isBreakdown && (event.kind === "tom" || event.kind === "impact")) continue;
+    if (value === "calm" && isBreakdown && (event.kind === "tom" || event.kind === "impact"))
+      continue;
     const velocity = event.velocity * layerMultiplier("drums", value);
     if (event.kind === "kick") {
       playKick(audio, g, t, velocity, p.style);
@@ -223,11 +303,12 @@ function startGraph(audio: AudioContext): void {
   applyIntensityAt(audio, g, intensity, audio.currentTime);
 
   const remembered = readMusicPosition(cue, seed, missionIndex);
-  const startStep = typeof remembered === "number" && Number.isFinite(remembered)
-    ? ((remembered % pattern.steps) + pattern.steps) % pattern.steps
-    : step > 0
-    ? step % pattern.steps
-    : 0;
+  const startStep =
+    typeof remembered === "number" && Number.isFinite(remembered)
+      ? ((remembered % pattern.steps) + pattern.steps) % pattern.steps
+      : step > 0
+        ? step % pattern.steps
+        : 0;
 
   const startBar = Math.floor(startStep / STEPS_PER_BAR);
   retunePad(audio, g, pattern, startBar, audio.currentTime);
@@ -246,7 +327,8 @@ function tickScheduler(): void {
   let n = nextNoteTime;
   let s = step;
   while (n < audio.currentTime + SCHEDULE_AHEAD_S) {
-    if (shouldApplyPendingIntensity(s, pendingIntensity)) applyPendingIntensityAtPhraseBoundary(audio, g);
+    if (shouldApplyPendingIntensity(s, pendingIntensity))
+      applyPendingIntensityAtPhraseBoundary(audio, g);
     scheduleStep(audio, g, p, n, s, intensity);
     n += stepDuration;
     s = (s + 1) % p.steps;

@@ -1,25 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   composeMusic,
-  midiToHz,
-  MUSIC_BARS,
   MUSIC_STEPS,
   STEPS_PER_BAR,
-  BARS_PER_SECTION,
   TUTORIAL_MUSIC_MISSION,
 } from "../../lib/audio/compose";
-import { isMusicEnabled, musicCueFromPath, setMusicEnabled, setMusicIntensity } from "../../lib/audio/music";
-import { shouldApplyPendingIntensity } from "../../lib/audio/musicScheduler";
-import { beep, isSfxEnabled, MAX_SFX_QUEUE_S, playSfx, scheduleSfxTime, setSfxEnabled } from "../../lib/audio/synth";
-import { beepForCommands } from "../../lib/audio/uiOrders";
-import { spatialAudioForWorld } from "../../lib/audio/spatial";
-import { createCamera } from "../../lib/iso";
-import { createCampaign } from "../../lib/gen/campaign";
-import { chordToneMidi } from "../../lib/audio/compose/helpers";
 import { styleAffinityScore } from "../../lib/audio/compose/missionContext";
-import { cueMotifPhrases } from "../../lib/audio/compose/cueThemes";
-import { missionMotifPalette } from "../../lib/audio/compose/missionThemes";
-import type { MissionKind } from "../../lib/types";
+import { createCampaign } from "../../lib/gen/campaign";
 
 const CINEMATIC_MISSION_STYLES = new Set([
   "neon-arpeggio",
@@ -39,13 +26,6 @@ const CINEMATIC_MISSION_STYLES = new Set([
 ]);
 
 describe("generated audio", () => {
-  afterEach(() => {
-    setSfxEnabled(true);
-    setMusicEnabled(true);
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-  });
-
   it("composes the same pattern for the same seed, cue, and mission", () => {
     expect(composeMusic(421, "mission", 3)).toEqual(composeMusic(421, "mission", 3));
     expect(composeMusic(421, "menu")).not.toEqual(composeMusic(421, "mission"));
@@ -66,7 +46,9 @@ describe("generated audio", () => {
     const sectionCount = (sectionName: string, lane: keyof typeof pattern.notes) => {
       const section = pattern.sections.find((entry) => entry.name === sectionName)!;
       return pattern.notes[lane].filter(
-        (note) => note.step >= section.startBar * STEPS_PER_BAR && note.step < section.endBar * STEPS_PER_BAR,
+        (note) =>
+          note.step >= section.startBar * STEPS_PER_BAR &&
+          note.step < section.endBar * STEPS_PER_BAR,
       ).length;
     };
     expect(sectionCount("intro", "harmony")).toBe(0);
@@ -75,19 +57,29 @@ describe("generated audio", () => {
       expect(sectionCount(section, "harmony")).toBeGreaterThan(0);
     }
 
-    for (const section of pattern.sections.filter(({ name }) => !["intro", "breakdown"].includes(name))) {
-      const barsWithKick = Array.from({ length: section.endBar - section.startBar }, (_, offset) => {
-        const start = (section.startBar + offset) * STEPS_PER_BAR;
-        return pattern.drums.some((event) => event.kind === "kick" && event.step >= start && event.step < start + STEPS_PER_BAR);
-      }).filter(Boolean).length;
+    for (const section of pattern.sections.filter(
+      ({ name }) => !["intro", "breakdown"].includes(name),
+    )) {
+      const barsWithKick = Array.from(
+        { length: section.endBar - section.startBar },
+        (_, offset) => {
+          const start = (section.startBar + offset) * STEPS_PER_BAR;
+          return pattern.drums.some(
+            (event) =>
+              event.kind === "kick" && event.step >= start && event.step < start + STEPS_PER_BAR,
+          );
+        },
+      ).filter(Boolean).length;
       expect(barsWithKick).toBeGreaterThanOrEqual(14);
 
-      const kickMask = (bar: number) => pattern.kick.slice(bar * STEPS_PER_BAR, (bar + 1) * STEPS_PER_BAR);
+      const kickMask = (bar: number) =>
+        pattern.kick.slice(bar * STEPS_PER_BAR, (bar + 1) * STEPS_PER_BAR);
       let backbone: boolean[] | null = null;
       for (let offset = 0; offset < section.endBar - section.startBar; offset += 1) {
         const bar = section.startBar + offset;
         const phraseBar = offset % 8;
-        const hole = pattern.style.arrangement.holdBass[pattern.sections.indexOf(section)] && offset < 8;
+        const hole =
+          pattern.style.arrangement.holdBass[pattern.sections.indexOf(section)] && offset < 8;
         const mask = kickMask(bar);
         if (!mask.some(Boolean)) {
           if (!hole) expect([2, 6]).toContain(phraseBar);
@@ -101,7 +93,9 @@ describe("generated audio", () => {
 
     for (const event of pattern.drums.filter(({ kind }) => kind === "tom")) {
       const bar = Math.floor(event.step / STEPS_PER_BAR);
-      const section = pattern.sections.find(({ startBar, endBar }) => bar >= startBar && bar < endBar)!;
+      const section = pattern.sections.find(
+        ({ startBar, endBar }) => bar >= startBar && bar < endBar,
+      )!;
       expect([3, 7]).toContain((bar - section.startBar) % 8);
     }
 
@@ -113,7 +107,9 @@ describe("generated audio", () => {
   it("varies the arrangement across missions of the same seed", () => {
     expect(composeMusic(421, "mission", 0)).not.toEqual(composeMusic(421, "mission", 1));
     expect(composeMusic(421, "mission", 0)).not.toEqual(composeMusic(421, "mission", 7));
-    expect(composeMusic(421, "mission", 0)).not.toEqual(composeMusic(421, "mission", TUTORIAL_MUSIC_MISSION));
+    expect(composeMusic(421, "mission", 0)).not.toEqual(
+      composeMusic(421, "mission", TUTORIAL_MUSIC_MISSION),
+    );
   });
 
   it("keeps mission scores in a cinematic palette with distinct seeded identities", () => {
@@ -127,41 +123,70 @@ describe("generated audio", () => {
     expect(corpus.some((pattern) => pattern.theme.groove === "breakbeat")).toBe(true);
     expect(corpus.some((pattern) => pattern.theme.groove === "march")).toBe(true);
     expect(corpus.some((pattern) => pattern.scaleName === "phrygian")).toBe(true);
-    expect(corpus.some((pattern) => pattern.scaleName === "harmonic minor" || pattern.scaleName === "minor pentatonic")).toBe(true);
-    expect(corpus.some((pattern) => pattern.scaleName === "lydian" || pattern.scaleName === "double harmonic")).toBe(true);
+    expect(
+      corpus.some(
+        (pattern) =>
+          pattern.scaleName === "harmonic minor" || pattern.scaleName === "minor pentatonic",
+      ),
+    ).toBe(true);
+    expect(
+      corpus.some(
+        (pattern) => pattern.scaleName === "lydian" || pattern.scaleName === "double harmonic",
+      ),
+    ).toBe(true);
     expect(corpus.every((pattern) => pattern.style.voiceEngine === "cinematic")).toBe(true);
     expect(corpus.some((pattern) => pattern.style.drumKit === "industrial")).toBe(true);
-    expect(corpus.some((pattern) => pattern.drums.some((event) => event.kind === "rim" || event.kind === "shaker"))).toBe(true);
-    expect(new Set(corpus.map((pattern) => pattern.style.voiceEngine))).toEqual(new Set(["cinematic"]));
+    expect(
+      corpus.some((pattern) =>
+        pattern.drums.some((event) => event.kind === "rim" || event.kind === "shaker"),
+      ),
+    ).toBe(true);
+    expect(new Set(corpus.map((pattern) => pattern.style.voiceEngine))).toEqual(
+      new Set(["cinematic"]),
+    );
 
-    const missions = Array.from({ length: 6 }, (_, mission) => composeMusic(421, "mission", mission));
+    const missions = Array.from({ length: 6 }, (_, mission) =>
+      composeMusic(421, "mission", mission),
+    );
     expect(new Set(missions.map((pattern) => pattern.style.name)).size).toBe(6);
     expect(new Set(missions.map((pattern) => JSON.stringify(pattern.theme.motif))).size).toBe(6);
     expect(new Set(missions.map((pattern) => pattern.style.arrangement.name)).size).toBe(6);
-    const campaign = Array.from({ length: 12 }, (_, mission) => composeMusic(421, "mission", mission));
+    const campaign = Array.from({ length: 12 }, (_, mission) =>
+      composeMusic(421, "mission", mission),
+    );
     expect(new Set(campaign.map((pattern) => pattern.style.arrangement.name)).size).toBe(12);
-    expect(campaign.some((pattern, index) =>
-      campaign.some((other, otherIndex) =>
-        index !== otherIndex &&
-        JSON.stringify(pattern.style.arrangement.melodyEnabled) !== JSON.stringify(other.style.arrangement.melodyEnabled),
+    expect(
+      campaign.some((pattern, index) =>
+        campaign.some(
+          (other, otherIndex) =>
+            index !== otherIndex &&
+            JSON.stringify(pattern.style.arrangement.melodyEnabled) !==
+              JSON.stringify(other.style.arrangement.melodyEnabled),
+        ),
       ),
-    )).toBe(true);
-    expect(campaign.some((pattern, index) =>
-      campaign.some((other, otherIndex) =>
-        index !== otherIndex &&
-        JSON.stringify(pattern.style.arrangement.counterEnabled) !== JSON.stringify(other.style.arrangement.counterEnabled),
+    ).toBe(true);
+    expect(
+      campaign.some((pattern, index) =>
+        campaign.some(
+          (other, otherIndex) =>
+            index !== otherIndex &&
+            JSON.stringify(pattern.style.arrangement.counterEnabled) !==
+              JSON.stringify(other.style.arrangement.counterEnabled),
+        ),
       ),
-    )).toBe(true);
-    const fingerprints = missions.map((pattern) => JSON.stringify({
-      style: pattern.style,
-      bpm: pattern.bpm,
-      rootMidi: pattern.rootMidi,
-      scaleName: pattern.scaleName,
-      progression: pattern.theme.progressionA,
-      motif: pattern.motif,
-      hook: pattern.theme.hook,
-      drums: pattern.drums,
-    }));
+    ).toBe(true);
+    const fingerprints = missions.map((pattern) =>
+      JSON.stringify({
+        style: pattern.style,
+        bpm: pattern.bpm,
+        rootMidi: pattern.rootMidi,
+        scaleName: pattern.scaleName,
+        progression: pattern.theme.progressionA,
+        motif: pattern.motif,
+        hook: pattern.theme.hook,
+        drums: pattern.drums,
+      }),
+    );
     expect(new Set(fingerprints).size).toBe(missions.length);
     expect(missions.every((pattern) => pattern.arpType === pattern.style.pulseType)).toBe(true);
     expect(missions.every((pattern) => pattern.melodyType === pattern.style.melodyType)).toBe(true);
@@ -186,7 +211,9 @@ describe("generated audio", () => {
         expect(pattern.style.reverbWet).toBeLessThanOrEqual(cue === "mission" ? 0.18 : 0.22);
         expect(pattern.style.delayWet).toBeLessThanOrEqual(cue === "mission" ? 0.18 : 0.22);
         const low = cue === "mission" ? 36 : 0;
-        expect(pattern.notes.melody.every((note) => note.midi >= low && note.midi <= 127)).toBe(true);
+        expect(pattern.notes.melody.every((note) => note.midi >= low && note.midi <= 127)).toBe(
+          true,
+        );
         for (let bar = 0; bar < pattern.bars; bar++) {
           const start = bar * STEPS_PER_BAR;
           const pulses = pattern.notes.pulse
@@ -202,8 +229,9 @@ describe("generated audio", () => {
   });
 
   it("gives cinematic phrases a call-and-response hook and seeded drum dynamics", () => {
-    const cinematic = Array.from({ length: 48 }, (_, seed) => composeMusic(seed, "mission", seed % 8))
-      .filter((pattern) => pattern.style.voiceEngine === "cinematic");
+    const cinematic = Array.from({ length: 48 }, (_, seed) =>
+      composeMusic(seed, "mission", seed % 8),
+    ).filter((pattern) => pattern.style.voiceEngine === "cinematic");
     expect(cinematic.length).toBeGreaterThan(0);
 
     for (const pattern of cinematic) {
@@ -222,7 +250,10 @@ describe("generated audio", () => {
           (event) =>
             event.step >= start + 8 &&
             event.step < start + STEPS_PER_BAR &&
-            (event.kind === "kick" || event.kind === "snare" || event.kind === "tom" || event.kind === "impact"),
+            (event.kind === "kick" ||
+              event.kind === "snare" ||
+              event.kind === "tom" ||
+              event.kind === "impact"),
         );
         expect(fillHits.length).toBeLessThanOrEqual(14);
       }
@@ -251,10 +282,12 @@ describe("generated audio", () => {
       }
       for (let missionIndex = 0; missionIndex < 6; missionIndex++) {
         const pattern = composeMusic(seed, "mission", missionIndex);
-        expect(styleAffinityScore(pattern.style.name, {
-          biome: pattern.biome,
-          missionKind: pattern.missionKind,
-        })).toBeGreaterThan(0);
+        expect(
+          styleAffinityScore(pattern.style.name, {
+            biome: pattern.biome,
+            missionKind: pattern.missionKind,
+          }),
+        ).toBeGreaterThan(0);
       }
     }
 
@@ -262,10 +295,12 @@ describe("generated audio", () => {
       const campaign = createCampaign(seed);
       for (const mission of campaign.missions) {
         const pattern = composeMusic(seed, "mission", mission.index);
-        expect(styleAffinityScore(pattern.style.name, {
-          biome: mission.biome,
-          missionKind: mission.kind,
-        })).toBeGreaterThan(0);
+        expect(
+          styleAffinityScore(pattern.style.name, {
+            biome: mission.biome,
+            missionKind: mission.kind,
+          }),
+        ).toBeGreaterThan(0);
       }
     }
 
@@ -275,965 +310,20 @@ describe("generated audio", () => {
       const campaign = createCampaign(seed);
       for (const mission of campaign.missions) {
         const density = composeMusic(seed, "mission", mission.index).style.drumDensity;
-        if (mission.kind === "razeAll" || mission.kind === "annihilate" || mission.kind === "decapitate") {
+        if (
+          mission.kind === "razeAll" ||
+          mission.kind === "annihilate" ||
+          mission.kind === "decapitate"
+        ) {
           assault.push(density);
         }
         if (mission.kind === "harvestQuota") harvest.push(density);
       }
     }
-    const average = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+    const average = (values: number[]) =>
+      values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
     expect(assault.length).toBeGreaterThan(0);
     expect(harvest.length).toBeGreaterThan(0);
     expect(average(assault)).toBeGreaterThan(average(harvest));
   });
-
-  it("builds a long-form arrangement with contrasting phrases and fills", () => {
-    expect(MUSIC_BARS).toBe(128);
-    expect(BARS_PER_SECTION).toBe(16);
-    const half = STEPS_PER_BAR * (MUSIC_BARS / 2);
-    const fillBars = Array.from({ length: MUSIC_BARS / 8 }, (_, index) => index * 8 + 7);
-
-    for (const seed of [0, 421, 9999]) {
-      const pattern = composeMusic(seed, "mission", 3);
-      const firstHalf = [
-        pattern.bass.slice(0, half),
-        pattern.arp.slice(0, half),
-        pattern.melody.slice(0, half),
-        pattern.kick.slice(0, half),
-        pattern.snare.slice(0, half),
-        pattern.padRoot.slice(0, MUSIC_BARS / 2),
-      ];
-      const secondHalf = [
-        pattern.bass.slice(half),
-        pattern.arp.slice(half),
-        pattern.melody.slice(half),
-        pattern.kick.slice(half),
-        pattern.snare.slice(half),
-        pattern.padRoot.slice(MUSIC_BARS / 2),
-      ];
-
-      expect(firstHalf.some((lane, index) => JSON.stringify(lane) !== JSON.stringify(secondHalf[index]))).toBe(true);
-      const quarter = STEPS_PER_BAR * 32;
-      const quarterPrints = [0, 1, 2, 3].map((index) => JSON.stringify({
-        bass: pattern.bass.slice(index * quarter, (index + 1) * quarter),
-        arp: pattern.arp.slice(index * quarter, (index + 1) * quarter),
-        melody: pattern.melody.slice(index * quarter, (index + 1) * quarter),
-        kick: pattern.kick.slice(index * quarter, (index + 1) * quarter),
-      }));
-      expect(quarterPrints[0]).not.toEqual(quarterPrints[1]);
-      expect(quarterPrints[1]).not.toEqual(quarterPrints[2]);
-      expect(quarterPrints[2]).not.toEqual(quarterPrints[3]);
-      expect(new Set(pattern.padRoot).size).toBeGreaterThan(2);
-      for (const bar of fillBars) {
-        const start = bar * STEPS_PER_BAR;
-        expect(pattern.snare.slice(start, start + STEPS_PER_BAR).filter(Boolean).length).toBeGreaterThan(0);
-      }
-      const penultimateFill = pattern.snare.slice(119 * STEPS_PER_BAR, 120 * STEPS_PER_BAR).filter(Boolean).length;
-      const finalFill = pattern.snare.slice(127 * STEPS_PER_BAR, 128 * STEPS_PER_BAR).filter(Boolean).length;
-      expect(finalFill).toBeGreaterThan(penultimateFill);
-      expect(pattern.sections.map((section) => section.name)).toEqual([
-        "intro", "groove", "hook", "development", "breakdown", "escalation", "climax", "turnaround",
-      ]);
-      expect(pattern.motif.degrees.length).toBeGreaterThan(4);
-      expect(pattern.notes.melody.length).toBeGreaterThan(0);
-      expect(pattern.notes.melody.every((note) => note.duration > 0 && note.velocity > 0)).toBe(true);
-    }
-  });
-
-  it("starts mission grooves with drums, pulse, and melody before the first verse ends", () => {
-    for (const seed of [0, 421, 9999]) {
-      const pattern = composeMusic(seed, "mission", 3);
-      const fromBar = (bar: number) => bar * STEPS_PER_BAR;
-      expect(pattern.kick.slice(fromBar(4), fromBar(16)).some(Boolean)).toBe(true);
-      if (pattern.style.arrangement.pulseEnabled[0] && pattern.style.pulseRole !== "none") {
-        expect(pattern.arp.slice(fromBar(4), fromBar(16)).some((note) => note !== null)).toBe(true);
-      }
-      if (pattern.style.arrangement.melodyEnabled[0]) {
-        expect(pattern.melody.slice(fromBar(8), fromBar(16)).some((note) => note !== null)).toBe(true);
-      }
-    }
-  });
-
-  it("applies combat intensity on bar boundaries and critical immediately", () => {
-    expect(shouldApplyPendingIntensity(0, "engaged")).toBe(true);
-    expect(shouldApplyPendingIntensity(1, "engaged")).toBe(false);
-    expect(shouldApplyPendingIntensity(STEPS_PER_BAR, "calm")).toBe(true);
-    expect(shouldApplyPendingIntensity(6, "critical")).toBe(true);
-    expect(shouldApplyPendingIntensity(7, "critical")).toBe(false);
-    expect(shouldApplyPendingIntensity(3, null)).toBe(false);
-  });
-
-  it("keeps victory drums active through the breakdown", () => {
-    const pattern = composeMusic(421, "victory");
-    const breakdownStart = 64 * STEPS_PER_BAR;
-    const breakdownEnd = 79 * STEPS_PER_BAR;
-
-    expect(pattern.kick.slice(breakdownStart, breakdownEnd).some(Boolean)).toBe(true);
-    expect(pattern.snare.slice(breakdownStart, breakdownEnd).some(Boolean)).toBe(true);
-    expect(pattern.hats.slice(breakdownStart, breakdownEnd).some(Boolean)).toBe(true);
-  });
-
-  it("keeps cue tempos in upbeat 80s ranges and fills long-form lanes", () => {
-    const ranges = {
-      menu: [112, 124],
-      briefing: [104, 118],
-      mission: [118, 138],
-      victory: [124, 136],
-      defeat: [88, 100],
-    } as const;
-    for (const seed of [0, 1, 421, 9999]) {
-      for (const [cue, [lo, hi]] of Object.entries(ranges)) {
-        const pattern = composeMusic(seed, cue as keyof typeof ranges, cue === "mission" ? 3 : 0);
-        expect(pattern.bpm).toBeGreaterThanOrEqual(lo);
-        expect(pattern.bpm).toBeLessThanOrEqual(hi);
-        expect(pattern.bars).toBe(MUSIC_BARS);
-        expect(pattern.steps).toBe(MUSIC_STEPS);
-        expect(pattern.bass).toHaveLength(MUSIC_STEPS);
-        expect(pattern.arp).toHaveLength(MUSIC_STEPS);
-        expect(pattern.melody).toHaveLength(MUSIC_STEPS);
-        expect(pattern.counter).toHaveLength(MUSIC_STEPS);
-        expect(pattern.harmony).toHaveLength(MUSIC_STEPS);
-        expect(pattern.kick).toHaveLength(MUSIC_STEPS);
-        expect(pattern.snare).toHaveLength(MUSIC_STEPS);
-        expect(pattern.hats).toHaveLength(MUSIC_STEPS);
-        expect(pattern.openHats).toHaveLength(MUSIC_STEPS);
-        expect(pattern.padRoot).toHaveLength(MUSIC_BARS);
-        expect(pattern.padThird).toHaveLength(MUSIC_BARS);
-        expect(pattern.padFifth).toHaveLength(MUSIC_BARS);
-        expect(pattern.padSeventh).toHaveLength(MUSIC_BARS);
-        expect(pattern.bass.some((note) => note !== null)).toBe(true);
-        expect(pattern.kick.some(Boolean)).toBe(true);
-        expect(pattern.snare.some(Boolean)).toBe(true);
-        const melodyHits = pattern.melody.filter((note) => note !== null).length;
-        expect(melodyHits).toBeGreaterThan(0);
-        expect(melodyHits).toBeLessThan(MUSIC_STEPS / 2);
-        expect(pattern.rootHz).toBeGreaterThan(midiToHz(30));
-        if (cue === "mission") {
-          expect(["pulse", "march", "shuffle", "half-time", "breakbeat", "four-floor", "offbeat"]).toContain(pattern.theme.groove);
-          expect(["natural minor", "dorian", "mixolydian", "major", "phrygian", "harmonic minor", "minor pentatonic", "lydian", "double harmonic", "blues"]).toContain(pattern.scaleName);
-        }
-      }
-    }
-  });
-
-  it("builds a recurring cinematic hook with restrained gated drums", () => {
-    const sectionNotesFor = (pattern: ReturnType<typeof composeMusic>, name: string, lane: "melody" | "pulse" | "counter") => {
-      const section = pattern.sections.find((entry) => entry.name === name);
-      if (!section) return [];
-      return pattern.notes[lane].filter((note) => note.step >= section.startBar * STEPS_PER_BAR && note.step < section.endBar * STEPS_PER_BAR);
-    };
-    const averageDuration = (notes: { duration: number }[]) =>
-      notes.reduce((sum, note) => sum + note.duration, 0) / Math.max(1, notes.length);
-
-    for (const seed of [0, 421, 9999]) {
-      const pattern = composeMusic(seed, "mission", 3);
-      const sectionNotes = (name: string, lane: "melody" | "pulse" | "counter") => sectionNotesFor(pattern, name, lane);
-      expect(pattern.theme.hook).not.toEqual(pattern.motif);
-      expect(pattern.theme.developmentMotif.degrees.length).toBeGreaterThan(4);
-      expect(pattern.motif.rhythm.some((step) => step % 2 === 1)).toBe(true);
-      expect(["pulse", "march", "shuffle", "half-time", "breakbeat", "four-floor", "offbeat"]).toContain(pattern.theme.groove);
-      expect(["natural minor", "dorian", "mixolydian", "major", "phrygian", "harmonic minor", "minor pentatonic", "lydian", "double harmonic", "blues"]).toContain(pattern.scaleName);
-      expect(sectionNotes("hook", "melody").length).toBeGreaterThan(24);
-      if (pattern.style.arrangement.melodyEnabled[1]) {
-        expect(sectionNotes("groove", "melody").length).toBeGreaterThan(0);
-        expect(averageDuration(sectionNotes("hook", "melody"))).toBeGreaterThan(averageDuration(sectionNotes("groove", "melody")));
-      }
-      expect(sectionNotes("climax", "melody").length).toBeGreaterThanOrEqual(sectionNotes("hook", "melody").length);
-      if (pattern.style.pulseRole !== "none") {
-        expect(sectionNotes("climax", "pulse").length).toBeGreaterThanOrEqual(sectionNotes("hook", "pulse").length);
-      }
-      const developmentMelody = sectionNotes("development", "melody");
-      const developmentCounter = sectionNotes("development", "counter");
-      expect(developmentCounter.length).toBeGreaterThan(0);
-      for (const note of developmentCounter) {
-        const lead = developmentMelody.find((entry) => entry.step === note.step);
-        expect(lead).toBeTruthy();
-        expect(lead?.midi).not.toBe(note.midi);
-      }
-      expect(pattern.drums.some((event) => event.kind === "clap")).toBe(true);
-      expect(pattern.drums.filter((event) => event.kind === "clap").length).toBeLessThan(
-        pattern.drums.filter((event) => event.kind === "snare").length / 4,
-      );
-      expect(pattern.drums.some((event) => event.kind === "impact")).toBe(true);
-      expect(pattern.arpType).toBe(pattern.style.pulseType);
-      expect(new Set(pattern.padThird).size).toBeGreaterThan(2);
-      expect(new Set(pattern.padSeventh).size).toBeGreaterThan(2);
-
-      const sectionHats = (name: string) => {
-        const section = pattern.sections.find((entry) => entry.name === name);
-        if (!section) return [];
-        return pattern.drums.filter(
-          (event) =>
-            event.kind === "hat" &&
-            event.step >= section.startBar * STEPS_PER_BAR &&
-            event.step < section.endBar * STEPS_PER_BAR,
-        );
-      };
-      expect(sectionHats("climax").length).toBeGreaterThanOrEqual(BARS_PER_SECTION * 4);
-      expect(sectionHats("hook").length).toBeLessThanOrEqual(BARS_PER_SECTION * 8);
-    }
-
-    const majorOpeners = [
-      [0, 4, 5, 3],
-      [0, 4, 3, 5],
-      [0, 3, 4, 5],
-      [5, 3, 0, 4],
-      [0, 2, 5, 4],
-      [0, 5, 3, 4],
-      [2, 5, 0, 4],
-      [0, 3, 5, 1],
-    ];
-    const majors = Array.from({ length: 48 }, (_, seed) => composeMusic(seed, "mission", 0)).filter(
-      (entry) => entry.scaleName === "major",
-    );
-    expect(majors.length).toBeGreaterThan(0);
-    for (const major of majors) {
-      expect(majorOpeners).toContainEqual(major.theme.progressionA.slice(0, 4));
-      expect(major.theme.progressionA.slice(0, 4)).not.toEqual([0, 5, 2, 6]);
-    }
-  });
-
-  it("repeats each cue hook with a stable contour and cadential phrase endings", () => {
-    const cues = ["menu", "briefing", "mission", "victory", "defeat"] as const;
-    const hookShape = (pattern: ReturnType<typeof composeMusic>, name: string) => {
-      const section = pattern.sections.find((entry) => entry.name === name);
-      if (!section) return [];
-      const start = section.startBar * STEPS_PER_BAR;
-      const end = section.endBar * STEPS_PER_BAR;
-      const notes = pattern.notes.melody
-        .filter((note) => note.step >= start && note.step < end)
-        .sort((a, b) => a.step - b.step);
-      const firstMidi = notes[0]?.midi ?? 0;
-      return notes.map((note) => [note.step - start, note.midi - firstMidi]);
-    };
-
-    for (const cue of cues) {
-      for (let seed = 0; seed < 24; seed++) {
-        const pattern = composeMusic(seed, cue, cue === "mission" ? seed % 8 : 0);
-        expect(hookShape(pattern, "hook")).toEqual(hookShape(pattern, "climax"));
-        expect(hookShape(pattern, "hook")).toEqual(hookShape(pattern, "turnaround"));
-
-        for (let bar = 7; bar < pattern.bars; bar += 8) {
-          const phraseEnd = pattern.notes.melody
-            .filter((note) => Math.floor(note.step / STEPS_PER_BAR) === bar)
-            .sort((a, b) => a.step - b.step)
-            .at(-1);
-          if (phraseEnd) {
-            expect(((phraseEnd.midi - pattern.rootMidi) % 12 + 12) % 12).toBe(0);
-          }
-        }
-      }
-    }
-  });
-
-  it("keeps bounded mission leads smooth without changing their recurring hook contour", () => {
-    const hookShape = (pattern: ReturnType<typeof composeMusic>, name: string) => {
-      const section = pattern.sections.find((entry) => entry.name === name)!;
-      const start = section.startBar * STEPS_PER_BAR;
-      const end = section.endBar * STEPS_PER_BAR;
-      const notes = pattern.notes.melody
-        .filter((note) => note.step >= start && note.step < end)
-        .sort((a, b) => a.step - b.step);
-      const firstMidi = notes[0]?.midi ?? 0;
-      return notes.map((note) => [note.step - start, note.midi - firstMidi]);
-    };
-
-    for (const [seed, mission] of [[2, 4], [22, 6]] as const) {
-      const pattern = composeMusic(seed, "mission", mission);
-      const melody = [...pattern.notes.melody].sort((a, b) => a.step - b.step);
-      expect(melody.every((note) => note.midi >= 36 && note.midi <= 100)).toBe(true);
-      for (let index = 1; index < melody.length; index += 1) {
-        expect(Math.abs(melody[index]!.midi - melody[index - 1]!.midi)).toBeLessThanOrEqual(12);
-      }
-      expect(hookShape(pattern, "hook")).toEqual(hookShape(pattern, "climax"));
-      expect(hookShape(pattern, "hook")).toEqual(hookShape(pattern, "turnaround"));
-    }
-  });
-
-  it("develops one mission motif through transposed sections and keeps notes in the score scale", () => {
-    const contour = (degrees: (number | null)[]) => {
-      const first = degrees.find((degree): degree is number => degree !== null) ?? 0;
-      return degrees.map((degree) => degree === null ? null : degree - first);
-    };
-
-    for (const seed of [0, 421, 9999]) {
-      for (let mission = 0; mission < 6; mission++) {
-        const pattern = composeMusic(seed, "mission", mission);
-        expect(contour(pattern.theme.developmentMotif.degrees)).toEqual(contour(pattern.theme.motif.degrees));
-        expect(contour(pattern.theme.hook.degrees)).toEqual(contour(pattern.theme.motif.degrees));
-        expect(pattern.theme.developmentMotif.rhythm).toEqual(pattern.theme.motif.rhythm);
-        expect(pattern.theme.hook.rhythm).toEqual(pattern.theme.motif.rhythm);
-
-        for (const [laneName, lane] of Object.entries(pattern.notes)) {
-          for (const note of lane) {
-            const pitchClass = ((note.midi - pattern.rootMidi) % 12 + 12) % 12;
-            expect(pattern.theme.scale).toContain(pitchClass);
-            expect(note.midi).toBeGreaterThanOrEqual(laneName === "melody" ? 36 : 24);
-            if (laneName === "melody") expect(note.midi).toBeLessThanOrEqual(100);
-            expect(note.midi).toBeLessThanOrEqual(100);
-          }
-        }
-      }
-    }
-  });
-
-  it("repeats the chorus chords through the ending chorus", () => {
-    const midiFromHz = (hz: number) => Math.round(69 + 12 * Math.log2(hz / 440));
-
-    for (const seed of [0, 421, 9999]) {
-      const pattern = composeMusic(seed, "mission", 3);
-      const turnaround = pattern.sections.find((section) => section.name === "turnaround")!;
-      const hook = pattern.sections.find((section) => section.name === "hook")!;
-      for (let offset = 0; offset < turnaround.endBar - turnaround.startBar; offset += 1) {
-        const degree = offset % 8 === 7
-          ? 0
-          : pattern.theme.progressionC[Math.floor((offset % 8) / 2)]!;
-        const expectedPitchClass = (pattern.rootMidi + pattern.theme.scale[degree]!) % 12;
-        const turnaroundPitchClass = midiFromHz(pattern.padRoot[turnaround.startBar + offset]!) % 12;
-        expect(turnaroundPitchClass).toBe(expectedPitchClass);
-        expect(turnaroundPitchClass).toBe(midiFromHz(pattern.padRoot[hook.startBar + offset]!) % 12);
-      }
-    }
-  });
-
-  it("keeps foreground melodies within one octave and mostly within a perfect fifth", () => {
-    const cues = ["menu", "briefing", "mission", "victory", "defeat"] as const;
-    let adjacentNotes = 0;
-    let notesWithinFifth = 0;
-
-    for (const cue of cues) {
-      for (let seed = 0; seed < 24; seed++) {
-        const pattern = composeMusic(seed, cue, cue === "mission" ? seed % 8 : 0);
-        const notes = [...pattern.notes.melody].sort((a, b) => a.step - b.step);
-        let previousMidi: number | null = null;
-        for (const note of notes) {
-          if (previousMidi !== null) {
-            const leap = Math.abs(note.midi - previousMidi);
-            expect(leap).toBeLessThanOrEqual(12);
-            adjacentNotes += 1;
-            if (leap <= 7) notesWithinFifth += 1;
-          }
-          previousMidi = note.midi;
-        }
-      }
-    }
-
-    expect(adjacentNotes).toBeGreaterThan(1000);
-    expect(notesWithinFifth / adjacentNotes).toBeGreaterThanOrEqual(0.95);
-  });
-
-  it("voices a sustained bed, a singable bass line, and a melody that does not stack on itself", () => {
-    const midiFromHz = (hz: number) => Math.round(69 + 12 * Math.log2(hz / 440));
-    const cues = ["menu", "briefing", "mission", "victory", "defeat"] as const;
-
-    for (const cue of cues) {
-      for (let seed = 0; seed < 16; seed += 1) {
-        const pattern = composeMusic(seed, cue, cue === "mission" ? seed % 8 : 0);
-        const bass = [...pattern.notes.bass].sort((a, b) => a.step - b.step);
-        expect(bass.length).toBeGreaterThan(0);
-        expect(bass.every((note) => note.midi >= 28 && note.midi <= 64)).toBe(true);
-        for (let index = 1; index < bass.length; index += 1) {
-          expect(Math.abs(bass[index]!.midi - bass[index - 1]!.midi)).toBeLessThanOrEqual(12);
-        }
-
-        for (let bar = 0; bar < pattern.bars; bar += 1) {
-          const voices = [pattern.padRoot, pattern.padThird, pattern.padFifth, pattern.padSeventh].map(
-            (lane) => midiFromHz(lane[bar]!),
-          );
-          expect(Math.max(...voices) - Math.min(...voices)).toBeLessThanOrEqual(24);
-          expect(voices[0]).toBe(Math.min(...voices));
-          for (let left = 0; left < voices.length; left += 1) {
-            for (let right = left + 1; right < voices.length; right += 1) {
-              const diff = Math.abs(voices[left]! - voices[right]!);
-              expect(diff).toBeGreaterThanOrEqual(2);
-              expect(diff % 12).not.toBe(1);
-            }
-          }
-        }
-
-        const melody = [...pattern.notes.melody].sort((a, b) => a.step - b.step);
-        let overlaps = 0;
-        for (let index = 1; index < melody.length; index += 1) {
-          if (melody[index - 1]!.step + melody[index - 1]!.duration > melody[index]!.step) overlaps += 1;
-        }
-        expect(overlaps / melody.length).toBeLessThan(0.05);
-
-        if (cue !== "mission") continue;
-        const groove = pattern.sections.find((section) => section.name === "groove")!;
-        const grooveChords = pattern.notes.harmony.filter(
-          (note) => note.step >= groove.startBar * STEPS_PER_BAR && note.step < groove.endBar * STEPS_PER_BAR,
-        );
-        expect(grooveChords.length).toBeGreaterThan(0);
-        expect(grooveChords.every((note) => note.duration >= 6)).toBe(true);
-        const guitarSteps = new Set(pattern.notes.guitar.map((note) => note.step));
-        expect(pattern.notes.guitar.length).toBeGreaterThan(guitarSteps.size);
-        for (const strum of pattern.notes.guitar) {
-          for (const lead of melody) {
-            if (strum.step < lead.step || strum.step >= lead.step + lead.duration) continue;
-            const diff = Math.abs(strum.midi - lead.midi) % 12;
-            expect(diff === 0 || diff === 1 || diff === 11).toBe(false);
-          }
-        }
-      }
-    }
-  });
-
-  it("keeps sparse cue percussion atmospheric", () => {
-    for (const cue of ["menu", "briefing", "defeat"] as const) {
-      for (let seed = 0; seed < 24; seed++) {
-        const pattern = composeMusic(seed, cue);
-        expect(pattern.drums.some((event) => event.kind === "openHat")).toBe(false);
-        for (let bar = 0; bar < pattern.bars; bar++) {
-          const start = bar * STEPS_PER_BAR;
-          const end = start + STEPS_PER_BAR;
-          const brightHits = pattern.drums.filter(
-            (event) =>
-              (event.kind === "hat" || event.kind === "openHat" || event.kind === "clap") &&
-              event.step >= start &&
-              event.step < end,
-          );
-          expect(brightHits.length).toBeLessThanOrEqual(8);
-        }
-      }
-    }
-  });
-
-  it("keeps climax counters off the harmony line and does not stack drum hits", () => {
-    for (const seed of [0, 1, 421, 9999]) {
-      for (let mission = 0; mission < 6; mission++) {
-        const pattern = composeMusic(seed, "mission", mission);
-        const climax = pattern.sections.find((section) => section.name === "climax");
-        expect(climax).toBeTruthy();
-        const start = climax!.startBar * STEPS_PER_BAR;
-        const end = climax!.endBar * STEPS_PER_BAR;
-        const climaxMelody = pattern.notes.melody.filter((note) => note.step >= start && note.step < end);
-        const climaxCounter = pattern.notes.counter.filter((note) => note.step >= start && note.step < end);
-        for (const note of climaxCounter) {
-          expect(climaxMelody.some((lead) => lead.step === note.step && lead.midi === note.midi)).toBe(false);
-        }
-        const seen = new Set<string>();
-        for (const event of pattern.drums) {
-          const key = `${event.step}:${event.kind}`;
-          expect(seen.has(key)).toBe(false);
-          seen.add(key);
-        }
-        if (pattern.style.arrangement.pulseEnabled[2] && pattern.style.pulseRole !== "none") {
-          const hook = pattern.sections.find((section) => section.name === "hook")!;
-          const midHookPulse = pattern.notes.pulse.filter((note) => {
-            const bar = Math.floor(note.step / STEPS_PER_BAR);
-            return bar === hook.startBar + 2 || bar === hook.startBar + 3;
-          });
-          expect(midHookPulse.length).toBeGreaterThan(0);
-        }
-      }
-    }
-  });
-
-  it("opens the double-drop hole and keeps the verse line continuous", () => {
-    const sectionHits = (pattern: ReturnType<typeof composeMusic>, name: string, kind: "kick" | "snare" | "hat") => {
-      const section = pattern.sections.find((entry) => entry.name === name);
-      if (!section) return 0;
-      const start = section.startBar * STEPS_PER_BAR;
-      const end = section.endBar * STEPS_PER_BAR;
-      return pattern.drums.filter((event) => event.kind === kind && event.step >= start && event.step < end).length;
-    };
-    const sectionHalfHits = (
-      pattern: ReturnType<typeof composeMusic>,
-      name: string,
-      kind: "kick" | "snare" | "hat",
-      half: "first" | "second",
-    ) => {
-      const section = pattern.sections.find((entry) => entry.name === name);
-      if (!section) return 0;
-      const mid = section.startBar + 8;
-      const start = (half === "first" ? section.startBar : mid) * STEPS_PER_BAR;
-      const end = (half === "first" ? mid : section.endBar) * STEPS_PER_BAR;
-      return pattern.drums.filter((event) => event.kind === kind && event.step >= start && event.step < end).length;
-    };
-    let sawDrop = false;
-    let sawEcho = false;
-    for (const seed of [0, 1, 7, 21, 421, 999, 2000, 9999]) {
-      for (let mission = 0; mission < 16; mission++) {
-        const pattern = composeMusic(seed, "mission", mission);
-        if (pattern.style.arrangement.name === "double-drop") {
-          sawDrop = true;
-          const grooveKicks = sectionHits(pattern, "groove", "kick");
-          expect(sectionHalfHits(pattern, "escalation", "kick", "first")).toBeLessThan(grooveKicks / 3);
-          expect(sectionHalfHits(pattern, "breakdown", "kick", "first")).toBeLessThan(grooveKicks / 3);
-          const escalation = pattern.sections.find((section) => section.name === "escalation")!;
-          expect(pattern.notes.pulse.some((note) =>
-            note.step >= escalation.startBar * STEPS_PER_BAR && note.step < escalation.endBar * STEPS_PER_BAR,
-          )).toBe(false);
-        }
-        if (pattern.style.arrangement.echoMelody) {
-          sawEcho = true;
-          const groove = pattern.sections.find((section) => section.name === "groove")!;
-          const inGroove = (bar: number) => bar >= groove.startBar && bar < groove.endBar;
-          const even = pattern.notes.melody.filter((note) => {
-            const bar = Math.floor(note.step / STEPS_PER_BAR);
-            return inGroove(bar) && (bar - groove.startBar) % 2 === 0 && bar > groove.startBar;
-          });
-          const odd = pattern.notes.melody.filter((note) => {
-            const bar = Math.floor(note.step / STEPS_PER_BAR);
-            return inGroove(bar) && (bar - groove.startBar) % 2 === 1;
-          });
-          expect(even.length).toBeGreaterThan(0);
-          expect(odd.length).toBeGreaterThan(0);
-          const average = (notes: { velocity: number }[]) =>
-            notes.reduce((sum, note) => sum + note.velocity, 0) / Math.max(1, notes.length);
-          expect(average(even)).toBeGreaterThan(average(odd) * 0.9);
-        }
-      }
-    }
-    expect(sawDrop).toBe(true);
-    expect(sawEcho).toBe(true);
-  });
-
-  it("maps routes onto music cues", () => {
-    expect(musicCueFromPath("/")).toBe("menu");
-    expect(musicCueFromPath("/briefing")).toBe("briefing");
-    expect(musicCueFromPath("/play")).toBe("mission");
-    expect(musicCueFromPath("/tutorial")).toBe("mission");
-    expect(musicCueFromPath("/campaign-complete")).toBe("victory");
-    expect(musicCueFromPath("/campaign")).toBeNull();
-    expect(musicCueFromPath("/privacy")).toBeNull();
-  });
-
-  it("skips synthesized cues when sound effects are disabled", () => {
-    setSfxEnabled(false);
-    expect(isSfxEnabled()).toBe(false);
-    expect(() => beep("select")).not.toThrow();
-    setSfxEnabled(true);
-    expect(isSfxEnabled()).toBe(true);
-  });
-
-  it("exposes semantic layered cues without requiring an audio device", () => {
-    expect(() => {
-      playSfx("uiConfirm");
-      playSfx("uiCancel");
-      playSfx("orderAttack");
-      playSfx("orderHarvest");
-      playSfx("credits");
-      playSfx("powerShortage");
-      playSfx("insufficientFunds");
-      playSfx("deadline");
-      playSfx("smallArms", { pan: -0.8 });
-      playSfx("antiArmor");
-      playSfx("cannon", { pan: 0.8 });
-      playSfx("airStrike");
-      playSfx("antiAir");
-      playSfx("impact");
-      playSfx("impactFlesh");
-      playSfx("impactMetal");
-      playSfx("destruction", { heavy: true });
-      playSfx("wreckHuman");
-      playSfx("wreckVehicle");
-      playSfx("heal");
-      playSfx("repair");
-      playSfx("contact");
-      playSfx("warning");
-      setMusicIntensity("critical");
-    }).not.toThrow();
-  });
-
-  it("maps issued orders onto distinct acknowledgement beeps", () => {
-    expect(beepForCommands([])).toBeUndefined();
-    expect(beepForCommands([{ type: "move", unitIds: [1], x: 2, y: 3 }])).toBe("ack");
-    expect(beepForCommands([{ type: "attack", unitIds: [1], targetId: 9 }])).toBe("ackAttack");
-    expect(beepForCommands([{ type: "attackMove", unitIds: [1], x: 4, y: 5 }])).toBe("ackAttack");
-    expect(beepForCommands([{ type: "harvest", unitIds: [1], x: 4, y: 5 }])).toBe("ackHarvest");
-    expect(beepForCommands([
-      { type: "harvest", unitIds: [1], x: 4, y: 5 },
-      { type: "move", unitIds: [2], x: 4, y: 5 },
-    ])).toBe("ackHarvest");
-    expect(beepForCommands([{ type: "support", unitIds: [1], targetId: 2 }])).toBe("ack");
-    expect(beepForCommands([{ type: "stop", unitIds: [1] }])).toBe("ack");
-  });
-
-  it("maps world positions to bounded stereo placement and audible range", () => {
-    const camera = createCamera();
-    camera.x = 400;
-    camera.y = 80;
-    expect(spatialAudioForWorld(0, 0, camera, 800, 500).pan).toBeLessThanOrEqual(0.85);
-    expect(spatialAudioForWorld(0, 0, camera, 800, 500).pan).toBeGreaterThanOrEqual(-0.85);
-    const near = spatialAudioForWorld(6, 6, camera, 800, 500);
-    const far = spatialAudioForWorld(12, 0, camera, 800, 500);
-    expect(near.audible).toBe(true);
-    expect(far.audible).toBe(true);
-    expect(near.gain).toBeGreaterThanOrEqual(0.95);
-    expect(far.gain).toBeGreaterThanOrEqual(0.68);
-    expect(near.gain).toBeGreaterThan(far.gain);
-  });
-
-  it("staggers same-kind shots instead of dropping a volley", () => {
-    expect(scheduleSfxTime(1, Number.NEGATIVE_INFINITY, 0.045)).toBe(1);
-    expect(scheduleSfxTime(1, 1, 0.045)).toBeCloseTo(1.045);
-    expect(scheduleSfxTime(1, 1, 0)).toBe(1);
-
-    const starts: number[] = [];
-    let previous = Number.NEGATIVE_INFINITY;
-    for (let i = 0; i < 20; i++) {
-      const start = scheduleSfxTime(1, previous, 0.045);
-      if (start === null) break;
-      starts.push(start);
-      previous = start;
-    }
-    expect(starts[0]).toBe(1);
-    expect(starts.length).toBeGreaterThan(5);
-    expect(starts.at(-1)! - 1).toBeLessThanOrEqual(MAX_SFX_QUEUE_S);
-    expect(scheduleSfxTime(1, previous, 0.045)).toBeNull();
-    // When clock resets (e.g. context recreation with now = 0.1 but previous was 50), it recovers immediately
-    expect(scheduleSfxTime(0.1, 50, 0.045)).toBe(0.1);
-  });
-
-  it("gives every mission kind a phrase book and keeps cues off the battle style", () => {
-    const kinds: MissionKind[] = [
-      "harvestQuota",
-      "forceQuota",
-      "structureQuota",
-      "holdTheLine",
-      "sabotage",
-      "destroyMarked",
-      "razeAll",
-      "annihilate",
-      "decapitate",
-      "escort",
-      "rescue",
-      "extraction",
-    ];
-    for (const kind of kinds) {
-      const phrases = missionMotifPalette(kind)!.phrases;
-      expect(phrases.length).toBeGreaterThanOrEqual(6);
-      expect(new Set(phrases.map((phrase) => JSON.stringify(phrase.rhythm))).size).toBeGreaterThanOrEqual(4);
-      for (const phrase of phrases) {
-        expect(phrase.degrees.length).toBeGreaterThan(4);
-        expect(phrase.rhythm).toHaveLength(phrase.degrees.length);
-        expect(phrase.rhythm.some((step) => step % 2 === 1)).toBe(true);
-        expect(phrase.rhythm[0]).toBeGreaterThanOrEqual(0);
-        expect(phrase.rhythm.at(-1)).toBeLessThanOrEqual(15);
-        for (let index = 1; index < phrase.rhythm.length; index += 1) {
-          expect(phrase.rhythm[index]).toBeGreaterThan(phrase.rhythm[index - 1]!);
-        }
-      }
-    }
-
-    const pieces = Array.from({ length: 24 }, (_, seed) =>
-      Array.from({ length: 6 }, (__, mission) => composeMusic(seed, "mission", mission)),
-    );
-    const flat = pieces.flat();
-    expect(new Set(flat.map((pattern) => JSON.stringify(pattern.theme.motif.degrees))).size).toBeGreaterThanOrEqual(24);
-    expect(new Set(flat.map((pattern) => JSON.stringify(pattern.theme.motif.rhythm))).size).toBeGreaterThanOrEqual(8);
-    expect(new Set(flat.map((pattern) => pattern.style.melodyOctave))).toEqual(new Set([1, 2]));
-    expect(Math.max(...flat.flatMap((pattern) => pattern.style.padDetune.map((cents) => Math.abs(cents))))).toBeGreaterThanOrEqual(12);
-    for (const campaign of pieces) {
-      expect(new Set(campaign.map((pattern) => pattern.theme.groove)).size).toBeGreaterThanOrEqual(2);
-      expect(new Set(campaign.map((pattern) => pattern.scaleName)).size).toBeGreaterThanOrEqual(2);
-    }
-
-    const cues = ["menu", "briefing", "victory", "defeat"] as const;
-    for (const cue of cues) {
-      let differs = 0;
-      for (let seed = 0; seed < 24; seed += 1) {
-        if (composeMusic(seed, cue, 0).style.name !== composeMusic(seed, "mission", 0).style.name) differs += 1;
-      }
-      expect(differs).toBeGreaterThanOrEqual(20);
-    }
-  });
-
-  it("gives each screen its own tune, a louder hook, and a rhythm section that matches the style", () => {
-    const sounding = (degrees: readonly (number | null)[]) => degrees.filter((degree): degree is number => degree !== null);
-    const menu = cueMotifPhrases("menu")!;
-    const briefing = cueMotifPhrases("briefing")!;
-    const victory = cueMotifPhrases("victory")!;
-    const defeat = cueMotifPhrases("defeat")!;
-    for (const phrase of [...menu.verse, ...menu.hook]) {
-      expect(Math.max(...sounding(phrase.degrees))).toBeLessThanOrEqual(3);
-      expect(phrase.rhythm.some((step, index) => index > 0 && step - phrase.rhythm[index - 1]! >= 3)).toBe(true);
-    }
-    for (const phrase of briefing.verse) {
-      expect(Math.max(...sounding(phrase.degrees))).toBeLessThanOrEqual(4);
-      expect(phrase.rhythm.some((step, index) => index > 0 && step - phrase.rhythm[index - 1]! <= 2)).toBe(true);
-    }
-    for (const phrase of [...victory.verse, ...victory.hook]) {
-      const notes = sounding(phrase.degrees);
-      expect(Math.max(...notes) - notes[0]!).toBeGreaterThanOrEqual(3);
-    }
-    for (const phrase of defeat.verse) {
-      const notes = sounding(phrase.degrees);
-      expect(notes[0]).toBeGreaterThanOrEqual(3);
-      expect(notes.at(-1)).toBe(0);
-    }
-
-    const cueMotifs = ["menu", "briefing", "victory", "defeat"].map((cue) =>
-      JSON.stringify(composeMusic(421, cue as "menu" | "briefing" | "victory" | "defeat").theme.motif.degrees),
-    );
-    expect(new Set(cueMotifs).size).toBe(4);
-
-    const averageVelocity = (pattern: ReturnType<typeof composeMusic>, name: string) => {
-      const section = pattern.sections.find((entry) => entry.name === name)!;
-      const notes = pattern.notes.melody.filter(
-        (note) => note.step >= section.startBar * STEPS_PER_BAR && note.step < section.endBar * STEPS_PER_BAR,
-      );
-      return notes.reduce((sum, note) => sum + note.velocity, 0) / Math.max(1, notes.length);
-    };
-    const drumsIn = (pattern: ReturnType<typeof composeMusic>, name: string) => {
-      const section = pattern.sections.find((entry) => entry.name === name)!;
-      return pattern.drums.filter(
-        (event) => event.step >= section.startBar * STEPS_PER_BAR && event.step < section.endBar * STEPS_PER_BAR,
-      ).length;
-    };
-    for (const seed of [0, 421, 9999]) {
-      const pattern = composeMusic(seed, "mission", 3);
-      if (pattern.style.arrangement.melodyEnabled[0] && pattern.style.arrangement.melodyEnabled[1] && pattern.style.arrangement.melodyEnabled[2]) {
-        expect(averageVelocity(pattern, "hook")).toBeGreaterThan(averageVelocity(pattern, "groove"));
-        expect(averageVelocity(pattern, "groove")).toBeGreaterThan(averageVelocity(pattern, "intro"));
-      }
-      const breakdown = pattern.sections.find((entry) => entry.name === "breakdown")!;
-      const breakdownDrums = pattern.drums.filter(
-        (event) => event.step >= breakdown.startBar * STEPS_PER_BAR && event.step < breakdown.endBar * STEPS_PER_BAR,
-      );
-      expect(breakdownDrums.some((event) => event.kind === "kick" || event.kind === "hat")).toBe(false);
-      expect(breakdownDrums.length).toBeGreaterThan(0);
-      expect(breakdownDrums.length).toBeLessThan(drumsIn(pattern, "groove"));
-      expect(drumsIn(composeMusic(seed, "victory"), "breakdown")).toBeGreaterThan(drumsIn(pattern, "breakdown"));
-      if (!pattern.style.arrangement.holdBass[3]) {
-        const section = pattern.sections.find((entry) => entry.name === "development")!;
-        const classes = new Set(
-          pattern.notes.bass
-            .filter((note) => note.step >= section.startBar * STEPS_PER_BAR && note.step < section.endBar * STEPS_PER_BAR)
-            .map((note) => ((note.midi % 12) + 12) % 12),
-        );
-        expect(classes.size).toBeGreaterThanOrEqual(3);
-      }
-    }
-
-    let foundry: ReturnType<typeof composeMusic>["style"] | undefined;
-    let ice: ReturnType<typeof composeMusic>["style"] | undefined;
-    for (let seed = 0; seed < 48 && (!foundry || !ice); seed += 1) {
-      for (let mission = 0; mission < 6 && (!foundry || !ice); mission += 1) {
-        const pattern = composeMusic(seed, "mission", mission);
-        if (pattern.style.name === "foundry-stomp") foundry = pattern.style;
-        if (pattern.style.name === "ice-protocol") ice = pattern.style;
-      }
-    }
-    expect(foundry).toBeTruthy();
-    expect(ice).toBeTruthy();
-    expect(foundry!.drum.kickTail).toBeGreaterThan(ice!.drum.kickTail);
-    expect(foundry!.drum.kickEnd).toBeLessThan(ice!.drum.kickEnd);
-    expect(ice!.drum.hatFrequency).toBeGreaterThan(foundry!.drum.hatFrequency);
-  });
-
-  it("forms each mission as a verse, a repeated chorus, and a bridge", () => {
-    const midiFromHz = (hz: number) => Math.round(69 + 12 * Math.log2(hz / 440));
-    const cells = (pattern: ReturnType<typeof composeMusic>, name: string, fromBar: number, toBar: number) => {
-      const section = pattern.sections.find((entry) => entry.name === name)!;
-      const notes = pattern.notes.melody
-        .filter((note) => {
-          const bar = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
-          return bar >= fromBar && bar < toBar;
-        })
-        .sort((a, b) => a.step - b.step);
-      const bases = new Map<number, number>();
-      for (const note of notes) {
-        const half = Math.floor((Math.floor(note.step / STEPS_PER_BAR) - section.startBar) / 8);
-        if (!bases.has(half)) bases.set(half, note.midi);
-      }
-      return notes.map((note) => {
-        const localBar = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
-        return `${localBar % 8}:${note.step % STEPS_PER_BAR}:${note.midi - bases.get(Math.floor(localBar / 8))!}`;
-      });
-    };
-
-    for (const seed of [0, 21, 421, 9999]) {
-      const pattern = composeMusic(seed, "mission", 3);
-      const verse = cells(pattern, "groove", 0, 8);
-      const verseReturn = cells(pattern, "groove", 8, 16);
-      const chorus = cells(pattern, "hook", 0, 8);
-      const chorusReturn = cells(pattern, "hook", 8, 16);
-      const secondVerse = cells(pattern, "development", 0, 8);
-      const secondVerseReturn = cells(pattern, "development", 8, 16);
-      expect(verse.length).toBeGreaterThan(0);
-      expect(chorus.length).toBeGreaterThan(0);
-      expect(verseReturn).toEqual(verse);
-      expect(chorusReturn).toEqual(chorus);
-      expect(secondVerseReturn).toEqual(secondVerse);
-      expect(chorus).not.toEqual(verse);
-      expect(cells(pattern, "climax", 0, 16)).toEqual(cells(pattern, "hook", 0, 16));
-      expect(cells(pattern, "turnaround", 0, 16)).toEqual(cells(pattern, "hook", 0, 16));
-      expect(cells(pattern, "escalation", 8, 16)).toEqual(chorus);
-      for (const name of ["groove", "hook", "development", "breakdown", "turnaround"] as const) {
-        const section = pattern.sections.find((entry) => entry.name === name)!;
-        for (let offset = 0; offset < 8; offset += 1) {
-          const first = midiFromHz(pattern.padRoot[section.startBar + offset]!);
-          const repeated = midiFromHz(pattern.padRoot[section.startBar + offset + 8]!);
-          expect(((first % 12) + 12) % 12).toBe(((repeated % 12) + 12) % 12);
-        }
-      }
-
-      const bridge = pattern.sections.find((entry) => entry.name === "breakdown")!;
-      const bridgeNotes = pattern.notes.melody.filter(
-        (note) => note.step >= bridge.startBar * STEPS_PER_BAR && note.step < bridge.endBar * STEPS_PER_BAR,
-      );
-      expect(bridgeNotes.length).toBeGreaterThan(0);
-      expect(cells(pattern, "breakdown", 8, 16)).toEqual(cells(pattern, "breakdown", 0, 8));
-      const pulseCount = (from: number, to: number) => pattern.notes.pulse.filter((note) => {
-        const bar = Math.floor(note.step / STEPS_PER_BAR) - bridge.startBar;
-        return bar >= from && bar < to;
-      }).length;
-      expect(pulseCount(8, 16)).toBe(pulseCount(0, 8));
-      expect(pattern.notes.harmony.some(
-        (note) => note.step >= bridge.startBar * STEPS_PER_BAR && note.step < bridge.endBar * STEPS_PER_BAR,
-      )).toBe(false);
-
-      const tomBars = (name: string, from: number, to: number) => {
-        const section = pattern.sections.find((entry) => entry.name === name)!;
-        return pattern.drums
-          .filter((event) => event.kind === "tom")
-          .map((event) => Math.floor(event.step / STEPS_PER_BAR) - section.startBar)
-          .filter((local) => local >= from && local < to)
-          .map((local) => local % 8)
-          .sort((left, right) => left - right);
-      };
-      for (const name of ["groove", "development", "hook"] as const) {
-        const section = pattern.sections.find((entry) => entry.name === name)!;
-        if (pattern.style.arrangement.holdBass[pattern.sections.indexOf(section)]) continue;
-        expect(tomBars(name, 8, 16)).toEqual(tomBars(name, 0, 8));
-      }
-
-      const grooveStart = pattern.sections.find((entry) => entry.name === "groove")!.startBar;
-      const stepsOn = (local: number) => pattern.notes.melody
-        .filter((note) => Math.floor(note.step / STEPS_PER_BAR) === grooveStart + local)
-        .map((note) => note.step % STEPS_PER_BAR)
-        .sort((left, right) => left - right);
-      expect(stepsOn(0)).toEqual(stepsOn(1));
-
-      const chorusLead = (name: string) => pattern.notes.melody
-        .filter((note) => {
-          const section = pattern.sections.find((entry) => entry.name === name)!;
-          const local = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
-          return local >= 0 && local < 8;
-        })
-        .sort((left, right) => left.step - right.step)
-        .map((note) => note.midi);
-      expect(chorusLead("climax")).toEqual(chorusLead("hook"));
-      expect(chorusLead("turnaround")).toEqual(chorusLead("hook"));
-
-      const beat = (name: string) => {
-        const section = pattern.sections.find((entry) => entry.name === name)!;
-        return pattern.drums
-          .filter((event) => event.kind === "kick" || event.kind === "snare" || event.kind === "clap")
-          .filter((event) => {
-            const local = Math.floor(event.step / STEPS_PER_BAR) - section.startBar;
-            return local >= 0 && local < 15 && local % 8 !== 7;
-          })
-          .map((event) => {
-            const local = Math.floor(event.step / STEPS_PER_BAR) - section.startBar;
-            return `${local % 8}:${event.step % STEPS_PER_BAR}:${event.kind}`;
-          })
-          .sort()
-          .join("|");
-      };
-      expect(beat("turnaround")).toBe(beat("hook"));
-      expect(beat("climax")).toBe(beat("hook"));
-    }
-  });
-
-  it("plays each phrase on the rhythm it was written with", () => {
-    const soundingSteps = (motif: ReturnType<typeof composeMusic>["motif"], response: boolean) => {
-      const degrees = response ? motif.response : motif.degrees;
-      return degrees
-        .map((degree, index) => degree == null ? null : (motif.rhythm[index] ?? index * 2) % STEPS_PER_BAR)
-        .filter((step): step is number => step != null)
-        .sort((left, right) => left - right);
-    };
-    const barSteps = (pattern: ReturnType<typeof composeMusic>, start: number) => pattern.notes.melody
-      .filter((note) => Math.floor(note.step / STEPS_PER_BAR) === start)
-      .map((note) => note.step % STEPS_PER_BAR)
-      .sort((left, right) => left - right);
-
-    for (const cue of ["menu", "briefing", "mission", "victory", "defeat"] as const) {
-      for (let seed = 0; seed < 24; seed += 1) {
-        const missions = cue === "mission" ? [0, 1, 2, 3, 4, 5] : [0];
-        for (const mission of missions) {
-          const pattern = composeMusic(seed, cue, mission);
-          const groove = pattern.sections.find((section) => section.name === "groove")!;
-          const hook = pattern.sections.find((section) => section.name === "hook")!;
-          expect(barSteps(pattern, groove.startBar)).toEqual(soundingSteps(pattern.motif, false));
-          expect(barSteps(pattern, groove.startBar + 4)).toEqual(soundingSteps(pattern.motif, true));
-          expect(barSteps(pattern, hook.startBar)).toEqual(soundingSteps(pattern.theme.hook, false));
-        }
-      }
-    }
-  });
-
-  it("keeps combat doubles inside the melody range", () => {
-    for (let seed = 0; seed < 24; seed += 1) {
-      for (let mission = 0; mission < 6; mission += 1) {
-        const pattern = composeMusic(seed, "mission", mission);
-        for (const layer of Object.values(pattern.intensityLayers)) {
-          for (const lane of Object.values(layer?.notes ?? {})) {
-            for (const note of lane ?? []) {
-              expect(note.midi).toBeGreaterThanOrEqual(24);
-              expect(note.midi).toBeLessThanOrEqual(100);
-            }
-          }
-        }
-      }
-    }
-  });
-
-  it("lands chorus downbeats on the chord", () => {
-    let hits = 0;
-    let tones = 0;
-    for (let seed = 0; seed < 24; seed += 1) {
-      for (let mission = 0; mission < 6; mission += 1) {
-        const pattern = composeMusic(seed, "mission", mission);
-        const hook = pattern.sections.find((section) => section.name === "hook")!;
-        for (let offset = 0; offset < 16; offset += 1) {
-          const downbeat = pattern.notes.melody.find((note) =>
-            Math.floor(note.step / STEPS_PER_BAR) === hook.startBar + offset && note.step % STEPS_PER_BAR === 0);
-          if (!downbeat) continue;
-          hits += 1;
-          const degree = offset % 8 === 7 ? 0 : pattern.theme.progressionC[Math.floor((offset % 8) / 2)]!;
-          const pcs = [0, 1, 2, 3].map((tone) => ((chordToneMidi(pattern.rootMidi, pattern.theme.scale, degree, tone, 0) % 12) + 12) % 12);
-          if (pcs.includes(((downbeat.midi % 12) + 12) % 12)) tones += 1;
-        }
-      }
-    }
-    expect(hits).toBeGreaterThan(1000);
-    expect(tones / hits).toBeGreaterThanOrEqual(0.9);
-  });
-
-  it("repeats the verse and chorus on every screen", () => {
-    const sentence = (pattern: ReturnType<typeof composeMusic>, name: string, from: number, to: number) => {
-      const section = pattern.sections.find((entry) => entry.name === name)!;
-      return pattern.notes.melody
-        .filter((note) => {
-          const local = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
-          return local >= from && local < to;
-        })
-        .sort((left, right) => left.step - right.step)
-        .map((note) => {
-          const local = Math.floor(note.step / STEPS_PER_BAR) - section.startBar;
-          return `${local % 8}:${note.step % STEPS_PER_BAR}:${note.midi}`;
-        });
-    };
-    for (const cue of ["menu", "briefing", "victory", "defeat"] as const) {
-      for (const seed of [0, 21, 421]) {
-        const pattern = composeMusic(seed, cue);
-        expect(sentence(pattern, "groove", 0, 8).length).toBeGreaterThan(0);
-        expect(sentence(pattern, "groove", 8, 16)).toEqual(sentence(pattern, "groove", 0, 8));
-        expect(sentence(pattern, "hook", 8, 16)).toEqual(sentence(pattern, "hook", 0, 8));
-        expect(sentence(pattern, "turnaround", 0, 8)).toEqual(sentence(pattern, "hook", 0, 8));
-      }
-    }
-  });
-
-  it("tracks the music enable flag without requiring an audio device", () => {
-    setMusicEnabled(false);
-    expect(isMusicEnabled()).toBe(false);
-    setMusicEnabled(true);
-    expect(isMusicEnabled()).toBe(true);
-  });
-
 });

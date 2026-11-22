@@ -1,48 +1,81 @@
-import { tickChallenges } from "../challenges";
 import { isSupportUnit, UNIT_STATS } from "../../catalog";
-import type { Rng } from "../../seed/rng";
 import type { GeneratedMap } from "../../gen/map";
+import { inRescueFlank } from "../../gen/map/generator/rescuePlacement";
+import { secondaryObjectivesForMission } from "../../gen/objectives";
+import { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS } from "../../gen/pacing";
+import { resolveMissionProfile } from "../../gen/profile";
+import type { Rng } from "../../seed/rng";
 import type {
   Entity,
-  ReadonlyMissionDef,
   MissionKind,
   MissionRuntime,
+  ReadonlyMissionDef,
   SimEvent,
   SimState,
   Vec2,
 } from "../../types";
-import { secondaryObjectivesForMission } from "../../gen/objectives";
 import { inObjectiveZone, isUnitEntity } from "../../types";
-import { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS } from "../../gen/pacing";
-import { resolveMissionProfile } from "../../gen/profile";
-import { spawnBuildingAt, spawnUnit } from "../world";
-import { enemyApproachPoint, objectiveBuildingFilter, reachableScenarioCells, reachableScenarioPoint } from "./reachability";
-import { convoyStartPoint, convoyZonePoint, tickEscort } from "./escort";
-import { extractionPoints, rescuePoint, rescuePoints, tickRescueExtraction } from "./rescueExtraction";
-import { inRescueFlank } from "../../gen/map/generator/rescuePlacement";
-import type { ScenarioDefinition, ScenarioSetupContext, ScenarioSetupResult } from "./contract";
-import { evaluateElimination, evaluateExtractionEscort, evaluateSabotage } from "./evaluators";
+import { tickChallenges } from "../challenges";
 import { entitiesFor } from "../entities";
+import { spawnBuildingAt, spawnUnit } from "../world";
+import type { ScenarioDefinition, ScenarioSetupContext, ScenarioSetupResult } from "./contract";
+import { convoyStartPoint, convoyZonePoint, tickEscort } from "./escort";
+import { evaluateElimination, evaluateExtractionEscort, evaluateSabotage } from "./evaluators";
+import {
+  enemyApproachPoint,
+  objectiveBuildingFilter,
+  reachableScenarioCells,
+  reachableScenarioPoint,
+} from "./reachability";
+import {
+  extractionPoints,
+  rescuePoint,
+  rescuePoints,
+  tickRescueExtraction,
+} from "./rescueExtraction";
 
+export { type ScenarioAffordances, scenarioAffordances } from "./affordances";
+export type {
+  ScenarioDefinition,
+  ScenarioProgress,
+  ScenarioSetupContext,
+  ScenarioSetupResult,
+} from "./contract";
+export {
+  evaluateElimination,
+  evaluateExtractionEscort,
+  evaluateSabotage,
+  evaluateZoneHold,
+  isEntityAlive,
+} from "./evaluators";
 export { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS };
-export { scenarioAffordances, type ScenarioAffordances } from "./affordances";
-export { evaluateElimination, evaluateExtractionEscort, evaluateZoneHold, evaluateSabotage, isEntityAlive } from "./evaluators";
-export type { ScenarioDefinition, ScenarioProgress, ScenarioSetupContext, ScenarioSetupResult } from "./contract";
 
-export const DEADLINE_SCENARIO_KINDS: readonly MissionKind[] = ["escort", "sabotage", "rescue", "extraction"];
+export const DEADLINE_SCENARIO_KINDS: readonly MissionKind[] = [
+  "escort",
+  "sabotage",
+  "rescue",
+  "extraction",
+];
 
 function setupClassicScenario({ state, mission }: ScenarioSetupContext): ScenarioSetupResult {
   return { targetIds: state.win.targetIds ?? [...(mission.win.targetIds ?? [])] };
 }
 
-function setupDestroyMarkedScenario({ state, map, mission, rng, reachable }: ScenarioSetupContext): ScenarioSetupResult {
+function setupDestroyMarkedScenario({
+  state,
+  map,
+  mission,
+  rng,
+  reachable,
+}: ScenarioSetupContext): ScenarioSetupResult {
   const ids: number[] = [];
   const spots = map.markedSpots.length
     ? map.markedSpots
     : [enemyApproachPoint(map, 10, -2), enemyApproachPoint(map, 10, 2)];
   const count = mission.win.targetCount ?? 1;
-  const alliedBase = entitiesFor(state).filter((entity): entity is Extract<Entity, { class: "building" }> =>
-    entity.owner === 0 && entity.class === "building" && entity.hp > 0,
+  const alliedBase = entitiesFor(state).filter(
+    (entity): entity is Extract<Entity, { class: "building" }> =>
+      entity.owner === 0 && entity.class === "building" && entity.hp > 0,
   );
   for (let i = 0; i < count; i++) {
     const spot = spots[i] ?? enemyApproachPoint(map, 10 + i * 3, i % 2 === 0 ? -2 : 2);
@@ -65,20 +98,35 @@ function setupDestroyMarkedScenario({ state, map, mission, rng, reachable }: Sce
   return { targetIds: ids };
 }
 
-function setupTimedScenario({ state, map, mission, profile, reachable, rng }: ScenarioSetupContext): ScenarioSetupResult {
+function setupTimedScenario({
+  state,
+  map,
+  mission,
+  profile,
+  reachable,
+  rng,
+}: ScenarioSetupContext): ScenarioSetupResult {
   const kind = mission.win.kind;
   const targetIds: number[] = [];
   const contestedRoute = profile.variant === "contestedRoute";
   const count = mission.win.targetCount ?? 2;
-  const rescueLocations = kind === "rescue"
-    ? rescuePoints(state, map, count, reachable)
-    : undefined;
-  const extractionLocations = kind === "extraction"
-    ? extractionPoints(state, map, count, reachable, rng)
-    : undefined;
+  const rescueLocations =
+    kind === "rescue" ? rescuePoints(state, map, count, reachable) : undefined;
+  const extractionLocations =
+    kind === "extraction" ? extractionPoints(state, map, count, reachable, rng) : undefined;
   const spawnScenarioPatrols = (index: number, target: Entity, center: Vec2): void => {
-    const patrolCount = kind === "rescue" ? 2
-      : contestedRoute ? mission.index >= 4 ? index === 0 ? 2 : 1 : 2 : index === 0 ? 1 : 0;
+    const patrolCount =
+      kind === "rescue"
+        ? 2
+        : contestedRoute
+          ? mission.index >= 4
+            ? index === 0
+              ? 2
+              : 1
+            : 2
+          : index === 0
+            ? 1
+            : 0;
     for (let patrolIndex = 0; patrolIndex < patrolCount; patrolIndex++) {
       const side = (index + patrolIndex) % 2 === 0 ? 1 : -1;
       const patrolPoint = reachableScenarioPoint(
@@ -90,8 +138,12 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
         state,
         1,
         patrolIndex === 0
-          ? (index % 2 === 0 ? "infantry" : "antiArmor")
-          : kind === "extraction" ? "infantry" : "antiArmor",
+          ? index % 2 === 0
+            ? "infantry"
+            : "antiArmor"
+          : kind === "extraction"
+            ? "infantry"
+            : "antiArmor",
         patrolPoint.x,
         patrolPoint.y,
       );
@@ -110,9 +162,11 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
       // while both routes still lead into the enemy approach.
       const depth = 12;
       const spacing = 4;
-      const spot = map.markedSpots[i] ?? enemyApproachPoint(map, depth + i * spacing, i % 2 === 0 ? -2 : 2);
-      const alliedBase = entitiesFor(state).filter((entity): entity is Extract<Entity, { class: "building" }> =>
-        entity.owner === 0 && entity.class === "building" && entity.hp > 0,
+      const spot =
+        map.markedSpots[i] ?? enemyApproachPoint(map, depth + i * spacing, i % 2 === 0 ? -2 : 2);
+      const alliedBase = entitiesFor(state).filter(
+        (entity): entity is Extract<Entity, { class: "building" }> =>
+          entity.owner === 0 && entity.class === "building" && entity.hp > 0,
       );
       const objective = spawnBuildingAt(
         state,
@@ -129,25 +183,33 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
     }
   } else {
     for (let i = 0; i < count; i++) {
-      const desired = kind === "escort"
-        ? convoyStartPoint(map, i)
-        : kind === "rescue"
-          ? rescueLocations?.[i] ?? rescuePoint(map, i, count)
-          : extractionLocations?.[i] ?? map.playerStart;
+      const desired =
+        kind === "escort"
+          ? convoyStartPoint(map, i)
+          : kind === "rescue"
+            ? (rescueLocations?.[i] ?? rescuePoint(map, i, count))
+            : (extractionLocations?.[i] ?? map.playerStart);
       // Rescue locations have already been validated against terrain and
       // reachability as a group. Re-running the nearest-point scan here would
       // allow a later target to snap onto an earlier one and needlessly repeat
       // the full map scan.
-      const point = kind === "rescue" && rescueLocations?.[i]
-        ? rescueLocations[i]!
-        : reachableScenarioPoint(
-          state,
-          desired,
-          reachable,
-          undefined,
-          kind === "rescue" ? (x, y) => inRescueFlank(map, x, y) : undefined,
-        );
-      const target = spawnUnit(state, 0, kind === "escort" || kind === "extraction" ? "convoyTruck" : "infantry", point.x, point.y);
+      const point =
+        kind === "rescue" && rescueLocations?.[i]
+          ? rescueLocations[i]!
+          : reachableScenarioPoint(
+              state,
+              desired,
+              reachable,
+              undefined,
+              kind === "rescue" ? (x, y) => inRescueFlank(map, x, y) : undefined,
+            );
+      const target = spawnUnit(
+        state,
+        0,
+        kind === "escort" || kind === "extraction" ? "convoyTruck" : "infantry",
+        point.x,
+        point.y,
+      );
       target.neutral = kind === "escort" || kind === "rescue" || kind === "extraction";
       target.scenarioRole = kind === "escort" ? "convoy" : kind === "rescue" ? "stranded" : "cargo";
       if (kind === "extraction") target.marked = true;
@@ -181,8 +243,12 @@ function setupTimedScenario({ state, map, mission, profile, reachable, rng }: Sc
     targetIds,
     required: count,
     convoyStartTick: kind === "escort" ? CONVOY_STAGING_TICKS : undefined,
-    zone: kind === "escort" ? convoyZonePoint(state, map, contestedRoute, reachable) : map.playerStart,
-    deadline: state.tick + (mission.win.ticks ?? 3600) + (kind === "escort" ? CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS : 0),
+    zone:
+      kind === "escort" ? convoyZonePoint(state, map, contestedRoute, reachable) : map.playerStart,
+    deadline:
+      state.tick +
+      (mission.win.ticks ?? 3600) +
+      (kind === "escort" ? CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS : 0),
   };
 }
 
@@ -191,7 +257,11 @@ function deadlineForScenario(state: SimState): number | undefined {
   return state.runtime.deadline ?? state.win.ticks;
 }
 
-function classicDefinition(kind: MissionKind, label: string, targetLabel: string): ScenarioDefinition {
+function classicDefinition(
+  kind: MissionKind,
+  label: string,
+  targetLabel: string,
+): ScenarioDefinition {
   return {
     kind,
     presentation: { label, targetLabel },
@@ -211,14 +281,16 @@ const scenarioDefinitions: Record<MissionKind, ScenarioDefinition> = {
   destroyMarked: {
     ...classicDefinition("destroyMarked", "Destroy marked", "Targets"),
     setup: setupDestroyMarkedScenario,
-    progress: (state) => evaluateElimination(state, {
-      targetIds: state.win.targetIds ?? state.runtime?.targetIds ?? [],
-      label: "Targets",
-      fallbackToCount: false,
-    }).progress,
-    isComplete: (state) => evaluateElimination(state, {
-      targetIds: state.win.targetIds ?? [],
-    }).isComplete,
+    progress: (state) =>
+      evaluateElimination(state, {
+        targetIds: state.win.targetIds ?? state.runtime?.targetIds ?? [],
+        label: "Targets",
+        fallbackToCount: false,
+      }).progress,
+    isComplete: (state) =>
+      evaluateElimination(state, {
+        targetIds: state.win.targetIds ?? [],
+      }).isComplete,
   },
   razeAll: classicDefinition("razeAll", "Raze all", "Buildings"),
   decapitate: classicDefinition("decapitate", "Decapitate", "Command HQ"),
@@ -261,7 +333,8 @@ const scenarioDefinitions: Record<MissionKind, ScenarioDefinition> = {
   },
 };
 
-export const SCENARIO_DEFINITIONS: Readonly<Record<MissionKind, ScenarioDefinition>> = scenarioDefinitions;
+export const SCENARIO_DEFINITIONS: Readonly<Record<MissionKind, ScenarioDefinition>> =
+  scenarioDefinitions;
 
 export function scenarioDefinitionFor(kind: MissionKind): ScenarioDefinition {
   return SCENARIO_DEFINITIONS[kind];
@@ -274,13 +347,22 @@ export function configureMissionScenario(
   mission: ReadonlyMissionDef,
   rng: Rng,
 ): void {
-  const profile = resolveMissionProfile(state.seed, mission.index, mission.win.kind, mission.profile);
+  const profile = resolveMissionProfile(
+    state.seed,
+    mission.index,
+    mission.win.kind,
+    mission.profile,
+  );
   const reachable = reachableScenarioCells(state);
   const definition = scenarioDefinitionFor(mission.win.kind);
   const setup = definition.setup({ state, map, mission, rng, profile, reachable });
   const targetIds = setup.targetIds;
 
-  if (targetIds.length > 0 || mission.win.kind === "destroyMarked" || DEADLINE_SCENARIO_KINDS.includes(mission.win.kind)) {
+  if (
+    targetIds.length > 0 ||
+    mission.win.kind === "destroyMarked" ||
+    DEADLINE_SCENARIO_KINDS.includes(mission.win.kind)
+  ) {
     state.win.targetIds = targetIds;
   }
 
@@ -306,13 +388,17 @@ function emitScenarioEvent(events: SimEvent[] | undefined, event: SimEvent): voi
   events?.push(event);
 }
 
-export function tickScenario(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
+export function tickScenario(
+  state: SimState,
+  eventSink?: SimEvent[],
+  collectEvents = true,
+): SimEvent[] {
   const runtime = state.runtime;
   if (!runtime || runtime.phase === "complete") return EMPTY_EVENTS;
 
-  const events = collectEvents ? eventSink ?? [] : undefined;
-  const rescueContactCount = runtime.kind === "rescue" ? runtime.contactedIds?.length ?? 0 : 0;
-  const rescueReturnedCount = runtime.kind === "rescue" ? runtime.rescuedIds?.length ?? 0 : 0;
+  const events = collectEvents ? (eventSink ?? []) : undefined;
+  const rescueContactCount = runtime.kind === "rescue" ? (runtime.contactedIds?.length ?? 0) : 0;
+  const rescueReturnedCount = runtime.kind === "rescue" ? (runtime.rescuedIds?.length ?? 0) : 0;
 
   scenarioDefinitionFor(runtime.kind).tick(state);
 
@@ -341,7 +427,11 @@ export function tickScenario(state: SimState, eventSink?: SimEvent[], collectEve
     }
   }
 
-  if (runtime.kind === "rescue" && runtime.contactedIds !== undefined && runtime.rescuedIds !== undefined) {
+  if (
+    runtime.kind === "rescue" &&
+    runtime.contactedIds !== undefined &&
+    runtime.rescuedIds !== undefined
+  ) {
     const contacted = runtime.contactedIds.length;
     const returned = runtime.rescuedIds.length;
     const required = runtime.required;
@@ -379,16 +469,24 @@ export function tickScenario(state: SimState, eventSink?: SimEvent[], collectEve
     }
   }
 
-  const yard = entitiesFor(state).find((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
+  const yard = entitiesFor(state).find(
+    (e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0,
+  );
   tickChallenges(state);
   const preserve = runtime.secondary.find((objective) => objective.kind === "preserveYard");
   if (preserve) preserve.completed = !!yard;
   const timed = runtime.secondary.find((objective) => objective.kind === "completeBefore");
   if (timed && timed.target !== undefined) timed.completed = state.tick < timed.target;
   const keepUnits = runtime.secondary.find((objective) => objective.kind === "keepUnits");
-  if (keepUnits) keepUnits.completed = entitiesFor(state).some((entity) =>
-    entity.owner === 0 && isUnitEntity(entity) && entity.hp > 0 && !entity.neutral
-      && UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind),
-  );
-  return eventSink ? EMPTY_EVENTS : events ?? EMPTY_EVENTS;
+  if (keepUnits)
+    keepUnits.completed = entitiesFor(state).some(
+      (entity) =>
+        entity.owner === 0 &&
+        isUnitEntity(entity) &&
+        entity.hp > 0 &&
+        !entity.neutral &&
+        UNIT_STATS[entity.kind].damage > 0 &&
+        !isSupportUnit(entity.kind),
+    );
+  return eventSink ? EMPTY_EVENTS : (events ?? EMPTY_EVENTS);
 }

@@ -1,9 +1,9 @@
 import { canSupportTarget, isSupportEntity, isSupportUnit, UNIT_STATS } from "../catalog";
-import { isUnitEntity, type Entity, type SimEvent, type SimState } from "../types";
+import { type Entity, isUnitEntity, type SimEvent, type SimState } from "../types";
+import { travelOrderInProgress } from "./navigation/avoidance";
 import { tryFindPathDetailed } from "./pathBudget";
 import { routePendingFor } from "./pathfinding";
 import { byId, distToEntity, livingView } from "./world";
-import { travelOrderInProgress } from "./navigation/avoidance";
 
 export function canSupportEntity(provider: Entity, target: Entity): boolean {
   if (!isUnitEntity(provider) || !isUnitEntity(target)) return false;
@@ -18,7 +18,10 @@ export function nearestSupportTarget(state: SimState, provider: Entity): Entity 
   for (const target of livingView(state)) {
     if (!canSupportEntity(provider, target) || target.hp >= target.maxHp) continue;
     const distance = distToEntity(provider, target);
-    if (distance < bestDistance || (distance === bestDistance && target.id < (best?.id ?? Infinity))) {
+    if (
+      distance < bestDistance ||
+      (distance === bestDistance && target.id < (best?.id ?? Infinity))
+    ) {
       best = target;
       bestDistance = distance;
     }
@@ -62,10 +65,16 @@ const EMPTY_EVENTS: SimEvent[] = [];
 const SUPPORT_UNREACHABLE_RETRY_TICKS = 30;
 
 function supportRouteRetryDue(state: SimState, provider: Entity): boolean {
-  return state.tick % SUPPORT_UNREACHABLE_RETRY_TICKS === provider.id % SUPPORT_UNREACHABLE_RETRY_TICKS;
+  return (
+    state.tick % SUPPORT_UNREACHABLE_RETRY_TICKS === provider.id % SUPPORT_UNREACHABLE_RETRY_TICKS
+  );
 }
 
-export function tickSupport(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
+export function tickSupport(
+  state: SimState,
+  eventSink?: SimEvent[],
+  collectEvents = true,
+): SimEvent[] {
   const events = eventSink ?? (collectEvents ? [] : undefined);
   for (const provider of livingView(state)) {
     if (!isUnitEntity(provider) || !isSupportUnit(provider.kind) || provider.neutral) continue;
@@ -79,10 +88,16 @@ export function tickSupport(state: SimState, eventSink?: SimEvent[], collectEven
     provider.attackTarget = undefined;
 
     if (mode === "hold") continue;
-    if (mode === "auto" && provider.supportTargetId === undefined &&
-        (provider.orderMode === "move" || provider.orderMode === "attackMove") && travelOrderInProgress(provider)) continue;
+    if (
+      mode === "auto" &&
+      provider.supportTargetId === undefined &&
+      (provider.orderMode === "move" || provider.orderMode === "attackMove") &&
+      travelOrderInProgress(provider)
+    )
+      continue;
 
-    let target = provider.supportTargetId === undefined ? undefined : byId(state, provider.supportTargetId);
+    let target =
+      provider.supportTargetId === undefined ? undefined : byId(state, provider.supportTargetId);
     if (target && !canSupportEntity(provider, target)) target = undefined;
     if (mode === "auto" && target && target.hp >= target.maxHp) target = undefined;
     if (!target && mode === "assigned") {
@@ -101,7 +116,8 @@ export function tickSupport(state: SimState, eventSink?: SimEvent[], collectEven
 
     const destinationChanged =
       !provider.orderDestination ||
-      Math.hypot(provider.orderDestination.x - target.x, provider.orderDestination.y - target.y) > 1;
+      Math.hypot(provider.orderDestination.x - target.x, provider.orderDestination.y - target.y) >
+        1;
     provider.supportTargetId = target.id;
     provider.flowGoal = undefined;
     provider.orderMode = "move";

@@ -6,7 +6,14 @@ import styles from "./CreditsCounter.module.css";
 
 function CreditsIcon() {
   return (
-    <svg className={styles.icon} viewBox="0 0 18 14" width="18" height="14" aria-hidden="true" focusable="false">
+    <svg
+      className={styles.icon}
+      viewBox="0 0 18 14"
+      width="18"
+      height="14"
+      aria-hidden="true"
+      focusable="false"
+    >
       <path d="M2 10.5h9.5l1.8 2.2H3.8z" fill="#8a6a24" />
       <path d="M2 10.5 3.8 8.4h9.5L11.5 10.5z" fill="#e8c45a" />
       <path d="M13.3 8.4 15.1 10.5v2.2l-1.8-2.2z" fill="#6e5418" />
@@ -64,7 +71,11 @@ export function CreditsCounter({ value }: { value: number }) {
   }, [value, writeDigits]);
 
   return (
-    <div className={cx(styles.counter, flash === "up" && styles.up, flash === "down" && styles.down)} role="status" aria-label={`${value} available credits`}>
+    <div
+      className={cx(styles.counter, flash === "up" && styles.up, flash === "down" && styles.down)}
+      role="status"
+      aria-label={`${value} available credits`}
+    >
       <CreditsIcon />
       <span className={styles.label}>Available</span>
       <div className={styles.lcd}>

@@ -1,11 +1,11 @@
+import { isAirUnit, isSupportUnit } from "../../catalog";
 import type { Entity, Owner, SimState, Vec2 } from "../../types";
 import { isUnitEntity } from "../../types";
-import { isAirUnit, isSupportUnit } from "../../catalog";
+import { aiDifficultyMission } from "../difficulty";
+import { holdingDestination } from "../navigation";
+import { homeGuardCount } from "../policy";
 import { closestApproach, distToEntity, inBounds, isStaticWalkable } from "../world";
 import { cellInfluence, type InfluenceMap } from "./influence";
-import { aiDifficultyMission } from "../difficulty";
-import { homeGuardCount } from "../policy";
-import { holdingDestination } from "../navigation";
 import { multiplayerAiMemory } from "./ownerState";
 
 export type ScoutAssignment = {
@@ -35,7 +35,12 @@ function scoutsFor(state: SimState, owner: Owner): ScoutRegistry {
   if (!registry) {
     const memory = state.multiplayer ? multiplayerAiMemory(state, owner) : undefined;
     registry = {
-      assignments: new Map(Object.entries(memory?.scoutAssignments ?? {}).map(([id, assignment]) => [Number(id), assignment])),
+      assignments: new Map(
+        Object.entries(memory?.scoutAssignments ?? {}).map(([id, assignment]) => [
+          Number(id),
+          assignment,
+        ]),
+      ),
       nextTargetIndex: memory?.nextScoutTargetIndex ?? 0,
     };
     ownerRegistries.set(owner, registry);
@@ -64,13 +69,17 @@ export function pickScoutTarget(state: SimState, index: number): Vec2 {
   ];
   for (let offset = 0; offset < points.length; offset++) {
     const selected = points[(index + offset) % points.length]!;
-    if (inBounds(state, selected.x, selected.y) && isStaticWalkable(state, selected.x, selected.y)) {
+    if (
+      inBounds(state, selected.x, selected.y) &&
+      isStaticWalkable(state, selected.x, selected.y)
+    ) {
       return selected;
     }
   }
 
   const center = { x: Math.round(state.width / 2), y: Math.round(state.height / 2) };
-  if (inBounds(state, center.x, center.y) && isStaticWalkable(state, center.x, center.y)) return center;
+  if (inBounds(state, center.x, center.y) && isStaticWalkable(state, center.x, center.y))
+    return center;
 
   // Keep the API total for degenerate maps, but prefer the nearest valid tile
   // over returning another known-invalid destination.
@@ -81,8 +90,9 @@ export function pickScoutTarget(state: SimState, index: number): Vec2 {
       if (!isStaticWalkable(state, x, y)) continue;
       const distance = Math.hypot(x - center.x, y - center.y);
       if (
-        distance < fallbackDistance
-        || (distance === fallbackDistance && (y < (fallback?.y ?? Infinity) || (y === fallback?.y && x < (fallback?.x ?? Infinity))))
+        distance < fallbackDistance ||
+        (distance === fallbackDistance &&
+          (y < (fallback?.y ?? Infinity) || (y === fallback?.y && x < (fallback?.x ?? Infinity))))
       ) {
         fallback = { x, y };
         fallbackDistance = distance;
@@ -140,7 +150,10 @@ export function updateScouts(
       reusableScoutIds.add(unitId);
       continue;
     }
-    if (!hasDiscoveredPlayerYard && (unit.orderMode !== "move" || !sameTile(unit.orderDestination, scout.target))) {
+    if (
+      !hasDiscoveredPlayerYard &&
+      (unit.orderMode !== "move" || !sameTile(unit.orderDestination, scout.target))
+    ) {
       assignments.push({ unit, target: scout.target });
       continue;
     }
@@ -163,7 +176,14 @@ export function updateScouts(
   const homeReserve = homeGuardCount(aiDifficultyMission(state));
   const defenders = yard
     ? [...units]
-        .filter((u) => isUnitEntity(u) && u.scenarioGuardTargetId === undefined && !isAirUnit(u.kind) && !isSupportUnit(u.kind) && u.kind !== "harvester")
+        .filter(
+          (u) =>
+            isUnitEntity(u) &&
+            u.scenarioGuardTargetId === undefined &&
+            !isAirUnit(u.kind) &&
+            !isSupportUnit(u.kind) &&
+            u.kind !== "harvester",
+        )
         .sort((a, b) => distToEntity(a, yard) - distToEntity(b, yard) || a.id - b.id)
         .slice(0, homeReserve)
     : [];
@@ -173,10 +193,12 @@ export function updateScouts(
   const candidate = units.find((u) => {
     if (!isUnitEntity(u) || u.owner !== owner || u.hp < u.maxHp) return false;
     if (isAirUnit(u.kind) || isSupportUnit(u.kind) || u.kind === "harvester") return false;
-    const failedScoutRoute = reusableScoutIds.has(u.id) && u.routePending !== undefined && u.path.length === 0;
+    const failedScoutRoute =
+      reusableScoutIds.has(u.id) && u.routePending !== undefined && u.path.length === 0;
     if (u.attackTarget !== undefined || (!u.idle && !failedScoutRoute)) return false;
     if (reusableScoutIds.size > 0 && !reusableScoutIds.has(u.id)) return false;
-    if (hasDiscoveredPlayerYard && u.orderDestination !== undefined && !reusableScoutIds.has(u.id)) return false;
+    if (hasDiscoveredPlayerYard && u.orderDestination !== undefined && !reusableScoutIds.has(u.id))
+      return false;
     if (u.scenarioGuardTargetId !== undefined) return false;
     if (defenderIds.has(u.id)) return false;
     if (activeScouts.has(u.id)) return false;

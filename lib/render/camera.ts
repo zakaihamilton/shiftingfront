@@ -1,4 +1,11 @@
-import { TILE_H, TILE_W, cameraViewQuad, screenToGroundTile, tileToScreen, type Camera } from "../iso";
+import {
+  type Camera,
+  cameraViewQuad,
+  screenToGroundTile,
+  TILE_H,
+  TILE_W,
+  tileToScreen,
+} from "../iso";
 
 export const PAN_STEP = 10;
 export const MINIMAP_DRAG_THRESHOLD = 6;
@@ -65,14 +72,21 @@ function cameraOffsetForMapDelta(
   };
 }
 
-export function panInputToCameraOffset(input: CameraPanInput, zoom: number): { dx: number; dy: number } {
+export function panInputToCameraOffset(
+  input: CameraPanInput,
+  zoom: number,
+): { dx: number; dy: number } {
   return input.space === "screen"
     ? { dx: input.dx, dy: input.dy }
     : cameraOffsetForMapDelta(input.dx, input.dy, zoom);
 }
 
 /** Limit movement to a maximum projected screen distance while preserving its direction. */
-export function capPanInput(input: CameraPanInput, maxScreenDistance: number, zoom: number): CameraPanInput {
+export function capPanInput(
+  input: CameraPanInput,
+  maxScreenDistance: number,
+  zoom: number,
+): CameraPanInput {
   const offset = panInputToCameraOffset(input, zoom);
   const distance = Math.hypot(offset.dx, offset.dy);
   if (distance === 0 || distance <= maxScreenDistance) return input;
@@ -149,7 +163,12 @@ export function focusCameraAtTile(
   clampCamera(cam, bounds);
 }
 
-export function canPan(cam: Camera, bounds: CameraPanBounds, dir: PanDir, epsilon = 0.0001): boolean {
+export function canPan(
+  cam: Camera,
+  bounds: CameraPanBounds,
+  dir: PanDir,
+  epsilon = 0.0001,
+): boolean {
   const before = cameraFocusPoint(cam, bounds);
   const next = { ...cam };
   panCameraPreservingDirection(next, panInputForDirection(dir, 1), bounds);
@@ -157,7 +176,11 @@ export function canPan(cam: Camera, bounds: CameraPanBounds, dir: PanDir, epsilo
   return Math.hypot(after.x - before.x, after.y - before.y) > epsilon;
 }
 
-export function panAvailability(cam: Camera, bounds: CameraPanBounds, epsilon = 0.0001): PanAvailability {
+export function panAvailability(
+  cam: Camera,
+  bounds: CameraPanBounds,
+  epsilon = 0.0001,
+): PanAvailability {
   return {
     left: canPan(cam, bounds, "left", epsilon),
     right: canPan(cam, bounds, "right", epsilon),
@@ -178,8 +201,20 @@ export function minimapPoint(
   const px = Math.max(rect.x, Math.min(rect.x + rect.width, pointerX));
   const py = Math.max(rect.y, Math.min(rect.y + rect.height, pointerY));
   return {
-    x: Math.max(0, Math.min(Math.max(0, mapWidth - 1), ((px - rect.x) / Math.max(1, rect.width)) * mapWidth - 0.5)),
-    y: Math.max(0, Math.min(Math.max(0, mapHeight - 1), ((py - rect.y) / Math.max(1, rect.height)) * mapHeight - 0.5)),
+    x: Math.max(
+      0,
+      Math.min(
+        Math.max(0, mapWidth - 1),
+        ((px - rect.x) / Math.max(1, rect.width)) * mapWidth - 0.5,
+      ),
+    ),
+    y: Math.max(
+      0,
+      Math.min(
+        Math.max(0, mapHeight - 1),
+        ((py - rect.y) / Math.max(1, rect.height)) * mapHeight - 0.5,
+      ),
+    ),
   };
 }
 
@@ -216,23 +251,29 @@ export function panDirFromPointer(
   canPanDirection?: (dir: PanDir) => boolean,
 ): PanDir | null {
   if (x < 0 || y < 0 || x > width || y > height) return null;
-  const horizontal = x <= band
-    ? { dir: "left" as const, dist: x }
-    : width - x <= band
-      ? { dir: "right" as const, dist: width - x }
-      : null;
-  const vertical = y <= band
-    ? { dir: "up" as const, dist: y }
-    : height - y <= band
-      ? { dir: "down" as const, dist: height - y }
-      : null;
+  const horizontal =
+    x <= band
+      ? { dir: "left" as const, dist: x }
+      : width - x <= band
+        ? { dir: "right" as const, dist: width - x }
+        : null;
+  const vertical =
+    y <= band
+      ? { dir: "up" as const, dist: y }
+      : height - y <= band
+        ? { dir: "down" as const, dist: height - y }
+        : null;
 
   if (horizontal && vertical) {
     // The mission directive lives in this corner; keep its collapse/expand
     // control free of edge-pan side effects.
     if (horizontal.dir === "right" && vertical.dir === "up") return null;
     const diagonal = `${vertical.dir}-${horizontal.dir}` as DiagonalPanDir;
-    if (canPanDirection ? canPanDirection(diagonal) : !avail || (avail[horizontal.dir] && avail[vertical.dir])) {
+    if (
+      canPanDirection
+        ? canPanDirection(diagonal)
+        : !avail || (avail[horizontal.dir] && avail[vertical.dir])
+    ) {
       return diagonal;
     }
   }

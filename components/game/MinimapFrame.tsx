@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type PointerEventHandler, type Ref } from "react";
+import { type CSSProperties, type PointerEventHandler, type Ref, useEffect, useState } from "react";
 import { minimapMapRect } from "@/lib/render/camera";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./MinimapFrame.module.css";
@@ -62,9 +62,9 @@ export function MinimapFrame({
   // The timeout below only settles the animation; it does not decide the phase.
   if (powered !== seenPower) {
     setSeenPower(powered);
-    setPhase(prefersReducedMotion()
-      ? (powered ? "on" : "off")
-      : (powered ? "powering-on" : "powering-off"));
+    setPhase(
+      prefersReducedMotion() ? (powered ? "on" : "off") : powered ? "powering-on" : "powering-off",
+    );
   }
 
   useEffect(() => {
@@ -80,14 +80,18 @@ export function MinimapFrame({
   const label = interactive ? ONLINE_LABEL : offline.label;
   const showOffline = phase === "off" || phase === "powering-off";
   const mapRect = minimapMapRect(224, 160, mapWidth, mapHeight);
-  const pingStyle = ping ? {
-    "--ping-x": `${((mapRect.x + ping.x * mapRect.width) / 224) * 100}%`,
-    "--ping-y": `${((mapRect.y + ping.y * mapRect.height) / 160) * 100}%`,
-  } as CSSProperties : undefined;
-  const guard = (handler: PointerEventHandler<HTMLCanvasElement>): PointerEventHandler<HTMLCanvasElement> => (event) => {
-    if (!interactive) return;
-    handler(event);
-  };
+  const pingStyle = ping
+    ? ({
+        "--ping-x": `${((mapRect.x + ping.x * mapRect.width) / 224) * 100}%`,
+        "--ping-y": `${((mapRect.y + ping.y * mapRect.height) / 160) * 100}%`,
+      } as CSSProperties)
+    : undefined;
+  const guard =
+    (handler: PointerEventHandler<HTMLCanvasElement>): PointerEventHandler<HTMLCanvasElement> =>
+    (event) => {
+      if (!interactive) return;
+      handler(event);
+    };
 
   return (
     <div
@@ -126,13 +130,17 @@ export function MinimapFrame({
                 role="img"
                 data-kind={ping.kind}
                 style={pingStyle}
-                aria-label={ping.kind === "urgent" ? "Urgent alert location" : "Objective transition"}
+                aria-label={
+                  ping.kind === "urgent" ? "Urgent alert location" : "Objective transition"
+                }
               />
             ) : null}
           </div>
           <div className={styles.beam} data-power={phase} aria-hidden />
           <div className={styles.snow} data-power={phase} aria-hidden />
-          <p className={styles.offline} data-power={phase} hidden={!showOffline}>{offline.caption}</p>
+          <p className={styles.offline} data-power={phase} hidden={!showOffline}>
+            {offline.caption}
+          </p>
         </div>
       </div>
     </div>

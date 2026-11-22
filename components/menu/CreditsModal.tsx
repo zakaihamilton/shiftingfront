@@ -46,21 +46,24 @@ export function CreditsModal({ onBack }: { onBack: () => void }) {
         <section className={styles.section}>
           <div className={styles.sectionHeading}>Procedural Audio</div>
           <p className={styles.sectionBody}>
-            Real-time Web Audio API procedural synthesis, adaptive dynamic scoring, and spatial stereo panning.
+            Real-time Web Audio API procedural synthesis, adaptive dynamic scoring, and spatial
+            stereo panning.
           </p>
         </section>
 
         <section className={styles.section}>
           <div className={styles.sectionHeading}>Technology Stack</div>
           <p className={styles.sectionBody}>
-            Next.js 16, React 19, TypeScript, Canvas 2D isometric renderer, deterministic fixed-step simulation, Vitest.
+            Next.js 16, React 19, TypeScript, Canvas 2D isometric renderer, deterministic fixed-step
+            simulation, Vitest.
           </p>
         </section>
 
         <section className={styles.section}>
           <div className={styles.sectionHeading}>Typography</div>
           <p className={styles.sectionBody}>
-            Barlow, Barlow Condensed, and IBM Plex Mono (licensed under the SIL Open Font License 1.1).
+            Barlow, Barlow Condensed, and IBM Plex Mono (licensed under the SIL Open Font License
+            1.1).
           </p>
         </section>
 
@@ -70,11 +73,21 @@ export function CreditsModal({ onBack }: { onBack: () => void }) {
             {APP_NAME} is free software licensed under the MIT License.
           </p>
           <div className={styles.links}>
-            <a href={APP_REPO_URL} target="_blank" rel="noopener noreferrer" className={styles.link}>
+            <a
+              href={APP_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.link}
+            >
               GitHub Repository
             </a>
             <span aria-hidden="true">·</span>
-            <a href={feedbackIssueUrl()} target="_blank" rel="noopener noreferrer" className={styles.link}>
+            <a
+              href={feedbackIssueUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.link}
+            >
               Report an Issue / Feedback
             </a>
           </div>

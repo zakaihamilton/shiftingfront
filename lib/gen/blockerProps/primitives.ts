@@ -75,7 +75,13 @@ function parseHex(value: string): [number, number, number] {
 
 export function liftGreen(hex: string, amount: number): string {
   const [r, g, b] = parseHex(hex);
-  return `#${[r, Math.min(255, g + amount), b].map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0")).join("")}`;
+  return `#${[r, Math.min(255, g + amount), b]
+    .map((n) =>
+      Math.max(0, Math.min(255, Math.round(n)))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
 export function quadPoint(
@@ -88,10 +94,7 @@ export function quadPoint(
   y1: number,
 ): [number, number] {
   const u = 1 - t;
-  return [
-    u * u * x0 + 2 * u * t * cx + t * t * x1,
-    u * u * y0 + 2 * u * t * cy + t * t * y1,
-  ];
+  return [u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1];
 }
 
 export function strokeWidth(prim: Extract<PropPrim, { k: "line" | "curve" }>): number {
@@ -107,7 +110,13 @@ export function appendPropArtShapes(
 ): void {
   for (const prim of prims) {
     if (prim.k === "ell") {
-      const shape = ell(ox + prim.x - prim.rx, oy + prim.y - prim.ry, prim.rx * 2, prim.ry * 2, prim.fill);
+      const shape = ell(
+        ox + prim.x - prim.rx,
+        oy + prim.y - prim.ry,
+        prim.rx * 2,
+        prim.ry * 2,
+        prim.fill,
+      );
       shapes.push(prim.alpha !== undefined ? { ...shape, alpha: prim.alpha } : shape);
       continue;
     }
@@ -121,13 +130,28 @@ export function appendPropArtShapes(
       continue;
     }
     if (prim.k === "line") {
-      const shape = line(ox + prim.x0, oy + prim.y0, ox + prim.x1, oy + prim.y1, prim.stroke, strokeWidth(prim));
+      const shape = line(
+        ox + prim.x0,
+        oy + prim.y0,
+        ox + prim.x1,
+        oy + prim.y1,
+        prim.stroke,
+        strokeWidth(prim),
+      );
       shapes.push(prim.alpha !== undefined ? { ...shape, alpha: prim.alpha } : shape);
       continue;
     }
     let [px, py] = quadPoint(0, prim.x0, prim.y0, prim.cx, prim.cy, prim.x1, prim.y1);
     for (let i = 1; i <= CURVE_SAMPLES; i++) {
-      const [nx, ny] = quadPoint(i / CURVE_SAMPLES, prim.x0, prim.y0, prim.cx, prim.cy, prim.x1, prim.y1);
+      const [nx, ny] = quadPoint(
+        i / CURVE_SAMPLES,
+        prim.x0,
+        prim.y0,
+        prim.cx,
+        prim.cy,
+        prim.x1,
+        prim.y1,
+      );
       const shape = line(ox + px, oy + py, ox + nx, oy + ny, prim.stroke, strokeWidth(prim));
       shapes.push(prim.alpha !== undefined ? { ...shape, alpha: prim.alpha } : shape);
       px = nx;

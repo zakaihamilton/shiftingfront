@@ -1,8 +1,13 @@
-import { CHECK_HISTORY_LIMIT, STATE_CHECK_INTERVAL, stateChecksum, validChecksum } from "../checksum";
 import { makeFog, tickFog } from "@/lib/sim/fog";
 import type { Owner, SimState } from "@/lib/types";
-import { isSimSnapshot, SKIRMISH_MATCH_SETTINGS } from "../protocol";
+import {
+  CHECK_HISTORY_LIMIT,
+  STATE_CHECK_INTERVAL,
+  stateChecksum,
+  validChecksum,
+} from "../checksum";
 import type { MultiplayerRole, MultiplayerStatus, MultiplayerWire } from "../protocol";
+import { isSimSnapshot, SKIRMISH_MATCH_SETTINGS } from "../protocol";
 
 type Repair = { at: number; tick: number; checksum: string; report: string; verified: boolean };
 
@@ -23,22 +28,24 @@ export class MultiplayerSynchronization {
   private snapshotSource: (() => SimState) | null = null;
   private snapshotConsumer: ((state: SimState) => void) | null = null;
 
-  constructor(private readonly options: {
-    role: MultiplayerRole;
-    owner: Owner;
-    seed: number;
-    owners: readonly Owner[];
-    aiOwners: readonly Owner[];
-    sender: () => MultiplayerWire;
-    status: () => MultiplayerStatus;
-    broadcast: (value: unknown) => void;
-    sendToPeer: (peerId: string, value: unknown) => void;
-    publish: () => void;
-    end: () => void;
-    forfeitPeer: (peerId: string) => void;
-    setNotice: (notice: string) => void;
-    installTick: (tick: number) => void;
-  }) {}
+  constructor(
+    private readonly options: {
+      role: MultiplayerRole;
+      owner: Owner;
+      seed: number;
+      owners: readonly Owner[];
+      aiOwners: readonly Owner[];
+      sender: () => MultiplayerWire;
+      status: () => MultiplayerStatus;
+      broadcast: (value: unknown) => void;
+      sendToPeer: (peerId: string, value: unknown) => void;
+      publish: () => void;
+      end: () => void;
+      forfeitPeer: (peerId: string) => void;
+      setNotice: (notice: string) => void;
+      installTick: (tick: number) => void;
+    },
+  ) {}
 
   bindState(source: () => SimState, consume: (state: SimState) => void): void {
     this.snapshotSource = source;
@@ -57,8 +64,20 @@ export class MultiplayerSynchronization {
     }
     if (message.type === "resync") {
       const localState = this.snapshotSource?.();
-      if (message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion || !validChecksum(message.checksum)) return true;
-      if (isSimSnapshot(message.state, this.options.seed, this.options.owners, this.options.aiOwners, localState)) {
+      if (
+        message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion ||
+        !validChecksum(message.checksum)
+      )
+        return true;
+      if (
+        isSimSnapshot(
+          message.state,
+          this.options.seed,
+          this.options.owners,
+          this.options.aiOwners,
+          localState,
+        )
+      ) {
         this.pendingSnapshot = message.state;
         this.pendingSnapshotChecksum = message.checksum;
         this.options.setNotice("Synchronizing with the host…");
@@ -78,12 +97,21 @@ export class MultiplayerSynchronization {
       const previous = this.repairs.get(peerId);
       const now = monotonicNow();
       if (previous?.tick === tick && previous.report === message.checksum) return true;
-      if (previous?.verified && now - previous.at < 60_000) { this.removeDivergentPeer(peerId); return true; }
+      if (previous?.verified && now - previous.at < 60_000) {
+        this.removeDivergentPeer(peerId);
+        return true;
+      }
       if (previous && (!previous.verified || tick <= previous.tick)) return true;
       const state = this.snapshotSource?.();
       if (state) {
         const checksum = stateChecksum(state);
-        this.repairs.set(peerId, { at: now, tick: state.tick, checksum, report: message.checksum as string, verified: false });
+        this.repairs.set(peerId, {
+          at: now,
+          tick: state.tick,
+          checksum,
+          report: message.checksum as string,
+          verified: false,
+        });
         this.options.setNotice("Synchronizing a player with the host…");
         this.options.publish();
         this.options.sendToPeer(peerId, this.createSnapshotMessage(state, checksum));
@@ -94,7 +122,10 @@ export class MultiplayerSynchronization {
       if (this.validCheck(message) && typeof message.verified === "boolean") {
         const repair = this.repairs.get(peerId);
         if (repair && repair.tick === message.tick && !repair.verified) {
-          if (!message.verified || repair.checksum !== message.checksum) { this.removeDivergentPeer(peerId); return true; }
+          if (!message.verified || repair.checksum !== message.checksum) {
+            this.removeDivergentPeer(peerId);
+            return true;
+          }
           repair.verified = true;
           this.options.setNotice("Synchronization restored.");
           this.options.publish();
@@ -131,14 +162,21 @@ export class MultiplayerSynchronization {
     const checksum = stateChecksum(state);
     this.checks.set(state.tick, checksum);
     this.trimChecks(this.checks);
-    if (this.options.role === "host") this.options.broadcast({ type: "state-check", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick, checksum });
+    if (this.options.role === "host")
+      this.options.broadcast({
+        type: "state-check",
+        protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+        tick: state.tick,
+        checksum,
+      });
     else this.compareCheck(state.tick);
   }
 
   /** Install a staged guest snapshot at the frame boundary and verify it before resuming. */
   syncSnapshot(): boolean {
     for (const [peerId, repair] of [...this.repairs]) {
-      if (!repair.verified && monotonicNow() - repair.at >= 60_000) this.removeDivergentPeer(peerId);
+      if (!repair.verified && monotonicNow() - repair.at >= 60_000)
+        this.removeDivergentPeer(peerId);
     }
     if (!this.pendingSnapshot) return false;
     const snapshot = this.pendingSnapshot;
@@ -152,24 +190,51 @@ export class MultiplayerSynchronization {
       ...snapshot,
       viewOwner: this.options.owner,
       controlGroups: local?.controlGroups ?? {},
-      fog: local?.viewOwner === this.options.owner && local.width === snapshot.width && local.height === snapshot.height
-        ? [...local.fog]
-        : makeFog(snapshot.width, snapshot.height, 0),
+      fog:
+        local?.viewOwner === this.options.owner &&
+        local.width === snapshot.width &&
+        local.height === snapshot.height
+          ? [...local.fog]
+          : makeFog(snapshot.width, snapshot.height, 0),
     };
-    if (state.result !== "playing" || (state.multiplayerOwners && !state.multiplayerOwners.includes(this.options.owner))) {
-      state.result = state.winner === null ? "lost" : state.winner === this.options.owner ? "won" : "lost";
+    if (
+      state.result !== "playing" ||
+      (state.multiplayerOwners && !state.multiplayerOwners.includes(this.options.owner))
+    ) {
+      state.result =
+        state.winner === null ? "lost" : state.winner === this.options.owner ? "won" : "lost";
     }
     tickFog(state);
     const checksum = stateChecksum(state);
     if (checksum !== expectedChecksum) {
-      try { this.options.sender().send({ type: "resync-check", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick, checksum, verified: false }); } catch {}
+      try {
+        this.options
+          .sender()
+          .send({
+            type: "resync-check",
+            protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+            tick: state.tick,
+            checksum,
+            verified: false,
+          });
+      } catch {}
       this.fail();
       return false;
     }
     this.resetChecks();
     this.installedSnapshotTick = state.tick;
     this.snapshotConsumer?.(state);
-    try { this.options.sender().send({ type: "resync-check", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick, checksum, verified: true }); } catch {}
+    try {
+      this.options
+        .sender()
+        .send({
+          type: "resync-check",
+          protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+          tick: state.tick,
+          checksum,
+          verified: true,
+        });
+    } catch {}
     this.options.setNotice("Synchronization restored.");
     this.options.publish();
     return true;
@@ -186,8 +251,12 @@ export class MultiplayerSynchronization {
   }
 
   private validCheck(message: Record<string, unknown>): boolean {
-    return message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion &&
-      Number.isSafeInteger(message.tick) && Number(message.tick) >= 0 && validChecksum(message.checksum);
+    return (
+      message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion &&
+      Number.isSafeInteger(message.tick) &&
+      Number(message.tick) >= 0 &&
+      validChecksum(message.checksum)
+    );
   }
 
   private trimChecks(checks: Map<number, string>): void {
@@ -195,7 +264,12 @@ export class MultiplayerSynchronization {
   }
 
   private createSnapshotMessage(state: SimState, checksum = stateChecksum(state)) {
-    return { type: "resync", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, state: structuredClone(state), checksum };
+    return {
+      type: "resync",
+      protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+      state: structuredClone(state),
+      checksum,
+    };
   }
 
   private compareCheck(tick: number): void {
@@ -203,8 +277,16 @@ export class MultiplayerSynchronization {
     const remote = this.remoteChecks.get(tick);
     if (!own || !remote || own === remote || this.reportedChecks.has(tick)) return;
     this.reportedChecks.add(tick);
-    while (this.reportedChecks.size > CHECK_HISTORY_LIMIT) this.reportedChecks.delete(this.reportedChecks.values().next().value!);
-    this.options.sender().send({ type: "desync", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick, checksum: own });
+    while (this.reportedChecks.size > CHECK_HISTORY_LIMIT)
+      this.reportedChecks.delete(this.reportedChecks.values().next().value!);
+    this.options
+      .sender()
+      .send({
+        type: "desync",
+        protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+        tick,
+        checksum: own,
+      });
   }
 
   /** Drop one divergent guest. A single seat must not end the match for everyone else. */
@@ -213,13 +295,20 @@ export class MultiplayerSynchronization {
     this.repairs.delete(peerId);
     this.options.setNotice("A player could not stay synchronized and was removed from the match.");
     this.options.publish();
-    try { this.options.sendToPeer(peerId, { type: "ended", reason: "synchronization_failed" }); } catch { /* The forfeit snapshot still removes the seat. */ }
+    try {
+      this.options.sendToPeer(peerId, { type: "ended", reason: "synchronization_failed" });
+    } catch {
+      /* The forfeit snapshot still removes the seat. */
+    }
     this.options.forfeitPeer(peerId);
   }
 
   private fail(): void {
-    this.options.setNotice("Synchronization failed. Reload all players before starting another match.");
-    if (this.options.role === "host") this.options.broadcast({ type: "ended", reason: "synchronization_failed" });
+    this.options.setNotice(
+      "Synchronization failed. Reload all players before starting another match.",
+    );
+    if (this.options.role === "host")
+      this.options.broadcast({ type: "ended", reason: "synchronization_failed" });
     this.options.end();
   }
 }

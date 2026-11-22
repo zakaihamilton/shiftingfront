@@ -25,7 +25,13 @@ export function mixHex(a: string, b: string, amount: number): string {
   const from = parse(a);
   const to = parse(b);
   const t = Math.max(0, Math.min(1, amount));
-  return `#${[0, 1, 2].map((i) => Math.round(from[i]! + (to[i]! - from[i]!) * t).toString(16).padStart(2, "0")).join("")}`;
+  return `#${[0, 1, 2]
+    .map((i) =>
+      Math.round(from[i]! + (to[i]! - from[i]!) * t)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
 const TERRAIN: Record<BiomeName, [string, string, string, string]> = {
@@ -53,7 +59,11 @@ export const ORE = {
   ink: "#2a220e",
 } as const;
 
-export function terrainPalette(biome: BiomeName, elev: number, campaign: CampaignVisualProfile): Palette {
+export function terrainPalette(
+  biome: BiomeName,
+  elev: number,
+  campaign: CampaignVisualProfile,
+): Palette {
   const [base, dark, light, outline] = TERRAIN[biome];
   const tier = Math.max(0, Math.min(3, elev));
   const mid = tier === 2;
@@ -66,18 +76,29 @@ export function terrainPalette(biome: BiomeName, elev: number, campaign: Campaig
     light: high ? mixHex(light, "#f4f1d8", 0.28) : mid ? mixHex(light, "#e7e2c2", 0.12) : light,
     dark,
   };
-  const campaignAccent = campaign.terrainAccent === "amber"
-    ? "#e7ae63"
-    : campaign.terrainAccent === "red"
-      ? "#d87868"
-      : "#79d5df";
+  const campaignAccent =
+    campaign.terrainAccent === "amber"
+      ? "#e7ae63"
+      : campaign.terrainAccent === "red"
+        ? "#d87868"
+        : "#79d5df";
   if (campaign.family === 0) {
     return { ...palette, accent: mixHex(palette.accent, campaignAccent, 0.64), outline: "#263640" };
   }
   if (campaign.family === 1) {
-    return { ...palette, primary: mixHex(palette.primary, "#67727e", 0.14), accent: mixHex(palette.accent, campaignAccent, 0.4), outline: "#222a31" };
+    return {
+      ...palette,
+      primary: mixHex(palette.primary, "#67727e", 0.14),
+      accent: mixHex(palette.accent, campaignAccent, 0.4),
+      outline: "#222a31",
+    };
   }
-  return { ...palette, primary: mixHex(palette.primary, "#7e6a52", 0.16), accent: mixHex(palette.accent, campaignAccent, 0.58), outline: "#302a25" };
+  return {
+    ...palette,
+    primary: mixHex(palette.primary, "#7e6a52", 0.16),
+    accent: mixHex(palette.accent, campaignAccent, 0.58),
+    outline: "#302a25",
+  };
 }
 
 export function terrainZonePalette(palette: Palette, variant: number): Palette {
@@ -130,7 +151,11 @@ export function terrainFieldPalette(
   };
 }
 
-export function cliffFaces(biome: BiomeName, elev: number, campaign = generateCampaignVisualProfile(0)): {
+export function cliffFaces(
+  biome: BiomeName,
+  elev: number,
+  campaign = generateCampaignVisualProfile(0),
+): {
   south: string;
   east: string;
   southInk: string;
@@ -147,6 +172,15 @@ export function cliffFaces(biome: BiomeName, elev: number, campaign = generateCa
     eastInk: high ? dark : mid ? mixHex(outline, dark, 0.45) : outline,
   };
   if (campaign.family === 0) return { ...faces, southInk: "#263640", eastInk: "#263640" };
-  if (campaign.family === 1) return { ...faces, south: mixHex(faces.south, "#3b4650", 0.2), east: mixHex(faces.east, "#3b4650", 0.16) };
-  return { ...faces, south: mixHex(faces.south, "#5b4635", 0.18), east: mixHex(faces.east, "#5b4635", 0.12) };
+  if (campaign.family === 1)
+    return {
+      ...faces,
+      south: mixHex(faces.south, "#3b4650", 0.2),
+      east: mixHex(faces.east, "#3b4650", 0.16),
+    };
+  return {
+    ...faces,
+    south: mixHex(faces.south, "#5b4635", 0.18),
+    east: mixHex(faces.east, "#5b4635", 0.12),
+  };
 }

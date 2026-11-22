@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, type ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { PageFallback } from "./PageFallback";
 

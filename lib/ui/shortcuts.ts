@@ -1,5 +1,5 @@
-import type { ControlGroupSlot } from "@/lib/types";
 import type { KeyBindings } from "@/lib/persist/settings";
+import type { ControlGroupSlot } from "@/lib/types";
 
 export function displayKey(key: string): string {
   if (key === " " || key.toLowerCase() === "space") return "Space";
@@ -62,7 +62,11 @@ export type MenuCommand =
   | { type: "toggleSound" }
   | { type: "toggleMusic" }
   | { type: "toggleVoice" };
-export type BriefingCommand = { type: "launch" } | { type: "back" } | { type: "skip" } | { type: "replay" };
+export type BriefingCommand =
+  | { type: "launch" }
+  | { type: "back" }
+  | { type: "skip" }
+  | { type: "replay" };
 export type AssetsCommand =
   | { type: "close" }
   | { type: "togglePlay" }
@@ -130,12 +134,13 @@ export function cameoIndexFromEvent(e: KeyEventLike): number | null {
 }
 
 export function controlGroupSlotFromEvent(e: KeyEventLike): ControlGroupSlot | null {
-  const digit = e.code && /^Digit[1-9]$/.test(e.code)
-    ? Number(e.code.slice(5))
-    : e.key >= "1" && e.key <= "9"
-      ? Number(e.key)
-      : null;
-  return digit === null ? null : digit as ControlGroupSlot;
+  const digit =
+    e.code && /^Digit[1-9]$/.test(e.code)
+      ? Number(e.code.slice(5))
+      : e.key >= "1" && e.key <= "9"
+        ? Number(e.key)
+        : null;
+  return digit === null ? null : (digit as ControlGroupSlot);
 }
 
 function letter(e: KeyEventLike): string {
@@ -244,7 +249,8 @@ export function gameCommandFromKey(
   if (matches(keyBindings?.repair, "r")) return { type: "repair" };
   if (matches(keyBindings?.sell, "f")) return { type: "sell" };
   if (matches(keyBindings?.stop, "x")) return { type: "stop" };
-  if (matches(keyBindings?.home, "h") || (keyBindings?.home === undefined && e.key === "Home")) return { type: "home" };
+  if (matches(keyBindings?.home, "h") || (keyBindings?.home === undefined && e.key === "Home"))
+    return { type: "home" };
   if (matches(keyBindings?.center, " ")) return { type: "center" };
   return null;
 }
@@ -294,7 +300,10 @@ export function briefingCommandFromKey(
   return null;
 }
 
-export function assetsCommandFromKey(e: KeyEventLike, ctx: { typing: boolean }): AssetsCommand | null {
+export function assetsCommandFromKey(
+  e: KeyEventLike,
+  ctx: { typing: boolean },
+): AssetsCommand | null {
   if (ctx.typing || modified(e)) return null;
   if (e.key === "ArrowUp") return { type: "prevAsset" };
   if (e.key === "ArrowDown") return { type: "nextAsset" };

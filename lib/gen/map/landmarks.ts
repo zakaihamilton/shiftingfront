@@ -1,12 +1,8 @@
-import type { BiomeName, LandmarkKind, SurfaceKind, Vec2 } from "../../types";
-import {
-  SURFACE_CONCRETE,
-  SURFACE_NONE,
-  TILE_CLEAR,
-  TILE_RESOURCE,
-} from "../../types";
 import type { Rng } from "../../seed/rng";
-import { idx, inBounds } from "./terrain";
+import type { BiomeName, LandmarkKind, SurfaceKind, Vec2 } from "../../types";
+import { SURFACE_CONCRETE, SURFACE_NONE, TILE_CLEAR, TILE_RESOURCE } from "../../types";
+import { walkDistances } from "./generator/affordances";
+import { resourceCenterNear, resourceCenterOnOpenGround } from "./generator/resources";
 import type { LandmarkField } from "./landmarkStamps";
 import {
   stampBasaltShelf,
@@ -18,8 +14,7 @@ import {
   stampRuinClearing,
   stampSpireRidge,
 } from "./landmarkStamps";
-import { resourceCenterNear, resourceCenterOnOpenGround } from "./generator/resources";
-import { walkDistances } from "./generator/affordances";
+import { idx, inBounds } from "./terrain";
 
 export function landmarkForBiome(biome: BiomeName): LandmarkKind {
   switch (biome) {
@@ -169,12 +164,50 @@ export function generateLandmarkResourceVeins(
     y: Math.max(3, Math.min(height - 4, enemyStart.y - towardEnemy.y * 8 + lateral.y)),
   };
 
-  const playerStarter = starterCenter(tiles, surfaces, heights, distances, width, height, playerStart, safeP);
+  const playerStarter = starterCenter(
+    tiles,
+    surfaces,
+    heights,
+    distances,
+    width,
+    height,
+    playerStart,
+    safeP,
+  );
   const enemyDistances = walkDistances(tiles, heights, width, height, enemyStart);
-  const enemyStarter = starterCenter(tiles, surfaces, heights, enemyDistances, width, height, enemyStart, safeE);
+  const enemyStarter = starterCenter(
+    tiles,
+    surfaces,
+    heights,
+    enemyDistances,
+    width,
+    height,
+    enemyStart,
+    safeE,
+  );
 
-  stampResourceCluster(tiles, heights, resourceAmount, surfaces, width, height, playerStarter, 3, rng);
-  stampResourceCluster(tiles, heights, resourceAmount, surfaces, width, height, enemyStarter, 3, rng);
+  stampResourceCluster(
+    tiles,
+    heights,
+    resourceAmount,
+    surfaces,
+    width,
+    height,
+    playerStarter,
+    3,
+    rng,
+  );
+  stampResourceCluster(
+    tiles,
+    heights,
+    resourceAmount,
+    surfaces,
+    width,
+    height,
+    enemyStarter,
+    3,
+    rng,
+  );
 
   // 2. Dispersed landmark-geometry patches
   const remainingPatches = Math.max(2, totalPatches - 2);
@@ -186,12 +219,20 @@ export function generateLandmarkResourceVeins(
 
       // Bias half the patches towards the landmark geometry
       if (p % 2 === 0) {
-        if (landmark.kind === "spireRidge" || landmark.kind === "canyon" || landmark.kind === "crevasse") {
+        if (
+          landmark.kind === "spireRidge" ||
+          landmark.kind === "canyon" ||
+          landmark.kind === "crevasse"
+        ) {
           // Place along a fault line offset
           const offset = (p - remainingPatches / 2) * 6;
           cx = Math.round(landmark.center.x + landmark.axis.x * offset + (rng.next() * 6 - 3));
           cy = Math.round(landmark.center.y + landmark.axis.y * offset + (rng.next() * 6 - 3));
-        } else if (landmark.kind === "crater" || landmark.kind === "caldera" || landmark.kind === "basaltShelf") {
+        } else if (
+          landmark.kind === "crater" ||
+          landmark.kind === "caldera" ||
+          landmark.kind === "basaltShelf"
+        ) {
           // Place along the landmark's perimeter or basin
           const angle = (p / remainingPatches) * Math.PI * 2 + rng.next() * 0.5;
           const r = landmark.radius * 0.7;
@@ -203,12 +244,38 @@ export function generateLandmarkResourceVeins(
       if (!inBounds(cx, cy, width, height)) continue;
       if (isTooCloseToBase(cx, cy)) continue;
       const i = idx(cx, cy, width);
-      if (tiles[i] !== TILE_CLEAR || surfaces[i] === SURFACE_CONCRETE || heights[i] >= 3 || distances[i]! < 0) continue;
+      if (
+        tiles[i] !== TILE_CLEAR ||
+        surfaces[i] === SURFACE_CONCRETE ||
+        heights[i] >= 3 ||
+        distances[i]! < 0
+      )
+        continue;
 
       if (landmark.kind === "spireRidge" || landmark.kind === "canyon") {
-        stampLinearResourceVein(tiles, heights, resourceAmount, surfaces, width, height, { x: cx, y: cy }, landmark.axis, rng);
+        stampLinearResourceVein(
+          tiles,
+          heights,
+          resourceAmount,
+          surfaces,
+          width,
+          height,
+          { x: cx, y: cy },
+          landmark.axis,
+          rng,
+        );
       } else {
-        stampResourceCluster(tiles, heights, resourceAmount, surfaces, width, height, { x: cx, y: cy }, 2 + rng.int(2), rng);
+        stampResourceCluster(
+          tiles,
+          heights,
+          resourceAmount,
+          surfaces,
+          width,
+          height,
+          { x: cx, y: cy },
+          2 + rng.int(2),
+          rng,
+        );
       }
       break;
     }
@@ -229,7 +296,18 @@ function starterCenter(
   if (clusterCanStamp(tiles, surfaces, heights, width, height, starter, 3)) return starter;
   // A cliff-side preferred cell is clear on the tile grid and still rejects
   // every stamp. Fall back to open ground inside the funded ring.
-  return resourceCenterOnOpenGround(tiles, surfaces, heights, distances, width, height, origin, preferred) ?? starter;
+  return (
+    resourceCenterOnOpenGround(
+      tiles,
+      surfaces,
+      heights,
+      distances,
+      width,
+      height,
+      origin,
+      preferred,
+    ) ?? starter
+  );
 }
 
 function clusterCanStamp(
@@ -248,7 +326,8 @@ function clusterCanStamp(
       const y = center.y + dy;
       if (!inBounds(x, y, width, height)) continue;
       const i = idx(x, y, width);
-      if (tiles[i] !== TILE_CLEAR || surfaces[i] === SURFACE_CONCRETE || (heights[i] ?? 0) >= 3) continue;
+      if (tiles[i] !== TILE_CLEAR || surfaces[i] === SURFACE_CONCRETE || (heights[i] ?? 0) >= 3)
+        continue;
       return true;
     }
   }

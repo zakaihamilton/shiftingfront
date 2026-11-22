@@ -1,5 +1,15 @@
+import type {
+  AmmoEffect,
+  ArmorType,
+  BuildingKind,
+  CombatTargetDomain,
+  Entity,
+  SupportRole,
+  UnitDomain,
+  UnitKind,
+  WeaponType,
+} from "../types";
 import { isUnitEntity } from "../types";
-import type { AmmoEffect, ArmorType, BuildingKind, CombatTargetDomain, Entity, SupportRole, UnitDomain, UnitKind, WeaponType } from "../types";
 
 export const UNIT_KINDS: UnitKind[] = [
   "harvester",
@@ -325,13 +335,18 @@ export function supportTargetDomain(kind: UnitKind): UnitDomain | undefined {
 
 export function canSupportTarget(provider: UnitKind, target: UnitKind): boolean {
   const domain = supportTargetDomain(provider);
-  return domain !== undefined && domain === UNIT_DEFINITIONS[target].domain && !isSupportUnit(target);
+  return (
+    domain !== undefined && domain === UNIT_DEFINITIONS[target].domain && !isSupportUnit(target)
+  );
 }
 
 export type AirUnitKind = Extract<UnitKind, "strikePlane">;
 
 export function isAirUnit(kind: UnitKind | BuildingKind): kind is AirUnitKind {
-  return (UNIT_KINDS as readonly string[]).includes(kind) && UNIT_DEFINITIONS[kind as UnitKind].domain === "air";
+  return (
+    (UNIT_KINDS as readonly string[]).includes(kind) &&
+    UNIT_DEFINITIONS[kind as UnitKind].domain === "air"
+  );
 }
 
 export function targetDomainsFor(kind: UnitKind): readonly CombatTargetDomain[] {

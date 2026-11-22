@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  frameTickBudget,
+  MAX_CATCH_UP_TICKS_PER_FRAME,
+  MAX_TICKS_PER_FRAME,
+  startLoop,
+  TICK_MS,
+} from "../../lib/game/loop";
 import { createMission, tick } from "../../lib/sim/api";
-import { MAX_CATCH_UP_TICKS_PER_FRAME, MAX_TICKS_PER_FRAME, TICK_MS, frameTickBudget, startLoop } from "../../lib/game/loop";
 
 type Listener = () => void;
 
@@ -16,7 +22,9 @@ function eventTarget() {
       listeners.get(type)?.delete(listener);
     },
     dispatch(type: string) {
-      listeners.get(type)?.forEach((listener) => { listener(); });
+      listeners.get(type)?.forEach((listener) => {
+        listener();
+      });
     },
   };
 }
@@ -69,17 +77,31 @@ describe("startLoop", () => {
     let frame: FrameRequestCallback;
     let paused = false;
     vi.spyOn(performance, "now").mockImplementation(() => clock);
-    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frame = callback; return 1; });
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      frame = callback;
+      return 1;
+    });
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
     const state = createMission({ seed: 421, missionIndex: 0 });
     const measured = vi.fn();
     const loop = startLoop({
       getState: () => state,
       setState: () => {},
-      drainCommands: () => { clock += 1; return []; },
-      step: (s) => { clock += 5; s.tick++; return { state: s, events: [] }; },
-      onTick: () => { clock += 2; },
-      onFrame: () => { clock += 7; },
+      drainCommands: () => {
+        clock += 1;
+        return [];
+      },
+      step: (s) => {
+        clock += 5;
+        s.tick++;
+        return { state: s, events: [] };
+      },
+      onTick: () => {
+        clock += 2;
+      },
+      onFrame: () => {
+        clock += 7;
+      },
       isPaused: () => paused,
       onFrameTiming: measured,
     });
@@ -185,7 +207,9 @@ describe("startLoop", () => {
       step: tick,
       canStep: () => canAdvanceTick,
       getExtraTicks: () => extraTicksCount,
-      onFrame: (_now, _s, _paused, alpha) => { recordedAlpha = alpha; },
+      onFrame: (_now, _s, _paused, alpha) => {
+        recordedAlpha = alpha;
+      },
     });
 
     const flushFrame = (time: number) => {
@@ -213,21 +237,31 @@ describe("startLoop", () => {
 });
 
 describe("frame elapsed time", () => {
-  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   it.each([30, 60, 144])("reports one second of camera time at %s Hz", (hz) => {
     vi.spyOn(performance, "now").mockReturnValue(0);
     let frame: FrameRequestCallback;
-    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frame = callback; return 1; });
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      frame = callback;
+      return 1;
+    });
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
     const state = createMission({ seed: 421, missionIndex: 0 });
     let distance = 0;
     const loop = startLoop({
-      getState: () => state, setState: () => {}, drainCommands: () => [],
+      getState: () => state,
+      setState: () => {},
+      drainCommands: () => [],
       step: (s) => ({ state: s, events: [] }),
-      onFrame: (_now, _s, _paused, _alpha, frameMs) => { distance += 600 * frameMs / 1000; },
+      onFrame: (_now, _s, _paused, _alpha, frameMs) => {
+        distance += (600 * frameMs) / 1000;
+      },
     });
-    for (let i = 1; i <= hz; i++) frame!(i * 1000 / hz);
+    for (let i = 1; i <= hz; i++) frame!((i * 1000) / hz);
     expect(distance).toBeCloseTo(600);
     frame!(60_000);
     expect(distance).toBeCloseTo(660);

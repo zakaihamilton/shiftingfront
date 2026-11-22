@@ -1,10 +1,10 @@
-import type { PlayFieldSurfaceModel } from "./hooks/runtime/types";
 import { Battlefield } from "./Battlefield";
 import { CombatAlert } from "./CombatAlert";
-import { MissionResult } from "./MissionResult";
 import { CommandNotice } from "./CommandNotice";
-import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "./renderDimensions";
+import type { PlayFieldSurfaceModel } from "./hooks/runtime/types";
+import { MissionResult } from "./MissionResult";
 import { playFieldStatus } from "./playFieldStatus";
+import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "./renderDimensions";
 
 export type GamePlayFieldProps = PlayFieldSurfaceModel & {
   multiplayerPingMs?: number | null;
@@ -59,7 +59,9 @@ export function GamePlayField({
       biome={state.biome}
       {...pointer}
     >
-      {feedback.combatAlert ? <CombatAlert text={feedback.combatAlert} kind={feedback.combatAlertKind} /> : null}
+      {feedback.combatAlert ? (
+        <CombatAlert text={feedback.combatAlert} kind={feedback.combatAlertKind} />
+      ) : null}
       <CommandNotice notice={feedback.commandNotice ?? null} />
       <MissionResult
         state={state}

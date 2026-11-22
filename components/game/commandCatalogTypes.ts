@@ -1,4 +1,13 @@
-import type { BuildingKind, Entity, FactionVisualProfile, Formation, Palette, SimState, Stance, UnitKind } from "@/lib/types";
+import type {
+  BuildingKind,
+  Entity,
+  FactionVisualProfile,
+  Formation,
+  Palette,
+  SimState,
+  Stance,
+  UnitKind,
+} from "@/lib/types";
 import type { CommandTab } from "@/lib/ui/shortcuts";
 
 export type CommandCatalogActions = {

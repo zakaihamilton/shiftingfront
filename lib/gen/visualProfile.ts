@@ -14,7 +14,12 @@ const FACTION_PROFILE_CACHE_LIMIT = 128;
 const campaignCache = new Map<number, CampaignVisualProfile>();
 const profileCache = new Map<string, FactionVisualProfile>();
 
-function retain<T>(cache: Map<string | number, T>, key: string | number, value: T, limit: number): void {
+function retain<T>(
+  cache: Map<string | number, T>,
+  key: string | number,
+  value: T,
+  limit: number,
+): void {
   if (!cache.has(key) && cache.size >= limit) {
     const oldest = cache.keys().next().value;
     if (oldest !== undefined) cache.delete(oldest);

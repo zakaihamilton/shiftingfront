@@ -1,26 +1,36 @@
 import { HARVEST_PER_TICK, UNIT_STATS } from "../catalog";
 import { toIsometricFacing } from "../iso";
-import { TILE_RESOURCE } from "../types";
 import type { Entity, SimEvent, SimState } from "../types";
-import { tryFindPathDetailed } from "./pathBudget";
-import { routePendingFor } from "./pathfinding";
-import { at, closestApproach, distToEntity, inBounds, livingView, nearest, tileAt } from "./world";
+import { TILE_RESOURCE } from "../types";
 import { entitiesFor } from "./entities";
 import { terrainComponentIdsFor } from "./flowField";
 import { travelOrderInProgress } from "./navigation/avoidance";
+import { tryFindPathDetailed } from "./pathBudget";
+import { routePendingFor } from "./pathfinding";
+import { at, closestApproach, distToEntity, inBounds, livingView, nearest, tileAt } from "./world";
 
 export const HARVEST_RANGE = 1.5;
 
-function resourceReachableFrom(state: SimState, from: Entity, x: number, y: number, components = terrainComponentIdsFor(state)): boolean {
+function resourceReachableFrom(
+  state: SimState,
+  from: Entity,
+  x: number,
+  y: number,
+  components = terrainComponentIdsFor(state),
+): boolean {
   if (Math.hypot(from.x - x, from.y - y) <= HARVEST_RANGE) return true;
   const sx = Math.round(from.x);
   const sy = Math.round(from.y);
-  const component = inBounds(state, sx, sy) ? components[sy * state.width + sx] ?? -1 : -1;
+  const component = inBounds(state, sx, sy) ? (components[sy * state.width + sx] ?? -1) : -1;
   if (component < 0) return false;
   // Harvesting works from adjacent cells, including ore covered by a building.
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
-      if (inBounds(state, x + dx, y + dy) && components[(y + dy) * state.width + x + dx] === component) return true;
+      if (
+        inBounds(state, x + dx, y + dy) &&
+        components[(y + dy) * state.width + x + dx] === component
+      )
+        return true;
     }
   }
   return false;
@@ -83,7 +93,10 @@ export function nearestResourceNear(
   return best;
 }
 
-export function nearestResource(state: SimState, from: Entity): { x: number; y: number } | undefined {
+export function nearestResource(
+  state: SimState,
+  from: Entity,
+): { x: number; y: number } | undefined {
   const list = resourceTiles(state);
   const components = terrainComponentIdsFor(state);
   let best: { x: number; y: number } | undefined;
@@ -135,7 +148,11 @@ export function bestResource(
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
-export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
+export function tickEconomy(
+  state: SimState,
+  eventSink?: SimEvent[],
+  collectEvents = true,
+): SimEvent[] {
   const events = eventSink ?? (collectEvents ? [] : undefined);
   const claims = economyClaims.get(state) ?? new Map<number, number>();
   claims.clear();
@@ -155,7 +172,8 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
     // full hold or a group route that has not produced a path yet.
     if (e.moveToHarvest) {
       const destination = e.orderDestination;
-      const arrivalRadius = destination && resourceTileAt(state, destination.x, destination.y) ? HARVEST_RANGE : 0.1;
+      const arrivalRadius =
+        destination && resourceTileAt(state, destination.x, destination.y) ? HARVEST_RANGE : 0.1;
       if (travelOrderInProgress(e, arrivalRadius)) continue;
       e.moveToHarvest = undefined;
     }
@@ -163,7 +181,8 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
     // flow field once the economy loop takes control of their route.
     e.flowGoal = undefined;
     const carryMax = UNIT_STATS.harvester.carryMax;
-    const shouldReturnToRefinery = e.carry >= carryMax || (e.carry > 0 && !nearestResource(state, e));
+    const shouldReturnToRefinery =
+      e.carry >= carryMax || (e.carry > 0 && !nearestResource(state, e));
     if (shouldReturnToRefinery) {
       const ref = nearest(
         state,
@@ -176,7 +195,11 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
       );
       if (!ref) continue;
       const destination = closestApproach(state, e, ref);
-      if (!e.orderDestination || e.orderDestination.x !== destination.x || e.orderDestination.y !== destination.y) {
+      if (
+        !e.orderDestination ||
+        e.orderDestination.x !== destination.x ||
+        e.orderDestination.y !== destination.y
+      ) {
         e.routePending = undefined;
       }
       e.orderDestination = destination;
@@ -203,11 +226,17 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
 
     const currentTileX = Math.round(e.x);
     const currentTileY = Math.round(e.y);
-    const lateEconomicScenario = state.missionIndex >= 4 && (state.win.kind === "harvestQuota" || state.win.kind === "extraction");
+    const lateEconomicScenario =
+      state.missionIndex >= 4 &&
+      (state.win.kind === "harvestQuota" || state.win.kind === "extraction");
     const refineryPreference = lateEconomicScenario
       ? entitiesFor(state).find(
-        (entity) => entity.owner === e.owner && entity.class === "building" && entity.kind === "refinery" && entity.constructing === 0,
-      )
+          (entity) =>
+            entity.owner === e.owner &&
+            entity.class === "building" &&
+            entity.kind === "refinery" &&
+            entity.constructing === 0,
+        )
       : undefined;
     // Keep an explicit harvest assignment while the harvester is leaving the
     // current field. Without this guard, clicking a new field while already
@@ -228,7 +257,7 @@ export function tickEconomy(state: SimState, eventSink?: SimEvent[], collectEven
       const preferred =
         gx !== undefined && gy !== undefined && inBounds(state, gx, gy)
           ? { x: gx, y: gy }
-          : e.orderDestination ?? refineryPreference ?? { x: currentTileX, y: currentTileY };
+          : (e.orderDestination ?? refineryPreference ?? { x: currentTileX, y: currentTileY });
       const n = bestResource(state, e, claims, preferred);
       if (!n) {
         e.gatherX = undefined;

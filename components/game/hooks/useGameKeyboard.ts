@@ -2,10 +2,12 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 
 function bindingMatchesKey(binding: string | undefined, eventKey: string): boolean {
   if (!binding) return false;
-  if (binding === " " || binding.toLowerCase() === "space") return eventKey === " " || eventKey === "Spacebar";
+  if (binding === " " || binding.toLowerCase() === "space")
+    return eventKey === " " || eventKey === "Spacebar";
   if (binding.length === 1) return eventKey.toLowerCase() === binding.toLowerCase();
   return eventKey === binding;
 }
+
 import { gameCommandFromKey, isEditableTarget } from "@/lib/ui/shortcuts";
 import { applyGameCommand, type GameKeyboardParams } from "./gameKeyboard";
 
@@ -72,7 +74,12 @@ export function useGameKeyboard({
         }
         return;
       }
-      if (e.key === "Escape" && mobilePanelOpen && !pausedRef.current && stateRef.current.result === "playing") {
+      if (
+        e.key === "Escape" &&
+        mobilePanelOpen &&
+        !pausedRef.current &&
+        stateRef.current.result === "playing"
+      ) {
         e.preventDefault();
         closeMobilePanel();
         return;

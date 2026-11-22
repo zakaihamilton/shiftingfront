@@ -3,10 +3,42 @@ import { CommandSidebar } from "./CommandSidebar";
 import type { SidebarSurfaceModel } from "./hooks/runtime/types";
 
 export function GameSidebarSurface({
-  factionName, state, palette, profile, selected, activeTab, power, produced, used, miniRef,
-  onPause, onToggleMobilePanel, camera, onTab, commands, mobilePanelOpen, selectionCount, minimapPing,
+  factionName,
+  state,
+  palette,
+  profile,
+  selected,
+  activeTab,
+  power,
+  produced,
+  used,
+  miniRef,
+  onPause,
+  onToggleMobilePanel,
+  camera,
+  onTab,
+  commands,
+  mobilePanelOpen,
+  selectionCount,
+  minimapPing,
 }: SidebarSurfaceModel) {
-  const { placeKind, repairMode, sellMode, onPlace, onRepair, onSell, onCancelBuilding, onQueueUnit, onCancelUnit, availableProducer, onStop, onStance, onFormation, onBrace, onBombard } = commands;
+  const {
+    placeKind,
+    repairMode,
+    sellMode,
+    onPlace,
+    onRepair,
+    onSell,
+    onCancelBuilding,
+    onQueueUnit,
+    onCancelUnit,
+    availableProducer,
+    onStop,
+    onStance,
+    onFormation,
+    onBrace,
+    onBombard,
+  } = commands;
   const onMinimapPointerDown: PointerEventHandler<HTMLCanvasElement> = camera.onMinimapPointerDown;
   const onMinimapPointerMove: PointerEventHandler<HTMLCanvasElement> = camera.onMinimapPointerMove;
   const onMinimapPointerUp: PointerEventHandler<HTMLCanvasElement> = camera.onMinimapPointerUp;

@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { NEW_MISSION_KINDS } from "../../lib/catalog";
 import { createCampaign } from "../../lib/gen/campaign";
 import { generateMap } from "../../lib/gen/map";
-import { missionFamilyFor, missionProfileFor, objectiveContractFor, profileContractFor, resolveMissionProfile } from "../../lib/gen/profile";
+import {
+  missionFamilyFor,
+  missionProfileFor,
+  objectiveContractFor,
+  profileContractFor,
+  resolveMissionProfile,
+} from "../../lib/gen/profile";
 import { createMission } from "../../lib/sim/api";
 import { scenarioAffordances } from "../../lib/sim/scenarios";
-import { NEW_MISSION_KINDS } from "../../lib/catalog";
 import type { MissionKind, MissionProfileVariant } from "../../lib/types";
 
 const FAMILY_CASES: Array<[MissionKind, string]> = [
@@ -31,7 +37,9 @@ describe("mission profiles", () => {
     for (const [kind] of FAMILY_CASES) {
       const first = missionProfileFor(421, 2, kind);
       expect(missionProfileFor(421, 2, kind)).toEqual(first);
-      const variants = new Set(Array.from({ length: 64 }, (_, seed) => missionProfileFor(seed, 2, kind).variant));
+      const variants = new Set(
+        Array.from({ length: 64 }, (_, seed) => missionProfileFor(seed, 2, kind).variant),
+      );
       expect(variants.size).toBe(2);
     }
   });
@@ -45,12 +53,20 @@ describe("mission profiles", () => {
       const mission = campaign.missions[0]!;
       const map = generateMap(seed, mission);
       if (map.spawnTopology) topologies.add(map.spawnTopology);
-      playerQuadrants.add(`${map.playerStart.x > map.width / 2 ? "right" : "left"}-${map.playerStart.y > map.height / 2 ? "bottom" : "top"}`);
-      enemyQuadrants.add(`${map.enemyStart.x > map.width / 2 ? "right" : "left"}-${map.enemyStart.y > map.height / 2 ? "bottom" : "top"}`);
+      playerQuadrants.add(
+        `${map.playerStart.x > map.width / 2 ? "right" : "left"}-${map.playerStart.y > map.height / 2 ? "bottom" : "top"}`,
+      );
+      enemyQuadrants.add(
+        `${map.enemyStart.x > map.width / 2 ? "right" : "left"}-${map.enemyStart.y > map.height / 2 ? "bottom" : "top"}`,
+      );
     }
     expect(topologies.size).toBeGreaterThanOrEqual(8);
-    expect(playerQuadrants).toEqual(new Set(["left-top", "right-bottom", "left-bottom", "right-top"]));
-    expect(enemyQuadrants).toEqual(new Set(["left-top", "right-bottom", "left-bottom", "right-top"]));
+    expect(playerQuadrants).toEqual(
+      new Set(["left-top", "right-bottom", "left-bottom", "right-top"]),
+    );
+    expect(enemyQuadrants).toEqual(
+      new Set(["left-top", "right-bottom", "left-bottom", "right-top"]),
+    );
   });
 
   it("resolves legacy missions without profile data identically", () => {
@@ -58,20 +74,32 @@ describe("mission profiles", () => {
     for (const mission of campaign.missions) {
       const legacy = { ...mission };
       delete legacy.profile;
-      expect(resolveMissionProfile(421, mission.index, mission.win.kind, legacy.profile))
-        .toEqual(missionProfileFor(421, mission.index, mission.win.kind));
+      expect(resolveMissionProfile(421, mission.index, mission.win.kind, legacy.profile)).toEqual(
+        missionProfileFor(421, mission.index, mission.win.kind),
+      );
     }
   });
 
   it("defines a complete, readable contract for every profile variant", () => {
     const variants: MissionProfileVariant[] = [
-      "resourceRace", "forwardIndustry", "surgicalStrike", "siege",
-      "concentratedWaves", "crossfire", "directRoute", "contestedRoute",
+      "resourceRace",
+      "forwardIndustry",
+      "surgicalStrike",
+      "siege",
+      "concentratedWaves",
+      "crossfire",
+      "directRoute",
+      "contestedRoute",
     ];
     for (const variant of variants) {
-      const family = variant === "resourceRace" || variant === "forwardIndustry" ? "economy"
-        : variant === "surgicalStrike" || variant === "siege" ? "assault"
-          : variant === "concentratedWaves" || variant === "crossfire" ? "defense" : "operation";
+      const family =
+        variant === "resourceRace" || variant === "forwardIndustry"
+          ? "economy"
+          : variant === "surgicalStrike" || variant === "siege"
+            ? "assault"
+            : variant === "concentratedWaves" || variant === "crossfire"
+              ? "defense"
+              : "operation";
       const contract = profileContractFor({ family, variant });
       expect(contract.label).not.toBe("");
       expect(contract.emphasis).not.toBe("");
@@ -106,8 +134,16 @@ describe("mission profiles", () => {
       productionScale: 1.8,
       startingSupport: false,
     });
-    expect(objectiveContractFor("razeAll")).toMatchObject({ assaultDelay: 960, productionScale: 1.7, startingSupport: true });
-    expect(objectiveContractFor("annihilate")).toMatchObject({ assaultDelay: 600, productionScale: 1.8, startingSupport: false });
+    expect(objectiveContractFor("razeAll")).toMatchObject({
+      assaultDelay: 960,
+      productionScale: 1.7,
+      startingSupport: true,
+    });
+    expect(objectiveContractFor("annihilate")).toMatchObject({
+      assaultDelay: 600,
+      productionScale: 1.8,
+      startingSupport: false,
+    });
     expect(objectiveContractFor("harvestQuota")).toBeUndefined();
   });
 
@@ -121,19 +157,29 @@ describe("mission profiles", () => {
       expect(specialKinds).toHaveLength(3);
       expect(kinds.filter((kind) => !NEW_MISSION_KINDS.includes(kind))).toHaveLength(3);
 
-      const briefingLines = campaign.missions.flatMap((mission) => mission.briefing.map((line) => line.text));
+      const briefingLines = campaign.missions.flatMap((mission) =>
+        mission.briefing.map((line) => line.text),
+      );
       expect(new Set(briefingLines).size).toBe(briefingLines.length);
       for (const mission of campaign.missions) {
         const variant = mission.profile!.variant;
         const text = mission.briefing.map((line) => line.text).join(" ");
-        const hook = variant === "resourceRace" ? /ore|harvest/i
-          : variant === "forwardIndustry" ? /industry|refinery|power/i
-            : variant === "surgicalStrike" ? /breach|precision/i
-              : variant === "siege" ? /siege|layered|approach/i
-                : variant === "concentratedWaves" ? /one line|concentrating/i
-                  : variant === "crossfire" ? /two approach|split|flank/i
-                    : variant === "directRoute" ? /shortest route|direct route/i
-                      : /exposed|flanks|screen/i;
+        const hook =
+          variant === "resourceRace"
+            ? /ore|harvest/i
+            : variant === "forwardIndustry"
+              ? /industry|refinery|power/i
+              : variant === "surgicalStrike"
+                ? /breach|precision/i
+                : variant === "siege"
+                  ? /siege|layered|approach/i
+                  : variant === "concentratedWaves"
+                    ? /one line|concentrating/i
+                    : variant === "crossfire"
+                      ? /two approach|split|flank/i
+                      : variant === "directRoute"
+                        ? /shortest route|direct route/i
+                        : /exposed|flanks|screen/i;
         expect(text).toMatch(hook);
       }
     }
@@ -147,10 +193,18 @@ describe("mission profiles", () => {
         seen.add(mission.profile!.variant);
       }
     }
-    expect(seen).toEqual(new Set([
-      "resourceRace", "forwardIndustry", "surgicalStrike", "siege",
-      "concentratedWaves", "crossfire", "directRoute", "contestedRoute",
-    ]));
+    expect(seen).toEqual(
+      new Set([
+        "resourceRace",
+        "forwardIndustry",
+        "surgicalStrike",
+        "siege",
+        "concentratedWaves",
+        "crossfire",
+        "directRoute",
+        "contestedRoute",
+      ]),
+    );
   });
 
   it("measures a reachable multi-tile marked target from its perimeter", () => {

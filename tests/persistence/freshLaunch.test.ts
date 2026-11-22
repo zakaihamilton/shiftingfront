@@ -1,18 +1,20 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { prepareInitialMission } from "../../components/game/hooks/useGameSession";
 import { campaignKey, readCampaignProgress } from "../../lib/persist/campaign";
 import { cachedLocalStorage, listSlots, readSave } from "../../lib/persist/save";
 import { installSaveRepository, SaveRepository } from "../../lib/persist/save/repository";
 import { POWER_RESERVE_BONUS } from "../../lib/sim/fieldIdentity";
 import { makeFixture } from "../../lib/sim/fixtures";
-import { prepareInitialMission } from "../../components/game/hooks/useGameSession";
 
 const repositories: SaveRepository[] = [];
 
 afterEach(() => {
-  repositories.splice(0).forEach((repository) => { repository.close(); });
+  repositories.splice(0).forEach((repository) => {
+    repository.close();
+  });
   installSaveRepository(null);
   window.localStorage.clear();
   vi.restoreAllMocks();
@@ -39,7 +41,12 @@ describe("fresh mission launch persistence", () => {
     expect(await repository.setDeploymentEdge(421, "powerReserve")).toBe(true);
     expect(window.localStorage.getItem(campaignKey(421))).toBeNull();
 
-    const mission = await prepareInitialMission({ seed: 421, mission: 1, resume: false, fresh: true });
+    const mission = await prepareInitialMission({
+      seed: 421,
+      mission: 1,
+      resume: false,
+      fresh: true,
+    });
 
     expect(mission.powerReserve).toBe(POWER_RESERVE_BONUS);
     expect(readCampaignProgress(repository.storage, 421).deploymentEdge).toBeUndefined();
@@ -54,12 +61,20 @@ describe("fresh mission launch persistence", () => {
     expect(await repository.save(won)).toBe("saved");
     expect(await repository.setDeploymentEdge(421, "powerReserve")).toBe(true);
     const put = IDBObjectStore.prototype.put;
-    const failing = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args: Parameters<typeof put>) {
+    const failing = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore,
+      ...args: Parameters<typeof put>
+    ) {
       if (this.name === "campaigns") throw new DOMException("aborted", "AbortError");
       return put.apply(this, args);
     });
 
-    const mission = await prepareInitialMission({ seed: 421, mission: 1, resume: false, fresh: true });
+    const mission = await prepareInitialMission({
+      seed: 421,
+      mission: 1,
+      resume: false,
+      fresh: true,
+    });
 
     failing.mockRestore();
     expect(mission.powerReserve).toBe(POWER_RESERVE_BONUS);

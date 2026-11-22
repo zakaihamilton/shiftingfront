@@ -1,19 +1,4 @@
 import { BUILDING_STATS } from "../catalog";
-import { UNIT_GROUND_CONTACT_Y, UNIT_WALK_CONTACT_Y } from "./unitContactPoints";
-import { UNIT_ACTION_ART, type UnitAction } from "./unitAnimationAssets";
-import {
-  AIR_SUPPORT_ART,
-  ANTI_AIR_TURRET_BASE_CROP,
-  SPRITE_ART,
-  STRIKE_PLANE_DIRECTION_ART,
-  STRIKE_PLANE_IMAGE_ANCHORS,
-  TEXTURE_ART,
-  UNIT_DIRECTION_ART,
-  UNIT_DIRECTION_CROPS,
-  UNIT_WALK_CYCLE_ART,
-  unitWalkFrameCrop,
-  unitViewForFacing,
-} from "./visualAssets";
 import type {
   BuildingKind,
   BuildingSpriteOptions,
@@ -24,6 +9,21 @@ import type {
   UnitKind,
   UnitSpriteOptions,
 } from "../types";
+import { UNIT_ACTION_ART, type UnitAction } from "./unitAnimationAssets";
+import { UNIT_GROUND_CONTACT_Y, UNIT_WALK_CONTACT_Y } from "./unitContactPoints";
+import {
+  AIR_SUPPORT_ART,
+  ANTI_AIR_TURRET_BASE_CROP,
+  SPRITE_ART,
+  STRIKE_PLANE_DIRECTION_ART,
+  STRIKE_PLANE_IMAGE_ANCHORS,
+  TEXTURE_ART,
+  UNIT_DIRECTION_ART,
+  UNIT_DIRECTION_CROPS,
+  UNIT_WALK_CYCLE_ART,
+  unitViewForFacing,
+  unitWalkFrameCrop,
+} from "./visualAssets";
 
 const TW = 64;
 const TH = 32;
@@ -124,7 +124,11 @@ function visualKey(profile: FactionVisualProfile): string {
   return `${profile.designFamily}:${profile.material}:${profile.trimPattern}:${profile.insignia}:${profile.weathering}:${profile.lightRig}`;
 }
 
-export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSpriteOptions = {}): SpriteSpec {
+export function unitSprite(
+  kind: UnitKind,
+  palette: Palette,
+  options: UnitSpriteOptions = {},
+): SpriteSpec {
   const frame = options.animationFrame ?? 0;
   const variant = options.variant ?? 0;
   const dmg = options.damageStage ?? 0;
@@ -166,13 +170,19 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
     };
   }
   const view = unitViewForFacing(facing);
-  const walkArt = options.motion === "walk" && (kind === "infantry" || kind === "antiArmor" || kind === "medic")
-    ? UNIT_WALK_CYCLE_ART[kind]
-    : undefined;
-  const actionArt = options.motion && options.motion !== "walk" && (kind === "infantry" || kind === "antiArmor" || kind === "medic")
-    ? UNIT_ACTION_ART[kind][options.motion as UnitAction] : undefined;
+  const walkArt =
+    options.motion === "walk" && (kind === "infantry" || kind === "antiArmor" || kind === "medic")
+      ? UNIT_WALK_CYCLE_ART[kind]
+      : undefined;
+  const actionArt =
+    options.motion &&
+    options.motion !== "walk" &&
+    (kind === "infantry" || kind === "antiArmor" || kind === "medic")
+      ? UNIT_ACTION_ART[kind][options.motion as UnitAction]
+      : undefined;
   const imageSrc = actionArt?.[view] ?? walkArt?.[view] ?? UNIT_DIRECTION_ART[kind][view];
-  const imageCrop = walkArt || actionArt ? unitWalkFrameCrop(frame) : UNIT_DIRECTION_CROPS[kind]?.[view];
+  const imageCrop =
+    walkArt || actionArt ? unitWalkFrameCrop(frame) : UNIT_DIRECTION_CROPS[kind]?.[view];
   // Raster units are bottom-aligned inside their logical frame. The rotation
   // pivot must be the contact point at the feet/base, not the visual center.
   const ground = h;
@@ -189,9 +199,11 @@ export function unitSprite(kind: UnitKind, palette: Palette, options: UnitSprite
     // Preserve the selected crop's horizontal center and scale, but align the
     // actual feet/treads rather than the transparent bottom of the image.
     imageAnchorX: imageCrop ? (imageCrop.x + imageCrop.w / 2) / imageCrop.sourceW : 0.5,
-    imageAnchorY: actionArt ? (Math.floor(frame / 2) * 512 + 500) / 1024 : walkArt
-      ? UNIT_WALK_CONTACT_Y[kind as keyof typeof UNIT_WALK_CONTACT_Y][view][frame]
-      : UNIT_GROUND_CONTACT_Y[kind][view],
+    imageAnchorY: actionArt
+      ? (Math.floor(frame / 2) * 512 + 500) / 1024
+      : walkArt
+        ? UNIT_WALK_CONTACT_Y[kind as keyof typeof UNIT_WALK_CONTACT_Y][view][frame]
+        : UNIT_GROUND_CONTACT_Y[kind][view],
     anchorX: w / 2,
     anchorY: ground,
     pixelScale: 1,
@@ -213,21 +225,36 @@ function pt(iso: Iso, lx: number, ly: number, z: number): [number, number] {
 
 function buildingSky(kind: BuildingKind): number {
   switch (kind) {
-    case "turret": return 28;
-    case "antiAirTurret": return 30;
-    case "runway": return 34;
-    case "barracks": return 38;
-    case "power": return 52;
-    case "refinery": return 54;
-    case "factory": return 46;
-    case "constructionYard": return 48;
-    case "radar": return 58;
-    case "objective": return 50;
-    default: return 40;
+    case "turret":
+      return 28;
+    case "antiAirTurret":
+      return 30;
+    case "runway":
+      return 34;
+    case "barracks":
+      return 38;
+    case "power":
+      return 52;
+    case "refinery":
+      return 54;
+    case "factory":
+      return 46;
+    case "constructionYard":
+      return 48;
+    case "radar":
+      return 58;
+    case "objective":
+      return 50;
+    default:
+      return 40;
   }
 }
 
-export function buildingSprite(kind: BuildingKind, palette: Palette, options: BuildingSpriteOptions = {}): SpriteSpec {
+export function buildingSprite(
+  kind: BuildingKind,
+  palette: Palette,
+  options: BuildingSpriteOptions = {},
+): SpriteSpec {
   const fp = BUILDING_STATS[kind].footprint;
   const iso = makeIso(fp.w, fp.h, buildingSky(kind));
   const construction = options.constructionStage ?? 3;
@@ -235,7 +262,8 @@ export function buildingSprite(kind: BuildingKind, palette: Palette, options: Bu
   const variant = options.variant ?? 0;
   const profile = options.profile ?? DEFAULT_PROFILE;
   const ground = pt(iso, fp.w / 2, fp.h / 2, 0);
-  const specialAsset = kind === "runway" || kind === "antiAirTurret" ? AIR_SUPPORT_ART[kind] : undefined;
+  const specialAsset =
+    kind === "runway" || kind === "antiAirTurret" ? AIR_SUPPORT_ART[kind] : undefined;
   const reveal = constructionReveal(construction);
   return {
     id: `bld:raster-v4:${kind}:${palette.primary}:${visualKey(profile)}:${variant}:${construction}:${dmg}`,
@@ -264,7 +292,12 @@ function constructionReveal(stage: number): number {
   return 1;
 }
 
-function buildingStageTint(profile: FactionVisualProfile, construction: number, dmg: number, palette: Palette): string {
+function buildingStageTint(
+  profile: FactionVisualProfile,
+  construction: number,
+  dmg: number,
+  palette: Palette,
+): string {
   if (dmg > 1) return "rgba(40, 24, 14, 0.5)";
   if (dmg > 0) return construction < 3 ? "rgba(52, 34, 22, 0.4)" : "rgba(48, 30, 18, 0.3)";
   if (construction <= 0) return "rgba(90, 96, 100, 0.5)";
@@ -285,28 +318,82 @@ function buildingStageOverlays(
   if (construction < 3) {
     const topY = iso.h * (1 - constructionReveal(construction) * 0.9);
     shapes.push(
-      { type: "line", x: gx - 22, y: gy - 2, w: 12, h: topY - gy + 2, fill: "#8b623a", stroke: "#8b623a", strokeWidth: 2, alpha: 0.85 },
-      { type: "line", x: gx + 18, y: gy - 1, w: -8, h: topY - gy + 6, fill: "#b0814d", stroke: "#b0814d", strokeWidth: 2, alpha: 0.8 },
-      { type: "line", x: gx - 16, y: topY + 2, w: 34, h: 3, fill: "#c4a06a", stroke: "#c4a06a", strokeWidth: 2, alpha: 0.9 },
+      {
+        type: "line",
+        x: gx - 22,
+        y: gy - 2,
+        w: 12,
+        h: topY - gy + 2,
+        fill: "#8b623a",
+        stroke: "#8b623a",
+        strokeWidth: 2,
+        alpha: 0.85,
+      },
+      {
+        type: "line",
+        x: gx + 18,
+        y: gy - 1,
+        w: -8,
+        h: topY - gy + 6,
+        fill: "#b0814d",
+        stroke: "#b0814d",
+        strokeWidth: 2,
+        alpha: 0.8,
+      },
+      {
+        type: "line",
+        x: gx - 16,
+        y: topY + 2,
+        w: 34,
+        h: 3,
+        fill: "#c4a06a",
+        stroke: "#c4a06a",
+        strokeWidth: 2,
+        alpha: 0.9,
+      },
     );
   }
   if (dmg > 0) {
     shapes.push(
       { type: "ellipse", x: gx - 18, y: gy - 10, w: 28, h: 12, fill: "rgba(22, 16, 12, 0.55)" },
-      { type: "line", x: gx - 8, y: gy - 26, w: 16, h: 22, fill: "#1a1512", stroke: "#1a1512", strokeWidth: 2, alpha: 0.85 },
+      {
+        type: "line",
+        x: gx - 8,
+        y: gy - 26,
+        w: 16,
+        h: 22,
+        fill: "#1a1512",
+        stroke: "#1a1512",
+        strokeWidth: 2,
+        alpha: 0.85,
+      },
     );
   }
   if (dmg > 1) {
     shapes.push(
       { type: "ellipse", x: gx + 4, y: gy - 34, w: 16, h: 14, fill: "rgba(28, 30, 28, 0.42)" },
-      { type: "line", x: gx + 2, y: gy - 18, w: 14, h: 10, fill: "#2a221c", stroke: "#2a221c", strokeWidth: 2, alpha: 0.8 },
+      {
+        type: "line",
+        x: gx + 2,
+        y: gy - 18,
+        w: 14,
+        h: 10,
+        fill: "#2a221c",
+        stroke: "#2a221c",
+        strokeWidth: 2,
+        alpha: 0.8,
+      },
       { type: "ellipse", x: gx - 6, y: gy - 42, w: 10, h: 8, fill: "rgba(36, 34, 32, 0.35)" },
     );
   }
   return shapes;
 }
 
-export function wreckSprite(kind: UnitKind, palette: Palette, options: UnitSpriteOptions = {}): SpriteSpec {
+export function wreckSprite(
+  kind: UnitKind,
+  palette: Palette,
+  options: UnitSpriteOptions = {},
+): SpriteSpec {
   const facing = options.facing ?? 2;
   const profile = options.profile ?? DEFAULT_PROFILE;
   const live = unitSprite(kind, palette, { ...options, facing, animationFrame: 0, profile });
@@ -320,9 +407,18 @@ export function wreckSprite(kind: UnitKind, palette: Palette, options: UnitSprit
   };
 }
 
-export function rubbleSprite(kind: BuildingKind, palette: Palette, options: BuildingSpriteOptions = {}): SpriteSpec {
+export function rubbleSprite(
+  kind: BuildingKind,
+  palette: Palette,
+  options: BuildingSpriteOptions = {},
+): SpriteSpec {
   const profile = options.profile ?? DEFAULT_PROFILE;
-  const live = buildingSprite(kind, palette, { ...options, constructionStage: 3, damageStage: 0, profile });
+  const live = buildingSprite(kind, palette, {
+    ...options,
+    constructionStage: 3,
+    damageStage: 0,
+    profile,
+  });
   return {
     ...live,
     id: `rubble:raster-v1:${kind}:${palette.primary}:${visualKey(profile)}`,

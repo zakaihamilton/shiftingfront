@@ -1,9 +1,9 @@
-import { generateCampaignVisualProfile } from "../gen/visualProfile";
+import type { SceneryWorld } from "../gen/map";
 import { hashNoise, valueNoise } from "../gen/map/noise";
+import { generateCampaignVisualProfile } from "../gen/visualProfile";
 import { mixSeed } from "../seed/rng";
 import type { BiomeName, CampaignVisualProfile, SurfaceKind } from "../types";
 import { SURFACE_NONE } from "../types";
-import type { SceneryWorld } from "../gen/map";
 
 // Preserve the renderer-facing name while sharing the canonical implementation
 // with deterministic map generation.
@@ -83,44 +83,124 @@ export type BiomeMaterials = {
 
 const BIOME_VISUAL_TUNING: Record<BiomeName, TerrainVisualTuning> = {
   "ash plains": {
-    macroScale: 0.055, detailScale: 0.34, macroStrength: 0.2, roughness: 0.16,
-    reliefStrength: 0.12, shadowDepth: 0.07, keyStrength: 0.16, propContrast: 0.16,
-    scatterDensity: 1.04, clusterBias: 0.24, motion: "ash", windX: 0.68, windY: 0.22,
+    macroScale: 0.055,
+    detailScale: 0.34,
+    macroStrength: 0.2,
+    roughness: 0.16,
+    reliefStrength: 0.12,
+    shadowDepth: 0.07,
+    keyStrength: 0.16,
+    propContrast: 0.16,
+    scatterDensity: 1.04,
+    clusterBias: 0.24,
+    motion: "ash",
+    windX: 0.68,
+    windY: 0.22,
   },
   "crystal flats": {
-    macroScale: 0.07, detailScale: 0.42, macroStrength: 0.18, roughness: 0.2,
-    reliefStrength: 0.14, shadowDepth: 0.06, keyStrength: 0.18, propContrast: 0.22,
-    scatterDensity: 0.98, clusterBias: 0.28, motion: "mist", windX: 0.42, windY: 0.12,
+    macroScale: 0.07,
+    detailScale: 0.42,
+    macroStrength: 0.18,
+    roughness: 0.2,
+    reliefStrength: 0.14,
+    shadowDepth: 0.06,
+    keyStrength: 0.18,
+    propContrast: 0.22,
+    scatterDensity: 0.98,
+    clusterBias: 0.28,
+    motion: "mist",
+    windX: 0.42,
+    windY: 0.12,
   },
   "rust canyons": {
-    macroScale: 0.045, detailScale: 0.3, macroStrength: 0.24, roughness: 0.18,
-    reliefStrength: 0.18, shadowDepth: 0.09, keyStrength: 0.19, propContrast: 0.2,
-    scatterDensity: 1.02, clusterBias: 0.3, motion: "dust", windX: 0.76, windY: 0.18,
+    macroScale: 0.045,
+    detailScale: 0.3,
+    macroStrength: 0.24,
+    roughness: 0.18,
+    reliefStrength: 0.18,
+    shadowDepth: 0.09,
+    keyStrength: 0.19,
+    propContrast: 0.2,
+    scatterDensity: 1.02,
+    clusterBias: 0.3,
+    motion: "dust",
+    windX: 0.76,
+    windY: 0.18,
   },
   "salt marshes": {
-    macroScale: 0.06, detailScale: 0.36, macroStrength: 0.2, roughness: 0.14,
-    reliefStrength: 0.1, shadowDepth: 0.07, keyStrength: 0.15, propContrast: 0.13,
-    scatterDensity: 1.08, clusterBias: 0.38, motion: "mist", windX: 0.38, windY: 0.18,
+    macroScale: 0.06,
+    detailScale: 0.36,
+    macroStrength: 0.2,
+    roughness: 0.14,
+    reliefStrength: 0.1,
+    shadowDepth: 0.07,
+    keyStrength: 0.15,
+    propContrast: 0.13,
+    scatterDensity: 1.08,
+    clusterBias: 0.38,
+    motion: "mist",
+    windX: 0.38,
+    windY: 0.18,
   },
   "glass desert": {
-    macroScale: 0.042, detailScale: 0.28, macroStrength: 0.28, roughness: 0.22,
-    reliefStrength: 0.17, shadowDepth: 0.1, keyStrength: 0.2, propContrast: 0.24,
-    scatterDensity: 0.98, clusterBias: 0.34, motion: "dust", windX: 0.84, windY: 0.16,
+    macroScale: 0.042,
+    detailScale: 0.28,
+    macroStrength: 0.28,
+    roughness: 0.22,
+    reliefStrength: 0.17,
+    shadowDepth: 0.1,
+    keyStrength: 0.2,
+    propContrast: 0.24,
+    scatterDensity: 0.98,
+    clusterBias: 0.34,
+    motion: "dust",
+    windX: 0.84,
+    windY: 0.16,
   },
   "tundra grid": {
-    macroScale: 0.065, detailScale: 0.38, macroStrength: 0.22, roughness: 0.19,
-    reliefStrength: 0.15, shadowDepth: 0.08, keyStrength: 0.17, propContrast: 0.2,
-    scatterDensity: 0.96, clusterBias: 0.26, motion: "snow", windX: 0.34, windY: 0.72,
+    macroScale: 0.065,
+    detailScale: 0.38,
+    macroStrength: 0.22,
+    roughness: 0.19,
+    reliefStrength: 0.15,
+    shadowDepth: 0.08,
+    keyStrength: 0.17,
+    propContrast: 0.2,
+    scatterDensity: 0.96,
+    clusterBias: 0.26,
+    motion: "snow",
+    windX: 0.34,
+    windY: 0.72,
   },
   "jungle wreckage": {
-    macroScale: 0.052, detailScale: 0.32, macroStrength: 0.24, roughness: 0.2,
-    reliefStrength: 0.12, shadowDepth: 0.09, keyStrength: 0.14, propContrast: 0.16,
-    scatterDensity: 1.1, clusterBias: 0.44, motion: "pollen", windX: 0.28, windY: 0.12,
+    macroScale: 0.052,
+    detailScale: 0.32,
+    macroStrength: 0.24,
+    roughness: 0.2,
+    reliefStrength: 0.12,
+    shadowDepth: 0.09,
+    keyStrength: 0.14,
+    propContrast: 0.16,
+    scatterDensity: 1.1,
+    clusterBias: 0.44,
+    motion: "pollen",
+    windX: 0.28,
+    windY: 0.12,
   },
   "volcanic shelf": {
-    macroScale: 0.048, detailScale: 0.3, macroStrength: 0.26, roughness: 0.22,
-    reliefStrength: 0.19, shadowDepth: 0.11, keyStrength: 0.2, propContrast: 0.23,
-    scatterDensity: 1.02, clusterBias: 0.32, motion: "ember", windX: 0.4, windY: -0.74,
+    macroScale: 0.048,
+    detailScale: 0.3,
+    macroStrength: 0.26,
+    roughness: 0.22,
+    reliefStrength: 0.19,
+    shadowDepth: 0.11,
+    keyStrength: 0.2,
+    propContrast: 0.23,
+    scatterDensity: 1.02,
+    clusterBias: 0.32,
+    motion: "ember",
+    windX: 0.4,
+    windY: -0.74,
   },
 };
 
@@ -267,11 +347,11 @@ export function rgb(r: number, g: number, b: number): Rgb {
 }
 
 export function clampByte(n: number): number {
-  return n < 0 ? 0 : Math.min(n , 255);
+  return n < 0 ? 0 : Math.min(n, 255);
 }
 
 export function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
-  const u = t < 0 ? 0 : Math.min(t , 1);
+  const u = t < 0 ? 0 : Math.min(t, 1);
   return {
     r: a.r + (b.r - a.r) * u,
     g: a.g + (b.g - a.g) * u,
@@ -284,7 +364,11 @@ export function scaleRgb(color: Rgb, amount: number): Rgb {
 }
 
 export function fbm(x: number, y: number, salt: number): number {
-  return valueNoise(x, y, salt) * 0.55 + valueNoise(x * 2, y * 2, salt + 17) * 0.3 + valueNoise(x * 4, y * 4, salt + 31) * 0.15;
+  return (
+    valueNoise(x, y, salt) * 0.55 +
+    valueNoise(x * 2, y * 2, salt + 17) * 0.3 +
+    valueNoise(x * 4, y * 4, salt + 31) * 0.15
+  );
 }
 
 export function artSalt(state: Pick<AtlasWorld, "seed" | "missionIndex">): number {
@@ -362,7 +446,10 @@ export function materialsFor(state: AtlasWorld): BiomeMaterials {
 const propMaterialMemo = new WeakMap<object, Map<number, BiomeMaterials>>();
 
 /** Props inherit the biome without reading like brightly painted icons. */
-export function propMaterialsFor(mats: BiomeMaterials, tuning?: TerrainVisualTuning): BiomeMaterials {
+export function propMaterialsFor(
+  mats: BiomeMaterials,
+  tuning?: TerrainVisualTuning,
+): BiomeMaterials {
   const propContrast = tuning?.propContrast ?? 0.1;
   const cacheKey = Math.round(propContrast * 1000);
   const cachedByContrast = propMaterialMemo.get(mats);
@@ -387,7 +474,11 @@ export function propMaterialsFor(mats: BiomeMaterials, tuning?: TerrainVisualTun
     road: soften(mats.road, 0.1),
     concrete: soften(mats.concrete, 0.08),
     ore: soften(mats.ore, 0.14),
-    blocked: mixRgb(soften(mats.blocked, 0.1), mats.mid, Math.max(0.02, 0.06 - propContrast * 0.06)),
+    blocked: mixRgb(
+      soften(mats.blocked, 0.1),
+      mats.mid,
+      Math.max(0.02, 0.06 - propContrast * 0.06),
+    ),
     patchA: soften(mats.patchA, 0.12),
     patchB: soften(mats.patchB, 0.12),
   };
@@ -415,8 +506,16 @@ export function terrainRegionMaterialsFor(
   const region = broad * 0.62 + local * 0.38;
   const tileGrain = hash2(x, y, salt + 719);
   const pigmentBlend = Math.max(0, Math.min(1, (region + (tileGrain - 0.5) * 0.12 - 0.16) / 0.68));
-  const pigment = mixRgb(mats.patchB, mats.patchA, pigmentBlend * pigmentBlend * (3 - 2 * pigmentBlend));
-  const strength = 0.09 + Math.abs(region - 0.5) * 0.2 + Math.abs(tileGrain - 0.5) * 0.06 + tuning.macroStrength * 0.05;
+  const pigment = mixRgb(
+    mats.patchB,
+    mats.patchA,
+    pigmentBlend * pigmentBlend * (3 - 2 * pigmentBlend),
+  );
+  const strength =
+    0.09 +
+    Math.abs(region - 0.5) * 0.2 +
+    Math.abs(tileGrain - 0.5) * 0.06 +
+    tuning.macroStrength * 0.05;
   const brightness = 0.93 + broad * 0.1 + tileGrain * 0.04;
   const shift = (color: Rgb, tintAmount = 1): Rgb =>
     mixRgb(scaleRgb(color, brightness), pigment, strength * tintAmount);
@@ -451,7 +550,8 @@ export function terrainColors(biome: BiomeName): {
   blocked: string;
 } {
   const mats = BIOME_MATERIALS[biome];
-  const hex = (c: Rgb) => `#${[c.r, c.g, c.b].map((n) => clampByte(n).toString(16).padStart(2, "0")).join("")}`;
+  const hex = (c: Rgb) =>
+    `#${[c.r, c.g, c.b].map((n) => clampByte(n).toString(16).padStart(2, "0")).join("")}`;
   return {
     low: hex(mats.low),
     mid: hex(mats.mid),

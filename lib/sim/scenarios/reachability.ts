@@ -1,9 +1,9 @@
-import type { GeneratedMap } from "../../gen/map";
 import { footprintOf } from "../../catalog";
+import type { GeneratedMap } from "../../gen/map";
 import type { BuildingEntity, BuildingKind, SimState, Vec2 } from "../../types";
-import { PATH_DIRS, diagonalCornerBlocked } from "../pathfinding";
-import { canClimb, inBounds, isStaticWalkable, isWalkable } from "../world";
 import { entitiesFor } from "../entities";
+import { diagonalCornerBlocked, PATH_DIRS } from "../pathfinding";
+import { canClimb, inBounds, isStaticWalkable, isWalkable } from "../world";
 
 /** Keep enemy objective structures well away from the allied starting base. */
 export const OBJECTIVE_ALLIED_BASE_CLEARANCE = 18;
@@ -19,13 +19,27 @@ export function enemyApproachPoint(
   };
   const lateral = { x: -towardPlayer.y, y: towardPlayer.x };
   return {
-    x: Math.max(2, Math.min(map.width - 3, Math.round(map.enemyStart.x + towardPlayer.x * distance + lateral.x * lateralOffset))),
-    y: Math.max(2, Math.min(map.height - 3, Math.round(map.enemyStart.y + towardPlayer.y * distance + lateral.y * lateralOffset))),
+    x: Math.max(
+      2,
+      Math.min(
+        map.width - 3,
+        Math.round(map.enemyStart.x + towardPlayer.x * distance + lateral.x * lateralOffset),
+      ),
+    ),
+    y: Math.max(
+      2,
+      Math.min(
+        map.height - 3,
+        Math.round(map.enemyStart.y + towardPlayer.y * distance + lateral.y * lateralOffset),
+      ),
+    ),
   };
 }
 
 export function reachableScenarioCells(state: SimState): Uint8Array | undefined {
-  const origin = entitiesFor(state).find((entity) => entity.owner === 0 && entity.class === "unit" && !entity.neutral);
+  const origin = entitiesFor(state).find(
+    (entity) => entity.owner === 0 && entity.class === "unit" && !entity.neutral,
+  );
   if (!origin) return undefined;
 
   const seen = new Uint8Array(state.width * state.height);
@@ -75,16 +89,18 @@ function footprintDistance(
 ): number {
   const footprint = footprintOf(kind);
   const otherFootprint = footprintOf(other.kind);
-  const dx = x + footprint.w - 1 < other.x
-    ? other.x - (x + footprint.w - 1)
-    : other.x + otherFootprint.w - 1 < x
-      ? x - (other.x + otherFootprint.w - 1)
-      : 0;
-  const dy = y + footprint.h - 1 < other.y
-    ? other.y - (y + footprint.h - 1)
-    : other.y + otherFootprint.h - 1 < y
-      ? y - (other.y + otherFootprint.h - 1)
-      : 0;
+  const dx =
+    x + footprint.w - 1 < other.x
+      ? other.x - (x + footprint.w - 1)
+      : other.x + otherFootprint.w - 1 < x
+        ? x - (other.x + otherFootprint.w - 1)
+        : 0;
+  const dy =
+    y + footprint.h - 1 < other.y
+      ? other.y - (y + footprint.h - 1)
+      : other.y + otherFootprint.h - 1 < y
+        ? y - (other.y + otherFootprint.h - 1)
+        : 0;
   return Math.hypot(dx, dy);
 }
 
@@ -99,14 +115,19 @@ export function objectiveBuildingFilter(
   seen: Uint8Array | undefined,
   baseBuildings: ReadonlyArray<BuildingEntity> = entitiesFor(state).filter(
     (entity): entity is BuildingEntity =>
-      entity.owner === 0 && entity.class === "building" && entity.hp > 0 && entity.kind !== "objective",
+      entity.owner === 0 &&
+      entity.class === "building" &&
+      entity.hp > 0 &&
+      entity.kind !== "objective",
   ),
 ): ((x: number, y: number) => boolean) | undefined {
   const reachableFilter = reachableBuildingFilter(state, kind, seen);
   if (!reachableFilter && baseBuildings.length === 0) return undefined;
   return (x, y) =>
     (reachableFilter?.(x, y) ?? true) &&
-    baseBuildings.every((building) => footprintDistance(x, y, kind, building) >= OBJECTIVE_ALLIED_BASE_CLEARANCE);
+    baseBuildings.every(
+      (building) => footprintDistance(x, y, kind, building) >= OBJECTIVE_ALLIED_BASE_CLEARANCE,
+    );
 }
 
 export function reachableScenarioPoint(
@@ -140,7 +161,11 @@ export function reachableScenarioPoint(
       const progress = (fromStartX * routeDx + fromStartY * routeDy) / routeLengthSquared;
       const distanceFromStart = Math.hypot(fromStartX, fromStartY);
       if (progress < routeBand.min || progress > routeBand.max) continue;
-      if (distanceFromStart < routeLength * routeBand.min || distanceFromStart > routeLength * routeBand.max) continue;
+      if (
+        distanceFromStart < routeLength * routeBand.min ||
+        distanceFromStart > routeLength * routeBand.max
+      )
+        continue;
       if (distance < bestInBandDistance) {
         bestInBandDistance = distance;
         bestInBand = { x, y };

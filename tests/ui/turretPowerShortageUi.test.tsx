@@ -4,8 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it } from "vitest";
 import { SelectionPanel } from "../../components/game/SelectionPanel";
-import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
 import { generateVisualProfile } from "../../lib/gen/visualProfile";
+import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
 import type { Palette } from "../../lib/types";
 
 const palette: Palette = {
@@ -106,7 +106,9 @@ describe("SelectionPanel Turret Power Shortage UI", () => {
       />,
     );
 
-    expect(screen.getByTestId("radar-minimap-status")).toHaveTextContent("Minimap offline until power is restored");
+    expect(screen.getByTestId("radar-minimap-status")).toHaveTextContent(
+      "Minimap offline until power is restored",
+    );
 
     rerender(
       <SelectionPanel
@@ -118,7 +120,9 @@ describe("SelectionPanel Turret Power Shortage UI", () => {
       />,
     );
 
-    expect(screen.getByTestId("radar-minimap-status")).toHaveTextContent("Minimap stays on while this radar has power");
+    expect(screen.getByTestId("radar-minimap-status")).toHaveTextContent(
+      "Minimap stays on while this radar has power",
+    );
   });
 
   it("does not render power shortage badge for non-defense buildings even during power deficit", () => {

@@ -1,7 +1,7 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
-import { SHORTCUT } from "@/lib/ui/shortcuts";
 import type { Facing } from "@/lib/types";
+import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { AssetChip } from "./AssetChip";
 import type { AssetPreviewControlProps } from "./AssetPreview";
 import styles from "./AssetPreview.module.css";
@@ -28,7 +28,9 @@ export function AssetPreviewControls({
   onPose,
   onTurretFacing,
 }: AssetPreviewControlProps) {
-  const showFacing = selected.category === "unit" || (selected.category === "building" && selected.kind === "turret");
+  const showFacing =
+    selected.category === "unit" ||
+    (selected.category === "building" && selected.kind === "turret");
   const showAnim = selected.category === "unit" || selected.category === "building";
 
   return (
@@ -71,20 +73,46 @@ export function AssetPreviewControls({
         <div className={styles.group}>
           <ConsoleLabel>Action</ConsoleLabel>
           <div className={styles.chips}>
-            {(["idle", "move", "attack", "work"] as const).filter(action => (action !== "work" || ["medic", "repairTruck", "harvester"].includes(selected.kind)) && (action !== "attack" || ["infantry", "antiArmor", "tank", "behemoth", "strikePlane", "scout"].includes(selected.kind))).map(action => (
-              <AssetChip key={action} active={pose === action} tooltip={`Preview ${action}`} onClick={() => onPose(action)}>
-                {{ idle: "Idle", move: "Moving", attack: "Firing", work: "Working" }[action]}
-              </AssetChip>
-            ))}
+            {(["idle", "move", "attack", "work"] as const)
+              .filter(
+                (action) =>
+                  (action !== "work" ||
+                    ["medic", "repairTruck", "harvester"].includes(selected.kind)) &&
+                  (action !== "attack" ||
+                    ["infantry", "antiArmor", "tank", "behemoth", "strikePlane", "scout"].includes(
+                      selected.kind,
+                    )),
+              )
+              .map((action) => (
+                <AssetChip
+                  key={action}
+                  active={pose === action}
+                  tooltip={`Preview ${action}`}
+                  onClick={() => onPose(action)}
+                >
+                  {{ idle: "Idle", move: "Moving", attack: "Firing", work: "Working" }[action]}
+                </AssetChip>
+              ))}
           </div>
         </div>
       ) : null}
-      {selected.category === "unit" && ["tank", "behemoth"].includes(selected.kind) && onTurretFacing ? (
+      {selected.category === "unit" &&
+      ["tank", "behemoth"].includes(selected.kind) &&
+      onTurretFacing ? (
         <div className={styles.group}>
           <ConsoleLabel>Turret aim</ConsoleLabel>
-          <div className={styles.compass}>{FACINGS.map(dir => (
-            <AssetChip key={dir} active={turretFacing === dir} tooltip={`Aim ${FACING_LABELS[dir]}`} onClick={() => onTurretFacing(dir)}>{FACING_LABELS[dir]}</AssetChip>
-          ))}</div>
+          <div className={styles.compass}>
+            {FACINGS.map((dir) => (
+              <AssetChip
+                key={dir}
+                active={turretFacing === dir}
+                tooltip={`Aim ${FACING_LABELS[dir]}`}
+                onClick={() => onTurretFacing(dir)}
+              >
+                {FACING_LABELS[dir]}
+              </AssetChip>
+            ))}
+          </div>
         </div>
       ) : null}
 

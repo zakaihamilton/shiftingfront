@@ -20,7 +20,8 @@ export function BriefingMast({
     <header className={styles.mast}>
       <div>
         <ConsoleLabel className={styles.seed} data-testid="seed">
-          Shifting Front · Seed {formatSeed(seed)} · Mission {mission + 1}/{campaign.missions.length}
+          Shifting Front · Seed {formatSeed(seed)} · Mission {mission + 1}/
+          {campaign.missions.length}
         </ConsoleLabel>
         <div
           className={styles.progressStrip}
@@ -31,7 +32,11 @@ export function BriefingMast({
           aria-valuenow={mission + 1}
         >
           {campaign.missions.map((item, index) => (
-            <span key={item.index} className={index <= mission ? styles.progressActive : styles.progressPending} aria-hidden="true" />
+            <span
+              key={item.index}
+              className={index <= mission ? styles.progressActive : styles.progressPending}
+              aria-hidden="true"
+            />
           ))}
         </div>
         <h1 className={styles.title}>{def.name}</h1>

@@ -1,4 +1,5 @@
 import type { Entity, SimState, Vec2 } from "../../types";
+import { isPlayerControlledOwner } from "../ownership";
 import { inBounds, isStaticWalkable, staticNavigationFor } from "../world";
 import {
   navigationEdgeKey,
@@ -7,7 +8,6 @@ import {
   PATH_DIRS,
   reversesPreviousStep,
 } from "./grid";
-import { isPlayerControlledOwner } from "../ownership";
 
 export function cellOf(state: SimState, x: number, y: number): number {
   return Math.round(y) * state.width + Math.round(x);
@@ -33,7 +33,10 @@ export function tileFree(
 export function goalDistance(e: Entity): number {
   const dest = e.orderDestination;
   if (!dest) return Number.POSITIVE_INFINITY;
-  return Math.max(Math.abs(Math.round(e.x) - Math.round(dest.x)), Math.abs(Math.round(e.y) - Math.round(dest.y)));
+  return Math.max(
+    Math.abs(Math.round(e.x) - Math.round(dest.x)),
+    Math.abs(Math.round(e.y) - Math.round(dest.y)),
+  );
 }
 
 export function destinationOf(e: Entity): Vec2 | undefined {
@@ -49,7 +52,8 @@ export function holdingDestination(e: Entity): boolean {
 /** Preserve a travel order until arrival, including deferred and shared routes. */
 export function travelOrderInProgress(e: Entity, arrivalRadius = 0.1): boolean {
   const destination = e.orderDestination;
-  if (!destination || Math.hypot(e.x - destination.x, e.y - destination.y) <= arrivalRadius) return false;
+  if (!destination || Math.hypot(e.x - destination.x, e.y - destination.y) <= arrivalRadius)
+    return false;
   return e.path.length > 0 || Boolean(e.flowGoal) || Boolean(e.routePending) || !e.idle;
 }
 
@@ -68,22 +72,30 @@ export function trySidestep(
   if (!e.path.length) return false;
   const cx = Math.round(e.x);
   const cy = Math.round(e.y);
-  const dest = e.path.length > 1 ? e.path[1]! : destinationOf(e) ?? e.path[0]!;
+  const dest = e.path.length > 1 ? e.path[1]! : (destinationOf(e) ?? e.path[0]!);
   const stayD = Math.hypot(cx - dest.x, cy - dest.y);
   const allowFarther = (e.blockedTicks ?? 0) >= 3;
   const navigation = staticNavigationFor(state);
   const currentProgress = progressDistance?.(cx, cy) ?? Number.POSITIVE_INFINITY;
   const waypoint = e.path[0];
-  const headingX = (blockedX - cx) || (dest.x - cx) || 1;
-  const headingY = (blockedY - cy) || (dest.y - cy) || 0;
-  let best: { x: number; y: number; d: number; progress: number; rank: number; bias: number } | undefined;
+  const headingX = blockedX - cx || dest.x - cx || 1;
+  const headingY = blockedY - cy || dest.y - cy || 0;
+  let best:
+    | { x: number; y: number; d: number; progress: number; rank: number; bias: number }
+    | undefined;
   for (const d of PATH_DIRS) {
     const nx = cx + d.x;
     const ny = cy + d.y;
     const isWaypoint = waypoint && Math.round(waypoint.x) === nx && Math.round(waypoint.y) === ny;
     if (nx === blockedX && ny === blockedY) continue;
-    if (isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
-    if (navigationEdgeReserved(edgeReservations, state.width, state.height, cx, cy, nx, ny, e.id)) continue;
+    if (
+      isPlayerControlledOwner(state, e.owner) &&
+      e.scenarioRole !== "convoy" &&
+      reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)
+    )
+      continue;
+    if (navigationEdgeReserved(edgeReservations, state.width, state.height, cx, cy, nx, ny, e.id))
+      continue;
     if (!tileFree(state, occupancy, reserved, e, nx, ny)) continue;
     if (!navigationStepAllowed(navigation, cx, cy, nx, ny)) continue;
     if (
@@ -92,25 +104,47 @@ export function trySidestep(
       d.y !== 0 &&
       (!tileFree(state, occupancy, reserved, e, cx + d.x, cy) ||
         !tileFree(state, occupancy, reserved, e, cx, cy + d.y))
-    ) continue;
+    )
+      continue;
     const dist = Math.hypot(nx - dest.x, ny - dest.y);
     const progress = progressDistance?.(nx, ny) ?? Number.POSITIVE_INFINITY;
     const rank = progressDistance
-      ? progress < currentProgress - 1e-9 ? 0 : progress <= currentProgress + 1e-9 ? 1 : 2
-      : dist < stayD - 1e-9 ? 0 : dist <= stayD + 1e-9 ? 1 : 2;
+      ? progress < currentProgress - 1e-9
+        ? 0
+        : progress <= currentProgress + 1e-9
+          ? 1
+          : 2
+      : dist < stayD - 1e-9
+        ? 0
+        : dist <= stayD + 1e-9
+          ? 1
+          : 2;
     if (rank >= 2 && !allowFarther) continue;
     // In screen coordinates, cross product < 0 is the candidate on the unit's
     // right. Prefer that side when all other avoidance scores tie.
     const lateralCross = d.x * headingY - d.y * headingX;
     const bias = preferRightHand
-      ? lateralCross < 0 ? 1 : lateralCross > 0 ? -1 : 0
-      : lateralCross > 0 ? 1 : lateralCross < 0 ? -1 : 0;
+      ? lateralCross < 0
+        ? 1
+        : lateralCross > 0
+          ? -1
+          : 0
+      : lateralCross > 0
+        ? 1
+        : lateralCross < 0
+          ? -1
+          : 0;
     if (
       !best ||
       rank < best.rank ||
       (rank === best.rank && progressDistance && progress < best.progress - 1e-9) ||
-      (rank === best.rank && (!progressDistance || Math.abs(progress - best.progress) <= 1e-9) && dist < best.d - 1e-9) ||
-      (rank === best.rank && (!progressDistance || Math.abs(progress - best.progress) <= 1e-9) && Math.abs(dist - best.d) <= 1e-9 && bias > best.bias)
+      (rank === best.rank &&
+        (!progressDistance || Math.abs(progress - best.progress) <= 1e-9) &&
+        dist < best.d - 1e-9) ||
+      (rank === best.rank &&
+        (!progressDistance || Math.abs(progress - best.progress) <= 1e-9) &&
+        Math.abs(dist - best.d) <= 1e-9 &&
+        bias > best.bias)
     ) {
       best = { x: nx, y: ny, d: dist, progress, rank, bias };
     }
@@ -139,7 +173,15 @@ export function nudgeIdle(
 ): boolean {
   if (blocker.path.length || blocker.neutral) return false;
   if (blocker.orderDestination && !holdingDestination(blocker)) return false;
-  return stepBlockerAside(state, occupancy, reserved, blocker, false, previousCell, edgeReservations);
+  return stepBlockerAside(
+    state,
+    occupancy,
+    reserved,
+    blocker,
+    false,
+    previousCell,
+    edgeReservations,
+  );
 }
 
 export function giveWay(
@@ -151,9 +193,18 @@ export function giveWay(
   edgeReservations?: Map<number, number>,
 ): boolean {
   if (blocker.neutral || holdingDestination(blocker)) return false;
-  if (!blocker.path.length) return nudgeIdle(state, occupancy, reserved, blocker, previousCell, edgeReservations);
+  if (!blocker.path.length)
+    return nudgeIdle(state, occupancy, reserved, blocker, previousCell, edgeReservations);
   if ((blocker.blockedTicks ?? 0) === 0) return false;
-  return stepBlockerAside(state, occupancy, reserved, blocker, true, previousCell, edgeReservations);
+  return stepBlockerAside(
+    state,
+    occupancy,
+    reserved,
+    blocker,
+    true,
+    previousCell,
+    edgeReservations,
+  );
 }
 
 export function stepBlockerAside(
@@ -174,8 +225,24 @@ export function stepBlockerAside(
   for (const d of PATH_DIRS) {
     const nx = cx + d.x;
     const ny = cy + d.y;
-    if (isPlayerControlledOwner(state, blocker.owner) && reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)) continue;
-    if (navigationEdgeReserved(edgeReservations, state.width, state.height, cx, cy, nx, ny, blocker.id)) continue;
+    if (
+      isPlayerControlledOwner(state, blocker.owner) &&
+      reversesPreviousStep(state.width, cx, cy, nx, ny, previousCell)
+    )
+      continue;
+    if (
+      navigationEdgeReserved(
+        edgeReservations,
+        state.width,
+        state.height,
+        cx,
+        cy,
+        nx,
+        ny,
+        blocker.id,
+      )
+    )
+      continue;
     if (!tileFree(state, occupancy, reserved, blocker, nx, ny)) continue;
     if (!navigationStepAllowed(navigation, cx, cy, nx, ny)) continue;
     const dDist = dest ? Math.hypot(nx - dest.x, ny - dest.y) : 0;
@@ -186,7 +253,10 @@ export function stepBlockerAside(
   }
   if (!best) return false;
   const first = blocker.path[0];
-  edgeReservations?.set(navigationEdgeKey(state.width, state.height, cx, cy, best.x, best.y), blocker.id);
+  edgeReservations?.set(
+    navigationEdgeKey(state.width, state.height, cx, cy, best.x, best.y),
+    blocker.id,
+  );
   if (first && Math.round(first.x) === best.x && Math.round(first.y) === best.y) return true;
   if (blocker.path.length) blocker.path.unshift({ x: best.x, y: best.y });
   else blocker.path = [{ x: best.x, y: best.y }];

@@ -160,7 +160,6 @@ describe("drawUnitHealthMeter canvas rendering", () => {
     expect(ctx.strokeRect).toHaveBeenNthCalledWith(1, 88.5, 48.5, 23, 5);
     expect(ctx.strokeRect).toHaveBeenNthCalledWith(2, 89.5, 49.5, 21, 3);
   });
-
 });
 
 describe("drawUnitAmmoMeter canvas rendering", () => {

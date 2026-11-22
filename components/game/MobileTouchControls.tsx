@@ -1,6 +1,6 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
-import type { MobileCommand } from "./mobileCommandTypes";
 import styles from "./CommandSidebar.module.css";
+import type { MobileCommand } from "./mobileCommandTypes";
 
 const COMMANDS: { id: MobileCommand; label: string }[] = [
   { id: "move", label: "Move" },
@@ -30,8 +30,16 @@ export function MobileTouchControls({
   onSelectionMode: (active: boolean) => void;
   onStop: () => void;
 }) {
-  const selectionStatus = selectionMode ? "Select units" : selectedCount > 0 ? `${selectedCount} selected` : "No selection";
-  const commandStatus = selectionMode ? "Drag a box around friendly units" : activeCommand ? `${mobileCommandLabel(activeCommand)} ready` : "Touch controls";
+  const selectionStatus = selectionMode
+    ? "Select units"
+    : selectedCount > 0
+      ? `${selectedCount} selected`
+      : "No selection";
+  const commandStatus = selectionMode
+    ? "Drag a box around friendly units"
+    : activeCommand
+      ? `${mobileCommandLabel(activeCommand)} ready`
+      : "Touch controls";
 
   return (
     <section className={styles.touchControls} data-testid="mobile-touch-controls">
@@ -63,7 +71,12 @@ export function MobileTouchControls({
                 {label}
               </ConsoleButton>
             ))}
-            <ConsoleButton className={styles.touchButton} data-testid="mobile-command-stop" tooltip="Stop selected units" onClick={onStop}>
+            <ConsoleButton
+              className={styles.touchButton}
+              data-testid="mobile-command-stop"
+              tooltip="Stop selected units"
+              onClick={onStop}
+            >
               Stop
             </ConsoleButton>
           </>

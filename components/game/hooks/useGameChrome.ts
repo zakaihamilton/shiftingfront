@@ -7,7 +7,10 @@ import type { CommandTab, PauseView } from "@/lib/ui/shortcuts";
 export type CommandNoticeKind = "success" | "info" | "warning" | "error";
 export type CommandNoticeState = { text: string; kind: CommandNoticeKind } | null;
 
-export function useGameChrome(initialResult: SimState["result"] = "playing", initiallyPaused = false) {
+export function useGameChrome(
+  initialResult: SimState["result"] = "playing",
+  initiallyPaused = false,
+) {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<CommandTab>("construction");
   const activeTabRef = useRef(activeTab);
@@ -31,17 +34,23 @@ export function useGameChrome(initialResult: SimState["result"] = "playing", ini
     pauseViewRef.current = pauseView;
   }, [pauseView]);
 
-  useEffect(() => () => {
-    if (commandNoticeTimer.current !== null) window.clearTimeout(commandNoticeTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (commandNoticeTimer.current !== null) window.clearTimeout(commandNoticeTimer.current);
+    },
+    [],
+  );
 
   const announceCommand = useCallback((text: string, kind: CommandNoticeKind = "info") => {
     setCommandNotice({ text, kind });
     if (commandNoticeTimer.current !== null) window.clearTimeout(commandNoticeTimer.current);
-    commandNoticeTimer.current = window.setTimeout(() => {
-      setCommandNotice(null);
-      commandNoticeTimer.current = null;
-    }, kind === "error" || kind === "warning" ? 3600 : 2200);
+    commandNoticeTimer.current = window.setTimeout(
+      () => {
+        setCommandNotice(null);
+        commandNoticeTimer.current = null;
+      },
+      kind === "error" || kind === "warning" ? 3600 : 2200,
+    );
   }, []);
 
   return {

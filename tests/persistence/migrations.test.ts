@@ -1,47 +1,94 @@
 import { describe, expect, it } from "vitest";
-import { createMission } from "../../lib/sim/api";
-import { decodeSave, serializeState, SAVE_CONTENT_VERSION, SAVE_VERSION } from "../../lib/persist/save/serialize";
-import { migrateSaveContent } from "../../lib/persist/save/migrations";
-import { memoryStorage, readSlot, slotKey, writeSlot } from "../../lib/persist/save";
-import { decodeSlot } from "../../lib/persist/save/slots";
 import { freshCampaignProgress } from "../../lib/persist/campaign";
+import { memoryStorage, readSlot, slotKey, writeSlot } from "../../lib/persist/save";
+import { migrateSaveContent } from "../../lib/persist/save/migrations";
+import {
+  decodeSave,
+  SAVE_CONTENT_VERSION,
+  SAVE_VERSION,
+  serializeState,
+} from "../../lib/persist/save/serialize";
+import { decodeSlot } from "../../lib/persist/save/slots";
+import { createMission } from "../../lib/sim/api";
 
 describe("save migrations", () => {
   it("passes current content through the explicit migration chain", () => {
     const state = createMission({ seed: 421, missionIndex: 0 });
     expect(migrateSaveContent(state, SAVE_CONTENT_VERSION)).toBe(state);
-    expect(decodeSave(JSON.stringify({
-      version: SAVE_VERSION,
-      contentVersion: SAVE_CONTENT_VERSION,
-      savedAt: 1,
-      state: JSON.parse(serializeState(state)),
-    })).state.seed).toBe(421);
+    expect(
+      decodeSave(
+        JSON.stringify({
+          version: SAVE_VERSION,
+          contentVersion: SAVE_CONTENT_VERSION,
+          savedAt: 1,
+          state: JSON.parse(serializeState(state)),
+        }),
+      ).state.seed,
+    ).toBe(421);
   });
 
   it("keeps legacy envelope and root saves loadable", () => {
     const state = createMission({ seed: 77, missionIndex: 0 });
     const legacyState = JSON.parse(serializeState(state));
-    expect(decodeSave(JSON.stringify({ version: 1, savedAt: 1, state: legacyState })).state.seed).toBe(77);
+    expect(
+      decodeSave(JSON.stringify({ version: 1, savedAt: 1, state: legacyState })).state.seed,
+    ).toBe(77);
     expect(decodeSave(JSON.stringify({ ...legacyState, savedAt: 2 })).state.seed).toBe(77);
   });
 
   it("rejects malformed and future content versions before state normalization", () => {
     expect(() => migrateSaveContent({}, 0)).toThrow("Unsupported save content version");
-    expect(() => migrateSaveContent({}, SAVE_CONTENT_VERSION + 1)).toThrow("Unsupported save content version");
+    expect(() => migrateSaveContent({}, SAVE_CONTENT_VERSION + 1)).toThrow(
+      "Unsupported save content version",
+    );
     expect(() => migrateSaveContent({}, "1")).toThrow("Unsupported save content version");
   });
 
   it("keeps the remaining time of every barracks that was already producing", () => {
-    const migrated = migrateSaveContent({
-      entities: [
-        { class: "building", kind: "barracks", owner: 0, hp: 10, id: 1, constructing: 0, producing: { kind: "infantry", remaining: 40 }, queue: ["infantry"] },
-        { class: "building", kind: "barracks", owner: 0, hp: 10, id: 2, constructing: 0, producing: { kind: "antiArmor", remaining: 10 }, queue: [] },
-      ],
-    }, 1) as {
-      productionQueues: { 0: { barracks: { producing: { kind: string; remaining: number }; resume?: { kind: string; remaining: number }[]; queue: string[] } } };
+    const migrated = migrateSaveContent(
+      {
+        entities: [
+          {
+            class: "building",
+            kind: "barracks",
+            owner: 0,
+            hp: 10,
+            id: 1,
+            constructing: 0,
+            producing: { kind: "infantry", remaining: 40 },
+            queue: ["infantry"],
+          },
+          {
+            class: "building",
+            kind: "barracks",
+            owner: 0,
+            hp: 10,
+            id: 2,
+            constructing: 0,
+            producing: { kind: "antiArmor", remaining: 10 },
+            queue: [],
+          },
+        ],
+      },
+      1,
+    ) as {
+      productionQueues: {
+        0: {
+          barracks: {
+            producing: { kind: string; remaining: number };
+            resume?: { kind: string; remaining: number }[];
+            queue: string[];
+          };
+        };
+      };
     };
-    expect(migrated.productionQueues[0].barracks.producing).toEqual({ kind: "antiArmor", remaining: 10 });
-    expect(migrated.productionQueues[0].barracks.resume).toEqual([{ kind: "infantry", remaining: 40 }]);
+    expect(migrated.productionQueues[0].barracks.producing).toEqual({
+      kind: "antiArmor",
+      remaining: 10,
+    });
+    expect(migrated.productionQueues[0].barracks.resume).toEqual([
+      { kind: "infantry", remaining: 40 },
+    ]);
     expect(migrated.productionQueues[0].barracks.queue).toEqual(["infantry"]);
   });
 
@@ -53,8 +100,9 @@ describe("save migrations", () => {
       },
     });
     expect(migrated).toEqual({ seed: 7, migrated: true });
-    expect(() => migrateSaveContent({ seed: 7 }, 1, { currentVersion: 2, migrations: {} }))
-      .toThrow("Missing save migration from content version 1");
+    expect(() => migrateSaveContent({ seed: 7 }, 1, { currentVersion: 2, migrations: {} })).toThrow(
+      "Missing save migration from content version 1",
+    );
   });
 
   it("uses the same migration path for named slots", () => {

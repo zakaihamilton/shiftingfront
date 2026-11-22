@@ -4,8 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TooltipLayer } from "../../components/TooltipLayer";
 import { CommandCameo } from "../../components/game/CommandCameo";
+import { TooltipLayer } from "../../components/TooltipLayer";
 import type { FactionVisualProfile, Palette } from "../../lib/types";
 
 vi.mock("../../components/game/SpritePreview", () => ({
@@ -60,8 +60,14 @@ describe("command cameo labels", () => {
     expect(screen.getByTestId("cameo-status-factory")).toHaveTextContent("Need 300 cr");
     expect(button).toHaveAttribute("aria-label", expect.stringContaining("Vehicle Plant"));
     expect(button).toHaveAttribute("aria-label", expect.stringContaining("Need 300 more credits"));
-    expect(button.parentElement).toHaveAttribute("data-tooltip", expect.stringContaining("Vehicle Plant"));
-    expect(button.parentElement).toHaveAttribute("data-tooltip", expect.stringContaining("Need 300 more credits"));
+    expect(button.parentElement).toHaveAttribute(
+      "data-tooltip",
+      expect.stringContaining("Vehicle Plant"),
+    );
+    expect(button.parentElement).toHaveAttribute(
+      "data-tooltip",
+      expect.stringContaining("Need 300 more credits"),
+    );
   });
 
   it("keeps a fixed three-row caption for ready and busy states", () => {
@@ -113,7 +119,10 @@ describe("command cameo labels", () => {
 
     const button = screen.getByRole("button", { name: /Strike Plane, 650 credits/ });
     expect(screen.getByTestId("cameo-status-strikePlane")).toHaveTextContent("Locked");
-    expect(button).toHaveAttribute("aria-label", expect.stringContaining("Advance the campaign to unlock this unit"));
+    expect(button).toHaveAttribute(
+      "aria-label",
+      expect.stringContaining("Advance the campaign to unlock this unit"),
+    );
   });
 
   it("shows full card details on hover, including for disabled cards", async () => {
@@ -140,7 +149,9 @@ describe("command cameo labels", () => {
       />,
     );
 
-    const tooltip = screen.getByRole("button", { name: /Repair Truck, 350 credits/ }).parentElement?.getAttribute("data-tooltip");
+    const tooltip = screen
+      .getByRole("button", { name: /Repair Truck, 350 credits/ })
+      .parentElement?.getAttribute("data-tooltip");
     expect(tooltip?.split("\n")).toEqual([
       "Repair Truck · 350 credits",
       "light armor · smallArms weapon",

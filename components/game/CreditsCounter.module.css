@@ -33,7 +33,9 @@
   height: 2px;
   background: color-mix(in srgb, var(--chrome-gold) 38%, transparent);
   box-shadow: 0 0 6px color-mix(in srgb, var(--chrome-gold) 28%, transparent);
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .readout {

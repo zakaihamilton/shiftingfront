@@ -37,9 +37,15 @@ export class PeerLifecycle {
 
   constructor(private readonly dependencies: PeerLifecycleDependencies) {}
 
-  get operation(): number { return this.generation; }
-  isCurrent(operation: number): boolean { return operation === this.generation; }
-  owns(peer: Peer): boolean { return this.peer === peer; }
+  get operation(): number {
+    return this.generation;
+  }
+  isCurrent(operation: number): boolean {
+    return operation === this.generation;
+  }
+  owns(peer: Peer): boolean {
+    return this.peer === peer;
+  }
 
   async request<T>(url: string, body: unknown): Promise<T> {
     const abort = new AbortController();
@@ -70,7 +76,9 @@ export class PeerLifecycle {
 
   trackConnection(connection: DataConnection): void {
     if (this.connections.has(connection)) return;
-    const onClose = () => { this.connections.delete(connection); };
+    const onClose = () => {
+      this.connections.delete(connection);
+    };
     this.connections.set(connection, () => connection.off("close", onClose));
     connection.once("close", onClose);
   }
@@ -88,7 +96,9 @@ export class PeerLifecycle {
 
   async refreshCredential(credential: Credential, peer: Peer): Promise<boolean> {
     const operation = this.operation;
-    const refreshed = await this.request<RefreshedCredential>("/api/multiplayer/peer-credentials", { grant: credential.grant });
+    const refreshed = await this.request<RefreshedCredential>("/api/multiplayer/peer-credentials", {
+      grant: credential.grant,
+    });
     if (!this.isCurrent(operation) || !this.owns(peer)) return false;
     credential.peerToken = refreshed.peerToken;
     credential.peerExpiresAt = refreshed.peerExpiresAt;
@@ -98,7 +108,12 @@ export class PeerLifecycle {
     return true;
   }
 
-  retryGuest(credential: Credential, peer: Peer, callbacks: GuestRetryCallbacks, delay = 1800): void {
+  retryGuest(
+    credential: Credential,
+    peer: Peer,
+    callbacks: GuestRetryCallbacks,
+    delay = 1800,
+  ): void {
     if (!this.owns(peer)) return;
     if (!this.guestRetryUntil) this.beginGuestRecovery();
     if (this.dependencies.now() >= this.guestRetryUntil) {
@@ -106,38 +121,75 @@ export class PeerLifecycle {
       return;
     }
     if (!this.timers.has("guest-expiry")) {
-      this.schedule("guest-expiry", () => {
-        if (!this.owns(peer) || !this.guestRetryUntil) return;
-        this.clearTimer("guest-retry");
-        callbacks.expired();
-      }, this.guestRetryUntil - this.dependencies.now());
+      this.schedule(
+        "guest-expiry",
+        () => {
+          if (!this.owns(peer) || !this.guestRetryUntil) return;
+          this.clearTimer("guest-retry");
+          callbacks.expired();
+        },
+        this.guestRetryUntil - this.dependencies.now(),
+      );
     }
-    this.schedule("guest-retry", () => {
-      if (!this.owns(peer) || peer.disconnected || !callbacks.canRetry()) return;
-      if (this.dependencies.now() >= this.guestRetryUntil) { callbacks.expired(); return; }
-      void this.prepareGuestRetry(credential, peer, callbacks);
-    }, Math.min(delay, this.guestRetryUntil - this.dependencies.now()));
+    this.schedule(
+      "guest-retry",
+      () => {
+        if (!this.owns(peer) || peer.disconnected || !callbacks.canRetry()) return;
+        if (this.dependencies.now() >= this.guestRetryUntil) {
+          callbacks.expired();
+          return;
+        }
+        void this.prepareGuestRetry(credential, peer, callbacks);
+      },
+      Math.min(delay, this.guestRetryUntil - this.dependencies.now()),
+    );
   }
 
-  private async prepareGuestRetry(credential: Credential, peer: Peer, callbacks: GuestRetryCallbacks): Promise<void> {
+  private async prepareGuestRetry(
+    credential: Credential,
+    peer: Peer,
+    callbacks: GuestRetryCallbacks,
+  ): Promise<void> {
     const operation = this.operation;
     try {
-      if (credential.peerExpiresAt * 1000 < this.dependencies.now() + 30_000 &&
-          !await this.refreshCredential(credential, peer)) return;
+      if (
+        credential.peerExpiresAt * 1000 < this.dependencies.now() + 30_000 &&
+        !(await this.refreshCredential(credential, peer))
+      )
+        return;
       if (!this.guestRetryUntil) return;
-      if (this.isCurrent(operation) && this.owns(peer) && this.dependencies.now() >= this.guestRetryUntil) {
+      if (
+        this.isCurrent(operation) &&
+        this.owns(peer) &&
+        this.dependencies.now() >= this.guestRetryUntil
+      ) {
         callbacks.expired();
         return;
       }
-      if (this.isCurrent(operation) && this.owns(peer) && !peer.disconnected && callbacks.canRetry()) callbacks.connect();
+      if (
+        this.isCurrent(operation) &&
+        this.owns(peer) &&
+        !peer.disconnected &&
+        callbacks.canRetry()
+      )
+        callbacks.connect();
     } catch {
-      if (this.isCurrent(operation) && this.owns(peer) && this.guestRetryUntil) this.retryGuest(credential, peer, callbacks);
+      if (this.isCurrent(operation) && this.owns(peer) && this.guestRetryUntil)
+        this.retryGuest(credential, peer, callbacks);
     }
   }
 
-  async start(credential: Credential, role: Role, operation: number, callbacks: PeerLifecycleCallbacks): Promise<Peer | null> {
+  async start(
+    credential: Credential,
+    role: Role,
+    operation: number,
+    callbacks: PeerLifecycleCallbacks,
+  ): Promise<Peer | null> {
     const peer = await this.dependencies.createPeer(credential);
-    if (!this.isCurrent(operation)) { peer.destroy(); return null; }
+    if (!this.isCurrent(operation)) {
+      peer.destroy();
+      return null;
+    }
     this.peer = peer;
     this.role = role;
     const current = () => this.isCurrent(operation) && this.owns(peer);
@@ -152,19 +204,38 @@ export class PeerLifecycle {
       this.signalingRetryUntil = this.dependencies.now() + 60_000;
       const retry = async () => {
         if (!current()) return;
-        if (this.dependencies.now() >= this.signalingRetryUntil) { callbacks.expired(); return; }
+        if (this.dependencies.now() >= this.signalingRetryUntil) {
+          callbacks.expired();
+          return;
+        }
         if (!peer.disconnected) return;
         try {
-          if (credential.peerExpiresAt * 1000 < this.dependencies.now() + 30_000 &&
-              !await this.refreshCredential(credential, peer)) return;
+          if (
+            credential.peerExpiresAt * 1000 < this.dependencies.now() + 30_000 &&
+            !(await this.refreshCredential(credential, peer))
+          )
+            return;
           if (!current() || !peer.disconnected) return;
           peer.reconnect();
         } catch {
           // A failed refresh consumes the same recovery window as signaling.
         }
-        if (current() && peer.disconnected) this.schedule("signaling-retry", () => { void retry(); }, 1800);
+        if (current() && peer.disconnected)
+          this.schedule(
+            "signaling-retry",
+            () => {
+              void retry();
+            },
+            1800,
+          );
       };
-      this.schedule("signaling-retry", () => { void retry(); }, 0);
+      this.schedule(
+        "signaling-retry",
+        () => {
+          void retry();
+        },
+        0,
+      );
     };
     const onOpen = () => {
       if (!current()) return;
@@ -188,7 +259,10 @@ export class PeerLifecycle {
     const abort = new AbortController();
     this.requests.add(abort);
     return new Promise((resolve, reject) => {
-      const timer = this.dependencies.setTimeout(() => finish(new Error("peer_open_timeout")), timeout);
+      const timer = this.dependencies.setTimeout(
+        () => finish(new Error("peer_open_timeout")),
+        timeout,
+      );
       const onOpen = () => finish();
       const onError = (error: Error) => finish(error);
       const onAbort = () => finish(new Error("peer_open_aborted"));
@@ -198,7 +272,8 @@ export class PeerLifecycle {
         peer.off("open", onOpen);
         peer.off("error", onError);
         abort.signal.removeEventListener("abort", onAbort);
-        if (error) reject(error); else resolve();
+        if (error) reject(error);
+        else resolve();
       };
       abort.signal.addEventListener("abort", onAbort, { once: true });
       peer.on("open", onOpen);
@@ -218,7 +293,10 @@ export class PeerLifecycle {
     for (const remove of this.listeners.splice(0)) remove();
     const connections = [...this.connections.entries()];
     this.connections.clear();
-    for (const [connection, remove] of connections) { remove(); connection.close(); }
+    for (const [connection, remove] of connections) {
+      remove();
+      connection.close();
+    }
     peer?.destroy();
     this.guestRetryUntil = 0;
     this.signalingRetryUntil = 0;

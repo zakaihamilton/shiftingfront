@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent as ReactPointerEvent, type Ref } from "react";
+import { type PointerEvent as ReactPointerEvent, type Ref, useRef } from "react";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import styles from "./MobileCommandLauncher.module.css";
 

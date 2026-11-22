@@ -1,22 +1,30 @@
 import { campaignKey, readCampaignProgress, writeCampaignProgress } from "../campaign";
-import { decodeSave, SAVE_PREFIX } from "./serialize";
-import { readSave, removeSave } from "./api";
-import { readSlot, removeSlot, SLOT_PREFIX } from "./slots";
-import { safeGetItem, safeKeys, safeRemoveItem, type StorageAdapter } from "./storage";
-import { isRecord } from "../utils";
 import {
   journalKey,
   planSeedRetirement,
   type RetiredSlot,
   type RulesRetirementSnapshot,
 } from "../rulesRetirement";
+import { isRecord } from "../utils";
+import { readSave, removeSave } from "./api";
+import { decodeSave, SAVE_PREFIX } from "./serialize";
+import { readSlot, removeSlot, SLOT_PREFIX } from "./slots";
+import { type StorageAdapter, safeGetItem, safeKeys, safeRemoveItem } from "./storage";
 
-function journalSnapshot(storage: StorageAdapter, seed: number): RulesRetirementSnapshot["journal"] {
+function journalSnapshot(
+  storage: StorageAdapter,
+  seed: number,
+): RulesRetirementSnapshot["journal"] {
   const raw = safeGetItem(storage, journalKey(seed));
   if (!raw) return null;
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed) || typeof parsed.autosave !== "string" || typeof parsed.progress !== "string") return null;
+    if (
+      !isRecord(parsed) ||
+      typeof parsed.autosave !== "string" ||
+      typeof parsed.progress !== "string"
+    )
+      return null;
     const state = decodeSave(parsed.autosave).state;
     if (state.seed !== seed) return null;
     const progress = readCampaignProgress(progressStorage(seed, parsed.progress), seed);
@@ -28,10 +36,14 @@ function journalSnapshot(storage: StorageAdapter, seed: number): RulesRetirement
 
 function progressStorage(seed: number, raw: string): StorageAdapter {
   return {
-    getItem: (key) => key === campaignKey(seed) ? raw : null,
+    getItem: (key) => (key === campaignKey(seed) ? raw : null),
     keys: () => [campaignKey(seed)],
-    setItem: () => { throw new Error("Journal progress is read-only"); },
-    removeItem: () => { throw new Error("Journal progress is read-only"); },
+    setItem: () => {
+      throw new Error("Journal progress is read-only");
+    },
+    removeItem: () => {
+      throw new Error("Journal progress is read-only");
+    },
   };
 }
 
@@ -40,7 +52,11 @@ export function applyRulesRetirement(storage: StorageAdapter): boolean {
   const seeds = new Set<number>();
   const slotsBySeed = new Map<number, RetiredSlot[]>();
   for (const key of safeKeys(storage)) {
-    if (key.startsWith(SAVE_PREFIX) || key.startsWith("shiftingfront:campaign:") || key.startsWith("shiftingfront:journal:")) {
+    if (
+      key.startsWith(SAVE_PREFIX) ||
+      key.startsWith("shiftingfront:campaign:") ||
+      key.startsWith("shiftingfront:journal:")
+    ) {
       const seedText = key.slice(key.lastIndexOf(":") + 1);
       if (/^\d{4}$/.test(seedText)) seeds.add(Number(seedText));
     } else if (key.startsWith(SLOT_PREFIX)) {

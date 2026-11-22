@@ -1,18 +1,23 @@
 // @vitest-environment jsdom
 
 import { act, renderHook } from "@testing-library/react";
-import { useRef, type PointerEvent } from "react";
+import { type PointerEvent, useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { createCamera, TILE_H, tileToScreen } from "../../lib/iso";
-import { cameraFocusPoint, cameraPanBounds, focusCameraAtTile, panAvailability } from "../../lib/render/camera";
-import { addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { heightAt } from "../../lib/sim/world";
-import type { BuildingKind, Command, SimState } from "../../lib/types";
+import { selectionBoxScreen } from "../../components/game/hooks/selectionBox";
 import { useGameInput } from "../../components/game/hooks/useGameInput";
 import { useMinimapInteraction } from "../../components/game/hooks/useMinimapInteraction";
 import { useTouchGestures } from "../../components/game/hooks/useTouchGestures";
-import { selectionBoxScreen } from "../../components/game/hooks/selectionBox";
 import { voiceBarkForBeep } from "../../lib/audio/voice";
+import { createCamera, TILE_H, tileToScreen } from "../../lib/iso";
+import {
+  cameraFocusPoint,
+  cameraPanBounds,
+  focusCameraAtTile,
+  panAvailability,
+} from "../../lib/render/camera";
+import { addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { heightAt } from "../../lib/sim/world";
+import type { BuildingKind, Command, SimState } from "../../lib/types";
 
 vi.mock("@/lib/audio/synth", () => ({ beep: vi.fn() }));
 vi.mock("@/lib/audio/voice", () => ({ voiceBarkForBeep: vi.fn() }));
@@ -22,7 +27,10 @@ function testCanvas() {
   canvas.width = 800;
   canvas.height = 600;
   Object.defineProperties(canvas, {
-    getBoundingClientRect: { configurable: true, value: () => ({ left: 10, top: 20, width: 800, height: 600 }) as DOMRect },
+    getBoundingClientRect: {
+      configurable: true,
+      value: () => ({ left: 10, top: 20, width: 800, height: 600 }) as DOMRect,
+    },
     setPointerCapture: { configurable: true, value: vi.fn() },
     hasPointerCapture: { configurable: true, value: vi.fn(() => true) },
     releasePointerCapture: { configurable: true, value: vi.fn() },
@@ -30,7 +38,10 @@ function testCanvas() {
   return canvas;
 }
 
-function pointerEvent(canvas: HTMLCanvasElement, overrides: Partial<PointerEvent<HTMLCanvasElement>> = {}) {
+function pointerEvent(
+  canvas: HTMLCanvasElement,
+  overrides: Partial<PointerEvent<HTMLCanvasElement>> = {},
+) {
   return {
     currentTarget: canvas,
     pointerId: 7,
@@ -59,7 +70,11 @@ function renderInput(
     setup?: (state: SimState) => void;
   } = {},
 ) {
-  const state = makeFixture({ width: overrides.width ?? 12, height: overrides.height ?? 12, win: { kind: "annihilate" } });
+  const state = makeFixture({
+    width: overrides.width ?? 12,
+    height: overrides.height ?? 12,
+    win: { kind: "annihilate" },
+  });
   overrides.setup?.(state);
   const commitSelection = vi.fn();
   const applyEdgePan = vi.fn();
@@ -104,7 +119,17 @@ function renderInput(
     },
     { initialProps: { repairMode: overrides.repairMode ?? false } },
   );
-  return { result, canvas, commandQueue, commitSelection, applyEdgePan, clearTools, repairRef, rerender, state };
+  return {
+    result,
+    canvas,
+    commandQueue,
+    commitSelection,
+    applyEdgePan,
+    clearTools,
+    repairRef,
+    rerender,
+    state,
+  };
 }
 
 function dispatchWheel(canvas: HTMLCanvasElement, options: WheelEventInit): WheelEvent {
@@ -157,18 +182,22 @@ describe("desktop marquee pointer lifecycle", () => {
     expect(result.current.boxRef.current).toMatchObject({ x0: 110, y0: 120, x1: 110, y1: 120 });
 
     act(() => {
-      result.current.onEnter(pointerEvent(canvas, {
-        type: "pointerenter",
-        clientX: 10,
-        clientY: 20,
-        buttons: 1,
-      }));
-      result.current.onMove(pointerEvent(canvas, {
-        type: "pointerenter",
-        clientX: 10,
-        clientY: 20,
-        buttons: 1,
-      }));
+      result.current.onEnter(
+        pointerEvent(canvas, {
+          type: "pointerenter",
+          clientX: 10,
+          clientY: 20,
+          buttons: 1,
+        }),
+      );
+      result.current.onMove(
+        pointerEvent(canvas, {
+          type: "pointerenter",
+          clientX: 10,
+          clientY: 20,
+          buttons: 1,
+        }),
+      );
     });
 
     expect(result.current.boxRef.current).toMatchObject({ x0: 110, y0: 120, x1: 110, y1: 120 });
@@ -209,10 +238,17 @@ describe("trackpad and mouse wheel camera panning", () => {
     expect(camera.x).toBe(start.x + 24);
     expect(camera.y).toBe(start.y - 36);
     expect(event!.defaultPrevented).toBe(true);
-    expect(result.current.panAvailRef.current).toEqual(panAvailability(
-      camera,
-      cameraPanBounds(result.current.stateRef.current.width, result.current.stateRef.current.height, canvas.width, canvas.height),
-    ));
+    expect(result.current.panAvailRef.current).toEqual(
+      panAvailability(
+        camera,
+        cameraPanBounds(
+          result.current.stateRef.current.width,
+          result.current.stateRef.current.height,
+          canvas.width,
+          canvas.height,
+        ),
+      ),
+    );
   });
 
   it("normalizes line and page wheel deltas", () => {
@@ -296,13 +332,20 @@ describe("minimap camera navigation", () => {
     const camera = createCamera();
     const battlefield = testCanvas();
     const minimap = testCanvas();
-    const bounds = cameraPanBounds(state.width, state.height, battlefield.width, battlefield.height);
+    const bounds = cameraPanBounds(
+      state.width,
+      state.height,
+      battlefield.width,
+      battlefield.height,
+    );
     focusCameraAtTile(camera, 20, 20, bounds);
-    const { result } = renderHook(() => useMinimapInteraction({
-      stateRef: { current: state },
-      canvasRef: { current: battlefield },
-      camRef: { current: camera },
-    }));
+    const { result } = renderHook(() =>
+      useMinimapInteraction({
+        stateRef: { current: state },
+        canvasRef: { current: battlefield },
+        camRef: { current: camera },
+      }),
+    );
     return { camera, bounds, minimap, result };
   }
 
@@ -312,7 +355,9 @@ describe("minimap camera navigation", () => {
 
     act(() => {
       result.current.onMinimapPointerDown(event);
-      result.current.onMinimapPointerUp(pointerEvent(minimap, { type: "pointerup", clientX: 10, clientY: 20 }));
+      result.current.onMinimapPointerUp(
+        pointerEvent(minimap, { type: "pointerup", clientX: 10, clientY: 20 }),
+      );
     });
 
     expect(cameraFocusPoint(camera, bounds).x).toBeCloseTo(0);
@@ -325,8 +370,12 @@ describe("minimap camera navigation", () => {
 
     act(() => {
       result.current.onMinimapPointerDown(pointerEvent(minimap, { clientX: 410, clientY: 320 }));
-      result.current.onMinimapPointerMove(pointerEvent(minimap, { type: "pointermove", clientX: 426, clientY: 332 }));
-      result.current.onMinimapPointerUp(pointerEvent(minimap, { type: "pointerup", clientX: 426, clientY: 332 }));
+      result.current.onMinimapPointerMove(
+        pointerEvent(minimap, { type: "pointermove", clientX: 426, clientY: 332 }),
+      );
+      result.current.onMinimapPointerUp(
+        pointerEvent(minimap, { type: "pointerup", clientX: 426, clientY: 332 }),
+      );
     });
 
     expect(cameraFocusPoint(camera, bounds).x).toBeGreaterThan(before.x);
@@ -343,21 +392,26 @@ describe("touch gesture lifecycle", () => {
       const selectionModeRef = { current: false };
       const boxRef = { current: null };
       const issueContextOrder = vi.fn();
-      const { result } = renderHook(() => useTouchGestures({
-        camRef: { current: cam },
-        stateRef: { current: state },
-        selectionModeRef,
-        boxRef,
-        issueContextOrder,
-      }));
+      const { result } = renderHook(() =>
+        useTouchGestures({
+          camRef: { current: cam },
+          stateRef: { current: state },
+          selectionModeRef,
+          boxRef,
+          issueContextOrder,
+        }),
+      );
       const canvas = testCanvas();
-      const touch = (overrides: Partial<PointerEvent<HTMLCanvasElement>> = {}) => pointerEvent(canvas, { pointerType: "touch", ...overrides });
+      const touch = (overrides: Partial<PointerEvent<HTMLCanvasElement>> = {}) =>
+        pointerEvent(canvas, { pointerType: "touch", ...overrides });
 
       act(() => result.current.beginTouch(touch(), { x: 100, y: 100 }));
       expect(result.current.endTouch(touch({ buttons: 0 }))).toBe(false);
 
       act(() => result.current.beginTouch(touch(), { x: 100, y: 100 }));
-      act(() => result.current.moveTouch(touch({ clientX: 130, clientY: 100 }), { x: 130, y: 100 }));
+      act(() =>
+        result.current.moveTouch(touch({ clientX: 130, clientY: 100 }), { x: 130, y: 100 }),
+      );
       expect(result.current.endTouch(touch({ clientX: 130, clientY: 100, buttons: 0 }))).toBe(true);
       expect(issueContextOrder).not.toHaveBeenCalled();
 
@@ -376,15 +430,21 @@ describe("touch gesture lifecycle", () => {
     const { result, commitSelection } = renderInput(canvas);
 
     act(() => {
-      result.current.onDown(pointerEvent(canvas, { pointerType: "touch", clientX: 120, clientY: 140 }));
-      result.current.onEnter(pointerEvent(canvas, {
-        pointerType: "touch",
-        type: "pointerenter",
-        clientX: 10,
-        clientY: 20,
-        buttons: 1,
-      }));
-      result.current.onUp(pointerEvent(canvas, { pointerType: "touch", clientX: 120, clientY: 140, buttons: 0 }));
+      result.current.onDown(
+        pointerEvent(canvas, { pointerType: "touch", clientX: 120, clientY: 140 }),
+      );
+      result.current.onEnter(
+        pointerEvent(canvas, {
+          pointerType: "touch",
+          type: "pointerenter",
+          clientX: 10,
+          clientY: 20,
+          buttons: 1,
+        }),
+      );
+      result.current.onUp(
+        pointerEvent(canvas, { pointerType: "touch", clientX: 120, clientY: 140, buttons: 0 }),
+      );
     });
 
     expect(commitSelection).toHaveBeenCalledOnce();
@@ -396,20 +456,23 @@ describe("touch gesture lifecycle", () => {
     const selectionModeRef = { current: false };
     const boxRef = { current: null };
     const setSelectionMode = vi.fn();
-    const { result } = renderHook(() => useTouchGestures({
-      camRef: { current: cam },
-      stateRef: { current: state },
-      selectionModeRef,
-      boxRef,
-      issueContextOrder: vi.fn(),
-      setSelectionMode,
-    }));
+    const { result } = renderHook(() =>
+      useTouchGestures({
+        camRef: { current: cam },
+        stateRef: { current: state },
+        selectionModeRef,
+        boxRef,
+        issueContextOrder: vi.fn(),
+        setSelectionMode,
+      }),
+    );
     const canvas = testCanvas();
-    const touch = (pointerId: number, overrides: Partial<PointerEvent<HTMLCanvasElement>> = {}) => pointerEvent(canvas, {
-      pointerType: "touch",
-      pointerId,
-      ...overrides,
-    });
+    const touch = (pointerId: number, overrides: Partial<PointerEvent<HTMLCanvasElement>> = {}) =>
+      pointerEvent(canvas, {
+        pointerType: "touch",
+        pointerId,
+        ...overrides,
+      });
 
     act(() => {
       result.current.beginTouch(touch(1), { x: 100, y: 100 });
@@ -420,12 +483,22 @@ describe("touch gesture lifecycle", () => {
     expect(cam.zoom).toBe(1);
     expect(selectionModeRef.current).toBe(true);
     expect(setSelectionMode).toHaveBeenCalledWith(true);
-    expect(boxRef.current).toEqual({ x0: 100, y0: 100, x1: 240, y1: 220, anchor: { x: -300, y: 20 } });
+    expect(boxRef.current).toEqual({
+      x0: 100,
+      y0: 100,
+      x1: 240,
+      y1: 220,
+      anchor: { x: -300, y: 20 },
+    });
     cam.x += 30;
     expect(selectionBoxScreen(boxRef.current!, cam).x0).toBe(130);
 
-    expect(result.current.endTouch(touch(1, { clientX: 100, clientY: 100 }), { x: 100, y: 100 })).toBe(true);
-    expect(result.current.endTouch(touch(2, { clientX: 240, clientY: 220 }), { x: 240, y: 220 })).toBe(false);
+    expect(
+      result.current.endTouch(touch(1, { clientX: 100, clientY: 100 }), { x: 100, y: 100 }),
+    ).toBe(true);
+    expect(
+      result.current.endTouch(touch(2, { clientX: 240, clientY: 220 }), { x: 240, y: 220 }),
+    ).toBe(false);
   });
 
   it("clamps touch dragging when it tries to pan beyond the battlefield", () => {
@@ -435,15 +508,18 @@ describe("touch gesture lifecycle", () => {
     focusCameraAtTile(cam, 0, 0, bounds);
     const selectionModeRef = { current: false };
     const boxRef = { current: null };
-    const { result } = renderHook(() => useTouchGestures({
-      camRef: { current: cam },
-      stateRef: { current: state },
-      selectionModeRef,
-      boxRef,
-      issueContextOrder: vi.fn(),
-    }));
+    const { result } = renderHook(() =>
+      useTouchGestures({
+        camRef: { current: cam },
+        stateRef: { current: state },
+        selectionModeRef,
+        boxRef,
+        issueContextOrder: vi.fn(),
+      }),
+    );
     const canvas = testCanvas();
-    const touch = (overrides: Partial<PointerEvent<HTMLCanvasElement>> = {}) => pointerEvent(canvas, { pointerType: "touch", ...overrides });
+    const touch = (overrides: Partial<PointerEvent<HTMLCanvasElement>> = {}) =>
+      pointerEvent(canvas, { pointerType: "touch", ...overrides });
 
     act(() => {
       result.current.beginTouch(touch(), { x: 100, y: 100 });
@@ -483,11 +559,13 @@ describe("command markers", () => {
     const p = tileToScreen(0, 0, cam, heightAt(state, 0, 0));
 
     act(() => {
-      result.current.onUp(pointerEvent(canvas, {
-        clientX: p.x + 10,
-        clientY: p.y + 20,
-        buttons: 0,
-      }));
+      result.current.onUp(
+        pointerEvent(canvas, {
+          clientX: p.x + 10,
+          clientY: p.y + 20,
+          buttons: 0,
+        }),
+      );
     });
 
     expect(result.current.commandMarkerRef.current).toBeNull();
@@ -534,7 +612,12 @@ describe("double-click selection", () => {
       },
     });
     const tank = state.entities.find((entity) => entity.id === firstId)!;
-    const pos = tileToScreen(tank.x, tank.y, cam, heightAt(state, Math.round(tank.x), Math.round(tank.y)));
+    const pos = tileToScreen(
+      tank.x,
+      tank.y,
+      cam,
+      heightAt(state, Math.round(tank.x), Math.round(tank.y)),
+    );
     const click = pointerEvent(canvas, {
       clientX: pos.x + 10,
       clientY: pos.y + TILE_H / 2 - 12 + 20,

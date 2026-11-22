@@ -1,11 +1,11 @@
 import { BUILDING_STATS, UNIT_STATS } from "../catalog";
 import { isoFacingAngleDegrees } from "../iso";
+import type { Facing, ShapeSpec, SpriteSpec } from "../types";
+import { type CatalogAsset, listGeneratedAssets } from "./assetCatalog";
 import { buildingSprite, rubbleSprite, unitSprite, wreckSprite } from "./assets";
-import { listGeneratedAssets, type CatalogAsset } from "./assetCatalog";
-import { generateVisualProfile } from "./visualProfile";
 import { generateFactions } from "./factions";
 import { rotatedSpriteBounds } from "./spriteBounds";
-import type { Facing, ShapeSpec, SpriteSpec } from "../types";
+import { generateVisualProfile } from "./visualProfile";
 
 export const ASSET_API_VERSION = 1;
 export const ASSET_API_CATEGORIES = ["unit", "building", "wreck", "rubble"] as const;
@@ -46,7 +46,10 @@ export function resolveAssetParam(id: string) {
   const asset = assetById(decodedId);
   if (!asset) {
     return {
-      errorResponse: Response.json({ error: "Asset not found" }, { status: 404, headers: ASSET_API_HEADERS }),
+      errorResponse: Response.json(
+        { error: "Asset not found" },
+        { status: 404, headers: ASSET_API_HEADERS },
+      ),
     };
   }
   return { asset };
@@ -118,8 +121,10 @@ export function assetPreviewSpec(asset: CatalogAsset, facing: Facing = 0): Sprit
 }
 
 function detailsFor(asset: CatalogAsset): Record<string, unknown> {
-  if (asset.category === "unit") return { stats: UNIT_STATS[asset.kind as keyof typeof UNIT_STATS] };
-  if (asset.category === "building") return { stats: BUILDING_STATS[asset.kind as keyof typeof BUILDING_STATS] };
+  if (asset.category === "unit")
+    return { stats: UNIT_STATS[asset.kind as keyof typeof UNIT_STATS] };
+  if (asset.category === "building")
+    return { stats: BUILDING_STATS[asset.kind as keyof typeof BUILDING_STATS] };
   return { baseAssetId: `${asset.category === "wreck" ? "unit" : "building"}:${asset.kind}` };
 }
 
@@ -132,10 +137,10 @@ export function toAssetApiItem(asset: CatalogAsset, requestUrl: string): AssetAp
   const supportsFacing = asset.category === "unit";
   const directions = supportsFacing
     ? ASSET_FACINGS.map((facing) => ({
-      facing,
-      angleDegrees: isoFacingAngleDegrees(facing),
-      previewUrl: directionUrl(previewUrl, facing),
-    }))
+        facing,
+        angleDegrees: isoFacingAngleDegrees(facing),
+        previewUrl: directionUrl(previewUrl, facing),
+      }))
     : [];
   const sourceUrl = supportsFacing
     ? previewUrl
@@ -166,23 +171,40 @@ function directionUrl(previewUrl: string, facing: Facing): string {
 }
 
 function escapeXml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&apos;",
-  })[character]!);
+  return value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&apos;",
+      })[character]!,
+  );
 }
 
 function shapeToSvg(shape: ShapeSpec): string {
   const common = `fill="${escapeXml(shape.fill)}"${shape.stroke ? ` stroke="${escapeXml(shape.stroke)}"` : ""}${shape.strokeWidth ? ` stroke-width="${shape.strokeWidth}"` : ""}${shape.alpha !== undefined ? ` opacity="${shape.alpha}"` : ""}`;
-  if (shape.type === "rect") return `<rect x="${shape.x}" y="${shape.y}" width="${shape.w}" height="${shape.h}" ${common}/>`;
-  if (shape.type === "ellipse") return `<ellipse cx="${shape.x + shape.w / 2}" cy="${shape.y + shape.h / 2}" rx="${shape.w / 2}" ry="${shape.h / 2}" ${common}/>`;
-  if (shape.type === "line") return `<line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.w}" y2="${shape.y + shape.h}" ${common}/>`;
-  const points = shape.type === "diamond"
-    ? [shape.x + shape.w / 2, shape.y, shape.x + shape.w, shape.y + shape.h / 2, shape.x + shape.w / 2, shape.y + shape.h, shape.x, shape.y + shape.h / 2]
-    : shape.points ?? [];
+  if (shape.type === "rect")
+    return `<rect x="${shape.x}" y="${shape.y}" width="${shape.w}" height="${shape.h}" ${common}/>`;
+  if (shape.type === "ellipse")
+    return `<ellipse cx="${shape.x + shape.w / 2}" cy="${shape.y + shape.h / 2}" rx="${shape.w / 2}" ry="${shape.h / 2}" ${common}/>`;
+  if (shape.type === "line")
+    return `<line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.w}" y2="${shape.y + shape.h}" ${common}/>`;
+  const points =
+    shape.type === "diamond"
+      ? [
+          shape.x + shape.w / 2,
+          shape.y,
+          shape.x + shape.w,
+          shape.y + shape.h / 2,
+          shape.x + shape.w / 2,
+          shape.y + shape.h,
+          shape.x,
+          shape.y + shape.h / 2,
+        ]
+      : (shape.points ?? []);
   return `<polygon points="${points.join(" ")}" ${common}/>`;
 }
 
@@ -210,11 +232,12 @@ function spriteViewport(spec: SpriteSpec): SvgViewport {
 
 export function spriteSpecToSvg(spec: SpriteSpec, imageUrl?: string): string {
   const shapes = spec.shapes.map(shapeToSvg).join("");
-  const image = spec.imageSrc && imageUrl
-    ? spec.imageCrop
-      ? `<svg x="0" y="0" width="${spec.w}" height="${spec.h}" viewBox="${spec.imageCrop.x} ${spec.imageCrop.y} ${spec.imageCrop.w} ${spec.imageCrop.h}" preserveAspectRatio="xMidYMax meet"><image href="${escapeXml(imageUrl)}" x="0" y="0" width="${spec.imageCrop.sourceW}" height="${spec.imageCrop.sourceH}" preserveAspectRatio="none"/></svg>`
-      : `<image href="${escapeXml(imageUrl)}" x="0" y="0" width="${spec.w}" height="${spec.h}" preserveAspectRatio="xMidYMax meet"${spec.rotation ? ` transform="rotate(${spec.rotation * 180 / Math.PI} ${spec.anchorX ?? spec.w / 2} ${spec.anchorY ?? spec.h})"` : ""}/>`
-    : "";
+  const image =
+    spec.imageSrc && imageUrl
+      ? spec.imageCrop
+        ? `<svg x="0" y="0" width="${spec.w}" height="${spec.h}" viewBox="${spec.imageCrop.x} ${spec.imageCrop.y} ${spec.imageCrop.w} ${spec.imageCrop.h}" preserveAspectRatio="xMidYMax meet"><image href="${escapeXml(imageUrl)}" x="0" y="0" width="${spec.imageCrop.sourceW}" height="${spec.imageCrop.sourceH}" preserveAspectRatio="none"/></svg>`
+        : `<image href="${escapeXml(imageUrl)}" x="0" y="0" width="${spec.w}" height="${spec.h}" preserveAspectRatio="xMidYMax meet"${spec.rotation ? ` transform="rotate(${(spec.rotation * 180) / Math.PI} ${spec.anchorX ?? spec.w / 2} ${spec.anchorY ?? spec.h})"` : ""}/>`
+      : "";
   const viewport = spriteViewport(spec);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${viewport.width}" height="${viewport.height}" viewBox="${viewport.minX} ${viewport.minY} ${viewport.width} ${viewport.height}">${shapes}${image}</svg>`;
 }

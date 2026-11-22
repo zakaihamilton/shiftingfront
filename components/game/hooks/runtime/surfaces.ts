@@ -1,6 +1,6 @@
 import { powerBreakdown } from "@/lib/sim/world";
-import { gameOverlayModel, powerSignature } from "../../gameOverlayModel";
 import { minimapPingFor } from "@/lib/ui/missionPresentation";
+import { gameOverlayModel, powerSignature } from "../../gameOverlayModel";
 import type { GameRuntime, OverlaySurfaceModel, PlayFieldSurfaceModel } from "./types";
 
 export type GameRuntimeSurfaces = {
@@ -18,12 +18,19 @@ export function createGameRuntimeSurfaceCache(): GameRuntimeSurfaceCache {
 }
 
 /** The single adapter between runtime orchestration and screen view models. */
-export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRuntimeSurfaceCache): GameRuntimeSurfaces {
-  const { palette, selected } = gameOverlayModel({ state: runtime.state, selectedIds: runtime.selectedIds });
+export function createGameRuntimeSurfaces(
+  runtime: GameRuntime,
+  cache: GameRuntimeSurfaceCache,
+): GameRuntimeSurfaces {
+  const { palette, selected } = gameOverlayModel({
+    state: runtime.state,
+    selectedIds: runtime.selectedIds,
+  });
   const powerSig = powerSignature(runtime.state);
-  const grid = cache.powerSig === powerSig && cache.power
-    ? cache.power
-    : powerBreakdown(runtime.state, runtime.state.viewOwner ?? 0);
+  const grid =
+    cache.powerSig === powerSig && cache.power
+      ? cache.power
+      : powerBreakdown(runtime.state, runtime.state.viewOwner ?? 0);
   cache.powerSig = powerSig;
   cache.power = grid;
   const minimapPing = runtime.combatAlert
@@ -86,7 +93,10 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
     onToggleMobilePanel: runtime.onToggleMobilePanel,
     onMobileSheetDrag: runtime.onMobileSheetDrag,
     sidebar: {
-      factionName: runtime.state.factions[runtime.state.viewOwner ?? 0]?.name ?? runtime.campaign.factions[0]?.name ?? "Command",
+      factionName:
+        runtime.state.factions[runtime.state.viewOwner ?? 0]?.name ??
+        runtime.campaign.factions[0]?.name ??
+        "Command",
       state: runtime.state,
       palette,
       profile: runtime.playerVisualProfile,
@@ -146,7 +156,9 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
             onBriefing: runtime.session.viewMissionBriefing,
             onRestart: runtime.session.restartMission,
             onMenu: runtime.session.goMenu,
-            onLeaveWithoutSave: runtime.session.canLeaveWithoutSave ? runtime.session.leaveWithoutSave : undefined,
+            onLeaveWithoutSave: runtime.session.canLeaveWithoutSave
+              ? runtime.session.leaveWithoutSave
+              : undefined,
             onToggleSound: runtime.session.toggleSound,
             onToggleMusic: runtime.session.toggleMusic,
             onToggleVoice: runtime.session.toggleVoice,
@@ -156,13 +168,21 @@ export function createGameRuntimeSurfaces(runtime: GameRuntime, cache: GameRunti
             onCycleHudScale: runtime.session.cycleHudScale,
             onUpdateKeyBindings: runtime.session.updateKeyBindings,
             onVolumeChange: runtime.session.updateVolume,
-            onExportTelemetry: runtime.session.telemetryEnabled ? runtime.session.exportTelemetry : undefined,
-            onClearTelemetry: runtime.session.telemetryEnabled ? runtime.session.clearTelemetry : undefined,
+            onExportTelemetry: runtime.session.telemetryEnabled
+              ? runtime.session.exportTelemetry
+              : undefined,
+            onClearTelemetry: runtime.session.telemetryEnabled
+              ? runtime.session.clearTelemetry
+              : undefined,
           },
         }
       : null,
     confirmation: runtime.session.confirmation
-      ? { value: runtime.session.confirmation, onConfirm: runtime.session.confirmAction, onCancel: runtime.session.cancelConfirmation }
+      ? {
+          value: runtime.session.confirmation,
+          onConfirm: runtime.session.confirmAction,
+          onCancel: runtime.session.cancelConfirmation,
+        }
       : null,
   };
 

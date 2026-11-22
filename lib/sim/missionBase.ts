@@ -1,9 +1,9 @@
-import type { ReadonlyMissionDef, SimState, UnitKind, Vec2 } from "../types";
 import type { GeneratedMap } from "../gen/map";
 import { objectiveContractFor } from "../gen/profile";
+import type { ReadonlyMissionDef, SimState, UnitKind, Vec2 } from "../types";
 import type { MissionDifficulty } from "./difficulty";
-import { spawnBuildingAt, spawnUnit } from "./world";
 import { entitiesFor } from "./entities";
+import { spawnBuildingAt, spawnUnit } from "./world";
 
 function baseOrientationVectors(from: Vec2, to: Vec2): { forward: Vec2; lateral: Vec2 } {
   const dx = to.x - from.x;
@@ -29,8 +29,14 @@ function dirPoint(
   height: number,
 ): Vec2 {
   return {
-    x: Math.max(3, Math.min(width - 4, Math.round(anchor.x + forward.x * fDist + lateral.x * lDist))),
-    y: Math.max(3, Math.min(height - 4, Math.round(anchor.y + forward.y * fDist + lateral.y * lDist))),
+    x: Math.max(
+      3,
+      Math.min(width - 4, Math.round(anchor.x + forward.x * fDist + lateral.x * lDist)),
+    ),
+    y: Math.max(
+      3,
+      Math.min(height - 4, Math.round(anchor.y + forward.y * fDist + lateral.y * lDist)),
+    ),
   };
 }
 
@@ -43,7 +49,13 @@ export function placePlayerBase(
   const p = map.playerStart;
   const e = map.enemyStart;
   const pVecs = baseOrientationVectors(p, e);
-  const offensiveMission = ["sabotage", "destroyMarked", "razeAll", "decapitate", "annihilate"].includes(mission.win.kind);
+  const offensiveMission = [
+    "sabotage",
+    "destroyMarked",
+    "razeAll",
+    "decapitate",
+    "annihilate",
+  ].includes(mission.win.kind);
   // Player base layout
   spawnBuildingAt(state, 0, "constructionYard", p.x, p.y);
   const pPower = dirPoint(p, pVecs.forward, pVecs.lateral, -2, 2, state.width, state.height);
@@ -70,15 +82,43 @@ export function placePlayerBase(
   if (mission.win.kind === "annihilate") {
     const pAssaultTank = dirPoint(p, pVecs.forward, pVecs.lateral, 6, 2, state.width, state.height);
     spawnUnit(state, 0, "tank", pAssaultTank.x, pAssaultTank.y);
-    const pAssaultAntiArmor = dirPoint(p, pVecs.forward, pVecs.lateral, 6, -2, state.width, state.height);
+    const pAssaultAntiArmor = dirPoint(
+      p,
+      pVecs.forward,
+      pVecs.lateral,
+      6,
+      -2,
+      state.width,
+      state.height,
+    );
     spawnUnit(state, 0, "antiArmor", pAssaultAntiArmor.x, pAssaultAntiArmor.y);
   }
   if (mission.win.kind === "decapitate" || mission.win.kind === "annihilate") {
-    const pAssaultMedic = dirPoint(p, pVecs.forward, pVecs.lateral, 3, 3, state.width, state.height);
+    const pAssaultMedic = dirPoint(
+      p,
+      pVecs.forward,
+      pVecs.lateral,
+      3,
+      3,
+      state.width,
+      state.height,
+    );
     spawnUnit(state, 0, "medic", pAssaultMedic.x, pAssaultMedic.y);
   }
-  for (let turretIndex = 0; turretIndex < difficulty.offensiveStartingTurrets && offensiveMission; turretIndex += 1) {
-    const pExtraTurret = dirPoint(p, pVecs.forward, pVecs.lateral, 3, 2 + turretIndex * 2, state.width, state.height);
+  for (
+    let turretIndex = 0;
+    turretIndex < difficulty.offensiveStartingTurrets && offensiveMission;
+    turretIndex += 1
+  ) {
+    const pExtraTurret = dirPoint(
+      p,
+      pVecs.forward,
+      pVecs.lateral,
+      3,
+      2 + turretIndex * 2,
+      state.width,
+      state.height,
+    );
     spawnBuildingAt(state, 0, "turret", pExtraTurret.x, pExtraTurret.y);
   }
   if (mission.index >= 3 || offensiveMission) {
@@ -90,9 +130,16 @@ export function placePlayerBase(
     spawnBuildingAt(state, 0, "barracks", pBarracks.x, pBarracks.y);
   }
 
-  for (const building of entitiesFor(state).filter((entity) => entity.owner === 0 && entity.class === "building" && entity.hp > 0 && entity.constructing === 0)) {
+  for (const building of entitiesFor(state).filter(
+    (entity) =>
+      entity.owner === 0 &&
+      entity.class === "building" &&
+      entity.hp > 0 &&
+      entity.constructing === 0,
+  )) {
     state.buildingsCompleted[0] += 1;
-    state.buildingsCompletedByKind[building.kind] = (state.buildingsCompletedByKind[building.kind] ?? 0) + 1;
+    state.buildingsCompletedByKind[building.kind] =
+      (state.buildingsCompletedByKind[building.kind] ?? 0) + 1;
   }
 }
 
@@ -128,19 +175,43 @@ export function placeEnemyBase(
 
   const openingGuardKinds: UnitKind[] = ["infantry", "antiArmor", "tank"];
   for (let i = 0; i < difficulty.startingGuards; i++) {
-    const guardPos = dirPoint(e, eVecs.forward, eVecs.lateral, 3 + Math.floor(i / 3), -2 + (i % 3) * 2, state.width, state.height);
+    const guardPos = dirPoint(
+      e,
+      eVecs.forward,
+      eVecs.lateral,
+      3 + Math.floor(i / 3),
+      -2 + (i % 3) * 2,
+      state.width,
+      state.height,
+    );
     spawnUnit(state, 1, openingGuardKinds[i % openingGuardKinds.length]!, guardPos.x, guardPos.y);
   }
 
   const extraGuards = Math.floor(mission.index / 2);
   for (let i = 0; i < extraGuards; i++) {
-    const extraGuardPos = dirPoint(e, eVecs.forward, eVecs.lateral, 4 + Math.floor(i / 2), i % 2 === 0 ? 2 : -2, state.width, state.height);
+    const extraGuardPos = dirPoint(
+      e,
+      eVecs.forward,
+      eVecs.lateral,
+      4 + Math.floor(i / 2),
+      i % 2 === 0 ? 2 : -2,
+      state.width,
+      state.height,
+    );
     spawnUnit(state, 1, i % 2 === 0 ? "infantry" : "antiArmor", extraGuardPos.x, extraGuardPos.y);
   }
   if (mission.index >= 3) {
     const eFactory = dirPoint(e, eVecs.forward, eVecs.lateral, -3, -2, state.width, state.height);
     spawnBuildingAt(state, 1, "factory", eFactory.x, eFactory.y);
-    const eSecondTurret = dirPoint(e, eVecs.forward, eVecs.lateral, 4, -3, state.width, state.height);
+    const eSecondTurret = dirPoint(
+      e,
+      eVecs.forward,
+      eVecs.lateral,
+      4,
+      -3,
+      state.width,
+      state.height,
+    );
     spawnBuildingAt(state, 1, "turret", eSecondTurret.x, eSecondTurret.y);
   }
 
@@ -149,21 +220,50 @@ export function placeEnemyBase(
     mission.win.kind === "decapitate" ||
     mission.win.kind === "annihilate" ||
     mission.win.kind === "destroyMarked";
-  if (assault && difficulty.assaultSupport && (objectiveContractFor(mission.win.kind)?.startingSupport ?? true)) {
-    const assaultTurret = dirPoint(e, eVecs.forward, eVecs.lateral, 3, 2, state.width, state.height);
+  if (
+    assault &&
+    difficulty.assaultSupport &&
+    (objectiveContractFor(mission.win.kind)?.startingSupport ?? true)
+  ) {
+    const assaultTurret = dirPoint(
+      e,
+      eVecs.forward,
+      eVecs.lateral,
+      3,
+      2,
+      state.width,
+      state.height,
+    );
     spawnBuildingAt(state, 1, "turret", assaultTurret.x, assaultTurret.y);
     const assaultTank = dirPoint(e, eVecs.forward, eVecs.lateral, 4, 1, state.width, state.height);
     spawnUnit(state, 1, "tank", assaultTank.x, assaultTank.y);
   }
 
   if (mission.win.kind === "holdTheLine") {
-    const holdLineKinds: UnitKind[] = ["infantry", "antiArmor", "tank", "infantry", "antiArmor", "tank", "infantry", "antiArmor"];
+    const holdLineKinds: UnitKind[] = [
+      "infantry",
+      "antiArmor",
+      "tank",
+      "infantry",
+      "antiArmor",
+      "tank",
+      "infantry",
+      "antiArmor",
+    ];
     // The hold objective already receives periodic pressure waves. Keep one
     // opening reinforcement slot available for the player's defensive setup.
     const openingHoldReinforcements = Math.max(0, difficulty.holdLineReinforcements - 1);
     for (let i = 0; i < openingHoldReinforcements; i++) {
       const kind = holdLineKinds[i]!;
-      const pos = dirPoint(e, eVecs.forward, eVecs.lateral, 3 + (i % 2), -3 + (i % 3) * 2, state.width, state.height);
+      const pos = dirPoint(
+        e,
+        eVecs.forward,
+        eVecs.lateral,
+        3 + (i % 2),
+        -3 + (i % 3) * 2,
+        state.width,
+        state.height,
+      );
       spawnUnit(state, 1, kind, pos.x, pos.y);
     }
   }

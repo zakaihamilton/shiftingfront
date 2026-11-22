@@ -4,14 +4,14 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { APP_VIEWPORT } from "../../lib/site";
 import { BattlefieldHud, isMobileDirectiveViewport } from "../../components/game/BattlefieldHud";
 import { CommandCameo } from "../../components/game/CommandCameo";
-import { SelectionIdentity } from "../../components/game/SelectionIdentity";
 import { resolvePointerUp } from "../../components/game/hooks/gamePointerUp";
 import { selectionProjectionPoint } from "../../components/game/hooks/selectionBox";
+import { SelectionIdentity } from "../../components/game/SelectionIdentity";
 import { createCamera, tileToScreen } from "../../lib/iso";
 import { addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { APP_VIEWPORT } from "../../lib/site";
 import type { FactionVisualProfile, Palette, UnitKind } from "../../lib/types";
 
 afterEach(() => cleanup());
@@ -40,14 +40,19 @@ describe("UX & Ergonomics Invariants", () => {
       { name: "combat only (infantry + tank)", units: ["infantry", "tank"] },
       { name: "economy only (harvesters)", units: ["harvester", "harvester"] },
       { name: "mixed combat and economy (infantry + harvester)", units: ["infantry", "harvester"] },
-      { name: "mixed multi-tier (antiArmor + tank + harvester)", units: ["antiArmor", "tank", "harvester"] },
+      {
+        name: "mixed multi-tier (antiArmor + tank + harvester)",
+        units: ["antiArmor", "tank", "harvester"],
+      },
     ];
 
     for (const { name, units } of testCases) {
       it(`produces identical unit selection between desktop drag and mobile marquee for: ${name}`, () => {
         const state = makeFixture({ width: 16, height: 16, win: { kind: "annihilate" } });
         const cam = createCamera();
-        const createdUnits = units.map((kind, index) => addUnit(state, 0, kind, 4 + index, 4 + index));
+        const createdUnits = units.map((kind, index) =>
+          addUnit(state, 0, kind, 4 + index, 4 + index),
+        );
 
         const screenPoints = createdUnits.map((u) => tileToScreen(u.x, u.y, cam, 0));
         const minX = Math.min(...screenPoints.map((p) => p.x)) - 25;
@@ -207,7 +212,16 @@ describe("UX & Ergonomics Invariants", () => {
             timeRemaining="Time remaining 05:00"
             timeRemainingTicks={5 * 60 * 12}
             timeLimitTicks={10 * 60 * 12}
-            objectiveCards={[{ id: "primary", label: "Hold the line", current: 0, target: 1, status: "active", primary: true }]}
+            objectiveCards={[
+              {
+                id: "primary",
+                label: "Hold the line",
+                current: 0,
+                target: 1,
+                status: "active",
+                primary: true,
+              },
+            ]}
           />,
         );
 

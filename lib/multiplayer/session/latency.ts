@@ -1,4 +1,4 @@
-import { SKIRMISH_MATCH_SETTINGS, type MultiplayerStatus, type MultiplayerWire } from "../protocol";
+import { type MultiplayerStatus, type MultiplayerWire, SKIRMISH_MATCH_SETTINGS } from "../protocol";
 
 const RTT_PROBE_INTERVAL_MS = 2_000;
 const RTT_SAMPLE_MAX_AGE_MS = 6_000;
@@ -23,20 +23,28 @@ export class MultiplayerLatency {
   private samples = new Map<string, RttSample>();
   private lastPublishedPingMs: number | null = null;
 
-  constructor(private readonly options: {
-    status: () => MultiplayerStatus;
-    peers: () => LatencyPeer[];
-    onChange: () => void;
-  }) {}
+  constructor(
+    private readonly options: {
+      status: () => MultiplayerStatus;
+      peers: () => LatencyPeer[];
+      onChange: () => void;
+    },
+  ) {}
 
   get pingMs(): number | null {
     if (this.options.status() !== "connected") return null;
     const now = monotonicNow();
-    const samples = this.options.peers()
+    const samples = this.options
+      .peers()
       .map(({ peerId }) => this.samples.get(peerId))
-      .filter((sample): sample is RttSample => sample !== undefined && now - sample.measuredAt <= RTT_SAMPLE_MAX_AGE_MS);
+      .filter(
+        (sample): sample is RttSample =>
+          sample !== undefined && now - sample.measuredAt <= RTT_SAMPLE_MAX_AGE_MS,
+      );
     if (samples.length === 0) return null;
-    return Math.round(samples.reduce((total, sample) => total + sample.milliseconds, 0) / samples.length);
+    return Math.round(
+      samples.reduce((total, sample) => total + sample.milliseconds, 0) / samples.length,
+    );
   }
 
   /** Start lightweight peer-to-peer RTT probes while the battlefield is mounted. */
@@ -90,7 +98,10 @@ export class MultiplayerLatency {
     if (sentAt === undefined) return true;
     peerPending!.delete(message.id);
     const receivedAt = monotonicNow();
-    this.samples.set(peerId, { milliseconds: Math.max(0, Math.round(receivedAt - sentAt)), measuredAt: receivedAt });
+    this.samples.set(peerId, {
+      milliseconds: Math.max(0, Math.round(receivedAt - sentAt)),
+      measuredAt: receivedAt,
+    });
     this.publishIfChanged();
     return true;
   }

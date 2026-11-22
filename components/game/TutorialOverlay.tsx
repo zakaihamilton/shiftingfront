@@ -1,5 +1,5 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
-import { tutorialStageIndex, TUTORIAL_STAGES, type TutorialWorldTarget } from "@/lib/sim/tutorial";
+import { TUTORIAL_STAGES, type TutorialWorldTarget, tutorialStageIndex } from "@/lib/sim/tutorial";
 import type { TutorialStage } from "@/lib/types";
 import styles from "./TutorialOverlay.module.css";
 
@@ -14,13 +14,18 @@ const STAGE_TITLES: Record<TutorialStage, string> = {
 };
 
 const HINTS: Record<TutorialStage, string> = {
-  select: "Selection works with a click or a drag box. The highlighted Infantry is the lesson target.",
+  select:
+    "Selection works with a click or a drag box. The highlighted Infantry is the lesson target.",
   move: "Tap the highlighted ground to move on touch, or right-click it with a mouse. Use attack-move when advancing under fire.",
-  build: "Power keeps the command center online and unlocks production. The highlighted site is a valid placement.",
-  produce: "Queue Infantry from the Production tab. The command panel accepts keyboard shortcuts too.",
-  attack: "The drill target is passive. Attack it directly or use attack-move on its highlighted tile.",
+  build:
+    "Power keeps the command center online and unlocks production. The highlighted site is a valid placement.",
+  produce:
+    "Queue Infantry from the Production tab. The command panel accepts keyboard shortcuts too.",
+  attack:
+    "The drill target is passive. Attack it directly or use attack-move on its highlighted tile.",
   repair: "Repair mode is safe to cancel with Escape or the visible cancel action.",
-  complete: "You can leave the range now, or stay on the battlefield to experiment before returning to the command desk.",
+  complete:
+    "You can leave the range now, or stay on the battlefield to experiment before returning to the command desk.",
 };
 
 function targetSummary(targets: TutorialWorldTarget[], stage: TutorialStage): string {
@@ -63,7 +68,9 @@ export function TutorialOverlay({
           <p className={styles.kicker}>Live training coach</p>
           <h2 className={styles.title}>{STAGE_TITLES[stage]}</h2>
         </div>
-        <span className={styles.progressLabel}>Step {step} / {TUTORIAL_STAGES.length}</span>
+        <span className={styles.progressLabel}>
+          Step {step} / {TUTORIAL_STAGES.length}
+        </span>
       </div>
       <div
         className={styles.progress}
@@ -73,10 +80,18 @@ export function TutorialOverlay({
         aria-valuemax={TUTORIAL_STAGES.length}
         aria-valuenow={step}
       >
-        {TUTORIAL_STAGES.map((item, index) => <span key={item} className={index <= stageIndex ? styles.progressActive : styles.progressPending} aria-hidden="true" />)}
+        {TUTORIAL_STAGES.map((item, index) => (
+          <span
+            key={item}
+            className={index <= stageIndex ? styles.progressActive : styles.progressPending}
+            aria-hidden="true"
+          />
+        ))}
       </div>
       <div className={styles.objective}>
-        <p className={styles.target}><span aria-hidden="true">◉</span> Focus: <strong>{targetSummary(targets, stage)}</strong></p>
+        <p className={styles.target}>
+          <span aria-hidden="true">◉</span> Focus: <strong>{targetSummary(targets, stage)}</strong>
+        </p>
         <p className={styles.prompt}>{prompt}</p>
       </div>
       <p className={styles.status} data-status={complete ? "complete" : "waiting"}>

@@ -1,13 +1,8 @@
-import { generateWorld } from "../../gen/world";
 import { pickMissionKinds } from "../../gen/missionOrder";
-import type { BiomeName, MissionKind } from "../../types";
+import { generateWorld } from "../../gen/world";
 import { createRng, type Rng } from "../../seed/rng";
-import type {
-  MusicArrangementName,
-  MusicCue,
-  MusicStyleName,
-  MusicStyleProfile,
-} from "./types";
+import type { BiomeName, MissionKind } from "../../types";
+import type { MusicArrangementName, MusicCue, MusicStyleName, MusicStyleProfile } from "./types";
 import { TUTORIAL_MUSIC_MISSION } from "./types";
 
 export type MusicMissionContext = {
@@ -16,10 +11,30 @@ export type MusicMissionContext = {
 };
 
 const BIOME_STYLES: Record<BiomeName, readonly MusicStyleName[]> = {
-  "ash plains": ["foundry-stomp", "industrial-march", "cinematic-tension", "tape-static", "break-wire", "disco-command"],
+  "ash plains": [
+    "foundry-stomp",
+    "industrial-march",
+    "cinematic-tension",
+    "tape-static",
+    "break-wire",
+    "disco-command",
+  ],
   "volcanic shelf": ["foundry-stomp", "night-raid", "acid-grid"],
-  "rust canyons": ["industrial-march", "chrome-fanfare", "signal-chase", "tape-static", "resonant-coil", "disco-command"],
-  "crystal flats": ["glass-chime", "neon-arpeggio", "chrome-fanfare", "bit-garrison", "choir-vector"],
+  "rust canyons": [
+    "industrial-march",
+    "chrome-fanfare",
+    "signal-chase",
+    "tape-static",
+    "resonant-coil",
+    "disco-command",
+  ],
+  "crystal flats": [
+    "glass-chime",
+    "neon-arpeggio",
+    "chrome-fanfare",
+    "bit-garrison",
+    "choir-vector",
+  ],
   "glass desert": ["acid-grid", "glass-chime", "signal-chase", "dune-cipher", "resonant-coil"],
   "tundra grid": ["ice-protocol", "low-orbit", "cinematic-tension"],
   "jungle wreckage": ["night-raid", "orbital-drift", "neon-arpeggio", "bit-garrison", "break-wire"],
@@ -28,7 +43,13 @@ const BIOME_STYLES: Record<BiomeName, readonly MusicStyleName[]> = {
 
 const BIOME_STYLES_SECONDARY: Record<BiomeName, readonly MusicStyleName[]> = {
   "ash plains": ["chrome-fanfare", "signal-chase", "night-raid", "resonant-coil"],
-  "volcanic shelf": ["industrial-march", "cinematic-tension", "foundry-stomp", "tape-static", "resonant-coil"],
+  "volcanic shelf": [
+    "industrial-march",
+    "cinematic-tension",
+    "foundry-stomp",
+    "tape-static",
+    "resonant-coil",
+  ],
   "rust canyons": ["foundry-stomp", "cinematic-tension", "acid-grid", "break-wire"],
   "crystal flats": ["acid-grid", "orbital-drift", "signal-chase", "disco-command"],
   "glass desert": ["neon-arpeggio", "night-raid", "chrome-fanfare", "tape-static"],
@@ -38,7 +59,13 @@ const BIOME_STYLES_SECONDARY: Record<BiomeName, readonly MusicStyleName[]> = {
 };
 
 const KIND_STYLES: Partial<Record<MissionKind, readonly MusicStyleName[]>> = {
-  harvestQuota: ["chrome-fanfare", "neon-arpeggio", "orbital-drift", "signal-chase", "disco-command"],
+  harvestQuota: [
+    "chrome-fanfare",
+    "neon-arpeggio",
+    "orbital-drift",
+    "signal-chase",
+    "disco-command",
+  ],
   forceQuota: ["chrome-fanfare", "neon-arpeggio", "signal-chase", "disco-command", "bit-garrison"],
   structureQuota: ["industrial-march", "chrome-fanfare", "cinematic-tension", "choir-vector"],
   holdTheLine: ["cinematic-tension", "industrial-march", "foundry-stomp", "choir-vector"],
@@ -93,7 +120,10 @@ export function styleAffinityScore(name: MusicStyleName, ctx: MusicMissionContex
   return score;
 }
 
-export function arrangementAffinityScore(name: MusicArrangementName, ctx: MusicMissionContext): number {
+export function arrangementAffinityScore(
+  name: MusicArrangementName,
+  ctx: MusicMissionContext,
+): number {
   if (ctx.missionKind && KIND_ARRANGEMENTS[ctx.missionKind]?.includes(name)) return 3;
   return 0;
 }
@@ -159,14 +189,21 @@ export function pickAssignedItem<T>(
   const used = new Set(assigned);
   const leftover = items.filter((item) => !used.has(item));
   if (leftover.length === 0) {
-    return pickBestByScore(items, (item) => scoreOf(item, fallbackCtx), rng.fork(String(missionIndex)));
+    return pickBestByScore(
+      items,
+      (item) => scoreOf(item, fallbackCtx),
+      rng.fork(String(missionIndex)),
+    );
   }
   const orderedLeftover = rng.fork("leftover-order").shuffle(leftover);
   const offset = missionIndex - assigned.length;
   return orderedLeftover[offset % orderedLeftover.length]!;
 }
 
-export function applyMissionTints(style: MusicStyleProfile, ctx: MusicMissionContext): MusicStyleProfile {
+export function applyMissionTints(
+  style: MusicStyleProfile,
+  ctx: MusicMissionContext,
+): MusicStyleProfile {
   const next: MusicStyleProfile = { ...style, drum: { ...style.drum } };
   const biome = ctx.biome;
   const kind = ctx.missionKind;

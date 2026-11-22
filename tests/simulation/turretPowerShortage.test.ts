@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { tickCombat } from "../../lib/sim/combat";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import {
+  isDefensiveTurret,
   POWER_SHORTAGE_TURRET_COOLDOWN_RATE,
   POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER,
   POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER,
-  isDefensiveTurret,
 } from "../../lib/catalog";
-import { powerFor } from "../../lib/sim/world";
-import { fogAt, tileInPlayerVision, tickFog } from "../../lib/sim/fog";
 import { turretRange, turretTargetInRange } from "../../lib/render/renderStructures/turret";
+import { tickCombat } from "../../lib/sim/combat";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { fogAt, tickFog, tileInPlayerVision } from "../../lib/sim/fog";
+import { powerFor } from "../../lib/sim/world";
 
 describe("Turret power shortage penalties", () => {
   it("identifies defensive turrets and exports penalty constants correctly", () => {

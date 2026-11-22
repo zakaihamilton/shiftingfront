@@ -1,5 +1,5 @@
-import { TILE_H, tileToScreen, type Camera } from "../../iso";
 import { UNIT_STATS } from "../../catalog";
+import { type Camera, TILE_H, tileToScreen } from "../../iso";
 import { distToEntity, heightAt } from "../../sim/world";
 import { isUnitEntity, type SimState } from "../../types";
 import type { CommandMarker, CommandMarkerKind } from "./types";
@@ -7,7 +7,10 @@ import type { CommandMarker, CommandMarkerKind } from "./types";
 export const COMMAND_MARKER_INTRO_MS = 220;
 export const COMMAND_MARKER_INVALID_MS = 900;
 
-export const COMMAND_MARKER_COLORS: Record<CommandMarkerKind, { stroke: string; shadow: string; fill: string }> = {
+export const COMMAND_MARKER_COLORS: Record<
+  CommandMarkerKind,
+  { stroke: string; shadow: string; fill: string }
+> = {
   move: { stroke: "#8dffc8", shadow: "#43e69a", fill: "#d7ffe9" },
   attack: { stroke: "#ff7a6e", shadow: "#e04538", fill: "#ffd4ce" },
   harvest: { stroke: "#ffd07a", shadow: "#e0a040", fill: "#ffe9c4" },
@@ -19,16 +22,23 @@ function ordersUnits(command: { type: string; unitIds?: number[] }): boolean {
   return (command.unitIds?.length ?? 0) > 0;
 }
 
-export function commandMarkerKind(commands: { type: string; unitIds?: number[] }[]): CommandMarkerKind | null {
+export function commandMarkerKind(
+  commands: { type: string; unitIds?: number[] }[],
+): CommandMarkerKind | null {
   const issued = commands.filter(ordersUnits);
-  if (issued.some((command) => command.type === "attack" || command.type === "attackMove")) return "attack";
+  if (issued.some((command) => command.type === "attack" || command.type === "attackMove"))
+    return "attack";
   if (issued.some((command) => command.type === "harvest")) return "harvest";
   if (issued.some((command) => command.type === "support")) return "support";
   if (issued.some((command) => command.type === "move")) return "move";
   return null;
 }
 
-function unitHasReachedMarkerDestination(state: SimState, unitId: number, marker: CommandMarker): boolean {
+function unitHasReachedMarkerDestination(
+  state: SimState,
+  unitId: number,
+  marker: CommandMarker,
+): boolean {
   const entity = state.entities.find((candidate) => candidate.id === unitId);
   if (!entity || !isUnitEntity(entity) || entity.hp <= 0) return true;
   const unit = entity;
@@ -38,18 +48,22 @@ function unitHasReachedMarkerDestination(state: SimState, unitId: number, marker
   // Keep unreachable attacks marked until the target is destroyed or the
   // issuing unit actually reaches its firing range.
   if (marker.kind === "attack" && marker.mode === "attack") {
-    const target = marker.targetId === undefined
-      ? undefined
-      : state.entities.find((entity) => entity.id === marker.targetId);
+    const target =
+      marker.targetId === undefined
+        ? undefined
+        : state.entities.find((entity) => entity.id === marker.targetId);
     if (!target || target.hp <= 0) return true;
-    return unit.attackTarget === target.id && distToEntity(unit, target) <= UNIT_STATS[unit.kind].range;
+    return (
+      unit.attackTarget === target.id && distToEntity(unit, target) <= UNIT_STATS[unit.kind].range
+    );
   }
 
   const destination = unit.orderDestination;
   return Boolean(
     unit.idle &&
       (!destination ||
-        (Math.round(unit.x) === Math.round(destination.x) && Math.round(unit.y) === Math.round(destination.y))),
+        (Math.round(unit.x) === Math.round(destination.x) &&
+          Math.round(unit.y) === Math.round(destination.y))),
   );
 }
 
@@ -77,7 +91,11 @@ export function drawCommandMarker(
   const groundY = s.y + (TILE_H / 2) * z;
   const fade = 0.92;
   const kind = marker.kind ?? "move";
-  const pulse = reducedMotion ? 0 : kind === "invalid" ? Math.sin(nowMs / 180) * 3 : Math.sin(nowMs / 260) * 2;
+  const pulse = reducedMotion
+    ? 0
+    : kind === "invalid"
+      ? Math.sin(nowMs / 180) * 3
+      : Math.sin(nowMs / 260) * 2;
   const radius = (reducedMotion ? 15 : 12 + progress * 5 + pulse) * z;
   const colors = COMMAND_MARKER_COLORS[marker.kind ?? "move"];
 
@@ -177,7 +195,12 @@ export function drawRallyPoint(
   const point = building.rallyPoint;
   if (!point) return;
   const z = cam.zoom;
-  const source = tileToScreen(building.x, building.y, cam, heightAt(state, Math.round(building.x), Math.round(building.y)));
+  const source = tileToScreen(
+    building.x,
+    building.y,
+    cam,
+    heightAt(state, Math.round(building.x), Math.round(building.y)),
+  );
   const target = tileToScreen(point.x, point.y, cam, heightAt(state, point.x, point.y));
   const sourceGroundY = source.y + (TILE_H / 2) * z;
   const targetGroundY = target.y + (TILE_H / 2) * z;

@@ -1,10 +1,14 @@
 import { footprintOf } from "../../catalog";
-import { isBuildingEntity, type Entity, type SimState, type Vec2 } from "../../types";
+import { type Entity, isBuildingEntity, type SimState, type Vec2 } from "../../types";
+import {
+  type NavigationMobility,
+  navigationMobilityFor,
+  vehicleMovementCostsFor,
+} from "../terrainRules";
 import { inBounds, makeUnitOccupancy, staticNavigationFor } from "../world";
 import { inBoundsNavigation, navigationStepCost, PATH_DIRS, PATH_MAX_NODES } from "./grid";
 import { MinHeap } from "./heap";
 import { smoothGridPath } from "./smooth";
-import { navigationMobilityFor, vehicleMovementCostsFor, type NavigationMobility } from "../terrainRules";
 
 export type PathSearchStatus = "complete" | "partial" | "unreachable";
 
@@ -249,7 +253,10 @@ export function findPathDetailed(
     ? buildingApproachCells(navigation, sx, sy, sourceFootprint)
     : [{ x: sx, y: sy }];
   if (starts.length === 0) {
-    return cacheStaticResult(state, navigationRevision, cacheKey, { path: [], status: "unreachable" });
+    return cacheStaticResult(state, navigationRevision, cacheKey, {
+      path: [],
+      status: "unreachable",
+    });
   }
   const unitBlocked = (x: number, y: number) => {
     if (!occupancy) return false;
@@ -270,21 +277,22 @@ export function findPathDetailed(
         !unitBlocked(x, y)
       );
     }
-    return Math.abs(x - gx) <= 1 && Math.abs(y - gy) <= 1 && navigation.walkable[y * w + x] === 1 && !unitBlocked(x, y);
+    return (
+      Math.abs(x - gx) <= 1 &&
+      Math.abs(y - gy) <= 1 &&
+      navigation.walkable[y * w + x] === 1 &&
+      !unitBlocked(x, y)
+    );
   };
-  const publishPath = (path: Vec2[], status: PathSearchStatus): PathSearchResult => cacheStaticResult(
-    state,
-    navigationRevision,
-    cacheKey,
-    {
+  const publishPath = (path: Vec2[], status: PathSearchStatus): PathSearchResult =>
+    cacheStaticResult(state, navigationRevision, cacheKey, {
       path: smoothGridPath(navigation, { x: sx, y: sy }, path, {
         blocked: occupancy ? (x, y) => unitBlocked(x, y) : undefined,
         cellCost: vehicleMovementCosts ? (x, y) => vehicleMovementCosts[y * w + x] ?? 1 : undefined,
         approach,
       }),
       status,
-    },
-  );
+    });
 
   const buffers = buffersFor(state, w * state.height);
   const generation = nextGeneration(buffers);
@@ -335,12 +343,20 @@ export function findPathDetailed(
       if (dir.x !== 0 && dir.y !== 0) {
         const horizontalKey = cy * w + nx;
         const verticalKey = ny * w + cx;
-        if (walkable[horizontalKey] !== 1 || Math.abs((heights[horizontalKey] ?? 0) - currentHeight) > 1) continue;
-        if (walkable[verticalKey] !== 1 || Math.abs((heights[verticalKey] ?? 0) - currentHeight) > 1) continue;
+        if (
+          walkable[horizontalKey] !== 1 ||
+          Math.abs((heights[horizontalKey] ?? 0) - currentHeight) > 1
+        )
+          continue;
+        if (
+          walkable[verticalKey] !== 1 ||
+          Math.abs((heights[verticalKey] ?? 0) - currentHeight) > 1
+        )
+          continue;
       }
       if (unitBlocked(nx, ny)) continue;
 
-      const movementCost = mobility === "vehicle" ? vehicleMovementCosts?.[neighborKey] ?? 1 : 1;
+      const movementCost = mobility === "vehicle" ? (vehicleMovementCosts?.[neighborKey] ?? 1) : 1;
       const tentG = gScore[currentKey]! + navigationStepCost(cx, cy, nx, ny, movementCost);
       const unseen = stamps[neighborKey] !== generation;
       const cheaper = !unseen && tentG < gScore[neighborKey]! - 1e-9;
@@ -352,12 +368,15 @@ export function findPathDetailed(
           const oldX = oldParent % w;
           const oldY = Math.floor(oldParent / w);
           const oldIncoming = incomingStep(parent, oldParent, w, startKey, approach);
-          const oldContinues = oldIncoming !== undefined && nx - oldX === oldIncoming.x && ny - oldY === oldIncoming.y;
+          const oldContinues =
+            oldIncoming !== undefined && nx - oldX === oldIncoming.x && ny - oldY === oldIncoming.y;
           // Keep walking the way the route is already going. A weave and a
           // straight run cost the same, so the straight run wins the tie.
           if (continues && !oldContinues) straighter = true;
           else if (continues === oldContinues) {
-            straighter = stepAlignment(cx, cy, nx, ny, gx, gy) > stepAlignment(oldX, oldY, nx, ny, gx, gy) + 1e-9;
+            straighter =
+              stepAlignment(cx, cy, nx, ny, gx, gy) >
+              stepAlignment(oldX, oldY, nx, ny, gx, gy) + 1e-9;
           }
         }
       }
@@ -381,18 +400,19 @@ export function findPathDetailed(
     return cacheStaticResult(state, navigationRevision, cacheKey, { path: [], status: "partial" });
   }
   if (bestKey >= 0) {
-    return publishPath(reconstruct(parent, bestKey, startKey, w), capped ? "partial" : "unreachable");
+    return publishPath(
+      reconstruct(parent, bestKey, startKey, w),
+      capped ? "partial" : "unreachable",
+    );
   }
 
-  return cacheStaticResult(state, navigationRevision, cacheKey, { path: [], status: "unreachable" });
+  return cacheStaticResult(state, navigationRevision, cacheKey, {
+    path: [],
+    status: "unreachable",
+  });
 }
 
-export function findPath(
-  state: SimState,
-  from: Vec2,
-  to: Vec2,
-  opts?: FindPathOptions,
-): Vec2[] {
+export function findPath(state: SimState, from: Vec2, to: Vec2, opts?: FindPathOptions): Vec2[] {
   return findPathDetailed(state, from, to, opts).path;
 }
 

@@ -1,0 +1,201 @@
+.objectiveStack {
+  /* Keep hover movement here from reaching the canvas edge-pan handler. */
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  margin-left: auto;
+  width: min(100%, 24rem);
+  max-width: 24rem;
+  align-self: start;
+  justify-self: end;
+  text-align: left;
+}
+
+.objectiveStack * {
+  pointer-events: none;
+}
+
+.directiveHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.28rem;
+}
+
+.objectiveStack[data-directive-expanded="false"] .directiveHeader {
+  margin-bottom: 0.25rem;
+}
+
+.directiveActions {
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.directiveToggle {
+  pointer-events: auto;
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.directiveToggle:hover,
+.directiveToggle:focus-visible {
+  color: var(--chrome-text);
+}
+
+.directiveToggleIcon {
+  display: inline-grid;
+  width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border: 1px solid var(--chrome-cyan-dim);
+  color: var(--chrome-cyan);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+@media (max-width: 799px) {
+  .directiveToggle {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+.directiveBody {
+  min-width: 0;
+}
+
+.directiveKicker {
+  color: var(--chrome-cyan);
+  font-size: var(--text-2xs);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  color: var(--chrome-muted);
+  font-size: var(--text-2xs);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.phaseDot {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 50%;
+  background: var(--chrome-cyan);
+  box-shadow: 0 0 7px var(--chrome-cyan);
+}
+
+.timeRemaining {
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+  margin-top: 0.35rem;
+  padding: 0.28rem 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--chrome-gold) 30%, var(--chrome-inset));
+  background: color-mix(in srgb, var(--chrome-void) 82%, transparent);
+  color: var(--chrome-gold);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.timeRemaining[data-placement="collapsed"] {
+  margin-top: 0;
+  flex: 0 1 auto;
+  padding: 0.16rem 0.3rem;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.08em;
+}
+
+.timeRemaining[data-urgency="watch"] {
+  border-color: var(--chrome-warning);
+  color: var(--chrome-warning);
+}
+
+.timeRemaining[data-urgency="urgent"],
+.timeRemaining[data-urgency="critical"] {
+  border-color: var(--chrome-alert);
+  color: var(--chrome-alert);
+}
+
+.timeRemaining[data-urgency="critical"] {
+  animation: timerPulse 1s steps(2, end) infinite;
+}
+
+.timerGlyph {
+  font-size: 0.9rem;
+}
+
+.timerBar {
+  display: block;
+  flex: 1;
+  min-width: 3rem;
+  max-width: 7rem;
+  height: 3px;
+  overflow: hidden;
+  margin-left: auto;
+  background: var(--chrome-steel-hi);
+}
+
+.timerBar > span {
+  display: block;
+  height: 100%;
+  background: var(--chrome-cyan);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--chrome-cyan) 50%, transparent);
+}
+
+.timeRemaining[data-urgency="watch"] .timerBar > span {
+  background: var(--chrome-warning);
+}
+
+.timeRemaining[data-urgency="urgent"] .timerBar > span,
+.timeRemaining[data-urgency="critical"] .timerBar > span {
+  background: var(--chrome-alert);
+}
+
+@keyframes timerPulse {
+  50% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--chrome-alert) 45%, transparent);
+  }
+}
+
+@media (max-width: 1023px) and (orientation: portrait) {
+  .objectiveStack {
+    grid-row: 1;
+    grid-column: 2;
+    width: auto;
+    max-width: none;
+    margin-left: 0;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+    justify-self: stretch;
+    text-align: left;
+  }
+
+  .directiveHeader {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.35rem;
+  }
+}

@@ -1,23 +1,34 @@
 import type { MutableRefObject, PointerEventHandler, RefObject } from "react";
-import type { SaveSession, SaveWriteStatus } from "@/lib/persist/save";
-import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
-import type { Camera } from "@/lib/iso";
-import type { FxBurst } from "@/lib/render/fx";
-import type { PanAvailability, PanDir } from "@/lib/render/camera";
-import type { ScreenShakeState } from "@/lib/render/screenShake";
-import type { Campaign, Entity, FactionVisualProfile, Palette, BuildingKind, Command, Formation, SimEvent, SimState, Stance, UnitKind } from "@/lib/types";
-import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
-import type { ArchiveEntry, SlotMeta } from "@/lib/persist/save";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
+import type { Camera } from "@/lib/iso";
+import type { MultiplayerSession } from "@/lib/multiplayer/session";
+import type { ArchiveEntry, SaveSession, SaveWriteStatus, SlotMeta } from "@/lib/persist/save";
+import type { GameSettings, KeyBindings } from "@/lib/persist/settings";
+import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
+import type { PanAvailability, PanDir } from "@/lib/render/camera";
+import type { FxBurst } from "@/lib/render/fx";
+import type { ScreenShakeState } from "@/lib/render/screenShake";
+import type {
+  BuildingKind,
+  Campaign,
+  Command,
+  Entity,
+  FactionVisualProfile,
+  Formation,
+  Palette,
+  SimEvent,
+  SimState,
+  Stance,
+  UnitKind,
+} from "@/lib/types";
 import type { CommandTab, PauseView } from "@/lib/ui/shortcuts";
+import type { MinimapPing } from "../../MinimapFrame";
 import type { MissionConfirmation } from "../missionConfirmation";
+import type { CombatAlertKind } from "../useCombatAlert";
 import type { GameActions } from "../useGameActions";
 import type { GameCamera } from "../useGameCamera";
-import type { GameSession } from "../useGameSession";
-import type { CombatAlertKind } from "../useCombatAlert";
 import type { CommandNoticeState } from "../useGameChrome";
-import type { MinimapPing } from "../../MinimapFrame";
-import type { MultiplayerSession } from "@/lib/multiplayer/session";
+import type { GameSession } from "../useGameSession";
 
 export type SimulationRuntimeRefs = {
   stateRef: MutableRefObject<SimState>;
@@ -124,7 +135,13 @@ export type RuntimeController = {
   stop: () => void;
   drainCommands: () => Command[];
   onTick: (state: SimState, events: SimEvent[], now: number) => void;
-  onFrame: (now: number, state: SimState, paused: boolean, subTickAlpha: number, frameMs: number) => void;
+  onFrame: (
+    now: number,
+    state: SimState,
+    paused: boolean,
+    subTickAlpha: number,
+    frameMs: number,
+  ) => void;
 };
 
 export type CanvasPointerHandlers = {

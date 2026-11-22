@@ -1,10 +1,10 @@
 import type { GeneratedMap } from "../../gen/map";
-import { OBJECTIVE_ZONE_RADIUS } from "../../types";
 import type { SimState, Vec2 } from "../../types";
+import { OBJECTIVE_ZONE_RADIUS } from "../../types";
+import { entitiesFor } from "../entities";
 import { findPathDetailed, routePendingFor } from "../pathfinding";
 import { distToEntity, isStaticWalkable } from "../world";
 import { reachableScenarioPoint } from "./reachability";
-import { entitiesFor } from "../entities";
 
 export function convoyStartPoint(
   map: Pick<GeneratedMap, "playerStart" | "width" | "height">,
@@ -45,16 +45,28 @@ export function convoyZonePoint(
 }
 
 export function convoyDestination(state: SimState, zone: Vec2, index: number): Vec2 {
-  const enemyBase = entitiesFor(state).filter((entity) => entity.owner === 1 && entity.class === "building" && entity.hp > 0);
+  const enemyBase = entitiesFor(state).filter(
+    (entity) => entity.owner === 1 && entity.class === "building" && entity.hp > 0,
+  );
   const candidates: Array<{ point: Vec2; zoneDistance: number; baseDistance: number }> = [];
   const convoyId = state.runtime?.kind === "escort" ? state.runtime.targetIds[index] : undefined;
-  const earlierDestinations = (state.runtime?.kind === "escort" ? state.runtime.targetIds.slice(0, index) : [])
-    .map((id) => entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0)?.orderDestination)
+  const earlierDestinations = (
+    state.runtime?.kind === "escort" ? state.runtime.targetIds.slice(0, index) : []
+  )
+    .map(
+      (id) =>
+        entitiesFor(state).find((entity) => entity.id === id && entity.hp > 0)?.orderDestination,
+    )
     .filter((point): point is Vec2 => point !== undefined);
   for (let y = zone.y - OBJECTIVE_ZONE_RADIUS; y <= zone.y + OBJECTIVE_ZONE_RADIUS; y++) {
     for (let x = zone.x - OBJECTIVE_ZONE_RADIUS; x <= zone.x + OBJECTIVE_ZONE_RADIUS; x++) {
       const zoneDistance = Math.hypot(x - zone.x, y - zone.y);
-      if (zoneDistance < OBJECTIVE_ZONE_RADIUS - 1.5 || zoneDistance > OBJECTIVE_ZONE_RADIUS || !isStaticWalkable(state, x, y)) continue;
+      if (
+        zoneDistance < OBJECTIVE_ZONE_RADIUS - 1.5 ||
+        zoneDistance > OBJECTIVE_ZONE_RADIUS ||
+        !isStaticWalkable(state, x, y)
+      )
+        continue;
       const baseDistance = enemyBase.length
         ? Math.min(...enemyBase.map((building) => distToEntity({ x, y }, building)))
         : Infinity;
@@ -62,8 +74,17 @@ export function convoyDestination(state: SimState, zone: Vec2, index: number): V
       candidates.push({ point: { x, y }, zoneDistance, baseDistance });
     }
   }
-  candidates.sort((a, b) => b.baseDistance - a.baseDistance || b.zoneDistance - a.zoneDistance || a.point.y - b.point.y || a.point.x - b.point.x);
-  const convoy = convoyId === undefined ? undefined : entitiesFor(state).find((entity) => entity.id === convoyId && entity.hp > 0);
+  candidates.sort(
+    (a, b) =>
+      b.baseDistance - a.baseDistance ||
+      b.zoneDistance - a.zoneDistance ||
+      a.point.y - b.point.y ||
+      a.point.x - b.point.x,
+  );
+  const convoy =
+    convoyId === undefined
+      ? undefined
+      : entitiesFor(state).find((entity) => entity.id === convoyId && entity.hp > 0);
   if (convoy && candidates.length) {
     // Keep the stable perimeter ordering, but skip a candidate that is not
     // reachable from this convoy's staging cell. This closes a rare generated
@@ -74,8 +95,14 @@ export function convoyDestination(state: SimState, zone: Vec2, index: number): V
       // Keep each truck's destination clear of earlier convoys. Closely
       // spaced perimeter points can make adjacent vehicles block one another
       // just outside the extraction radius.
-      if (earlierDestinations.some((point) => Math.hypot(point.x - candidate.point.x, point.y - candidate.point.y) < 2.5)) continue;
-      if (findPathDetailed(state, convoy, candidate.point).status === "complete") return candidate.point;
+      if (
+        earlierDestinations.some(
+          (point) => Math.hypot(point.x - candidate.point.x, point.y - candidate.point.y) < 2.5,
+        )
+      )
+        continue;
+      if (findPathDetailed(state, convoy, candidate.point).status === "complete")
+        return candidate.point;
     }
   }
   return candidates[index % candidates.length]?.point ?? zone;

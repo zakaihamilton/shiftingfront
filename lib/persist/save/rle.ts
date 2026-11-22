@@ -34,12 +34,23 @@ export function encodeRle(arr: readonly number[]): EncodedRle {
 export function isRleEncoded(raw: unknown): raw is EncodedRle {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
   const candidate = raw as { encoding?: unknown; runs?: unknown };
-  if (candidate.encoding !== "rle" || !Array.isArray(candidate.runs) || candidate.runs.length % 2 !== 0) return false;
+  if (
+    candidate.encoding !== "rle" ||
+    !Array.isArray(candidate.runs) ||
+    candidate.runs.length % 2 !== 0
+  )
+    return false;
   for (let i = 0; i < candidate.runs.length; i += 2) {
     const count = candidate.runs[i];
     const value = candidate.runs[i + 1];
-    if (typeof count !== "number" || !Number.isInteger(count) || count <= 0 ||
-      typeof value !== "number" || !Number.isFinite(value)) return false;
+    if (
+      typeof count !== "number" ||
+      !Number.isInteger(count) ||
+      count <= 0 ||
+      typeof value !== "number" ||
+      !Number.isFinite(value)
+    )
+      return false;
   }
   return true;
 }
@@ -61,7 +72,8 @@ function expandRuns(raw: readonly number[], expectedLength: number): number[] {
   for (let i = 0; i + 1 < raw.length; i += 2) {
     const count = raw[i]!;
     const value = raw[i + 1]!;
-    if (!Number.isInteger(count) || count <= 0 || !Number.isFinite(value)) throw new Error("Invalid map data");
+    if (!Number.isInteger(count) || count <= 0 || !Number.isFinite(value))
+      throw new Error("Invalid map data");
     for (let c = 0; c < count; c++) {
       if (out.length >= expectedLength) throw new Error("Invalid map data");
       out.push(value);
@@ -91,13 +103,19 @@ function decodeExact(raw: unknown, expectedLength: number): number[] {
   throw new Error("Invalid map data");
 }
 
-export function decodeRle(raw: unknown, expectedLength: number, alternateLength?: number): number[] {
+export function decodeRle(
+  raw: unknown,
+  expectedLength: number,
+  alternateLength?: number,
+): number[] {
   if (!raw) return new Array(expectedLength).fill(0);
-  if (Array.isArray(raw) && alternateLength !== undefined && raw.length === alternateLength) return [...raw];
+  if (Array.isArray(raw) && alternateLength !== undefined && raw.length === alternateLength)
+    return [...raw];
   try {
     return decodeExact(raw, expectedLength);
   } catch (error) {
-    if (alternateLength !== undefined && alternateLength !== expectedLength) return decodeExact(raw, alternateLength);
+    if (alternateLength !== undefined && alternateLength !== expectedLength)
+      return decodeExact(raw, alternateLength);
     throw error;
   }
 }

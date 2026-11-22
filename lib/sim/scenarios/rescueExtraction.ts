@@ -1,16 +1,15 @@
-import type { GeneratedMap } from "../../gen/map";
-import { isUnitEntity } from "../../types";
 import { UNIT_STATS } from "../../catalog";
+import type { GeneratedMap } from "../../gen/map";
 import { clampPoint } from "../../gen/map/generator/placement";
 import { inRescueFlank, rescueFlankCenter } from "../../gen/map/generator/rescuePlacement";
 import type { Rng } from "../../seed/rng";
-import { inObjectiveZone, RESCUE_CONTACT_RADIUS } from "../../types";
 import type { Entity, SimState, Vec2 } from "../../types";
+import { inObjectiveZone, isUnitEntity, RESCUE_CONTACT_RADIUS } from "../../types";
+import { entitiesFor } from "../entities";
 import { tileInPlayerVision } from "../fog";
 import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
 import { closestApproach, distToEntity, isWalkable } from "../world";
-import { entitiesFor } from "../entities";
 
 const EXTRACTION_PLAYER_BASE_CLEARANCE = 8;
 const EXTRACTION_ENEMY_BASE_CLEARANCE = 14;
@@ -53,10 +52,14 @@ export function rescuePoint(
   const verticalSpan = Math.max(6, Math.round(map.height * 0.2));
   const horizontalOffset = columns <= 1 ? 0 : Math.round((column / (columns - 1)) * horizontalSpan);
   const verticalOffset = rows <= 1 ? 0 : Math.round((row / (rows - 1)) * verticalSpan);
-  return clampPoint({
-    x: center.x + horizontalDirection * horizontalOffset,
-    y: center.y + verticalDirection * verticalOffset,
-  }, map.width, map.height);
+  return clampPoint(
+    {
+      x: center.x + horizontalDirection * horizontalOffset,
+      y: center.y + verticalDirection * verticalOffset,
+    },
+    map.width,
+    map.height,
+  );
 }
 
 function rescuePointCandidates(
@@ -65,12 +68,15 @@ function rescuePointCandidates(
   reachable: Uint8Array | undefined,
 ): Vec2[] {
   const candidates: Vec2[] = [];
-  const yard = entitiesFor(state).find(entity => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
+  const yard = entitiesFor(state).find(
+    (entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0,
+  );
   const recoveryDistance = Math.min(110, Math.min(map.width, map.height) * 0.55);
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
       if (reachable && reachable[y * map.width + x] !== 1) continue;
-      if (!inRescueFlank(map, x, y) || !isWalkable(state, x, y) || tileInPlayerVision(state, x, y)) continue;
+      if (!inRescueFlank(map, x, y) || !isWalkable(state, x, y) || tileInPlayerVision(state, x, y))
+        continue;
       if (yard && pointDistance({ x, y }, yard) < recoveryDistance) continue;
       candidates.push({ x, y });
     }
@@ -120,7 +126,12 @@ export function rescuePoints(
   return selected;
 }
 
-function extractionRegionContains(region: ExtractionRegion, point: Vec2, width: number, height: number): boolean {
+function extractionRegionContains(
+  region: ExtractionRegion,
+  point: Vec2,
+  width: number,
+  height: number,
+): boolean {
   const x = point.x / Math.max(1, width - 1);
   const y = point.y / Math.max(1, height - 1);
   return x >= region.minX && x <= region.maxX && y >= region.minY && y <= region.maxY;
@@ -139,11 +150,11 @@ function extractionPointCandidates(
   map: Pick<GeneratedMap, "playerStart" | "enemyStart" | "width" | "height">,
   reachable: Uint8Array | undefined,
 ): Vec2[] {
-  const playerBuildings = entitiesFor(state).filter((entity) =>
-    entity.owner === 0 && entity.class === "building" && entity.hp > 0,
+  const playerBuildings = entitiesFor(state).filter(
+    (entity) => entity.owner === 0 && entity.class === "building" && entity.hp > 0,
   );
-  const enemyBuildings = entitiesFor(state).filter((entity) =>
-    entity.owner === 1 && entity.class === "building" && entity.hp > 0,
+  const enemyBuildings = entitiesFor(state).filter(
+    (entity) => entity.owner === 1 && entity.class === "building" && entity.hp > 0,
   );
   const candidates: Vec2[] = [];
   for (let y = 3; y < map.height - 3; y += 1) {
@@ -152,9 +163,19 @@ function extractionPointCandidates(
       if (reachable && reachable[y * map.width + x] !== 1) continue;
       if (!isWalkable(state, x, y) || tileInPlayerVision(state, x, y)) continue;
       if (pointDistance(point, map.playerStart) < 90) continue;
-      if (playerBuildings.some((building) => distToEntity(point, building) < EXTRACTION_PLAYER_BASE_CLEARANCE)) continue;
+      if (
+        playerBuildings.some(
+          (building) => distToEntity(point, building) < EXTRACTION_PLAYER_BASE_CLEARANCE,
+        )
+      )
+        continue;
       if (pointDistance(point, map.enemyStart) < EXTRACTION_ENEMY_BASE_CLEARANCE) continue;
-      if (enemyBuildings.some((building) => distToEntity(point, building) < EXTRACTION_ENEMY_BASE_CLEARANCE)) continue;
+      if (
+        enemyBuildings.some(
+          (building) => distToEntity(point, building) < EXTRACTION_ENEMY_BASE_CLEARANCE,
+        )
+      )
+        continue;
       candidates.push(point);
     }
   }
@@ -184,9 +205,9 @@ function nearestCandidate(
     }
     const distance = region
       ? Math.hypot(
-        candidate.x - region.center.x * (width - 1),
-        candidate.y - region.center.y * (height - 1),
-      ) - (selected.length ? minDistanceToPoints(candidate, selected) * 0.45 : 0)
+          candidate.x - region.center.x * (width - 1),
+          candidate.y - region.center.y * (height - 1),
+        ) - (selected.length ? minDistanceToPoints(candidate, selected) * 0.45 : 0)
       : -minDistanceToPoints(candidate, selected.length ? selected : basePoints);
     if (distance < bestDistance) {
       bestDistance = distance;
@@ -217,12 +238,18 @@ export function extractionPoints(
 
   for (const regionIndex of order.slice(0, count)) {
     let chosenRegion = regionIndex;
-    const currentMaxSpan = selected.length >= 2
-      ? Math.max(...selected.flatMap((p, i) => selected.slice(i + 1).map((q) => pointDistance(p, q))))
-      : 0;
-    const minSpanSeparation = (selected.length > 0 && currentMaxSpan < requiredMaxSeparation && (selected.length >= count - 1 || count === 2))
-      ? requiredMaxSeparation
-      : 0;
+    const currentMaxSpan =
+      selected.length >= 2
+        ? Math.max(
+            ...selected.flatMap((p, i) => selected.slice(i + 1).map((q) => pointDistance(p, q))),
+          )
+        : 0;
+    const minSpanSeparation =
+      selected.length > 0 &&
+      currentMaxSpan < requiredMaxSeparation &&
+      (selected.length >= count - 1 || count === 2)
+        ? requiredMaxSeparation
+        : 0;
 
     let point = nearestCandidate(
       candidates,
@@ -301,9 +328,20 @@ export function extractionPoints(
         }
       }
     }
-    point = point
-      ?? nearestCandidate(candidates, undefined, selected, basePoints, map.width, map.height, true, EXTRACTION_TARGET_SEPARATION, 0)
-      ?? nearestCandidate(candidates, undefined, selected, basePoints, map.width, map.height, false);
+    point =
+      point ??
+      nearestCandidate(
+        candidates,
+        undefined,
+        selected,
+        basePoints,
+        map.width,
+        map.height,
+        true,
+        EXTRACTION_TARGET_SEPARATION,
+        0,
+      ) ??
+      nearestCandidate(candidates, undefined, selected, basePoints, map.width, map.height, false);
     if (!point) break;
     selected.push(point);
     usedRegions.add(chosenRegion);
@@ -312,7 +350,12 @@ export function extractionPoints(
   return selected;
 }
 
-function returnStrandedUnitToBase(state: SimState, unit: Entity, yard: Entity | undefined, zone: Vec2 | undefined): void {
+function returnStrandedUnitToBase(
+  state: SimState,
+  unit: Entity,
+  yard: Entity | undefined,
+  zone: Vec2 | undefined,
+): void {
   const destination = yard ? closestApproach(state, unit, yard) : zone;
   if (!destination) return;
   unit.attackTarget = undefined;
@@ -355,24 +398,46 @@ export function ensureRescueReturnTracking(state: SimState): void {
   runtime.rescued = rescued.size;
 }
 
-function strandedUnitContacted(target: Entity, rescuers: readonly Entity[], state?: SimState): boolean {
-  if (state?.win.kind === "rescue" && entitiesFor(state).some(e => e.owner === 1 && e.hp > 0 && isUnitEntity(e) && UNIT_STATS[e.kind].damage > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= 6)) return false;
+function strandedUnitContacted(
+  target: Entity,
+  rescuers: readonly Entity[],
+  state?: SimState,
+): boolean {
+  if (
+    state?.win.kind === "rescue" &&
+    entitiesFor(state).some(
+      (e) =>
+        e.owner === 1 &&
+        e.hp > 0 &&
+        isUnitEntity(e) &&
+        UNIT_STATS[e.kind].damage > 0 &&
+        Math.hypot(e.x - target.x, e.y - target.y) <= 6,
+    )
+  )
+    return false;
   // Revealing a stranded unit only makes its blue contact halo visible. The
   // rescue starts when a player unit actually enters that halo.
-  return rescuers.some((rescuer) => Math.hypot(rescuer.x - target.x, rescuer.y - target.y) <= RESCUE_CONTACT_RADIUS);
+  return rescuers.some(
+    (rescuer) => Math.hypot(rescuer.x - target.x, rescuer.y - target.y) <= RESCUE_CONTACT_RADIUS,
+  );
 }
 
 export function tickRescueExtraction(state: SimState): void {
   const runtime = state.runtime;
   if (!runtime || (runtime.kind !== "rescue" && runtime.kind !== "extraction")) return;
 
-  const yard = entitiesFor(state).find((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
+  const yard = entitiesFor(state).find(
+    (e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0,
+  );
   if (yard) {
     runtime.zone = { x: yard.x, y: yard.y };
   }
   ensureRescueReturnTracking(state);
 
-  if (runtime.kind === "rescue" && (runtime.contactedIds !== undefined || runtime.rescuedIds !== undefined)) {
+  if (
+    runtime.kind === "rescue" &&
+    (runtime.contactedIds !== undefined || runtime.rescuedIds !== undefined)
+  ) {
     const contacted = runtime.contactedIds ?? [];
     const rescued = runtime.rescuedIds ?? [];
     const contactedSet = new Set(contacted);
@@ -381,7 +446,12 @@ export function tickRescueExtraction(state: SimState): void {
     // Capture this list before contacting targets. A newly contacted target
     // may not contact another stranded unit until the next simulation tick.
     const rescuers = entitiesFor(state).filter(
-      (e) => e.owner === 0 && e.class === "unit" && e.hp > 0 && !e.neutral && !runtime.targetIds.includes(e.id),
+      (e) =>
+        e.owner === 0 &&
+        e.class === "unit" &&
+        e.hp > 0 &&
+        !e.neutral &&
+        !runtime.targetIds.includes(e.id),
     );
     for (const id of runtime.targetIds) {
       if (contactedSet.has(id)) continue;

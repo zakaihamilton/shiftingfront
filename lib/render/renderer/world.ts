@@ -1,1 +1,1 @@
-export { renderWorld, type RenderExtras } from "./world/index";
+export { type RenderExtras, renderWorld } from "./world/index";

@@ -19,7 +19,9 @@ const calibration = (
   },
 });
 
-export const PORTRAIT_MOUTH_CALIBRATION_OVERRIDES: Readonly<Record<string, PortraitMouthCalibration>> = {
+export const PORTRAIT_MOUTH_CALIBRATION_OVERRIDES: Readonly<
+  Record<string, PortraitMouthCalibration>
+> = {
   "commander-01": calibration(0.66, { rx: 0.2, ry: 0.095, dx: 9 }),
   "commander-02": calibration(0.57, { rx: 0.17, ry: 0.085 }),
   "commander-03": calibration(0.55, { rx: 0.18, ry: 0.085 }),

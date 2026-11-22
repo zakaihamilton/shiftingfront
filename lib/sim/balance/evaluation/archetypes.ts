@@ -9,15 +9,17 @@ export const OFFENSIVE_KINDS = new Set<MissionKind>([
   "sabotage",
 ]);
 
-export const TIMED_OPERATION_KINDS = new Set<MissionKind>([
-  "sabotage",
-  "rescue",
-  "extraction",
-]);
+export const TIMED_OPERATION_KINDS = new Set<MissionKind>(["sabotage", "rescue", "extraction"]);
 
 export const ECONOMY_KINDS = new Set<MissionKind>(["harvestQuota", "forceQuota", "structureQuota"]);
 
-export const ARCHETYPE_STRATEGIES: readonly BalanceStrategy[] = ["rush", "turtle", "greed", "infantry", "vehicles"];
+export const ARCHETYPE_STRATEGIES: readonly BalanceStrategy[] = [
+  "rush",
+  "turtle",
+  "greed",
+  "infantry",
+  "vehicles",
+];
 
 /** Anti-cheese cap for one biased strategy on one mission kind. */
 export function archetypeWinCap(strategy: BalanceStrategy, kind: MissionKind): number {
@@ -33,19 +35,22 @@ export function cappedKindsForStrategy(strategy: BalanceStrategy): MissionKind[]
   // staging delay, so its win rate is not a useful measure of commander
   // overperformance. Keep it in the aggregate sweep, but do not classify the
   // autonomous convoy's success as an archetype anti-cheese failure.
-  const kinds: MissionKind[] = strategy === "rush"
-    ? [...ECONOMY_KINDS, "holdTheLine"]
-    : [...OFFENSIVE_KINDS, ...TIMED_OPERATION_KINDS];
+  const kinds: MissionKind[] =
+    strategy === "rush"
+      ? [...ECONOMY_KINDS, "holdTheLine"]
+      : [...OFFENSIVE_KINDS, ...TIMED_OPERATION_KINDS];
   return [...new Set(kinds)];
 }
 
 export function isArchetypeFailure(record: BalanceRecord): boolean {
-  return record.result !== "won"
-    || record.truncated
-    || !record.mapValid
-    || record.commandRejections > 0
-    || record.powerDeficit
-    || record.nonFiniteState === true;
+  return (
+    record.result !== "won" ||
+    record.truncated ||
+    !record.mapValid ||
+    record.commandRejections > 0 ||
+    record.powerDeficit ||
+    record.nonFiniteState === true
+  );
 }
 
 /** Returns exact records relevant to reliability or anti-cheese failures. */
@@ -58,17 +63,30 @@ export function archetypeFailureRecords(
   const failures = new Set<BalanceRecord>();
   for (const strategy of strategiesToCheck) {
     const strategyRecords = records.filter((record) => record.strategy === strategy);
-    strategyRecords.filter(isArchetypeFailure).forEach((record) => { failures.add(record); });
+    strategyRecords.filter(isArchetypeFailure).forEach((record) => {
+      failures.add(record);
+    });
     const strategySummary = summary.byStrategy[strategy];
     if (!strategySummary) continue;
     if (strategy === "infantry" || strategy === "vehicles") {
-      if (strategySummary.winRate > 0.90) strategyRecords.forEach((record) => { failures.add(record); });
+      if (strategySummary.winRate > 0.9)
+        strategyRecords.forEach((record) => {
+          failures.add(record);
+        });
       continue;
     }
     for (const kind of cappedKindsForStrategy(strategy)) {
       const kindSummary = strategySummary.byMissionKind[kind];
-      if (kindSummary && kindSummary.samples >= Math.max(4, minKindSamples) && kindSummary.winRate > archetypeWinCap(strategy, kind)) {
-        strategyRecords.filter((record) => record.kind === kind).forEach((record) => { failures.add(record); });
+      if (
+        kindSummary &&
+        kindSummary.samples >= Math.max(4, minKindSamples) &&
+        kindSummary.winRate > archetypeWinCap(strategy, kind)
+      ) {
+        strategyRecords
+          .filter((record) => record.kind === kind)
+          .forEach((record) => {
+            failures.add(record);
+          });
       }
     }
   }
@@ -89,17 +107,24 @@ export function checkArchetypeBalance(
       failures.push(`${strategy} produced no balance records`);
       continue;
     }
-    if (strategyRecords.some((record) => !record.mapValid)) failures.push(`${strategy} has invalid maps`);
-    if (strategyRecords.some((record) => record.truncated)) failures.push(`${strategy} has truncated runs`);
-    if (strategyRecords.some((record) => record.commandRejections > 0)) failures.push(`${strategy} has rejected commands`);
-    if (strategyRecords.some((record) => record.powerDeficit)) failures.push(`${strategy} has power deficits`);
-    if (strategyRecords.some((record) => record.nonFiniteState === true)) failures.push(`${strategy} has non-finite state values`);
+    if (strategyRecords.some((record) => !record.mapValid))
+      failures.push(`${strategy} has invalid maps`);
+    if (strategyRecords.some((record) => record.truncated))
+      failures.push(`${strategy} has truncated runs`);
+    if (strategyRecords.some((record) => record.commandRejections > 0))
+      failures.push(`${strategy} has rejected commands`);
+    if (strategyRecords.some((record) => record.powerDeficit))
+      failures.push(`${strategy} has power deficits`);
+    if (strategyRecords.some((record) => record.nonFiniteState === true))
+      failures.push(`${strategy} has non-finite state values`);
 
     const strategySummary = summary.byStrategy[strategy];
     if (!strategySummary) continue;
     if (strategy === "infantry" || strategy === "vehicles") {
-      if (strategySummary.winRate > 0.90) {
-        failures.push(`${strategy} overall win rate ${(strategySummary.winRate * 100).toFixed(1)}% exceeds 90.0%`);
+      if (strategySummary.winRate > 0.9) {
+        failures.push(
+          `${strategy} overall win rate ${(strategySummary.winRate * 100).toFixed(1)}% exceeds 90.0%`,
+        );
       }
       continue;
     }
@@ -108,7 +133,9 @@ export function checkArchetypeBalance(
       if (!kindSummary || kindSummary.samples < Math.max(4, minKindSamples)) continue;
       const cap = archetypeWinCap(strategy, kind);
       if (kindSummary.winRate > cap) {
-        failures.push(`${strategy} ${kind} win rate ${(kindSummary.winRate * 100).toFixed(1)}% exceeds ${(cap * 100).toFixed(1)}%`);
+        failures.push(
+          `${strategy} ${kind} win rate ${(kindSummary.winRate * 100).toFixed(1)}% exceeds ${(cap * 100).toFixed(1)}%`,
+        );
       }
     }
   }

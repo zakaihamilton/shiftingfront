@@ -3,11 +3,11 @@ import { createCampaign } from "@/lib/gen/campaign";
 import { listMissionRasterSources } from "@/lib/gen/visualAssets";
 import { generateVisualProfile } from "@/lib/gen/visualProfile";
 import { cachedCampaignStorage, createSaveSession } from "@/lib/persist/save";
-import type { Owner, SimState } from "@/lib/types";
-import { preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
 import { preloadRasterSourcesAsync } from "@/lib/render/sprites";
-import { initialMission } from "./useGameSession";
+import { preloadTerrainAtlas } from "@/lib/render/terrainAtlas";
 import { createSkirmish } from "@/lib/sim/api";
+import type { Owner, SimState } from "@/lib/types";
+import { initialMission } from "./useGameSession";
 
 /** Owns the durable mission/session state and DOM refs used by runtime layers. */
 export function useGameRuntimeState({
@@ -33,12 +33,22 @@ export function useGameRuntimeState({
   multiplayerOwners?: Owner[];
   multiplayerAiOwners?: Owner[];
 }) {
-  const playerVisualProfile = useMemo(() => generateVisualProfile(seed, multiplayerOwner ?? 0), [seed, multiplayerOwner]);
-  const [boot] = useState(() => initialState ?? (multiplayerOwner === undefined
-    ? initialMission(seed, mission, resume, tutorial, fresh, slot)
-    : createSkirmish(seed, multiplayerOwner, multiplayerOwners, multiplayerAiOwners).state));
+  const playerVisualProfile = useMemo(
+    () => generateVisualProfile(seed, multiplayerOwner ?? 0),
+    [seed, multiplayerOwner],
+  );
+  const [boot] = useState(
+    () =>
+      initialState ??
+      (multiplayerOwner === undefined
+        ? initialMission(seed, mission, resume, tutorial, fresh, slot)
+        : createSkirmish(seed, multiplayerOwner, multiplayerOwners, multiplayerAiOwners).state),
+  );
   const [state, setState] = useState<SimState>(boot);
-  const campaign = useMemo(() => createCampaign(seed, state.gameplayRulesVersion), [seed, state.gameplayRulesVersion]);
+  const campaign = useMemo(
+    () => createCampaign(seed, state.gameplayRulesVersion),
+    [seed, state.gameplayRulesVersion],
+  );
   const saveSession = useMemo(() => createSaveSession(cachedCampaignStorage(), seed), [seed]);
   const stateRef = useRef<SimState>(state);
   const hostRef = useRef<HTMLDivElement>(null);

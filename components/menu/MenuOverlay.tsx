@@ -4,8 +4,8 @@ import type { GameSettings } from "@/lib/persist/settings";
 import type { Campaign } from "@/lib/types";
 import { CreditsModal } from "./CreditsModal";
 import { MenuOptions } from "./MenuOptions";
-import { NewGameSetup } from "./NewGameSetup";
 import styles from "./MenuOverlay.module.css";
+import { NewGameSetup } from "./NewGameSetup";
 
 export type MenuView = "main" | "newGame" | "options" | "credits";
 

@@ -12,16 +12,23 @@
   overflow: hidden;
   padding: 0.5rem 0.5rem 0.5rem 0.875rem;
   font-size: 0.75rem;
-  border-left: 3px solid color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 40%, var(--chrome-inset));
+  border-left: 3px solid
+    color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 40%, var(--chrome-inset));
   background:
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.028) 0 1px, transparent 1px 10px),
-    linear-gradient(90deg, color-mix(in srgb, var(--chrome-steel-hi) 82%, transparent) 0, var(--chrome-steel) 7px, color-mix(in srgb, var(--chrome-steel) 70%, var(--chrome-steel-lo)) 12px, color-mix(in srgb, var(--chrome-steel-lo) 94%, transparent) 100%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 10px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--chrome-steel-hi) 82%, transparent) 0,
+      var(--chrome-steel) 7px,
+      color-mix(in srgb, var(--chrome-steel) 70%, var(--chrome-steel-lo)) 12px,
+      color-mix(in srgb, var(--chrome-steel-lo) 94%, transparent) 100%
+    ),
     var(--texture-worn) center / 420px 420px;
   background-blend-mode: screen, normal, soft-light;
   box-shadow:
     inset 3px 0 color-mix(in srgb, var(--p, var(--chrome-bevel)) 45%, var(--chrome-bevel)),
     inset 4px 0 var(--chrome-inset),
-    -10px 0 26px rgba(0,0,0,0.62);
+    -10px 0 26px rgba(0, 0, 0, 0.62);
   scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
 }
 
@@ -32,8 +39,14 @@
   bottom: 0;
   left: 0;
   width: 8px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 55%, var(--chrome-steel-hi)), var(--chrome-steel));
-  box-shadow: inset 1px 0 color-mix(in srgb, var(--a, var(--chrome-cyan)) 40%, var(--chrome-cyan)), inset -1px 0 var(--chrome-inset);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 55%, var(--chrome-steel-hi)),
+    var(--chrome-steel)
+  );
+  box-shadow:
+    inset 1px 0 color-mix(in srgb, var(--a, var(--chrome-cyan)) 40%, var(--chrome-cyan)),
+    inset -1px 0 var(--chrome-inset);
 }
 
 .header {
@@ -45,18 +58,39 @@
   border-radius: var(--chrome-radius);
   border: 1px solid var(--chrome-inset);
   background:
-    linear-gradient(90deg, transparent, color-mix(in srgb, var(--chrome-cyan) 12%, transparent), transparent),
-    linear-gradient(color-mix(in srgb, var(--chrome-steel-hi) 86%, transparent), color-mix(in srgb, var(--chrome-steel-lo) 92%, transparent)),
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--chrome-cyan) 12%, transparent),
+      transparent
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--chrome-steel-hi) 86%, transparent),
+      color-mix(in srgb, var(--chrome-steel-lo) 92%, transparent)
+    ),
     var(--texture-brushed) center / 280px 280px;
   box-shadow: inset 0 1px color-mix(in srgb, var(--chrome-bevel) 35%, transparent);
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
 .header:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--chrome-cyan) 62%, var(--chrome-bevel));
   background:
-    linear-gradient(90deg, transparent, color-mix(in srgb, var(--chrome-cyan) 22%, transparent), transparent),
-    linear-gradient(color-mix(in srgb, var(--chrome-steel-hi) 96%, var(--chrome-cyan)), color-mix(in srgb, var(--chrome-steel-lo) 88%, var(--chrome-cyan)));
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--chrome-cyan) 22%, transparent),
+      transparent
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--chrome-steel-hi) 96%, var(--chrome-cyan)),
+      color-mix(in srgb, var(--chrome-steel-lo) 88%, var(--chrome-cyan))
+    );
   box-shadow:
     inset 1px 1px var(--chrome-bevel),
     inset -1px -1px var(--chrome-void),
@@ -68,7 +102,9 @@
 }
 
 .header:active:not(:disabled) {
-  box-shadow: inset 2px 2px var(--chrome-inset), 1px 1px var(--chrome-void);
+  box-shadow:
+    inset 2px 2px var(--chrome-inset),
+    1px 1px var(--chrome-void);
   transform: translateY(1px);
 }
 
@@ -180,7 +216,10 @@
   color: var(--chrome-text);
   border-color: var(--a, var(--chrome-cyan));
   background: linear-gradient(var(--chrome-steel-hi), var(--chrome-steel));
-  box-shadow: inset 1px 1px var(--chrome-bevel), inset -1px -1px var(--chrome-inset), 0 0 0 1px var(--a, var(--chrome-cyan));
+  box-shadow:
+    inset 1px 1px var(--chrome-bevel),
+    inset -1px -1px var(--chrome-inset),
+    0 0 0 1px var(--a, var(--chrome-cyan));
 }
 
 @media (max-width: 1023px) and (orientation: portrait) {
@@ -200,8 +239,10 @@
     flex: none;
     overflow: hidden;
     border-top: 0;
-    border-left: 3px solid color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 40%, var(--chrome-inset));
-    padding: max(0.65rem, env(safe-area-inset-top)) max(0.65rem, env(safe-area-inset-right)) max(0.65rem, env(safe-area-inset-bottom)) 0.65rem;
+    border-left: 3px solid
+      color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 40%, var(--chrome-inset));
+    padding: max(0.65rem, env(safe-area-inset-top)) max(0.65rem, env(safe-area-inset-right))
+      max(0.65rem, env(safe-area-inset-bottom)) 0.65rem;
     box-shadow: -10px 0 26px rgba(0, 0, 0, 0.62);
     /* Keep the closed sheet outside the viewport without a persistent
        transform. WebKit hit-testing ignores pointer-events on a transformed
@@ -286,9 +327,11 @@
     gap: 0.35rem;
     overflow: hidden;
     border-top: 0;
-    border-left: 3px solid color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 40%, var(--chrome-inset));
-    padding: max(0.35rem, env(safe-area-inset-top)) 0.35rem max(0.35rem, env(safe-area-inset-bottom)) 0.65rem;
-    box-shadow: 0 -8px 22px rgba(0,0,0,0.55);
+    border-left: 3px solid
+      color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 40%, var(--chrome-inset));
+    padding: max(0.35rem, env(safe-area-inset-top)) 0.35rem
+      max(0.35rem, env(safe-area-inset-bottom)) 0.65rem;
+    box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.55);
   }
 
   .sidebar > *:not(.rail) {

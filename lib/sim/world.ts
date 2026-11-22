@@ -1,7 +1,69 @@
-export { at, inBounds, tileAt, heightAt, groundHeight, occupies, unitAt, unitOccupied, unitOccupancyFor, buildingAt, living, livingView, invalidateEntityCaches, invalidateLivingCache, invalidateUnitAtCache, invalidatePowerCache, powerBreakdownFor, byId, dist, distToEntity, closestTargetPoint } from "./world/queries";
-export { terrainAccess, staticNavigationFor, invalidateNavigation, isStaticWalkable, isWalkable, makeUnitOccupancy, fillUnitOccupancy, canClimb, canStep } from "./world/terrain";
-export type { StaticNavigation, TerrainAccess } from "./world/terrain";
-export { BUILDING_PLACEMENT_RADIUS, BUILDING_CLEARANCE, DEFAULT_BUILDING_CLEARANCE, INITIAL_BUILDING_EDGE_MARGIN, footprintFlat, canPlaceBuilding, findBuildSite, openTileNear, frontTileNear } from "./world/building";
-export { nextEntityId, makeUnit, makeBuilding, closestApproach, nearest, powerBreakdown, powerFor, spawnUnit, trySpawnUnit, spawnBuilding, spawnBuildingAt, emptyRoleCounts } from "./world/spawn";
+export {
+  addEntity,
+  assertUniqueEntityIds,
+  entitiesFor,
+  entityFor,
+  livingEntitiesFor,
+  removeEntities,
+} from "./entities";
+export {
+  BUILDING_CLEARANCE,
+  BUILDING_PLACEMENT_RADIUS,
+  canPlaceBuilding,
+  DEFAULT_BUILDING_CLEARANCE,
+  findBuildSite,
+  footprintFlat,
+  frontTileNear,
+  INITIAL_BUILDING_EDGE_MARGIN,
+  openTileNear,
+} from "./world/building";
 export { compactDestroyedEntities, compactedState } from "./world/lifecycle";
-export { addEntity, assertUniqueEntityIds, entitiesFor, entityFor, livingEntitiesFor, removeEntities } from "./entities";
+export {
+  at,
+  buildingAt,
+  byId,
+  closestTargetPoint,
+  dist,
+  distToEntity,
+  groundHeight,
+  heightAt,
+  inBounds,
+  invalidateEntityCaches,
+  invalidateLivingCache,
+  invalidatePowerCache,
+  invalidateUnitAtCache,
+  living,
+  livingView,
+  occupies,
+  powerBreakdownFor,
+  tileAt,
+  unitAt,
+  unitOccupancyFor,
+  unitOccupied,
+} from "./world/queries";
+export {
+  closestApproach,
+  emptyRoleCounts,
+  makeBuilding,
+  makeUnit,
+  nearest,
+  nextEntityId,
+  powerBreakdown,
+  powerFor,
+  spawnBuilding,
+  spawnBuildingAt,
+  spawnUnit,
+  trySpawnUnit,
+} from "./world/spawn";
+export type { StaticNavigation, TerrainAccess } from "./world/terrain";
+export {
+  canClimb,
+  canStep,
+  fillUnitOccupancy,
+  invalidateNavigation,
+  isStaticWalkable,
+  isWalkable,
+  makeUnitOccupancy,
+  staticNavigationFor,
+  terrainAccess,
+} from "./world/terrain";

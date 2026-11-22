@@ -1,4 +1,4 @@
-import { safeSetItem, type StorageAdapter } from "./save";
+import { type StorageAdapter, safeSetItem } from "./save";
 import { isRecord, readPersistedEnvelope } from "./utils";
 
 export const SETTINGS_KEY = "shiftingfront:settings";
@@ -116,8 +116,9 @@ function dedupeKeyBindings(bindings: KeyBindings): KeyBindings {
     const preferred = defaults[action];
     const replacement = !used.has(bindingKey(preferred))
       ? preferred
-      : KEY_BINDING_ORDER.map((name) => defaults[name]).find((candidate) => !used.has(bindingKey(candidate)))
-        ?? preferred;
+      : (KEY_BINDING_ORDER.map((name) => defaults[name]).find(
+          (candidate) => !used.has(bindingKey(candidate)),
+        ) ?? preferred);
     next[action] = replacement;
     used.add(bindingKey(replacement));
   }
@@ -167,13 +168,15 @@ function normalize(value: unknown): GameSettings {
   if (!value || typeof value !== "object") return base;
   const raw = value as Partial<GameSettings>;
   const validModes: ColorblindMode[] = ["none", "deuteranopia", "protanopia", "tritanopia"];
-  const colorblindMode = typeof raw.colorblindMode === "string" && (validModes as string[]).includes(raw.colorblindMode)
-    ? raw.colorblindMode
-    : "none";
+  const colorblindMode =
+    typeof raw.colorblindMode === "string" && (validModes as string[]).includes(raw.colorblindMode)
+      ? raw.colorblindMode
+      : "none";
   const validHudScales: HudScale[] = ["compact", "normal", "large"];
-  const hudScale = typeof raw.hudScale === "string" && (validHudScales as string[]).includes(raw.hudScale)
-    ? (raw.hudScale as HudScale)
-    : "normal";
+  const hudScale =
+    typeof raw.hudScale === "string" && (validHudScales as string[]).includes(raw.hudScale)
+      ? (raw.hudScale as HudScale)
+      : "normal";
 
   return {
     sfxEnabled: raw.sfxEnabled !== false,
@@ -196,7 +199,14 @@ export function readSettings(storage: StorageAdapter): GameSettings {
     storage,
     SETTINGS_KEY,
     (parsed) => {
-      if (!isRecord(parsed) || (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== SETTINGS_VERSION)) return null;
+      if (
+        !isRecord(parsed) ||
+        (parsed.version !== 1 &&
+          parsed.version !== 2 &&
+          parsed.version !== 3 &&
+          parsed.version !== SETTINGS_VERSION)
+      )
+        return null;
       return normalize(parsed.settings);
     },
     defaultSettings(),
@@ -204,22 +214,26 @@ export function readSettings(storage: StorageAdapter): GameSettings {
 }
 
 export function writeSettings(storage: StorageAdapter, settings: GameSettings): boolean {
-  return safeSetItem(storage, SETTINGS_KEY, JSON.stringify({
-    version: SETTINGS_VERSION,
-    savedAt: Date.now(),
-    settings: {
-      sfxEnabled: settings.sfxEnabled === true,
-      musicEnabled: settings.musicEnabled === true,
-      voiceEnabled: settings.voiceEnabled !== false,
-      masterVolume: clampVolume(settings.masterVolume, defaultSettings().masterVolume),
-      musicVolume: clampVolume(settings.musicVolume, defaultSettings().musicVolume),
-      sfxVolume: clampVolume(settings.sfxVolume, defaultSettings().sfxVolume),
-      voiceVolume: clampVolume(settings.voiceVolume, defaultSettings().voiceVolume),
-      reducedMotion: settings.reducedMotion === true,
-      highContrast: settings.highContrast === true,
-      colorblindMode: settings.colorblindMode || "none",
-      hudScale: settings.hudScale || "normal",
-      keyBindings: normalizeKeyBindings(settings.keyBindings),
-    },
-  }));
+  return safeSetItem(
+    storage,
+    SETTINGS_KEY,
+    JSON.stringify({
+      version: SETTINGS_VERSION,
+      savedAt: Date.now(),
+      settings: {
+        sfxEnabled: settings.sfxEnabled === true,
+        musicEnabled: settings.musicEnabled === true,
+        voiceEnabled: settings.voiceEnabled !== false,
+        masterVolume: clampVolume(settings.masterVolume, defaultSettings().masterVolume),
+        musicVolume: clampVolume(settings.musicVolume, defaultSettings().musicVolume),
+        sfxVolume: clampVolume(settings.sfxVolume, defaultSettings().sfxVolume),
+        voiceVolume: clampVolume(settings.voiceVolume, defaultSettings().voiceVolume),
+        reducedMotion: settings.reducedMotion === true,
+        highContrast: settings.highContrast === true,
+        colorblindMode: settings.colorblindMode || "none",
+        hudScale: settings.hudScale || "normal",
+        keyBindings: normalizeKeyBindings(settings.keyBindings),
+      },
+    }),
+  );
 }

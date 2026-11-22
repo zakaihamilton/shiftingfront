@@ -4,8 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProductionCameos, productionBlockerText } from "../../components/game/ProductionCameos";
-import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
 import { generateVisualProfile } from "../../lib/gen/visualProfile";
+import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
 
 vi.mock("../../components/game/SpritePreview", () => ({
   SpritePreview: () => <span data-testid="sprite-preview" />,
@@ -26,7 +26,9 @@ describe("production cameo availability", () => {
     state.credits[0] = 0;
 
     const producer = state.entities.find((entity) => entity.kind === "factory");
-    expect(productionBlockerText(state, "tank", -1, producer)).toBe("Need 425 more credits · Restore power");
+    expect(productionBlockerText(state, "tank", -1, producer)).toBe(
+      "Need 425 more credits · Restore power",
+    );
   });
 
   it("uses the first actionable compact blocker while preserving all full reasons", () => {
@@ -148,7 +150,10 @@ describe("production cameo availability", () => {
 
     const tank = screen.getByRole("button", { name: /Tank, 425 credits/ });
     expect(tank).toBeDisabled();
-    expect(tank.parentElement).toHaveAttribute("data-tooltip", expect.stringContaining("Build a Vehicle Plant"));
+    expect(tank.parentElement).toHaveAttribute(
+      "data-tooltip",
+      expect.stringContaining("Build a Vehicle Plant"),
+    );
     expect(tank.parentElement).toHaveAttribute("data-shortcut", "Alt+4");
     expect(tank).toHaveAttribute("aria-keyshortcuts", "Alt+4");
   });
@@ -174,8 +179,9 @@ describe("production cameo availability", () => {
     expect(detail?.textContent).toBe("Line infantry · effective vs light units");
 
     const antiArmor = screen.getByRole("button", { name: /Anti-armor, 160 credits/ });
-    expect(antiArmor.querySelector('[class*="detail"]')?.textContent)
-      .toBe("Rocket launcher · effective vs heavy armor");
+    expect(antiArmor.querySelector('[class*="detail"]')?.textContent).toBe(
+      "Rocket launcher · effective vs heavy armor",
+    );
   });
 
   it("shows Option labels for cameo shortcuts on Mac", () => {
@@ -207,7 +213,9 @@ describe("production cameo availability", () => {
   it("explains how to unlock a gated unit", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
 
-    expect(productionBlockerText(state, "convoyTruck", 0, undefined)).toBe("Advance the campaign to unlock this unit");
+    expect(productionBlockerText(state, "convoyTruck", 0, undefined)).toBe(
+      "Advance the campaign to unlock this unit",
+    );
     expect(productionBlockerText(state, "medic", 0, undefined)).toBe("Build a Barracks");
     expect(productionBlockerText(state, "repairTruck", 0, undefined)).toBe("Build a Vehicle Plant");
   });

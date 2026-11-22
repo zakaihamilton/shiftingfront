@@ -1,7 +1,14 @@
 import { BUILDING_STATS, UNIT_STATS } from "../../catalog";
-import { isBuildingEntity, isUnitEntity, type AiContact, type Entity, type Owner, type SimState } from "../../types";
-import { byId, distToEntity, livingView } from "../world";
+import {
+  type AiContact,
+  type Entity,
+  isBuildingEntity,
+  isUnitEntity,
+  type Owner,
+  type SimState,
+} from "../../types";
 import { groundUnitSightAt } from "../terrainRules";
+import { byId, distToEntity, livingView } from "../world";
 import { aiContacts as getAiContacts } from "./ownerState";
 
 /** Contacts remain available to the director for fifteen seconds after detection. */
@@ -14,7 +21,9 @@ function contactsFor(state: SimState, aiOwner: Owner): Record<string, AiContact>
 function sightOf(state: SimState, entity: Entity): number {
   return isUnitEntity(entity)
     ? groundUnitSightAt(state, entity, UNIT_STATS[entity.kind].sight)
-    : isBuildingEntity(entity) ? BUILDING_STATS[entity.kind].sight : 0;
+    : isBuildingEntity(entity)
+      ? BUILDING_STATS[entity.kind].sight
+      : 0;
 }
 
 function canDetect(state: SimState, source: Entity, target: Entity): boolean {
@@ -22,14 +31,24 @@ function canDetect(state: SimState, source: Entity, target: Entity): boolean {
 }
 
 function isStrategicContact(state: SimState, target: Entity, opponents: readonly Owner[]): boolean {
-  return (target.kind === "constructionYard" && opponents.includes(target.owner))
-    || target.marked
-    || target.attackTarget !== undefined
-    || state.runtime?.targetIds.includes(target.id) === true;
+  return (
+    (target.kind === "constructionYard" && opponents.includes(target.owner)) ||
+    target.marked ||
+    target.attackTarget !== undefined ||
+    state.runtime?.targetIds.includes(target.id) === true
+  );
 }
 
-function isCurrentlyKnown(state: SimState, target: Entity, sensors: Entity[], opponents: readonly Owner[]): boolean {
-  return isStrategicContact(state, target, opponents) || sensors.some((sensor) => canDetect(state, sensor, target));
+function isCurrentlyKnown(
+  state: SimState,
+  target: Entity,
+  sensors: Entity[],
+  opponents: readonly Owner[],
+): boolean {
+  return (
+    isStrategicContact(state, target, opponents) ||
+    sensors.some((sensor) => canDetect(state, sensor, target))
+  );
 }
 
 function pruneContacts(state: SimState, aiOwner: Owner): void {
@@ -40,7 +59,11 @@ function pruneContacts(state: SimState, aiOwner: Owner): void {
 }
 
 /** Update enemy knowledge from current sensor ranges and mission-wide intel. */
-export function updateAiContacts(state: SimState, aiOwner: Owner = 1, opponents: readonly Owner[] = [0]): void {
+export function updateAiContacts(
+  state: SimState,
+  aiOwner: Owner = 1,
+  opponents: readonly Owner[] = [0],
+): void {
   const contacts = contactsFor(state, aiOwner);
   const playerEntities = livingView(state).filter((entity) => opponents.includes(entity.owner));
   const sensors = livingView(state).filter((entity) => entity.owner === aiOwner);
@@ -92,7 +115,8 @@ export function enemyKnownPlayerEntities(
 
   pruneContacts(state, aiOwner);
   for (const contact of Object.values(contacts)) {
-    if (visible.has(contact.id) || state.tick - contact.lastSeenTick > AI_CONTACT_TTL_TICKS) continue;
+    if (visible.has(contact.id) || state.tick - contact.lastSeenTick > AI_CONTACT_TTL_TICKS)
+      continue;
     result.push({
       id: contact.id,
       owner: contact.owner ?? opponents[0] ?? 0,
@@ -123,7 +147,8 @@ export function nearestKnownPlayer(
   aiOwner: Owner = 1,
   opponents: readonly Owner[] = [0],
 ): Entity | undefined {
-  const known = knownPlayers ?? enemyKnownPlayerEntities(state, livingView(state), aiOwner, opponents);
+  const known =
+    knownPlayers ?? enemyKnownPlayerEntities(state, livingView(state), aiOwner, opponents);
   let best: Entity | undefined;
   let bestDistance = Infinity;
   const sensors = livingView(state).filter((entity) => entity.owner === aiOwner);

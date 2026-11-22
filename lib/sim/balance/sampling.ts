@@ -1,7 +1,7 @@
 import { availableParallelism } from "node:os";
 import { createCampaign } from "../../gen/campaign";
-import { formatSeed } from "../../seed/rng";
 import { resolveMissionProfile } from "../../gen/profile";
+import { formatSeed } from "../../seed/rng";
 import type { BalanceRunOptions, BalanceScenario, PlaytestManifestEntry } from "./types";
 
 export function defaultBalanceJobs(scenarioCount: number): number {
@@ -9,7 +9,9 @@ export function defaultBalanceJobs(scenarioCount: number): number {
   return Math.max(1, Math.min(available, 10, scenarioCount || 1));
 }
 
-export function balanceScenarios(options: BalanceRunOptions): Array<{ seed: number; mission: number }> {
+export function balanceScenarios(
+  options: BalanceRunOptions,
+): Array<{ seed: number; mission: number }> {
   const missions = [...new Set(options.missions)]
     .filter((mission) => Number.isInteger(mission) && mission >= 0 && mission < 6)
     .sort((a, b) => a - b);
@@ -43,10 +45,21 @@ export function stratifiedBalanceScenarios(
     }
   }
   const missing = [
-    "harvestQuota", "forceQuota", "structureQuota", "destroyMarked", "razeAll", "decapitate",
-    "annihilate", "holdTheLine", "escort", "sabotage", "rescue", "extraction",
+    "harvestQuota",
+    "forceQuota",
+    "structureQuota",
+    "destroyMarked",
+    "razeAll",
+    "decapitate",
+    "annihilate",
+    "holdTheLine",
+    "escort",
+    "sabotage",
+    "rescue",
+    "extraction",
   ].filter((kind) => (counts.get(kind) ?? 0) < minSamplesPerKind);
-  if (missing.length) throw new Error(`Unable to collect stratified balance samples for: ${missing.join(", ")}`);
+  if (missing.length)
+    throw new Error(`Unable to collect stratified balance samples for: ${missing.join(", ")}`);
   return scenarios.sort((a, b) => a.seed - b.seed || a.mission - b.mission);
 }
 
@@ -79,10 +92,17 @@ export function representativePlaytestManifest(
     }
   }
   const variants = [
-    "resourceRace", "forwardIndustry", "surgicalStrike", "siege",
-    "concentratedWaves", "crossfire", "directRoute", "contestedRoute",
+    "resourceRace",
+    "forwardIndustry",
+    "surgicalStrike",
+    "siege",
+    "concentratedWaves",
+    "crossfire",
+    "directRoute",
+    "contestedRoute",
   ];
   const missing = variants.filter((variant) => (counts.get(variant) ?? 0) < perVariant);
-  if (missing.length) throw new Error(`Unable to collect playtest scenarios for: ${missing.join(", ")}`);
+  if (missing.length)
+    throw new Error(`Unable to collect playtest scenarios for: ${missing.join(", ")}`);
   return entries.sort((a, b) => a.seed - b.seed || a.mission - b.mission);
 }

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  blockerPropPrims,
-  type BlockerTone,
-  type PropPrim,
-} from "../../lib/gen/blockerPropArt";
+import { type BlockerTone, blockerPropPrims, type PropPrim } from "../../lib/gen/blockerPropArt";
 import { blockerPropKind } from "../../lib/gen/terrainDecorKinds";
 
 const TONE: BlockerTone = {
@@ -26,7 +22,10 @@ const BIOMES = [
   "volcanic shelf",
 ] as const;
 
-function ofKind<K extends PropPrim["k"]>(prims: PropPrim[], k: K): Array<Extract<PropPrim, { k: K }>> {
+function ofKind<K extends PropPrim["k"]>(
+  prims: PropPrim[],
+  k: K,
+): Array<Extract<PropPrim, { k: K }>> {
   return prims.filter((prim): prim is Extract<PropPrim, { k: K }> => prim.k === k);
 }
 
@@ -47,7 +46,9 @@ describe("blocker prop art", () => {
     const trunk = ofKind(prims, "line")[0];
     expect(trunk).toBeDefined();
     expect(trunk!.y1).toBeLessThan(trunk!.y0);
-    expect(ofKind(prims, "poly").filter((prim) => prim.pts.length === 6).length).toBeGreaterThanOrEqual(4);
+    expect(
+      ofKind(prims, "poly").filter((prim) => prim.pts.length === 6).length,
+    ).toBeGreaterThanOrEqual(4);
   });
 
   it("keeps tree and pine silhouettes distinct", () => {
@@ -110,7 +111,8 @@ describe("blocker prop art", () => {
     ] as const;
     for (const [kind, biome] of cases) {
       const signatures = new Set<string>();
-      for (let v = 0; v < 64; v++) signatures.add(JSON.stringify(blockerPropPrims(kind, v, TONE, biome)));
+      for (let v = 0; v < 64; v++)
+        signatures.add(JSON.stringify(blockerPropPrims(kind, v, TONE, biome)));
       expect(signatures.size, `${kind} profiles`).toBeGreaterThanOrEqual(2);
     }
   });
@@ -135,7 +137,12 @@ describe("blocker prop art", () => {
         const prims = blockerPropPrims(kind, v, TONE, biome);
         expect(blockerPropPrims(kind, v, TONE, biome)).toEqual(prims);
         expect(
-          prims.some((prim) => (prim.k === "line" || prim.k === "curve") && prim.alpha !== undefined && prim.alpha < 0.72),
+          prims.some(
+            (prim) =>
+              (prim.k === "line" || prim.k === "curve") &&
+              prim.alpha !== undefined &&
+              prim.alpha < 0.72,
+          ),
           `${kind} weathering detail`,
         ).toBe(true);
         for (const prim of prims) {

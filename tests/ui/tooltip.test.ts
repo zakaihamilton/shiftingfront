@@ -30,20 +30,32 @@ describe("edge pan from pointer", () => {
   });
 
   it("skips unavailable directions", () => {
-    expect(panDirFromPointer(4, 200, 800, 600, EDGE_PAN_BAND, {
-      left: false,
-      right: true,
-      up: true,
-      down: true,
-    })).toBeNull();
+    expect(
+      panDirFromPointer(4, 200, 800, 600, EDGE_PAN_BAND, {
+        left: false,
+        right: true,
+        up: true,
+        down: true,
+      }),
+    ).toBeNull();
   });
 
   it("checks diagonal availability directly at battlefield corners", () => {
     const cardinalAvailability = { left: false, right: true, up: true, down: true };
-    expect(panDirFromPointer(10, 598, 800, 600, EDGE_PAN_BAND, cardinalAvailability, (dir) => dir === "down-left"))
-      .toBe("down-left");
-    expect(panDirFromPointer(10, 598, 800, 600, EDGE_PAN_BAND, cardinalAvailability, () => false))
-      .toBe("down");
+    expect(
+      panDirFromPointer(
+        10,
+        598,
+        800,
+        600,
+        EDGE_PAN_BAND,
+        cardinalAvailability,
+        (dir) => dir === "down-left",
+      ),
+    ).toBe("down-left");
+    expect(
+      panDirFromPointer(10, 598, 800, 600, EDGE_PAN_BAND, cardinalAvailability, () => false),
+    ).toBe("down");
   });
 });
 
@@ -175,12 +187,7 @@ describe("floating tooltips", () => {
   it("keeps a wide tooltip inside the viewport near a right edge", () => {
     const size = { width: 280, height: 36 };
     const view = { width: 400, height: 300 };
-    const placed = placeTooltip(
-      { top: 80, left: 350, width: 40, height: 20 },
-      size,
-      "above",
-      view,
-    );
+    const placed = placeTooltip({ top: 80, left: 350, width: 40, height: 20 }, size, "above", view);
     expect(placed.left).toBeGreaterThanOrEqual(TOOLTIP_PAD);
     expect(placed.left + size.width).toBeLessThanOrEqual(view.width - TOOLTIP_PAD);
     expect(placed.top).toBeGreaterThanOrEqual(TOOLTIP_PAD);

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { BUILDING_STATS, UNIT_STATS, buildingCameoStatus, buildingLimitReached, unitCameoStatus } from "../../lib/catalog";
+import {
+  BUILDING_STATS,
+  buildingCameoStatus,
+  buildingLimitReached,
+  UNIT_STATS,
+  unitCameoStatus,
+} from "../../lib/catalog";
 import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
 
 describe("sidebar cameo progress", () => {

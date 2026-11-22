@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createCampaign } from "../../lib/gen/campaign";
-import { createMission } from "../../lib/sim/api";
 import { assertValidSeed, parseMissionIndex } from "../../lib/seed/rng";
+import { createMission } from "../../lib/sim/api";
 
 describe("campaign seed validation", () => {
   it("accepts the inclusive four-digit seed range", () => {
@@ -9,11 +9,14 @@ describe("campaign seed validation", () => {
     expect(assertValidSeed(9999)).toBe(9999);
   });
 
-  it.each([-1, 10000, 1.5, Number.NaN, Number.POSITIVE_INFINITY])("rejects invalid seed %s", (seed) => {
-    expect(() => assertValidSeed(seed)).toThrow(RangeError);
-    expect(() => createCampaign(seed)).toThrow(RangeError);
-    expect(() => createMission({ seed, missionIndex: 0 })).toThrow(RangeError);
-  });
+  it.each([-1, 10000, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid seed %s",
+    (seed) => {
+      expect(() => assertValidSeed(seed)).toThrow(RangeError);
+      expect(() => createCampaign(seed)).toThrow(RangeError);
+      expect(() => createMission({ seed, missionIndex: 0 })).toThrow(RangeError);
+    },
+  );
 });
 
 describe("mission query parsing", () => {

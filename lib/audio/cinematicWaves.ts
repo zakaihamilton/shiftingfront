@@ -53,7 +53,10 @@ export function cinematicToneFor(type: MusicVoiceType): CinematicTone {
   return "warm";
 }
 
-export function cinematicHarmonics(role: CinematicWaveRole, tone: CinematicTone = "warm"): readonly number[] {
+export function cinematicHarmonics(
+  role: CinematicWaveRole,
+  tone: CinematicTone = "warm",
+): readonly number[] {
   return COLORED[role][tone];
 }
 

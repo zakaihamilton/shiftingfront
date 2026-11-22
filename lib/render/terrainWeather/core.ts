@@ -58,4 +58,4 @@ export function forVisibleIndexedTiles(
   }
 }
 
-export { ensureFxTileIndex, buildFxTileIndex };
+export { buildFxTileIndex, ensureFxTileIndex };

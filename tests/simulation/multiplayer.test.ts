@@ -1,27 +1,35 @@
 import { describe, expect, it } from "vitest";
+import { tickMultiplayerAi } from "@/lib/sim/ai";
+import { updateAiContacts } from "@/lib/sim/ai/visibility";
 import { createSkirmish, issue, tick } from "@/lib/sim/api";
 import { tickCombat } from "@/lib/sim/combat";
+import {
+  aiDifficultyMission,
+  missionDifficulty,
+  SKIRMISH_AI_MISSION_INDEX,
+} from "@/lib/sim/difficulty";
 import { addBuilding, addUnit, makeFixture } from "@/lib/sim/fixtures";
 import { fogAt } from "@/lib/sim/fog";
 import { evaluateObjectives } from "@/lib/sim/objectives";
-import { SIMULATION_SYSTEMS, createSimulationTickContext } from "@/lib/sim/pipeline";
-import { tickProduction } from "@/lib/sim/production";
-import { aiDifficultyMission, missionDifficulty, SKIRMISH_AI_MISSION_INDEX } from "@/lib/sim/difficulty";
 import { isPlayerControlledOwner } from "@/lib/sim/ownership";
+import { createSimulationTickContext, SIMULATION_SYSTEMS } from "@/lib/sim/pipeline";
+import { tickProduction } from "@/lib/sim/production";
 import { findBuildSite, invalidateEntityCaches, powerFor } from "@/lib/sim/world";
-import { tickMultiplayerAi } from "@/lib/sim/ai";
-import { updateAiContacts } from "@/lib/sim/ai/visibility";
 import type { Owner } from "@/lib/types";
 
 const ALL_PLAYERS: Owner[] = [0, 1, 2, 3];
 
 function countsByOwner(state: ReturnType<typeof createSkirmish>["state"], owner: Owner) {
-  return state.entities.filter((entity) => entity.owner === owner && entity.hp > 0)
-    .map((entity) => `${entity.class}:${entity.kind}`).sort();
+  return state.entities
+    .filter((entity) => entity.owner === owner && entity.hp > 0)
+    .map((entity) => `${entity.class}:${entity.kind}`)
+    .sort();
 }
 
 function constructionYard(state: ReturnType<typeof createSkirmish>["state"], owner: Owner) {
-  return state.entities.find((entity) => entity.owner === owner && entity.kind === "constructionYard")!;
+  return state.entities.find(
+    (entity) => entity.owner === owner && entity.kind === "constructionYard",
+  )!;
 }
 
 describe("free-for-all skirmish simulation", () => {
@@ -29,8 +37,12 @@ describe("free-for-all skirmish simulation", () => {
     const { state } = createSkirmish(8123, 0, ALL_PLAYERS, [1, 2, 3]);
     expect(state.missionIndex).toBe(0);
     expect(aiDifficultyMission(state)).toBe(SKIRMISH_AI_MISSION_INDEX);
-    expect(missionDifficulty(aiDifficultyMission(state)).enemyProductionEvery).toBe(missionDifficulty(5).enemyProductionEvery);
-    expect(missionDifficulty(0).enemyProductionEvery).toBeGreaterThan(missionDifficulty(5).enemyProductionEvery);
+    expect(missionDifficulty(aiDifficultyMission(state)).enemyProductionEvery).toBe(
+      missionDifficulty(5).enemyProductionEvery,
+    );
+    expect(missionDifficulty(0).enemyProductionEvery).toBeGreaterThan(
+      missionDifficulty(5).enemyProductionEvery,
+    );
   });
 
   it("creates four equivalent corner forces and resources without campaign AI", () => {
@@ -38,17 +50,36 @@ describe("free-for-all skirmish simulation", () => {
     expect(state.multiplayer).toBe(true);
     expect(state.multiplayerOwners).toEqual(ALL_PLAYERS);
     expect(state.viewOwner).toBe(0);
-    for (const owner of [1, 2, 3] as const) expect(countsByOwner(state, owner)).toEqual(countsByOwner(state, 0));
+    for (const owner of [1, 2, 3] as const)
+      expect(countsByOwner(state, owner)).toEqual(countsByOwner(state, 0));
     expect(ALL_PLAYERS.map((owner) => constructionYard(state, owner))).toMatchObject([
-      { x: 5, y: 5 }, { x: 74, y: 5 }, { x: 74, y: 74 }, { x: 5, y: 74 },
+      { x: 5, y: 5 },
+      { x: 74, y: 5 },
+      { x: 74, y: 74 },
+      { x: 5, y: 74 },
     ]);
     expect(state.runtime).toBeUndefined();
     expect(state.aiState).toBeUndefined();
-    expect(state.entities.some((entity) => entity.neutral || entity.scenarioRole !== undefined || entity.kind === "objective")).toBe(false);
+    expect(
+      state.entities.some(
+        (entity) =>
+          entity.neutral || entity.scenarioRole !== undefined || entity.kind === "objective",
+      ),
+    ).toBe(false);
     expect(state.credits).toEqual([2000, 2000, 2000, 2000]);
-    expect(ALL_PLAYERS.map((owner) => powerFor(state, owner))).toEqual([powerFor(state, 0), powerFor(state, 0), powerFor(state, 0), powerFor(state, 0)]);
-    for (const owner of [1, 2, 3] as const) expect(countsByOwner(createSkirmish(8123, owner, ALL_PLAYERS).state, owner)).toEqual(countsByOwner(state, owner));
-    SIMULATION_SYSTEMS.find((system) => system.id === "ai")!.run(createSimulationTickContext(state, undefined, {}));
+    expect(ALL_PLAYERS.map((owner) => powerFor(state, owner))).toEqual([
+      powerFor(state, 0),
+      powerFor(state, 0),
+      powerFor(state, 0),
+      powerFor(state, 0),
+    ]);
+    for (const owner of [1, 2, 3] as const)
+      expect(countsByOwner(createSkirmish(8123, owner, ALL_PLAYERS).state, owner)).toEqual(
+        countsByOwner(state, owner),
+      );
+    SIMULATION_SYSTEMS.find((system) => system.id === "ai")!.run(
+      createSimulationTickContext(state, undefined, {}),
+    );
     expect(state.unitsProduced).toEqual([0, 0, 0, 0]);
     expect(state.aiState).toBeUndefined();
   });
@@ -63,7 +94,9 @@ describe("free-for-all skirmish simulation", () => {
     updateAiContacts(host, 2, [0, 1, 3]);
     expect(host.multiplayerAiMemory?.[1]?.contacts).toBeDefined();
     expect(host.multiplayerAiMemory?.[2]?.contacts).toBeDefined();
-    expect(host.multiplayerAiMemory?.[1]?.contacts).not.toBe(host.multiplayerAiMemory?.[2]?.contacts);
+    expect(host.multiplayerAiMemory?.[1]?.contacts).not.toBe(
+      host.multiplayerAiMemory?.[2]?.contacts,
+    );
 
     for (let index = 0; index < 300; index += 1) {
       tick(host, [], { collectEvents: false, updateFog: false });
@@ -75,11 +108,13 @@ describe("free-for-all skirmish simulation", () => {
     expect(guest.multiplayerAiMemory).toEqual(host.multiplayerAiMemory);
     for (const owner of aiOwners) {
       expect(
-        (host.unitsProduced[owner] ?? 0) > 0
-        || host.productionQueues?.[owner]?.barracks?.producing !== undefined
-        || host.productionQueues?.[owner]?.factory?.producing !== undefined,
+        (host.unitsProduced[owner] ?? 0) > 0 ||
+          host.productionQueues?.[owner]?.barracks?.producing !== undefined ||
+          host.productionQueues?.[owner]?.factory?.producing !== undefined,
       ).toBe(true);
-      expect(Object.keys(host.multiplayerAiMemory?.[owner]?.contacts ?? {}).length).toBeGreaterThan(0);
+      expect(Object.keys(host.multiplayerAiMemory?.[owner]?.contacts ?? {}).length).toBeGreaterThan(
+        0,
+      );
     }
   });
 
@@ -92,14 +127,23 @@ describe("free-for-all skirmish simulation", () => {
     for (const owner of aiOwners) {
       // Late-campaign yard guards stay home. The surplus raider may attack or
       // step off toward a flank, so either order counts as leaving the base.
-      const committed = state.entities.filter((entity) => entity.owner === owner && entity.class === "unit" && entity.kind !== "harvester"
-        && (entity.attackTarget !== undefined || entity.orderDestination !== undefined));
+      const committed = state.entities.filter(
+        (entity) =>
+          entity.owner === owner &&
+          entity.class === "unit" &&
+          entity.kind !== "harvester" &&
+          (entity.attackTarget !== undefined || entity.orderDestination !== undefined),
+      );
       expect(committed.length).toBeGreaterThan(0);
       const assignedTargets = committed
         .filter((entity) => entity.attackTarget !== undefined)
         .map((entity) => state.entities.find((target) => target.id === entity.attackTarget))
         .filter((target) => target !== undefined);
-      expect(assignedTargets.every((target) => target.owner !== owner && ALL_PLAYERS.includes(target.owner))).toBe(true);
+      expect(
+        assignedTargets.every(
+          (target) => target.owner !== owner && ALL_PLAYERS.includes(target.owner),
+        ),
+      ).toBe(true);
     }
   });
 
@@ -121,29 +165,43 @@ describe("free-for-all skirmish simulation", () => {
 
   it("applies player-only path behavior to every active multiplayer seat", () => {
     const state = createSkirmish(8123, 2, [0, 2, 3]).state;
-    expect([0, 1, 2, 3].map((owner) => isPlayerControlledOwner(state, owner as Owner)))
-      .toEqual([true, false, true, true]);
+    expect([0, 1, 2, 3].map((owner) => isPlayerControlledOwner(state, owner as Owner))).toEqual([
+      true,
+      false,
+      true,
+      true,
+    ]);
 
     const campaign = makeFixture({ win: { kind: "annihilate" } });
     expect(isPlayerControlledOwner(campaign, 0)).toBe(true);
     expect(isPlayerControlledOwner(campaign, 1)).toBe(false);
 
     const withBot = createSkirmish(8123, 0, [0, 1, 2], [2]).state;
-    expect([0, 1, 2, 3].map((owner) => isPlayerControlledOwner(withBot, owner as Owner)))
-      .toEqual([true, true, false, false]);
+    expect([0, 1, 2, 3].map((owner) => isPlayerControlledOwner(withBot, owner as Owner))).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
   });
 
   it("applies power-deficit production, construction, turret, and warning behavior to owners 2 and 3", () => {
     for (const owner of [2, 3] as const) {
       const { state } = createSkirmish(8123, owner, ALL_PLAYERS);
-      const power = state.entities.find((entity) => entity.owner === owner && entity.kind === "power")!;
+      const power = state.entities.find(
+        (entity) => entity.owner === owner && entity.kind === "power",
+      )!;
       power.hp = 0;
       invalidateEntityCaches(state);
       expect(powerFor(state, owner)).toBeLessThan(0);
 
-      const factory = state.entities.find((entity) => entity.owner === owner && entity.kind === "factory")!;
+      const factory = state.entities.find(
+        (entity) => entity.owner === owner && entity.kind === "factory",
+      )!;
       factory.producing = { kind: "tank", remaining: 20 };
-      const turret = state.entities.find((entity) => entity.owner === owner && entity.kind === "turret")!;
+      const turret = state.entities.find(
+        (entity) => entity.owner === owner && entity.kind === "turret",
+      )!;
       turret.constructing = 5;
       turret.cooldown = 10;
 
@@ -161,19 +219,37 @@ describe("free-for-all skirmish simulation", () => {
   it("allows each seat to control only its own production and attack every rival", () => {
     const state = createSkirmish(8123, 0, ALL_PLAYERS).state;
     for (const owner of ALL_PLAYERS) {
-      const barracks = state.entities.find((entity) => entity.owner === owner && entity.kind === "barracks")!;
+      const barracks = state.entities.find(
+        (entity) => entity.owner === owner && entity.kind === "barracks",
+      )!;
       issue(state, { type: "produce", fromId: barracks.id, unit: "infantry", owner });
       expect(state.productionQueues?.[owner]?.barracks?.producing?.kind).toBe("infantry");
 
-      const tank = state.entities.find((entity) => entity.owner === owner && entity.kind === "tank")!;
-      const rival = state.entities.find((entity) => entity.owner === ((owner + 1) % 4) && entity.kind === "constructionYard")!;
-      expect(issue(state, { type: "attack", unitIds: [tank.id], targetId: rival.id, owner })
-        .some((event) => event.type === "commandRejected")).toBe(false);
+      const tank = state.entities.find(
+        (entity) => entity.owner === owner && entity.kind === "tank",
+      )!;
+      const rival = state.entities.find(
+        (entity) => entity.owner === (owner + 1) % 4 && entity.kind === "constructionYard",
+      )!;
+      expect(
+        issue(state, { type: "attack", unitIds: [tank.id], targetId: rival.id, owner }).some(
+          (event) => event.type === "commandRejected",
+        ),
+      ).toBe(false);
 
-      const rivalBarracks = state.entities.find((entity) => entity.owner === ((owner + 1) % 4) && entity.kind === "barracks")!;
-      const rejectionEvents = issue(state, { type: "produce", fromId: rivalBarracks.id, unit: "infantry", owner });
+      const rivalBarracks = state.entities.find(
+        (entity) => entity.owner === (owner + 1) % 4 && entity.kind === "barracks",
+      )!;
+      const rejectionEvents = issue(state, {
+        type: "produce",
+        fromId: rivalBarracks.id,
+        unit: "infantry",
+        owner,
+      });
       expect(rejectionEvents.some((event) => event.type === "commandRejected")).toBe(true);
-      expect(rejectionEvents.find((event) => event.type === "commandRejected")).toMatchObject({ owner });
+      expect(rejectionEvents.find((event) => event.type === "commandRejected")).toMatchObject({
+        owner,
+      });
     }
   });
 
@@ -200,9 +276,19 @@ describe("free-for-all skirmish simulation", () => {
       const yard = constructionYard(state, owner);
       const site = findBuildSite(state, "power", yard.x, yard.y, 12, owner)!;
       expect(site).toBeDefined();
-      const events = issue(state, { type: "build", building: "power", x: site.x, y: site.y, owner });
+      const events = issue(state, {
+        type: "build",
+        building: "power",
+        x: site.x,
+        y: site.y,
+        owner,
+      });
       expect(events.some((event) => event.type === "commandRejected")).toBe(false);
-      expect(state.entities.some((entity) => entity.owner === owner && entity.kind === "power" && entity.constructing > 0)).toBe(true);
+      expect(
+        state.entities.some(
+          (entity) => entity.owner === owner && entity.kind === "power" && entity.constructing > 0,
+        ),
+      ).toBe(true);
     }
   });
 

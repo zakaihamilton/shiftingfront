@@ -131,7 +131,8 @@
   animation: none !important;
   scale: 1 !important;
   filter: none;
-  translate: calc((var(--lock-size) - var(--lock-feed-w)) / 2) calc((var(--lock-size) - var(--lock-feed-h)) / 2);
+  translate: calc((var(--lock-size) - var(--lock-feed-w)) / 2)
+    calc((var(--lock-size) - var(--lock-feed-h)) / 2);
   background: none;
   box-shadow: 0 0 18px color-mix(in srgb, var(--chrome-cyan) 28%, transparent);
 }
@@ -185,29 +186,58 @@
 }
 
 @keyframes radar-scan {
-  from { transform: translateY(-75%); }
-  to { transform: translateY(75%); }
+  from {
+    transform: translateY(-75%);
+  }
+  to {
+    transform: translateY(75%);
+  }
 }
 
 @keyframes lock-drift-a {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 12px -8px; }
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 12px -8px;
+  }
 }
 
 @keyframes lock-drift-b {
-  0%, 100% { translate: 0 0; }
-  50% { translate: -10px 9px; }
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: -10px 9px;
+  }
 }
 
 @keyframes lock-drift-c {
-  0%, 100% { translate: 0 0; }
-  50% { translate: -8px -11px; }
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: -8px -11px;
+  }
 }
 
 @keyframes lock-acquire {
-  0%, 70%, 100% { scale: 1; opacity: 0.82; }
-  78% { scale: 1.12; opacity: 1; }
-  86% { scale: 1; }
+  0%,
+  70%,
+  100% {
+    scale: 1;
+    opacity: 0.82;
+  }
+  78% {
+    scale: 1.12;
+    opacity: 1;
+  }
+  86% {
+    scale: 1;
+  }
 }
 
 @media (max-width: 959px) {

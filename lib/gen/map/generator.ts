@@ -1,5 +1,4 @@
 import type { ReadonlyMissionDef } from "../../types";
-import type { GeneratedMap } from "./generator/index";
 import {
   carveRoutes,
   createMapBuild,
@@ -9,6 +8,7 @@ import {
   paintTerrainNoise,
   placeResources,
 } from "./generatePhases";
+import type { GeneratedMap } from "./generator/index";
 
 export function generateMap(
   seed: number,

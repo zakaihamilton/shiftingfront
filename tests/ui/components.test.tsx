@@ -1,37 +1,37 @@
 // @vitest-environment jsdom
 
-import { createRef, useRef, useState } from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createRef, useRef, useState } from "react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MobileCommandLauncher } from "../../components/game/MobileCommandLauncher";
-import { MobileTouchControls } from "../../components/game/MobileTouchControls";
-import { SelectionOrders } from "../../components/game/SelectionOrders";
+import { BriefingActions } from "../../components/briefing/BriefingActions";
 import { CommandCatalogContent } from "../../components/game/CommandCatalogContent";
-import { MenuHero } from "../../components/menu/MenuHero";
-import { MenuOverlay } from "../../components/menu/MenuOverlay";
-import { MenuMainPanel } from "../../components/menu/MenuMainPanel";
-import { NewGameSetup } from "../../components/menu/NewGameSetup";
-import { SeedEntry } from "../../components/menu/SeedEntry";
-import { weeklySeed } from "../../components/menu/menuLaunch";
-import { PauseMenu } from "../../components/game/PauseMenu";
-import { PauseDiagnostics } from "../../components/game/PauseDiagnostics";
-import { PauseOptions } from "../../components/settings/PauseOptions";
-import { PauseSaveSlots } from "../../components/game/PauseSaveSlots";
-import { PauseLoadSlots } from "../../components/game/PauseLoadSlots";
 import { CommandHeader } from "../../components/game/CommandHeader";
 import { CommandTabs } from "../../components/game/CommandTabs";
-import { TutorialOverlay } from "../../components/game/TutorialOverlay";
-import type { ArchiveEntry, SlotMeta } from "../../lib/persist/save";
 import { MissionConfirmation } from "../../components/game/MissionConfirmation";
-import { BriefingActions } from "../../components/briefing/BriefingActions";
+import { MobileCommandLauncher } from "../../components/game/MobileCommandLauncher";
+import { MobileTouchControls } from "../../components/game/MobileTouchControls";
+import { PauseDiagnostics } from "../../components/game/PauseDiagnostics";
+import { PauseLoadSlots } from "../../components/game/PauseLoadSlots";
+import { PauseMenu } from "../../components/game/PauseMenu";
+import { PauseSaveSlots } from "../../components/game/PauseSaveSlots";
+import { SelectionOrders } from "../../components/game/SelectionOrders";
+import { TutorialOverlay } from "../../components/game/TutorialOverlay";
+import { MenuHero } from "../../components/menu/MenuHero";
+import { MenuMainPanel } from "../../components/menu/MenuMainPanel";
+import { MenuOverlay } from "../../components/menu/MenuOverlay";
+import { weeklySeed } from "../../components/menu/menuLaunch";
+import { NewGameSetup } from "../../components/menu/NewGameSetup";
+import { SeedEntry } from "../../components/menu/SeedEntry";
+import { PauseOptions } from "../../components/settings/PauseOptions";
 import { createCampaign } from "../../lib/gen/campaign";
 import { biomeLabel } from "../../lib/gen/names";
-import { defaultSettings } from "../../lib/persist/settings";
-import type { Palette } from "../../lib/types";
 import { generateVisualProfile } from "../../lib/gen/visualProfile";
+import type { ArchiveEntry, SlotMeta } from "../../lib/persist/save";
+import { defaultSettings } from "../../lib/persist/settings";
 import { makeFixture } from "../../lib/sim/fixtures";
+import type { Palette } from "../../lib/types";
 
 const palette: Palette = {
   primary: "#4a7",
@@ -42,9 +42,15 @@ const palette: Palette = {
   dark: "#131",
 };
 
-vi.mock("@/components/game/ConstructionCameos", () => ({ ConstructionCameos: () => <div data-testid="construction-catalog" /> }));
-vi.mock("@/components/game/ProductionCameos", () => ({ ProductionCameos: () => <div data-testid="production-catalog" /> }));
-vi.mock("@/components/game/SelectionPanel", () => ({ SelectionPanel: () => <div data-testid="selection-catalog" /> }));
+vi.mock("@/components/game/ConstructionCameos", () => ({
+  ConstructionCameos: () => <div data-testid="construction-catalog" />,
+}));
+vi.mock("@/components/game/ProductionCameos", () => ({
+  ProductionCameos: () => <div data-testid="production-catalog" />,
+}));
+vi.mock("@/components/game/SelectionPanel", () => ({
+  SelectionPanel: () => <div data-testid="selection-catalog" />,
+}));
 
 function ControlledSeedEntry() {
   const [code, setCode] = useState("0421");
@@ -142,29 +148,58 @@ describe("MobileCommandLauncher", () => {
       <MobileCommandLauncher open={false} onToggle={onToggle} buttonRef={buttonRef} />,
     );
 
-    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("aria-label", "Open commands");
-    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("data-tooltip", "Show command sidebar");
-    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("data-tooltip-pos", "above");
+    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute(
+      "aria-label",
+      "Open commands",
+    );
+    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute(
+      "data-tooltip",
+      "Show command sidebar",
+    );
+    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute(
+      "data-tooltip-pos",
+      "above",
+    );
     expect(screen.getByTestId("mobile-command-icon").querySelectorAll("path")).toHaveLength(3);
     expect(screen.queryByTestId("mobile-command-scrim")).toBeNull();
     fireEvent.click(screen.getByTestId("mobile-command-toggle"));
     expect(onToggle).toHaveBeenCalledOnce();
 
     rerender(<MobileCommandLauncher open onToggle={onToggle} buttonRef={buttonRef} />);
-    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("aria-label", "Close commands");
-    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute("data-tooltip", "Hide command sidebar");
+    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute(
+      "aria-label",
+      "Close commands",
+    );
+    expect(screen.getByTestId("mobile-command-toggle")).toHaveAttribute(
+      "data-tooltip",
+      "Hide command sidebar",
+    );
     fireEvent.click(screen.getByTestId("mobile-command-scrim"));
     expect(onToggle).toHaveBeenCalledTimes(2);
   });
 
   it("spotlights the command launcher when a tutorial step needs the sheet", () => {
-    render(<MobileCommandLauncher open={false} onToggle={vi.fn()} buttonRef={createRef<HTMLButtonElement>()} tutorialFocus="command-launcher" />);
-    expect(screen.getByTestId("mobile-command-launcher")).toHaveAttribute("data-tutorial-focus", "command-launcher");
+    render(
+      <MobileCommandLauncher
+        open={false}
+        onToggle={vi.fn()}
+        buttonRef={createRef<HTMLButtonElement>()}
+        tutorialFocus="command-launcher"
+      />,
+    );
+    expect(screen.getByTestId("mobile-command-launcher")).toHaveAttribute(
+      "data-tutorial-focus",
+      "command-launcher",
+    );
   });
 
   it("does not spotlight the launcher while the command sheet is open", () => {
-    render(<MobileCommandLauncher open buttonRef={createRef<HTMLButtonElement>()} onToggle={vi.fn()} />);
-    expect(screen.getByTestId("mobile-command-launcher")).not.toHaveAttribute("data-tutorial-focus");
+    render(
+      <MobileCommandLauncher open buttonRef={createRef<HTMLButtonElement>()} onToggle={vi.fn()} />,
+    );
+    expect(screen.getByTestId("mobile-command-launcher")).not.toHaveAttribute(
+      "data-tutorial-focus",
+    );
   });
 });
 
@@ -222,8 +257,13 @@ describe("tutorial command focus", () => {
       />,
     );
 
-    expect(screen.getByRole("tab", { name: "Construction" })).toHaveAttribute("data-tutorial-focus", "construction-tab");
-    expect(screen.getByRole("tab", { name: "Production" })).not.toHaveAttribute("data-tutorial-focus");
+    expect(screen.getByRole("tab", { name: "Construction" })).toHaveAttribute(
+      "data-tutorial-focus",
+      "construction-tab",
+    );
+    expect(screen.getByRole("tab", { name: "Production" })).not.toHaveAttribute(
+      "data-tutorial-focus",
+    );
   });
 });
 
@@ -242,7 +282,10 @@ describe("BriefingActions", () => {
     const backButton = screen.getByRole("button", { name: "Back to menu" });
     expect(backButton).toHaveAttribute("data-shortcut", "Esc");
     expect(backButton).toHaveAttribute("data-tooltip", "Back to menu");
-    expect(screen.getByRole("button", { name: "Launch" })).toHaveAttribute("data-default-action", "true");
+    expect(screen.getByRole("button", { name: "Launch" })).toHaveAttribute(
+      "data-default-action",
+      "true",
+    );
   });
 
   it("removes the duplicate back button when returning to a mission", () => {
@@ -519,7 +562,9 @@ describe("NewGameSetup", () => {
     expect(copyButton).toHaveAttribute("data-tooltip", "Copy campaign link to clipboard");
     expect(copyButton.querySelector("svg")).not.toBeNull();
     expect(copyButton.parentElement).toContainElement(screen.getByRole("button", { name: "Roll" }));
-    expect(copyButton.parentElement).toContainElement(screen.getByRole("button", { name: "This Week" }));
+    expect(copyButton.parentElement).toContainElement(
+      screen.getByRole("button", { name: "This Week" }),
+    );
     expect(screen.getByText(campaign.world.name)).toBeVisible();
     expect(screen.getByText(campaign.characters.commander.name)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
@@ -566,7 +611,9 @@ describe("NewGameSetup", () => {
     expect(screen.getByTestId("campaign-details")).toHaveAttribute("data-wide", "true");
     expect(screen.getByText(campaign.factions[0].name)).toBeVisible();
     expect(screen.getByText(campaign.factions[1].name)).toBeVisible();
-    expect(screen.queryByText(`${campaign.factions[0].name} vs ${campaign.factions[1].name}`)).toBeNull();
+    expect(
+      screen.queryByText(`${campaign.factions[0].name} vs ${campaign.factions[1].name}`),
+    ).toBeNull();
   });
 
   it("keeps a compact faction line when names are short", () => {
@@ -644,11 +691,7 @@ describe("MenuMainPanel dashboard", () => {
     onOptions: vi.fn(),
   };
 
-  const renderDashboard = () => render(
-    <MenuMainPanel
-      {...handlers}
-    />,
-  );
+  const renderDashboard = () => render(<MenuMainPanel {...handlers} />);
 
   it("shows one unified main menu when the archive is empty", () => {
     renderDashboard();
@@ -657,7 +700,9 @@ describe("MenuMainPanel dashboard", () => {
     expect(screen.getByRole("navigation", { name: "Main menu" })).toBeVisible();
     expect(screen.getByRole("navigation", { name: "Main menu" })).toHaveTextContent("TUTORIAL");
     expect(screen.getByRole("navigation", { name: "Main menu" })).toHaveTextContent("LOAD MISSION");
-    expect(screen.getByRole("navigation", { name: "Main menu" })).not.toHaveTextContent("Campaign archive");
+    expect(screen.getByRole("navigation", { name: "Main menu" })).not.toHaveTextContent(
+      "Campaign archive",
+    );
     expect(screen.queryByRole("button", { name: "IMPORT SAVE" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "NEW GAME" }));
@@ -752,7 +797,6 @@ describe("PauseMenu", () => {
     expect(screen.queryByRole("button", { name: "Load Mission" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Mission Briefing" })).toBeNull();
     expect(screen.getByRole("button", { name: "Restart Mission" })).toBeVisible();
-
   });
 });
 
@@ -801,7 +845,6 @@ describe("PauseDiagnostics telemetry controls", () => {
     expect(onClearTelemetry).not.toHaveBeenCalled();
     confirm.mockRestore();
   });
-
 });
 
 describe("PauseOptions controls", () => {
@@ -858,9 +901,7 @@ describe("PauseOptions controls", () => {
 
     // Save keybindings
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(onUpdateKeyBindings).toHaveBeenCalledWith(
-      expect.objectContaining({ repair: "p" }),
-    );
+    expect(onUpdateKeyBindings).toHaveBeenCalledWith(expect.objectContaining({ repair: "p" }));
     expect(screen.queryByRole("dialog", { name: "Keybindings" })).toBeNull();
   });
 
@@ -939,7 +980,9 @@ describe("MissionConfirmation", () => {
       />,
     );
 
-    expect(screen.getByRole("dialog", { name: "Restart mission?" })).toHaveTextContent("Restart this mission");
+    expect(screen.getByRole("dialog", { name: "Restart mission?" })).toHaveTextContent(
+      "Restart this mission",
+    );
     expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     fireEvent.click(screen.getByRole("button", { name: "Restart mission" }));
@@ -1054,13 +1097,7 @@ describe("PauseLoadSlots", () => {
 
   it("prompts to load mission when pressing Enter on selected slot", () => {
     const onLoad = vi.fn();
-    render(
-      <PauseLoadSlots
-        entries={[sampleSlot]}
-        onLoad={onLoad}
-        onBack={vi.fn()}
-      />,
-    );
+    render(<PauseLoadSlots entries={[sampleSlot]} onLoad={onLoad} onBack={vi.fn()} />);
 
     fireEvent.keyDown(window, { key: "Enter" });
     expect(screen.getByRole("dialog", { name: "Load mission?" })).toBeVisible();
@@ -1071,13 +1108,7 @@ describe("PauseLoadSlots", () => {
 
   it("prompts to load mission when clicking a slot entry directly", () => {
     const onLoad = vi.fn();
-    render(
-      <PauseLoadSlots
-        entries={[sampleSlot]}
-        onLoad={onLoad}
-        onBack={vi.fn()}
-      />,
-    );
+    render(<PauseLoadSlots entries={[sampleSlot]} onLoad={onLoad} onBack={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: /Resume Base Alpha/ }));
     expect(screen.getByRole("dialog", { name: "Load mission?" })).toBeVisible();
