@@ -1,10 +1,10 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { ArtBackedCard, StatusBadge } from "@/components/ui/Dossier";
-import type { ReadonlyMissionDef, SecondaryObjective } from "@/lib/types";
 import { biomeLabel } from "@/lib/gen/names";
 import { biomeArt } from "@/lib/gen/visualAssets";
-import styles from "./CampaignCompleteScreen.module.css";
+import type { ReadonlyMissionDef, SecondaryObjective } from "@/lib/types";
+import styles from "./CampaignMissionDetail.module.css";
 
 export function CampaignMissionDetail({
   mission,
@@ -18,6 +18,7 @@ export function CampaignMissionDetail({
   unlocks,
   launchLabel,
   finale,
+  operations = false,
   onLaunch,
 }: {
   mission: ReadonlyMissionDef;
@@ -31,12 +32,13 @@ export function CampaignMissionDetail({
   unlocks: string[];
   launchLabel: string;
   finale: boolean;
+  operations?: boolean;
   onLaunch: () => void;
 }) {
   return (
     <ArtBackedCard
       as="section"
-      className={`${styles.detail} ${finale ? styles.finaleDetail : ""}`}
+      className={`${styles.detail} ${operations ? styles.operationsDetail : ""} ${finale ? styles.finaleDetail : ""}`}
       art={biomeArt(mission.biome)}
       aria-labelledby="mission-detail-title"
       data-testid="mission-detail"
@@ -44,9 +46,16 @@ export function CampaignMissionDetail({
       <div className={styles.detailHeader}>
         <div>
           <ConsoleLabel>Mission detail</ConsoleLabel>
-          <h2 id="mission-detail-title" className={styles.detailTitle}>Mission {mission.index + 1}{" // "}{mission.name}</h2>
+          <h2 id="mission-detail-title" className={styles.detailTitle}>
+            Mission {mission.index + 1}
+            {" // "}
+            {mission.name}
+          </h2>
         </div>
-        <StatusBadge className={styles.detailStatus} tone={missionComplete ? "success" : missionAvailable ? "gold" : "muted"}>
+        <StatusBadge
+          className={styles.detailStatus}
+          tone={missionComplete ? "success" : missionAvailable ? "gold" : "muted"}
+        >
           {missionComplete ? "Completed" : missionAvailable ? "Available" : "Locked"}
         </StatusBadge>
       </div>
@@ -58,12 +67,20 @@ export function CampaignMissionDetail({
         </div>
         <div className={styles.detailBlock}>
           <span>Primary requirements</span>
-          <ul>{primaryRequirements.map((objective) => <li key={objective.id}>{objective.label}</li>)}</ul>
+          <ul>
+            {primaryRequirements.map((objective) => (
+              <li key={objective.id}>{objective.label}</li>
+            ))}
+          </ul>
         </div>
         {optionalObjectives.length > 0 ? (
           <div className={styles.detailBlock}>
             <span>Bonus objectives</span>
-            <ul>{optionalObjectives.map((objective) => <li key={objective.id}>{objective.label}</li>)}</ul>
+            <ul>
+              {optionalObjectives.map((objective) => (
+                <li key={objective.id}>{objective.label}</li>
+              ))}
+            </ul>
           </div>
         ) : null}
         <div className={styles.detailBlock}>
@@ -72,21 +89,33 @@ export function CampaignMissionDetail({
         </div>
         <div className={styles.detailBlock}>
           <span>Campaign</span>
-          <strong>{biomeLabel(mission.biome)} · {mission.mapSize}×{mission.mapSize}</strong>
+          <strong>
+            {biomeLabel(mission.biome)} · {mission.mapSize}×{mission.mapSize}
+          </strong>
         </div>
         <div className={styles.detailBlock}>
           <span>Unlocks after completion</span>
-          <ul>{unlocks.map((unlock) => <li key={unlock}>{unlock}</li>)}</ul>
+          <ul>
+            {unlocks.map((unlock) => (
+              <li key={unlock}>{unlock}</li>
+            ))}
+          </ul>
         </div>
       </div>
 
       <div className={styles.detailActions}>
         {missionAvailable ? (
-          <ConsoleButton onClick={onLaunch} data-testid="launch-selected-mission" tooltip={`${launchLabel} from the mission detail panel`}>
+          <ConsoleButton
+            onClick={onLaunch}
+            data-testid="launch-selected-mission"
+            tooltip={`${launchLabel} from the mission detail panel`}
+          >
             {launchLabel}
           </ConsoleButton>
         ) : (
-          <span className={styles.lockedMessage}>Complete mission {mission.index} to unlock this operation.</span>
+          <span className={styles.lockedMessage}>
+            Complete mission {mission.index} to unlock this operation.
+          </span>
         )}
       </div>
     </ArtBackedCard>

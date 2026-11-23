@@ -1,12 +1,16 @@
-import { useEffect, useRef, type MutableRefObject } from "react";
+import { type MutableRefObject, useEffect, useRef } from "react";
 import type { Camera } from "@/lib/iso";
-import type { FxBurst } from "@/lib/render/fx";
-import type { PanAvailability, PanDir } from "@/lib/render/camera";
-import type { Command, SimState } from "@/lib/types";
 import type { SaveSession } from "@/lib/persist/save";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
+import type { PanAvailability, PanDir } from "@/lib/render/camera";
+import type { FxBurst } from "@/lib/render/fx";
+import type { Command, SimState } from "@/lib/types";
 import { createGameRuntimeFacade } from "./runtime/facade";
-import type { RuntimeKernel, RuntimeLifecycleState, RuntimePersistenceState } from "./runtime/types";
+import type {
+  RuntimeKernel,
+  RuntimeLifecycleState,
+  RuntimePersistenceState,
+} from "./runtime/types";
 
 function createFallbackUxTelemetry(): MissionUxTelemetry {
   return {
@@ -88,7 +92,12 @@ export function useGameLoop({
     sessionState: null,
     terminalPresented: false,
     commandApplied: false,
-    counters: { commandsIssued: 0, commandRejections: 0, assaultTransitions: 0, ux: createFallbackUxTelemetry() },
+    counters: {
+      commandsIssued: 0,
+      commandRejections: 0,
+      assaultTransitions: 0,
+      ux: createFallbackUxTelemetry(),
+    },
   });
   const persistenceRef = useRef<RuntimePersistenceState>({
     saveRetry: { state: null, retry: false, nextAttemptMs: 0, lastStatus: "saved" },

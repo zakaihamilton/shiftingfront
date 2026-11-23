@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
+import {
+  addEntity,
+  assertUniqueEntityIds,
+  entitiesFor,
+  entityFor,
+  livingEntitiesFor,
+  removeEntities,
+} from "../../lib/sim/entities";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { addEntity, assertUniqueEntityIds, entitiesFor, entityFor, livingEntitiesFor, removeEntities } from "../../lib/sim/entities";
 import { byId, unitAt, unitOccupancyFor } from "../../lib/sim/world";
 
 describe("canonical entity storage", () => {
@@ -24,7 +31,9 @@ describe("canonical entity storage", () => {
 
     expect(() => addEntity(state, { ...infantry })).toThrow(`Entity ${infantry.id} already exists`);
     expect(state.entities).toHaveLength(1);
-    expect(() => assertUniqueEntityIds({ ...state, entities: [infantry, { ...infantry }] })).toThrow(`Duplicate entity id: ${infantry.id}`);
+    expect(() =>
+      assertUniqueEntityIds({ ...state, entities: [infantry, { ...infantry }] }),
+    ).toThrow(`Duplicate entity id: ${infantry.id}`);
   });
 
   it("refreshes derived lookups after structural changes", () => {

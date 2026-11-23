@@ -1,4 +1,4 @@
-import { BUILDING_KINDS, UNIT_KINDS, labelFor } from "../catalog";
+import { BUILDING_KINDS, labelFor, UNIT_KINDS } from "../catalog";
 
 export type CatalogAsset = {
   id: string;
@@ -28,7 +28,12 @@ export function listGeneratedAssets(): CatalogAsset[] {
     assets.push({ id: `wreck:${kind}`, category: "wreck", label: `${labelFor(kind)} wreck`, kind });
   }
   for (const kind of BUILDING_KINDS) {
-    assets.push({ id: `rubble:${kind}`, category: "rubble", label: `${labelFor(kind)} rubble`, kind });
+    assets.push({
+      id: `rubble:${kind}`,
+      category: "rubble",
+      label: `${labelFor(kind)} rubble`,
+      kind,
+    });
   }
   return assets;
 }

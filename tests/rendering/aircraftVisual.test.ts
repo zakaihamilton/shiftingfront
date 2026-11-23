@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { depthOf, renderDepthOf } from "../../lib/render/renderEntities";
 import { AIR_UNIT_RENDER_ELEVATION, entityElev } from "../../lib/render/renderPicking";
-import { groundHeight } from "../../lib/sim/world";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { groundHeight } from "../../lib/sim/world";
 
 describe("aircraft world rendering", () => {
   it("renders airborne planes above terrain but parked planes on the runway surface", () => {
@@ -31,9 +31,11 @@ describe("aircraft world rendering", () => {
     const plane = addUnit(state, 0, "strikePlane", 3.5, 2.5);
     plane.flightState = "airborne";
 
-    expect(renderDepthOf(plane, { x: plane.x, y: plane.y, airborneMix: 0.5 }))
-      .toBeGreaterThan(depthOf(runway));
-    expect(renderDepthOf(plane, { x: plane.x, y: plane.y, airborneMix: 1 }))
-      .toBe(plane.x + plane.y);
+    expect(renderDepthOf(plane, { x: plane.x, y: plane.y, airborneMix: 0.5 })).toBeGreaterThan(
+      depthOf(runway),
+    );
+    expect(renderDepthOf(plane, { x: plane.x, y: plane.y, airborneMix: 1 })).toBe(
+      plane.x + plane.y,
+    );
   });
 });

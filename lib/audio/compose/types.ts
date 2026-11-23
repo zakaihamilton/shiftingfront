@@ -4,7 +4,14 @@ export type MusicCue = "menu" | "briefing" | "mission" | "victory" | "defeat";
 export type MusicIntensity = "calm" | "engaged" | "critical";
 export type BassHit = { tone: number; oct: number } | null;
 export type MusicVoiceType = "triangle" | "sawtooth" | "square" | "sine";
-export type MusicGroove = "march" | "pulse" | "shuffle" | "half-time" | "breakbeat" | "four-floor" | "offbeat";
+export type MusicGroove =
+  | "march"
+  | "pulse"
+  | "shuffle"
+  | "half-time"
+  | "breakbeat"
+  | "four-floor"
+  | "offbeat";
 export type MusicScaleName =
   | "natural minor"
   | "dorian"
@@ -81,7 +88,16 @@ export type MusicSectionName =
   | "climax"
   | "turnaround";
 export type MusicStem = "bass" | "pulse" | "harmony" | "melody" | "counter" | "guitar";
-export type MusicDrumKind = "kick" | "snare" | "clap" | "hat" | "openHat" | "tom" | "impact" | "rim" | "shaker";
+export type MusicDrumKind =
+  | "kick"
+  | "snare"
+  | "clap"
+  | "hat"
+  | "openHat"
+  | "tom"
+  | "impact"
+  | "rim"
+  | "shaker";
 
 export type MusicDrumProfile = {
   kickStart: number;
@@ -162,7 +178,6 @@ export const BARS_PER_SECTION = 16;
 export const SECTION_COUNT = 8;
 export const MUSIC_BARS = SECTION_COUNT * BARS_PER_SECTION;
 export const MUSIC_STEPS = STEPS_PER_BAR * MUSIC_BARS;
-
 
 export * from "./progressions";
 

@@ -1,15 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { BUILDING_KINDS, UNIT_KINDS } from "@/lib/catalog";
 import { isSimSnapshot } from "@/lib/multiplayer/protocol";
-import { createSkirmish } from "@/lib/sim/api";
 import { sanitizeCommand } from "@/lib/multiplayer/session";
+import { createSkirmish } from "@/lib/sim/api";
 
 // Wire recognition deliberately includes scenario units. The simulation owns
 // production availability, ownership, and costs after a command is accepted.
 describe("catalog-backed multiplayer commands", () => {
   it.each(UNIT_KINDS)("recognizes %s for production and cancellation", (unit) => {
-    expect(sanitizeCommand({ type: "produce", fromId: 1, unit })).toEqual({ type: "produce", fromId: 1, unit });
-    expect(sanitizeCommand({ type: "cancelProduce", unit })).toEqual({ type: "cancelProduce", unit });
+    expect(sanitizeCommand({ type: "produce", fromId: 1, unit })).toEqual({
+      type: "produce",
+      fromId: 1,
+      unit,
+    });
+    expect(sanitizeCommand({ type: "cancelProduce", unit })).toEqual({
+      type: "cancelProduce",
+      unit,
+    });
   });
 
   it.each(BUILDING_KINDS)("preserves command eligibility for %s", (building) => {
@@ -21,7 +28,9 @@ describe("catalog-backed multiplayer commands", () => {
   });
 
   it.each([
-    null, [], {},
+    null,
+    [],
+    {},
     { type: "produce", fromId: 1, unit: "unknown" },
     { type: "cancelProduce", unit: "unknown" },
     { type: "build", building: "unknown", x: 10, y: 20 },
@@ -45,16 +54,26 @@ describe("catalog-backed multiplayer commands", () => {
   });
 });
 
-
 describe("catalog-backed multiplayer snapshot contacts", () => {
   it.each([
     ...UNIT_KINDS.map((kind) => ({ class: "unit", kind })),
     ...BUILDING_KINDS.map((kind) => ({ class: "building", kind })),
   ])("recognizes $class $kind in AI memory", (entity) => {
     const state = createSkirmish(421, 0, [0, 1], [1]).state;
-    state.multiplayerAiMemory = { 1: { contacts: { 1: {
-      ...entity, id: 1, owner: 0, x: 5, y: 5, lastSeenTick: 0,
-    } } } } as typeof state.multiplayerAiMemory;
+    state.multiplayerAiMemory = {
+      1: {
+        contacts: {
+          1: {
+            ...entity,
+            id: 1,
+            owner: 0,
+            x: 5,
+            y: 5,
+            lastSeenTick: 0,
+          },
+        },
+      },
+    } as typeof state.multiplayerAiMemory;
     expect(isSimSnapshot(state, 421, [0, 1], [1])).toBe(true);
     state.multiplayerAiMemory![1]!.contacts![1]!.kind = "unknown" as never;
     expect(isSimSnapshot(state, 421, [0, 1], [1])).toBe(false);

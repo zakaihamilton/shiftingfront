@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { createTextMeasure, wrapBreakOffsets } from "./briefingWrap";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import styles from "./BriefingStory.module.css";
+import { createTextMeasure, wrapBreakOffsets } from "./briefingWrap";
 
 function sameBreaks(a: number[], b: number[]) {
   return a.length === b.length && a.every((offset, i) => offset === b[i]);

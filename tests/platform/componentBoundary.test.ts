@@ -18,7 +18,8 @@ function sourceFiles(directory: string): string[] {
 }
 
 function componentPath(importer: string, specifier: string): string | null {
-  if (specifier.startsWith("@/components/")) return resolve(componentsRoot, specifier.slice("@/components/".length));
+  if (specifier.startsWith("@/components/"))
+    return resolve(componentsRoot, specifier.slice("@/components/".length));
   if (specifier.startsWith(".")) {
     const candidate = resolve(dirname(importer), specifier);
     return candidate.startsWith(`${componentsRoot}/`) ? candidate : null;
@@ -39,7 +40,8 @@ describe("component import boundaries", () => {
           const targetRelative = relative(componentsRoot, target);
           const targetRoot = targetRelative.split(/[\\/]/)[0];
           if (targetRoot === feature || sharedRoots.includes(targetRoot)) continue;
-          if (featureRoots.includes(targetRoot)) violations.push(`${relative(process.cwd(), file)} -> ${targetRelative}`);
+          if (featureRoots.includes(targetRoot))
+            violations.push(`${relative(process.cwd(), file)} -> ${targetRelative}`);
         }
       }
     }

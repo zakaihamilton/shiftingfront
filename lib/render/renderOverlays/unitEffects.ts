@@ -1,6 +1,6 @@
+import type { SpriteSpec } from "../../types";
 import { selectionPulse } from "../anim";
 import { drawSprite } from "../sprites";
-import type { SpriteSpec } from "../../types";
 
 export function drawUnitGlow(
   ctx: CanvasRenderingContext2D,

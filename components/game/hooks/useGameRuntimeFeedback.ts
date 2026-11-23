@@ -1,23 +1,41 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { canonicalCommandRejectionReason, createMissionUxTelemetry, type MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { consumeBriefingSkippedIntent } from "@/lib/persist/navigation";
+import {
+  canonicalCommandRejectionReason,
+  createMissionUxTelemetry,
+  type MissionUxTelemetry,
+} from "@/lib/persist/telemetry";
 import { useCombatAlert } from "./useCombatAlert";
 import type { CommandNoticeKind, CommandNoticeState } from "./useGameChrome";
 
-export function useGameRuntimeFeedback({ seed, mission, tutorial, showCommandNotice }: { seed: number; mission: number; tutorial: boolean; showCommandNotice: (text: string, kind?: CommandNoticeKind) => void }) {
+export function useGameRuntimeFeedback({
+  seed,
+  mission,
+  tutorial,
+  showCommandNotice,
+}: {
+  seed: number;
+  mission: number;
+  tutorial: boolean;
+  showCommandNotice: (text: string, kind?: CommandNoticeKind) => void;
+}) {
   const uxRef = useRef<MissionUxTelemetry>(createMissionUxTelemetry());
 
   const recordCommandRejection = useCallback((text: string) => {
     const reason = canonicalCommandRejectionReason(text);
-    uxRef.current.commandRejectionsByReason[reason] = (uxRef.current.commandRejectionsByReason[reason] ?? 0) + 1;
+    uxRef.current.commandRejectionsByReason[reason] =
+      (uxRef.current.commandRejectionsByReason[reason] ?? 0) + 1;
   }, []);
 
-  const announceCommandFeedback = useCallback((text: string, kind: CommandNoticeKind = "info") => {
-    uxRef.current.commandFeedbackCount += 1;
-    showCommandNotice(text, kind);
-  }, [showCommandNotice]);
+  const announceCommandFeedback = useCallback(
+    (text: string, kind: CommandNoticeKind = "info") => {
+      uxRef.current.commandFeedbackCount += 1;
+      showCommandNotice(text, kind);
+    },
+    [showCommandNotice],
+  );
 
   const onObjectivePanelToggle = useCallback(() => {
     uxRef.current.objectivePanelToggles += 1;
@@ -37,7 +55,8 @@ export function useGameRuntimeFeedback({ seed, mission, tutorial, showCommandNot
   }, []);
 
   useEffect(() => {
-    if (!tutorial && consumeBriefingSkippedIntent(seed, mission)) uxRef.current.briefingSkipped = true;
+    if (!tutorial && consumeBriefingSkippedIntent(seed, mission))
+      uxRef.current.briefingSkipped = true;
   }, [mission, seed, tutorial]);
 
   const combat = useCombatAlert();

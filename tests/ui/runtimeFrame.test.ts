@@ -1,19 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
+import { createFrameCoordinator } from "../../components/game/hooks/runtime/frame";
 import { createCamera, TILE_H, TILE_W } from "../../lib/iso";
-import { makeFixture } from "../../lib/sim/fixtures";
+import { defaultKeyBindings, type KeyBindings } from "../../lib/persist/settings";
 import {
   cameraFocusPoint,
   cameraPanBounds,
-  focusCameraAtTile,
-  panAvailability,
   EDGE_PAN_DELAY_MS,
+  focusCameraAtTile,
   type PanDir,
+  panAvailability,
 } from "../../lib/render/camera";
-import { createFrameCoordinator } from "../../components/game/hooks/runtime/frame";
+import { makeFixture } from "../../lib/sim/fixtures";
 
-import { defaultKeyBindings, type KeyBindings } from "../../lib/persist/settings";
-
-const ref = <T,>(current: T) => ({ current });
+const ref = <T>(current: T) => ({ current });
 
 function makeFrameCoordinator(
   keys: Record<string, boolean> = {},
@@ -43,7 +42,8 @@ function makeFrameCoordinator(
   return { camera, bounds, coordinator, edgePanHover, panHold, setPanAvailability, applyEdgePan };
 }
 
-const focus = (frame: ReturnType<typeof makeFrameCoordinator>) => cameraFocusPoint(frame.camera, frame.bounds);
+const focus = (frame: ReturnType<typeof makeFrameCoordinator>) =>
+  cameraFocusPoint(frame.camera, frame.bounds);
 const screenFocus = (frame: ReturnType<typeof makeFrameCoordinator>) => {
   const point = focus(frame);
   return {
@@ -81,7 +81,10 @@ describe("runtime frame coordinator", () => {
   });
 
   it("keeps a combined keyboard pan on its diagonal path at a map edge", () => {
-    const frame = makeFrameCoordinator({ ArrowLeft: true, ArrowDown: true }, undefined, { x: 0, y: 24 });
+    const frame = makeFrameCoordinator({ ArrowLeft: true, ArrowDown: true }, undefined, {
+      x: 0,
+      y: 24,
+    });
     const state = makeFixture({ width: 48, height: 48, win: { kind: "annihilate" } });
     const before = screenFocus(frame);
 
@@ -131,7 +134,9 @@ describe("runtime frame coordinator", () => {
 
     expect(focus(frame).x).toBe(47);
     expect(screenFocus(frame).y).toBeCloseTo(before.y);
-    expect(frame.setPanAvailability).toHaveBeenCalledWith(expect.objectContaining({ right: false }));
+    expect(frame.setPanAvailability).toHaveBeenCalledWith(
+      expect.objectContaining({ right: false }),
+    );
   });
 
   it("waits for the edge-pan delay and clears edge state while paused", () => {
@@ -207,7 +212,7 @@ describe("runtime frame coordinator", () => {
 
     expect(firstStep).toBeGreaterThan(0);
     expect(secondStep).toBeGreaterThan(firstStep);
-    expect(secondStep).toBeLessThan(18.75 * 16 / 1000);
+    expect(secondStep).toBeLessThan((18.75 * 16) / 1000);
   });
 
   it("merges matching keyboard and edge input without exceeding the pan speed", () => {

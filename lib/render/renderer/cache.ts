@@ -1,16 +1,11 @@
-import type { Entity, SimState } from "../../types";
-import type { SpriteSpec } from "../../types";
-import {
-  emptyScrollLayer,
-  type ScrollLayer,
-} from "../scrollLayer";
 import type { Camera } from "../../iso";
+import type { Entity, SimState, SpriteSpec } from "../../types";
+import { canvasDensity, resizeRenderCanvas } from "../canvasViewport";
+import { emptyScrollLayer, type ScrollLayer } from "../scrollLayer";
 import { isTerrainAtlasBaked, terrainGrainGeneration } from "../terrainAtlas";
 import { terrainLayoutSignature } from "../terrainAtlasBake";
-import { resetUnitSpriteBlend } from "../unitSpriteBlend";
 import { resetUnitFacingBlends } from "../unitFacingBlend";
-
-import { canvasDensity, resizeRenderCanvas } from "../canvasViewport";
+import { resetUnitSpriteBlend } from "../unitSpriteBlend";
 
 const TERRAIN_RENDER_REV = "world-atlas-v35-isometric-projection";
 
@@ -48,8 +43,13 @@ export function ensureTerrainRenderCache(
   const previousHeight = cache.canvas.height;
   // Terrain is a textured backdrop. Keep its nested surface/fog caches cheaper
   // than foreground sprites and text, which retain the full display density.
-  resizeRenderCanvas(cache.canvas, { width: bw, height: bh }, Math.min(1.25, canvasDensity(ownerCanvas)));
-  if (cache.canvas.width !== previousWidth || cache.canvas.height !== previousHeight) cache.scroll.key = "";
+  resizeRenderCanvas(
+    cache.canvas,
+    { width: bw, height: bh },
+    Math.min(1.25, canvasDensity(ownerCanvas)),
+  );
+  if (cache.canvas.width !== previousWidth || cache.canvas.height !== previousHeight)
+    cache.scroll.key = "";
   return cache;
 }
 

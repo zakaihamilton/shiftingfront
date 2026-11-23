@@ -1,7 +1,14 @@
-import { BUILDING_KINDS, BUILDING_STATS, UNIT_KINDS, UNIT_STATS, ammoEffectForWeapon } from "../catalog";
+import {
+  ammoEffectForWeapon,
+  BUILDING_KINDS,
+  BUILDING_STATS,
+  UNIT_KINDS,
+  UNIT_STATS,
+} from "../catalog";
+import { groundHeight, heightAt } from "../sim/world";
 import type {
-  BuildingKind,
   AmmoEffect,
+  BuildingKind,
   EntityClass,
   Owner,
   SimEvent,
@@ -9,7 +16,6 @@ import type {
   UnitKind,
   WeaponType,
 } from "../types";
-import { groundHeight, heightAt } from "../sim/world";
 
 export type FxKind =
   | "muzzle"
@@ -100,10 +106,9 @@ export function cullFx(bursts: FxBurst[], nowMs: number): FxBurst[] {
     if (!fxAlive(burst, nowMs)) continue;
     (isPersistentFx(burst.kind) ? persistent : transient).push(burst);
   }
-  return [
-    ...persistent.slice(-MAX_PERSISTENT_FX),
-    ...transient.slice(-MAX_TRANSIENT_FX),
-  ].sort((a, b) => a.id - b.id);
+  return [...persistent.slice(-MAX_PERSISTENT_FX), ...transient.slice(-MAX_TRANSIENT_FX)].sort(
+    (a, b) => a.id - b.id,
+  );
 }
 
 export function entityClassOf(kind: string): EntityClass {
@@ -131,24 +136,32 @@ export function weaponFxMagnitude(weapon: WeaponType): number {
 }
 
 function ammoEffectForAttacker(kind: UnitKind | BuildingKind, weapon: WeaponType): AmmoEffect {
-  const configured = isUnitKind(kind) ? UNIT_STATS[kind].ammoEffect : BUILDING_STATS[kind].ammoEffect;
+  const configured = isUnitKind(kind)
+    ? UNIT_STATS[kind].ammoEffect
+    : BUILDING_STATS[kind].ammoEffect;
   return configured ?? ammoEffectForWeapon(weapon);
 }
 
 function projectileFlightDurationMs(effect: AmmoEffect, distance: number): number {
-  const ticks = effect === "bullet"
-    ? 1.2 + Math.min(0.4, distance * 0.04)
-    : effect === "missile"
-      ? 4.4 + Math.min(1.5, distance * 0.16)
-      : effect === "bomb"
-        ? 3.3 + Math.min(1.1, distance * 0.12)
-        : effect === "beam"
-          ? 2.4
-          : 2.4 + Math.min(0.8, distance * 0.08);
+  const ticks =
+    effect === "bullet"
+      ? 1.2 + Math.min(0.4, distance * 0.04)
+      : effect === "missile"
+        ? 4.4 + Math.min(1.5, distance * 0.16)
+        : effect === "bomb"
+          ? 3.3 + Math.min(1.1, distance * 0.12)
+          : effect === "beam"
+            ? 2.4
+            : 2.4 + Math.min(0.8, distance * 0.08);
   return ticks * (1000 / 12);
 }
 
-function combatEntityElevation(state: SimState, kind: UnitKind | BuildingKind, x: number, y: number): number {
+function combatEntityElevation(
+  state: SimState,
+  kind: UnitKind | BuildingKind,
+  x: number,
+  y: number,
+): number {
   if (isUnitKind(kind)) {
     const ground = groundHeight(state, x, y);
     return ground + (UNIT_STATS[kind].domain === "air" ? 5 : 0);
@@ -209,16 +222,23 @@ export function burstsFromEvents(
     for (const hit of events) {
       if (hit.type !== "combat" || hit.owner === destroyed.owner) continue;
       const distance = Math.hypot(destroyed.x - hit.targetX, destroyed.y - hit.targetY);
-      const directHit = hit.targetOwner === destroyed.owner && hit.targetKind === destroyed.kind && distance < 0.001;
+      const directHit =
+        hit.targetOwner === destroyed.owner &&
+        hit.targetKind === destroyed.kind &&
+        distance < 0.001;
       const splashRadius = hit.areaRadius ?? splashRadiusForAttacker(hit.attackerKind);
       const splashHit = splashRadius > 0 && distance <= splashRadius;
       if (!directHit && !splashHit) continue;
       if (nearestHit && distance >= nearestHit.distance) continue;
       const effect = ammoEffectForAttacker(hit.attackerKind, hit.weapon);
-      const flightMs = projectileFlightDurationMs(effect, Math.hypot(hit.x - hit.targetX, hit.y - hit.targetY));
+      const flightMs = projectileFlightDurationMs(
+        effect,
+        Math.hypot(hit.x - hit.targetX, hit.y - hit.targetY),
+      );
       nearestHit = { distance, impactAtMs: nowMs + flightMs };
     }
-    if (nearestHit) destructionImpactTimes.set(destroyedEntityKey(destroyed), nearestHit.impactAtMs);
+    if (nearestHit)
+      destructionImpactTimes.set(destroyedEntityKey(destroyed), nearestHit.impactAtMs);
   }
 
   for (const event of events) {
@@ -228,11 +248,20 @@ export function burstsFromEvents(
       const distance = Math.hypot(event.targetX - event.x, event.targetY - event.y);
       const flightMs = projectileFlightDurationMs(ammoEffect, distance);
       const sourceElev = combatEntityElevation(state, event.attackerKind, event.x, event.y);
-      const targetElev = combatEntityElevation(state, event.targetKind, event.targetX, event.targetY);
+      const targetElev = combatEntityElevation(
+        state,
+        event.targetKind,
+        event.targetX,
+        event.targetY,
+      );
       push({
         kind: "muzzle",
-        sourceEntityId: state.entities.find(entity => entity.owner === event.owner && entity.kind === event.attackerKind &&
-          Math.hypot(entity.x - event.x, entity.y - event.y) < 0.4)?.id,
+        sourceEntityId: state.entities.find(
+          (entity) =>
+            entity.owner === event.owner &&
+            entity.kind === event.attackerKind &&
+            Math.hypot(entity.x - event.x, entity.y - event.y) < 0.4,
+        )?.id,
         x: event.x,
         y: event.y,
         elev: sourceElev,
@@ -336,14 +365,15 @@ export function burstsFromEvents(
       targetDomain,
       magnitude,
     } satisfies Omit<BurstInput, "kind">;
-    const destruction = impactAtMs === undefined
-      ? base
-      : {
-          ...base,
-          bornMs: nowMs,
-          durationMs: impactAtMs - nowMs + FX_DURATION.destruction,
-          impactAtMs,
-        };
+    const destruction =
+      impactAtMs === undefined
+        ? base
+        : {
+            ...base,
+            bornMs: nowMs,
+            durationMs: impactAtMs - nowMs + FX_DURATION.destruction,
+            impactAtMs,
+          };
     push({ ...destruction, kind: "destruction" });
     push({ ...base, kind: "scorch", magnitude: magnitude * 1.15 });
     if (entityClass === "building") {

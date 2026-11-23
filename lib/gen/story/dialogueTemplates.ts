@@ -172,7 +172,10 @@ export const ENEMY_FOLLOWUPS: Record<MissionProfile["variant"], readonly string[
   ],
 };
 
-export function optionalMissionSignal(context: BriefingContext, speaker: BriefingLine["speaker"]): string {
+export function optionalMissionSignal(
+  context: BriefingContext,
+  speaker: BriefingLine["speaker"],
+): string {
   if (speaker === "advisor") {
     switch (context.usArchetype) {
       case "directorate":

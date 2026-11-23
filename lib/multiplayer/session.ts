@@ -1,16 +1,34 @@
-import { MultiplayerLatency } from "./session/latency";
-import { MultiplayerSynchronization } from "./session/synchronization";
-import type { Command, Owner, SimState } from "@/lib/types";
 import { entityInPlayerVision, tickFog } from "@/lib/sim/fog";
 import { evaluateObjectives } from "@/lib/sim/objectives";
 import { compactDestroyedEntities, invalidateEntityCaches } from "@/lib/sim/world";
+import type { Command, Owner, SimState } from "@/lib/types";
+import type {
+  IntroReadyMessage,
+  IntroReleaseMessage,
+  MultiplayerRole,
+  MultiplayerStatus,
+  MultiplayerWire,
+  TickFrame,
+} from "./protocol";
+import {
+  MAX_COMMANDS_PER_TICK,
+  SKIRMISH_MATCH_SETTINGS,
+  sameOwners,
+  sanitizeCommand,
+} from "./protocol";
+import { MultiplayerLatency } from "./session/latency";
+import { MultiplayerSynchronization } from "./session/synchronization";
 
-import { MAX_COMMANDS_PER_TICK, sameOwners, sanitizeCommand, SKIRMISH_MATCH_SETTINGS } from "./protocol";
-import type { MultiplayerRole, MultiplayerStatus, MultiplayerWire, IntroReadyMessage, IntroReleaseMessage, TickFrame } from "./protocol";
-
+export type {
+  IntroReadyMessage,
+  IntroReleaseMessage,
+  MultiplayerRole,
+  MultiplayerStatus,
+  MultiplayerWire,
+  TickFrame,
+} from "./protocol";
 // Retain the existing public import surface for UI and headless callers.
-export { sanitizeCommand, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "./protocol";
-export type { MultiplayerRole, MultiplayerStatus, MultiplayerWire, TickFrame, IntroReadyMessage, IntroReleaseMessage } from "./protocol";
+export { SKIRMISH_MATCH_SETTINGS, sanitizeCommand, validSkirmishMatchSettings } from "./protocol";
 
 const MAX_PENDING_GUEST_COMMANDS = MAX_COMMANDS_PER_TICK * 2;
 
@@ -56,17 +74,28 @@ export class MultiplayerSession {
     this.sender = sender;
     this.owners = [...owners];
     this.aiOwners = [...aiOwners];
-    if (this.owners.length < 2 || this.owners.length > 4 || !this.owners.includes(0) ||
-        !sameOwners(this.owners, this.owners) || !this.owners.includes(owner) ||
-        !Array.isArray(aiOwners) || new Set(aiOwners).size !== aiOwners.length ||
-        aiOwners.some((aiOwner) => aiOwner === 0 || aiOwner === owner || !this.owners.includes(aiOwner))) {
+    if (
+      this.owners.length < 2 ||
+      this.owners.length > 4 ||
+      !this.owners.includes(0) ||
+      !sameOwners(this.owners, this.owners) ||
+      !this.owners.includes(owner) ||
+      !Array.isArray(aiOwners) ||
+      new Set(aiOwners).size !== aiOwners.length ||
+      aiOwners.some(
+        (aiOwner) => aiOwner === 0 || aiOwner === owner || !this.owners.includes(aiOwner),
+      )
+    ) {
       throw new Error("Invalid multiplayer roster");
     }
     this.latency = new MultiplayerLatency({
       status: () => this.statusValue,
-      peers: () => this.role === "host"
-        ? [...this.guests.values()].filter((guest) => guest.connected).map((guest) => ({ peerId: guest.peerId, sender: guest.sender }))
-        : [{ peerId: "host", sender: this.sender }],
+      peers: () =>
+        this.role === "host"
+          ? [...this.guests.values()]
+              .filter((guest) => guest.connected)
+              .map((guest) => ({ peerId: guest.peerId, sender: guest.sender }))
+          : [{ peerId: "host", sender: this.sender }],
       onChange: () => this.publishPing(),
     });
     this.synchronization = new MultiplayerSynchronization({
@@ -81,17 +110,28 @@ export class MultiplayerSession {
       sendToPeer: (peerId, value) => this.sendToGuest(peerId, value),
       publish: () => this.publish(),
       end: () => this.end(),
-      forfeitPeer: (peerId) => { if (this.statusValue !== "ended") this.forfeitGuest(peerId); },
-      setNotice: (notice) => { this.synchronizationNotice = notice; },
+      forfeitPeer: (peerId) => {
+        if (this.statusValue !== "ended") this.forfeitGuest(peerId);
+      },
+      setNotice: (notice) => {
+        this.synchronizationNotice = notice;
+      },
       installTick: (tick) => {
-        for (const frameTick of [...this.frames.keys()]) if (frameTick <= tick) this.frames.delete(frameTick);
+        for (const frameTick of [...this.frames.keys()])
+          if (frameTick <= tick) this.frames.delete(frameTick);
       },
     });
   }
 
-  get status(): MultiplayerStatus { return this.statusValue; }
-  get connected(): boolean { return this.statusValue === "connected"; }
-  get introReleased(): boolean { return !this.introBarrierArmed || this.introReleasedValue; }
+  get status(): MultiplayerStatus {
+    return this.statusValue;
+  }
+  get connected(): boolean {
+    return this.statusValue === "connected";
+  }
+  get introReleased(): boolean {
+    return !this.introBarrierArmed || this.introReleasedValue;
+  }
   get hasPeerConnection(): boolean {
     return this.role === "guest" || this.guests.size > 0;
   }
@@ -165,9 +205,18 @@ export class MultiplayerSession {
   }
 
   private sendIntroReady(): void {
-    if (this.role !== "guest" || !this.introBarrierArmed || !this.localIntroReady || !this.connected) return;
+    if (
+      this.role !== "guest" ||
+      !this.introBarrierArmed ||
+      !this.localIntroReady ||
+      !this.connected
+    )
+      return;
     try {
-      const message: IntroReadyMessage = { type: "intro-ready", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion };
+      const message: IntroReadyMessage = {
+        type: "intro-ready",
+        protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+      };
       this.sender.send(message);
     } catch {
       // Reconnect will resend readiness through attach().
@@ -175,18 +224,34 @@ export class MultiplayerSession {
   }
 
   private tryReleaseIntro(): void {
-    if (this.role !== "host" || !this.introBarrierArmed || this.introReleasedValue || !this.hostIntroReady) return;
+    if (
+      this.role !== "host" ||
+      !this.introBarrierArmed ||
+      this.introReleasedValue ||
+      !this.hostIntroReady
+    )
+      return;
     if ([...this.guests.keys()].some((peerId) => !this.readyGuests.has(peerId))) return;
     this.introReleasedValue = true;
-    const message: IntroReleaseMessage = { type: "intro-release", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion };
+    const message: IntroReleaseMessage = {
+      type: "intro-release",
+      protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+    };
     this.broadcast(message);
     this.publish();
   }
 
   /** Register one authenticated guest seat on the host's peer mesh. */
   addGuest(peerId: string, owner: Owner, sender: MultiplayerWire): boolean {
-    if (this.role !== "host" || owner === 0 || !this.owners.includes(owner) || this.aiOwners.includes(owner) || !peerId ||
-        [...this.guests.values()].some((guest) => guest.owner === owner && guest.peerId !== peerId)) return false;
+    if (
+      this.role !== "host" ||
+      owner === 0 ||
+      !this.owners.includes(owner) ||
+      this.aiOwners.includes(owner) ||
+      !peerId ||
+      [...this.guests.values()].some((guest) => guest.owner === owner && guest.peerId !== peerId)
+    )
+      return false;
     this.guests.set(peerId, { peerId, owner, sender, connected: true });
     this.refreshHostStatus();
     return true;
@@ -206,14 +271,19 @@ export class MultiplayerSession {
     guest.connected = true;
     this.refreshHostStatus();
     if (this.introBarrierArmed && this.introReleasedValue) {
-      sender.send({ type: "intro-release", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion } satisfies IntroReleaseMessage);
+      sender.send({
+        type: "intro-release",
+        protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+      } satisfies IntroReleaseMessage);
     }
     return true;
   }
 
   private refreshHostStatus(): void {
     if (this.role !== "host" || this.statusValue === "ended") return;
-    const next: MultiplayerStatus = [...this.guests.values()].some((guest) => !guest.connected) ? "disconnected" : "connected";
+    const next: MultiplayerStatus = [...this.guests.values()].some((guest) => !guest.connected)
+      ? "disconnected"
+      : "connected";
     if (next === this.statusValue) return;
     if (next === "connected") this.latency.clearSamples();
     this.statusValue = next;
@@ -254,7 +324,9 @@ export class MultiplayerSession {
     else this.sender.send({ type: "intent", command: intent });
   }
 
-  submitMany(commands: readonly Command[]): void { for (const command of commands) this.submit(command); }
+  submitMany(commands: readonly Command[]): void {
+    for (const command of commands) this.submit(command);
+  }
 
   receive(value: unknown): void {
     if (!value || typeof value !== "object" || Array.isArray(value)) return;
@@ -263,13 +335,22 @@ export class MultiplayerSession {
     if (this.synchronization.receiveGuest(message)) return;
     if (this.latency.receive("host", this.sender, message)) return;
     if (message.type === "intro-release") {
-      if (this.introBarrierArmed && message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion) {
+      if (
+        this.introBarrierArmed &&
+        message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion
+      ) {
         this.introReleasedValue = true;
         this.publish();
       }
       return;
     }
-    if (this.role === "guest" && message.type === "tick" && Number.isSafeInteger(message.tick) && Array.isArray(message.commands) && message.commands.length <= MAX_COMMANDS_PER_TICK) {
+    if (
+      this.role === "guest" &&
+      message.type === "tick" &&
+      Number.isSafeInteger(message.tick) &&
+      Array.isArray(message.commands) &&
+      message.commands.length <= MAX_COMMANDS_PER_TICK
+    ) {
       if (message.protocolVersion !== SKIRMISH_MATCH_SETTINGS.protocolVersion) return;
       const tick = Number(message.tick);
       const commands = message.commands.map((command) => sanitizeCommand(command, true));
@@ -293,7 +374,9 @@ export class MultiplayerSession {
       return;
     }
     if (message.type === "ended") {
-      if (message.reason === "synchronization_failed") this.synchronizationNotice = "Synchronization failed. Reload all players before starting another match.";
+      if (message.reason === "synchronization_failed")
+        this.synchronizationNotice =
+          "Synchronization failed. Reload all players before starting another match.";
       this.statusValue = "ended";
       this.publish();
     }
@@ -318,7 +401,10 @@ export class MultiplayerSession {
     if (this.synchronization.receiveHost(peerId, message)) return;
     if (this.latency.receive(peerId, guest.sender, message)) return;
     if (message.type === "intro-ready") {
-      if (this.introBarrierArmed && message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion) {
+      if (
+        this.introBarrierArmed &&
+        message.protocolVersion === SKIRMISH_MATCH_SETTINGS.protocolVersion
+      ) {
         this.readyGuests.add(peerId);
         this.tryReleaseIntro();
       }
@@ -355,7 +441,9 @@ export class MultiplayerSession {
     this.readyGuests.delete(peerId);
     this.latency.removePeer(peerId);
     this.guestCommands = this.guestCommands.filter((intent) => intent.owner !== guest.owner);
-    state.multiplayerOwners = (state.multiplayerOwners ?? [0, guest.owner]).filter((owner) => owner !== guest.owner);
+    state.multiplayerOwners = (state.multiplayerOwners ?? [0, guest.owner]).filter(
+      (owner) => owner !== guest.owner,
+    );
     for (const entity of state.entities) if (entity.owner === guest.owner) entity.hp = 0;
     invalidateEntityCaches(state);
     compactDestroyedEntities(state);
@@ -386,7 +474,8 @@ export class MultiplayerSession {
     if (this.role === "host") return true;
     const nextTick = state.tick + 1;
     if (this.frames.has(nextTick)) return true;
-    if ([...this.frames.keys()].some((tick) => tick > nextTick)) this.synchronization.requestResync();
+    if ([...this.frames.keys()].some((tick) => tick > nextTick))
+      this.synchronization.requestResync();
     return false;
   }
 
@@ -406,11 +495,17 @@ export class MultiplayerSession {
       this.localCommands.push(...localCommands);
       const hostCommands = this.localCommands.splice(0, MAX_COMMANDS_PER_TICK);
       const commands = [
-        ...hostCommands.map((command) => ({ ...command, owner: this.owner } as Command)),
-        ...this.guestCommands.splice(0, MAX_COMMANDS_PER_TICK - hostCommands.length)
-          .map(({ owner, command }) => ({ ...command, owner } as Command)),
+        ...hostCommands.map((command) => ({ ...command, owner: this.owner }) as Command),
+        ...this.guestCommands
+          .splice(0, MAX_COMMANDS_PER_TICK - hostCommands.length)
+          .map(({ owner, command }) => ({ ...command, owner }) as Command),
       ];
-      const frame: TickFrame = { type: "tick", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: state.tick + 1, commands };
+      const frame: TickFrame = {
+        type: "tick",
+        protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+        tick: state.tick + 1,
+        commands,
+      };
       if (this.connected) this.broadcast(frame);
       return commands;
     }

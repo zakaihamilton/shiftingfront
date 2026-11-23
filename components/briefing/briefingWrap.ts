@@ -58,7 +58,10 @@ export function wrapBreakOffsets(
   return breaks;
 }
 
-export function createTextMeasure(template: HTMLElement): { measure: (text: string) => number; dispose: () => void } {
+export function createTextMeasure(template: HTMLElement): {
+  measure: (text: string) => number;
+  dispose: () => void;
+} {
   const probe = document.createElement("span");
   probe.setAttribute("aria-hidden", "true");
   probe.style.position = "absolute";

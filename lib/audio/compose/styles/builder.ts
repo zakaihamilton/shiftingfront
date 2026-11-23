@@ -1,5 +1,4 @@
 import { createRng, type Rng } from "../../../seed/rng";
-import type { MusicCue, MusicStyleName, MusicStyleProfile, MusicVoiceType } from "../types";
 import {
   applyMissionTints,
   assignmentRng,
@@ -9,9 +8,10 @@ import {
   pickBestByScore,
   styleAffinityScore,
 } from "../missionContext";
-import type { Range, StyleBlueprint } from "./types";
-import { STYLE_BLUEPRINTS } from "./blueprints";
+import type { MusicCue, MusicStyleName, MusicStyleProfile, MusicVoiceType } from "../types";
 import { arrangementFor } from "./arrangements";
+import { STYLE_BLUEPRINTS } from "./blueprints";
+import type { Range, StyleBlueprint } from "./types";
 
 const CINEMATIC_MISSION_STYLES = new Set<MusicStyleName>([
   "neon-arpeggio",
@@ -56,13 +56,44 @@ function stylePoolFor(cue: MusicCue): readonly StyleBlueprint[] {
     "neon-arpeggio",
   ];
   if (cue === "defeat") {
-    return STYLE_BLUEPRINTS.filter((style) => ["industrial-march", "cinematic-tension", "low-orbit", "ice-protocol", "foundry-stomp", "choir-vector", "relay-dub"].includes(style.name));
+    return STYLE_BLUEPRINTS.filter((style) =>
+      [
+        "industrial-march",
+        "cinematic-tension",
+        "low-orbit",
+        "ice-protocol",
+        "foundry-stomp",
+        "choir-vector",
+        "relay-dub",
+      ].includes(style.name),
+    );
   }
   if (cue === "victory") {
-    return STYLE_BLUEPRINTS.filter((style) => ["neon-arpeggio", "orbital-drift", "signal-chase", "chrome-fanfare", "glass-chime", "disco-command", "choir-vector"].includes(style.name));
+    return STYLE_BLUEPRINTS.filter((style) =>
+      [
+        "neon-arpeggio",
+        "orbital-drift",
+        "signal-chase",
+        "chrome-fanfare",
+        "glass-chime",
+        "disco-command",
+        "choir-vector",
+      ].includes(style.name),
+    );
   }
   if (cue === "briefing") {
-    return STYLE_BLUEPRINTS.filter((style) => ["orbital-drift", "cinematic-tension", "low-orbit", "ice-protocol", "glass-chime", "choir-vector", "relay-dub", "dune-cipher"].includes(style.name));
+    return STYLE_BLUEPRINTS.filter((style) =>
+      [
+        "orbital-drift",
+        "cinematic-tension",
+        "low-orbit",
+        "ice-protocol",
+        "glass-chime",
+        "choir-vector",
+        "relay-dub",
+        "dune-cipher",
+      ].includes(style.name),
+    );
   }
   if (cue === "menu") {
     return STYLE_BLUEPRINTS.filter((style) => menuStyles.includes(style.name));
@@ -79,7 +110,9 @@ function roundVoiceType(type: MusicVoiceType): MusicVoiceType {
 
 function refineCinematicSound(profile: MusicStyleProfile, cue: MusicCue): MusicStyleProfile {
   const mission = cue === "mission";
-  const softenedDetune = profile.padDetune.map((cents) => Math.max(-16, Math.min(16, Math.round(cents * 0.8)))) as [number, number, number, number];
+  const softenedDetune = profile.padDetune.map((cents) =>
+    Math.max(-16, Math.min(16, Math.round(cents * 0.8))),
+  ) as [number, number, number, number];
   return {
     ...profile,
     bassType: roundVoiceType(profile.bassType),
@@ -102,16 +135,22 @@ function refineCinematicSound(profile: MusicStyleProfile, cue: MusicCue): MusicS
     drumKit: profile.drumKit === "chip-noise" ? "gated" : profile.drumKit,
     drumDensity: profile.drumDensity * (mission ? 0.96 : 0.98),
     saturationAmount: Math.min(profile.saturationAmount, 0.1),
-    drum: colorRhythmSection({
-      ...profile.drum,
-      snareNoise: Math.min(profile.drum.snareNoise, 2_100),
-      hatFrequency: Math.min(profile.drum.hatFrequency, 6_500),
-      openHatFrequency: Math.min(profile.drum.openHatFrequency, 3_400),
-    }, profile.name),
+    drum: colorRhythmSection(
+      {
+        ...profile.drum,
+        snareNoise: Math.min(profile.drum.snareNoise, 2_100),
+        hatFrequency: Math.min(profile.drum.hatFrequency, 6_500),
+        openHatFrequency: Math.min(profile.drum.openHatFrequency, 3_400),
+      },
+      profile.name,
+    ),
   };
 }
 
-function colorRhythmSection(drum: MusicStyleProfile["drum"], name: MusicStyleProfile["name"]): MusicStyleProfile["drum"] {
+function colorRhythmSection(
+  drum: MusicStyleProfile["drum"],
+  name: MusicStyleProfile["name"],
+): MusicStyleProfile["drum"] {
   const next = { ...drum };
   if (name === "foundry-stomp" || name === "industrial-march") {
     next.kickStart = Math.min(next.kickStart, 168);
@@ -129,13 +168,20 @@ function colorRhythmSection(drum: MusicStyleProfile["drum"], name: MusicStylePro
   return next;
 }
 
-export function selectStyleBlueprint(cue: MusicCue, seed: number, missionIndex: number): StyleBlueprint {
+export function selectStyleBlueprint(
+  cue: MusicCue,
+  seed: number,
+  missionIndex: number,
+): StyleBlueprint {
   const pool = stylePoolFor(cue);
   const tieRng = assignmentRng(seed, cue, "music-style-order");
   const ctx = musicMissionContext(seed, Math.max(0, missionIndex));
   if (cue !== "mission" || missionIndex < 0) {
     const avoid = new Set<string>();
-    const missionName = cue === "mission" ? undefined : selectStyleBlueprint("mission", seed, Math.max(0, missionIndex)).name;
+    const missionName =
+      cue === "mission"
+        ? undefined
+        : selectStyleBlueprint("mission", seed, Math.max(0, missionIndex)).name;
     if (missionName) avoid.add(missionName);
     if (cue === "briefing" || cue === "victory" || cue === "defeat") {
       avoid.add(selectStyleBlueprint("menu", seed, missionIndex).name);
@@ -146,8 +192,13 @@ export function selectStyleBlueprint(cue: MusicCue, seed: number, missionIndex: 
     if (cue === "defeat") avoid.add(selectStyleBlueprint("victory", seed, missionIndex).name);
     const narrowed = pool.filter((item) => !avoid.has(item.name));
     const withoutMission = missionName ? pool.filter((item) => item.name !== missionName) : pool;
-    const choices = narrowed.length > 0 ? narrowed : withoutMission.length > 0 ? withoutMission : pool;
-    return pickBestByScore(choices, (item) => styleAffinityScore(item.name, ctx), tieRng.fork(String(missionIndex)));
+    const choices =
+      narrowed.length > 0 ? narrowed : withoutMission.length > 0 ? withoutMission : pool;
+    return pickBestByScore(
+      choices,
+      (item) => styleAffinityScore(item.name, ctx),
+      tieRng.fork(String(missionIndex)),
+    );
   }
   return pickAssignedItem(
     pool,
@@ -159,7 +210,12 @@ export function selectStyleBlueprint(cue: MusicCue, seed: number, missionIndex: 
   );
 }
 
-export function createMusicStyle(cue: MusicCue, rng: Rng, seed = 0, missionIndex = 0): MusicStyleProfile {
+export function createMusicStyle(
+  cue: MusicCue,
+  rng: Rng,
+  seed = 0,
+  missionIndex = 0,
+): MusicStyleProfile {
   const textureRng = rng.fork("texture");
   const blueprint = selectStyleBlueprint(cue, seed, missionIndex);
   const context = musicMissionContext(seed, missionIndex);

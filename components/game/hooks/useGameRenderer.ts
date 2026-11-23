@@ -1,11 +1,23 @@
-import { useCallback, useLayoutEffect, useRef, useSyncExternalStore, type MutableRefObject, type RefObject } from "react";
+import {
+  type MutableRefObject,
+  type RefObject,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import type { Camera } from "@/lib/iso";
 import type { FxBurst } from "@/lib/render/fx";
 import type { RenderExtras } from "@/lib/render/renderer";
 import type { CommandMarker } from "@/lib/render/renderOverlays/types";
+import {
+  createScreenShakeState,
+  rememberCameraShake,
+  type ScreenShakeState,
+  updateScreenShake,
+} from "@/lib/render/screenShake";
 import type { BuildingKind, SimState } from "@/lib/types";
 import { renderGameFrame } from "../renderFrame";
-import { createScreenShakeState, rememberCameraShake, updateScreenShake, type ScreenShakeState } from "@/lib/render/screenShake";
 import type { SelectionBox } from "./selectionBox";
 
 type Point = { x: number; y: number };
@@ -60,7 +72,11 @@ export function useGameRenderer({
   reducedMotionOverride?: boolean;
   colorblindMode?: import("@/lib/persist/settings").ColorblindMode;
 }) {
-  const systemReducedMotion = useSyncExternalStore(subscribeReducedMotion, reducedMotionSnapshot, () => false);
+  const systemReducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    reducedMotionSnapshot,
+    () => false,
+  );
   const reducedMotion = systemReducedMotion || reducedMotionOverride;
   const extrasRef = useRef<RenderExtras>({
     cursor: null,
@@ -78,65 +94,92 @@ export function useGameRenderer({
   const lastRenderedAtRef = useRef<number | null>(null);
   const renderCostAverageRef = useRef(0);
 
-  const redraw = useCallback((nowMs?: number, subTickAlpha = 0) => {
-    const s = stateRef.current;
-    const canvas = canvasRef.current;
-    const host = hostRef.current;
-    if (!s || !canvas || !host) return;
-    extrasRef.current.commandMarker = commandMarkerRef?.current ?? null;
-    extrasRef.current.reducedMotion = reducedMotion;
+  const redraw = useCallback(
+    (nowMs?: number, subTickAlpha = 0) => {
+      const s = stateRef.current;
+      const canvas = canvasRef.current;
+      const host = hostRef.current;
+      if (!s || !canvas || !host) return;
+      extrasRef.current.commandMarker = commandMarkerRef?.current ?? null;
+      extrasRef.current.reducedMotion = reducedMotion;
 
-    const currentNow = nowMs ?? performance.now();
-    // Keep the intro composite at display rate while it remains cheap, then
-    // use the same 30 fps fallback as gameplay on devices that cannot sustain it.
-    const targetFrameMs = renderCostAverageRef.current > 18 ? 1_000 / 30 : 1_000 / 60;
-    const lastRenderedAt = lastRenderedAtRef.current;
-    if (lastRenderedAt !== null && currentNow - lastRenderedAt < targetFrameMs) return;
+      const currentNow = nowMs ?? performance.now();
+      // Keep the intro composite at display rate while it remains cheap, then
+      // use the same 30 fps fallback as gameplay on devices that cannot sustain it.
+      const targetFrameMs = renderCostAverageRef.current > 18 ? 1_000 / 30 : 1_000 / 60;
+      const lastRenderedAt = lastRenderedAtRef.current;
+      if (lastRenderedAt !== null && currentNow - lastRenderedAt < targetFrameMs) return;
 
-    const renderStartedAt = performance.now();
-    const shake = updateScreenShake(screenShakeRef.current, currentNow, reducedMotion);
-    rememberCameraShake(camRef.current, shake.offsetX, shake.offsetY);
-    const renderCam = (shake.offsetX !== 0 || shake.offsetY !== 0)
-      ? { ...camRef.current, x: camRef.current.x + shake.offsetX, y: camRef.current.y + shake.offsetY }
-      : camRef.current;
+      const renderStartedAt = performance.now();
+      const shake = updateScreenShake(screenShakeRef.current, currentNow, reducedMotion);
+      rememberCameraShake(camRef.current, shake.offsetX, shake.offsetY);
+      const renderCam =
+        shake.offsetX !== 0 || shake.offsetY !== 0
+          ? {
+              ...camRef.current,
+              x: camRef.current.x + shake.offsetX,
+              y: camRef.current.y + shake.offsetY,
+            }
+          : camRef.current;
 
-    const frame = renderGameFrame({
-      state: s,
-      canvas,
-      tooltipCanvas: tooltipCanvasRef.current,
-      host,
-      worldCtx: worldCtxRef.current,
-      tooltipCtx: tooltipCtxRef.current,
-      miniCanvas: miniRef.current,
-      miniCtx: miniCtxRef.current,
-      secondaryMiniCanvas: mobileMiniRef.current,
-      secondaryMiniCtx: mobileMiniCtxRef.current,
-      cam: renderCam,
-      minimapCam: camRef.current,
-      selected: selected.current,
-      hover: hoverRef.current,
-      cursor: cursorRef.current,
-      placeKind: place.current,
-      repairMode: repair.current,
-      sellMode: sell.current,
-      selectBox: boxRef.current,
-      extras: extrasRef.current,
-      fx: fxRef.current,
-      nowMs: currentNow,
-      subTickAlpha,
+      const frame = renderGameFrame({
+        state: s,
+        canvas,
+        tooltipCanvas: tooltipCanvasRef.current,
+        host,
+        worldCtx: worldCtxRef.current,
+        tooltipCtx: tooltipCtxRef.current,
+        miniCanvas: miniRef.current,
+        miniCtx: miniCtxRef.current,
+        secondaryMiniCanvas: mobileMiniRef.current,
+        secondaryMiniCtx: mobileMiniCtxRef.current,
+        cam: renderCam,
+        minimapCam: camRef.current,
+        selected: selected.current,
+        hover: hoverRef.current,
+        cursor: cursorRef.current,
+        placeKind: place.current,
+        repairMode: repair.current,
+        sellMode: sell.current,
+        selectBox: boxRef.current,
+        extras: extrasRef.current,
+        fx: fxRef.current,
+        nowMs: currentNow,
+        subTickAlpha,
+        colorblindMode,
+      });
+      worldCtxRef.current = frame.worldCtx;
+      tooltipCtxRef.current = frame.tooltipCtx;
+      miniCtxRef.current = frame.miniCtx;
+      mobileMiniCtxRef.current = frame.secondaryMiniCtx;
+      fxRef.current = frame.fx;
+      const renderCost = performance.now() - renderStartedAt;
+      renderCostAverageRef.current =
+        renderCostAverageRef.current === 0
+          ? renderCost
+          : renderCostAverageRef.current * 0.75 + renderCost * 0.25;
+      lastRenderedAtRef.current = currentNow;
+    },
+    [
+      boxRef,
+      camRef,
+      canvasRef,
       colorblindMode,
-    });
-    worldCtxRef.current = frame.worldCtx;
-    tooltipCtxRef.current = frame.tooltipCtx;
-    miniCtxRef.current = frame.miniCtx;
-    mobileMiniCtxRef.current = frame.secondaryMiniCtx;
-    fxRef.current = frame.fx;
-    const renderCost = performance.now() - renderStartedAt;
-    renderCostAverageRef.current = renderCostAverageRef.current === 0
-      ? renderCost
-      : renderCostAverageRef.current * 0.75 + renderCost * 0.25;
-    lastRenderedAtRef.current = currentNow;
-  }, [boxRef, camRef, canvasRef, colorblindMode, commandMarkerRef, cursorRef, hostRef, hoverRef, miniRef, mobileMiniRef, place, reducedMotion, repair, selected, sell, stateRef, tooltipCanvasRef]);
+      commandMarkerRef,
+      cursorRef,
+      hostRef,
+      hoverRef,
+      miniRef,
+      mobileMiniRef,
+      place,
+      reducedMotion,
+      repair,
+      selected,
+      sell,
+      stateRef,
+      tooltipCanvasRef,
+    ],
+  );
 
   useLayoutEffect(() => {
     redraw(performance.now(), 0);

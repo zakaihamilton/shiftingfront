@@ -37,7 +37,9 @@ export function ConstructionCameos({
             statusLabel={blocker?.status}
             detail={constructionDetail(kind)}
             active={placeKind === kind}
-            tutorialFocus={state.tutorialStage === "build" && kind === "power" ? "power-cameo" : undefined}
+            tutorialFocus={
+              state.tutorialStage === "build" && kind === "power" ? "power-cameo" : undefined
+            }
             cameo={cameo}
             shortcut={SHORTCUT.cameo[index]}
             onClick={() => onPlace(kind)}
@@ -51,11 +53,12 @@ export function ConstructionCameos({
 
 function constructionDetail(kind: BuildingKind): string {
   const power = BUILDING_STATS[kind].power;
-  const grid = power === 0
-    ? "No grid load"
-    : power > 0
-      ? `Produces +${power} power`
-      : `Uses ${Math.abs(power)} power`;
+  const grid =
+    power === 0
+      ? "No grid load"
+      : power > 0
+        ? `Produces +${power} power`
+        : `Uses ${Math.abs(power)} power`;
   return kind === "radar" ? `Powers the minimap · ${grid}` : grid;
 }
 
@@ -63,7 +66,10 @@ export function constructionBlockerText(state: SimState, kind: BuildingKind): st
   return constructionBlockerCopy(state, kind)?.reason;
 }
 
-function constructionBlockerCopy(state: SimState, kind: BuildingKind): { reason: string; status: string } | undefined {
+function constructionBlockerCopy(
+  state: SimState,
+  kind: BuildingKind,
+): { reason: string; status: string } | undefined {
   if (buildingLimitReached(state.entities, state.viewOwner ?? 0, kind)) {
     return { reason: `Only one ${labelFor(kind)} allowed per mission`, status: "Limit reached" };
   }

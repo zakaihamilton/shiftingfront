@@ -24,20 +24,27 @@ export function drawBlendedUnitSprites(
   const originalAlpha = ctx.globalAlpha;
   ctx.globalAlpha = alpha;
   if (layers.length === 1 || typeof document === "undefined") {
-    const layer = layers.length === 1 ? layers[0]! : layers.reduce((a, b) => a.weight >= b.weight ? a : b);
+    const layer =
+      layers.length === 1 ? layers[0]! : layers.reduce((a, b) => (a.weight >= b.weight ? a : b));
     drawSprite(ctx, layer.spec, layer.img, dx, dy, dw, dh);
   } else {
     const width = Math.max(1, Math.round(dw * 2));
     const height = Math.max(1, Math.round(dh * 2));
     const key = `${width}:${height}`;
-    const compositionKey = `${key}:${layers.map(layer => {
-      let id = imageIds.get(layer.img);
-      if (id === undefined) { id = nextImageId++; imageIds.set(layer.img, id); }
-      return `${id}:${(layer.weight / totalWeight).toFixed(4)}:${layer.spec.rotation ?? 0}`;
-    }).join("|")}`;
+    const compositionKey = `${key}:${layers
+      .map((layer) => {
+        let id = imageIds.get(layer.img);
+        if (id === undefined) {
+          id = nextImageId++;
+          imageIds.set(layer.img, id);
+        }
+        return `${id}:${(layer.weight / totalWeight).toFixed(4)}:${layer.spec.rotation ?? 0}`;
+      })
+      .join("|")}`;
     const cached = compositeCache.get(compositionKey);
     if (cached) {
-      compositeCache.delete(compositionKey); compositeCache.set(compositionKey, cached);
+      compositeCache.delete(compositionKey);
+      compositeCache.set(compositionKey, cached);
       drawSprite(ctx, { ...layers[0]!.spec, rotation: undefined }, cached, dx, dy, dw, dh);
       ctx.globalAlpha = originalAlpha;
       return;
@@ -45,7 +52,8 @@ export function drawBlendedUnitSprites(
     let blendCanvas = blendCanvases.get(key);
     if (!blendCanvas) {
       blendCanvas = document.createElement("canvas");
-      blendCanvas.width = width; blendCanvas.height = height;
+      blendCanvas.width = width;
+      blendCanvas.height = height;
       if (blendCanvases.size >= 8) blendCanvases.delete(blendCanvases.keys().next().value!);
       blendCanvases.set(key, blendCanvas);
     }
@@ -59,21 +67,24 @@ export function drawBlendedUnitSprites(
       }
       blendCtx.globalAlpha = 1;
       blendCtx.globalCompositeOperation = "source-over";
-      const passSpec = layers[0]!.spec.rotation !== undefined
-        ? { ...layers[0]!.spec, rotation: undefined }
-        : layers[0]!.spec;
+      const passSpec =
+        layers[0]!.spec.rotation !== undefined
+          ? { ...layers[0]!.spec, rotation: undefined }
+          : layers[0]!.spec;
       drawSprite(ctx, passSpec, blendCanvas, dx, dy, dw, dh);
       const retained = document.createElement("canvas");
-      retained.width = width; retained.height = height;
+      retained.width = width;
+      retained.height = height;
       const retainedCtx = retained.getContext("2d");
       if (retainedCtx) {
         retainedCtx.drawImage(blendCanvas, 0, 0);
-        if (compositeCache.size >= MAX_UNIT_COMPOSITES) compositeCache.delete(compositeCache.keys().next().value!);
+        if (compositeCache.size >= MAX_UNIT_COMPOSITES)
+          compositeCache.delete(compositeCache.keys().next().value!);
         compositeCache.set(compositionKey, retained);
       }
     } else {
       // Preserve a visible unit if the temporary canvas cannot be allocated.
-      const layer = layers.reduce((a, b) => a.weight >= b.weight ? a : b);
+      const layer = layers.reduce((a, b) => (a.weight >= b.weight ? a : b));
       drawSprite(ctx, layer.spec, layer.img, dx, dy, dw, dh);
     }
   }
@@ -82,5 +93,7 @@ export function drawBlendedUnitSprites(
 
 export function resetUnitSpriteBlend(): void {
   blendCanvases.clear();
-  compositeCache.clear(); imageIds = new WeakMap(); nextImageId = 0;
+  compositeCache.clear();
+  imageIds = new WeakMap();
+  nextImageId = 0;
 }

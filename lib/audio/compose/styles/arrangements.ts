@@ -1,4 +1,3 @@
-import type { MusicArrangementProfile, MusicCue } from "../types";
 import {
   arrangementAffinityScore,
   assignmentRng,
@@ -7,13 +6,23 @@ import {
   pickAssignedItem,
   pickBestByScore,
 } from "../missionContext";
+import type { MusicArrangementProfile, MusicCue } from "../types";
 
 const MELODY_DEFAULT = [true, true, true, true, false, true, true, true] as const;
 const PULSE_DEFAULT = [true, true, true, true, true, true, true, true] as const;
 const COUNTER_DEFAULT = [false, false, false, true, false, false, true, false] as const;
 const HOLD_DEFAULT = [false, false, false, false, true, false, false, false] as const;
 const HAT_DEFAULT = [2, 2, 2, 2, 4, 2, 1, 2] as const;
-const FILL_DEFAULT = ["tom-only", "snare-tom", "snare-tom", "snare-tom", "hat-chatter", "snare-tom", "kick-roll", "snare-tom"] as const;
+const FILL_DEFAULT = [
+  "tom-only",
+  "snare-tom",
+  "snare-tom",
+  "snare-tom",
+  "hat-chatter",
+  "snare-tom",
+  "kick-roll",
+  "snare-tom",
+] as const;
 
 export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
   {
@@ -40,7 +49,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: COUNTER_DEFAULT,
     holdBass: HOLD_DEFAULT,
     hatStride: [2, 2, 2, 2, 4, 2, 1, 2],
-    fillStyle: ["snare-tom", "snare-tom", "kick-roll", "snare-tom", "hat-chatter", "snare-tom", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "snare-tom",
+      "snare-tom",
+      "kick-roll",
+      "snare-tom",
+      "hat-chatter",
+      "snare-tom",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: 1,
     rhythmOffset: 1,
@@ -55,7 +73,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, true, false, true, false, true, true, false],
     holdBass: HOLD_DEFAULT,
     hatStride: [2, 2, 2, 2, 4, 1, 1, 2],
-    fillStyle: ["hat-chatter", "snare-tom", "snare-tom", "kick-roll", "tom-only", "snare-tom", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "hat-chatter",
+      "snare-tom",
+      "snare-tom",
+      "kick-roll",
+      "tom-only",
+      "snare-tom",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: -1,
     rhythmOffset: 2,
@@ -70,7 +97,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, false, true, true, false, false, true, true],
     holdBass: HOLD_DEFAULT,
     hatStride: [4, 4, 2, 2, 4, 2, 1, 2],
-    fillStyle: ["tom-only", "hat-chatter", "snare-tom", "hat-chatter", "hat-chatter", "tom-only", "snare-tom", "snare-tom"],
+    fillStyle: [
+      "tom-only",
+      "hat-chatter",
+      "snare-tom",
+      "hat-chatter",
+      "hat-chatter",
+      "tom-only",
+      "snare-tom",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: 2,
     rhythmOffset: 3,
@@ -85,7 +121,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, false, false, true, false, false, true, false],
     holdBass: HOLD_DEFAULT,
     hatStride: HAT_DEFAULT,
-    fillStyle: ["snare-tom", "snare-tom", "snare-tom", "snare-tom", "tom-only", "kick-roll", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "snare-tom",
+      "snare-tom",
+      "snare-tom",
+      "snare-tom",
+      "tom-only",
+      "kick-roll",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: 0,
     rhythmOffset: 0,
@@ -115,7 +160,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, true, true, true, false, true, true, true],
     holdBass: [false, false, false, false, false, false, false, false],
     hatStride: [2, 2, 2, 1, 2, 1, 1, 1],
-    fillStyle: ["kick-roll", "snare-tom", "kick-roll", "snare-tom", "snare-tom", "kick-roll", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "kick-roll",
+      "snare-tom",
+      "kick-roll",
+      "snare-tom",
+      "snare-tom",
+      "kick-roll",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: 2,
     rhythmOffset: 2,
@@ -130,7 +184,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: COUNTER_DEFAULT,
     holdBass: HOLD_DEFAULT,
     hatStride: [2, 2, 2, 2, 4, 2, 1, 1],
-    fillStyle: ["snare-tom", "snare-tom", "snare-tom", "snare-tom", "hat-chatter", "snare-tom", "kick-roll", "kick-roll"],
+    fillStyle: [
+      "snare-tom",
+      "snare-tom",
+      "snare-tom",
+      "snare-tom",
+      "hat-chatter",
+      "snare-tom",
+      "kick-roll",
+      "kick-roll",
+    ],
     echoMelody: false,
     melodyDegreeOffset: 1,
     rhythmOffset: 3,
@@ -145,7 +208,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, false, true, true, false, false, true, false],
     holdBass: [false, false, false, false, true, false, false, false],
     hatStride: [4, 2, 2, 2, 4, 4, 1, 2],
-    fillStyle: ["tom-only", "snare-tom", "snare-tom", "hat-chatter", "hat-chatter", "tom-only", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "tom-only",
+      "snare-tom",
+      "snare-tom",
+      "hat-chatter",
+      "hat-chatter",
+      "tom-only",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: 0,
     rhythmOffset: 1,
@@ -160,7 +232,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, true, false, true, false, true, true, false],
     holdBass: HOLD_DEFAULT,
     hatStride: HAT_DEFAULT,
-    fillStyle: ["hat-chatter", "snare-tom", "snare-tom", "snare-tom", "tom-only", "snare-tom", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "hat-chatter",
+      "snare-tom",
+      "snare-tom",
+      "snare-tom",
+      "tom-only",
+      "snare-tom",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: true,
     melodyDegreeOffset: 1,
     rhythmOffset: 2,
@@ -175,7 +256,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, false, false, true, false, false, true, true],
     holdBass: [false, false, false, false, true, true, false, false],
     hatStride: [2, 2, 2, 2, 4, 4, 1, 2],
-    fillStyle: ["snare-tom", "snare-tom", "snare-tom", "hat-chatter", "hat-chatter", "tom-only", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "snare-tom",
+      "snare-tom",
+      "snare-tom",
+      "hat-chatter",
+      "hat-chatter",
+      "tom-only",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: -1,
     rhythmOffset: 0,
@@ -190,7 +280,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, false, true, true, false, true, true, true],
     holdBass: HOLD_DEFAULT,
     hatStride: [2, 2, 2, 2, 4, 2, 1, 1],
-    fillStyle: ["tom-only", "snare-tom", "snare-tom", "snare-tom", "hat-chatter", "snare-tom", "kick-roll", "kick-roll"],
+    fillStyle: [
+      "tom-only",
+      "snare-tom",
+      "snare-tom",
+      "snare-tom",
+      "hat-chatter",
+      "snare-tom",
+      "kick-roll",
+      "kick-roll",
+    ],
     echoMelody: false,
     melodyDegreeOffset: 2,
     rhythmOffset: 1,
@@ -205,7 +304,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, false, false, true, false, true, true, true],
     holdBass: [true, false, false, false, true, false, false, false],
     hatStride: [4, 2, 2, 2, 4, 2, 1, 2],
-    fillStyle: ["tom-only", "hat-chatter", "snare-tom", "snare-tom", "hat-chatter", "snare-tom", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "tom-only",
+      "hat-chatter",
+      "snare-tom",
+      "snare-tom",
+      "hat-chatter",
+      "snare-tom",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: 1,
     rhythmOffset: 2,
@@ -220,7 +328,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, false, true, true, false, true, true, false],
     holdBass: [true, false, false, false, true, false, false, false],
     hatStride: [4, 4, 2, 2, 4, 2, 1, 2],
-    fillStyle: ["tom-only", "tom-only", "snare-tom", "kick-roll", "hat-chatter", "snare-tom", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "tom-only",
+      "tom-only",
+      "snare-tom",
+      "kick-roll",
+      "hat-chatter",
+      "snare-tom",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: 0,
     rhythmOffset: 1,
@@ -235,7 +352,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [true, false, true, true, false, true, false, true],
     holdBass: [true, false, false, true, false, false, true, false],
     hatStride: [4, 2, 2, 4, 2, 2, 1, 2],
-    fillStyle: ["hat-chatter", "snare-tom", "kick-roll", "tom-only", "snare-tom", "snare-tom", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "hat-chatter",
+      "snare-tom",
+      "kick-roll",
+      "tom-only",
+      "snare-tom",
+      "snare-tom",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: false,
     melodyDegreeOffset: -1,
     rhythmOffset: 3,
@@ -250,7 +376,16 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
     counterEnabled: [false, true, true, true, false, true, true, false],
     holdBass: HOLD_DEFAULT,
     hatStride: [2, 2, 2, 2, 4, 2, 1, 2],
-    fillStyle: ["hat-chatter", "snare-tom", "snare-tom", "kick-roll", "tom-only", "snare-tom", "kick-roll", "snare-tom"],
+    fillStyle: [
+      "hat-chatter",
+      "snare-tom",
+      "snare-tom",
+      "kick-roll",
+      "tom-only",
+      "snare-tom",
+      "kick-roll",
+      "snare-tom",
+    ],
     echoMelody: true,
     melodyDegreeOffset: 2,
     rhythmOffset: 1,
@@ -258,11 +393,19 @@ export const ARRANGEMENTS: readonly MusicArrangementProfile[] = [
   },
 ];
 
-export function arrangementFor(cue: MusicCue, seed: number, missionIndex: number): MusicArrangementProfile {
+export function arrangementFor(
+  cue: MusicCue,
+  seed: number,
+  missionIndex: number,
+): MusicArrangementProfile {
   const tieRng = assignmentRng(seed, cue, "music-arrangement-order");
   const ctx = musicMissionContext(seed, missionIndex);
   if (cue !== "mission" || missionIndex < 0) {
-    return pickBestByScore(ARRANGEMENTS, (item) => arrangementAffinityScore(item.name, ctx), tieRng.fork(String(missionIndex)));
+    return pickBestByScore(
+      ARRANGEMENTS,
+      (item) => arrangementAffinityScore(item.name, ctx),
+      tieRng.fork(String(missionIndex)),
+    );
   }
   return pickAssignedItem(
     ARRANGEMENTS,

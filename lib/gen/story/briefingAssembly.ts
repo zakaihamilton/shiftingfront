@@ -1,7 +1,6 @@
 import type { BriefingLine, Campaign, ReadonlyMissionDef } from "../../types";
 import { biomeLabel, characterLabel, factionArchetype } from "../names";
 import { resolveMissionProfile } from "../profile";
-import { objectivePhrase } from "./objectivesText";
 import {
   ADVISOR_FOLLOWUPS,
   ADVISOR_LEADS,
@@ -13,6 +12,7 @@ import {
   profileOrder,
   profileTaunt,
 } from "./dialogueTemplates";
+import { objectivePhrase } from "./objectivesText";
 import type { BriefingContext, OptionalBriefingBeat } from "./types";
 
 /**
@@ -116,7 +116,12 @@ export function generateBriefing(
   const you = characterLabel(commander);
   const foe = characterLabel(enemyLeader);
   const win = mission.win;
-  const profile = resolveMissionProfile(campaign.seedNumber ?? 0, mission.index, win.kind, mission.profile);
+  const profile = resolveMissionProfile(
+    campaign.seedNumber ?? 0,
+    mission.index,
+    win.kind,
+    mission.profile,
+  );
   const usArchetype = factionArchetype(us.name);
   const themArchetype = factionArchetype(them.name);
   const context: BriefingContext = {

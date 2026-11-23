@@ -1,13 +1,13 @@
 import type { CSSProperties, PointerEventHandler, ReactNode, Ref } from "react";
-import type { PanAvailability, PanDir } from "@/lib/render/camera";
-import { biomeArt } from "@/lib/gen/visualAssets";
 import type { MissionObjective } from "@/lib/gen/story";
+import { biomeArt } from "@/lib/gen/visualAssets";
+import type { PanAvailability, PanDir } from "@/lib/render/camera";
 import type { BiomeName } from "@/lib/types";
-import type { ObjectiveCardModel } from "@/lib/ui/missionPresentation";
 import type { DoctrineHint } from "@/lib/ui/doctrine";
+import type { ObjectiveCardModel } from "@/lib/ui/missionPresentation";
+import styles from "./Battlefield.module.css";
 import { BattlefieldHud } from "./BattlefieldHud";
 import { ScrollArrow } from "./ScrollArrow";
-import styles from "./Battlefield.module.css";
 
 export function Battlefield({
   hostRef,
@@ -100,10 +100,16 @@ export function Battlefield({
         onPointerCancel={onPointerCancel}
       />
       <canvas ref={tooltipCanvasRef} className={styles.tooltipCanvas} />
-      {showHud ? <ScrollArrow dir="left" available={panAvail.left} hot={hotPan === "left"} /> : null}
-      {showHud ? <ScrollArrow dir="right" available={panAvail.right} hot={hotPan === "right"} /> : null}
+      {showHud ? (
+        <ScrollArrow dir="left" available={panAvail.left} hot={hotPan === "left"} />
+      ) : null}
+      {showHud ? (
+        <ScrollArrow dir="right" available={panAvail.right} hot={hotPan === "right"} />
+      ) : null}
       {showHud ? <ScrollArrow dir="up" available={panAvail.up} hot={hotPan === "up"} /> : null}
-      {showHud ? <ScrollArrow dir="down" available={panAvail.down} hot={hotPan === "down"} /> : null}
+      {showHud ? (
+        <ScrollArrow dir="down" available={panAvail.down} hot={hotPan === "down"} />
+      ) : null}
       {showHud ? (
         <BattlefieldHud
           seed={seed}

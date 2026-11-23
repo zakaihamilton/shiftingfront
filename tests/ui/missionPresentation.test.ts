@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { deadlineUrgency, minimapPingFor, objectiveCardsFor, phaseLabel } from "../../lib/ui/missionPresentation";
 import { addUnit, makeFixture } from "../../lib/sim/fixtures";
+import {
+  deadlineUrgency,
+  minimapPingFor,
+  objectiveCardsFor,
+  phaseLabel,
+} from "../../lib/ui/missionPresentation";
 
 describe("mission presentation models", () => {
   it("maps timer thresholds to explicit urgency states", () => {
@@ -18,7 +23,14 @@ describe("mission presentation models", () => {
     expect(objectiveCardsFor(state)[0]?.status).toBe("complete");
     state.result = "lost";
     expect(objectiveCardsFor(state)[0]?.status).toBe("failed");
-    state.runtime = { kind: "extraction", phase: "extraction", targetIds: [], rescued: 0, required: 0, secondary: [] };
+    state.runtime = {
+      kind: "extraction",
+      phase: "extraction",
+      targetIds: [],
+      rescued: 0,
+      required: 0,
+      secondary: [],
+    };
     expect(phaseLabel(state.runtime)).toBe("Extraction phase");
   });
 
@@ -42,7 +54,12 @@ describe("mission presentation models", () => {
       required: 1,
       secondary: [
         { id: "yard", kind: "preserveYard", label: "Keep the Command HQ standing" },
-        { id: "time", kind: "completeBefore", label: "Complete the operation within 12 min", target: 144 },
+        {
+          id: "time",
+          kind: "completeBefore",
+          label: "Complete the operation within 12 min",
+          target: 144,
+        },
         { id: "survivors", kind: "keepUnits", label: "Keep a unit alive", target: 1 },
       ],
     };

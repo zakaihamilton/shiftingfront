@@ -9,9 +9,15 @@
   scrollbar-color: var(--chrome-bevel) var(--chrome-steel-lo);
   border: 1px solid var(--chrome-inset);
   background:
-    repeating-linear-gradient(to bottom, transparent 0 2px, color-mix(in srgb, var(--chrome-cyan) 6%, transparent) 2px 3px),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 2px,
+      color-mix(in srgb, var(--chrome-cyan) 6%, transparent) 2px 3px
+    ),
     var(--chrome-steel-lo);
-  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-steel-hi);
+  box-shadow:
+    inset 1px 1px var(--chrome-void),
+    inset -1px -1px var(--chrome-steel-hi);
   margin-top: 0.55rem;
   padding: 0.6rem 0.7rem;
   scrollbar-gutter: stable;
@@ -48,7 +54,9 @@
   border-left-color: var(--speaker-accent);
   background: color-mix(in srgb, var(--chrome-void) 35%, transparent);
   padding: 0.55rem 0.7rem;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .line[data-role="advisor"] {
@@ -76,7 +84,9 @@
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--speaker-accent) 56%, var(--chrome-steel));
   background: var(--chrome-void);
-  box-shadow: inset 1px 1px var(--chrome-inset), inset -1px -1px var(--chrome-steel-hi);
+  box-shadow:
+    inset 1px 1px var(--chrome-inset),
+    inset -1px -1px var(--chrome-steel-hi);
 }
 
 .avatar canvas {

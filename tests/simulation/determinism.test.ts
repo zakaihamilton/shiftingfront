@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createCampaign } from "../../lib/gen/campaign";
 import { NEW_MISSION_KINDS } from "../../lib/catalog";
+import { createCampaign } from "../../lib/gen/campaign";
 import { generateMap } from "../../lib/gen/map";
 import { MAX_MISSION_TICKS, MIN_MISSION_TICKS } from "../../lib/gen/pacing";
 import { createMission, inspect, tick } from "../../lib/sim/api";
@@ -14,7 +14,11 @@ describe("determinism", () => {
     expect(a.seed).toBe("0000");
     expect(a.missions).toHaveLength(6);
     const kinds = a.missions.map((m) => m.win.kind);
-    expect(kinds.filter((kind) => NEW_MISSION_KINDS.includes(kind as typeof NEW_MISSION_KINDS[number]))).toHaveLength(3);
+    expect(
+      kinds.filter((kind) =>
+        NEW_MISSION_KINDS.includes(kind as (typeof NEW_MISSION_KINDS)[number]),
+      ),
+    ).toHaveLength(3);
     expect(new Set(kinds).size).toBe(6);
     const biomes = a.missions.map((m) => m.biome);
     expect(new Set(biomes)).toEqual(new Set([a.world.biome]));

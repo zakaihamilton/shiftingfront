@@ -1,11 +1,11 @@
 import { MAP_SKIRT, sceneryAt } from "../../gen/map";
 import { TILE_BLOCKED, TILE_WATER } from "../../types";
-import { ATLAS_CELL, type AtlasWorld, type Rgb } from "../terrainMaterials";
 import {
-  WATER_SHORE_MAX,
   sampleTerrainMaterial,
   type TerrainMaterialContext,
+  WATER_SHORE_MAX,
 } from "../terrainAtlasSurfaces";
+import { ATLAS_CELL, type AtlasWorld, type Rgb } from "../terrainMaterials";
 import type { AtlasSceneryGrid } from "./constants";
 
 export function bakeWaterShoreDist(grid: AtlasSceneryGrid): Uint8Array {
@@ -47,7 +47,11 @@ export function bakeWaterShoreDist(grid: AtlasSceneryGrid): Uint8Array {
   return dist;
 }
 
-export function bakeAtlasSceneryGrid(state: AtlasWorld, cols: number, rows: number): AtlasSceneryGrid {
+export function bakeAtlasSceneryGrid(
+  state: AtlasWorld,
+  cols: number,
+  rows: number,
+): AtlasSceneryGrid {
   const cachedCols = cols + 2;
   const cachedRows = rows + 2;
   const kind = new Uint8Array(cachedCols * cachedRows);
@@ -83,18 +87,32 @@ export function atlasKindAt(grid: AtlasSceneryGrid, col: number, row: number): n
   return grid.kind[(row + 1) * (grid.cols + 2) + col + 1] ?? TILE_BLOCKED;
 }
 
-export function atlasSceneryAt(grid: AtlasSceneryGrid, col: number, row: number): { kind: number; elev: number } {
+export function atlasSceneryAt(
+  grid: AtlasSceneryGrid,
+  col: number,
+  row: number,
+): { kind: number; elev: number } {
   const index = (row + 1) * (grid.cols + 2) + col + 1;
   return { kind: grid.kind[index] ?? TILE_BLOCKED, elev: grid.elev[index] ?? 0 };
 }
 
-export function atlasSize(state: AtlasWorld): { cols: number; rows: number; width: number; height: number } {
+export function atlasSize(state: AtlasWorld): {
+  cols: number;
+  rows: number;
+  width: number;
+  height: number;
+} {
   const cols = state.width + MAP_SKIRT * 2;
   const rows = state.height + MAP_SKIRT * 2;
   return { cols, rows, width: cols * ATLAS_CELL, height: rows * ATLAS_CELL };
 }
 
-export function cellColor(state: AtlasWorld, gx: number, gy: number, context: TerrainMaterialContext): Rgb {
+export function cellColor(
+  state: AtlasWorld,
+  gx: number,
+  gy: number,
+  context: TerrainMaterialContext,
+): Rgb {
   const sample = sampleTerrainMaterial(state, gx, gy, context);
   return { r: sample.r, g: sample.g, b: sample.b };
 }

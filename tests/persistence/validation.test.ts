@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertSupportedContentVersion,
+  isCampaignProgressShape,
   isEntity,
   isFiniteNumber,
-  isWin,
   isNormalizableStateInput,
   isStateShape,
-  isCampaignProgressShape,
-  assertSupportedContentVersion,
+  isWin,
   SAVE_CONTENT_VERSION,
 } from "../../lib/persist/save/validation";
 import { createMission } from "../../lib/sim/api";
@@ -29,17 +29,39 @@ describe("isFiniteNumber", () => {
 
 describe("isEntity", () => {
   const validUnit = {
-    class: "unit", kind: "infantry", id: 1, owner: 0,
-    x: 5, y: 5, hp: 100, maxHp: 100, cooldown: 0,
-    path: [], carry: 0, constructing: 0, queue: [],
-    marked: false, idle: false,
+    class: "unit",
+    kind: "infantry",
+    id: 1,
+    owner: 0,
+    x: 5,
+    y: 5,
+    hp: 100,
+    maxHp: 100,
+    cooldown: 0,
+    path: [],
+    carry: 0,
+    constructing: 0,
+    queue: [],
+    marked: false,
+    idle: false,
   };
 
   const validBuilding = {
-    class: "building", kind: "power", id: 2, owner: 0,
-    x: 3, y: 3, hp: 500, maxHp: 500, cooldown: 0,
-    path: [], carry: 0, constructing: 0, queue: [],
-    marked: false, idle: false,
+    class: "building",
+    kind: "power",
+    id: 2,
+    owner: 0,
+    x: 3,
+    y: 3,
+    hp: 500,
+    maxHp: 500,
+    cooldown: 0,
+    path: [],
+    carry: 0,
+    constructing: 0,
+    queue: [],
+    marked: false,
+    idle: false,
   };
 
   it("accepts valid unit and building entities", () => {
@@ -127,8 +149,12 @@ describe("isEntity", () => {
 
   it("rejects invalid producing shape", () => {
     expect(isEntity({ ...validBuilding, producing: "wrong" })).toBe(false);
-    expect(isEntity({ ...validBuilding, producing: { kind: "invalid", remaining: 10 } })).toBe(false);
-    expect(isEntity({ ...validBuilding, producing: { kind: "infantry", remaining: -1 } })).toBe(false);
+    expect(isEntity({ ...validBuilding, producing: { kind: "invalid", remaining: 10 } })).toBe(
+      false,
+    );
+    expect(isEntity({ ...validBuilding, producing: { kind: "infantry", remaining: -1 } })).toBe(
+      false,
+    );
   });
 
   it("rejects invalid gatherX/gatherY", () => {
@@ -197,10 +223,14 @@ describe("isEntity", () => {
   });
 
   it("accepts pending refinery harvesters only on refinery buildings", () => {
-    expect(isEntity({ ...validBuilding, kind: "refinery", refineryHarvesterPending: true })).toBe(true);
+    expect(isEntity({ ...validBuilding, kind: "refinery", refineryHarvesterPending: true })).toBe(
+      true,
+    );
     expect(isEntity({ ...validUnit, refineryHarvesterPending: true })).toBe(false);
     expect(isEntity({ ...validBuilding, refineryHarvesterPending: true })).toBe(false);
-    expect(isEntity({ ...validBuilding, kind: "refinery", refineryHarvesterPending: "yes" })).toBe(false);
+    expect(isEntity({ ...validBuilding, kind: "refinery", refineryHarvesterPending: "yes" })).toBe(
+      false,
+    );
   });
 });
 
@@ -243,23 +273,39 @@ describe("isNormalizableStateInput", () => {
   });
 
   it("rejects area exceeding 256x256", () => {
-    expect(isNormalizableStateInput({ seed: 0, width: 257, height: 256, entities: [] })).toBe(false);
+    expect(isNormalizableStateInput({ seed: 0, width: 257, height: 256, entities: [] })).toBe(
+      false,
+    );
   });
 
   it("rejects non-array entities", () => {
-    expect(isNormalizableStateInput({ seed: 0, width: 1, height: 1, entities: "wrong" })).toBe(false);
+    expect(isNormalizableStateInput({ seed: 0, width: 1, height: 1, entities: "wrong" })).toBe(
+      false,
+    );
   });
 
   it("rejects non-record entity entries", () => {
-    expect(isNormalizableStateInput({ seed: 0, width: 1, height: 1, entities: ["bad"] })).toBe(false);
+    expect(isNormalizableStateInput({ seed: 0, width: 1, height: 1, entities: ["bad"] })).toBe(
+      false,
+    );
   });
 
   it("accepts with runtime field", () => {
-    expect(isNormalizableStateInput({ seed: 0, width: 1, height: 1, entities: [], runtime: { targetIds: [1] } })).toBe(true);
+    expect(
+      isNormalizableStateInput({
+        seed: 0,
+        width: 1,
+        height: 1,
+        entities: [],
+        runtime: { targetIds: [1] },
+      }),
+    ).toBe(true);
   });
 
   it("rejects invalid runtime", () => {
-    expect(isNormalizableStateInput({ seed: 0, width: 1, height: 1, entities: [], runtime: "bad" })).toBe(false);
+    expect(
+      isNormalizableStateInput({ seed: 0, width: 1, height: 1, entities: [], runtime: "bad" }),
+    ).toBe(false);
   });
 });
 
@@ -288,13 +334,98 @@ describe("isStateShape", () => {
   });
 
   it("rejects invalid fog grid", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [] };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [],
+    };
     expect(isStateShape({ ...base, fog: [] })).toBe(false);
   });
 
   it("rejects duplicate entity ids", () => {
-    const entity = { class: "unit", kind: "infantry", id: 1, owner: 0, x: 0, y: 0, hp: 100, maxHp: 100, cooldown: 0, path: [], carry: 0, constructing: 0, queue: [], marked: false, idle: false };
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], nextId: 2, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test" };
+    const entity = {
+      class: "unit",
+      kind: "infantry",
+      id: 1,
+      owner: 0,
+      x: 0,
+      y: 0,
+      hp: 100,
+      maxHp: 100,
+      cooldown: 0,
+      path: [],
+      carry: 0,
+      constructing: 0,
+      queue: [],
+      marked: false,
+      idle: false,
+    };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      nextId: 2,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+    };
     expect(isStateShape({ ...base, entities: [entity, entity] })).toBe(false);
   });
 
@@ -323,76 +454,803 @@ describe("isStateShape", () => {
   });
 
   it("rejects entities and paths outside the saved map", () => {
-    const entity = { class: "unit", kind: "infantry", id: 1, owner: 0, x: 0, y: 0, hp: 100, maxHp: 100, cooldown: 0, path: [], carry: 0, constructing: 0, queue: [], marked: false, idle: false };
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], nextId: 2, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test" };
+    const entity = {
+      class: "unit",
+      kind: "infantry",
+      id: 1,
+      owner: 0,
+      x: 0,
+      y: 0,
+      hp: 100,
+      maxHp: 100,
+      cooldown: 0,
+      path: [],
+      carry: 0,
+      constructing: 0,
+      queue: [],
+      marked: false,
+      idle: false,
+    };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      nextId: 2,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+    };
     expect(isStateShape({ ...base, entities: [{ ...entity, x: 1 }] })).toBe(false);
-    expect(isStateShape({ ...base, entities: [{ ...entity, path: [{ x: 1, y: 0 }] }] })).toBe(false);
+    expect(isStateShape({ ...base, entities: [{ ...entity, path: [{ x: 1, y: 0 }] }] })).toBe(
+      false,
+    );
   });
 
   it("rejects nextId too low for entities", () => {
-    const entity = { class: "unit", kind: "infantry", id: 5, owner: 0, x: 0, y: 0, hp: 100, maxHp: 100, cooldown: 0, path: [], carry: 0, constructing: 0, queue: [], marked: false, idle: false };
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [entity], nextId: 3, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test" };
+    const entity = {
+      class: "unit",
+      kind: "infantry",
+      id: 5,
+      owner: 0,
+      x: 0,
+      y: 0,
+      hp: 100,
+      maxHp: 100,
+      cooldown: 0,
+      path: [],
+      carry: 0,
+      constructing: 0,
+      queue: [],
+      marked: false,
+      idle: false,
+    };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [entity],
+      nextId: 3,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid result", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "draw", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test" };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "draw",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid lossReason", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "lost", lossReason: "timeout", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test" };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "lost",
+      lossReason: "timeout",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid biome", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, biome: "mars", factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test" };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      biome: "mars",
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid factions", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, factions: [], missionName: "Test" };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      factions: [],
+      missionName: "Test",
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid missionName", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: 123 };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: 123,
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid missionKind", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, missionKind: "invalid", factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test" };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      missionKind: "invalid",
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid tutorialStage", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test", tutorialStage: "invalid" };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+      tutorialStage: "invalid",
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid aiState", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test", aiState: "aggressive" };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+      aiState: "aggressive",
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid aiRetreatTick", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test", aiRetreatTick: -1 };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+      aiRetreatTick: -1,
+    };
     expect(isStateShape(base)).toBe(false);
   });
 
   it("rejects invalid aiRetreatLocked", () => {
-    const base = { width: 1, height: 1, seed: 0, missionIndex: 0, tick: 0, tiles: [0], heights: [1], surfaces: [0], resourceAmount: [0], fog: [0], entities: [], nextId: 1, credits: [0, 0], creditsEarned: [0, 0], unitsProduced: [0, 0], unitsProducedByRole: { harvester: 0, infantry: 0, antiArmor: 0, tank: 0, medic: 0, repairTruck: 0 }, buildingsCompleted: [0, 0], buildingsCompletedByKind: {}, losses: { units: [0, 0], buildings: [0, 0] }, win: { kind: "annihilate" }, result: "playing", rngState: 0, factions: [{ id: 0, name: "A", adjective: "a", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }, { id: 1, name: "B", adjective: "b", palette: { primary: "#000", secondary: "#000", accent: "#000", outline: "#000", light: "#000", dark: "#000" } }], missionName: "Test", aiRetreatLocked: 1 };
+    const base = {
+      width: 1,
+      height: 1,
+      seed: 0,
+      missionIndex: 0,
+      tick: 0,
+      tiles: [0],
+      heights: [1],
+      surfaces: [0],
+      resourceAmount: [0],
+      fog: [0],
+      entities: [],
+      nextId: 1,
+      credits: [0, 0],
+      creditsEarned: [0, 0],
+      unitsProduced: [0, 0],
+      unitsProducedByRole: {
+        harvester: 0,
+        infantry: 0,
+        antiArmor: 0,
+        tank: 0,
+        medic: 0,
+        repairTruck: 0,
+      },
+      buildingsCompleted: [0, 0],
+      buildingsCompletedByKind: {},
+      losses: { units: [0, 0], buildings: [0, 0] },
+      win: { kind: "annihilate" },
+      result: "playing",
+      rngState: 0,
+      factions: [
+        {
+          id: 0,
+          name: "A",
+          adjective: "a",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+        {
+          id: 1,
+          name: "B",
+          adjective: "b",
+          palette: {
+            primary: "#000",
+            secondary: "#000",
+            accent: "#000",
+            outline: "#000",
+            light: "#000",
+            dark: "#000",
+          },
+        },
+      ],
+      missionName: "Test",
+      aiRetreatLocked: 1,
+    };
     expect(isStateShape(base)).toBe(false);
   });
 });
 
 describe("isCampaignProgressShape", () => {
   it("accepts valid progress", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 2, completedMissions: [0, 1],
-      medals: { "0": 1 }, bestScores: { "0": 100 },
-    })).toBe(true);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 2,
+        completedMissions: [0, 1],
+        medals: { "0": 1 },
+        bestScores: { "0": 100 },
+      }),
+    ).toBe(true);
   });
 
   it("rejects non-record", () => {
@@ -400,125 +1258,221 @@ describe("isCampaignProgressShape", () => {
   });
 
   it("rejects wrong version", () => {
-    expect(isCampaignProgressShape({
-      version: 2, seed: 421, tutorialComplete: true,
-      unlockedMission: 0, completedMissions: [],
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 2,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 0,
+        completedMissions: [],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects non-integer seed", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 1.5, tutorialComplete: true,
-      unlockedMission: 0, completedMissions: [],
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 1.5,
+        tutorialComplete: true,
+        unlockedMission: 0,
+        completedMissions: [],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects out-of-range seed", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 10000, tutorialComplete: true,
-      unlockedMission: 0, completedMissions: [],
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 10000,
+        tutorialComplete: true,
+        unlockedMission: 0,
+        completedMissions: [],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects non-boolean tutorialComplete", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: "yes",
-      unlockedMission: 0, completedMissions: [],
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: "yes",
+        unlockedMission: 0,
+        completedMissions: [],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects out-of-range unlockedMission", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: -1, completedMissions: [],
-      medals: {}, bestScores: {},
-    })).toBe(false);
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 8, completedMissions: [],
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: -1,
+        completedMissions: [],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 8,
+        completedMissions: [],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects non-array completedMissions", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 0, completedMissions: "wrong",
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 0,
+        completedMissions: "wrong",
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects non-integer mission in completedMissions", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 2, completedMissions: [1.5],
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 2,
+        completedMissions: [1.5],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects out-of-range mission in completedMissions", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 2, completedMissions: [8],
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 2,
+        completedMissions: [8],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects duplicate missions", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 2, completedMissions: [1, 1],
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 2,
+        completedMissions: [1, 1],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects mission exceeding unlockedMission", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 1, completedMissions: [0, 2],
-      medals: {}, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 1,
+        completedMissions: [0, 2],
+        medals: {},
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects non-record medals or bestScores", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 0, completedMissions: [],
-      medals: "wrong", bestScores: {},
-    })).toBe(false);
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 0, completedMissions: [],
-      medals: {}, bestScores: "wrong",
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 0,
+        completedMissions: [],
+        medals: "wrong",
+        bestScores: {},
+      }),
+    ).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 0,
+        completedMissions: [],
+        medals: {},
+        bestScores: "wrong",
+      }),
+    ).toBe(false);
   });
 
   it("rejects invalid medals keys", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 0, completedMissions: [],
-      medals: { "abc": 1 }, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 0,
+        completedMissions: [],
+        medals: { abc: 1 },
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects non-finite medal scores", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 0, completedMissions: [],
-      medals: { "0": NaN }, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 0,
+        completedMissions: [],
+        medals: { "0": NaN },
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 
   it("rejects negative medal scores", () => {
-    expect(isCampaignProgressShape({
-      version: 1, seed: 421, tutorialComplete: true,
-      unlockedMission: 0, completedMissions: [],
-      medals: { "0": -1 }, bestScores: {},
-    })).toBe(false);
+    expect(
+      isCampaignProgressShape({
+        version: 1,
+        seed: 421,
+        tutorialComplete: true,
+        unlockedMission: 0,
+        completedMissions: [],
+        medals: { "0": -1 },
+        bestScores: {},
+      }),
+    ).toBe(false);
   });
 });
 
@@ -533,7 +1487,9 @@ describe("assertSupportedContentVersion", () => {
   });
 
   it("throws for a wrong version", () => {
-    expect(() => assertSupportedContentVersion(SAVE_CONTENT_VERSION + 1)).toThrow("Unsupported save content version");
+    expect(() => assertSupportedContentVersion(SAVE_CONTENT_VERSION + 1)).toThrow(
+      "Unsupported save content version",
+    );
     expect(() => assertSupportedContentVersion(0, 2)).toThrow("Unsupported save content version");
     expect(() => assertSupportedContentVersion(3, 2)).toThrow("Unsupported save content version");
     expect(() => assertSupportedContentVersion("1")).toThrow("Unsupported save content version");

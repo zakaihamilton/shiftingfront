@@ -1,10 +1,10 @@
-import { expect, test, type Page } from "@playwright/test";
-import { waitForBattlefield } from "./battlefieldReady";
+import { expect, type Page, test } from "@playwright/test";
+import { summarizeTimings } from "../../lib/perf/metrics";
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, saveKey } from "../../lib/persist/save";
 import { createMission } from "../../lib/sim/api";
 import { makeBuilding, makeUnit } from "../../lib/sim/world";
 import type { BuildingKind, SimState, UnitKind } from "../../lib/types";
-import { summarizeTimings } from "../../lib/perf/metrics";
+import { waitForBattlefield } from "./battlefieldReady";
 
 const UNIT_KINDS: UnitKind[] = ["infantry", "antiArmor", "tank", "harvester"];
 const BUILDING_KINDS: BuildingKind[] = ["power", "barracks", "refinery", "factory", "turret"];
@@ -18,7 +18,9 @@ test.setTimeout(process.env.CI ? 60_000 : 30_000);
 
 function denseLateGameState(): SimState {
   const state = createMission({ seed: 421, missionIndex: 5 });
-  const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+  const yard = state.entities.find(
+    (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+  );
   if (!yard) throw new Error("Dense performance fixture needs a player construction yard");
 
   const clamp = (value: number, max: number) => Math.max(2, Math.min(max - 3, value));
@@ -63,12 +65,16 @@ async function expectFrameBudgets(page: Page): Promise<void> {
   // Finish cold terrain preparation before the stress fixture's harvesters
   // begin changing its layout. All timing samples below run with play resumed.
   await page.keyboard.press("Escape");
-  await expect(canvas).toHaveAttribute("data-perf-terrain-ready", "true", { timeout: process.env.CI ? 30_000 : 15_000 });
+  await expect(canvas).toHaveAttribute("data-perf-terrain-ready", "true", {
+    timeout: process.env.CI ? 30_000 : 15_000,
+  });
   await page.keyboard.press("Escape");
   await expect.poll(() => canvas.getAttribute("data-perf-frame-sequence")).not.toBeNull();
   const initialTick = Number(await canvas.getAttribute("data-perf-tick"));
   // Warm the renderer and simulation together; sampling a paused game hides tick costs.
-  await expect.poll(async () => Number(await canvas.getAttribute("data-perf-tick"))).toBeGreaterThan(initialTick + 12);
+  await expect
+    .poll(async () => Number(await canvas.getAttribute("data-perf-tick")))
+    .toBeGreaterThan(initialTick + 12);
   const samples = await page.evaluate(async () => {
     const element = document.querySelector<HTMLCanvasElement>("[data-testid='battlefield-canvas']");
     if (!element) throw new Error("Battlefield canvas unavailable");
@@ -86,31 +92,53 @@ async function expectFrameBudgets(page: Page): Promise<void> {
       if (Number.isFinite(workMs) && Number.isFinite(intervalMs)) {
         work.push(workMs);
         intervals.push(intervalMs);
-        if (workMs > 1000 / 30) slowFrames.push({ workMs, renderMs: Number(element.dataset.perfRenderMs), tick: Number(element.dataset.perfTick) });
+        if (workMs > 1000 / 30)
+          slowFrames.push({
+            workMs,
+            renderMs: Number(element.dataset.perfRenderMs),
+            tick: Number(element.dataset.perfTick),
+          });
       }
     }
     return { work, intervals, slowFrames, firstTick, lastTick: Number(element.dataset.perfTick) };
   });
   const work = summarizeTimings(samples.work);
   const intervals = summarizeTimings(samples.intervals);
-  console.log(`battlefield timings ${JSON.stringify({ viewport: page.viewportSize(), work, intervals, budgets: FRAME_BUDGETS })}`);
+  console.log(
+    `battlefield timings ${JSON.stringify({ viewport: page.viewportSize(), work, intervals, budgets: FRAME_BUDGETS })}`,
+  );
   await test.info().attach("battlefield-frame-timings", {
     body: JSON.stringify({ work, intervals, samples }),
     contentType: "application/json",
   });
   expect(samples.work.length).toBeGreaterThanOrEqual(100);
-  expect(samples.lastTick - samples.firstTick, "simulation must advance during frame sampling").toBeGreaterThan(5);
-  expect(work.p95Ms, `complete loop work: ${JSON.stringify(work)}; cadence: ${JSON.stringify(intervals)}; slow frames: ${JSON.stringify(samples.slowFrames)}`).toBeLessThan(FRAME_BUDGETS.workP95);
-  expect(intervals.p50Ms, `frame cadence: ${JSON.stringify(intervals)}`).toBeLessThanOrEqual(FRAME_BUDGETS.intervalP50);
+  expect(
+    samples.lastTick - samples.firstTick,
+    "simulation must advance during frame sampling",
+  ).toBeGreaterThan(5);
+  expect(
+    work.p95Ms,
+    `complete loop work: ${JSON.stringify(work)}; cadence: ${JSON.stringify(intervals)}; slow frames: ${JSON.stringify(samples.slowFrames)}`,
+  ).toBeLessThan(FRAME_BUDGETS.workP95);
+  expect(intervals.p50Ms, `frame cadence: ${JSON.stringify(intervals)}`).toBeLessThanOrEqual(
+    FRAME_BUDGETS.intervalP50,
+  );
   // Cadence budgets allow 0.1 ms of animation timestamp rounding.
-  expect(intervals.p95Ms, `frame cadence: ${JSON.stringify(intervals)}`).toBeLessThanOrEqual(FRAME_BUDGETS.intervalP95);
+  expect(intervals.p95Ms, `frame cadence: ${JSON.stringify(intervals)}`).toBeLessThanOrEqual(
+    FRAME_BUDGETS.intervalP95,
+  );
 }
 
-test("keeps full battlefield frames within budget with a dense late-game state", async ({ page }) => {
+test("keeps full battlefield frames within budget with a dense late-game state", async ({
+  page,
+}) => {
   const state = denseLateGameState();
-  await page.addInitScript(({ key, raw }) => {
-    localStorage.setItem(key, raw);
-  }, { key: saveKey(state.seed), raw: saveEnvelope(state) });
+  await page.addInitScript(
+    ({ key, raw }) => {
+      localStorage.setItem(key, raw);
+    },
+    { key: saveKey(state.seed), raw: saveEnvelope(state) },
+  );
 
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto("/play?seed=0421&mission=5&resume=1&perf=1");
@@ -131,7 +159,9 @@ test("keeps initial gameplay art loading scoped to the current mission", async (
 
   expect(artRequests.some((url) => url.includes("/terrain/"))).toBe(true);
   expect(artRequests.some((url) => url.includes("/portraits/"))).toBe(false);
-  expect(artRequests.some((url) => url.includes("/art/menu") || url.includes("/art/results/"))).toBe(false);
+  expect(
+    artRequests.some((url) => url.includes("/art/menu") || url.includes("/art/results/")),
+  ).toBe(false);
   expect(artRequests.length, `initial art requests: ${artRequests.join(", ")}`).toBeLessThan(100);
 });
 
@@ -140,24 +170,39 @@ test.describe("Retina battlefield performance", () => {
 
   test("keeps dense late-game frames within budget on a Retina display", async ({ page }) => {
     const state = denseLateGameState();
-    await page.addInitScript(({ key, raw }) => {
-      localStorage.setItem(key, raw);
-    }, { key: saveKey(state.seed), raw: saveEnvelope(state) });
+    await page.addInitScript(
+      ({ key, raw }) => {
+        localStorage.setItem(key, raw);
+      },
+      { key: saveKey(state.seed), raw: saveEnvelope(state) },
+    );
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto("/play?seed=0421&mission=5&resume=1&perf=1");
     await waitForBattlefield(page);
-    await expect.poll(() => page.getByTestId("battlefield-canvas").evaluate(element =>
-      (element as HTMLCanvasElement).width / element.getBoundingClientRect().width,
-    )).toBeLessThanOrEqual(1.01);
+    await expect
+      .poll(() =>
+        page
+          .getByTestId("battlefield-canvas")
+          .evaluate(
+            (element) =>
+              (element as HTMLCanvasElement).width / element.getBoundingClientRect().width,
+          ),
+      )
+      .toBeLessThanOrEqual(1.01);
     await expectFrameBudgets(page);
   });
 });
 
-test("keeps mobile battlefield frames within budget with a dense late-game state", async ({ page }) => {
+test("keeps mobile battlefield frames within budget with a dense late-game state", async ({
+  page,
+}) => {
   const state = denseLateGameState();
-  await page.addInitScript(({ key, raw }) => {
-    localStorage.setItem(key, raw);
-  }, { key: saveKey(state.seed), raw: saveEnvelope(state) });
+  await page.addInitScript(
+    ({ key, raw }) => {
+      localStorage.setItem(key, raw);
+    },
+    { key: saveKey(state.seed), raw: saveEnvelope(state) },
+  );
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/play?seed=0421&mission=5&resume=1&perf=1");

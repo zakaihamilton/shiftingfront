@@ -1,12 +1,13 @@
 import { BUILDING_STATS } from "../catalog";
-import { fogIndex } from "./fog";
 import {
-  isBuildingEntity,
   type Command,
   type Entity,
+  isBuildingEntity,
   type SimState,
   type TutorialStage,
 } from "../types";
+import { entitiesFor } from "./entities";
+import { fogIndex } from "./fog";
 import {
   BUILDING_CLEARANCE,
   canPlaceBuilding,
@@ -15,23 +16,44 @@ import {
   openTileNear,
   trySpawnUnit,
 } from "./world";
-import { entitiesFor } from "./entities";
 
 export type TutorialWorldTarget =
-  | { kind: "entity"; entityId: number; label: string; x?: number; y?: number; entityClass?: Entity["class"] }
+  | {
+      kind: "entity";
+      entityId: number;
+      label: string;
+      x?: number;
+      y?: number;
+      entityClass?: Entity["class"];
+    }
   | { kind: "tile"; x: number; y: number; label: string; footprint?: { w: number; h: number } };
 
-const TUTORIAL_STAGES: TutorialStage[] = ["select", "move", "build", "produce", "attack", "repair", "complete"];
+const TUTORIAL_STAGES: TutorialStage[] = [
+  "select",
+  "move",
+  "build",
+  "produce",
+  "attack",
+  "repair",
+  "complete",
+];
 
 export function tutorialPrompt(state: SimState): string {
   switch (state.tutorialStage) {
-    case "select": return "Tap or click your Infantry to select it.";
-    case "move": return "Tap the highlighted ground to move the selected unit, or right-click it with a mouse.";
-    case "build": return "Open Construction, choose Power Plant, then place it at the highlighted site.";
-    case "produce": return "Open Production and queue one Infantry.";
-    case "attack": return "Select a combat unit, then attack the highlighted drill target.";
-    case "repair": return "Activate Repair, then click the highlighted damaged structure.";
-    default: return "Training complete. Return to the command desk when ready.";
+    case "select":
+      return "Tap or click your Infantry to select it.";
+    case "move":
+      return "Tap the highlighted ground to move the selected unit, or right-click it with a mouse.";
+    case "build":
+      return "Open Construction, choose Power Plant, then place it at the highlighted site.";
+    case "produce":
+      return "Open Production and queue one Infantry.";
+    case "attack":
+      return "Select a combat unit, then attack the highlighted drill target.";
+    case "repair":
+      return "Activate Repair, then click the highlighted damaged structure.";
+    default:
+      return "Training complete. Return to the command desk when ready.";
   }
 }
 
@@ -40,11 +62,24 @@ function livingEntity(state: SimState, predicate: (entity: Entity) => boolean): 
 }
 
 function friendlyInfantry(state: SimState): Entity | undefined {
-  return livingEntity(state, (entity) => entity.owner === 0 && entity.class === "unit" && entity.kind === "infantry" && !entity.neutral);
+  return livingEntity(
+    state,
+    (entity) =>
+      entity.owner === 0 &&
+      entity.class === "unit" &&
+      entity.kind === "infantry" &&
+      !entity.neutral,
+  );
 }
 
 function friendlyBuilding(state: SimState, kind?: Entity["kind"]): Entity | undefined {
-  return livingEntity(state, (entity) => entity.owner === 0 && entity.class === "building" && (kind === undefined || entity.kind === kind));
+  return livingEntity(
+    state,
+    (entity) =>
+      entity.owner === 0 &&
+      entity.class === "building" &&
+      (kind === undefined || entity.kind === kind),
+  );
 }
 
 export function tutorialMoveTile(state: SimState): { x: number; y: number } | null {
@@ -67,9 +102,16 @@ export function tutorialMoveTile(state: SimState): { x: number; y: number } | nu
 }
 
 export function tutorialBuildTile(state: SimState): { x: number; y: number } | null {
-  const trackedBuild = state.tutorialBuildId === undefined
-    ? undefined
-    : entitiesFor(state).find((entity) => entity.id === state.tutorialBuildId && entity.owner === 0 && entity.kind === "power" && entity.hp > 0);
+  const trackedBuild =
+    state.tutorialBuildId === undefined
+      ? undefined
+      : entitiesFor(state).find(
+          (entity) =>
+            entity.id === state.tutorialBuildId &&
+            entity.owner === 0 &&
+            entity.kind === "power" &&
+            entity.hp > 0,
+        );
   if (trackedBuild) return { x: Math.round(trackedBuild.x), y: Math.round(trackedBuild.y) };
 
   const yard = friendlyBuilding(state, "constructionYard");
@@ -95,20 +137,30 @@ export function tutorialBuildTile(state: SimState): { x: number; y: number } | n
 }
 
 function tutorialAttackTarget(state: SimState): Entity | undefined {
-  const saved = state.tutorialTargetId === undefined ? undefined : entitiesFor(state).find((entity) => entity.id === state.tutorialTargetId);
+  const saved =
+    state.tutorialTargetId === undefined
+      ? undefined
+      : entitiesFor(state).find((entity) => entity.id === state.tutorialTargetId);
   if (saved && saved.hp > 0 && saved.owner === 1) return saved;
-  return livingEntity(state, (entity) => entity.owner === 1 && entity.class === "unit" && !entity.neutral);
+  return livingEntity(
+    state,
+    (entity) => entity.owner === 1 && entity.class === "unit" && !entity.neutral,
+  );
 }
 
 function entityTarget(entity: Entity | undefined, label: string): TutorialWorldTarget[] {
-  return entity ? [{
-    kind: "entity",
-    entityId: entity.id,
-    label,
-    x: entity.x,
-    y: entity.y,
-    entityClass: entity.class,
-  }] : [];
+  return entity
+    ? [
+        {
+          kind: "entity",
+          entityId: entity.id,
+          label,
+          x: entity.x,
+          y: entity.y,
+          entityClass: entity.class,
+        },
+      ]
+    : [];
 }
 
 export function tutorialTargets(state: SimState): TutorialWorldTarget[] {
@@ -121,7 +173,16 @@ export function tutorialTargets(state: SimState): TutorialWorldTarget[] {
     }
     case "build": {
       const tile = tutorialBuildTile(state);
-      return tile ? [{ kind: "tile", ...tile, label: "Power Plant site", footprint: BUILDING_STATS.power.footprint }] : [];
+      return tile
+        ? [
+            {
+              kind: "tile",
+              ...tile,
+              label: "Power Plant site",
+              footprint: BUILDING_STATS.power.footprint,
+            },
+          ]
+        : [];
     }
     case "produce":
       return [];
@@ -132,7 +193,14 @@ export function tutorialTargets(state: SimState): TutorialWorldTarget[] {
       ];
     case "repair":
       return entityTarget(
-        livingEntity(state, (entity) => entity.owner === 0 && isBuildingEntity(entity) && entity.constructing === 0 && entity.hp < entity.maxHp),
+        livingEntity(
+          state,
+          (entity) =>
+            entity.owner === 0 &&
+            isBuildingEntity(entity) &&
+            entity.constructing === 0 &&
+            entity.hp < entity.maxHp,
+        ),
         "Damaged structure",
       );
     case "complete":
@@ -147,7 +215,9 @@ export function tutorialFocusPoint(state: SimState): { x: number; y: number } | 
   const first = targets[0];
   if (!first) return null;
   if (state.tutorialStage === "attack") {
-    const combat = targets.find((target) => target.kind === "entity" && target.label === "Combat Infantry");
+    const combat = targets.find(
+      (target) => target.kind === "entity" && target.label === "Combat Infantry",
+    );
     if (first.kind === "entity" && combat?.kind === "entity") {
       return { x: (first.x! + combat.x!) / 2, y: (first.y! + combat.y!) / 2 };
     }
@@ -159,7 +229,14 @@ export function tutorialSelectionCompletesStage(state: SimState, ids: readonly n
   if (state.tutorialStage !== "select") return false;
   return ids.some((id) => {
     const entity = entitiesFor(state).find((candidate) => candidate.id === id);
-    return Boolean(entity && entity.hp > 0 && entity.owner === 0 && entity.class === "unit" && entity.kind === "infantry" && !entity.neutral);
+    return Boolean(
+      entity &&
+        entity.hp > 0 &&
+        entity.owner === 0 &&
+        entity.class === "unit" &&
+        entity.kind === "infantry" &&
+        !entity.neutral,
+    );
   });
 }
 
@@ -167,16 +244,36 @@ function sameTile(x: number, y: number, target: TutorialWorldTarget | undefined)
   return target?.kind === "tile" && Math.round(x) === target.x && Math.round(y) === target.y;
 }
 
-function sameEntityTile(state: SimState, x: number, y: number, target: TutorialWorldTarget | undefined): boolean {
+function sameEntityTile(
+  state: SimState,
+  x: number,
+  y: number,
+  target: TutorialWorldTarget | undefined,
+): boolean {
   if (target?.kind !== "entity") return false;
-  const entity = entitiesFor(state).find((candidate) => candidate.id === target.entityId && candidate.hp > 0);
-  return Boolean(entity && Math.round(x) === Math.round(entity.x) && Math.round(y) === Math.round(entity.y));
+  const entity = entitiesFor(state).find(
+    (candidate) => candidate.id === target.entityId && candidate.hp > 0,
+  );
+  return Boolean(
+    entity && Math.round(x) === Math.round(entity.x) && Math.round(y) === Math.round(entity.y),
+  );
 }
 
-function hasFriendlyUnit(state: SimState, ids: number[], predicate: (entity: Entity) => boolean): boolean {
+function hasFriendlyUnit(
+  state: SimState,
+  ids: number[],
+  predicate: (entity: Entity) => boolean,
+): boolean {
   return ids.some((id) => {
     const entity = entitiesFor(state).find((candidate) => candidate.id === id);
-    return Boolean(entity && entity.hp > 0 && entity.owner === 0 && entity.class === "unit" && !entity.neutral && predicate(entity));
+    return Boolean(
+      entity &&
+        entity.hp > 0 &&
+        entity.owner === 0 &&
+        entity.class === "unit" &&
+        !entity.neutral &&
+        predicate(entity),
+    );
   });
 }
 
@@ -185,25 +282,59 @@ export function tutorialCommandCompletesStage(
   command: Command,
   expectedTargets: TutorialWorldTarget[] = tutorialTargets(state),
 ): boolean {
-  const firstTile = expectedTargets.find((target): target is Extract<TutorialWorldTarget, { kind: "tile" }> => target.kind === "tile");
-  const firstEntity = expectedTargets.find((target): target is Extract<TutorialWorldTarget, { kind: "entity" }> => target.kind === "entity");
+  const firstTile = expectedTargets.find(
+    (target): target is Extract<TutorialWorldTarget, { kind: "tile" }> => target.kind === "tile",
+  );
+  const firstEntity = expectedTargets.find(
+    (target): target is Extract<TutorialWorldTarget, { kind: "entity" }> =>
+      target.kind === "entity",
+  );
   switch (state.tutorialStage) {
     case "move":
-      return (command.type === "move" || command.type === "attackMove") &&
+      return (
+        (command.type === "move" || command.type === "attackMove") &&
         hasFriendlyUnit(state, command.unitIds, (entity) => entity.kind === "infantry") &&
-        sameTile(command.x, command.y, firstTile);
+        sameTile(command.x, command.y, firstTile)
+      );
     case "build":
-      return command.type === "build" && command.building === "power" && sameTile(command.x, command.y, firstTile);
+      return (
+        command.type === "build" &&
+        command.building === "power" &&
+        sameTile(command.x, command.y, firstTile)
+      );
     case "produce":
-      return command.type === "produce" && command.unit === "infantry" && Boolean(
-        entitiesFor(state).find((entity) => entity.id === command.fromId && entity.owner === 0 && entity.class === "building" && entity.kind === "barracks"),
+      return (
+        command.type === "produce" &&
+        command.unit === "infantry" &&
+        Boolean(
+          entitiesFor(state).find(
+            (entity) =>
+              entity.id === command.fromId &&
+              entity.owner === 0 &&
+              entity.class === "building" &&
+              entity.kind === "barracks",
+          ),
+        )
       );
     case "attack":
-      return (command.type === "attack" && command.targetId === firstEntity?.entityId && hasFriendlyUnit(state, command.unitIds, (entity) => entity.kind !== "harvester")) ||
-        (command.type === "attackMove" && hasFriendlyUnit(state, command.unitIds, (entity) => entity.kind !== "harvester") && sameEntityTile(state, command.x, command.y, firstEntity));
+      return (
+        (command.type === "attack" &&
+          command.targetId === firstEntity?.entityId &&
+          hasFriendlyUnit(state, command.unitIds, (entity) => entity.kind !== "harvester")) ||
+        (command.type === "attackMove" &&
+          hasFriendlyUnit(state, command.unitIds, (entity) => entity.kind !== "harvester") &&
+          sameEntityTile(state, command.x, command.y, firstEntity))
+      );
     case "repair": {
-      const target = firstEntity?.entityId === undefined ? undefined : entitiesFor(state).find((entity) => entity.id === firstEntity.entityId);
-      return command.type === "repair" && command.buildingId === firstEntity?.entityId && Boolean(target?.repairing);
+      const target =
+        firstEntity?.entityId === undefined
+          ? undefined
+          : entitiesFor(state).find((entity) => entity.id === firstEntity.entityId);
+      return (
+        command.type === "repair" &&
+        command.buildingId === firstEntity?.entityId &&
+        Boolean(target?.repairing)
+      );
     }
     default:
       return false;
@@ -213,7 +344,8 @@ export function tutorialCommandCompletesStage(
 export function advanceTutorialAfterTick(state: SimState): void {
   if (state.tutorialStage === "build" && state.tutorialBuildId !== undefined) {
     const building = entitiesFor(state).find((entity) => entity.id === state.tutorialBuildId);
-    if (building && building.hp > 0 && building.constructing === 0) enterTutorialStage(state, "produce");
+    if (building && building.hp > 0 && building.constructing === 0)
+      enterTutorialStage(state, "produce");
     return;
   }
   if (state.tutorialStage !== "attack" || state.tutorialTargetId === undefined) return;
@@ -225,7 +357,12 @@ export function enterTutorialStage(state: SimState, stage: TutorialStage): void 
   state.tutorialStage = stage;
   if (stage !== "build") delete state.tutorialBuildId;
   if (stage === "attack") {
-    const existing = state.tutorialTargetId === undefined ? undefined : entitiesFor(state).find((entity) => entity.id === state.tutorialTargetId && entity.hp > 0);
+    const existing =
+      state.tutorialTargetId === undefined
+        ? undefined
+        : entitiesFor(state).find(
+            (entity) => entity.id === state.tutorialTargetId && entity.hp > 0,
+          );
     if (!existing) {
       const infantry = friendlyInfantry(state);
       if (infantry) {

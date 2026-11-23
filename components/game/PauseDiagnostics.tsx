@@ -23,7 +23,12 @@ export function PauseDiagnostics({
   };
 
   const clearMissionTelemetry = () => {
-    if (typeof window !== "undefined" && !window.confirm("Clear all locally stored mission telemetry? This does not affect saves or campaign progress.")) {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        "Clear all locally stored mission telemetry? This does not affect saves or campaign progress.",
+      )
+    ) {
       return;
     }
     const cleared = onClearTelemetry?.() ?? false;
@@ -33,19 +38,43 @@ export function PauseDiagnostics({
   return (
     <>
       <ConsoleLabel>Diagnostics</ConsoleLabel>
-      <h2 id="pause-title" className={styles.title}>Diagnostics</h2>
+      <h2 id="pause-title" className={styles.title}>
+        Diagnostics
+      </h2>
       <div className={styles.actions}>
         <div className={styles.group}>
-          <p className={styles.slotCopy}>Stored mission telemetry: {telemetryRecordCount ?? 0} records</p>
-          <ConsoleButton className={styles.action} tooltip="Download the bounded local telemetry envelope as JSON" onClick={exportTelemetry}>
+          <p className={styles.slotCopy}>
+            Stored mission telemetry: {telemetryRecordCount ?? 0} records
+          </p>
+          <ConsoleButton
+            className={styles.action}
+            tooltip="Download the bounded local telemetry envelope as JSON"
+            onClick={exportTelemetry}
+          >
             Export Telemetry
           </ConsoleButton>
-          <ConsoleButton className={styles.action} tooltip="Clear only locally stored mission telemetry" onClick={clearMissionTelemetry}>
+          <ConsoleButton
+            className={styles.action}
+            tooltip="Clear only locally stored mission telemetry"
+            onClick={clearMissionTelemetry}
+          >
             Clear Telemetry
           </ConsoleButton>
-          {telemetryNotice ? <p className={styles.notice} role="status">{telemetryNotice}</p> : null}
+          {telemetryNotice ? (
+            <p className={styles.notice} role="status">
+              {telemetryNotice}
+            </p>
+          ) : null}
         </div>
-        <ConsoleButton muted className={styles.action} tooltip="Return to game options" shortcut={SHORTCUT.back} onClick={onBack}>Back</ConsoleButton>
+        <ConsoleButton
+          muted
+          className={styles.action}
+          tooltip="Return to game options"
+          shortcut={SHORTCUT.back}
+          onClick={onBack}
+        >
+          Back
+        </ConsoleButton>
       </div>
     </>
   );

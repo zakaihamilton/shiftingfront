@@ -1,156 +1,64 @@
 import type { CampaignProgress, DeploymentEdge, SimState } from "@/lib/types";
-import { campaignKey, CAMPAIGN_PREFIX, completeMission, readCampaignProgress, retainedGameplayRules, writeCampaignProgress } from "../campaign";
-import { missionMedals, missionScore } from "@/lib/sim/debrief";
-import { decodeSave, SAVE_PREFIX, saveKey } from "./serialize";
-import { writeSave } from "./api";
-import { createSlotId, decodeSlot, isSlotId, SLOT_PREFIX, slotKey, writeSlot, type ParsedSlot, type SlotWriteResult } from "./slots";
-import { cachedLocalStorage, clearAllGameData, memoryStorage, safeGetItem, safeKeys, safeRemoveItem, safeSetItem, type StorageAdapter } from "./storage";
-import type { SaveSession, SaveWriteStatus } from "./session";
-import { isCampaignProgressShape } from "./validation";
-import { applyRulesRetirement } from "./retireRules";
+import { campaignKey, readCampaignProgress } from "../campaign";
 import {
   isCurrentGameplayRules,
   JOURNAL_PREFIX,
-  mergeCampaignProgress,
-  planSeedRetirement,
   progressAfterRetiredBattlefield,
   RULES_REBUILD_NOTICE,
 } from "../rulesRetirement";
+import {
+  keepRetiredSlotLegacy,
+  restoreSlotLegacy,
+  saveLegacy,
+  saveSlotLegacy,
+} from "./repository/legacyBackend";
+import { migrateLegacyStorage } from "./repository/migrateLegacy";
+import {
+  type CampaignRecord,
+  completion,
+  encode,
+  encodeProgress,
+  type Journal,
+  type MigrationRecord,
+  progressFor,
+  request,
+  SAVE_FALLBACK_EPOCH_KEY,
+  type SlotRecord,
+  stampFallbackEpoch,
+} from "./repository/progressMerge";
+import { recoverJournalsFromStorage } from "./repository/recoverJournals";
+import { retireIndexedRulesStore } from "./repository/retireIndexedRules";
+import { applyRulesRetirement } from "./retireRules";
+import { decodeSave, saveKey } from "./serialize";
+import type { SaveSession, SaveWriteStatus } from "./session";
+import {
+  decodeSlot,
+  type ParsedSlot,
+  SLOT_PREFIX,
+  type SlotWriteResult,
+  slotKey,
+  writeSlot,
+} from "./slots";
+import {
+  cachedLocalStorage,
+  clearAllGameData,
+  memoryStorage,
+  type StorageAdapter,
+  safeGetItem,
+  safeRemoveItem,
+  safeSetItem,
+} from "./storage";
 
 export const SAVE_DATABASE_NAME = "shiftingfront-saves";
 const SAVE_REPOSITORY_INITIALIZATION_TIMEOUT_MS = 5_000;
-const SAVE_FALLBACK_EPOCH_KEY = "shiftingfront:save-fallback-epoch";
-type CampaignRecord = { seed: number; revision: number; autosave: string | null; progress: string | null };
-type SlotRecord = { id: string; revision: number; raw: string };
-type MigrationRecord = { key: string; raw: string; unreadable?: boolean; sourceKey?: string };
-type Journal = { revision: number; autosave: string; progress: string; savedAt: number };
 type SaveOutcome = { status: SaveWriteStatus; revision?: number };
 
-function request<T>(value: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error); });
-}
-function completion(tx: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onabort = tx.onerror = () => reject(tx.error ?? new Error("Save transaction aborted")); });
-}
-function encode(state: SimState): string {
-  const memory = memoryStorage();
-  if (!writeSave(memory, state)) throw new Error("Invalid save state");
-  return memory.getItem(saveKey(state.seed))!;
-}
-function encodeProgress(progress: CampaignProgress): string {
-  const memory = memoryStorage();
-  if (!writeCampaignProgress(memory, progress)) throw new Error("Invalid campaign progress");
-  return memory.getItem(campaignKey(progress.seed))!;
-}
-function progressFor(record: CampaignRecord, state: SimState): CampaignProgress {
-  const existing = readCampaignProgress(memoryStorage(record.progress ? { [campaignKey(state.seed)]: record.progress } : {}), state.seed);
-  const progress = {
-    ...existing,
-    gameplayRulesVersion: retainedGameplayRules(existing.gameplayRulesVersion, state.gameplayRulesVersion, record.progress !== null),
-  };
-  return state.result === "won" ? completeMission(progress, state.missionIndex, missionMedals(state), missionScore(state)) : progress;
-}
-function progressSavedAt(raw: string | null): number {
-  if (!raw) return 0;
-  try {
-    const parsed = JSON.parse(raw) as { savedAt?: unknown };
-    return typeof parsed.savedAt === "number" && Number.isFinite(parsed.savedAt) ? parsed.savedAt : 0;
-  } catch {
-    return 0;
-  }
-}
-/** A later committed reward wins, including when the journal battlefield is a different snapshot. */
-function keepNewerDeploymentEdge(
-  existing: CampaignProgress,
-  merged: CampaignProgress,
-  existingSavedAt: number,
-  incomingSavedAt: number,
-): CampaignProgress {
-  if (existingSavedAt <= incomingSavedAt) return merged;
-  const next = { ...merged };
-  if (existing.deploymentEdge) next.deploymentEdge = existing.deploymentEdge;
-  else delete next.deploymentEdge;
-  return next;
-}
-function sameStatMap(left: Record<string, number>, right: Record<string, number>): boolean {
-  const leftKeys = Object.keys(left).sort();
-  const rightKeys = Object.keys(right).sort();
-  return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && left[key] === right[key]);
-}
-function sameCampaignProgress(left: CampaignProgress, right: CampaignProgress): boolean {
-  return left.version === right.version
-    && left.seed === right.seed
-    && left.tutorialComplete === right.tutorialComplete
-    && left.unlockedMission === right.unlockedMission
-    && left.gameplayRulesVersion === right.gameplayRulesVersion
-    && left.deploymentEdge === right.deploymentEdge
-    && left.completedMissions.length === right.completedMissions.length
-    && left.completedMissions.every((mission, index) => mission === right.completedMissions[index])
-    && sameStatMap(left.medals, right.medals)
-    && sameStatMap(left.bestScores, right.bestScores);
-}
-function withoutDeploymentEdge(progress: CampaignProgress): CampaignProgress {
-  const next = { ...progress };
-  delete next.deploymentEdge;
-  return next;
-}
-/**
- * A fresh launch restamps the legacy campaign envelope. That rewrite is not a
- * new import: keep the autosave revision so a crash journal can still resume.
- * A newer envelope may change only the deployment reward. An older envelope
- * must not erase a reward stored after it was written.
- */
-function legacyCampaignMirror(
-  existing: CampaignProgress,
-  incoming: CampaignProgress,
-  existingSavedAt: number,
-  incomingSavedAt: number,
-): "keep" | "edge" | "merge" {
-  if (!sameCampaignProgress(withoutDeploymentEdge(existing), withoutDeploymentEdge(incoming))) return "merge";
-  if (existing.deploymentEdge === incoming.deploymentEdge) return "keep";
-  return incomingSavedAt >= existingSavedAt ? "edge" : "keep";
-}
-/** Merge progress-only journal data when the battlefield snapshot is already stored. */
-function progressWhenBattlefieldMatches(record: CampaignRecord, journalSavedAt: number, progress: string): string | undefined {
-  const existing = readCampaignProgress(memoryStorage(record.progress ? { [campaignKey(record.seed)]: record.progress } : {}), record.seed);
-  const incoming = readCampaignProgress(memoryStorage({ [campaignKey(record.seed)]: progress }), record.seed);
-  const merged = keepNewerDeploymentEdge(
-    existing,
-    mergeCampaignProgress(existing, incoming),
-    progressSavedAt(record.progress),
-    journalSavedAt,
-  );
-  return sameCampaignProgress(existing, merged) ? undefined : encodeProgress(merged);
-}
-function canonicalBattlefield(state: SimState): string {
-  const sorted = sortBattlefieldValue(state) as { entities?: { id?: number }[] };
-  if (Array.isArray(sorted.entities)) sorted.entities.sort((left, right) => (left.id ?? 0) - (right.id ?? 0));
-  return JSON.stringify(sorted);
-}
-function sortBattlefieldValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortBattlefieldValue);
-  if (!value || typeof value !== "object") return value;
-  const sorted: Record<string, unknown> = {};
-  for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-    const nested = (value as Record<string, unknown>)[key];
-    if (nested !== undefined) sorted[key] = sortBattlefieldValue(nested);
-  }
-  return sorted;
-}
-function sameBattlefield(left: SimState, right: SimState): boolean {
-  return canonicalBattlefield(left) === canonicalBattlefield(right);
-}
-function savedAtOf(raw: string): number {
-  try { return decodeSave(raw).savedAt; } catch { return 0; }
-}
-function validatedProgress(raw: string, seed: number): string {
-  const parsed = JSON.parse(raw);
-  if (parsed.version !== 1 || !isCampaignProgressShape(parsed.progress) || parsed.progress.seed !== seed) throw new Error("Invalid campaign progress");
-  return encodeProgress(readCampaignProgress(memoryStorage({ [campaignKey(seed)]: raw }), seed));
-}
-
 function browserIndexedDB(): IDBFactory | undefined {
-  try { return typeof indexedDB === "undefined" ? undefined : indexedDB; } catch { return undefined; }
+  try {
+    return typeof indexedDB === "undefined" ? undefined : indexedDB;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Async durable writes with a synchronous, read-only view for React snapshots and existing codecs. */
@@ -169,29 +77,46 @@ export class SaveRepository {
   private openAttempt = 0;
   readonly storage: StorageAdapter;
 
-  constructor(private legacy: StorageAdapter = cachedLocalStorage(), private factory: IDBFactory | undefined = browserIndexedDB()) {
+  constructor(
+    private legacy: StorageAdapter = cachedLocalStorage(),
+    private factory: IDBFactory | undefined = browserIndexedDB(),
+  ) {
     this.storage = {
-      getItem: (key) => this.mode === "legacy" ? this.legacy.getItem(key) : this.cache.getItem(key),
-      keys: () => this.mode === "legacy" ? this.legacy.keys() : this.cache.keys(),
-      setItem: (key, value) => { if (this.mode === "legacy") this.legacy.setItem(key, value); else throw new Error("Use SaveRepository for durable writes"); },
-      removeItem: (key) => { if (this.mode === "legacy") this.legacy.removeItem(key); else throw new Error("Use SaveRepository for durable writes"); },
+      getItem: (key) =>
+        this.mode === "legacy" ? this.legacy.getItem(key) : this.cache.getItem(key),
+      keys: () => (this.mode === "legacy" ? this.legacy.keys() : this.cache.keys()),
+      setItem: (key, value) => {
+        if (this.mode === "legacy") this.legacy.setItem(key, value);
+        else throw new Error("Use SaveRepository for durable writes");
+      },
+      removeItem: (key) => {
+        if (this.mode === "legacy") this.legacy.removeItem(key);
+        else throw new Error("Use SaveRepository for durable writes");
+      },
     };
   }
   private rulesRebuilt = false;
   get notice(): string | null {
-    const legacy = this.mode === "legacy" ? "Using legacy browser saves. Save recovery and multi-tab protection are reduced; export important saves as a backup." : null;
+    const legacy =
+      this.mode === "legacy"
+        ? "Using legacy browser saves. Save recovery and multi-tab protection are reduced; export important saves as a backup."
+        : null;
     const rebuilt = this.rulesRebuilt ? RULES_REBUILD_NOTICE : null;
     return [legacy, rebuilt].filter((line) => line !== null).join(" ") || null;
   }
-  subscribe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
-  private publish(): void { for (const listener of this.listeners) listener(); }
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+  private publish(): void {
+    for (const listener of this.listeners) listener();
+  }
   private fallBackToLegacy(): void {
     this.openAttempt += 1;
     this.db?.close();
     this.db = null;
     this.mode = "legacy";
-    const existing = Number(safeGetItem(this.legacy, SAVE_FALLBACK_EPOCH_KEY));
-    if (!Number.isFinite(existing) || existing <= 0) safeSetItem(this.legacy, SAVE_FALLBACK_EPOCH_KEY, String(Date.now()));
+    stampFallbackEpoch(this.legacy);
   }
   private enqueue<T>(work: () => Promise<T>): Promise<T> {
     const generation = this.generation;
@@ -217,14 +142,18 @@ export class SaveRepository {
         finish();
       }, SAVE_REPOSITORY_INITIALIZATION_TIMEOUT_MS);
 
-      void this.open().catch(() => this.fallBackToLegacy()).finally(() => {
-        try {
-          if (this.mode === "legacy" && applyRulesRetirement(this.legacy)) this.rulesRebuilt = true;
-        } catch {
-          // Retirement must not block the game when storage itself is failing.
-        }
-        finish();
-      });
+      void this.open()
+        .catch(() => this.fallBackToLegacy())
+        .finally(() => {
+          try {
+            if (this.mode === "legacy" && applyRulesRetirement(this.legacy)) {
+              this.rulesRebuilt = true;
+            }
+          } catch {
+            // Retirement must not block the game when storage itself is failing.
+          }
+          finish();
+        });
     });
     return this.initPromise;
   }
@@ -235,19 +164,35 @@ export class SaveRepository {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const opening = this.factory!.open(SAVE_DATABASE_NAME, 1);
         let expired = false;
-        const timeout = setTimeout(() => { expired = true; reject(new Error("Save database unavailable")); }, 2500);
+        const timeout = setTimeout(() => {
+          expired = true;
+          reject(new Error("Save database unavailable"));
+        }, 2500);
         opening.onupgradeneeded = () => {
-          const db = opening.result;
-          db.createObjectStore("campaigns", { keyPath: "seed" });
-          db.createObjectStore("slots", { keyPath: "id" });
-          db.createObjectStore("metadata", { keyPath: "key" });
+          const upgradingDb = opening.result;
+          upgradingDb.createObjectStore("campaigns", { keyPath: "seed" });
+          upgradingDb.createObjectStore("slots", { keyPath: "id" });
+          upgradingDb.createObjectStore("metadata", { keyPath: "key" });
         };
-        opening.onsuccess = () => { clearTimeout(timeout); if (expired) opening.result.close(); else resolve(opening.result); };
-        opening.onerror = () => { clearTimeout(timeout); reject(opening.error); };
+        opening.onsuccess = () => {
+          clearTimeout(timeout);
+          if (expired) opening.result.close();
+          else resolve(opening.result);
+        };
+        opening.onerror = () => {
+          clearTimeout(timeout);
+          reject(opening.error);
+        };
       });
-      if (attempt !== this.openAttempt) { db.close(); return; }
+      if (attempt !== this.openAttempt) {
+        db.close();
+        return;
+      }
       this.db = db;
-      db.onversionchange = () => { this.close(); this.publish(); };
+      db.onversionchange = () => {
+        this.close();
+        this.publish();
+      };
       this.mode = "indexeddb";
       await this.migrateLegacy();
       if (attempt !== this.openAttempt) return;
@@ -261,19 +206,33 @@ export class SaveRepository {
       safeRemoveItem(this.legacy, SAVE_FALLBACK_EPOCH_KEY);
       if (typeof BroadcastChannel !== "undefined" && typeof window !== "undefined") {
         this.channel = new BroadcastChannel("shiftingfront-save-revisions");
-        this.channel.onmessage = ({ data }) => { if (data?.type === "committed") void this.refresh().catch(() => undefined); };
+        this.channel.onmessage = ({ data }) => {
+          if (data?.type === "committed") void this.refresh().catch(() => undefined);
+        };
       }
     } catch {
       if (attempt === this.openAttempt) this.fallBackToLegacy();
     }
   }
-  private async transaction<T>(stores: string[], work: (tx: IDBTransaction) => Promise<T>): Promise<T> {
+  private transaction = async <T>(
+    stores: string[],
+    work: (tx: IDBTransaction) => Promise<T>,
+  ): Promise<T> => {
     if (!this.db) throw new Error("Save database unavailable");
     const tx = this.db.transaction(stores, "readwrite");
     const done = completion(tx);
-    try { const result = await work(tx); await done; return result; }
-    catch (error) { try { tx.abort(); } catch {} await done.catch(() => undefined); throw error; }
-  }
+    try {
+      const result = await work(tx);
+      await done;
+      return result;
+    } catch (error) {
+      try {
+        tx.abort();
+      } catch {}
+      await done.catch(() => undefined);
+      throw error;
+    }
+  };
   private async refresh(): Promise<void> {
     if (!this.db) return;
     const tx = this.db.transaction(["campaigns", "slots", "metadata"], "readonly");
@@ -290,7 +249,9 @@ export class SaveRepository {
       if (record.progress) next.setItem(campaignKey(record.seed), record.progress);
     }
     for (const record of slots) next.setItem(slotKey(record.id), record.raw);
-    for (const record of metadata) if (record.unreadable && !next.getItem(record.key)) next.setItem(record.key, record.raw);
+    for (const record of metadata) {
+      if (record.unreadable && !next.getItem(record.key)) next.setItem(record.key, record.raw);
+    }
     this.cache = next;
     this.applyPendingEdgesToCache();
     this.publish();
@@ -305,7 +266,10 @@ export class SaveRepository {
   }
   private applyPendingEdgesToCache(): void {
     for (const seed of this.edgeOverrides.keys()) {
-      this.cache.setItem(campaignKey(seed), encodeProgress(this.progressWithPendingEdge(seed, readCampaignProgress(this.cache, seed))));
+      this.cache.setItem(
+        campaignKey(seed),
+        encodeProgress(this.progressWithPendingEdge(seed, readCampaignProgress(this.cache, seed))),
+      );
     }
   }
   private async committed(): Promise<void> {
@@ -314,197 +278,19 @@ export class SaveRepository {
     this.channel?.postMessage({ type: "committed", revisions: [...this.revisions] });
   }
   private async migrateLegacy(): Promise<void> {
-    for (const key of safeKeys(this.legacy).sort()) {
-      if (!key.startsWith(SAVE_PREFIX) && !key.startsWith(CAMPAIGN_PREFIX) && !key.startsWith(SLOT_PREFIX)) continue;
-      const raw = safeGetItem(this.legacy, key);
-      if (!raw) continue;
-      await this.transaction(["campaigns", "slots", "metadata"], async (tx) => {
-        const metadata = tx.objectStore("metadata");
-        const previous = await request(metadata.get(key)) as MigrationRecord | undefined;
-        if (previous?.raw === raw) return;
-        try {
-          if (key.startsWith(SLOT_PREFIX)) {
-            const slot = decodeSlot(raw);
-            const id = key.slice(SLOT_PREFIX.length);
-            if (!isSlotId(id)) throw new Error("Invalid slot ID");
-            const slots = tx.objectStore("slots");
-            const existing = await request(slots.get(id)) as SlotRecord | undefined;
-            slots.put({ id: existing ? createSlotId() : id, revision: 1, raw } satisfies SlotRecord);
-            void slot;
-          } else {
-            const seed = Number(key.slice(key.lastIndexOf(":") + 1));
-            if (!/^\d{4}$/.test(key.slice(key.lastIndexOf(":") + 1))) throw new Error("Invalid seed key");
-            const campaigns = tx.objectStore("campaigns");
-            const existing = await request(campaigns.get(seed)) as CampaignRecord | undefined;
-            const record = existing ?? { seed, revision: 0, autosave: null, progress: null };
-            if (key.startsWith(SAVE_PREFIX)) {
-              const saved = decodeSave(raw);
-              if (saved.state.seed !== seed) throw new Error("Save seed mismatch");
-              const fallbackEpoch = Number(safeGetItem(this.legacy, SAVE_FALLBACK_EPOCH_KEY));
-              const legacyWins = record.autosave
-                && record.autosave !== raw
-                && Number.isFinite(fallbackEpoch)
-                && fallbackEpoch > 0
-                && saved.savedAt >= fallbackEpoch
-                && saved.savedAt >= savedAtOf(record.autosave);
-              if (legacyWins && record.autosave) {
-                const archived = decodeSave(record.autosave);
-                const temp = memoryStorage();
-                const result = writeSlot(temp, { name: "Recovered earlier save", state: archived.state, campaign: progressFor(record, archived.state) });
-                if (result.ok) tx.objectStore("slots").put({ id: result.id, revision: 1, raw: temp.getItem(slotKey(result.id))! });
-                record.autosave = raw;
-                if (saved.state.result === "won") record.progress = encodeProgress(progressFor(record, saved.state));
-              } else if (record.autosave && record.autosave !== raw) {
-                const temp = memoryStorage();
-                const result = writeSlot(temp, { name: "Recovered legacy save", state: saved.state, campaign: progressFor(record, saved.state) });
-                if (result.ok) tx.objectStore("slots").put({ id: result.id, revision: 1, raw: temp.getItem(slotKey(result.id))! });
-              } else {
-                record.autosave = raw;
-                if (saved.state.result === "won") record.progress = encodeProgress(progressFor(record, saved.state));
-              }
-            } else {
-              const incomingEncoded = validatedProgress(raw, seed);
-              const incoming = readCampaignProgress(memoryStorage({ [campaignKey(seed)]: incomingEncoded }), seed);
-              if (!record.progress) record.progress = incomingEncoded;
-              else if (!previous || previous.raw !== raw) {
-                const existing = readCampaignProgress(memoryStorage({ [campaignKey(seed)]: record.progress }), seed);
-                const mirror = legacyCampaignMirror(existing, incoming, progressSavedAt(record.progress), progressSavedAt(raw));
-                if (mirror === "keep") {
-                  metadata.put({ key, raw } satisfies MigrationRecord);
-                  return;
-                }
-                if (mirror === "edge") {
-                  const stamped = JSON.parse(incomingEncoded) as { savedAt?: number };
-                  stamped.savedAt = progressSavedAt(raw);
-                  record.progress = JSON.stringify(stamped);
-                  campaigns.put(record);
-                  metadata.put({ key, raw } satisfies MigrationRecord);
-                  return;
-                }
-                record.progress = encodeProgress(mergeCampaignProgress(existing, incoming));
-                if (record.autosave && previous && previous.raw !== raw) {
-                  const temp = memoryStorage();
-                  const result = writeSlot(temp, {
-                    name: "Recovered legacy progress",
-                    state: decodeSave(record.autosave).state,
-                    campaign: incoming,
-                  });
-                  if (result.ok) tx.objectStore("slots").put({ id: result.id, revision: 1, raw: temp.getItem(slotKey(result.id))! });
-                }
-              }
-            }
-            record.revision++;
-            campaigns.put(record);
-          }
-          metadata.put({ key, raw } satisfies MigrationRecord);
-        } catch { metadata.put({ key, raw, unreadable: true } satisfies MigrationRecord); }
-      });
-    }
+    return migrateLegacyStorage(this.legacy, this.transaction);
   }
   private async recoverJournals(): Promise<void> {
-    for (const key of safeKeys(this.legacy).filter((key) => key.startsWith(JOURNAL_PREFIX))) {
-      const raw = safeGetItem(this.legacy, key);
-      if (!raw) continue;
-      try {
-        const journal: Journal = JSON.parse(raw);
-        const state = decodeSave(journal.autosave).state;
-        if (!Number.isSafeInteger(journal.revision) || journal.revision < 0
-          || key !== `${JOURNAL_PREFIX}${state.seed.toString().padStart(4, "0")}`) throw new Error("Invalid recovery journal");
-        const progress = validatedProgress(journal.progress, state.seed);
-        const journalSavedAt = typeof journal.savedAt === "number" && Number.isFinite(journal.savedAt) ? journal.savedAt : 0;
-        await this.transaction(["campaigns", "slots"], async (tx) => {
-          const store = tx.objectStore("campaigns");
-          const record = await request(store.get(state.seed)) as CampaignRecord | undefined;
-          if (record?.autosave && sameBattlefield(decodeSave(record.autosave).state, state)) {
-            const merged = progressWhenBattlefieldMatches(record, journalSavedAt, progress);
-            // Leave the revision alone. This record is also the autosave lock.
-            if (merged) store.put({ ...record, progress: merged });
-            return;
-          }
-          const existing = readCampaignProgress(memoryStorage(record?.progress ? { [campaignKey(state.seed)]: record.progress } : {}), state.seed);
-          const incoming = readCampaignProgress(memoryStorage({ [campaignKey(state.seed)]: progress }), state.seed);
-          const merged = encodeProgress(keepNewerDeploymentEdge(
-            existing,
-            mergeCampaignProgress(existing, incoming),
-            progressSavedAt(record?.progress ?? null),
-            journalSavedAt,
-          ));
-          if ((record?.revision ?? 0) === journal.revision) {
-            store.put({ seed: state.seed, revision: journal.revision + 1, autosave: journal.autosave, progress: merged });
-          } else {
-            store.put({
-              seed: state.seed,
-              revision: (record?.revision ?? 0) + 1,
-              autosave: record?.autosave ?? null,
-              progress: merged,
-            });
-            const temp = memoryStorage({ [campaignKey(state.seed)]: progress });
-            const result = writeSlot(temp, { name: "Recovered interrupted save", state, campaign: readCampaignProgress(temp, state.seed) });
-            if (result.ok) tx.objectStore("slots").put({ id: result.id, revision: 1, raw: temp.getItem(slotKey(result.id))! });
-          }
-        });
-        safeRemoveItem(this.legacy, key);
-      } catch {
-        // Preserve the original and expose malformed journals in the existing damaged-slot UI.
-        const id = `journal${key.slice(JOURNAL_PREFIX.length)}`;
-        if (isSlotId(id)) await this.transaction(["metadata"], async (tx) => {
-          tx.objectStore("metadata").put({ key: slotKey(id), raw, unreadable: true, sourceKey: key } satisfies MigrationRecord);
-        });
-      }
-    }
+    return recoverJournalsFromStorage(this.legacy, this.transaction);
   }
   private async retireIndexedRules(): Promise<boolean> {
-    if (!this.db) return false;
-    return this.transaction(["campaigns", "slots"], async (tx) => {
-      const campaigns = await request(tx.objectStore("campaigns").getAll()) as CampaignRecord[];
-      const slotRecords = await request(tx.objectStore("slots").getAll()) as SlotRecord[];
-      const slotsBySeed = new Map<number, Array<{ id: string; state: SimState; campaign: CampaignProgress }>>();
-      for (const record of slotRecords) {
-        try {
-          const decoded = decodeSlot(record.raw);
-          const list = slotsBySeed.get(decoded.state.seed) ?? [];
-          list.push({ id: record.id, state: decoded.state, campaign: decoded.campaign });
-          slotsBySeed.set(decoded.state.seed, list);
-        } catch {
-          // Unreadable slots stay available to the archive recovery UI.
-        }
-      }
-      let rebuilt = false;
-      const seeds = new Set<number>([...campaigns.map((record) => record.seed), ...slotsBySeed.keys()]);
-      for (const seed of seeds) {
-        const record = campaigns.find((candidate) => candidate.seed === seed);
-        let autosave: SimState | null = null;
-        if (record?.autosave) {
-          try { autosave = decodeSave(record.autosave).state; } catch { autosave = null; }
-        }
-        const plan = planSeedRetirement({
-          seed,
-          progress: record?.progress ? readCampaignProgress(memoryStorage({ [campaignKey(seed)]: record.progress }), seed) : null,
-          autosave,
-          slots: slotsBySeed.get(seed) ?? [],
-          journal: null,
-        });
-        if (!plan) continue;
-        if (plan.rebuilt) rebuilt = true;
-        for (const id of plan.dropSlotIds) tx.objectStore("slots").delete(id);
-        tx.objectStore("campaigns").put({
-          seed,
-          revision: (record?.revision ?? 0) + 1,
-          autosave: plan.dropAutosave ? null : record?.autosave ?? null,
-          progress: encodeProgress(plan.progress),
-        } satisfies CampaignRecord);
-      }
-      return rebuilt;
-    });
+    return retireIndexedRulesStore(this.db, this.transaction);
   }
   private keepRetiredSlot(slot: { state: SimState; campaign: CampaignProgress }): Promise<boolean> {
     const seed = slot.state.seed;
     return this.enqueue(async () => {
       if (this.mode === "legacy") {
-        const existingRaw = safeGetItem(this.legacy, campaignKey(seed));
-        const existing = existingRaw ? readCampaignProgress(this.legacy, seed) : null;
-        const kept = writeCampaignProgress(this.legacy, progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex));
-        if (!kept) return false;
+        if (!keepRetiredSlotLegacy(this.legacy, slot)) return false;
         this.rulesRebuilt = true;
         this.publish();
         return true;
@@ -512,14 +298,16 @@ export class SaveRepository {
       try {
         await this.transaction(["campaigns"], async (tx) => {
           const store = tx.objectStore("campaigns");
-          const record = await request(store.get(seed)) as CampaignRecord | undefined;
+          const record = (await request(store.get(seed))) as CampaignRecord | undefined;
           const existing = record?.progress
             ? readCampaignProgress(memoryStorage({ [campaignKey(seed)]: record.progress }), seed)
             : null;
           let autosave = record?.autosave ?? null;
           if (autosave) {
             try {
-              if (!isCurrentGameplayRules(decodeSave(autosave).state.gameplayRulesVersion)) autosave = null;
+              if (!isCurrentGameplayRules(decodeSave(autosave).state.gameplayRulesVersion)) {
+                autosave = null;
+              }
             } catch {
               autosave = null;
             }
@@ -528,7 +316,9 @@ export class SaveRepository {
             seed,
             revision: (record?.revision ?? 0) + 1,
             autosave,
-            progress: encodeProgress(progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex)),
+            progress: encodeProgress(
+              progressAfterRetiredBattlefield(existing, slot.campaign, slot.state.missionIndex),
+            ),
           } satisfies CampaignRecord);
         });
       } catch {
@@ -545,11 +335,29 @@ export class SaveRepository {
   }
   writeJournal(state: SimState, revision = this.revisions.get(state.seed) ?? 0): boolean {
     try {
-      return safeSetItem(this.legacy, `${JOURNAL_PREFIX}${state.seed.toString().padStart(4, "0")}`, JSON.stringify({
-        revision, autosave: encode(state), progress: encodeProgress(progressFor({ seed: state.seed, revision, autosave: null,
-          progress: this.storage.getItem(campaignKey(state.seed)) }, state)), savedAt: Date.now(),
-      } satisfies Journal));
-    } catch { return false; }
+      return safeSetItem(
+        this.legacy,
+        `${JOURNAL_PREFIX}${state.seed.toString().padStart(4, "0")}`,
+        JSON.stringify({
+          revision,
+          autosave: encode(state),
+          progress: encodeProgress(
+            progressFor(
+              {
+                seed: state.seed,
+                revision,
+                autosave: null,
+                progress: this.storage.getItem(campaignKey(state.seed)),
+              },
+              state,
+            ),
+          ),
+          savedAt: Date.now(),
+        } satisfies Journal),
+      );
+    } catch {
+      return false;
+    }
   }
   createSession(seed: number): SaveSession {
     let revision = this.revisions.get(seed) ?? 0;
@@ -560,19 +368,42 @@ export class SaveRepository {
       write: (state, mode) => {
         if (mode === "implicit" && external) return Promise.resolve("conflict" as const);
         let captured: SimState;
-        try { captured = decodeSave(encode(state)).state; } catch { return Promise.resolve("failed" as const); }
+        try {
+          captured = decodeSave(encode(state)).state;
+        } catch {
+          return Promise.resolve("failed" as const);
+        }
         const token = generation;
-        const next = writes.then(() => token !== generation ? { status: "conflict" as const } : this.saveWithRevision(captured, mode === "implicit" ? revision : undefined, () => token === generation)).then((outcome) => {
-          // A refresh may already include another tab's later commit. Only adopt
-          // the revision written by this operation, so the next autosave conflicts.
-          if (outcome.status === "saved" && token === generation) { revision = outcome.revision ?? revision; external = false; }
-          return outcome.status;
-        });
+        const next = writes
+          .then(() =>
+            token !== generation
+              ? { status: "conflict" as const }
+              : this.saveWithRevision(
+                  captured,
+                  mode === "implicit" ? revision : undefined,
+                  () => token === generation,
+                ),
+          )
+          .then((outcome) => {
+            // A refresh may already include another tab's later commit. Only adopt
+            // the revision written by this operation, so the next autosave conflicts.
+            if (outcome.status === "saved" && token === generation) {
+              revision = outcome.revision ?? revision;
+              external = false;
+            }
+            return outcome.status;
+          });
         writes = next.catch(() => undefined);
         return next;
       },
-      adoptCurrent: () => { generation++; revision = this.revisions.get(seed) ?? 0; external = false; },
-      markExternalChange: () => { external = true; },
+      adoptCurrent: () => {
+        generation++;
+        revision = this.revisions.get(seed) ?? 0;
+        external = false;
+      },
+      markExternalChange: () => {
+        external = true;
+      },
       writeJournal: (state) => this.writeJournal(state, revision),
     };
   }
@@ -583,7 +414,7 @@ export class SaveRepository {
     else delete next.deploymentEdge;
     const encoded = encodeProgress(next);
     if (this.mode === "legacy") {
-      const wrote = writeCampaignProgress(this.legacy, next);
+      const wrote = safeSetItem(this.legacy, campaignKey(seed), encoded);
       if (wrote) this.publish();
       return Promise.resolve(wrote);
     }
@@ -596,7 +427,12 @@ export class SaveRepository {
       await this.transaction(["campaigns"], async (tx) => {
         if (!this.edgeOverrides.has(seed)) return;
         const store = tx.objectStore("campaigns");
-        const record: CampaignRecord = await request(store.get(seed)) ?? { seed, revision: 0, autosave: null, progress: null };
+        const record: CampaignRecord = (await request(store.get(seed))) ?? {
+          seed,
+          revision: 0,
+          autosave: null,
+          progress: null,
+        };
         if (!this.edgeOverrides.has(seed)) return;
         written = this.edgeOverrides.get(seed) ?? null;
         const stored = record.progress
@@ -608,65 +444,82 @@ export class SaveRepository {
         // the victory save is often still queued when the player picks a reward.
         store.put({ ...record, progress: encodeProgress(stored) });
       });
-      if (written !== undefined && this.edgeOverrides.get(seed) === written) this.edgeOverrides.delete(seed);
+      if (written !== undefined && this.edgeOverrides.get(seed) === written) {
+        this.edgeOverrides.delete(seed);
+      }
       await this.committed();
       return true;
     }).catch(() => false);
   }
-  save(state: SimState, expectedRevision?: number, isCurrent: () => boolean = () => true): Promise<SaveWriteStatus> {
-    return this.saveWithRevision(state, expectedRevision, isCurrent).then((outcome) => outcome.status);
+  save(
+    state: SimState,
+    expectedRevision?: number,
+    isCurrent: () => boolean = () => true,
+  ): Promise<SaveWriteStatus> {
+    return this.saveWithRevision(state, expectedRevision, isCurrent).then(
+      (outcome) => outcome.status,
+    );
   }
-  private saveWithRevision(state: SimState, expectedRevision?: number, isCurrent: () => boolean = () => true): Promise<SaveOutcome> {
+  private saveWithRevision(
+    state: SimState,
+    expectedRevision?: number,
+    isCurrent: () => boolean = () => true,
+  ): Promise<SaveOutcome> {
     // Capture before queueing: simulation keeps mutating its original object.
     let autosave: string;
-    try { autosave = encode(state); } catch { return Promise.resolve({ status: "failed" }); }
+    try {
+      autosave = encode(state);
+    } catch {
+      return Promise.resolve({ status: "failed" });
+    }
     const captured = decodeSave(autosave).state;
     return this.enqueue<SaveOutcome>(async () => {
       if (!isCurrent()) return { status: "conflict" };
       if (this.mode === "legacy") {
-        const previousAutosave = safeGetItem(this.legacy, saveKey(captured.seed));
-        const previousProgress = safeGetItem(this.legacy, campaignKey(captured.seed));
-        const written = safeSetItem(this.legacy, saveKey(captured.seed), autosave);
-        if (written && captured.result === "won") {
-          const recordExists = previousProgress !== null;
-          const existing = readCampaignProgress(this.legacy, captured.seed);
-          const progress = completeMission({
-            ...existing,
-            gameplayRulesVersion: retainedGameplayRules(existing.gameplayRulesVersion, captured.gameplayRulesVersion, recordExists),
-          }, captured.missionIndex, missionMedals(captured), missionScore(captured));
-          if (!writeCampaignProgress(this.legacy, progress)) {
-            if (previousAutosave === null) safeRemoveItem(this.legacy, saveKey(captured.seed));
-            else safeSetItem(this.legacy, saveKey(captured.seed), previousAutosave);
-            if (previousProgress === null) safeRemoveItem(this.legacy, campaignKey(captured.seed));
-            else safeSetItem(this.legacy, campaignKey(captured.seed), previousProgress);
-            return { status: "failed" };
-          }
-        }
-        this.publish(); return { status: written ? "saved" : "failed" };
+        const outcome = saveLegacy(this.legacy, autosave, captured);
+        this.publish();
+        return outcome;
       }
       let writtenEdge: DeploymentEdge | null | undefined;
       const outcome = await this.transaction<SaveOutcome>(["campaigns"], async (tx) => {
         const store = tx.objectStore("campaigns");
-        const record: CampaignRecord = await request(store.get(captured.seed)) ?? { seed: captured.seed, revision: 0, autosave: null, progress: null };
+        const record: CampaignRecord = (await request(store.get(captured.seed))) ?? {
+          seed: captured.seed,
+          revision: 0,
+          autosave: null,
+          progress: null,
+        };
         if (!isCurrent()) return { status: "conflict" };
-        if (expectedRevision !== undefined && record.revision !== expectedRevision) return { status: "conflict" };
+        if (expectedRevision !== undefined && record.revision !== expectedRevision) {
+          return { status: "conflict" };
+        }
         const progress = progressFor(record, captured);
         if (this.edgeOverrides.has(captured.seed)) {
           writtenEdge = this.edgeOverrides.get(captured.seed) ?? null;
           if (writtenEdge) progress.deploymentEdge = writtenEdge;
           else delete progress.deploymentEdge;
         }
-        store.put({ ...record, revision: record.revision + 1, autosave, progress: encodeProgress(progress) });
+        store.put({
+          ...record,
+          revision: record.revision + 1,
+          autosave,
+          progress: encodeProgress(progress),
+        });
         return { status: "saved", revision: record.revision + 1 };
       });
       if (outcome.status === "saved") {
-        if (writtenEdge !== undefined && this.edgeOverrides.get(captured.seed) === writtenEdge) this.edgeOverrides.delete(captured.seed);
+        if (writtenEdge !== undefined && this.edgeOverrides.get(captured.seed) === writtenEdge) {
+          this.edgeOverrides.delete(captured.seed);
+        }
         await this.committed();
       }
       return outcome;
     }).catch(() => ({ status: "failed" }));
   }
-  saveSlot(input: { id?: string; name: string; state: SimState; campaign: CampaignProgress }, isCurrent: () => boolean = () => true): Promise<SlotWriteResult> {
+  saveSlot(
+    input: { id?: string; name: string; state: SimState; campaign: CampaignProgress },
+    isCurrent: () => boolean = () => true,
+  ): Promise<SlotWriteResult> {
     const temp = memoryStorage();
     const result = writeSlot(temp, input);
     if (!result.ok) return Promise.resolve(result);
@@ -676,86 +529,111 @@ export class SaveRepository {
     return this.enqueue(async () => {
       if (!isCurrent()) return { ok: false } as const;
       if (this.mode === "legacy") {
-        const previousSlot = safeGetItem(this.legacy, slotKey(result.id));
-        const previousAutosave = safeGetItem(this.legacy, saveKey(captured.state.seed));
-        if (!isCurrent()) return { ok: false } as const;
-        if (!safeSetItem(this.legacy, slotKey(result.id), raw)) return { ok: false } as const;
-        if (!isCurrent()) {
-          if (previousSlot === null) safeRemoveItem(this.legacy, slotKey(result.id));
-          else safeSetItem(this.legacy, slotKey(result.id), previousSlot);
+        if (
+          !saveSlotLegacy(
+            this.legacy,
+            { id: result.id, raw, autosave, seed: captured.state.seed },
+            isCurrent,
+          )
+        ) {
           return { ok: false } as const;
         }
-        const autosaveWritten = safeSetItem(this.legacy, saveKey(captured.state.seed), autosave);
-        if (!autosaveWritten || !isCurrent()) {
-          if (previousSlot === null) safeRemoveItem(this.legacy, slotKey(result.id));
-          else safeSetItem(this.legacy, slotKey(result.id), previousSlot);
-          if (previousAutosave !== null) safeSetItem(this.legacy, saveKey(captured.state.seed), previousAutosave);
-          else safeRemoveItem(this.legacy, saveKey(captured.state.seed));
-          return { ok: false } as const;
-        }
-      } else await this.transaction(["slots", "campaigns"], async (tx) => {
-        if (!isCurrent()) throw new Error("Save operation cancelled");
-        const slots = tx.objectStore("slots");
-        const previous = await request(slots.get(result.id)) as SlotRecord | undefined;
-        if (!isCurrent()) throw new Error("Save operation cancelled");
-        if (!input.id && previous) throw new Error("Slot ID collision");
-        slots.put({ id: result.id, revision: (previous?.revision ?? 0) + 1, raw });
-        const campaigns = tx.objectStore("campaigns");
-        const record = await request(campaigns.get(captured.state.seed)) as CampaignRecord | undefined;
-        if (!isCurrent()) throw new Error("Save operation cancelled");
-        campaigns.put({ seed: captured.state.seed, revision: (record?.revision ?? 0) + 1, autosave, progress: encodeProgress(captured.campaign) });
-      });
+      } else {
+        await this.transaction(["slots", "campaigns"], async (tx) => {
+          if (!isCurrent()) throw new Error("Save operation cancelled");
+          const slots = tx.objectStore("slots");
+          const previous = (await request(slots.get(result.id))) as SlotRecord | undefined;
+          if (!isCurrent()) throw new Error("Save operation cancelled");
+          if (!input.id && previous) throw new Error("Slot ID collision");
+          slots.put({ id: result.id, revision: (previous?.revision ?? 0) + 1, raw });
+          const campaigns = tx.objectStore("campaigns");
+          const record = (await request(campaigns.get(captured.state.seed))) as
+            | CampaignRecord
+            | undefined;
+          if (!isCurrent()) throw new Error("Save operation cancelled");
+          campaigns.put({
+            seed: captured.state.seed,
+            revision: (record?.revision ?? 0) + 1,
+            autosave,
+            progress: encodeProgress(captured.campaign),
+          });
+        });
+      }
       if (!isCurrent()) return { ok: false } as const;
-      await this.committed(); return result;
+      await this.committed();
+      return result;
     }).catch(() => ({ ok: false }));
   }
-  restoreSlot(slot: ParsedSlot, isCurrent: () => boolean = () => true): Promise<string | null> {
-    if (!isCurrentGameplayRules(slot.state.gameplayRulesVersion)) {
-      return this.keepRetiredSlot(slot).then((kept) => kept
-        ? RULES_REBUILD_NOTICE
-        : "Couldn't preserve campaign progress from that slot because browser storage is unavailable. Your current mission is unchanged.");
+  restoreSlot(parsed: ParsedSlot, isCurrent: () => boolean = () => true): Promise<string | null> {
+    if (!isCurrentGameplayRules(parsed.state.gameplayRulesVersion)) {
+      return this.keepRetiredSlot(parsed).then((kept) =>
+        kept
+          ? RULES_REBUILD_NOTICE
+          : "Couldn't preserve campaign progress from that slot because browser storage is unavailable. Your current mission is unchanged.",
+      );
     }
-    const autosave = encode(slot.state);
-    const progress = encodeProgress(slot.campaign);
+    const autosave = encode(parsed.state);
+    const progress = encodeProgress(parsed.campaign);
     return this.enqueue(async () => {
-      if (!isCurrent()) return "Couldn't restore the slot because the mission changed before storage was ready.";
+      if (!isCurrent()) {
+        return "Couldn't restore the slot because the mission changed before storage was ready.";
+      }
       if (this.mode === "legacy") {
-        const { restoreSlot } = await import("./restore");
-        if (!isCurrent()) return "Couldn't restore the slot because the mission changed before storage was ready.";
-        return restoreSlot(this.legacy, slot);
+        return restoreSlotLegacy(this.legacy, parsed, isCurrent);
       }
       await this.transaction(["campaigns"], async (tx) => {
         if (!isCurrent()) throw new Error("Save operation cancelled");
         const store = tx.objectStore("campaigns");
-        const record = await request(store.get(slot.state.seed)) as CampaignRecord | undefined;
+        const record = (await request(store.get(parsed.state.seed))) as CampaignRecord | undefined;
         if (!isCurrent()) throw new Error("Save operation cancelled");
-        store.put({ seed: slot.state.seed, revision: (record?.revision ?? 0) + 1, autosave, progress });
+        store.put({
+          seed: parsed.state.seed,
+          revision: (record?.revision ?? 0) + 1,
+          autosave,
+          progress,
+        });
       });
-      if (!isCurrent()) return "Couldn't restore the slot because the mission changed before storage was ready.";
-      await this.committed(); return null;
-    }).catch(() => "Couldn't restore the slot. Browser storage is unavailable; your current mission is unchanged.");
+      if (!isCurrent()) {
+        return "Couldn't restore the slot because the mission changed before storage was ready.";
+      }
+      await this.committed();
+      return null;
+    }).catch(
+      () =>
+        "Couldn't restore the slot. Browser storage is unavailable; your current mission is unchanged.",
+    );
   }
   importSlot(raw: string): Promise<SlotWriteResult> {
     if (raw.length > 1_048_576) return Promise.resolve({ ok: false });
     let decoded: ReturnType<typeof decodeSlot>;
-    try { decoded = decodeSlot(raw); } catch { return Promise.resolve({ ok: false }); }
+    try {
+      decoded = decodeSlot(raw);
+    } catch {
+      return Promise.resolve({ ok: false });
+    }
     if (!isCurrentGameplayRules(decoded.state.gameplayRulesVersion)) {
-      return this.keepRetiredSlot(decoded).then((kept) => kept
-        ? { ok: false as const, reason: "legacy-rules" as const }
-        : { ok: false as const, reason: "storage-failed" as const });
+      return this.keepRetiredSlot(decoded).then((kept) =>
+        kept
+          ? { ok: false as const, reason: "legacy-rules" as const }
+          : { ok: false as const, reason: "storage-failed" as const },
+      );
     }
     const temp = memoryStorage();
     const result = writeSlot(temp, decoded);
     if (!result.ok) return Promise.resolve(result);
     return this.enqueue(async () => {
       const imported = temp.getItem(slotKey(result.id))!;
-      if (this.mode === "legacy") { if (!safeSetItem(this.legacy, slotKey(result.id), imported)) return { ok: false } as const; }
-      else await this.transaction(["slots"], async (tx) => {
-        const store = tx.objectStore("slots");
-        if (await request(store.get(result.id))) throw new Error("Slot ID collision");
-        store.put({ id: result.id, revision: 1, raw: imported });
-      });
-      await this.committed(); return result;
+      if (this.mode === "legacy") {
+        if (!safeSetItem(this.legacy, slotKey(result.id), imported)) return { ok: false } as const;
+      } else {
+        await this.transaction(["slots"], async (tx) => {
+          const store = tx.objectStore("slots");
+          if (await request(store.get(result.id))) throw new Error("Slot ID collision");
+          store.put({ id: result.id, revision: 1, raw: imported });
+        });
+      }
+      await this.committed();
+      return result;
     }).catch(() => ({ ok: false }));
   }
   remove(key: string): Promise<boolean> {
@@ -763,21 +641,25 @@ export class SaveRepository {
       if (this.mode === "legacy") return safeRemoveItem(this.legacy, key);
       let sourceKey = key;
       await this.transaction(["campaigns", "slots", "metadata"], async (tx) => {
-        const previous = await request(tx.objectStore("metadata").get(key)) as MigrationRecord | undefined;
+        const previous = (await request(tx.objectStore("metadata").get(key))) as
+          | MigrationRecord
+          | undefined;
         sourceKey = previous?.sourceKey ?? key;
         const raw = safeGetItem(this.legacy, key);
         if (raw) tx.objectStore("metadata").put({ key, raw } satisfies MigrationRecord);
         else tx.objectStore("metadata").delete(key);
-        if (key.startsWith(SLOT_PREFIX)) tx.objectStore("slots").delete(key.slice(SLOT_PREFIX.length));
+        if (key.startsWith(SLOT_PREFIX))
+          tx.objectStore("slots").delete(key.slice(SLOT_PREFIX.length));
         else {
           const seed = Number(key.slice(key.lastIndexOf(":") + 1));
           const store = tx.objectStore("campaigns");
-          const record = await request(store.get(seed)) as CampaignRecord | undefined;
+          const record = (await request(store.get(seed))) as CampaignRecord | undefined;
           if (record) store.put({ ...record, revision: record.revision + 1, autosave: null });
         }
       });
       const removed = safeRemoveItem(this.legacy, sourceKey);
-      await this.committed(); return removed;
+      await this.committed();
+      return removed;
     }).catch(() => false);
   }
   async clear(): Promise<boolean> {
@@ -785,12 +667,17 @@ export class SaveRepository {
     await this.queue;
     this.edgeOverrides.clear();
     try {
-      if (this.db) await this.transaction(["campaigns", "slots", "metadata"], async (tx) => {
-        for (const store of ["campaigns", "slots", "metadata"]) tx.objectStore(store).clear();
-      });
+      if (this.db) {
+        await this.transaction(["campaigns", "slots", "metadata"], async (tx) => {
+          for (const store of ["campaigns", "slots", "metadata"]) tx.objectStore(store).clear();
+        });
+      }
       const cleared = clearAllGameData(this.legacy);
-      await this.committed(); return cleared;
-    } catch { return false; }
+      await this.committed();
+      return cleared;
+    } catch {
+      return false;
+    }
   }
   close(): void {
     this.generation++;
@@ -804,9 +691,15 @@ export class SaveRepository {
 }
 
 let repository: SaveRepository | null = null;
-export function getSaveRepository(): SaveRepository | null { return repository; }
-export function installSaveRepository(next: SaveRepository | null): void { repository = next; }
-export function cachedCampaignStorage(): StorageAdapter { return repository?.storage ?? cachedLocalStorage(); }
+export function getSaveRepository(): SaveRepository | null {
+  return repository;
+}
+export function installSaveRepository(next: SaveRepository | null): void {
+  repository = next;
+}
+export function cachedCampaignStorage(): StorageAdapter {
+  return repository?.storage ?? cachedLocalStorage();
+}
 export async function initializeSaveRepository(): Promise<SaveRepository> {
   repository ??= new SaveRepository();
   await repository.initialize();

@@ -8,7 +8,14 @@ export function buildTankModel(): UnitModel {
   const rearExhaust = createBoxMesh(-0.68, -0.18, 0.42, -0.58, 0.18, 0.56, 4);
   const leftTrack = createBoxMesh(-0.6, 0.28, 0.0, 0.6, 0.46, 0.45, 4);
   const rightTrack = createBoxMesh(-0.6, -0.46, 0.0, 0.6, -0.28, 0.45, 4);
-  const chassisMesh = mergeMeshes([mainHull, frontSlope, rearDeck, rearExhaust, leftTrack, rightTrack]);
+  const chassisMesh = mergeMeshes([
+    mainHull,
+    frontSlope,
+    rearDeck,
+    rearExhaust,
+    leftTrack,
+    rightTrack,
+  ]);
 
   const turretBase = createBoxMesh(-0.32, -0.26, 0.0, 0.32, 0.26, 0.38, 1);
   const cupola = createBoxMesh(-0.12, -0.18, 0.38, 0.1, 0.05, 0.52, 2);

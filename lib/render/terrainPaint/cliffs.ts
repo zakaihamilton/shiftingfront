@@ -20,7 +20,13 @@ function shadeHex(value: string, factor: number): string {
   const r = Number.parseInt(value.slice(1, 3), 16);
   const g = Number.parseInt(value.slice(3, 5), 16);
   const b = Number.parseInt(value.slice(5, 7), 16);
-  return `#${[r, g, b].map((channel) => Math.max(0, Math.min(255, Math.round(channel * factor))).toString(16).padStart(2, "0")).join("")}`;
+  return `#${[r, g, b]
+    .map((channel) =>
+      Math.max(0, Math.min(255, Math.round(channel * factor)))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
 export function drawElevationFaces(
@@ -45,7 +51,14 @@ export function drawElevationFaces(
   const southSoft = dropS === 1;
   const eastSoft = dropE === 1;
   if (geo.south) {
-    if (!southSoft) fillElevationPoly(ctx, originX, shadowY, geo.south.points, mixHex(southColor, SOFT_RAMP_SHADOW, 0.24));
+    if (!southSoft)
+      fillElevationPoly(
+        ctx,
+        originX,
+        shadowY,
+        geo.south.points,
+        mixHex(southColor, SOFT_RAMP_SHADOW, 0.24),
+      );
     fillElevationPoly(
       ctx,
       originX,
@@ -61,7 +74,14 @@ export function drawElevationFaces(
     }
   }
   if (geo.east) {
-    if (!eastSoft) fillElevationPoly(ctx, originX, shadowY, geo.east.points, mixHex(eastColor, SOFT_RAMP_SHADOW, 0.24));
+    if (!eastSoft)
+      fillElevationPoly(
+        ctx,
+        originX,
+        shadowY,
+        geo.east.points,
+        mixHex(eastColor, SOFT_RAMP_SHADOW, 0.24),
+      );
     fillElevationPoly(
       ctx,
       originX,
@@ -79,8 +99,17 @@ export function drawElevationFaces(
   if (geo.wedge) {
     const fill = mixHex(southColor, eastColor, 0.42);
     const softWedge = dropE === 1 && dropS === 1;
-    if (!softWedge) fillElevationPoly(ctx, originX, shadowY, geo.wedge, mixHex(fill, SOFT_RAMP_SHADOW, 0.34));
-    fillElevationPoly(ctx, originX, originY, geo.wedge, softWedge ? blendElevationColor(fill, SOFT_RAMP_LIGHT, 0.08) : mixHex(fill, SOFT_RAMP_LIGHT, 0.08));
+    if (!softWedge)
+      fillElevationPoly(ctx, originX, shadowY, geo.wedge, mixHex(fill, SOFT_RAMP_SHADOW, 0.34));
+    fillElevationPoly(
+      ctx,
+      originX,
+      originY,
+      geo.wedge,
+      softWedge
+        ? blendElevationColor(fill, SOFT_RAMP_LIGHT, 0.08)
+        : mixHex(fill, SOFT_RAMP_LIGHT, 0.08),
+    );
   }
 }
 

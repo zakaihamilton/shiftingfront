@@ -1,25 +1,46 @@
-import { pacingCandidateCampaign } from "./tuning";
 import { performance } from "node:perf_hooks";
 import { createCampaign } from "../../gen/campaign";
-import { generateMap, type GeneratedMap } from "../../gen/map";
-import { MAX_MISSION_TICKS, MAX_OPERATION_TICKS } from "../../gen/pacing";
-import { formatSeed } from "../../seed/rng";
-import { createMissionFromData } from "../api";
-import { createScenarioRunner } from "../scenarioRunner";
-import { objectiveProgress } from "../objectives";
-import { CompetentCommander } from "../commander";
-import { AdvancedCommander, ADVANCED_STRATEGIES, type AdvancedStrategy } from "../commander/advanced";
-import { ArchetypeCommander, isArchetypeStrategy } from "../commander/archetypes";
-import { powerBreakdown } from "../world";
-import { hqThreatened } from "../director";
-import { TILE_BLOCKED, TILE_RESOURCE, TILE_WATER, type BalanceStrategy, type Campaign, type Command, type MissionDirectorPhase, type ReadonlyMissionDef, type SimState, type UnitKind, type Vec2 } from "../../types";
-import { missionFamilyFor } from "../../gen/profile";
-import { scenarioAffordances, type ScenarioAffordances } from "../scenarios";
+import { type GeneratedMap, generateMap } from "../../gen/map";
 import { walkDistances } from "../../gen/map/generator/affordances";
+import { MAX_MISSION_TICKS, MAX_OPERATION_TICKS } from "../../gen/pacing";
+import { missionFamilyFor } from "../../gen/profile";
+import { formatSeed } from "../../seed/rng";
+import {
+  type BalanceStrategy,
+  type Campaign,
+  type Command,
+  type MissionDirectorPhase,
+  type ReadonlyMissionDef,
+  type SimState,
+  TILE_BLOCKED,
+  TILE_RESOURCE,
+  TILE_WATER,
+  type UnitKind,
+  type Vec2,
+} from "../../types";
+import { createMissionFromData } from "../api";
+import { CompetentCommander } from "../commander";
+import {
+  ADVANCED_STRATEGIES,
+  AdvancedCommander,
+  type AdvancedStrategy,
+} from "../commander/advanced";
+import { ArchetypeCommander, isArchetypeStrategy } from "../commander/archetypes";
 import { COMMANDER_CADENCE } from "../commander/queries";
-import { balanceFailureReason } from "./evaluation";
-import { BalanceTimeBudgetExceeded, type BalanceRecordWithScenario, type BalanceRunJob, type BalanceSweepJob } from "./types";
+import { hqThreatened } from "../director";
 import { entitiesFor } from "../entities";
+import { objectiveProgress } from "../objectives";
+import { createScenarioRunner } from "../scenarioRunner";
+import { type ScenarioAffordances, scenarioAffordances } from "../scenarios";
+import { powerBreakdown } from "../world";
+import { balanceFailureReason } from "./evaluation";
+import { pacingCandidateCampaign } from "./tuning";
+import {
+  type BalanceRecordWithScenario,
+  type BalanceRunJob,
+  type BalanceSweepJob,
+  BalanceTimeBudgetExceeded,
+} from "./types";
 
 export function assertWithinDeadline(deadlineAt: number | undefined): void {
   if (deadlineAt !== undefined && performance.now() >= deadlineAt) {
@@ -32,16 +53,20 @@ export function validMap(map: GeneratedMap): boolean {
     const tile = map.tiles[point.y * map.width + point.x];
     return tile !== TILE_BLOCKED && tile !== TILE_WATER;
   };
-  const profileValid = map.profileVariant === "crossfire"
-    ? map.affordances.laneCount >= 3 && map.affordances.routeSeparation >= 4
-    : map.profileVariant === "resourceRace" || map.profileVariant === "forwardIndustry"
-      ? map.affordances.forwardResourceValue > 0
-      : map.profileVariant === "contestedRoute"
-        ? map.affordances.routeSeparation >= 4
-        : map.affordances.routeSeparation > 0;
+  const profileValid =
+    map.profileVariant === "crossfire"
+      ? map.affordances.laneCount >= 3 && map.affordances.routeSeparation >= 4
+      : map.profileVariant === "resourceRace" || map.profileVariant === "forwardIndustry"
+        ? map.affordances.forwardResourceValue > 0
+        : map.profileVariant === "contestedRoute"
+          ? map.affordances.routeSeparation >= 4
+          : map.affordances.routeSeparation > 0;
   const distances = walkDistances(map.tiles, map.heights, map.width, map.height, map.playerStart);
   const enemyIndex = map.enemyStart.y * map.width + map.enemyStart.x;
-  return start(map.playerStart) && start(map.enemyStart) && profileValid &&
+  return (
+    start(map.playerStart) &&
+    start(map.enemyStart) &&
+    profileValid &&
     distances[enemyIndex] >= 0 &&
     map.markedSpots.every((point) => start(point)) &&
     map.resourceAmount.reduce((sum, amount) => sum + amount, 0) >= 4000 &&
@@ -51,7 +76,8 @@ export function validMap(map: GeneratedMap): boolean {
     map.affordances.reachableResourceValue >= 4000 &&
     Number.isFinite(map.affordances.nearestResourceDistance) &&
     Number.isFinite(map.affordances.forwardResourceValue) &&
-    Number.isFinite(map.affordances.routeSeparation);
+    Number.isFinite(map.affordances.routeSeparation)
+  );
 }
 
 function findNearestResource(state: SimState, origin: Vec2): Vec2 | undefined {
@@ -74,11 +100,21 @@ function findNearestResource(state: SimState, origin: Vec2): Vec2 | undefined {
 
 function baselineCommands(state: SimState, map: GeneratedMap): Command[] | undefined {
   if (state.tick % 60 !== 0) return undefined;
-  const units = entitiesFor(state).filter((entity) => entity.owner === 0 && entity.class === "unit" && entity.hp > 0 && !entity.neutral);
+  const units = entitiesFor(state).filter(
+    (entity) => entity.owner === 0 && entity.class === "unit" && entity.hp > 0 && !entity.neutral,
+  );
   const combat = units.filter((entity) => entity.kind !== "harvester").map((entity) => entity.id);
-  const harvesters = units.filter((entity) => entity.kind === "harvester").map((entity) => entity.id);
+  const harvesters = units
+    .filter((entity) => entity.kind === "harvester")
+    .map((entity) => entity.id);
   const commands: Command[] = [];
-  if (combat.length) commands.push({ type: "attackMove", unitIds: combat, x: map.enemyStart.x, y: map.enemyStart.y });
+  if (combat.length)
+    commands.push({
+      type: "attackMove",
+      unitIds: combat,
+      x: map.enemyStart.x,
+      y: map.enemyStart.y,
+    });
   if (harvesters.length) {
     const resource = findNearestResource(state, map.playerStart);
     const target = resource ?? map.playerStart;
@@ -100,7 +136,8 @@ function runScenario(
   let commandRejections = 0;
   let firstCombatTick: number | undefined;
   let firstDamageTick: number | undefined;
-  const objectiveHistory: NonNullable<import("./evaluation").BalanceRecord["objectiveHistory"]> = [];
+  const objectiveHistory: NonNullable<import("./evaluation").BalanceRecord["objectiveHistory"]> =
+    [];
   let firstPressureTick: number | undefined;
   let firstHqThreatTick: number | undefined;
   let hqHealthAtPressure: number | undefined;
@@ -110,7 +147,11 @@ function runScenario(
   let assaultTransitions = 0;
   let primaryCompletedTick: number | undefined;
   let completionPhase: MissionDirectorPhase | undefined;
-  const durationByPhase: Record<MissionDirectorPhase, number> = { opening: 0, pressure: 0, finale: 0 };
+  const durationByPhase: Record<MissionDirectorPhase, number> = {
+    opening: 0,
+    pressure: 0,
+    finale: 0,
+  };
   let repairCommands = 0;
   let supportActions = 0;
   let healedHp = 0;
@@ -123,13 +164,16 @@ function runScenario(
   let rescuePhaseAtEnd: "active" | "extraction" | "complete" | undefined;
   let openingCredits: number | undefined;
   let openingUnitsProducedByRole: Partial<Record<UnitKind, number>> | undefined;
-  const commander = strategy === "competent"
-    ? new CompetentCommander()
-    : (ADVANCED_STRATEGIES as readonly string[]).includes(strategy) ? new AdvancedCommander(strategy as AdvancedStrategy)
-    : isArchetypeStrategy(strategy)
-      ? new ArchetypeCommander(strategy)
-      : undefined;
-  const missionHorizon = state.runtime?.deadline ?? state.win.ticks ?? untimedHorizonTicks ?? MAX_MISSION_TICKS;
+  const commander =
+    strategy === "competent"
+      ? new CompetentCommander()
+      : (ADVANCED_STRATEGIES as readonly string[]).includes(strategy)
+        ? new AdvancedCommander(strategy as AdvancedStrategy)
+        : isArchetypeStrategy(strategy)
+          ? new ArchetypeCommander(strategy)
+          : undefined;
+  const missionHorizon =
+    state.runtime?.deadline ?? state.win.ticks ?? untimedHorizonTicks ?? MAX_MISSION_TICKS;
   const tickLimit = Math.min(maxTicks, missionHorizon);
   // Balance telemetry is diagnostic rather than authoritative. Sampling the
   // expensive world scans at a small fixed stride keeps long replay fixtures
@@ -137,16 +181,26 @@ function runScenario(
   const diagnosticStride = 6;
   const openingCutoff = Math.max(1, Math.floor(missionHorizon * 0.25));
   const collectTelemetry = strategy !== "baseline";
-  const scenarioRunner = createScenarioRunner(state, { collectEvents: collectTelemetry, updateFog: false });
+  const scenarioRunner = createScenarioRunner(state, {
+    collectEvents: collectTelemetry,
+    updateFog: false,
+  });
   scenarioRunner.run({
     maxTicks: tickLimit,
     beforeTick: () => assertWithinDeadline(deadlineAt),
-    commandsForTick: (currentState) => commander
-      ? currentState.tick % COMMANDER_CADENCE === 0 ? commander.plan(currentState) : undefined
-      : baselineCommands(currentState, map),
+    commandsForTick: (currentState) =>
+      commander
+        ? currentState.tick % COMMANDER_CADENCE === 0
+          ? commander.plan(currentState)
+          : undefined
+        : baselineCommands(currentState, map),
     onCommands: (currentState, commands) => {
       for (const command of commands ?? []) {
-        if ((command.type === "attack" || command.type === "attackMove") && firstCombatTick === undefined) firstCombatTick = currentState.tick;
+        if (
+          (command.type === "attack" || command.type === "attackMove") &&
+          firstCombatTick === undefined
+        )
+          firstCombatTick = currentState.tick;
         if (command.type === "repair") repairCommands += 1;
       }
       commandsIssued += commands?.length ?? 0;
@@ -154,10 +208,18 @@ function runScenario(
     onTick: (currentState, result) => {
       if (currentState.tick % 720 === 0 || currentState.result !== "playing") {
         const progress = objectiveProgress(currentState);
-        objectiveHistory.push({ tick: currentState.tick, current: progress.current, target: progress.target, credits: currentState.credits[0], casualties: currentState.losses.units[0], unitsProduced: currentState.unitsProduced[0] });
+        objectiveHistory.push({
+          tick: currentState.tick,
+          current: progress.current,
+          target: progress.target,
+          credits: currentState.credits[0],
+          casualties: currentState.losses.units[0],
+          unitsProduced: currentState.unitsProduced[0],
+        });
       }
       for (const event of collectTelemetry ? result.events : []) {
-        if (event.type === "combat" && firstDamageTick === undefined) firstDamageTick = currentState.tick;
+        if (event.type === "combat" && firstDamageTick === undefined)
+          firstDamageTick = currentState.tick;
         if (event.type === "support" && event.owner === 0) {
           supportActions += 1;
           healedHp += event.amount;
@@ -167,22 +229,35 @@ function runScenario(
           repairCredits += event.cost;
         }
         if (event.type === "objectiveMilestone" && event.kind === "rescue") {
-          if (event.milestone === "firstContact" && rescueFirstContactTick === undefined) rescueFirstContactTick = currentState.tick;
-          if (event.milestone === "allContacted" && rescueAllContactedTick === undefined) rescueAllContactedTick = currentState.tick;
-          if (event.milestone === "firstReturned" && rescueFirstReturnedTick === undefined) rescueFirstReturnedTick = currentState.tick;
+          if (event.milestone === "firstContact" && rescueFirstContactTick === undefined)
+            rescueFirstContactTick = currentState.tick;
+          if (event.milestone === "allContacted" && rescueAllContactedTick === undefined)
+            rescueAllContactedTick = currentState.tick;
+          if (event.milestone === "firstReturned" && rescueFirstReturnedTick === undefined)
+            rescueFirstReturnedTick = currentState.tick;
         }
       }
-      rescuePhaseAtEnd = currentState.runtime?.kind === "rescue" ? currentState.runtime.phase : rescuePhaseAtEnd;
+      rescuePhaseAtEnd =
+        currentState.runtime?.kind === "rescue" ? currentState.runtime.phase : rescuePhaseAtEnd;
       commandRejections += result.commandRejections;
-      const shouldSampleDiagnostics = currentState.tick % diagnosticStride === 0 || currentState.result !== "playing";
+      const shouldSampleDiagnostics =
+        currentState.tick % diagnosticStride === 0 || currentState.result !== "playing";
       if (shouldSampleDiagnostics) {
-        const playerYard = entitiesFor(currentState).find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
+        const playerYard = entitiesFor(currentState).find(
+          (entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0,
+        );
         const hqThreatenedNow = hqThreatened(currentState);
-        if (firstHqThreatTick === undefined && hqThreatenedNow) firstHqThreatTick = currentState.tick;
+        if (firstHqThreatTick === undefined && hqThreatenedNow)
+          firstHqThreatTick = currentState.tick;
         if (hqThreatenedNow) hqThreatTicks += diagnosticStride;
-        if (currentState.aiState === "assault" && previousAiState !== "assault") assaultTransitions += 1;
+        if (currentState.aiState === "assault" && previousAiState !== "assault")
+          assaultTransitions += 1;
         previousAiState = currentState.aiState;
-        if (firstPressureTick === undefined && currentState.runtime?.director?.phase !== undefined && currentState.runtime.director.phase !== "opening") {
+        if (
+          firstPressureTick === undefined &&
+          currentState.runtime?.director?.phase !== undefined &&
+          currentState.runtime.director.phase !== "opening"
+        ) {
           firstPressureTick = currentState.tick;
           if (playerYard) hqHealthAtPressure = playerYard.hp / Math.max(1, playerYard.maxHp);
         }
@@ -192,7 +267,9 @@ function runScenario(
         durationByPhase[phase] += 1;
         if (phase === "finale" && firstFinaleTick === undefined) {
           firstFinaleTick = currentState.tick;
-          const playerYard = entitiesFor(currentState).find((entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0);
+          const playerYard = entitiesFor(currentState).find(
+            (entity) => entity.owner === 0 && entity.kind === "constructionYard" && entity.hp > 0,
+          );
           if (playerYard) hqHealthAtFinale = playerYard.hp / Math.max(1, playerYard.maxHp);
         }
       }
@@ -226,7 +303,9 @@ function runScenario(
     firstFinaleTick,
     hqHealthAtFinale,
     hqHealthAtEnd: (() => {
-      const playerYard = entitiesFor(state).find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+      const playerYard = entitiesFor(state).find(
+        (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+      );
       return playerYard ? playerYard.hp / Math.max(1, playerYard.maxHp) : 0;
     })(),
     assaultTransitions,
@@ -326,7 +405,10 @@ export function runOne(
   });
   const scenario = sharedScenario?.affordances ?? scenarioAffordances(state);
   if (sharedScenario && !sharedScenario.affordances) sharedScenario.affordances = scenario;
-  const mapIsValid = (sharedScenario?.mapValid ?? validMap(map)) && scenario.allTargetsReachable && scenario.materiallyFair;
+  const mapIsValid =
+    (sharedScenario?.mapValid ?? validMap(map)) &&
+    scenario.allTargetsReachable &&
+    scenario.materiallyFair;
   const run = runScenario(state, map, strategy, maxTicks, deadlineAt, untimedHorizonTicks);
   const scenarioMs = performance.now() - scenarioStartedAt;
   return {
@@ -343,7 +425,10 @@ export function runOne(
     aiUnitsProduced: state.unitsProduced[1],
     powerDeficit: run.powerDeficit,
     casualties: state.losses.units[0],
-    secondaryCompleted: state.result === "won" ? state.runtime?.secondary.filter((objective) => objective.completed).length ?? 0 : 0,
+    secondaryCompleted:
+      state.result === "won"
+        ? (state.runtime?.secondary.filter((objective) => objective.completed).length ?? 0)
+        : 0,
     mapValid: mapIsValid,
     commandsIssued: run.commandsIssued,
     commandRejections: run.commandRejections,
@@ -359,8 +444,31 @@ export function runOne(
     firstDamageTick: run.firstDamageTick,
     objectiveHistory: run.objectiveHistory,
     unitsProducedByRole: { ...state.unitsProducedByRole },
-    runOutcome: state.result === "won" ? "won" : state.result === "lost" ? state.lossReason === "deadline" ? "deadlineLoss" : "missionLoss" : run.truncated ? "runnerTruncated" : state.runtime?.deadline === undefined && state.win.ticks === undefined ? "unfinishedUntimed" : "runnerTruncated",
-    remainingEnemies: state.result === "won" ? [] : entitiesFor(state).filter(e => e.owner === 1 && e.hp > 0 && !e.optionalChallenge).map(e => ({ id: e.id, kind: e.kind, hp: e.hp, x: e.x, y: e.y, blockedTicks: e.blockedTicks ?? 0 })),
+    runOutcome:
+      state.result === "won"
+        ? "won"
+        : state.result === "lost"
+          ? state.lossReason === "deadline"
+            ? "deadlineLoss"
+            : "missionLoss"
+          : run.truncated
+            ? "runnerTruncated"
+            : state.runtime?.deadline === undefined && state.win.ticks === undefined
+              ? "unfinishedUntimed"
+              : "runnerTruncated",
+    remainingEnemies:
+      state.result === "won"
+        ? []
+        : entitiesFor(state)
+            .filter((e) => e.owner === 1 && e.hp > 0 && !e.optionalChallenge)
+            .map((e) => ({
+              id: e.id,
+              kind: e.kind,
+              hp: e.hp,
+              x: e.x,
+              y: e.y,
+              blockedTicks: e.blockedTicks ?? 0,
+            })),
     firstPressureTick: run.firstPressureTick,
     firstHqThreatTick: run.firstHqThreatTick,
     hqHealthAtPressure: run.hqHealthAtPressure,
@@ -405,7 +513,10 @@ export function runOne(
   };
 }
 
-export function runBalanceJob(job: BalanceRunJob, onRecord?: (record: BalanceRecordWithScenario) => void): BalanceRecordWithScenario[] {
+export function runBalanceJob(
+  job: BalanceRunJob,
+  onRecord?: (record: BalanceRecordWithScenario) => void,
+): BalanceRecordWithScenario[] {
   const strategy = job.strategy ?? "competent";
   const maxTicks = job.maxTicks ?? MAX_OPERATION_TICKS;
   const campaigns = new Map<number, Campaign>();
@@ -413,14 +524,26 @@ export function runBalanceJob(job: BalanceRunJob, onRecord?: (record: BalanceRec
   const records: BalanceRecordWithScenario[] = [];
   for (const { seed, mission } of job.scenarios) {
     assertWithinDeadline(job.deadlineAt);
-    const campaign = campaigns.get(seed) ?? pacingCandidateCampaign(createCampaign(seed, job.gameplayRulesVersion), job.pacingCandidate);
+    const campaign =
+      campaigns.get(seed) ??
+      pacingCandidateCampaign(createCampaign(seed, job.gameplayRulesVersion), job.pacingCandidate);
     campaigns.set(seed, campaign);
     const definition = campaign.missions[mission];
     if (!definition) throw new Error(`No mission ${mission}`);
     const mapKey = `${seed}:${mission}:${job.gameplayRulesVersion ?? 1}:${JSON.stringify(job.pacingCandidate ?? null)}`;
     const map = maps.get(mapKey) ?? generateMap(seed, definition);
     maps.set(mapKey, map);
-    const record = runOne(seed, mission, strategy, maxTicks, campaign, map, undefined, job.deadlineAt, job.untimedHorizonTicks);
+    const record = runOne(
+      seed,
+      mission,
+      strategy,
+      maxTicks,
+      campaign,
+      map,
+      undefined,
+      job.deadlineAt,
+      job.untimedHorizonTicks,
+    );
     records.push(record);
     onRecord?.(record);
   }
@@ -436,12 +559,26 @@ export function runBalanceSweepJob(
   const records: BalanceRecordWithScenario[] = [];
   for (const { seed, mission } of job.scenarios) {
     assertWithinDeadline(job.deadlineAt);
-    const candidateKey = job.pacingCandidate ? (job.pacingCandidate.group === "routes" ? 1 : 2) * 100000 + Math.round(job.pacingCandidate.multiplier * 4) * 10000 : 0;
-    const campaign = cachedValue(cache.campaigns, seed + (job.gameplayRulesVersion === 2 ? 10000 : 0) + candidateKey, MAX_CACHED_CAMPAIGNS_PER_WORKER, () => pacingCandidateCampaign(createCampaign(seed, job.gameplayRulesVersion), job.pacingCandidate));
+    const candidateKey = job.pacingCandidate
+      ? (job.pacingCandidate.group === "routes" ? 1 : 2) * 100000 +
+        Math.round(job.pacingCandidate.multiplier * 4) * 10000
+      : 0;
+    const campaign = cachedValue(
+      cache.campaigns,
+      seed + (job.gameplayRulesVersion === 2 ? 10000 : 0) + candidateKey,
+      MAX_CACHED_CAMPAIGNS_PER_WORKER,
+      () =>
+        pacingCandidateCampaign(
+          createCampaign(seed, job.gameplayRulesVersion),
+          job.pacingCandidate,
+        ),
+    );
     const definition = campaign.missions[mission];
     if (!definition) throw new Error(`No mission ${mission}`);
     const mapKey = `${seed}:${mission}:${job.gameplayRulesVersion ?? 1}:${JSON.stringify(job.pacingCandidate ?? null)}`;
-    const map = cachedValue(cache.maps, mapKey, MAX_CACHED_MAPS_PER_WORKER, () => generateMap(seed, definition));
+    const map = cachedValue(cache.maps, mapKey, MAX_CACHED_MAPS_PER_WORKER, () =>
+      generateMap(seed, definition),
+    );
     const sharedScenario = cachedValue(
       cache.sharedScenarios,
       mapKey,

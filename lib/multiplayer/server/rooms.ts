@@ -20,7 +20,10 @@ export type RoomGrant = {
 };
 
 export class RoomError extends Error {
-  constructor(readonly reason: string, readonly status: number) {
+  constructor(
+    readonly reason: string,
+    readonly status: number,
+  ) {
     super(reason);
     this.name = "RoomError";
   }
@@ -45,11 +48,13 @@ export function deriveRoomSessionId(codeValue: unknown): string | null {
   const code = normalizedCode(codeValue);
   if (!secret || !code) return null;
 
-  const bytes = Buffer.from(createHmac("sha256", secret)
-    .update("shiftingfront:room-session:")
-    .update(code)
-    .digest()
-    .subarray(0, 16));
+  const bytes = Buffer.from(
+    createHmac("sha256", secret)
+      .update("shiftingfront:room-session:")
+      .update(code)
+      .digest()
+      .subarray(0, 16),
+  );
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = bytes.toString("hex");
@@ -93,20 +98,33 @@ export function signRoomGrant(grant: RoomGrant): string {
 function isRoomGrant(value: unknown): value is RoomGrant {
   if (!value || typeof value !== "object") return false;
   const grant = value as Partial<RoomGrant>;
-  if (!validRoomCode(grant.code) || grant.code !== grant.code.toUpperCase() ||
-      typeof grant.sessionId !== "string" || !RESOURCE_ID_RE.test(grant.sessionId) ||
-      grant.sessionId !== deriveRoomSessionId(grant.code) ||
-      typeof grant.peerId !== "string" || !RESOURCE_ID_RE.test(grant.peerId) ||
-      (grant.role !== "host" && grant.role !== "guest") ||
-      !Number.isSafeInteger(grant.issuedAt) || !Number.isSafeInteger(grant.expiresAt) ||
-      Number(grant.expiresAt) <= Number(grant.issuedAt) ||
-      Number(grant.expiresAt) - Number(grant.issuedAt) > ROOM_LIFETIME_MS ||
-      Number(grant.issuedAt) > Date.now() + 60_000 || Number(grant.expiresAt) <= Date.now() ||
-      typeof grant.nonce !== "string" || !NONCE_RE.test(grant.nonce)) return false;
+  if (
+    !validRoomCode(grant.code) ||
+    grant.code !== grant.code.toUpperCase() ||
+    typeof grant.sessionId !== "string" ||
+    !RESOURCE_ID_RE.test(grant.sessionId) ||
+    grant.sessionId !== deriveRoomSessionId(grant.code) ||
+    typeof grant.peerId !== "string" ||
+    !RESOURCE_ID_RE.test(grant.peerId) ||
+    (grant.role !== "host" && grant.role !== "guest") ||
+    !Number.isSafeInteger(grant.issuedAt) ||
+    !Number.isSafeInteger(grant.expiresAt) ||
+    Number(grant.expiresAt) <= Number(grant.issuedAt) ||
+    Number(grant.expiresAt) - Number(grant.issuedAt) > ROOM_LIFETIME_MS ||
+    Number(grant.issuedAt) > Date.now() + 60_000 ||
+    Number(grant.expiresAt) <= Date.now() ||
+    typeof grant.nonce !== "string" ||
+    !NONCE_RE.test(grant.nonce)
+  )
+    return false;
 
   if (grant.role === "host") {
-    return grant.peerId === hostPeerId(grant.sessionId) &&
-      Number.isInteger(grant.seed) && Number(grant.seed) >= 0 && Number(grant.seed) <= 9999;
+    return (
+      grant.peerId === hostPeerId(grant.sessionId) &&
+      Number.isInteger(grant.seed) &&
+      Number(grant.seed) >= 0 &&
+      Number(grant.seed) <= 9999
+    );
   }
   return grant.peerId === guestPeerId(grant.sessionId, grant.nonce) && grant.seed === undefined;
 }
@@ -115,11 +133,20 @@ export function verifyRoomGrant(value: unknown): RoomGrant | null {
   const secret = signingSecret();
   if (!secret || typeof value !== "string" || value.length > 2048) return null;
   const parts = value.split(".");
-  if (parts.length !== 2 || !/^[A-Za-z0-9_-]+$/.test(parts[0]!) || !/^[A-Za-z0-9_-]{43}$/.test(parts[1]!)) return null;
+  if (
+    parts.length !== 2 ||
+    !/^[A-Za-z0-9_-]+$/.test(parts[0]!) ||
+    !/^[A-Za-z0-9_-]{43}$/.test(parts[1]!)
+  )
+    return null;
   const [payload, signature] = parts as [string, string];
   const expected = createHmac("sha256", secret).update(payload).digest();
   let actual: Buffer;
-  try { actual = Buffer.from(signature, "base64url"); } catch { return null; }
+  try {
+    actual = Buffer.from(signature, "base64url");
+  } catch {
+    return null;
+  }
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
 
   try {
@@ -204,12 +231,23 @@ export async function joinRoom(codeValue: unknown) {
   };
 }
 
-export async function validateHandshake(input: { hostGrant: unknown; guestGrant: unknown; guestPeerId: unknown }) {
+export async function validateHandshake(input: {
+  hostGrant: unknown;
+  guestGrant: unknown;
+  guestPeerId: unknown;
+}) {
   const host = verifyRoomGrant(input.hostGrant);
   const guest = verifyRoomGrant(input.guestGrant);
-  if (!host || !guest || host.role !== "host" || guest.role !== "guest" ||
-      host.code !== guest.code || host.sessionId !== guest.sessionId ||
-      guest.peerId !== input.guestPeerId || host.peerId !== hostPeerId(host.sessionId)) {
+  if (
+    !host ||
+    !guest ||
+    host.role !== "host" ||
+    guest.role !== "guest" ||
+    host.code !== guest.code ||
+    host.sessionId !== guest.sessionId ||
+    guest.peerId !== input.guestPeerId ||
+    host.peerId !== hostPeerId(host.sessionId)
+  ) {
     throw new RoomError("invalid_handshake", 403);
   }
   return { valid: true as const, seed: host.seed! };

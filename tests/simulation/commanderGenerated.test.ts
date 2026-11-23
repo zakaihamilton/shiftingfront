@@ -20,10 +20,14 @@ describe("competent commander generated objectives", () => {
     [2, 0, "structureQuota"],
     [0, 2, "escort"],
     [0, 1, "extraction"],
-  ] as const)("completes generated %s/%s (%s) objectives with deterministic command execution", (seed, missionIndex, kind) => {
-    const state = runGeneratedMission(seed, missionIndex);
+  ] as const)(
+    "completes generated %s/%s (%s) objectives with deterministic command execution",
+    (seed, missionIndex, kind) => {
+      const state = runGeneratedMission(seed, missionIndex);
 
-    expect(state.missionKind).toBe(kind);
-    expect(state.result).toBe("won");
-  }, 120_000);
+      expect(state.missionKind).toBe(kind);
+      expect(state.result).toBe("won");
+    },
+    120_000,
+  );
 });

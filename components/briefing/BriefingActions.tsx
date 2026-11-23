@@ -22,12 +22,7 @@ export function BriefingActions({
   return (
     <div className={styles.actions} data-testid="briefing-actions">
       {!returnToGame ? (
-        <ConsoleButton
-          muted
-          tooltip={backLabel}
-          shortcut={SHORTCUT.back}
-          onClick={onBack}
-        >
+        <ConsoleButton muted tooltip={backLabel} shortcut={SHORTCUT.back} onClick={onBack}>
           {backLabel}
         </ConsoleButton>
       ) : null}

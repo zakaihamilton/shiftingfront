@@ -1,7 +1,7 @@
-import { isAudioUnlocked, getAudioContext } from "./context";
-import * as synthModule from "./synth";
-import { tone, noise } from "./synth/nodes";
+import { getAudioContext, isAudioUnlocked } from "./context";
 import * as mixerModule from "./mixer";
+import * as synthModule from "./synth";
+import { noise, tone } from "./synth/nodes";
 
 export type VoiceBarkType = "select" | "move" | "attack" | "harvest" | "threat";
 
@@ -32,9 +32,8 @@ export function isVoiceForeground(): boolean {
     return false;
   }
   try {
-    const audioForeground = typeof mixerModule.isAudioForeground === "function"
-      ? mixerModule.isAudioForeground()
-      : true;
+    const audioForeground =
+      typeof mixerModule.isAudioForeground === "function" ? mixerModule.isAudioForeground() : true;
     return windowActive && audioForeground;
   } catch {
     return windowActive;
@@ -42,9 +41,10 @@ export function isVoiceForeground(): boolean {
 }
 
 export function cancelVoiceSpeech(): void {
-  const synth = (typeof window !== "undefined" && window.speechSynthesis)
-    ? window.speechSynthesis
-    : (globalThis as unknown as { speechSynthesis?: SpeechSynthesis }).speechSynthesis;
+  const synth =
+    typeof window !== "undefined" && window.speechSynthesis
+      ? window.speechSynthesis
+      : (globalThis as unknown as { speechSynthesis?: SpeechSynthesis }).speechSynthesis;
   try {
     synth?.cancel?.();
   } catch {
@@ -86,7 +86,13 @@ const BARK_PHRASES: Record<VoiceBarkType, string[]> = {
     "Copy. Taking the shot.",
     "Firing on target.",
   ],
-  harvest: ["Harvesting ore.", "Heading to field.", "Extraction in progress.", "Ore field confirmed.", "Starting collection."],
+  harvest: [
+    "Harvesting ore.",
+    "Heading to field.",
+    "Extraction in progress.",
+    "Ore field confirmed.",
+    "Starting collection.",
+  ],
   threat: ["Base under attack!", "Warning: perimeter breached!"],
 };
 
@@ -106,7 +112,9 @@ export function isVoiceEnabled(): boolean {
 
 function getMixerLevels(): mixerModule.AudioLevels | undefined {
   try {
-    return typeof mixerModule.getAudioLevels === "function" ? mixerModule.getAudioLevels() : undefined;
+    return typeof mixerModule.getAudioLevels === "function"
+      ? mixerModule.getAudioLevels()
+      : undefined;
   } catch {
     return undefined;
   }
@@ -195,12 +203,15 @@ export function playVoiceBark(type: VoiceBarkType, force = false): void {
   playRadioSquelch();
 
   // If SpeechSynthesis is available in the browser/environment, speak the military phrase
-  const synth = (typeof window !== "undefined" && window.speechSynthesis)
-    ? window.speechSynthesis
-    : (globalThis as unknown as { speechSynthesis?: SpeechSynthesis }).speechSynthesis;
-  const UtteranceClass = (typeof window !== "undefined" && window.SpeechSynthesisUtterance)
-    ? window.SpeechSynthesisUtterance
-    : (globalThis as unknown as { SpeechSynthesisUtterance?: typeof SpeechSynthesisUtterance }).SpeechSynthesisUtterance;
+  const synth =
+    typeof window !== "undefined" && window.speechSynthesis
+      ? window.speechSynthesis
+      : (globalThis as unknown as { speechSynthesis?: SpeechSynthesis }).speechSynthesis;
+  const UtteranceClass =
+    typeof window !== "undefined" && window.SpeechSynthesisUtterance
+      ? window.SpeechSynthesisUtterance
+      : (globalThis as unknown as { SpeechSynthesisUtterance?: typeof SpeechSynthesisUtterance })
+          .SpeechSynthesisUtterance;
 
   if (synth && UtteranceClass) {
     try {

@@ -26,30 +26,54 @@ export function mat4Copy(out: Mat4, a: Mat4): Mat4 {
 }
 
 export function mat4Multiply(out: Mat4, a: Mat4, b: Mat4): Mat4 {
-  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
-  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
-  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
-  const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+  const a00 = a[0],
+    a01 = a[1],
+    a02 = a[2],
+    a03 = a[3];
+  const a10 = a[4],
+    a11 = a[5],
+    a12 = a[6],
+    a13 = a[7];
+  const a20 = a[8],
+    a21 = a[9],
+    a22 = a[10],
+    a23 = a[11];
+  const a30 = a[12],
+    a31 = a[13],
+    a32 = a[14],
+    a33 = a[15];
 
-  let b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3];
+  let b0 = b[0],
+    b1 = b[1],
+    b2 = b[2],
+    b3 = b[3];
   out[0] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
   out[1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
   out[2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
   out[3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
 
-  b0 = b[4]; b1 = b[5]; b2 = b[6]; b3 = b[7];
+  b0 = b[4];
+  b1 = b[5];
+  b2 = b[6];
+  b3 = b[7];
   out[4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
   out[5] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
   out[6] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
   out[7] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
 
-  b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11];
+  b0 = b[8];
+  b1 = b[9];
+  b2 = b[10];
+  b3 = b[11];
   out[8] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
   out[9] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
   out[10] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
   out[11] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
 
-  b0 = b[12]; b1 = b[13]; b2 = b[14]; b3 = b[15];
+  b0 = b[12];
+  b1 = b[13];
+  b2 = b[14];
+  b3 = b[15];
   out[12] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
   out[13] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
   out[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
@@ -81,18 +105,26 @@ export function mat4Ortho(
   return out;
 }
 
-export function mat4FromRotationTranslationScale(
-  out: Mat4,
-  q: Quat,
-  v: Vec3,
-  s: Vec3,
-): Mat4 {
-  const x = q[0], y = q[1], z = q[2], w = q[3];
-  const x2 = x + x, y2 = y + y, z2 = z + z;
-  const xx = x * x2, xy = x * y2, xz = x * z2;
-  const yy = y * y2, yz = y * z2, zz = z * z2;
-  const wx = w * x2, wy = w * y2, wz = w * z2;
-  const sx = s[0], sy = s[1], sz = s[2];
+export function mat4FromRotationTranslationScale(out: Mat4, q: Quat, v: Vec3, s: Vec3): Mat4 {
+  const x = q[0],
+    y = q[1],
+    z = q[2],
+    w = q[3];
+  const x2 = x + x,
+    y2 = y + y,
+    z2 = z + z;
+  const xx = x * x2,
+    xy = x * y2,
+    xz = x * z2;
+  const yy = y * y2,
+    yz = y * z2,
+    zz = z * z2;
+  const wx = w * x2,
+    wy = w * y2,
+    wz = w * z2;
+  const sx = s[0],
+    sy = s[1],
+    sz = s[2];
 
   out[0] = (1 - (yy + zz)) * sx;
   out[1] = (xy + wz) * sx;
@@ -152,8 +184,14 @@ export function quatFromAxisAngle(out: Quat, axis: Vec3, rad: number): Quat {
 }
 
 export function quatSlerp(out: Quat, a: Quat, b: Quat, t: number): Quat {
-  const ax = a[0], ay = a[1], az = a[2], aw = a[3];
-  let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+  const ax = a[0],
+    ay = a[1],
+    az = a[2],
+    aw = a[3];
+  let bx = b[0],
+    by = b[1],
+    bz = b[2],
+    bw = b[3];
 
   let cosHalfTheta = ax * bx + ay * by + az * bz + aw * bw;
   if (cosHalfTheta < 0) {

@@ -1,13 +1,13 @@
-import type { BiomeName } from "../types";
 import type { TerrainFeatureSample } from "../gen/map/features";
+import type { BiomeName } from "../types";
 import {
+  type BiomeMaterials,
   fbm,
   hash2,
   mixRgb,
-  terrainVisualTuningFor,
-  type BiomeMaterials,
   type Rgb,
   type TerrainVisualTuning,
+  terrainVisualTuningFor,
 } from "./terrainMaterials";
 
 function smoothstep(edge0: number, edge1: number, value: number): number {
@@ -109,7 +109,7 @@ export function applyBiomeGroundPattern(
       break;
     }
     case "rust canyons": {
-      const stripe = ((mapX * 0.85 + mapY * 1.6) % 1 + 1) % 1;
+      const stripe = (((mapX * 0.85 + mapY * 1.6) % 1) + 1) % 1;
       const strata = Math.max(0, Math.cos(stripe * Math.PI * 2)) ** 10 * 0.14 + 0.025;
       const scratch = smoothstep(0.72, 0.96, n) * 0.09;
       out = mixRgb(mixRgb(color, mats.patchB, strata), mats.patchA, scratch);
@@ -161,7 +161,11 @@ export function applyBiomeGroundPattern(
       const streak = 0.5 + 0.5 * Math.sin(mapX * 0.9 - mapY * 2.2);
       const ash = 0.04 + smoothstep(0.72, 0.88, n) * 0.08;
       out = mixRgb(
-        mixRgb(color, mixRgb(mats.patchB, mats.patchA, smoothstep(0.46, 0.66, streak)), 0.06 + streak * 0.1),
+        mixRgb(
+          color,
+          mixRgb(mats.patchB, mats.patchA, smoothstep(0.46, 0.66, streak)),
+          0.06 + streak * 0.1,
+        ),
         mats.dark,
         ash,
       );
@@ -202,15 +206,14 @@ function applyTerrainFeaturePattern(
     case "lavaScar":
       return mixRgb(color, mats.patchB, t * (seam > 0.74 ? 0.16 : 0.06));
     case "crystalVein":
-    case "glassShards":
-      {
-        const highlight = smoothstep(0.66, 0.82, grain);
-        return mixRgb(
-          color,
-          mixRgb(mats.patchB, mats.light, highlight),
-          t * (0.06 + highlight * 0.1),
-        );
-      }
+    case "glassShards": {
+      const highlight = smoothstep(0.66, 0.82, grain);
+      return mixRgb(
+        color,
+        mixRgb(mats.patchB, mats.light, highlight),
+        t * (0.06 + highlight * 0.1),
+      );
+    }
     case "reedBed":
     case "canopyGrove":
       return mixRgb(
@@ -221,26 +224,17 @@ function applyTerrainFeaturePattern(
     case "wreckClearing":
     case "scrapWash":
     case "mudflat":
-      return mixRgb(
-        color,
-        mixRgb(mats.patchB, mats.light, smoothstep(0.74, 0.9, grain)),
-        t * 0.08,
-      );
+      return mixRgb(color, mixRgb(mats.patchB, mats.light, smoothstep(0.74, 0.9, grain)), t * 0.08);
     case "scoriaField":
     case "facetRise":
     case "mesaShelf":
     case "driftMoraine":
     case "vineRidge":
     case "basaltShelf":
-    case "ashCone":
-      {
-        const highlight = smoothstep(0.7, 0.86, seam);
-        return mixRgb(
-          color,
-          mixRgb(mats.dark, mats.light, highlight),
-          t * (0.07 + highlight * 0.03),
-        );
-      }
+    case "ashCone": {
+      const highlight = smoothstep(0.7, 0.86, seam);
+      return mixRgb(color, mixRgb(mats.dark, mats.light, highlight), t * (0.07 + highlight * 0.03));
+    }
   }
   return color;
 }

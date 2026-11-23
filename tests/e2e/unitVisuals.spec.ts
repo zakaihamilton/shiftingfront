@@ -4,35 +4,72 @@ test("Asset Bay changes a paused tank's turret without moving its hull", async (
   await page.goto("/assets");
   await page.getByRole("option", { name: "Units Tank", exact: true }).click();
   await page.getByRole("button", { name: "Pause animation", exact: true }).click();
-  const canvas = page.getByRole("img", { name: "Tank preview" }).or(page.locator('canvas[aria-label="Tank preview"]'));
+  const canvas = page
+    .getByRole("img", { name: "Tank preview" })
+    .or(page.locator('canvas[aria-label="Tank preview"]'));
   await expect(canvas).toBeVisible();
-  await page.waitForFunction(() => Array.from(document.images).every(image => image.complete));
-  const pixels = () => canvas.evaluate(element => {
-    const c=element as HTMLCanvasElement,ctx=c.getContext("2d")!;
-    return { upper: Array.from(ctx.getImageData(0,0,c.width,c.height-45).data), lower: Array.from(ctx.getImageData(0,c.height-45,c.width,45).data) };
-  });
+  await page.waitForFunction(() => Array.from(document.images).every((image) => image.complete));
+  const pixels = () =>
+    canvas.evaluate((element) => {
+      const c = element as HTMLCanvasElement,
+        ctx = c.getContext("2d")!;
+      return {
+        upper: Array.from(ctx.getImageData(0, 0, c.width, c.height - 45).data),
+        lower: Array.from(ctx.getImageData(0, c.height - 45, c.width, 45).data),
+      };
+    });
   // Wait for incoming views too, so decoding latency cannot masquerade as an aim bug.
   await page.evaluate(async () => {
-    const views = ["right", "front-right", "front", "front-left", "left", "back-left", "back", "back-right"];
-    await Promise.all(views.flatMap(view => ["hull", "turret", "barrel"].map(part => new Promise<void>((resolve, reject) => {
-      const image = new Image(); image.onload = () => resolve(); image.onerror = () => reject(new Error("Tank part failed to load"));
-      image.src = `/art/sprites/sleek-modular/animations/tank-${view}-${part}-v1.webp`;
-    }))));
+    const views = [
+      "right",
+      "front-right",
+      "front",
+      "front-left",
+      "left",
+      "back-left",
+      "back",
+      "back-right",
+    ];
+    await Promise.all(
+      views.flatMap((view) =>
+        ["hull", "turret", "barrel"].map(
+          (part) =>
+            new Promise<void>((resolve, reject) => {
+              const image = new Image();
+              image.onload = () => resolve();
+              image.onerror = () => reject(new Error("Tank part failed to load"));
+              image.src = `/art/sprites/sleek-modular/animations/tank-${view}-${part}-v1.webp`;
+            }),
+        ),
+      ),
+    );
   });
   const before = await pixels();
-  await page.getByText("Turret aim", { exact: true }).locator("..").getByRole("button", { name: "W", exact: true }).click();
-  await expect.poll(async () => (await pixels()).upper.join(",") !== before.upper.join(",")).toBe(true);
+  await page
+    .getByText("Turret aim", { exact: true })
+    .locator("..")
+    .getByRole("button", { name: "W", exact: true })
+    .click();
+  await expect
+    .poll(async () => (await pixels()).upper.join(",") !== before.upper.join(","))
+    .toBe(true);
   expect((await pixels()).lower).toEqual(before.lower);
 });
 
-test("Asset Bay exposes infantry firing and medic treatment in every direction", async ({ page }) => {
-  const failures:string[]=[];
-  page.on("pageerror",error=>failures.push(error.message));
+test("Asset Bay exposes infantry firing and medic treatment in every direction", async ({
+  page,
+}) => {
+  const failures: string[] = [];
+  page.on("pageerror", (error) => failures.push(error.message));
   await page.goto("/assets");
   await page.getByRole("option", { name: "Units Infantry", exact: true }).click();
   await page.getByRole("button", { name: "Firing", exact: true }).click();
-  for(const direction of ["E","SE","S","SW","W","NW","N","NE"]){
-    await page.getByText("Facing",{exact:true}).locator("..").getByRole("button",{name:direction,exact:true}).click();
+  for (const direction of ["E", "SE", "S", "SW", "W", "NW", "N", "NE"]) {
+    await page
+      .getByText("Facing", { exact: true })
+      .locator("..")
+      .getByRole("button", { name: direction, exact: true })
+      .click();
     await expect(page.locator('canvas[aria-label="Infantry preview"]')).toBeVisible();
   }
   await page.getByRole("option", { name: "Units Field Medic", exact: true }).click();
@@ -41,7 +78,9 @@ test("Asset Bay exposes infantry firing and medic treatment in every direction",
   expect(failures).toEqual([]);
 });
 
-test("reduced-motion walking previews keep one pose throughout the gait cycle", async ({ page }) => {
+test("reduced-motion walking previews keep one pose throughout the gait cycle", async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.clock.install();
   await page.goto("/assets");
@@ -49,13 +88,17 @@ test("reduced-motion walking previews keep one pose throughout the gait cycle", 
   await page.getByRole("button", { name: "Moving", exact: true }).click();
   const canvas = page.locator('canvas[aria-label="Infantry preview"]');
   await expect(canvas).toBeVisible();
-  await page.evaluate(() => new Promise<void>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(); image.onerror = () => reject(new Error("Walk sheet failed to load"));
-    image.src = "/art/sprites/sleek-modular/walk-cycle/infantry-right-walk-v1.webp";
-  }));
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("Walk sheet failed to load"));
+        image.src = "/art/sprites/sleek-modular/walk-cycle/infantry-right-walk-v1.webp";
+      }),
+  );
   await page.clock.runFor(100);
-  const capture = () => canvas.evaluate(element => (element as HTMLCanvasElement).toDataURL());
+  const capture = () => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL());
   const before = await capture();
   // Sample transitions as well as settled frames across a complete walk cycle.
   for (let sample = 0; sample < 20; sample++) {

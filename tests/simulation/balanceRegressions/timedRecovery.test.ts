@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { createCampaign } from "../../../lib/gen/campaign";
 import { generateMap } from "../../../lib/gen/map";
 import { MAX_OPERATION_TICKS } from "../../../lib/gen/pacing";
-import { cloneMapForSimulation, runOne, validMap, type BalanceScenario, type SharedScenarioData } from "../../../lib/sim/balance";
+import {
+  type BalanceScenario,
+  cloneMapForSimulation,
+  runOne,
+  type SharedScenarioData,
+  validMap,
+} from "../../../lib/sim/balance";
 
 const TIMED_RECOVERY_FIXTURES: BalanceScenario[] = [
   { seed: 15, mission: 2 },

@@ -1,16 +1,33 @@
+import { isAirUnit } from "../../catalog";
+import type { Rng } from "../../seed/rng";
 import type { Entity, SimEvent, SimState } from "../../types";
 import { isUnitEntity } from "../../types";
-import { isAirUnit } from "../../catalog";
-import { closestApproach, invalidateLivingCache } from "../world";
-import { canTarget, candidatesInSplash, isCombatTarget, type statsFor, type CombatGrid } from "./grid";
-import { armorFor, damageMultiplier, domainDamageScale, heightMultiplier, lineOfSight } from "./targeting";
-import type { Rng } from "../../seed/rng";
-import { type PendingAlerts, notePlayerAlert } from "./alerts";
+import { entitiesFor } from "../entities";
 import { tryFindPathDetailed } from "../pathBudget";
 import { routePendingFor } from "../pathfinding";
-import { entitiesFor } from "../entities";
 import { incomingDamageMultiplier } from "../terrainRules";
-import { isEntrenched, noteDamageDealt, ENTRENCH_INCOMING, VETERAN_DAMAGE_MULTIPLIER } from "../verbs";
+import {
+  ENTRENCH_INCOMING,
+  isEntrenched,
+  noteDamageDealt,
+  VETERAN_DAMAGE_MULTIPLIER,
+} from "../verbs";
+import { closestApproach, invalidateLivingCache } from "../world";
+import { notePlayerAlert, type PendingAlerts } from "./alerts";
+import {
+  type CombatGrid,
+  candidatesInSplash,
+  canTarget,
+  isCombatTarget,
+  type statsFor,
+} from "./grid";
+import {
+  armorFor,
+  damageMultiplier,
+  domainDamageScale,
+  heightMultiplier,
+  lineOfSight,
+} from "./targeting";
 
 export function strike(
   state: SimState,
@@ -32,7 +49,13 @@ export function strike(
   const jitter = 0.85 + rng.next() * 0.3;
   const veteran = e.veteranRank === 1 ? VETERAN_DAMAGE_MULTIPLIER : 1;
   const entrenched = isEntrenched(target) ? ENTRENCH_INCOMING : 1;
-  const baseDamage = stats.damage * jitter * damageMultiplier(stats.weapon, armorFor(target)) * domainDamageScale(e, target) * heightMultiplier(state, e, target) * veteran;
+  const baseDamage =
+    stats.damage *
+    jitter *
+    damageMultiplier(stats.weapon, armorFor(target)) *
+    domainDamageScale(e, target) *
+    heightMultiplier(state, e, target) *
+    veteran;
   const damage = baseDamage * incomingDamageMultiplier(state, target) * entrenched;
   noteDamageDealt(state, e, damage);
   target.hp -= damage;
@@ -46,14 +69,30 @@ export function strike(
       : entitiesFor(state);
     for (const splash of candidates) {
       if (splash.hp <= 0) continue;
-      if (splash.id === target.id || splash.owner === e.owner || splash.neutral || !isCombatTarget(state, splash) || !canTarget(e, splash)) continue;
+      if (
+        splash.id === target.id ||
+        splash.owner === e.owner ||
+        splash.neutral ||
+        !isCombatTarget(state, splash) ||
+        !canTarget(e, splash)
+      )
+        continue;
       const dist = Math.hypot(splash.x - target.x, splash.y - target.y);
       if (dist > stats.splashRadius) continue;
       if (!lineOfSight(state, target, splash)) continue;
       const falloff = Math.max(0.2, 1 - (dist / stats.splashRadius) * 0.7);
-      const splashDamage = baseDamage * 0.35 * falloff * incomingDamageMultiplier(state, splash) * (isEntrenched(splash) ? ENTRENCH_INCOMING : 1);
+      const splashDamage =
+        baseDamage *
+        0.35 *
+        falloff *
+        incomingDamageMultiplier(state, splash) *
+        (isEntrenched(splash) ? ENTRENCH_INCOMING : 1);
       splash.hp -= splashDamage;
-      if (splash.class === "unit") splash.suppression = Math.min(100, (splash.suppression ?? 0) + Math.round(stats.suppression * 0.35 * falloff));
+      if (splash.class === "unit")
+        splash.suppression = Math.min(
+          100,
+          (splash.suppression ?? 0) + Math.round(stats.suppression * 0.35 * falloff),
+        );
       if (splash.hp <= 0) {
         splash.hp = 0;
         invalidateLivingCache(state);
@@ -89,7 +128,14 @@ export function strike(
   invalidateLivingCache(state);
   if (isUnitEntity(target)) state.losses.units[target.owner] += 1;
   else state.losses.buildings[target.owner] += 1;
-  events?.push({ type: "destroyed", id: target.id, owner: target.owner, kind: target.kind, x: target.x, y: target.y });
+  events?.push({
+    type: "destroyed",
+    id: target.id,
+    owner: target.owner,
+    kind: target.kind,
+    x: target.x,
+    y: target.y,
+  });
   if (e.attackTarget === target.id) e.attackTarget = undefined;
 }
 

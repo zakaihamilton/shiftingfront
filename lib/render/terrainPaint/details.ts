@@ -1,25 +1,20 @@
-import { TILE_H } from "../../iso";
-import type { BiomeName, SimState } from "../../types";
+import { blockerPropPrims, blockerToneFromRgb, type PropPrim } from "../../gen/blockerPropArt";
 import type { SceneryWorld } from "../../gen/map";
+import { mixHex } from "../../gen/tilePalette";
+import { type Camera, TILE_H, tileToScreen } from "../../iso";
 import { fogAt } from "../../sim/fog";
+import type { BiomeName, SimState } from "../../types";
 import { biomeMaterials, fogTerrainGain, oreCrystalCluster, tileVariant } from "../terrainAtlas";
+import { terrainPropLightGain } from "../terrainLighting";
 import {
   artSalt,
+  type BiomeMaterials,
   propMaterialsFor,
   terrainRegionMaterialsFor,
   terrainVisualTuningFor,
-  type BiomeMaterials,
 } from "../terrainMaterials";
-import { tileToScreen, type Camera } from "../../iso";
-import {
-  blockerPropPrims,
-  blockerToneFromRgb,
-  type PropPrim,
-} from "../../gen/blockerPropArt";
-import { blockerPropKind, type BlockerPropKind } from "./scatter";
+import { type BlockerPropKind, blockerPropKind } from "./scatter";
 import { fillPoly, mixRgb, rgbOf, withAlpha } from "./style";
-import { terrainPropLightGain } from "../terrainLighting";
-import { mixHex } from "../../gen/tilePalette";
 
 type PropWorld = SceneryWorld & { seed: number };
 
@@ -41,7 +36,12 @@ export function smoothFogGain(state: SimState, x: number, y: number): number {
   return sum / count;
 }
 
-function paintPropArt(ctx: CanvasRenderingContext2D, prims: PropPrim[], z: number, foliage = false): void {
+function paintPropArt(
+  ctx: CanvasRenderingContext2D,
+  prims: PropPrim[],
+  z: number,
+  foliage = false,
+): void {
   const shadedFill = (fill: string, left: number, top: number, right: number, bottom: number) => {
     if (!foliage || bottom >= 0) return fill;
     const gradient = ctx.createLinearGradient(left * z, top * z, right * z, bottom * z);
@@ -54,7 +54,13 @@ function paintPropArt(ctx: CanvasRenderingContext2D, prims: PropPrim[], z: numbe
   for (const prim of prims) {
     const paint = () => {
       if (prim.k === "ell") {
-        ctx.fillStyle = shadedFill(prim.fill, prim.x - prim.rx, prim.y - prim.ry, prim.x + prim.rx, prim.y + prim.ry);
+        ctx.fillStyle = shadedFill(
+          prim.fill,
+          prim.x - prim.rx,
+          prim.y - prim.ry,
+          prim.x + prim.rx,
+          prim.y + prim.ry,
+        );
         ctx.beginPath();
         ctx.ellipse(prim.x * z, prim.y * z, prim.rx * z, prim.ry * z, prim.rot, 0, Math.PI * 2);
         ctx.fill();
@@ -63,7 +69,13 @@ function paintPropArt(ctx: CanvasRenderingContext2D, prims: PropPrim[], z: numbe
       if (prim.k === "poly") {
         const xs = prim.pts.filter((_, index) => index % 2 === 0);
         const ys = prim.pts.filter((_, index) => index % 2 === 1);
-        ctx.fillStyle = shadedFill(prim.fill, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+        ctx.fillStyle = shadedFill(
+          prim.fill,
+          Math.min(...xs),
+          Math.min(...ys),
+          Math.max(...xs),
+          Math.max(...ys),
+        );
         const pts: number[] = [];
         for (const value of prim.pts) pts.push(value * z);
         fillPoly(ctx, pts);
@@ -96,7 +108,12 @@ function paintBlocker(
   v: number,
   biome: BiomeName,
 ): void {
-  paintPropArt(ctx, blockerPropPrims(kind, v, blockerToneFromRgb(mats), biome), z, kind === "tree" || kind === "pine" || kind === "desertTree");
+  paintPropArt(
+    ctx,
+    blockerPropPrims(kind, v, blockerToneFromRgb(mats), biome),
+    z,
+    kind === "tree" || kind === "pine" || kind === "desertTree",
+  );
 }
 
 export function drawBlockerProp(
@@ -145,14 +162,11 @@ export function drawOreCrystals(
 ): void {
   const cluster = oreCrystalCluster(state, x, y);
   if (!cluster) return;
-  const baseMats = propMaterialsFor(biomeMaterials(state.biome), terrainVisualTuningFor(state.biome));
-  const mats = terrainRegionMaterialsFor(
-    baseMats,
-    state.biome,
-    x,
-    y,
-    artSalt(state),
+  const baseMats = propMaterialsFor(
+    biomeMaterials(state.biome),
+    terrainVisualTuningFor(state.biome),
   );
+  const mats = terrainRegionMaterialsFor(baseMats, state.biome, x, y, artSalt(state));
   const s = tileToScreen(x, y, cam, elev);
   const gemDark = rgbMix(mats.ore, mats.dark, 0.42);
   const gem = rgbMix(mats.ore, mats.light, 0.38);

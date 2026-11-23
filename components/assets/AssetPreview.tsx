@@ -1,9 +1,9 @@
 import type { Ref } from "react";
 import type { CatalogAsset } from "@/lib/gen/assetCatalog";
-import type { Facing, FactionVisualProfile } from "@/lib/types";
-import { AssetPreviewControls } from "./AssetPreviewControls";
-import styles from "./AssetPreview.module.css";
 import type { UnitPose } from "@/lib/render/anim";
+import type { Facing, FactionVisualProfile } from "@/lib/types";
+import styles from "./AssetPreview.module.css";
+import { AssetPreviewControls } from "./AssetPreviewControls";
 
 export type AssetPreviewControlProps = {
   selected: CatalogAsset;
@@ -31,7 +31,13 @@ export function AssetPreview({ canvasRef, ...controls }: AssetPreviewProps) {
   return (
     <div className={styles.pane}>
       <div className={styles.stage}>
-        <canvas ref={canvasRef} width={420} height={280} className={styles.canvas} aria-label={`${controls.selected.label} preview`} />
+        <canvas
+          ref={canvasRef}
+          width={420}
+          height={280}
+          className={styles.canvas}
+          aria-label={`${controls.selected.label} preview`}
+        />
       </div>
       <AssetPreviewControls {...controls} />
     </div>

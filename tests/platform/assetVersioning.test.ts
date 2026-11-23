@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -16,7 +16,17 @@ function fixture() {
   writeFileSync(join(root, "public/art/unit-v1.webp"), Buffer.from([0, 1, 2, 255]));
   writeFileSync(join(root, "public/icons/icon-v1.png"), "icon");
   git("add", ".");
-  git("-c", "user.name=Asset Test", "-c", "user.email=assets@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "baseline");
+  git(
+    "-c",
+    "user.name=Asset Test",
+    "-c",
+    "user.email=assets@example.test",
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "-m",
+    "baseline",
+  );
   const base = git("rev-parse", "HEAD").toString().trim();
   return { root, git, base };
 }
@@ -34,33 +44,59 @@ describe("immutable asset URL versioning", () => {
     expect(git("status", "--porcelain").toString()).toBe(before);
   });
 
-  it.each(["public/art/large-v1.webp", "public/icons/large-v1.png"])("checks unchanged and modified assets over 1 MiB at %s", (assetPath) => {
-    const { root, git } = fixture();
-    const content = Buffer.alloc(2 * 1024 * 1024, 7);
-    writeFileSync(join(root, assetPath), content);
-    git("add", ".");
-    git("-c", "user.name=Asset Test", "-c", "user.email=assets@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "large asset");
-    const base = git("rev-parse", "HEAD").toString().trim();
-    const objects = git("count-objects").toString();
-    expect(changedAssetPaths(base, root)).toEqual([]);
-    content[content.length - 1] = 8;
-    writeFileSync(join(root, assetPath), content);
-    expect(changedAssetPaths(base, root)).toEqual([assetPath]);
-    expect(git("count-objects").toString()).toBe(objects);
-  });
+  it.each(["public/art/large-v1.webp", "public/icons/large-v1.png"])(
+    "checks unchanged and modified assets over 1 MiB at %s",
+    (assetPath) => {
+      const { root, git } = fixture();
+      const content = Buffer.alloc(2 * 1024 * 1024, 7);
+      writeFileSync(join(root, assetPath), content);
+      git("add", ".");
+      git(
+        "-c",
+        "user.name=Asset Test",
+        "-c",
+        "user.email=assets@example.test",
+        "-c",
+        "commit.gpgsign=false",
+        "commit",
+        "-m",
+        "large asset",
+      );
+      const base = git("rev-parse", "HEAD").toString().trim();
+      const objects = git("count-objects").toString();
+      expect(changedAssetPaths(base, root)).toEqual([]);
+      content[content.length - 1] = 8;
+      writeFileSync(join(root, assetPath), content);
+      expect(changedAssetPaths(base, root)).toEqual([assetPath]);
+      expect(git("count-objects").toString()).toBe(objects);
+    },
+  );
 
   it("rejects uncommitted byte changes under both immutable roots", () => {
     const { root, base } = fixture();
     writeFileSync(join(root, "public/art/unit-v1.webp"), Buffer.from([0, 1, 3, 255]));
     writeFileSync(join(root, "public/icons/icon-v1.png"), "recompressed-icon");
-    expect(changedAssetPaths(base, root)).toEqual(["public/art/unit-v1.webp", "public/icons/icon-v1.png"]);
+    expect(changedAssetPaths(base, root)).toEqual([
+      "public/art/unit-v1.webp",
+      "public/icons/icon-v1.png",
+    ]);
   });
 
   it("rejects changes even after they are committed", () => {
     const { root, base, git } = fixture();
     writeFileSync(join(root, "public/art/unit-v1.webp"), "replacement");
     git("add", ".");
-    git("-c", "user.name=Asset Test", "-c", "user.email=assets@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "same-url edit");
+    git(
+      "-c",
+      "user.name=Asset Test",
+      "-c",
+      "user.email=assets@example.test",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-m",
+      "same-url edit",
+    );
     expect(changedAssetPaths(base, root)).toEqual(["public/art/unit-v1.webp"]);
   });
 
@@ -78,7 +114,17 @@ describe("immutable asset URL versioning", () => {
     writeFileSync(join(root, ".gitattributes"), "public/art/*.obj text eol=lf\n");
     writeFileSync(join(root, "public/art/model-v1.obj"), "v 0 0 0\n");
     git("add", ".");
-    git("-c", "user.name=Asset Test", "-c", "user.email=assets@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "model");
+    git(
+      "-c",
+      "user.name=Asset Test",
+      "-c",
+      "user.email=assets@example.test",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-m",
+      "model",
+    );
     const modelBase = git("rev-parse", "HEAD").toString().trim();
     writeFileSync(join(root, "public/art/model-v1.obj"), "v 0 0 0\r\n");
     expect(changedAssetPaths(modelBase, root)).toEqual(["public/art/model-v1.obj"]);
@@ -87,7 +133,9 @@ describe("immutable asset URL versioning", () => {
 
   it("fails clearly for missing refs and never interprets refs as options", () => {
     const { root } = fixture();
-    expect(() => changedAssetPaths("missing-ref", root)).toThrow("Cannot resolve asset comparison base");
+    expect(() => changedAssetPaths("missing-ref", root)).toThrow(
+      "Cannot resolve asset comparison base",
+    );
     expect(() => changedAssetPaths("--help", root)).toThrow("Cannot resolve asset comparison base");
   });
 

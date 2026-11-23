@@ -1,5 +1,9 @@
 import { isAirUnit, UNIT_STATS } from "../catalog";
-import { ACTIVE_TERRAIN_RULE_INTENSITY, terrainFeatureSamplerFor, type TerrainFeatureSample } from "../gen/map/features";
+import {
+  ACTIVE_TERRAIN_RULE_INTENSITY,
+  type TerrainFeatureSample,
+  terrainFeatureSamplerFor,
+} from "../gen/map/features";
 import type { BiomeName, Entity, SimState, UnitKind } from "../types";
 import { canyonGullyVehicleCost, veteranSightBonus, volcanicClosureCost } from "./fieldIdentity";
 
@@ -32,9 +36,14 @@ function mapKeyFor(state: SimState): string {
 function rulesFor(state: SimState): CachedTerrainRules {
   const cached = rulesByState.get(state);
   if (
-    cached && cached.seed === state.seed && cached.missionIndex === state.missionIndex && cached.biome === state.biome &&
-    cached.width === state.width && cached.height === state.height
-  ) return cached;
+    cached &&
+    cached.seed === state.seed &&
+    cached.missionIndex === state.missionIndex &&
+    cached.biome === state.biome &&
+    cached.width === state.width &&
+    cached.height === state.height
+  )
+    return cached;
 
   const mapKey = mapKeyFor(state);
   const shared = rulesByMap.get(mapKey);
@@ -75,7 +84,14 @@ function rulesFor(state: SimState): CachedTerrainRules {
 }
 
 function inBounds(state: SimState, x: number, y: number): boolean {
-  return Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < state.width && y < state.height;
+  return (
+    Number.isInteger(x) &&
+    Number.isInteger(y) &&
+    x >= 0 &&
+    y >= 0 &&
+    x < state.width &&
+    y < state.height
+  );
 }
 
 /**
@@ -113,7 +129,12 @@ function entityInActiveRegion(state: SimState, entity: object, x: number, y: num
   return active;
 }
 
-export function terrainMovementCostAt(state: SimState, mobility: NavigationMobility, x: number, y: number): number {
+export function terrainMovementCostAt(
+  state: SimState,
+  mobility: NavigationMobility,
+  x: number,
+  y: number,
+): number {
   const tile = terrainRuleAt(state, x, y);
   if (state.biome === "volcanic shelf" && tile) {
     const closure = volcanicClosureCost(state.tick, tile.kind, tile.active);
@@ -123,7 +144,8 @@ export function terrainMovementCostAt(state: SimState, mobility: NavigationMobil
     const gully = canyonGullyVehicleCost(tile.kind, tile.active);
     if (gully !== undefined) return gully;
   }
-  if (mobility !== "vehicle" || (state.biome !== "salt marshes" && state.biome !== "tundra grid")) return 1;
+  if (mobility !== "vehicle" || (state.biome !== "salt marshes" && state.biome !== "tundra grid"))
+    return 1;
   const tx = Math.round(x);
   const ty = Math.round(y);
   if (!inBounds(state, tx, ty)) return 1;
@@ -131,20 +153,29 @@ export function terrainMovementCostAt(state: SimState, mobility: NavigationMobil
 }
 
 export function navigationMobilityFor(entity: Pick<Entity, "class" | "kind">): NavigationMobility {
-  if (entity.class === "unit" && !isAirUnit(entity.kind as UnitKind) && UNIT_STATS[entity.kind as UnitKind].domain === "vehicle") {
+  if (
+    entity.class === "unit" &&
+    !isAirUnit(entity.kind as UnitKind) &&
+    UNIT_STATS[entity.kind as UnitKind].domain === "vehicle"
+  ) {
     return "vehicle";
   }
   return "foot";
 }
 
-export function groundUnitSightAt(state: SimState, entity: Pick<Entity, "class" | "kind" | "x" | "y" | "veteranRank">, baseSight: number): number {
+export function groundUnitSightAt(
+  state: SimState,
+  entity: Pick<Entity, "class" | "kind" | "x" | "y" | "veteranRank">,
+  baseSight: number,
+): number {
   const veteran = veteranSightBonus(entity);
   if (
     (state.biome !== "ash plains" && state.biome !== "crystal flats") ||
     entity.class !== "unit" ||
     isAirUnit(entity.kind as UnitKind) ||
     !entityInActiveRegion(state, entity, entity.x, entity.y)
-  ) return baseSight + veteran;
+  )
+    return baseSight + veteran;
   if (state.biome === "ash plains") return Math.max(1, baseSight - 1) + veteran;
   if (state.biome === "crystal flats") return baseSight + 1 + veteran;
   return baseSight + veteran;
@@ -156,7 +187,8 @@ export function incomingDamageMultiplier(state: SimState, target: Entity): numbe
     target.class !== "unit" ||
     isAirUnit(target.kind as UnitKind) ||
     !entityInActiveRegion(state, target, target.x, target.y)
-  ) return 1;
+  )
+    return 1;
   if (state.biome === "rust canyons") return 0.85;
   if (state.biome === "jungle wreckage" && target.kind === "infantry") return 0.85;
   return 1;
@@ -164,12 +196,18 @@ export function incomingDamageMultiplier(state: SimState, target: Entity): numbe
 
 export function directFireRangeBonusAt(state: SimState, attacker: Entity): number {
   if (attacker.class === "unit" && isAirUnit(attacker.kind as UnitKind)) return 0;
-  return state.biome === "glass desert" && entityInActiveRegion(state, attacker, attacker.x, attacker.y) ? 0.5 : 0;
+  return state.biome === "glass desert" &&
+    entityInActiveRegion(state, attacker, attacker.x, attacker.y)
+    ? 0.5
+    : 0;
 }
 
 export function downhillDamageMultiplier(state: SimState, attacker: Entity): number {
   if (attacker.class === "unit" && isAirUnit(attacker.kind as UnitKind)) return 1.15;
-  return state.biome === "volcanic shelf" && entityInActiveRegion(state, attacker, attacker.x, attacker.y) ? 1.25 : 1.15;
+  return state.biome === "volcanic shelf" &&
+    entityInActiveRegion(state, attacker, attacker.x, attacker.y)
+    ? 1.25
+    : 1.15;
 }
 
 export function vehicleMovementCostsFor(state: SimState): Float32Array {

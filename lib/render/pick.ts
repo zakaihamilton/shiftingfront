@@ -1,10 +1,10 @@
-import { isPlayerSelectableUnit, type Entity, type SimState } from "../types";
 import { isAirUnit } from "../catalog";
-import { TILE_H, tileToScreen, type Camera } from "../iso";
+import { type Camera, TILE_H, tileToScreen } from "../iso";
+import { groundHeight } from "../sim/world";
+import { type Entity, isPlayerSelectableUnit, type SimState } from "../types";
+import { unitRenderPosition, updateUnitHistory } from "./gl/unitTransformTracker";
 import { pickTile, visibleBuildingAt } from "./renderer";
 import { AIR_UNIT_RENDER_ELEVATION, entityElev, entityVisible } from "./renderPicking";
-import { unitRenderPosition, updateUnitHistory } from "./gl/unitTransformTracker";
-import { groundHeight } from "../sim/world";
 
 /** Screen-space pick: units first so vehicles overlapping a building stay selectable. */
 export function pickEntity(
@@ -20,8 +20,15 @@ export function pickEntity(
   let bestD = Infinity;
   const z = cam.zoom;
   for (const e of state.entities) {
-    if (!isPlayerSelectableUnit(e) || e.hp <= 0 || (!allowNeutral && e.neutral) || !entityVisible(state, e)) continue;
-    const visual = e.class === "unit" && isAirUnit(e.kind) ? unitRenderPosition(e, clockMs) : undefined;
+    if (
+      !isPlayerSelectableUnit(e) ||
+      e.hp <= 0 ||
+      (!allowNeutral && e.neutral) ||
+      !entityVisible(state, e)
+    )
+      continue;
+    const visual =
+      e.class === "unit" && isAirUnit(e.kind) ? unitRenderPosition(e, clockMs) : undefined;
     const x = visual?.x ?? e.x;
     const y = visual?.y ?? e.y;
     const elev = visual
@@ -31,9 +38,17 @@ export function pickEntity(
     const bodyX = s.x;
     const bodyY = s.y + (TILE_H / 2) * z - 12 * z;
     const unitKind = e.class === "unit" ? e.kind : undefined;
-    const radius = unitKind && isAirUnit(unitKind) ? 38 * z
-      : unitKind === "harvester" || unitKind === "tank" || unitKind === "repairTruck" || unitKind === "convoyTruck" || unitKind === "behemoth" || unitKind === "scout" ? 44 * z
-        : 30 * z;
+    const radius =
+      unitKind && isAirUnit(unitKind)
+        ? 38 * z
+        : unitKind === "harvester" ||
+            unitKind === "tank" ||
+            unitKind === "repairTruck" ||
+            unitKind === "convoyTruck" ||
+            unitKind === "behemoth" ||
+            unitKind === "scout"
+          ? 44 * z
+          : 30 * z;
     const d = Math.hypot(sx - bodyX, sy - bodyY);
     if (d <= radius && d < bestD) {
       bestD = d;

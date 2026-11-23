@@ -1,8 +1,8 @@
-import { canvasViewport } from "../canvasViewport";
 import { sceneryAt } from "../../gen/map";
-import type { SimState } from "../../types";
+import { type Camera, TILE_H, TILE_W, tileToScreen } from "../../iso";
 import { fogAt } from "../../sim/fog";
-import { TILE_H, TILE_W, tileToScreen, type Camera } from "../../iso";
+import type { SimState } from "../../types";
+import { canvasViewport } from "../canvasViewport";
 import { fogTerrainGain, oreCrystalCluster } from "../terrainAtlas";
 import { visibleTileRange } from "../terrainPaint";
 import { ensureFxTileIndex, forVisibleIndexedTiles } from "./core";
@@ -11,7 +11,12 @@ export function oreGlint(timeMs: number, x: number, y: number): number {
   return oreSparkle(timeMs, x, y, 0).glow;
 }
 
-export function oreSparkle(timeMs: number, x: number, y: number, index: number): {
+export function oreSparkle(
+  timeMs: number,
+  x: number,
+  y: number,
+  index: number,
+): {
   sweep: number;
   twinkle: number;
   glow: number;
@@ -70,7 +75,8 @@ export function paintOreGlints(
     if (fog === 0) return;
     const elev = sceneryAt(state, x, y).elev;
     const origin = tileToScreen(x, y, cam, elev);
-    if (origin.x < -margin || origin.y < -margin || origin.x > w + margin || origin.y > h + margin) return;
+    if (origin.x < -margin || origin.y < -margin || origin.x > w + margin || origin.y > h + margin)
+      return;
     const cluster = oreCrystalCluster(state, x, y);
     if (!cluster) return;
     const gain = fogTerrainGain(fog) * Math.min(1, cluster.intensity);
@@ -83,7 +89,15 @@ export function paintOreGlints(
     ctx.globalAlpha = halo.glow * gain * 0.16;
     ctx.fillStyle = "#ffe9a8";
     ctx.beginPath();
-    ctx.ellipse(baseX, baseY + TILE_H * z * 0.5, TILE_W * z * 0.28, TILE_H * z * 0.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(
+      baseX,
+      baseY + TILE_H * z * 0.5,
+      TILE_W * z * 0.28,
+      TILE_H * z * 0.2,
+      0,
+      0,
+      Math.PI * 2,
+    );
     ctx.fill();
     cluster.shards.forEach((shard, sparkIndex) => {
       const spark = oreSparkle(clockMs, x, y, sparkIndex);
@@ -106,7 +120,13 @@ export function paintOreGlints(
       ctx.beginPath();
       ctx.ellipse(tipX, tipY, 1.6 * z, 1.6 * z, 0, 0, Math.PI * 2);
       ctx.fill();
-      drawSparkleStar(ctx, tipX, tipY, (2.2 + spark.twinkle * 1.8) * z, spark.twinkle * gain * 0.55);
+      drawSparkleStar(
+        ctx,
+        tipX,
+        tipY,
+        (2.2 + spark.twinkle * 1.8) * z,
+        spark.twinkle * gain * 0.55,
+      );
     });
     ctx.restore();
   });

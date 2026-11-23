@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeFixture, addBuilding, addUnit } from "../../lib/sim/fixtures";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import {
   evaluateElimination,
   evaluateExtractionEscort,
@@ -18,7 +18,10 @@ describe("composable scenario evaluators", () => {
 
       expect(isEntityAlive(state, b1.id)).toBe(true);
 
-      const resInitial = evaluateElimination(state, { targetIds: [b1.id, b2.id], label: "Targets" });
+      const resInitial = evaluateElimination(state, {
+        targetIds: [b1.id, b2.id],
+        label: "Targets",
+      });
       expect(resInitial.isComplete).toBe(false);
       expect(resInitial.current).toBe(0);
       expect(resInitial.target).toBe(2);

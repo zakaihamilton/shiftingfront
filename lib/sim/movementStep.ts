@@ -1,12 +1,7 @@
 import { UNIT_STATS } from "../catalog";
 import { toIsometricFacing } from "../iso";
 import type { Entity, SimState, UnitEntity } from "../types";
-import { tryFindPathDetailed } from "./pathBudget";
-import { flowDistanceAt, type FlowField } from "./flowField";
-import { navigationEdgeKey, navigationEdgeReserved, navigationStepAllowed } from "./navigation/grid";
-import { staticNavigationFor } from "./world";
-import { navigationMobilityFor, terrainMovementCostAt } from "./terrainRules";
-import { isPlayerControlledOwner } from "./ownership";
+import { type FlowField, flowDistanceAt } from "./flowField";
 import {
   advanceAlongPath,
   cellOf,
@@ -18,6 +13,15 @@ import {
   tileFree,
   trySidestep,
 } from "./navigation";
+import {
+  navigationEdgeKey,
+  navigationEdgeReserved,
+  navigationStepAllowed,
+} from "./navigation/grid";
+import { isPlayerControlledOwner } from "./ownership";
+import { tryFindPathDetailed } from "./pathBudget";
+import { navigationMobilityFor, terrainMovementCostAt } from "./terrainRules";
+import { staticNavigationFor } from "./world";
 
 // Large formations already have flow-field coordination; preserve their
 // established tie-break so local passing does not split the formation.
@@ -25,8 +29,11 @@ const INDIVIDUAL_PASSING_GROUP_LIMIT = 16;
 
 /** Recovery actors may back out of a pocket while following their return route. */
 export function isRecoveryReturn(entity: Entity): boolean {
-  return !entity.neutral && entity.orderMode === "move" &&
-    (entity.scenarioRole === "cargo" || entity.scenarioRole === "stranded");
+  return (
+    !entity.neutral &&
+    entity.orderMode === "move" &&
+    (entity.scenarioRole === "cargo" || entity.scenarioRole === "stranded")
+  );
 }
 
 export type MoverStep = {
@@ -42,7 +49,17 @@ export type MoverStep = {
 };
 
 export function stepMover(e: UnitEntity, step: MoverStep): void {
-  const { state, occupancy, atTile, reserved, previousCells, flowFields, edgeReservations, plannedVacates, movers } = step;
+  const {
+    state,
+    occupancy,
+    atTile,
+    reserved,
+    previousCells,
+    flowFields,
+    edgeReservations,
+    plannedVacates,
+    movers,
+  } = step;
   const current = cellOf(state, e.x, e.y);
   const next = e.path[0];
   if (next) {
@@ -53,16 +70,24 @@ export function stepMover(e: UnitEntity, step: MoverStep): void {
     // A sidestep can drop the waypoint after the blocked cell, leaving a
     // jump the unit is not allowed to take. Drop that path and replan
     // instead of standing on it until the deadline.
-    if ((currentX !== nextX || currentY !== nextY) && !navigationStepAllowed(staticNavigationFor(state), currentX, currentY, nextX, nextY)) {
+    if (
+      (currentX !== nextX || currentY !== nextY) &&
+      !navigationStepAllowed(staticNavigationFor(state), currentX, currentY, nextX, nextY)
+    ) {
       e.path = [];
       e.routePending = true;
       e.idle = false;
       return;
     }
   }
-  const movementCost = next ? terrainMovementCostAt(state, navigationMobilityFor(e), next.x, next.y) : 1;
+  const movementCost = next
+    ? terrainMovementCostAt(state, navigationMobilityFor(e), next.x, next.y)
+    : 1;
   const planted = e.bombard ? 0 : e.braced ? 0.45 : 1;
-  const speed = UNIT_STATS[e.kind].speed / movementCost * (1 - Math.min(0.4, (e.suppression ?? 0) / 250)) * planted;
+  const speed =
+    (UNIT_STATS[e.kind].speed / movementCost) *
+    (1 - Math.min(0.4, (e.suppression ?? 0) / 250)) *
+    planted;
   const distance = next ? Math.hypot(next.x - e.x, next.y - e.y) : 0;
   const nx = next ? Math.round(next.x) : Math.round(e.x);
   const ny = next ? Math.round(next.y) : Math.round(e.y);
@@ -70,11 +95,21 @@ export function stepMover(e: UnitEntity, step: MoverStep): void {
   let blockedY = ny;
   let target = blockedY * state.width + blockedX;
   const claim = reserved.get(target);
-  let blocked = !!next && target !== current && (
-    occupancy[target] === 1 ||
-    (claim !== undefined && claim !== e.id) ||
-    navigationEdgeReserved(edgeReservations, state.width, state.height, current % state.width, Math.floor(current / state.width), nx, ny, e.id)
-  );
+  let blocked =
+    !!next &&
+    target !== current &&
+    (occupancy[target] === 1 ||
+      (claim !== undefined && claim !== e.id) ||
+      navigationEdgeReserved(
+        edgeReservations,
+        state.width,
+        state.height,
+        current % state.width,
+        Math.floor(current / state.width),
+        nx,
+        ny,
+        e.id,
+      ));
 
   // A fractional diagonal step can round into a different cell before the
   // path waypoint itself is reached. Treat that proposed cell as the
@@ -87,16 +122,19 @@ export function stepMover(e: UnitEntity, step: MoverStep): void {
     if (proposedCell !== current) {
       const proposedX = proposedCell % state.width;
       const proposedY = Math.floor(proposedCell / state.width);
-      if (!tileFree(state, occupancy, reserved, e, proposedX, proposedY) || navigationEdgeReserved(
-        edgeReservations,
-        state.width,
-        state.height,
-        current % state.width,
-        Math.floor(current / state.width),
-        proposedX,
-        proposedY,
-        e.id,
-      )) {
+      if (
+        !tileFree(state, occupancy, reserved, e, proposedX, proposedY) ||
+        navigationEdgeReserved(
+          edgeReservations,
+          state.width,
+          state.height,
+          current % state.width,
+          Math.floor(current / state.width),
+          proposedX,
+          proposedY,
+          e.id,
+        )
+      ) {
         blockedX = proposedX;
         blockedY = proposedY;
         target = proposedCell;
@@ -123,28 +161,36 @@ export function stepMover(e: UnitEntity, step: MoverStep): void {
       return;
     }
     const progressField = flowFields.get(e.id);
-    const progressDistance = progressField ? (x: number, y: number) => flowDistanceAt(progressField, x, y) : undefined;
-    if (trySidestep(
-      state,
-      occupancy,
-      reserved,
-      e,
-      blockedX,
-      blockedY,
-      isPlayerControlledOwner(state, e.owner) ? previousCells.get(e.id) : undefined,
-      progressDistance,
-      edgeReservations,
-      movers.length < INDIVIDUAL_PASSING_GROUP_LIMIT,
-    )) {
+    const progressDistance = progressField
+      ? (x: number, y: number) => flowDistanceAt(progressField, x, y)
+      : undefined;
+    if (
+      trySidestep(
+        state,
+        occupancy,
+        reserved,
+        e,
+        blockedX,
+        blockedY,
+        isPlayerControlledOwner(state, e.owner) ? previousCells.get(e.id) : undefined,
+        progressDistance,
+        edgeReservations,
+        movers.length < INDIVIDUAL_PASSING_GROUP_LIMIT,
+      )
+    ) {
       e.blockedTicks = 0;
-    } else if (blocker && blocker.id !== e.id && giveWay(
-      state,
-      occupancy,
-      reserved,
-      blocker,
-      isPlayerControlledOwner(state, blocker.owner) ? previousCells.get(blocker.id) : undefined,
-      edgeReservations,
-    )) {
+    } else if (
+      blocker &&
+      blocker.id !== e.id &&
+      giveWay(
+        state,
+        occupancy,
+        reserved,
+        blocker,
+        isPlayerControlledOwner(state, blocker.owner) ? previousCells.get(blocker.id) : undefined,
+        edgeReservations,
+      )
+    ) {
       e.blockedTicks = 0;
       return;
     } else {
@@ -157,7 +203,12 @@ export function stepMover(e: UnitEntity, step: MoverStep): void {
             avoidUnits: true,
             ignoreId: e.id,
             occupancy,
-            approach: stepFromPreviousCell(state.width, Math.round(e.x), Math.round(e.y), previousCells.get(e.id)),
+            approach: stepFromPreviousCell(
+              state.width,
+              Math.round(e.x),
+              Math.round(e.y),
+              previousCells.get(e.id),
+            ),
           });
           if (!detourResult) {
             if (e.flowGoal) e.path = [];
@@ -183,24 +234,33 @@ export function stepMover(e: UnitEntity, step: MoverStep): void {
             const dx = Math.round(detourFirst.x);
             const dy = Math.round(detourFirst.y);
             const sameBlocked = dx === blockedX && dy === blockedY;
-            const reverses = isPlayerControlledOwner(state, e.owner) && e.scenarioRole !== "convoy" && !isRecoveryReturn(e) && reversesPreviousStep(
-              state.width,
-              Math.round(e.x),
-              Math.round(e.y),
-              dx,
-              dy,
-              previousCells.get(e.id),
-            );
-            if (!sameBlocked && !reverses && tileFree(state, occupancy, reserved, e, dx, dy) && !navigationEdgeReserved(
-              edgeReservations,
-              state.width,
-              state.height,
-              current % state.width,
-              Math.floor(current / state.width),
-              dx,
-              dy,
-              e.id,
-            )) {
+            const reverses =
+              isPlayerControlledOwner(state, e.owner) &&
+              e.scenarioRole !== "convoy" &&
+              !isRecoveryReturn(e) &&
+              reversesPreviousStep(
+                state.width,
+                Math.round(e.x),
+                Math.round(e.y),
+                dx,
+                dy,
+                previousCells.get(e.id),
+              );
+            if (
+              !sameBlocked &&
+              !reverses &&
+              tileFree(state, occupancy, reserved, e, dx, dy) &&
+              !navigationEdgeReserved(
+                edgeReservations,
+                state.width,
+                state.height,
+                current % state.width,
+                Math.floor(current / state.width),
+                dx,
+                dy,
+                e.id,
+              )
+            ) {
               e.path = detour;
               rerouted = true;
             }
@@ -222,29 +282,37 @@ export function stepMover(e: UnitEntity, step: MoverStep): void {
   const stepX = stepTarget ? Math.round(stepTarget.x) : Math.round(e.x);
   const stepY = stepTarget ? Math.round(stepTarget.y) : Math.round(e.y);
   const stepCell = stepY * state.width + stepX;
-  if (stepTarget && stepCell !== current && (!tileFree(state, occupancy, reserved, e, stepX, stepY) || navigationEdgeReserved(
-    edgeReservations,
-    state.width,
-    state.height,
-    current % state.width,
-    Math.floor(current / state.width),
-    stepX,
-    stepY,
-    e.id,
-  ))) {
+  if (
+    stepTarget &&
+    stepCell !== current &&
+    (!tileFree(state, occupancy, reserved, e, stepX, stepY) ||
+      navigationEdgeReserved(
+        edgeReservations,
+        state.width,
+        state.height,
+        current % state.width,
+        Math.floor(current / state.width),
+        stepX,
+        stepY,
+        e.id,
+      ))
+  ) {
     e.blockedTicks = (e.blockedTicks ?? 0) + 1;
     return;
   }
   if (stepTarget && stepCell !== current) reserved.set(stepCell, e.id);
   if (stepTarget && stepCell !== current) {
-    edgeReservations.set(navigationEdgeKey(
-      state.width,
-      state.height,
-      current % state.width,
-      Math.floor(current / state.width),
-      stepX,
-      stepY,
-    ), e.id);
+    edgeReservations.set(
+      navigationEdgeKey(
+        state.width,
+        state.height,
+        current % state.width,
+        Math.floor(current / state.width),
+        stepX,
+        stepY,
+      ),
+      e.id,
+    );
   }
   if (stepTarget) {
     const dx = stepTarget.x - e.x;

@@ -82,14 +82,23 @@ function paintUnitShadow(
     for (let step = 3; step > 0; step--) {
       ctx.globalAlpha = alpha * (0.035 + (options.shadowDepth ?? 0.08) * 0.16);
       ctx.beginPath();
-      ctx.ellipse(cx + light.x * length * scale * step / 3, groundY + light.y * length * scale * step / 3,
-        radX * (1 + step * 0.08), radY * (1 + step * 0.06), 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        cx + (light.x * length * scale * step) / 3,
+        groundY + (light.y * length * scale * step) / 3,
+        radX * (1 + step * 0.08),
+        radY * (1 + step * 0.06),
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.fill();
     }
   }
   // Aircraft keep the directional cast shadow; ground shadows touch feet/treads.
-  ctx.translate(kind === "strikePlane" ? 5 * scale : UNIT_SHADOW_OFFSET_X * scale,
-    kind === "strikePlane" ? 4 * scale : UNIT_SHADOW_OFFSET_Y * scale);
+  ctx.translate(
+    kind === "strikePlane" ? 5 * scale : UNIT_SHADOW_OFFSET_X * scale,
+    kind === "strikePlane" ? 4 * scale : UNIT_SHADOW_OFFSET_Y * scale,
+  );
   ctx.globalAlpha = alpha * (isMoving ? UNIT_SHADOW_MOVE_ALPHA : UNIT_SHADOW_ALPHA);
   ctx.fillStyle = UNIT_SHADOW_FILL;
 
@@ -118,10 +127,16 @@ function unitShadowRaster(
   const { radX, radY } = unitShadowRadii(kind, scale);
   const hasCastShadow = Boolean(light && kind !== "strikePlane");
   const castLength = hasCastShadow
-    ? kind === "infantry" || kind === "medic" || kind === "antiArmor" ? 9 : kind === "behemoth" ? 16 : 12
+    ? kind === "infantry" || kind === "medic" || kind === "antiArmor"
+      ? 9
+      : kind === "behemoth"
+        ? 16
+        : 12
     : 0;
-  const offsetX = light && hasCastShadow ? light.x * castLength * scale : kind === "strikePlane" ? 5 * scale : 0;
-  const offsetY = light && hasCastShadow ? light.y * castLength * scale : kind === "strikePlane" ? 4 * scale : 0;
+  const offsetX =
+    light && hasCastShadow ? light.x * castLength * scale : kind === "strikePlane" ? 5 * scale : 0;
+  const offsetY =
+    light && hasCastShadow ? light.y * castLength * scale : kind === "strikePlane" ? 4 * scale : 0;
   const boundsX = Math.abs(offsetX) + radX * (hasCastShadow ? 1.24 : 1);
   const boundsY = Math.abs(offsetY) + radY * (hasCastShadow ? 1.18 : 1);
   const pad = 2;
@@ -169,9 +184,7 @@ export function drawUnitShadow(
 
 function strideRatioFromOptions(frame: AnimFrame, options: UnitMotionOptions): number {
   if (options.strideRatio !== undefined) return options.strideRatio;
-  const phase = options.stridePhase !== undefined
-    ? options.stridePhase
-    : (frame / 4) * Math.PI * 2;
+  const phase = options.stridePhase !== undefined ? options.stridePhase : (frame / 4) * Math.PI * 2;
   return Math.sin(phase);
 }
 

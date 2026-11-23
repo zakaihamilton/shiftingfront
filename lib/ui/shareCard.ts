@@ -1,7 +1,7 @@
-import { formatSeed } from "../seed/rng";
-import type { Campaign, CampaignProgress, SimState } from "../types";
-import { missionDebrief } from "../sim/debrief";
 import { weeklyIndex, weeklySeed } from "@/components/menu/menuLaunch";
+import { formatSeed } from "../seed/rng";
+import { missionDebrief } from "../sim/debrief";
+import type { Campaign, CampaignProgress, SimState } from "../types";
 
 function shareUrl(seedStr: string): string {
   if (typeof window !== "undefined" && window.location?.origin) {
@@ -36,7 +36,10 @@ export function formatMissionShareCard(state: SimState): string {
 
 export function formatCampaignShareCard(campaign: Campaign, progress: CampaignProgress): string {
   const totalPossible = campaign.missions.length * 3;
-  const totalMedals = campaign.missions.reduce((sum, m) => sum + (progress.medals[String(m.index)] ?? 0), 0);
+  const totalMedals = campaign.missions.reduce(
+    (sum, m) => sum + (progress.medals[String(m.index)] ?? 0),
+    0,
+  );
   const seedStr = formatSeed(campaign.seedNumber);
 
   // Six-operation emoji grid
@@ -44,13 +47,15 @@ export function formatCampaignShareCard(campaign: Campaign, progress: CampaignPr
   // 🟨 = 2 medals (Silver)
   // 🟧 = 1 medal (Bronze)
   // ⬛ = Incomplete / 0 medals
-  const grid = campaign.missions.map((m) => {
-    const medals = progress.medals[String(m.index)] ?? 0;
-    if (medals >= 3) return "🟩";
-    if (medals === 2) return "🟨";
-    if (medals === 1) return "🟧";
-    return "⬛";
-  }).join("");
+  const grid = campaign.missions
+    .map((m) => {
+      const medals = progress.medals[String(m.index)] ?? 0;
+      if (medals >= 3) return "🟩";
+      if (medals === 2) return "🟨";
+      if (medals === 1) return "🟧";
+      return "⬛";
+    })
+    .join("");
 
   const isWeekly = seedStr === weeklySeed();
   const header = isWeekly

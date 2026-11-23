@@ -11,9 +11,17 @@
   padding: 0.7rem 1.1rem;
   border: 1px solid var(--chrome-inset);
   background:
-    linear-gradient(90deg, transparent, color-mix(in srgb, var(--chrome-cyan) 10%, transparent), transparent),
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--chrome-cyan) 10%, transparent),
+      transparent
+    ),
     linear-gradient(var(--chrome-steel-hi), var(--chrome-steel-lo));
-  box-shadow: inset 1px 1px var(--chrome-bevel), inset -1px -1px var(--chrome-void), 4px 5px 0 var(--chrome-void);
+  box-shadow:
+    inset 1px 1px var(--chrome-bevel),
+    inset -1px -1px var(--chrome-void),
+    4px 5px 0 var(--chrome-void);
 }
 
 .title {

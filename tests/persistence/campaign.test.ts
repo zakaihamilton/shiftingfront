@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { campaignKey, completeMission, freshCampaignProgress, readCampaignProgress, recordWonCampaignProgress, writeCampaignProgress } from "../../lib/persist/campaign";
+import {
+  campaignKey,
+  completeMission,
+  freshCampaignProgress,
+  readCampaignProgress,
+  recordWonCampaignProgress,
+  writeCampaignProgress,
+} from "../../lib/persist/campaign";
 import { memoryStorage } from "../../lib/persist/save";
 import { makeFixture } from "../../lib/sim/fixtures";
 
@@ -8,7 +15,9 @@ describe("campaign progress", () => {
     for (const seed of [-1, 10000, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(() => campaignKey(seed)).toThrow(RangeError);
       expect(() => freshCampaignProgress(seed)).toThrow(RangeError);
-      expect(writeCampaignProgress(memoryStorage(), { ...freshCampaignProgress(0), seed })).toBe(false);
+      expect(writeCampaignProgress(memoryStorage(), { ...freshCampaignProgress(0), seed })).toBe(
+        false,
+      );
     }
   });
 
@@ -34,16 +43,19 @@ describe("campaign progress", () => {
 
   it("normalizes duplicate and invalid records from local storage", () => {
     const storage = memoryStorage();
-    storage.setItem(campaignKey(42), JSON.stringify({
-      version: 1,
-      progress: {
-        ...freshCampaignProgress(42),
-        unlockedMission: 1,
-        completedMissions: [0, 0, 2, 8, -1],
-        medals: { "0": 2, "8": 3, invalid: 99, "1": -1 },
-        bestScores: { "0": 500, "9": 900, invalid: 1000 },
-      },
-    }));
+    storage.setItem(
+      campaignKey(42),
+      JSON.stringify({
+        version: 1,
+        progress: {
+          ...freshCampaignProgress(42),
+          unlockedMission: 1,
+          completedMissions: [0, 0, 2, 8, -1],
+          medals: { "0": 2, "8": 3, invalid: 99, "1": -1 },
+          bestScores: { "0": 500, "9": 900, invalid: 1000 },
+        },
+      }),
+    );
 
     expect(readCampaignProgress(storage, 42)).toEqual({
       ...freshCampaignProgress(42),
@@ -80,7 +92,12 @@ describe("campaign progress", () => {
 
   it("does not let a rules 1 victory downgrade a rules 2 campaign", () => {
     const storage = memoryStorage();
-    writeCampaignProgress(storage, { ...freshCampaignProgress(42), gameplayRulesVersion: 2, unlockedMission: 1, completedMissions: [0] });
+    writeCampaignProgress(storage, {
+      ...freshCampaignProgress(42),
+      gameplayRulesVersion: 2,
+      unlockedMission: 1,
+      completedMissions: [0],
+    });
     const won = makeFixture({ seed: 42, win: { kind: "annihilate" } });
     won.gameplayRulesVersion = 1;
     won.result = "won";

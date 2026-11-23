@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isHapticsSupported, triggerHaptic, type HapticKind } from "../../lib/ui/haptics";
+import { type HapticKind, isHapticsSupported, triggerHaptic } from "../../lib/ui/haptics";
 
 describe("haptics tactile feedback utility", () => {
   let originalVibrate: PropertyDescriptor | undefined;

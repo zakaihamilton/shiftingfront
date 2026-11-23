@@ -93,9 +93,7 @@ export function ArtBackedCard({
   style,
   ...props
 }: ArtBackedCardProps) {
-  const artStyle = art
-    ? ({ ...style, "--dossier-art": `url("${art}")` } as CSSProperties)
-    : style;
+  const artStyle = art ? ({ ...style, "--dossier-art": `url("${art}")` } as CSSProperties) : style;
 
   return <Tag className={cx(styles.artCard, className)} style={artStyle} {...props} />;
 }

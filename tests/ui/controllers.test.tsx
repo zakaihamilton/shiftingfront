@@ -6,21 +6,29 @@ import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useBriefingController } from "../../components/briefing/useBriefingController";
 import { useBriefingTypewriter } from "../../components/briefing/useBriefingTypewriter";
-import { useGameActions } from "../../components/game/hooks/useGameActions";
 import { useCombatAlert } from "../../components/game/hooks/useCombatAlert";
+import { useGameActions } from "../../components/game/hooks/useGameActions";
 import { useGameAudioLifecycle } from "../../components/game/hooks/useGameAudioLifecycle";
 import { useGameKeyboard } from "../../components/game/hooks/useGameKeyboard";
-import { useGameSession } from "../../components/game/hooks/useGameSession";
 import { useGameSelection } from "../../components/game/hooks/useGameSelection";
-import { useMissionRoutes } from "../../components/game/hooks/useMissionRoutes";
+import { useGameSession } from "../../components/game/hooks/useGameSession";
 import { useMissionBackGuard } from "../../components/game/hooks/useMissionBackGuard";
-import { useMenuController } from "../../components/menu/useMenuController";
+import { useMissionRoutes } from "../../components/game/hooks/useMissionRoutes";
 import { weeklySeed } from "../../components/menu/menuLaunch";
+import { useMenuController } from "../../components/menu/useMenuController";
+import { campaignKey, freshCampaignProgress } from "../../lib/persist/campaign";
 import { consumeFreshLaunchIntent } from "../../lib/persist/navigation";
-import { createSaveSession, listSlots, localStorageAdapter, readSave, writeSave, saveKey, writeSlot } from "../../lib/persist/save";
-import { freshCampaignProgress, campaignKey } from "../../lib/persist/campaign";
+import {
+  createSaveSession,
+  listSlots,
+  localStorageAdapter,
+  readSave,
+  saveKey,
+  writeSave,
+  writeSlot,
+} from "../../lib/persist/save";
 import { defaultSettings } from "../../lib/persist/settings";
-import { makeFixture, addBuilding, addUnit } from "../../lib/sim/fixtures";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import type { Command } from "../../lib/types";
 import type { CommandTab, PauseView } from "../../lib/ui/shortcuts";
 
@@ -114,14 +122,16 @@ describe("useBriefingController", () => {
   it("routes launches and maps keyboard commands to typewriter actions", () => {
     const replay = vi.fn();
     const skip = vi.fn();
-    const { result } = renderHook(() => useBriefingController({
-      seed: 421,
-      mission: 2,
-      returnToGame: true,
-      isComplete: false,
-      replayTransmission: replay,
-      skipToEnd: skip,
-    }));
+    const { result } = renderHook(() =>
+      useBriefingController({
+        seed: 421,
+        mission: 2,
+        returnToGame: true,
+        isComplete: false,
+        replayTransmission: replay,
+        skipToEnd: skip,
+      }),
+    );
 
     act(() => result.current.launch());
     expect(router.push).toHaveBeenCalledWith("/play?seed=0421&mission=2&resume=1");
@@ -132,14 +142,16 @@ describe("useBriefingController", () => {
   });
 
   it("marks a new-campaign launch as fresh across client-side navigation", () => {
-    const { result } = renderHook(() => useBriefingController({
-      seed: 421,
-      mission: 0,
-      returnToGame: false,
-      isComplete: true,
-      replayTransmission: vi.fn(),
-      skipToEnd: vi.fn(),
-    }));
+    const { result } = renderHook(() =>
+      useBriefingController({
+        seed: 421,
+        mission: 0,
+        returnToGame: false,
+        isComplete: true,
+        replayTransmission: vi.fn(),
+        skipToEnd: vi.fn(),
+      }),
+    );
 
     act(() => result.current.launch());
 
@@ -148,15 +160,17 @@ describe("useBriefingController", () => {
   });
 
   it("uses Escape to return from a New Campaign briefing", () => {
-    const { result } = renderHook(() => useBriefingController({
-      seed: 421,
-      mission: 0,
-      returnToGame: false,
-      origin: "newGame",
-      isComplete: true,
-      replayTransmission: vi.fn(),
-      skipToEnd: vi.fn(),
-    }));
+    const { result } = renderHook(() =>
+      useBriefingController({
+        seed: 421,
+        mission: 0,
+        returnToGame: false,
+        origin: "newGame",
+        isComplete: true,
+        replayTransmission: vi.fn(),
+        skipToEnd: vi.fn(),
+      }),
+    );
 
     act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
 
@@ -186,7 +200,9 @@ describe("useGameActions", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     const cmdQ = { current: [] as Command[] };
     const selected = { current: new Set<number>() };
-    const { result } = renderHook(() => useGameActions({ stateRef: { current: state }, cmdQ, selected, selectedIds: [] }));
+    const { result } = renderHook(() =>
+      useGameActions({ stateRef: { current: state }, cmdQ, selected, selectedIds: [] }),
+    );
 
     act(() => result.current.togglePlace("power"));
     expect(result.current.placeKind).toBe("power");
@@ -206,7 +222,9 @@ describe("useGameActions", () => {
     addBuilding(state, 0, "barracks", 2, 2);
     const cmdQ = { current: [] as Command[] };
     const selected = { current: new Set<number>() };
-    const { result } = renderHook(() => useGameActions({ stateRef: { current: state }, cmdQ, selected, selectedIds: [] }));
+    const { result } = renderHook(() =>
+      useGameActions({ stateRef: { current: state }, cmdQ, selected, selectedIds: [] }),
+    );
 
     act(() => result.current.queueUnit("infantry"));
     expect(cmdQ.current).toEqual([{ type: "produce", fromId: 1, unit: "infantry" }]);
@@ -217,7 +235,9 @@ describe("useGameActions", () => {
     const unit = addUnit(state, 0, "infantry", 2, 2);
     const cmdQ = { current: [] as Command[] };
     const selected = { current: new Set<number>() };
-    const { result } = renderHook(() => useGameActions({ stateRef: { current: state }, cmdQ, selected, selectedIds: [unit.id] }));
+    const { result } = renderHook(() =>
+      useGameActions({ stateRef: { current: state }, cmdQ, selected, selectedIds: [unit.id] }),
+    );
 
     act(() => result.current.issueSelectedCommand("stop"));
     act(() => result.current.issueSelectedCommand("stance", "hold"));
@@ -237,7 +257,9 @@ describe("game lifecycle hooks", () => {
     window.history.pushState({}, "", "/play?seed=0421&mission=0&fresh=1");
     const requestLeave = vi.fn();
     const back = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
-    const { result, unmount } = renderHook(() => useMissionBackGuard({ enabled: true, onRequestLeave: requestLeave }));
+    const { result, unmount } = renderHook(() =>
+      useMissionBackGuard({ enabled: true, onRequestLeave: requestLeave }),
+    );
 
     act(() => window.dispatchEvent(new PopStateEvent("popstate")));
     expect(window.location.pathname).toBe("/play");
@@ -252,7 +274,11 @@ describe("game lifecycle hooks", () => {
 
   it("cleans up stale same-URL sentinels when the mission guard is disabled", async () => {
     const sentinelKey = "__shiftingFrontMissionBackSentinel";
-    window.history.replaceState({ [sentinelKey]: true, route: "mission" }, "", "/play?seed=0421&mission=0");
+    window.history.replaceState(
+      { [sentinelKey]: true, route: "mission" },
+      "",
+      "/play?seed=0421&mission=0",
+    );
     const missionUrl = window.location.href;
     const replaceState = vi.spyOn(window.history, "replaceState");
     const pushState = vi.spyOn(window.history, "pushState");
@@ -313,11 +339,13 @@ describe("game lifecycle hooks", () => {
     const replacement = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     replacement.tick = 77;
     expect(writeSave(storage, replacement)).toBe(true);
-    const { result } = renderHook(() => useMissionRoutes({
-      stateRef: { current: state },
-      saveSession: session,
-      onSaveError: vi.fn(),
-    }));
+    const { result } = renderHook(() =>
+      useMissionRoutes({
+        stateRef: { current: state },
+        saveSession: session,
+        onSaveError: vi.fn(),
+      }),
+    );
 
     act(() => result.current.viewMissionBriefing());
 
@@ -329,12 +357,14 @@ describe("game lifecycle hooks", () => {
     const state = makeFixture({ seed: 0, win: { kind: "holdTheLine" } });
     const storage = localStorageAdapter();
     const session = createSaveSession(storage, 0);
-    const { result } = renderHook(() => useMissionRoutes({
-      stateRef: { current: state },
-      saveSession: session,
-      onSaveError: vi.fn(),
-      tutorial: true,
-    }));
+    const { result } = renderHook(() =>
+      useMissionRoutes({
+        stateRef: { current: state },
+        saveSession: session,
+        onSaveError: vi.fn(),
+        tutorial: true,
+      }),
+    );
 
     act(() => result.current.exitTutorial());
     expect(router.push).toHaveBeenCalledWith("/");
@@ -358,14 +388,20 @@ describe("game lifecycle hooks", () => {
       markExternalChange: vi.fn(),
     };
     const onSaveError = vi.fn();
-    const { result } = renderHook(() => useMissionRoutes({
-      stateRef: { current: state },
-      saveSession,
-      onSaveError,
-    }));
+    const { result } = renderHook(() =>
+      useMissionRoutes({
+        stateRef: { current: state },
+        saveSession,
+        onSaveError,
+      }),
+    );
 
     act(() => result.current.goRetry());
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/briefing?seed=0421&mission=0&from=result&replay=1"));
+    await waitFor(() =>
+      expect(router.push).toHaveBeenCalledWith(
+        "/briefing?seed=0421&mission=0&from=result&replay=1",
+      ),
+    );
 
     expect(saveSession.write).toHaveBeenCalledWith(state, "implicit");
     expect(onSaveError).not.toHaveBeenCalled();
@@ -375,18 +411,24 @@ describe("game lifecycle hooks", () => {
     const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     state.result = "lost";
     const onSaveError = vi.fn();
-    const { result } = renderHook(() => useMissionRoutes({
-      stateRef: { current: state },
-      saveSession: {
-        write: vi.fn(() => Promise.resolve("conflict" as const)),
-        adoptCurrent: vi.fn(),
-        markExternalChange: vi.fn(),
-      },
-      onSaveError,
-    }));
+    const { result } = renderHook(() =>
+      useMissionRoutes({
+        stateRef: { current: state },
+        saveSession: {
+          write: vi.fn(() => Promise.resolve("conflict" as const)),
+          adoptCurrent: vi.fn(),
+          markExternalChange: vi.fn(),
+        },
+        onSaveError,
+      }),
+    );
 
     act(() => result.current.resultPrimary());
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/briefing?seed=0421&mission=0&from=result&replay=1"));
+    await waitFor(() =>
+      expect(router.push).toHaveBeenCalledWith(
+        "/briefing?seed=0421&mission=0&from=result&replay=1",
+      ),
+    );
     expect(onSaveError).not.toHaveBeenCalled();
   });
 
@@ -427,7 +469,7 @@ describe("game lifecycle hooks", () => {
     });
     expect(readSave(localStorageAdapter(), 421)?.seed).toBe(421);
     expect(listSlots(localStorageAdapter())[0]?.name).toBe("Bridgehead");
-    expect(setPauseNotice).toHaveBeenCalledWith('Saved “Bridgehead”.');
+    expect(setPauseNotice).toHaveBeenCalledWith("Saved “Bridgehead”.");
 
     stateRef.current.tick = 99;
     act(() => result.current.loadMission());
@@ -508,9 +550,18 @@ describe("game lifecycle hooks", () => {
 
     const music = await import("@/lib/audio/music");
     const { pauseMusic, setMusicCue, setMusicDucked } = music;
-    const { rerender } = renderHook((props: Parameters<typeof useGameAudioLifecycle>[0]) => useGameAudioLifecycle(props), {
-      initialProps: { seed: 421, missionIndex: 3, tutorial: false, paused: true, result: "playing" },
-    });
+    const { rerender } = renderHook(
+      (props: Parameters<typeof useGameAudioLifecycle>[0]) => useGameAudioLifecycle(props),
+      {
+        initialProps: {
+          seed: 421,
+          missionIndex: 3,
+          tutorial: false,
+          paused: true,
+          result: "playing",
+        },
+      },
+    );
     expect(pauseMusic).toHaveBeenCalledOnce();
     expect(setMusicCue).not.toHaveBeenCalled();
 
@@ -519,12 +570,24 @@ describe("game lifecycle hooks", () => {
     expect(setMusicCue).toHaveBeenCalledWith("mission", 421, 3);
     vi.mocked(setMusicCue).mockClear();
 
-    rerender({ seed: 421, missionIndex: 3, tutorial: false, paused: false, result: "won" as const });
+    rerender({
+      seed: 421,
+      missionIndex: 3,
+      tutorial: false,
+      paused: false,
+      result: "won" as const,
+    });
     expect(pauseMusic).toHaveBeenCalledTimes(1);
     expect(setMusicCue).toHaveBeenCalledWith("victory", 421, 3);
 
     vi.mocked(setMusicCue).mockClear();
-    rerender({ seed: 421, missionIndex: 3, tutorial: false, paused: false, result: "lost" as const });
+    rerender({
+      seed: 421,
+      missionIndex: 3,
+      tutorial: false,
+      paused: false,
+      result: "lost" as const,
+    });
     expect(pauseMusic).toHaveBeenCalledTimes(1);
     expect(setMusicCue).toHaveBeenCalledWith("defeat", 421, 3);
   });
@@ -547,31 +610,33 @@ describe("useGameKeyboard", () => {
     const toggleRepair = vi.fn();
     const saveMission = vi.fn();
     const onNavigateHome = vi.fn();
-    renderHook(() => useGameKeyboard({
-      ...refs,
-      openPauseMenu,
-      resumeMission: vi.fn(),
-      setPauseView: vi.fn(),
-      setPauseNotice: vi.fn(),
-      setActiveTab,
-      activateCameo: vi.fn(),
-      assignControlGroup: vi.fn(),
-      recallControlGroup: vi.fn(),
-      jumpHome: vi.fn(),
-      centerSelection: vi.fn(),
-      toggleRepair,
-      toggleSell: vi.fn(),
-      stopSelected: vi.fn(),
-      clearTools: vi.fn(),
-      saveMission,
-      loadMission: vi.fn(),
-      viewMissionBriefing: vi.fn(),
-      restartMission: vi.fn(),
-      toggleSound: vi.fn(),
-      toggleMusic: vi.fn(),
-      resultPrimary: vi.fn(),
-      onNavigateHome,
-    }));
+    renderHook(() =>
+      useGameKeyboard({
+        ...refs,
+        openPauseMenu,
+        resumeMission: vi.fn(),
+        setPauseView: vi.fn(),
+        setPauseNotice: vi.fn(),
+        setActiveTab,
+        activateCameo: vi.fn(),
+        assignControlGroup: vi.fn(),
+        recallControlGroup: vi.fn(),
+        jumpHome: vi.fn(),
+        centerSelection: vi.fn(),
+        toggleRepair,
+        toggleSell: vi.fn(),
+        stopSelected: vi.fn(),
+        clearTools: vi.fn(),
+        saveMission,
+        loadMission: vi.fn(),
+        viewMissionBriefing: vi.fn(),
+        restartMission: vi.fn(),
+        toggleSound: vi.fn(),
+        toggleMusic: vi.fn(),
+        resultPrimary: vi.fn(),
+        onNavigateHome,
+      }),
+    );
 
     act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
     act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "e" })));
@@ -591,39 +656,41 @@ describe("useGameKeyboard", () => {
     const cancelConfirmation = vi.fn();
     const resumeMission = vi.fn();
     const saveMission = vi.fn();
-    renderHook(() => useGameKeyboard({
-      stateRef: { current: state },
-      pausedRef: { current: true },
-      pauseViewRef: { current: "main" },
-      activeTabRef: { current: "construction" },
-      place: { current: null },
-      repair: { current: false },
-      sell: { current: false },
-      openPauseMenu: vi.fn(),
-      resumeMission,
-      setPauseView: vi.fn(),
-      setPauseNotice: vi.fn(),
-      setActiveTab: vi.fn(),
-      activateCameo: vi.fn(),
-      assignControlGroup: vi.fn(),
-      recallControlGroup: vi.fn(),
-      jumpHome: vi.fn(),
-      centerSelection: vi.fn(),
-      toggleRepair: vi.fn(),
-      toggleSell: vi.fn(),
-      stopSelected: vi.fn(),
-      clearTools: vi.fn(),
-      saveMission,
-      loadMission: vi.fn(),
-      viewMissionBriefing: vi.fn(),
-      restartMission: vi.fn(),
-      toggleSound: vi.fn(),
-      toggleMusic: vi.fn(),
-      resultPrimary: vi.fn(),
-      onNavigateHome: vi.fn(),
-      confirmationOpen: true,
-      cancelConfirmation,
-    }));
+    renderHook(() =>
+      useGameKeyboard({
+        stateRef: { current: state },
+        pausedRef: { current: true },
+        pauseViewRef: { current: "main" },
+        activeTabRef: { current: "construction" },
+        place: { current: null },
+        repair: { current: false },
+        sell: { current: false },
+        openPauseMenu: vi.fn(),
+        resumeMission,
+        setPauseView: vi.fn(),
+        setPauseNotice: vi.fn(),
+        setActiveTab: vi.fn(),
+        activateCameo: vi.fn(),
+        assignControlGroup: vi.fn(),
+        recallControlGroup: vi.fn(),
+        jumpHome: vi.fn(),
+        centerSelection: vi.fn(),
+        toggleRepair: vi.fn(),
+        toggleSell: vi.fn(),
+        stopSelected: vi.fn(),
+        clearTools: vi.fn(),
+        saveMission,
+        loadMission: vi.fn(),
+        viewMissionBriefing: vi.fn(),
+        restartMission: vi.fn(),
+        toggleSound: vi.fn(),
+        toggleMusic: vi.fn(),
+        resultPrimary: vi.fn(),
+        onNavigateHome: vi.fn(),
+        confirmationOpen: true,
+        cancelConfirmation,
+      }),
+    );
 
     act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
 
@@ -635,37 +702,39 @@ describe("useGameKeyboard", () => {
   it("does not record pan keys when typing in an editable target or when paused", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     const pausedRef = { current: false };
-    const { result } = renderHook(() => useGameKeyboard({
-      stateRef: { current: state },
-      pausedRef,
-      pauseViewRef: { current: "main" },
-      activeTabRef: { current: "construction" },
-      place: { current: null },
-      repair: { current: false },
-      sell: { current: false },
-      openPauseMenu: vi.fn(),
-      resumeMission: vi.fn(),
-      setPauseView: vi.fn(),
-      setPauseNotice: vi.fn(),
-      setActiveTab: vi.fn(),
-      activateCameo: vi.fn(),
-      assignControlGroup: vi.fn(),
-      recallControlGroup: vi.fn(),
-      jumpHome: vi.fn(),
-      centerSelection: vi.fn(),
-      toggleRepair: vi.fn(),
-      toggleSell: vi.fn(),
-      stopSelected: vi.fn(),
-      clearTools: vi.fn(),
-      saveMission: vi.fn(),
-      loadMission: vi.fn(),
-      viewMissionBriefing: vi.fn(),
-      restartMission: vi.fn(),
-      toggleSound: vi.fn(),
-      toggleMusic: vi.fn(),
-      resultPrimary: vi.fn(),
-      onNavigateHome: vi.fn(),
-    }));
+    const { result } = renderHook(() =>
+      useGameKeyboard({
+        stateRef: { current: state },
+        pausedRef,
+        pauseViewRef: { current: "main" },
+        activeTabRef: { current: "construction" },
+        place: { current: null },
+        repair: { current: false },
+        sell: { current: false },
+        openPauseMenu: vi.fn(),
+        resumeMission: vi.fn(),
+        setPauseView: vi.fn(),
+        setPauseNotice: vi.fn(),
+        setActiveTab: vi.fn(),
+        activateCameo: vi.fn(),
+        assignControlGroup: vi.fn(),
+        recallControlGroup: vi.fn(),
+        jumpHome: vi.fn(),
+        centerSelection: vi.fn(),
+        toggleRepair: vi.fn(),
+        toggleSell: vi.fn(),
+        stopSelected: vi.fn(),
+        clearTools: vi.fn(),
+        saveMission: vi.fn(),
+        loadMission: vi.fn(),
+        viewMissionBriefing: vi.fn(),
+        restartMission: vi.fn(),
+        toggleSound: vi.fn(),
+        toggleMusic: vi.fn(),
+        resultPrimary: vi.fn(),
+        onNavigateHome: vi.fn(),
+      }),
+    );
 
     // Typing in an input element should not register in keys.current
     const inputEl = document.createElement("input");
@@ -693,38 +762,40 @@ describe("useGameKeyboard", () => {
   it("does not pan when a command is bound to a pan key", () => {
     const state = makeFixture({ win: { kind: "annihilate" } });
     const bindings = defaultSettings().keyBindings;
-    const { result } = renderHook(() => useGameKeyboard({
-      stateRef: { current: state },
-      pausedRef: { current: false },
-      pauseViewRef: { current: "main" },
-      activeTabRef: { current: "construction" },
-      place: { current: null },
-      repair: { current: false },
-      sell: { current: false },
-      openPauseMenu: vi.fn(),
-      resumeMission: vi.fn(),
-      setPauseView: vi.fn(),
-      setPauseNotice: vi.fn(),
-      setActiveTab: vi.fn(),
-      activateCameo: vi.fn(),
-      assignControlGroup: vi.fn(),
-      recallControlGroup: vi.fn(),
-      jumpHome: vi.fn(),
-      centerSelection: vi.fn(),
-      toggleRepair: vi.fn(),
-      toggleSell: vi.fn(),
-      stopSelected: vi.fn(),
-      clearTools: vi.fn(),
-      saveMission: vi.fn(),
-      loadMission: vi.fn(),
-      viewMissionBriefing: vi.fn(),
-      restartMission: vi.fn(),
-      toggleSound: vi.fn(),
-      toggleMusic: vi.fn(),
-      resultPrimary: vi.fn(),
-      onNavigateHome: vi.fn(),
-      keyBindings: { ...bindings, stop: "w" },
-    }));
+    const { result } = renderHook(() =>
+      useGameKeyboard({
+        stateRef: { current: state },
+        pausedRef: { current: false },
+        pauseViewRef: { current: "main" },
+        activeTabRef: { current: "construction" },
+        place: { current: null },
+        repair: { current: false },
+        sell: { current: false },
+        openPauseMenu: vi.fn(),
+        resumeMission: vi.fn(),
+        setPauseView: vi.fn(),
+        setPauseNotice: vi.fn(),
+        setActiveTab: vi.fn(),
+        activateCameo: vi.fn(),
+        assignControlGroup: vi.fn(),
+        recallControlGroup: vi.fn(),
+        jumpHome: vi.fn(),
+        centerSelection: vi.fn(),
+        toggleRepair: vi.fn(),
+        toggleSell: vi.fn(),
+        stopSelected: vi.fn(),
+        clearTools: vi.fn(),
+        saveMission: vi.fn(),
+        loadMission: vi.fn(),
+        viewMissionBriefing: vi.fn(),
+        restartMission: vi.fn(),
+        toggleSound: vi.fn(),
+        toggleMusic: vi.fn(),
+        resultPrimary: vi.fn(),
+        onNavigateHome: vi.fn(),
+        keyBindings: { ...bindings, stop: "w" },
+      }),
+    );
 
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
@@ -734,27 +805,41 @@ describe("useGameKeyboard", () => {
 });
 
 describe("save before navigation", () => {
-  it.each(["goHomeNow", "viewMissionBriefing", "goCampaignMap", "goNextBriefing", "resultPrimary"] as const)(
-    "persists the latest tick before %s", (action) => {
-      const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
-      state.tick = 29;
-      const storage = localStorageAdapter();
-      const { result } = renderHook(() => useMissionRoutes({
-        stateRef: { current: state }, saveSession: createSaveSession(storage, 421), onSaveError: vi.fn(),
-      }));
-      router.push.mockImplementationOnce(() => {
-        expect(readSave(storage, 421)?.tick).toBe(29);
-      });
-      act(() => result.current[action]());
-      expect(router.push).toHaveBeenCalledOnce();
-    },
-  );
+  it.each([
+    "goHomeNow",
+    "viewMissionBriefing",
+    "goCampaignMap",
+    "goNextBriefing",
+    "resultPrimary",
+  ] as const)("persists the latest tick before %s", (action) => {
+    const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
+    state.tick = 29;
+    const storage = localStorageAdapter();
+    const { result } = renderHook(() =>
+      useMissionRoutes({
+        stateRef: { current: state },
+        saveSession: createSaveSession(storage, 421),
+        onSaveError: vi.fn(),
+      }),
+    );
+    router.push.mockImplementationOnce(() => {
+      expect(readSave(storage, 421)?.tick).toBe(29);
+    });
+    act(() => result.current[action]());
+    expect(router.push).toHaveBeenCalledOnce();
+  });
 
   it.each(["failed", "conflict"] as const)("keeps the mission open on a %s save", (status) => {
     const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     const onSaveError = vi.fn();
-    const saveSession = { write: vi.fn(() => status), adoptCurrent: vi.fn(), markExternalChange: vi.fn() };
-    const { result } = renderHook(() => useMissionRoutes({ stateRef: { current: state }, saveSession, onSaveError }));
+    const saveSession = {
+      write: vi.fn(() => status),
+      adoptCurrent: vi.fn(),
+      markExternalChange: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useMissionRoutes({ stateRef: { current: state }, saveSession, onSaveError }),
+    );
     act(() => result.current.goHomeNow());
     act(() => result.current.viewMissionBriefing());
     expect(router.push).not.toHaveBeenCalled();
@@ -765,8 +850,14 @@ describe("save before navigation", () => {
   it("retains the requested destination as a leave-without-save fallback", () => {
     const state = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     const onSaveError = vi.fn();
-    const saveSession = { write: vi.fn(() => "failed" as const), adoptCurrent: vi.fn(), markExternalChange: vi.fn() };
-    const { result } = renderHook(() => useMissionRoutes({ stateRef: { current: state }, saveSession, onSaveError }));
+    const saveSession = {
+      write: vi.fn(() => "failed" as const),
+      adoptCurrent: vi.fn(),
+      markExternalChange: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useMissionRoutes({ stateRef: { current: state }, saveSession, onSaveError }),
+    );
     act(() => result.current.goHomeNow());
     expect(onSaveError).toHaveBeenCalledOnce();
     const fallback = onSaveError.mock.calls[0]![1] as () => void;
@@ -777,12 +868,24 @@ describe("save before navigation", () => {
 
 function persistenceProps(): Parameters<typeof useGameSession>[0] {
   return {
-    seed: 421, stateRef: { current: makeFixture({ seed: 421, win: { kind: "annihilate" } }) },
-    setState: vi.fn(), commitSelection: vi.fn(), cmdQRef: { current: [] }, fxRef: { current: [] },
-    clearTools: vi.fn(), resetInput: vi.fn(), resetCamera: vi.fn(),
-    pausedRef: { current: true }, setPaused: vi.fn(), setPauseView: vi.fn(), setPauseNotice: vi.fn(),
-    campaignRecordedRef: { current: false }, terminalSaveRef: { current: false },
-    settings: defaultSettings(), setSettings: vi.fn(), saveSession: createSaveSession(localStorageAdapter(), 421),
+    seed: 421,
+    stateRef: { current: makeFixture({ seed: 421, win: { kind: "annihilate" } }) },
+    setState: vi.fn(),
+    commitSelection: vi.fn(),
+    cmdQRef: { current: [] },
+    fxRef: { current: [] },
+    clearTools: vi.fn(),
+    resetInput: vi.fn(),
+    resetCamera: vi.fn(),
+    pausedRef: { current: true },
+    setPaused: vi.fn(),
+    setPauseView: vi.fn(),
+    setPauseNotice: vi.fn(),
+    campaignRecordedRef: { current: false },
+    terminalSaveRef: { current: false },
+    settings: defaultSettings(),
+    setSettings: vi.fn(),
+    saveSession: createSaveSession(localStorageAdapter(), 421),
   };
 }
 
@@ -816,37 +919,53 @@ describe("partial persistence feedback", () => {
     const props = persistenceProps();
     props.saveSession.write = vi.fn(() => "failed" as const);
     const { result } = renderHook(() => useGameSession(props));
-    act(() => { expect(result.current.saveNamedSlot("Fallback", null)).toBe(true); });
+    act(() => {
+      expect(result.current.saveNamedSlot("Fallback", null)).toBe(true);
+    });
     expect(listSlots(localStorageAdapter())).toHaveLength(1);
     expect(props.setPauseView).toHaveBeenCalledWith("main");
-    expect(props.setPauseNotice).toHaveBeenCalledWith(expect.stringContaining('Saved “Fallback”, but'));
+    expect(props.setPauseNotice).toHaveBeenCalledWith(
+      expect.stringContaining("Saved “Fallback”, but"),
+    );
   });
 
-  it.each([0, 1])("does not apply or navigate to mission %s after a failed campaign restore", (missionIndex) => {
-    const props = persistenceProps();
-    const storage = localStorageAdapter();
-    writeSave(storage, props.stateRef.current);
-    const before = storage.getItem(saveKey(421));
-    writeSlot(storage, {
-      name: "Earlier", state: { ...props.stateRef.current, missionIndex, tick: 88 },
-      campaign: freshCampaignProgress(421),
-    });
-    const { result } = renderHook(() => useGameSession(props));
-    const entry = result.current.listLoadEntries().find((entry) => entry.kind === "slot")!;
-    const original = Storage.prototype.setItem;
-    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
-      if (key === campaignKey(421)) throw new Error("quota");
-      original.call(this, key, value);
-    });
-    try {
-      act(() => result.current.loadArchiveEntry(entry));
-      expect(props.stateRef.current.tick).toBe(0);
-      expect(props.setState).not.toHaveBeenCalled();
-      expect(router.push).not.toHaveBeenCalled();
-      expect(storage.getItem(saveKey(421))).toBe(before);
-      expect(props.setPauseNotice).toHaveBeenCalledWith(expect.stringContaining("previous autosave was restored"));
-    } finally { spy.mockRestore(); }
-  });
+  it.each([0, 1])(
+    "does not apply or navigate to mission %s after a failed campaign restore",
+    (missionIndex) => {
+      const props = persistenceProps();
+      const storage = localStorageAdapter();
+      writeSave(storage, props.stateRef.current);
+      const before = storage.getItem(saveKey(421));
+      writeSlot(storage, {
+        name: "Earlier",
+        state: { ...props.stateRef.current, missionIndex, tick: 88 },
+        campaign: freshCampaignProgress(421),
+      });
+      const { result } = renderHook(() => useGameSession(props));
+      const entry = result.current.listLoadEntries().find((entry) => entry.kind === "slot")!;
+      const original = Storage.prototype.setItem;
+      const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+        this: Storage,
+        key,
+        value,
+      ) {
+        if (key === campaignKey(421)) throw new Error("quota");
+        original.call(this, key, value);
+      });
+      try {
+        act(() => result.current.loadArchiveEntry(entry));
+        expect(props.stateRef.current.tick).toBe(0);
+        expect(props.setState).not.toHaveBeenCalled();
+        expect(router.push).not.toHaveBeenCalled();
+        expect(storage.getItem(saveKey(421))).toBe(before);
+        expect(props.setPauseNotice).toHaveBeenCalledWith(
+          expect.stringContaining("previous autosave was restored"),
+        );
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
 
   it("shows a failed leave in the pause menu", () => {
     const props = persistenceProps();

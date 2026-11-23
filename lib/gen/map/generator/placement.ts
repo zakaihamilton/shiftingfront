@@ -1,5 +1,5 @@
-import type { MapSpawnTopology, Vec2 } from "../../../types";
 import { createRng, type Rng } from "../../../seed/rng";
+import type { MapSpawnTopology, Vec2 } from "../../../types";
 import type { MapCorner } from "./types";
 
 export const ALL_SPAWN_TOPOLOGIES: readonly MapSpawnTopology[] = [
@@ -46,29 +46,67 @@ export function resolveDynamicSpawns(
   const ne: Vec2 = { x: width - 1 - (insetMax + eJitterX), y: insetMin + eJitterY };
 
   const westEdge: Vec2 = { x: insetMin + pJitterX, y: Math.round(height / 2) + rng.int(5) - 2 };
-  const eastEdge: Vec2 = { x: width - 1 - (insetMax + eJitterX), y: Math.round(height / 2) + rng.int(5) - 2 };
+  const eastEdge: Vec2 = {
+    x: width - 1 - (insetMax + eJitterX),
+    y: Math.round(height / 2) + rng.int(5) - 2,
+  };
   const northEdge: Vec2 = { x: Math.round(width / 2) + rng.int(5) - 2, y: insetMin + pJitterY };
-  const southEdge: Vec2 = { x: Math.round(width / 2) + rng.int(5) - 2, y: height - 1 - (insetMax + eJitterY) };
+  const southEdge: Vec2 = {
+    x: Math.round(width / 2) + rng.int(5) - 2,
+    y: height - 1 - (insetMax + eJitterY),
+  };
 
   const center: Vec2 = { x: Math.round(width / 2), y: Math.round(height / 2) };
 
   switch (topology) {
     case "corner-nw-se":
-      return { playerStart: clampPoint(nw, width, height), enemyStart: clampPoint(se, width, height), topology };
+      return {
+        playerStart: clampPoint(nw, width, height),
+        enemyStart: clampPoint(se, width, height),
+        topology,
+      };
     case "corner-se-nw":
-      return { playerStart: clampPoint(se, width, height), enemyStart: clampPoint(nw, width, height), topology };
+      return {
+        playerStart: clampPoint(se, width, height),
+        enemyStart: clampPoint(nw, width, height),
+        topology,
+      };
     case "corner-sw-ne":
-      return { playerStart: clampPoint(sw, width, height), enemyStart: clampPoint(ne, width, height), topology };
+      return {
+        playerStart: clampPoint(sw, width, height),
+        enemyStart: clampPoint(ne, width, height),
+        topology,
+      };
     case "corner-ne-sw":
-      return { playerStart: clampPoint(ne, width, height), enemyStart: clampPoint(sw, width, height), topology };
+      return {
+        playerStart: clampPoint(ne, width, height),
+        enemyStart: clampPoint(sw, width, height),
+        topology,
+      };
     case "edge-w-e":
-      return { playerStart: clampPoint(westEdge, width, height), enemyStart: clampPoint(eastEdge, width, height), topology };
+      return {
+        playerStart: clampPoint(westEdge, width, height),
+        enemyStart: clampPoint(eastEdge, width, height),
+        topology,
+      };
     case "edge-e-w":
-      return { playerStart: clampPoint(eastEdge, width, height), enemyStart: clampPoint(westEdge, width, height), topology };
+      return {
+        playerStart: clampPoint(eastEdge, width, height),
+        enemyStart: clampPoint(westEdge, width, height),
+        topology,
+      };
     case "edge-n-s":
-      return { playerStart: clampPoint(northEdge, width, height), enemyStart: clampPoint(southEdge, width, height), topology };
+      return {
+        playerStart: clampPoint(northEdge, width, height),
+        enemyStart: clampPoint(southEdge, width, height),
+        topology,
+      };
     case "edge-s-n":
-      return { playerStart: clampPoint(southEdge, width, height), enemyStart: clampPoint(northEdge, width, height), topology };
+      return {
+        playerStart: clampPoint(southEdge, width, height),
+        enemyStart: clampPoint(northEdge, width, height),
+        topology,
+      };
     case "center-player": {
       // Player defends the center, enemy has main base on perimeter plus 2 perimeter outpost garrisons
       const mainEnemy = southEdge;
@@ -91,7 +129,11 @@ export function resolveDynamicSpawns(
       };
     }
     default:
-      return { playerStart: clampPoint(nw, width, height), enemyStart: clampPoint(se, width, height), topology: "corner-nw-se" };
+      return {
+        playerStart: clampPoint(nw, width, height),
+        enemyStart: clampPoint(se, width, height),
+        topology: "corner-nw-se",
+      };
   }
 }
 

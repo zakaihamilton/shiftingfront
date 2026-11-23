@@ -1,7 +1,15 @@
 import { isReconUnit, isSupportUnit, producerFor, UNIT_STATS } from "../../catalog";
-import { isUnitEntity, type BuildingKind, type Command, type Entity, type MissionKind, type SimState, type UnitKind } from "../../types";
-import { livingView } from "../world";
+import {
+  type BuildingKind,
+  type Command,
+  type Entity,
+  isUnitEntity,
+  type MissionKind,
+  type SimState,
+  type UnitKind,
+} from "../../types";
 import { isSharedProducerKind, readSharedProductionQueue } from "../producerState";
+import { livingView } from "../world";
 
 export const COMMANDER_CADENCE = 24;
 export const COMBAT_ORDER_REFRESH = 96;
@@ -58,7 +66,8 @@ function viewsFor(state: SimState): CommanderViews {
   views.enemyEntities.length = 0;
   for (const entity of active) {
     if (entity.owner === 0 && entity.class === "building") views.playerBuildings.push(entity);
-    if (entity.owner === 0 && entity.class === "unit" && !entity.neutral) views.playerUnits.push(entity);
+    if (entity.owner === 0 && entity.class === "unit" && !entity.neutral)
+      views.playerUnits.push(entity);
     if (entity.owner === 1 && !entity.optionalChallenge) views.enemyEntities.push(entity);
   }
   commanderViews.set(state, views);
@@ -83,7 +92,10 @@ export function playerBuildings(state: SimState, kind?: BuildingKind): Entity[] 
 }
 
 /** Internal cached view. Callers must not mutate the returned array. */
-export function playerUnitsView(state: SimState, predicate?: (entity: Entity) => boolean): Entity[] {
+export function playerUnitsView(
+  state: SimState,
+  predicate?: (entity: Entity) => boolean,
+): Entity[] {
   const units = viewsFor(state).playerUnits;
   return predicate ? units.filter(predicate) : units;
 }
@@ -106,7 +118,11 @@ export function enemyEntities(state: SimState): Entity[] {
 export function combatUnits(state: SimState): Entity[] {
   return playerUnitsView(
     state,
-    (entity) => isUnitEntity(entity) && UNIT_STATS[entity.kind].damage > 0 && !isSupportUnit(entity.kind) && !isReconUnit(entity.kind),
+    (entity) =>
+      isUnitEntity(entity) &&
+      UNIT_STATS[entity.kind].damage > 0 &&
+      !isSupportUnit(entity.kind) &&
+      !isReconUnit(entity.kind),
   );
 }
 
@@ -118,9 +134,11 @@ export function queuedUnitCount(state: SimState, kind: UnitKind): number {
   const producerKind = producerFor(kind);
   if (isSharedProducerKind(producerKind)) {
     const queue = readSharedProductionQueue(state, 0, producerKind);
-    return (queue.producing?.kind === kind ? 1 : 0)
-      + (queue.resume?.filter((job) => job.kind === kind).length ?? 0)
-      + queue.queue.filter((item) => item === kind).length;
+    return (
+      (queue.producing?.kind === kind ? 1 : 0) +
+      (queue.resume?.filter((job) => job.kind === kind).length ?? 0) +
+      queue.queue.filter((item) => item === kind).length
+    );
   }
   let count = 0;
   for (const producer of playerBuildingsView(state)) {

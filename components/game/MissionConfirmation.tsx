@@ -27,10 +27,14 @@ export function MissionConfirmation({
         aria-modal="true"
         aria-labelledby="mission-confirmation-title"
       >
-        <ConsoleLabel as="h2" id="mission-confirmation-title">{confirmation.title}</ConsoleLabel>
+        <ConsoleLabel as="h2" id="mission-confirmation-title">
+          {confirmation.title}
+        </ConsoleLabel>
         <p className={styles.copy}>{confirmation.message}</p>
         <div className={styles.actions}>
-          <ConsoleButton muted onClick={onCancel}>Cancel</ConsoleButton>
+          <ConsoleButton muted onClick={onCancel}>
+            Cancel
+          </ConsoleButton>
           <ConsoleButton onClick={onConfirm}>{confirmation.confirmLabel}</ConsoleButton>
         </div>
       </MetalPanel>

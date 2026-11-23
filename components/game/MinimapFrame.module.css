@@ -8,7 +8,10 @@
   padding: 0.25rem;
   border: 2px solid var(--chrome-inset);
   background: color-mix(in srgb, var(--chrome-void) 88%, var(--chrome-cyan) 12%);
-  box-shadow: inset 2px 2px var(--chrome-inset), inset -2px -2px color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 45%, var(--chrome-steel-hi)), 2px 2px 0 var(--chrome-inset);
+  box-shadow:
+    inset 2px 2px var(--chrome-inset),
+    inset -2px -2px color-mix(in srgb, var(--p, var(--chrome-steel-hi)) 45%, var(--chrome-steel-hi)),
+    2px 2px 0 var(--chrome-inset);
 }
 
 .canvasFrame {
@@ -77,7 +80,9 @@
   top: 50%;
   height: 2px;
   background: #f4ffff;
-  box-shadow: 0 0 6px 2px #d7fbff, 0 0 16px #7ee7ff;
+  box-shadow:
+    0 0 6px 2px #d7fbff,
+    0 0 16px #7ee7ff;
   opacity: 0;
   transform: translateY(-50%) scaleX(0.15);
 }
@@ -137,7 +142,12 @@
   pointer-events: none;
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--chrome-cyan) 15%, transparent) 50%, transparent 58%);
+  background: linear-gradient(
+    to bottom,
+    transparent 42%,
+    color-mix(in srgb, var(--chrome-cyan) 15%, transparent) 50%,
+    transparent 58%
+  );
   opacity: 0.78;
   mix-blend-mode: screen;
   animation: radar-scan 5.5s linear infinite;
@@ -154,18 +164,25 @@
   border: 2px solid var(--chrome-alert);
   border-radius: 50%;
   background: var(--chrome-void);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--chrome-alert) 25%, transparent), 0 0 12px var(--chrome-alert);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--chrome-alert) 25%, transparent),
+    0 0 12px var(--chrome-alert);
   transform: translate(-50%, -50%);
   animation: minimap-ping 0.9s ease-out infinite;
 }
 
 .ping[data-kind="objective"] {
   border-color: var(--chrome-gold);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--chrome-gold) 25%, transparent), 0 0 12px var(--chrome-gold);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--chrome-gold) 25%, transparent),
+    0 0 12px var(--chrome-gold);
 }
 
 @keyframes minimap-ping {
-  50% { transform: translate(-50%, -50%) scale(1.22); opacity: 0.7; }
+  50% {
+    transform: translate(-50%, -50%) scale(1.22);
+    opacity: 0.7;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -200,58 +217,137 @@
 }
 
 @keyframes radar-scan {
-  from { transform: translateY(-75%); }
-  to { transform: translateY(75%); }
+  from {
+    transform: translateY(-75%);
+  }
+  to {
+    transform: translateY(75%);
+  }
 }
 
 @keyframes crt-on {
-  0% { transform: scale(1.04, 0.012); filter: brightness(8); opacity: 1; }
-  16% { transform: scale(1.02, 0.012); filter: brightness(6); }
-  46% { transform: scale(1.015, 1.08); filter: brightness(1.85) contrast(1.12); }
-  68% { transform: scale(1, 0.9); filter: brightness(1.2); }
-  84% { transform: scale(1, 1.035); filter: brightness(1.05); }
-  100% { transform: scale(1, 1); filter: none; opacity: 1; }
+  0% {
+    transform: scale(1.04, 0.012);
+    filter: brightness(8);
+    opacity: 1;
+  }
+  16% {
+    transform: scale(1.02, 0.012);
+    filter: brightness(6);
+  }
+  46% {
+    transform: scale(1.015, 1.08);
+    filter: brightness(1.85) contrast(1.12);
+  }
+  68% {
+    transform: scale(1, 0.9);
+    filter: brightness(1.2);
+  }
+  84% {
+    transform: scale(1, 1.035);
+    filter: brightness(1.05);
+  }
+  100% {
+    transform: scale(1, 1);
+    filter: none;
+    opacity: 1;
+  }
 }
 
 @keyframes crt-off {
-  0% { transform: scale(1, 1); filter: none; opacity: 1; }
-  28% { transform: scale(1.02, 1.06); filter: brightness(2.6); }
-  72% { transform: scale(1.06, 0.07); filter: brightness(3.4); }
-  100% { transform: scale(1.1, 0.012); filter: brightness(5); opacity: 1; }
+  0% {
+    transform: scale(1, 1);
+    filter: none;
+    opacity: 1;
+  }
+  28% {
+    transform: scale(1.02, 1.06);
+    filter: brightness(2.6);
+  }
+  72% {
+    transform: scale(1.06, 0.07);
+    filter: brightness(3.4);
+  }
+  100% {
+    transform: scale(1.1, 0.012);
+    filter: brightness(5);
+    opacity: 1;
+  }
 }
 
 @keyframes crt-beam-on {
-  0% { opacity: 0; transform: translateY(-50%) scaleX(0.05); }
-  12% { opacity: 1; transform: translateY(-50%) scaleX(0.92); }
-  42% { opacity: 0.85; transform: translateY(-50%) scaleX(1); }
-  100% { opacity: 0; transform: translateY(-50%) scaleX(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(0.05);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(-50%) scaleX(0.92);
+  }
+  42% {
+    opacity: 0.85;
+    transform: translateY(-50%) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(1);
+  }
 }
 
 @keyframes crt-beam-off {
-  0% { opacity: 0; transform: translateY(-50%) scaleX(1); }
-  35% { opacity: 0.4; transform: translateY(-50%) scaleX(1); }
-  78% { opacity: 1; transform: translateY(-50%) scaleX(0.84); }
-  100% { opacity: 0; transform: translateY(-50%) scaleX(0.2); }
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(1);
+  }
+  35% {
+    opacity: 0.4;
+    transform: translateY(-50%) scaleX(1);
+  }
+  78% {
+    opacity: 1;
+    transform: translateY(-50%) scaleX(0.84);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(0.2);
+  }
 }
 
 @keyframes crt-snow {
-  0% { opacity: 0.55; }
-  45% { opacity: 0.2; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0.55;
+  }
+  45% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes crt-caption-in {
-  0% { opacity: 0; }
-  55% { opacity: 0; }
-  100% { opacity: 0.86; }
+  0% {
+    opacity: 0;
+  }
+  55% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.86;
+  }
 }
 
 @keyframes crt-caption-out {
-  from { opacity: 0.86; }
-  to { opacity: 0; }
+  from {
+    opacity: 0.86;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
-@media (max-width: 799px), (max-width: 1023px) and (orientation: portrait), (pointer: coarse) and (max-width: 1400px) {
+@media (max-width: 799px), (max-width: 1023px) and (orientation: portrait),
+  (pointer: coarse) and (max-width: 1400px) {
   .canvasFrame {
     width: min(100%, 10.325rem);
   }

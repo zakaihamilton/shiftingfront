@@ -1,11 +1,17 @@
 import type { CSSProperties } from "react";
+import styles from "@/components/menu/NewGameSetup.module.css";
+import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { biomeLabel } from "@/lib/gen/names";
 import { biomeArt } from "@/lib/gen/visualAssets";
 import type { BiomeName } from "@/lib/types";
-import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
-import styles from "@/components/menu/NewGameSetup.module.css";
 
-export function SkirmishPreviewPane({ biome, className }: { biome: BiomeName | null; className?: string }) {
+export function SkirmishPreviewPane({
+  biome,
+  className,
+}: {
+  biome: BiomeName | null;
+  className?: string;
+}) {
   const paneClassName = className ? `${styles.infoPane} ${className}` : styles.infoPane;
 
   return (
@@ -41,7 +47,9 @@ export function SkirmishPreviewPane({ biome, className }: { biome: BiomeName | n
         </>
       ) : (
         <div className={styles.emptyInfo} role="status">
-          <div className={styles.emptyMark} aria-hidden="true">+</div>
+          <div className={styles.emptyMark} aria-hidden="true">
+            +
+          </div>
           <ConsoleLabel>Skirmish preview</ConsoleLabel>
           <h3 className={styles.emptyTitle}>Choose a seed</h3>
           <p>Enter four digits to preview the arena.</p>

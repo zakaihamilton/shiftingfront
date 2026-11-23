@@ -1,19 +1,38 @@
-import { findPathDetailed, routePendingFor } from "../pathfinding";
-import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
-import { terrainComponentIdsFor } from "../flowField";
 import { isAirUnit } from "../../catalog";
-import { isUnitEntity, type Entity, type Formation, type Owner, type SimEvent, type SimState } from "../../types";
-import { byId, inBounds, isStaticWalkable } from "../world";
-import { clearSupportOrder } from "../support";
+import {
+  type Entity,
+  type Formation,
+  isUnitEntity,
+  type Owner,
+  type SimEvent,
+  type SimState,
+} from "../../types";
 import { launchAircraft } from "../aircraft";
-import { commandOwner } from "./commandOwner";
+import { terrainComponentIdsFor } from "../flowField";
+import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
+import { findPathDetailed, routePendingFor } from "../pathfinding";
+import { clearSupportOrder } from "../support";
 import { clearPlanted } from "../verbs";
+import { byId, inBounds, isStaticWalkable } from "../world";
+import { commandOwner } from "./commandOwner";
 
-export function moveUnits(state: SimState, ids: number[], x: number, y: number, formation?: Formation): SimEvent[] {
+export function moveUnits(
+  state: SimState,
+  ids: number[],
+  x: number,
+  y: number,
+  formation?: Formation,
+): SimEvent[] {
   return issueTravelOrder(state, ids, x, y, "move", formation);
 }
 
-export function attackMoveUnits(state: SimState, ids: number[], x: number, y: number, formation?: Formation): SimEvent[] {
+export function attackMoveUnits(
+  state: SimState,
+  ids: number[],
+  x: number,
+  y: number,
+  formation?: Formation,
+): SimEvent[] {
   return issueTravelOrder(state, ids, x, y, "attackMove", formation);
 }
 
@@ -48,7 +67,7 @@ function issueTravelOrder(
     const groundDestinationIndex = groundIndex;
     const destination = isAirUnit(e.kind)
       ? { x: tx, y: ty }
-      : groundDests[groundIndex++] ?? { x: tx, y: ty };
+      : (groundDests[groundIndex++] ?? { x: tx, y: ty });
     e.orderDestination = destination;
     e.gatherX = undefined;
     e.gatherY = undefined;
@@ -71,7 +90,9 @@ function issueTravelOrder(
       return;
     }
     if (groundDestinationIndex < FOREGROUND_PATHS_PER_ORDER) {
-      const result = findPathDetailed(state, e, destination, { maxNodes: FOREGROUND_PATH_MAX_NODES });
+      const result = findPathDetailed(state, e, destination, {
+        maxNodes: FOREGROUND_PATH_MAX_NODES,
+      });
       e.path = result.path;
       e.routePending = routePendingFor(result.status);
     } else {
@@ -82,7 +103,12 @@ function issueTravelOrder(
   return [];
 }
 
-export function collectMovers(state: SimState, ids: number[], attackMove: boolean, owner: Owner = commandOwner(state)): Entity[] {
+export function collectMovers(
+  state: SimState,
+  ids: number[],
+  attackMove: boolean,
+  owner: Owner = commandOwner(state),
+): Entity[] {
   const movers: Entity[] = [];
   for (const id of ids) {
     const e = byId(state, id);
@@ -93,14 +119,26 @@ export function collectMovers(state: SimState, ids: number[], attackMove: boolea
   return movers;
 }
 
-export function formationDestination(x: number, y: number, formation: Formation, index: number, count: number): { x: number; y: number } {
+export function formationDestination(
+  x: number,
+  y: number,
+  formation: Formation,
+  index: number,
+  count: number,
+): { x: number; y: number } {
   const centered = index - (count - 1) / 2;
   if (formation === "column") return { x: x + Math.round(centered), y };
-  if (formation === "wedge") return { x: x + Math.round(centered), y: y + Math.abs(Math.round(centered)) };
+  if (formation === "wedge")
+    return { x: x + Math.round(centered), y: y + Math.abs(Math.round(centered)) };
   return { x, y: y + Math.round(centered) };
 }
 
-export function nearbyWalkableSlots(state: SimState, x: number, y: number, count: number): { x: number; y: number }[] {
+export function nearbyWalkableSlots(
+  state: SimState,
+  x: number,
+  y: number,
+  count: number,
+): { x: number; y: number }[] {
   return nearbyWalkableSlotsFrom(state, x, y, count);
 }
 
@@ -174,8 +212,8 @@ export function assignNearest(
 ): { x: number; y: number }[] {
   // If no target-area slots exist, start-cell fallbacks remain distinct and
   // valid instead of manufacturing duplicate {0, 0} destinations.
-  const dests: { x: number; y: number }[] = units.map((unit) =>
-    slots[0] ?? { x: Math.round(unit.x), y: Math.round(unit.y) },
+  const dests: { x: number; y: number }[] = units.map(
+    (unit) => slots[0] ?? { x: Math.round(unit.x), y: Math.round(unit.y) },
   );
   const pairs: { ui: number; si: number; d: number }[] = [];
   for (let ui = 0; ui < units.length; ui++) {
@@ -209,10 +247,10 @@ export function destinationsForGroup(
   const sourceComponents = units.map((unit) => {
     const sx = Math.round(unit.x);
     const sy = Math.round(unit.y);
-    return inBounds(state, sx, sy) ? componentIds[sy * state.width + sx] ?? -1 : -1;
+    return inBounds(state, sx, sy) ? (componentIds[sy * state.width + sx] ?? -1) : -1;
   });
   const componentAt = (sx: number, sy: number) =>
-    inBounds(state, sx, sy) ? componentIds[sy * state.width + sx] ?? -1 : -1;
+    inBounds(state, sx, sy) ? (componentIds[sy * state.width + sx] ?? -1) : -1;
   const canReach = (unitIndex: number, sx: number, sy: number) =>
     componentAt(sx, sy) !== -1 && sourceComponents[unitIndex] === componentAt(sx, sy);
   const reachable = (sx: number, sy: number) => {
@@ -232,13 +270,19 @@ export function destinationsForGroup(
       const raw = formationDestination(x, y, formation, index, units.length);
       return snapUnique(state, raw.x, raw.y, taken, reachable);
     });
-    const destinations = assignNearest(units, candidates, (unitIndex, slot) => canReach(unitIndex, slot.x, slot.y));
+    const destinations = assignNearest(units, candidates, (unitIndex, slot) =>
+      canReach(unitIndex, slot.x, slot.y),
+    );
     return ensureUniqueGroupDestinations(state, units, destinations, reachable, canReach);
   }
   return ensureUniqueGroupDestinations(
     state,
     units,
-    assignNearest(units, nearbyWalkableSlotsFrom(state, x, y, units.length, reachable), (unitIndex, slot) => canReach(unitIndex, slot.x, slot.y)),
+    assignNearest(
+      units,
+      nearbyWalkableSlotsFrom(state, x, y, units.length, reachable),
+      (unitIndex, slot) => canReach(unitIndex, slot.x, slot.y),
+    ),
     reachable,
     canReach,
   );
@@ -257,8 +301,13 @@ function ensureUniqueGroupDestinations(
     const x = Math.round(destination.x);
     const y = Math.round(destination.y);
     const key = y * state.width + x;
-    if (inBounds(state, x, y) && isStaticWalkable(state, x, y) && (!reachable || reachable(x, y)) &&
-      (!canReach || canReach(index, x, y)) && !taken.has(key)) {
+    if (
+      inBounds(state, x, y) &&
+      isStaticWalkable(state, x, y) &&
+      (!reachable || reachable(x, y)) &&
+      (!canReach || canReach(index, x, y)) &&
+      !taken.has(key)
+    ) {
       taken.add(key);
       return destination;
     }
@@ -267,8 +316,12 @@ function ensureUniqueGroupDestinations(
     const fallbackX = Math.round(unit.x);
     const fallbackY = Math.round(unit.y);
     const sizeBeforeFallback = taken.size;
-    const fallback = snapUnique(state, fallbackX, fallbackY, taken, (sx, sy) =>
-      (!reachable || reachable(sx, sy)) && (!canReach || canReach(index, sx, sy)),
+    const fallback = snapUnique(
+      state,
+      fallbackX,
+      fallbackY,
+      taken,
+      (sx, sy) => (!reachable || reachable(sx, sy)) && (!canReach || canReach(index, sx, sy)),
     );
     const fallbackKey = Math.round(fallback.y) * state.width + Math.round(fallback.x);
     if (

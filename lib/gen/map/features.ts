@@ -107,7 +107,7 @@ const BIOME_FEATURES: Record<BiomeName, readonly TerrainFeatureDefinition[]> = {
 };
 
 function clamp01(value: number): number {
-  return value <= 0 ? 0 : Math.min(value , 1);
+  return value <= 0 ? 0 : Math.min(value, 1);
 }
 
 function smoothstep(edge0: number, edge1: number, value: number): number {
@@ -136,7 +136,9 @@ function featurePair(world: TerrainFeatureWorld): {
  * Return a coherent, map-scale feature sample. This is intentionally pure so
  * map generation, the playable edge, and the renderer all agree on it.
  */
-export function terrainFeatureSamplerFor(world: TerrainFeatureWorld): (x: number, y: number) => TerrainFeatureSample {
+export function terrainFeatureSamplerFor(
+  world: TerrainFeatureWorld,
+): (x: number, y: number) => TerrainFeatureSample {
   const { first, second, salt } = featurePair(world);
   const scale = Math.max(40, Math.max(world.width, world.height));
   return (x, y) => {
@@ -161,6 +163,10 @@ export function terrainFeatureSamplerFor(world: TerrainFeatureWorld): (x: number
   };
 }
 
-export function terrainFeatureAt(world: TerrainFeatureWorld, x: number, y: number): TerrainFeatureSample {
+export function terrainFeatureAt(
+  world: TerrainFeatureWorld,
+  x: number,
+  y: number,
+): TerrainFeatureSample {
   return terrainFeatureSamplerFor(world)(x, y);
 }

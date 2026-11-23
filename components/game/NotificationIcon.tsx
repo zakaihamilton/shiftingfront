@@ -1,8 +1,21 @@
 import type { SVGProps } from "react";
 
-export type NotificationIconKind = "success" | "info" | "warning" | "error" | "objective" | "contact" | "system";
+export type NotificationIconKind =
+  | "success"
+  | "info"
+  | "warning"
+  | "error"
+  | "objective"
+  | "contact"
+  | "system";
 
-export function NotificationIcon({ kind, className }: { kind: NotificationIconKind; className?: string }) {
+export function NotificationIcon({
+  kind,
+  className,
+}: {
+  kind: NotificationIconKind;
+  className?: string;
+}) {
   const props: SVGProps<SVGSVGElement> = {
     className,
     viewBox: "0 0 16 16",

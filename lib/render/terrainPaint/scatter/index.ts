@@ -1,41 +1,41 @@
+import { type TerrainFeatureSample, terrainFeatureAt } from "../../../gen/map";
 import { TILE_H } from "../../../iso";
-import { terrainFeatureAt, type TerrainFeatureSample } from "../../../gen/map";
 import type { BiomeName, SurfaceKind } from "../../../types";
 import { biomeMaterials } from "../../terrainAtlas";
+import { terrainPropLightGain } from "../../terrainLighting";
 import {
   artSalt,
+  type BiomeMaterials,
   mixRgb,
   propMaterialsFor,
   terrainRegionMaterialsFor,
   terrainVisualTuningFor,
-  type BiomeMaterials,
 } from "../../terrainMaterials";
-import { terrainPropLightGain } from "../../terrainLighting";
-import type { ScatterItem, ScatterWorld } from "./types";
 import { scatterForTile } from "./distribution";
 import {
   drawCactus,
   drawCinder,
   drawCrystalChip,
+  drawDebris,
   drawDesertShrub,
   drawDesertTree,
-  drawDebris,
   drawDryBrush,
   drawIceChip,
   drawLandmark,
   drawMineralFlake,
+  drawMineralFragment,
   drawPebble,
   drawPebbleCluster,
   drawReed,
   drawRockSlab,
-  drawMineralFragment,
   drawShrub,
   drawTuft,
 } from "./render";
+import type { ScatterItem, ScatterWorld } from "./types";
 
-export * from "./types";
 export * from "./distribution";
 export * from "./render";
+export * from "./types";
 
 function paintItem(
   ctx: CanvasRenderingContext2D,
@@ -112,7 +112,11 @@ function featurePropMaterials(mats: BiomeMaterials, feature: TerrainFeatureSampl
     ...mats,
     dark: mixRgb(mats.dark, mats.blocked, wetDarken),
     mid: mixRgb(mats.mid, wet > dry ? mats.dark : mats.patchA, wet > dry ? wetDarken : dryDust),
-    high: mixRgb(mats.high, wet > dry ? mats.mid : mats.patchA, wet > dry ? wetDarken * 0.7 : dryDust),
+    high: mixRgb(
+      mats.high,
+      wet > dry ? mats.mid : mats.patchA,
+      wet > dry ? wetDarken * 0.7 : dryDust,
+    ),
     light: mixRgb(mats.light, mats.high, wetDarken * 0.5),
   };
   const coolRegion = /crystal|reflective|facet|frost|ice|drift/.test(feature.kind);

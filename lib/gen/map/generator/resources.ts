@@ -42,7 +42,13 @@ export function resourceCenterNear(
       const distanceFromOrigin = Math.hypot(x - origin.x, y - origin.y);
       if (distanceFromOrigin < 7 || distanceFromOrigin > 12) continue;
       const i = idx(x, y, width);
-      if (distances[i]! < 0 || distances[i]! > 28 || tiles[i] !== TILE_CLEAR || surfaces[i] === SURFACE_CONCRETE) continue;
+      if (
+        distances[i]! < 0 ||
+        distances[i]! > 28 ||
+        tiles[i] !== TILE_CLEAR ||
+        surfaces[i] === SURFACE_CONCRETE
+      )
+        continue;
       const distanceFromPreferred = Math.hypot(x - preferred.x, y - preferred.y);
       if (distanceFromPreferred < bestDistance) {
         bestDistance = distanceFromPreferred;
@@ -71,7 +77,14 @@ export function resourceCenterOnOpenGround(
       const distanceFromOrigin = Math.hypot(x - origin.x, y - origin.y);
       if (distanceFromOrigin < 7 || distanceFromOrigin > 14) continue;
       const i = idx(x, y, width);
-      if (distances[i]! < 0 || distances[i]! > 48 || tiles[i] !== TILE_CLEAR || surfaces[i] === SURFACE_CONCRETE || (heights[i] ?? 0) >= 3) continue;
+      if (
+        distances[i]! < 0 ||
+        distances[i]! > 48 ||
+        tiles[i] !== TILE_CLEAR ||
+        surfaces[i] === SURFACE_CONCRETE ||
+        (heights[i] ?? 0) >= 3
+      )
+        continue;
       const distanceFromPreferred = Math.hypot(x - preferred.x, y - preferred.y);
       if (distanceFromPreferred < bestDistance) {
         bestDistance = distanceFromPreferred;

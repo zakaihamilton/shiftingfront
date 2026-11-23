@@ -1,13 +1,13 @@
-import { canvasViewport } from "../canvasViewport";
 import { featureEdgeMask } from "../../gen/map";
-import type { SimState } from "../../types";
+import { type Camera, expandIsoDiamond, TILE_H, TILE_W, tileToScreen } from "../../iso";
 import { fogAt } from "../../sim/fog";
-import { TILE_H, TILE_W, expandIsoDiamond, tileToScreen, type Camera } from "../../iso";
-import { fogTerrainGain, biomeMaterials } from "../terrainAtlas";
-import { visibleTileRange, WATER_COVER } from "../terrainPaint";
+import type { SimState } from "../../types";
+import { canvasViewport } from "../canvasViewport";
 import { isoDiamondPath } from "../isoDiamond";
-import type { WaterCaustic } from "./types";
+import { biomeMaterials, fogTerrainGain } from "../terrainAtlas";
+import { visibleTileRange, WATER_COVER } from "../terrainPaint";
 import { ensureFxTileIndex, forVisibleIndexedTiles } from "./core";
+import type { WaterCaustic } from "./types";
 
 export function waterCaustic(timeMs: number, x: number, y: number): WaterCaustic {
   const phase = timeMs * 0.0012 + x * 0.63 + y * 0.41;
@@ -58,9 +58,10 @@ export function paintWaterFx(
   const range = visibleTileRange(cam, w, h, state.width, state.height);
   const index = ensureFxTileIndex(state);
   const hi = biomeMaterials(state.biome).waterHi;
-  const foamFill = state.biome === "volcanic shelf"
-    ? "rgba(138,128,112,0.9)"
-    : `rgba(${Math.min(255, hi.r + 40)},${Math.min(255, hi.g + 28)},${Math.min(255, hi.b + 20)},0.9)`;
+  const foamFill =
+    state.biome === "volcanic shelf"
+      ? "rgba(138,128,112,0.9)"
+      : `rgba(${Math.min(255, hi.r + 40)},${Math.min(255, hi.g + 28)},${Math.min(255, hi.b + 20)},0.9)`;
   ctx.save();
   forVisibleIndexedTiles(index.water, state.width, range, (x, y) => {
     const fog = fogAt(state, x, y);

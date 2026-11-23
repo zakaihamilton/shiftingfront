@@ -53,7 +53,8 @@ export function updateScreenShake(
     return { offsetX: 0, offsetY: 0 };
   }
 
-  const dtSeconds = state.lastUpdateMs > 0 ? Math.max(0, (nowMs - state.lastUpdateMs) / 1000) : 0.016;
+  const dtSeconds =
+    state.lastUpdateMs > 0 ? Math.max(0, (nowMs - state.lastUpdateMs) / 1000) : 0.016;
   state.lastUpdateMs = nowMs;
 
   state.trauma = Math.max(0, state.trauma - SHAKE_DECAY_RATE * dtSeconds);

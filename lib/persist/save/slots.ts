@@ -1,19 +1,23 @@
-import { formatSeed } from "../../seed/rng";
 import { generateWorld } from "../../gen/world";
+import { formatSeed } from "../../seed/rng";
 import type { CampaignProgress, SimState } from "../../types";
-import { isRecord } from "../utils";
+import { campaignKey, readCampaignProgress, writeCampaignProgress } from "../campaign";
 import {
-  SAVE_CONTENT_VERSION,
+  isCurrentGameplayRules,
+  LEGACY_RULES_IMPORT_NOTICE,
+  progressAfterRetiredBattlefield,
+} from "../rulesRetirement";
+import { isRecord } from "../utils";
+import { listSaves } from "./api";
+import { migrateSaveContent } from "./migrations";
+import { decodeSavedState, encodeSavedState } from "./serialize";
+import { type StorageAdapter, safeGetItem, safeKeys, safeRemoveItem, safeSetItem } from "./storage";
+import {
+  assertSupportedContentVersion,
   isCampaignProgressShape,
   isNumber,
-  assertSupportedContentVersion,
+  SAVE_CONTENT_VERSION,
 } from "./validation";
-import { decodeSavedState, encodeSavedState } from "./serialize";
-import { migrateSaveContent } from "./migrations";
-import { listSaves } from "./api";
-import { safeGetItem, safeKeys, safeRemoveItem, safeSetItem, type StorageAdapter } from "./storage";
-import { campaignKey, readCampaignProgress, writeCampaignProgress } from "../campaign";
-import { isCurrentGameplayRules, LEGACY_RULES_IMPORT_NOTICE, progressAfterRetiredBattlefield } from "../rulesRetirement";
 
 export const SLOT_PREFIX = "shiftingfront:slot:";
 export const SLOT_VERSION = 1;
@@ -63,7 +67,9 @@ export type ArchiveEntry =
       savedAt: number;
     };
 
-export type SlotWriteResult = { ok: true; id: string } | { ok: false; reason?: "legacy-rules" | "storage-failed" };
+export type SlotWriteResult =
+  | { ok: true; id: string }
+  | { ok: false; reason?: "legacy-rules" | "storage-failed" };
 
 export { LEGACY_RULES_IMPORT_NOTICE };
 
@@ -82,8 +88,10 @@ export function normalizeSlotName(name: string): string | null {
 }
 
 export function defaultSlotName(state: SimState): string {
-  return normalizeSlotName(`${generateWorld(state.seed).name} · M${state.missionIndex + 1}`)
-    ?? `Mission ${state.missionIndex + 1}`;
+  return (
+    normalizeSlotName(`${generateWorld(state.seed).name} · M${state.missionIndex + 1}`) ??
+    `Mission ${state.missionIndex + 1}`
+  );
 }
 
 function randomSlotId(): string {
@@ -111,7 +119,12 @@ export function decodeSlot(raw: string): Omit<ParsedSlot, "id"> {
   if (!isCampaignProgressShape(parsed.campaign)) throw new Error("Invalid campaign progress");
   const state = decodeSavedState(migrateSaveContent(parsed.state, parsed.contentVersion));
   if (state.seed !== parsed.campaign.seed) throw new Error("Save and campaign seeds must match");
-  return { name, savedAt: parsed.savedAt, state, campaign: { ...parsed.campaign, gameplayRulesVersion: state.gameplayRulesVersion ?? 1 } };
+  return {
+    name,
+    savedAt: parsed.savedAt,
+    state,
+    campaign: { ...parsed.campaign, gameplayRulesVersion: state.gameplayRulesVersion ?? 1 },
+  };
 }
 
 /** Return a validated slot envelope suitable for downloading as a JSON file. */
@@ -139,7 +152,10 @@ export function importSlot(storage: StorageAdapter, raw: string): SlotWriteResul
     if (!isCurrentGameplayRules(decoded.state.gameplayRulesVersion)) {
       const existingRaw = safeGetItem(storage, campaignKey(decoded.state.seed));
       const existing = existingRaw ? readCampaignProgress(storage, decoded.state.seed) : null;
-      const kept = writeCampaignProgress(storage, progressAfterRetiredBattlefield(existing, decoded.campaign, decoded.state.missionIndex));
+      const kept = writeCampaignProgress(
+        storage,
+        progressAfterRetiredBattlefield(existing, decoded.campaign, decoded.state.missionIndex),
+      );
       return kept ? { ok: false, reason: "legacy-rules" } : { ok: false, reason: "storage-failed" };
     }
     return writeSlot(storage, {
@@ -235,7 +251,9 @@ export function listSlots(storage: StorageAdapter): SlotMeta[] {
       console.debug(`[persist] Failed to list save slot ${key}:`, err);
     }
   }
-  return out.sort((a, b) => b.savedAt - a.savedAt || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  return out.sort(
+    (a, b) => b.savedAt - a.savedAt || a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
+  );
 }
 
 export function listUnreadableSlots(storage: StorageAdapter): string[] {
@@ -256,7 +274,10 @@ export function listUnreadableSlots(storage: StorageAdapter): string[] {
 
 export function listArchiveEntries(storage: StorageAdapter): ArchiveEntry[] {
   const slots: ArchiveEntry[] = listSlots(storage).map((slot) => ({ ...slot, kind: "slot" }));
-  const autosaves: ArchiveEntry[] = listSaves(storage).map((save) => ({ ...save, kind: "autosave" }));
+  const autosaves: ArchiveEntry[] = listSaves(storage).map((save) => ({
+    ...save,
+    kind: "autosave",
+  }));
   return [...slots, ...autosaves].sort((a, b) => {
     if (b.savedAt !== a.savedAt) return b.savedAt - a.savedAt;
     if (a.kind !== b.kind) return a.kind === "slot" ? -1 : 1;
@@ -275,5 +296,7 @@ export function hasLoadableSaves(storage: StorageAdapter, seed?: number): boolea
 
 export function listPauseLoadEntries(storage: StorageAdapter, seed: number): ArchiveEntry[] {
   const seedKey = formatSeed(seed);
-  return listArchiveEntries(storage).filter((entry) => entry.kind === "slot" || entry.seed === seedKey);
+  return listArchiveEntries(storage).filter(
+    (entry) => entry.kind === "slot" || entry.seed === seedKey,
+  );
 }

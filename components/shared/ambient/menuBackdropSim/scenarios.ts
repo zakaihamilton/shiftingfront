@@ -1,9 +1,8 @@
-import { assignAttack } from "@/lib/sim/ai/combat";
-import { spawnBuilding, spawnUnit } from "@/lib/sim/world";
-import type { BuildingKind, Entity, UnitKind, Vec2 } from "@/lib/types";
-import { canPlaceBuilding } from "@/lib/sim/world";
 import { BUILDING_STATS } from "@/lib/catalog";
+import { assignAttack } from "@/lib/sim/ai/combat";
 import type { createMission } from "@/lib/sim/api";
+import { canPlaceBuilding, spawnBuilding, spawnUnit } from "@/lib/sim/world";
+import type { BuildingKind, Entity, UnitKind, Vec2 } from "@/lib/types";
 
 export const CINEMA_SEED = 1847;
 
@@ -25,7 +24,13 @@ export const CINEMA_SCENARIO_KINDS: readonly CinemaScenarioKind[] = [
 ];
 
 export type CinemaScenarioAnchor = "playerBase" | "enemyBase" | "resourceField" | "midfield";
-export type CinemaTargetPolicy = "enemyStructure" | "playerStructure" | "harvester" | "armor" | "infantry" | "convoy";
+export type CinemaTargetPolicy =
+  | "enemyStructure"
+  | "playerStructure"
+  | "harvester"
+  | "armor"
+  | "infantry"
+  | "convoy";
 
 export const CINEMA_BUILDING_SEARCH_RADIUS = 8;
 
@@ -47,9 +52,22 @@ export const CINEMA_SCENARIOS: Record<CinemaScenarioKind, CinemaScenarioDef> = {
     structures: ["turret", "barracks"],
     anchor: "enemyBase",
     targetPolicy: "enemyStructure",
-    playerOffsets: [{ x: -3, y: 1 }, { x: -2, y: 2 }, { x: -3, y: 3 }, { x: -1, y: 3 }],
-    enemyOffsets: [{ x: 2, y: -1 }, { x: 3, y: -2 }, { x: 3, y: 0 }, { x: 1, y: -2 }],
-    structureOffsets: [{ x: 1, y: -1 }, { x: 2, y: -2 }],
+    playerOffsets: [
+      { x: -3, y: 1 },
+      { x: -2, y: 2 },
+      { x: -3, y: 3 },
+      { x: -1, y: 3 },
+    ],
+    enemyOffsets: [
+      { x: 2, y: -1 },
+      { x: 3, y: -2 },
+      { x: 3, y: 0 },
+      { x: 1, y: -2 },
+    ],
+    structureOffsets: [
+      { x: 1, y: -1 },
+      { x: 2, y: -2 },
+    ],
     replacementKinds: { player: ["tank", "antiArmor"], enemy: ["tank", "antiArmor", "infantry"] },
   },
   // Home base defense (Enemy attacks player base at p0; structures are 100% Player / owner 0)
@@ -58,9 +76,22 @@ export const CINEMA_SCENARIOS: Record<CinemaScenarioKind, CinemaScenarioDef> = {
     structures: ["turret", "factory"],
     anchor: "playerBase",
     targetPolicy: "playerStructure",
-    playerOffsets: [{ x: -2, y: -1 }, { x: -1, y: 0 }, { x: -2, y: 1 }, { x: 0, y: 1 }],
-    enemyOffsets: [{ x: 3, y: -2 }, { x: 4, y: -1 }, { x: 4, y: 0 }, { x: 3, y: 1 }],
-    structureOffsets: [{ x: -1, y: -1 }, { x: -2, y: -2 }],
+    playerOffsets: [
+      { x: -2, y: -1 },
+      { x: -1, y: 0 },
+      { x: -2, y: 1 },
+      { x: 0, y: 1 },
+    ],
+    enemyOffsets: [
+      { x: 3, y: -2 },
+      { x: 4, y: -1 },
+      { x: 4, y: 0 },
+      { x: 3, y: 1 },
+    ],
+    structureOffsets: [
+      { x: -1, y: -1 },
+      { x: -2, y: -2 },
+    ],
     replacementKinds: { player: ["tank", "infantry"], enemy: ["tank", "antiArmor"] },
   },
   // Enemy resource base ambush (Player ambushes enemy mining operations at e0; structures are 100% Enemy / owner 1)
@@ -69,10 +100,26 @@ export const CINEMA_SCENARIOS: Record<CinemaScenarioKind, CinemaScenarioDef> = {
     structures: ["refinery", "power"],
     anchor: "resourceField",
     targetPolicy: "harvester",
-    playerOffsets: [{ x: -3, y: 1 }, { x: -2, y: 2 }, { x: -2, y: 3 }, { x: -3, y: 3 }],
-    enemyOffsets: [{ x: 1, y: -1 }, { x: 2, y: 0 }, { x: 3, y: -1 }, { x: 2, y: 1 }],
-    structureOffsets: [{ x: 1, y: -2 }, { x: 2, y: -2 }],
-    replacementKinds: { player: ["antiArmor", "tank", "infantry"], enemy: ["tank", "antiArmor", "infantry"] },
+    playerOffsets: [
+      { x: -3, y: 1 },
+      { x: -2, y: 2 },
+      { x: -2, y: 3 },
+      { x: -3, y: 3 },
+    ],
+    enemyOffsets: [
+      { x: 1, y: -1 },
+      { x: 2, y: 0 },
+      { x: 3, y: -1 },
+      { x: 2, y: 1 },
+    ],
+    structureOffsets: [
+      { x: 1, y: -2 },
+      { x: 2, y: -2 },
+    ],
+    replacementKinds: {
+      player: ["antiArmor", "tank", "infantry"],
+      enemy: ["tank", "antiArmor", "infantry"],
+    },
   },
   // Enemy forward vehicle factory assault (Player armor attacks enemy factory at e0; structures are 100% Enemy / owner 1)
   armorClash: {
@@ -80,9 +127,22 @@ export const CINEMA_SCENARIOS: Record<CinemaScenarioKind, CinemaScenarioDef> = {
     structures: ["factory", "turret"],
     anchor: "midfield",
     targetPolicy: "armor",
-    playerOffsets: [{ x: -4, y: -1 }, { x: -3, y: 0 }, { x: -2, y: 1 }, { x: -5, y: -1 }],
-    enemyOffsets: [{ x: 4, y: 1 }, { x: 3, y: 0 }, { x: 2, y: -1 }, { x: 5, y: 1 }],
-    structureOffsets: [{ x: 3, y: -2 }, { x: 2, y: -3 }],
+    playerOffsets: [
+      { x: -4, y: -1 },
+      { x: -3, y: 0 },
+      { x: -2, y: 1 },
+      { x: -5, y: -1 },
+    ],
+    enemyOffsets: [
+      { x: 4, y: 1 },
+      { x: 3, y: 0 },
+      { x: 2, y: -1 },
+      { x: 5, y: 1 },
+    ],
+    structureOffsets: [
+      { x: 3, y: -2 },
+      { x: 2, y: -3 },
+    ],
     replacementKinds: { player: ["tank"], enemy: ["tank"] },
   },
   // Home base defense against infantry assault (Enemy storming player base at p0; structures are 100% Player / owner 0)
@@ -91,9 +151,22 @@ export const CINEMA_SCENARIOS: Record<CinemaScenarioKind, CinemaScenarioDef> = {
     structures: ["barracks", "power"],
     anchor: "playerBase",
     targetPolicy: "infantry",
-    playerOffsets: [{ x: -2, y: -1 }, { x: -1, y: 0 }, { x: -2, y: 1 }, { x: -1, y: 1 }],
-    enemyOffsets: [{ x: 3, y: -1 }, { x: 4, y: 0 }, { x: 3, y: 1 }, { x: 2, y: 1 }],
-    structureOffsets: [{ x: -1, y: -2 }, { x: -2, y: -2 }],
+    playerOffsets: [
+      { x: -2, y: -1 },
+      { x: -1, y: 0 },
+      { x: -2, y: 1 },
+      { x: -1, y: 1 },
+    ],
+    enemyOffsets: [
+      { x: 3, y: -1 },
+      { x: 4, y: 0 },
+      { x: 3, y: 1 },
+      { x: 2, y: 1 },
+    ],
+    structureOffsets: [
+      { x: -1, y: -2 },
+      { x: -2, y: -2 },
+    ],
     replacementKinds: { player: ["infantry", "antiArmor"], enemy: ["infantry", "antiArmor"] },
   },
   // Home base raid interception (Enemy raiding player logistics base at p0; structures are 100% Player / owner 0)
@@ -102,14 +175,30 @@ export const CINEMA_SCENARIOS: Record<CinemaScenarioKind, CinemaScenarioDef> = {
     structures: ["turret", "refinery"],
     anchor: "midfield",
     targetPolicy: "convoy",
-    playerOffsets: [{ x: -3, y: -2 }, { x: -2, y: -1 }, { x: -3, y: 0 }, { x: -1, y: 0 }],
-    enemyOffsets: [{ x: 3, y: 0 }, { x: 2, y: 1 }, { x: 4, y: 1 }, { x: 3, y: 2 }],
-    structureOffsets: [{ x: -1, y: 2 }, { x: -2, y: 2 }],
+    playerOffsets: [
+      { x: -3, y: -2 },
+      { x: -2, y: -1 },
+      { x: -3, y: 0 },
+      { x: -1, y: 0 },
+    ],
+    enemyOffsets: [
+      { x: 3, y: 0 },
+      { x: 2, y: 1 },
+      { x: 4, y: 1 },
+      { x: 3, y: 2 },
+    ],
+    structureOffsets: [
+      { x: -1, y: 2 },
+      { x: -2, y: 2 },
+    ],
     replacementKinds: { player: ["tank", "antiArmor"], enemy: ["tank", "antiArmor", "infantry"] },
   },
 };
 
-export const CINEMA_STRUCTURE_KINDS: Record<CinemaScenarioKind, { player?: BuildingKind; enemy?: BuildingKind; primary: BuildingKind; secondary: BuildingKind }> = {
+export const CINEMA_STRUCTURE_KINDS: Record<
+  CinemaScenarioKind,
+  { player?: BuildingKind; enemy?: BuildingKind; primary: BuildingKind; secondary: BuildingKind }
+> = {
   baseAssault: { primary: "turret", secondary: "barracks", enemy: "turret" },
   turretDefense: { primary: "turret", secondary: "factory", player: "turret" },
   harvesterAmbush: { primary: "refinery", secondary: "power", enemy: "refinery" },
@@ -134,11 +223,13 @@ export function spawnCinemaBuilding(
       if (!canPlaceBuilding(state, kind, x, y, owner, false)) continue;
       const footprint = BUILDING_STATS[kind].footprint;
       const overlapsUnit = state.entities.some(
-        (entity) => entity.class === "unit" && entity.hp > 0
-          && Math.round(entity.x) < x + footprint.w
-          && Math.round(entity.x) >= x
-          && Math.round(entity.y) < y + footprint.h
-          && Math.round(entity.y) >= y,
+        (entity) =>
+          entity.class === "unit" &&
+          entity.hp > 0 &&
+          Math.round(entity.x) < x + footprint.w &&
+          Math.round(entity.x) >= x &&
+          Math.round(entity.y) < y + footprint.h &&
+          Math.round(entity.y) >= y,
       );
       if (!overlapsUnit) candidates.push({ x, y });
     }
@@ -146,13 +237,16 @@ export function spawnCinemaBuilding(
   const anchorIso = anchor.x - anchor.y;
   const anchorSum = anchor.x + anchor.y;
   candidates.sort((a, b) => {
-    const anchorDistance = Math.hypot(a.x - anchor.x, a.y - anchor.y) - Math.hypot(b.x - anchor.x, b.y - anchor.y);
+    const anchorDistance =
+      Math.hypot(a.x - anchor.x, a.y - anchor.y) - Math.hypot(b.x - anchor.x, b.y - anchor.y);
     if (anchorDistance !== 0) return anchorDistance;
-    const sumDelta = Math.abs((a.x + a.y) - anchorSum) - Math.abs((b.x + b.y) - anchorSum);
+    const sumDelta = Math.abs(a.x + a.y - anchorSum) - Math.abs(b.x + b.y - anchorSum);
     if (sumDelta !== 0) return sumDelta;
-    const isoDelta = Math.abs((a.x - a.y) - anchorIso) - Math.abs((b.x - b.y) - anchorIso);
+    const isoDelta = Math.abs(a.x - a.y - anchorIso) - Math.abs(b.x - b.y - anchorIso);
     if (isoDelta !== 0) return isoDelta;
-    const preferredDelta = Math.hypot(a.x - preferred.x, a.y - preferred.y) - Math.hypot(b.x - preferred.x, b.y - preferred.y);
+    const preferredDelta =
+      Math.hypot(a.x - preferred.x, a.y - preferred.y) -
+      Math.hypot(b.x - preferred.x, b.y - preferred.y);
     if (preferredDelta !== 0) return preferredDelta;
     return a.x - b.x || a.y - b.y;
   });
@@ -171,7 +265,10 @@ export interface ScenarioSpawnResult {
   defendingOwner: 0 | 1;
 }
 
-function offsetSlots(anchor: { x: number; y: number }, offsets: readonly Vec2[]): { x: number; y: number }[] {
+function offsetSlots(
+  anchor: { x: number; y: number },
+  offsets: readonly Vec2[],
+): { x: number; y: number }[] {
   return offsets.map((offset) => ({ x: anchor.x + offset.x, y: anchor.y + offset.y }));
 }
 
@@ -295,9 +392,9 @@ export function populateScenarioForces(
   const enemyStructure = defendingOwner === 1 ? s1 : undefined;
 
   if (
-    scenarioDef.targetPolicy === "enemyStructure"
-    || scenarioDef.targetPolicy === "playerStructure"
-    || scenarioDef.targetPolicy === "infantry"
+    scenarioDef.targetPolicy === "enemyStructure" ||
+    scenarioDef.targetPolicy === "playerStructure" ||
+    scenarioDef.targetPolicy === "infantry"
   ) {
     objectiveTarget = s1;
   }
@@ -314,5 +411,13 @@ export function populateScenarioForces(
     }
   }
 
-  return { pUnits, eUnits, structures, objectiveTarget, playerStructure, enemyStructure, defendingOwner };
+  return {
+    pUnits,
+    eUnits,
+    structures,
+    objectiveTarget,
+    playerStructure,
+    enemyStructure,
+    defendingOwner,
+  };
 }

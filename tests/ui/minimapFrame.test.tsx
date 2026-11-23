@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 
-import { createRef, type PointerEventHandler } from "react";
 import { act, cleanup, render, screen } from "@testing-library/react";
+import { createRef, type PointerEventHandler } from "react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MINIMAP_POWER_OFF_MS, MINIMAP_POWER_ON_MS, MinimapFrame } from "../../components/game/MinimapFrame";
+import {
+  MINIMAP_POWER_OFF_MS,
+  MINIMAP_POWER_ON_MS,
+  MinimapFrame,
+} from "../../components/game/MinimapFrame";
 
 function frame(powered: boolean, offlineCause: "radar" | "power" = "radar") {
   const onPointer = (() => undefined) as PointerEventHandler<HTMLCanvasElement>;
@@ -47,13 +51,17 @@ describe("minimap cathode-ray power", () => {
 
     view.rerender(frame(true));
     expect(screen.getByTestId("minimap-frame")).toHaveAttribute("data-power", "powering-on");
-    act(() => { vi.advanceTimersByTime(MINIMAP_POWER_ON_MS); });
+    act(() => {
+      vi.advanceTimersByTime(MINIMAP_POWER_ON_MS);
+    });
     expect(screen.getByTestId("minimap-frame")).toHaveAttribute("data-power", "on");
     expect(screen.getByTestId("tactical-radar")).not.toHaveAttribute("aria-disabled");
 
     view.rerender(frame(false));
     expect(screen.getByTestId("minimap-frame")).toHaveAttribute("data-power", "powering-off");
-    act(() => { vi.advanceTimersByTime(MINIMAP_POWER_OFF_MS); });
+    act(() => {
+      vi.advanceTimersByTime(MINIMAP_POWER_OFF_MS);
+    });
     expect(screen.getByTestId("minimap-frame")).toHaveAttribute("data-power", "off");
   });
 

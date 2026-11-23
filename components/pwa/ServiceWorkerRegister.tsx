@@ -10,14 +10,16 @@ export function ServiceWorkerRegister() {
       "serviceWorker" in navigator &&
       window.location.protocol.startsWith("http")
     ) {
-      const isLocalDevelopment = window.location.hostname === "localhost"
-        || window.location.hostname === "127.0.0.1";
+      const isLocalDevelopment =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
       if (isLocalDevelopment) {
         // Never let the PWA cache mask HMR or fresh local builds. Unregistering
         // also cleans up workers left behind by older development sessions.
         void navigator.serviceWorker
           .getRegistrations()
-          .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+          .then((registrations) =>
+            Promise.all(registrations.map((registration) => registration.unregister())),
+          )
           .catch(() => {
             // Service worker cleanup is best effort in restricted browser contexts.
           });

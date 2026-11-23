@@ -1,14 +1,14 @@
 import { BUILDING_STATS, footprintOf, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER } from "../../catalog";
-import { tileToScreen, type Camera } from "../../iso";
+import { type Camera, tileToScreen } from "../../iso";
+import { heightRangeBonus } from "../../sim/combat/targeting";
+import { directFireRangeBonusAt } from "../../sim/terrainRules";
+import { distToEntity, powerFor } from "../../sim/world";
+import { type Entity, isBuildingEntity, type SimState } from "../../types";
 import { lerpAngle } from "../gl/glMath";
-import { isBuildingEntity, type Entity, type SimState } from "../../types";
-import { iffColors } from "../iff";
-import { entityElev } from "../renderPicking";
 import { buildAntiAirTurretModel, buildTurretHeadModel, type UnitModel } from "../gl/modelLoader";
 import { drawCachedTurretModel } from "../gl/turretRaster";
-import { distToEntity, powerFor } from "../../sim/world";
-import { directFireRangeBonusAt } from "../../sim/terrainRules";
-import { heightRangeBonus } from "../../sim/combat/targeting";
+import { iffColors } from "../iff";
+import { entityElev } from "../renderPicking";
 
 export const turretAimMap = new Map<number, { angle: number; lastMs: number }>();
 export const TURRET_WEAPON_RANGE = 5.5;
@@ -20,10 +20,11 @@ export const TURRET_WEAPON_RANGE = 5.5;
 export const ANTI_AIR_BARREL_PITCH = 0.52;
 
 export function turretRange(turret: Entity, state?: SimState): number {
-  const base = isBuildingEntity(turret) ? BUILDING_STATS[turret.kind].combat?.range ?? TURRET_WEAPON_RANGE : TURRET_WEAPON_RANGE;
-  const multiplier = state && powerFor(state, turret.owner) < 0
-    ? POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER
-    : 1;
+  const base = isBuildingEntity(turret)
+    ? (BUILDING_STATS[turret.kind].combat?.range ?? TURRET_WEAPON_RANGE)
+    : TURRET_WEAPON_RANGE;
+  const multiplier =
+    state && powerFor(state, turret.owner) < 0 ? POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER : 1;
   const terrainBonus = state ? directFireRangeBonusAt(state, turret) : 0;
   return base * multiplier + terrainBonus;
 }
@@ -35,12 +36,14 @@ export function turretRange(turret: Entity, state?: SimState): number {
  */
 export function turretTargetInRange(turret: Entity, target: Entity, state?: SimState): boolean {
   const heightBonus = state ? heightRangeBonus(state, turret, target) : 0;
-  return turret.class === "building" &&
+  return (
+    turret.class === "building" &&
     (turret.kind === "turret" || turret.kind === "antiAirTurret") &&
     target.hp > 0 &&
     target.owner !== turret.owner &&
     !target.neutral &&
-    distToEntity(turret, target) <= turretRange(turret, state) + heightBonus;
+    distToEntity(turret, target) <= turretRange(turret, state) + heightBonus
+  );
 }
 
 /** Aim at the nearest cell of a building footprint instead of its top-left corner. */
@@ -84,8 +87,15 @@ export function drawTurretCannon(
   targetEntity?: Entity,
   colorblindMode: import("../../persist/settings").ColorblindMode = "none",
 ): void {
-  if (e.hp <= 0 || e.constructing > 0 || e.class !== "building" || (e.kind !== "turret" && e.kind !== "antiAirTurret")) return;
-  const target = targetEntity && turretTargetInRange(e, targetEntity, state) ? targetEntity : undefined;
+  if (
+    e.hp <= 0 ||
+    e.constructing > 0 ||
+    e.class !== "building" ||
+    (e.kind !== "turret" && e.kind !== "antiAirTurret")
+  )
+    return;
+  const target =
+    targetEntity && turretTargetInRange(e, targetEntity, state) ? targetEntity : undefined;
   const targetPoint = target ? turretTargetPoint(e, target) : undefined;
   const lowPower = powerFor(state, e.owner) < 0;
 
@@ -134,14 +144,32 @@ export function drawTurretCannon(
   const shadowOffsetY = -sin * 1.2 * z + 2.0 * z;
   ctx.fillStyle = "rgba(6, 9, 12, 0.35)";
   ctx.beginPath();
-  ctx.ellipse(mountX + shadowOffsetX, mountY + shadowOffsetY, 11 * z, 5.5 * z, angle - Math.PI / 4, 0, Math.PI * 2);
+  ctx.ellipse(
+    mountX + shadowOffsetX,
+    mountY + shadowOffsetY,
+    11 * z,
+    5.5 * z,
+    angle - Math.PI / 4,
+    0,
+    Math.PI * 2,
+  );
   ctx.fill();
   ctx.restore();
 
   const pal = state.factions[e.owner]?.palette ?? state.factions[0]?.palette;
   const model = getTurretModel(e.kind);
   const recoilRatio = isFiring ? (e.cooldown - (cooldown - 3)) / 3 : 0;
-  drawCachedTurretModel(ctx, model, mountX, mountY - 3 * z, z, angle - Math.PI / 4, pal, recoilRatio, barrelPitch);
+  drawCachedTurretModel(
+    ctx,
+    model,
+    mountX,
+    mountY - 3 * z,
+    z,
+    angle - Math.PI / 4,
+    pal,
+    recoilRatio,
+    barrelPitch,
+  );
 
   const forwardDist = 26 * z - recoil;
   const pitchLift = Math.sin(barrelPitch) * 16 * z;
@@ -193,7 +221,10 @@ export function drawTurretCannon(
     const flashStage = recoilRatio;
     const flashR = (3.5 + flashStage * 3.5) * z;
 
-    for (const [mx, my] of [[muzzleLX, muzzleLY], [muzzleRX, muzzleRY]]) {
+    for (const [mx, my] of [
+      [muzzleLX, muzzleLY],
+      [muzzleRX, muzzleRY],
+    ]) {
       ctx.fillStyle = "rgba(255, 170, 40, 0.22)";
       ctx.beginPath();
       ctx.arc(mx, my, flashR * 2.1, 0, Math.PI * 2);

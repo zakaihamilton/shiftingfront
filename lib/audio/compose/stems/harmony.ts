@@ -1,5 +1,5 @@
 import { chordToneMidi, noteEvent } from "../helpers";
-import { STEPS_PER_BAR, type MusicNoteEvent, type MusicPulseRole } from "../types";
+import { type MusicNoteEvent, type MusicPulseRole, STEPS_PER_BAR } from "../types";
 
 export function placeHarmony(
   notes: MusicNoteEvent[],
@@ -11,7 +11,14 @@ export function placeHarmony(
   accent = false,
 ): void {
   for (const [index, midi] of voicing.entries()) {
-    noteEvent(notes, origin + step, midi, duration, velocity * (index === 0 ? 1 : 0.82), accent && index === 0);
+    noteEvent(
+      notes,
+      origin + step,
+      midi,
+      duration,
+      velocity * (index === 0 ? 1 : 0.82),
+      accent && index === 0,
+    );
   }
 }
 
@@ -59,7 +66,7 @@ export function closeChord(voicing: readonly number[], low: number, high: number
     placed.push(midi);
     cursor = midi + 2;
   }
-  return placed.length > 0 ? placed : [low + ((classes[0]! - low) % 12 + 12) % 12];
+  return placed.length > 0 ? placed : [low + ((((classes[0]! - low) % 12) + 12) % 12)];
 }
 
 /**
@@ -116,14 +123,18 @@ export function voiceLeadPad(
     if (options.length === 0) {
       for (const existing of placed) {
         const doubled = existing + 12;
-        if (doubled <= root + 24 && !placed.some((other) => other === doubled || rubs(other, doubled))) {
+        if (
+          doubled <= root + 24 &&
+          !placed.some((other) => other === doubled || rubs(other, doubled))
+        ) {
           options.push(doubled);
           break;
         }
       }
     }
     const target = previous?.[tone] ?? placed[placed.length - 1]! + 4;
-    const choice = options.sort((a, b) => Math.abs(a - target) - Math.abs(b - target) || a - b)[0] ?? root + 12;
+    const choice =
+      options.sort((a, b) => Math.abs(a - target) - Math.abs(b - target) || a - b)[0] ?? root + 12;
     placed.push(choice);
   }
   return [placed[0]!, placed[1]!, placed[2]!, placed[3]!];

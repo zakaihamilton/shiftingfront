@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { factionArchetype, FACTION_DOCTRINES } from "../../lib/gen/names";
 import { createCampaign } from "../../lib/gen/campaign";
+import { FACTION_DOCTRINES, factionArchetype } from "../../lib/gen/names";
 import { generateBriefing, objectiveHeadline } from "../../lib/gen/story";
 
 describe("faction narrative and dialect enrichment", () => {
@@ -53,7 +53,9 @@ describe("faction narrative and dialect enrichment", () => {
         expect(generated.length).toBeGreaterThanOrEqual(3);
         expect(generated.length).toBeLessThanOrEqual(5);
         const canonicalObjective = objectiveHeadline(mission.win).toLowerCase();
-        expect(generated.some((line) => line.text.toLowerCase().includes(canonicalObjective))).toBe(false);
+        expect(generated.some((line) => line.text.toLowerCase().includes(canonicalObjective))).toBe(
+          false,
+        );
       }
     }
   });

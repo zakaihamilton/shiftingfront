@@ -4,7 +4,9 @@
   min-width: 0;
   padding: clamp(0.8rem, 2.2vw, 1rem);
   backdrop-filter: blur(6px);
-  box-shadow: var(--chrome-shadow), inset 0 1px rgba(255,255,255,0.06);
+  box-shadow:
+    var(--chrome-shadow),
+    inset 0 1px rgba(255, 255, 255, 0.06);
   animation: dashboard-enter 0.55s ease 0.55s both;
 }
 
@@ -32,8 +34,15 @@
   letter-spacing: 0.14em;
   color: var(--chrome-text);
   background:
-    linear-gradient(105deg, color-mix(in srgb, var(--chrome-cyan) 24%, transparent), transparent 32%),
-    linear-gradient(color-mix(in srgb, var(--chrome-steel-hi) 70%, var(--chrome-cyan-dim)), var(--chrome-steel));
+    linear-gradient(
+      105deg,
+      color-mix(in srgb, var(--chrome-cyan) 24%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--chrome-steel-hi) 70%, var(--chrome-cyan-dim)),
+      var(--chrome-steel)
+    );
   border-color: color-mix(in srgb, var(--chrome-cyan) 48%, var(--chrome-bevel));
 }
 

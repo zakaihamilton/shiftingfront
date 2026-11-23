@@ -1,25 +1,25 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { memoryStorage } from "../../lib/persist/save";
 import {
+  getAudibleStep,
+  pauseMusic,
+  resetMusicPosition,
+  saveAudibleMusicPosition,
+  setMusicCue,
+  setMusicEnabled,
+} from "../../lib/audio/music";
+import {
+  clearMusicPosition,
   MUSIC_POSITION_KEY,
   MUSIC_POSITION_MAX_AGE_MS,
   musicTrackKey,
+  readAllMusicPositions,
   readMusicPosition,
   saveMusicPosition,
-  clearMusicPosition,
-  readAllMusicPositions,
 } from "../../lib/audio/musicPosition";
-import {
-  setMusicCue,
-  pauseMusic,
-  setMusicEnabled,
-  getAudibleStep,
-  saveAudibleMusicPosition,
-  resetMusicPosition,
-} from "../../lib/audio/music";
-import { step, cue, seed, missionIndex, paused, timer } from "../../lib/audio/musicState";
+import { cue, missionIndex, paused, seed, step, timer } from "../../lib/audio/musicState";
+import { memoryStorage } from "../../lib/persist/save";
 
 describe("music position persistence", () => {
   beforeEach(() => {

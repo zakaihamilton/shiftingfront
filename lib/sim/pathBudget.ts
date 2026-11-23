@@ -1,6 +1,10 @@
-import type { Vec2 } from "../types";
-import type { SimState } from "../types";
-import { findPath, findPathDetailed, type FindPathOptions, type PathSearchResult } from "./pathfinding";
+import type { SimState, Vec2 } from "../types";
+import {
+  type FindPathOptions,
+  findPath,
+  findPathDetailed,
+  type PathSearchResult,
+} from "./pathfinding";
 
 /**
  * Shared background search cap for one sim tick: movement detours, combat chase,

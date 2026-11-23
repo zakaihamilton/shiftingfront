@@ -1,10 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { unitSprite } from "../../lib/gen/svgArt";
 import { generateFactions } from "../../lib/gen/factions";
-import { unitFacingLayers, resetUnitFacingBlends } from "../../lib/render/unitFacingBlend";
-import { drawBlendedUnitSprites, resetUnitSpriteBlend } from "../../lib/render/unitSpriteBlend";
-import { computeUnitDynamicTransform, resetUnitTransformTracker, updateUnitHistory } from "../../lib/render/gl/unitTransformTracker";
+import { unitSprite } from "../../lib/gen/svgArt";
+import {
+  computeUnitDynamicTransform,
+  resetUnitTransformTracker,
+  updateUnitHistory,
+} from "../../lib/render/gl/unitTransformTracker";
 import { clearRendererSessionCache } from "../../lib/render/renderer/cache";
+import { resetUnitFacingBlends, unitFacingLayers } from "../../lib/render/unitFacingBlend";
+import { drawBlendedUnitSprites, resetUnitSpriteBlend } from "../../lib/render/unitSpriteBlend";
 import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 beforeEach(() => {
@@ -18,9 +22,12 @@ describe("visible unit turns", () => {
     expect(unitFacingLayers(1, 7, 1000, duration, true)).toEqual([{ facing: 7, weight: 1 }]);
     expect(unitFacingLayers(1, 0, 1000, duration, true)).toEqual([{ facing: 7, weight: 1 }]);
     expect(unitFacingLayers(1, 0, 1000 + duration / 2, duration, true)).toEqual([
-      { facing: 7, weight: 0.5 }, { facing: 0, weight: 0.5 },
+      { facing: 7, weight: 0.5 },
+      { facing: 0, weight: 0.5 },
     ]);
-    expect(unitFacingLayers(1, 0, 1000 + duration, duration, true)).toEqual([{ facing: 0, weight: 1 }]);
+    expect(unitFacingLayers(1, 0, 1000 + duration, duration, true)).toEqual([
+      { facing: 0, weight: 1 },
+    ]);
   });
 
   it("retargets a partially completed turn from the currently visible mix", () => {
@@ -40,7 +47,8 @@ describe("visible unit turns", () => {
     expect(unitFacingLayers(1, 2, 1100, 90, false)).toEqual([{ facing: 0, weight: 1 }]);
     expect(unitFacingLayers(1, 2, 1200, 90, true)).toEqual([{ facing: 0, weight: 1 }]);
     expect(unitFacingLayers(1, 2, 1245, 90, true)).toEqual([
-      { facing: 0, weight: 0.5 }, { facing: 2, weight: 0.5 },
+      { facing: 0, weight: 0.5 },
+      { facing: 2, weight: 0.5 },
     ]);
   });
 
@@ -72,20 +80,35 @@ describe("unit sprite compositing", () => {
     const palette = generateFactions(421)[0].palette;
     const samples: { alpha: number; operation: string }[] = [];
     const scratchCtx = {
-      clearRect: vi.fn(), globalAlpha: 1, globalCompositeOperation: "source-over",
-      drawImage: vi.fn(() => samples.push({ alpha: scratchCtx.globalAlpha, operation: scratchCtx.globalCompositeOperation })),
+      clearRect: vi.fn(),
+      globalAlpha: 1,
+      globalCompositeOperation: "source-over",
+      drawImage: vi.fn(() =>
+        samples.push({
+          alpha: scratchCtx.globalAlpha,
+          operation: scratchCtx.globalCompositeOperation,
+        }),
+      ),
     };
     const scratch = { width: 0, height: 0, getContext: () => scratchCtx };
     const retained = { width: 0, height: 0, getContext: () => ({ drawImage: vi.fn() }) };
-    vi.stubGlobal("document", { createElement: vi.fn().mockReturnValueOnce(scratch).mockReturnValue(retained) });
+    vi.stubGlobal("document", {
+      createElement: vi.fn().mockReturnValueOnce(scratch).mockReturnValue(retained),
+    });
     const ctx = { drawImage: vi.fn(), globalAlpha: 0.7 } as unknown as CanvasRenderingContext2D;
     const layers = [0, 1, 2, 3].map((frame) => ({
-      spec: unitSprite("infantry", palette, { facing: frame < 2 ? 0 : 1, animationFrame: (frame & 1) as 0 | 1, motion: "walk" }),
+      spec: unitSprite("infantry", palette, {
+        facing: frame < 2 ? 0 : 1,
+        animationFrame: (frame & 1) as 0 | 1,
+        motion: "walk",
+      }),
       img: {} as HTMLCanvasElement,
       weight: 0.25,
     }));
     drawBlendedUnitSprites(ctx, layers, 10.25, 20.5, 38, 42, 0.8);
-    expect(samples).toEqual(Array.from({ length: 4 }, () => ({ alpha: 0.25, operation: "lighter" })));
+    expect(samples).toEqual(
+      Array.from({ length: 4 }, () => ({ alpha: 0.25, operation: "lighter" })),
+    );
     expect(ctx.drawImage).toHaveBeenCalledExactlyOnceWith(scratch, 10.25, 20.5, 38, 42);
     expect(ctx.globalAlpha).toBe(0.7);
     expect(scratchCtx.globalCompositeOperation).toBe("source-over");
@@ -112,8 +135,14 @@ describe("unit sprite compositing", () => {
   it("avoids double rotation when rendering blended layers with rotation", () => {
     const palette = generateFactions(421)[0].palette;
     const scratchCtx = {
-      clearRect: vi.fn(), globalAlpha: 1, globalCompositeOperation: "source-over",
-      drawImage: vi.fn(), save: vi.fn(), translate: vi.fn(), rotate: vi.fn(), restore: vi.fn(),
+      clearRect: vi.fn(),
+      globalAlpha: 1,
+      globalCompositeOperation: "source-over",
+      drawImage: vi.fn(),
+      save: vi.fn(),
+      translate: vi.fn(),
+      rotate: vi.fn(),
+      restore: vi.fn(),
     };
     const scratch = { width: 0, height: 0, getContext: () => scratchCtx };
     vi.stubGlobal("document", { createElement: () => scratch });
@@ -127,8 +156,16 @@ describe("unit sprite compositing", () => {
     } as unknown as CanvasRenderingContext2D;
     const img = {} as HTMLCanvasElement;
     const layers = [
-      { spec: { ...unitSprite("infantry", palette, { facing: 0 }), rotation: 0.5 }, img, weight: 0.5 },
-      { spec: { ...unitSprite("infantry", palette, { facing: 1 }), rotation: 0.6 }, img, weight: 0.5 },
+      {
+        spec: { ...unitSprite("infantry", palette, { facing: 0 }), rotation: 0.5 },
+        img,
+        weight: 0.5,
+      },
+      {
+        spec: { ...unitSprite("infantry", palette, { facing: 1 }), rotation: 0.6 },
+        img,
+        weight: 0.5,
+      },
     ];
     drawBlendedUnitSprites(ctx, layers, 10, 20, 32, 32, 1);
     // ctx itself should not rotate since rotation was already baked into scratch canvas

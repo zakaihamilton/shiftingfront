@@ -1,24 +1,26 @@
 // @vitest-environment jsdom
 
-import { createRef } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { createRef } from "react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createCampaign } from "../../lib/gen/campaign";
-import { defaultSettings } from "../../lib/persist/settings";
-import { addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { generateVisualProfile } from "../../lib/gen/visualProfile";
-import type { GameCamera } from "../../components/game/hooks/useGameCamera";
-import type { OverlaySurfaceModel } from "../../components/game/hooks/runtime/types";
 import { GameOverlays } from "../../components/game/GameOverlays";
+import type { OverlaySurfaceModel } from "../../components/game/hooks/runtime/types";
+import type { GameCamera } from "../../components/game/hooks/useGameCamera";
 import { MissionResult } from "../../components/game/MissionResult";
 import { MissionResultActions } from "../../components/game/MissionResultActions";
 import { MissionOutcome } from "../../components/game/MissionResultSections";
-import { missionDebrief } from "../../lib/sim/debrief";
+import { createCampaign } from "../../lib/gen/campaign";
+import { generateVisualProfile } from "../../lib/gen/visualProfile";
+import { defaultSettings } from "../../lib/persist/settings";
 import { MISSION_MAX } from "../../lib/seed/rng";
+import { missionDebrief } from "../../lib/sim/debrief";
+import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 vi.mock("../../components/game/MobileCommandLauncher", () => ({
-  MobileCommandLauncher: ({ open }: { open: boolean }) => <div data-testid="surface-mobile-launcher" data-open={open ? "true" : "false"} />,
+  MobileCommandLauncher: ({ open }: { open: boolean }) => (
+    <div data-testid="surface-mobile-launcher" data-open={open ? "true" : "false"} />
+  ),
 }));
 vi.mock("../../components/game/CommandSidebar", () => ({
   CommandSidebar: ({
@@ -37,13 +39,7 @@ vi.mock("../../components/game/CommandSidebar", () => ({
   },
 }));
 vi.mock("../../components/game/PauseMenu", () => ({
-  PauseMenu: ({
-    onOptions,
-    onBack,
-  }: {
-    onOptions: () => void;
-    onBack: () => void;
-  }) => {
+  PauseMenu: ({ onOptions, onBack }: { onOptions: () => void; onBack: () => void }) => {
     onOptions();
     onBack();
     return <div data-testid="surface-pause" />;
@@ -176,14 +172,19 @@ describe("game overlay surfaces", () => {
     expect(screen.queryByTestId("surface-mobile-launcher")).toBeNull();
     expect(screen.getByTestId("surface-pause")).toBeVisible();
 
-    rerender(<GameOverlays {...props} tutorial state={{ ...state, result: "won" }} paused={false} />);
+    rerender(
+      <GameOverlays {...props} tutorial state={{ ...state, result: "won" }} paused={false} />,
+    );
     expect(screen.queryByTestId("surface-mobile-launcher")).toBeNull();
     expect(screen.queryByTestId("surface-sidebar")).toBeNull();
     expect(screen.queryByTestId("surface-pause")).toBeNull();
   });
 
   it("offers to replay a completed mission", () => {
-    const state = { ...makeFixture({ seed: 421, win: { kind: "annihilate" } }), result: "won" as const };
+    const state = {
+      ...makeFixture({ seed: 421, win: { kind: "annihilate" } }),
+      result: "won" as const,
+    };
     const onRetry = vi.fn();
 
     render(
@@ -199,7 +200,10 @@ describe("game overlay surfaces", () => {
     fireEvent.click(screen.getByRole("button", { name: "Replay mission" }));
     expect(onRetry).toHaveBeenCalledOnce();
     expect(screen.getByRole("button", { name: "Share result" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Next briefing" })).toHaveAttribute("data-default-action", "true");
+    expect(screen.getByRole("button", { name: "Next briefing" })).toHaveAttribute(
+      "data-default-action",
+      "true",
+    );
   });
 
   it("offers campaign victory after the final mission", () => {
@@ -226,7 +230,10 @@ describe("game overlay surfaces", () => {
   });
 
   it("uses retry as the default action and removes sharing after a failure", () => {
-    const state = { ...makeFixture({ seed: 421, win: { kind: "annihilate" } }), result: "lost" as const };
+    const state = {
+      ...makeFixture({ seed: 421, win: { kind: "annihilate" } }),
+      result: "lost" as const,
+    };
 
     render(
       <MissionResultActions
@@ -239,12 +246,18 @@ describe("game overlay surfaces", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Share result" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Retry" })).toHaveAttribute("data-default-action", "true");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveAttribute(
+      "data-default-action",
+      "true",
+    );
     expect(screen.queryByRole("button", { name: "Campaign map" })).toBeNull();
   });
 
   it("keeps result art and status semantics for win and loss states", () => {
-    const lost = { ...makeFixture({ seed: 421, win: { kind: "annihilate" } }), result: "lost" as const };
+    const lost = {
+      ...makeFixture({ seed: 421, win: { kind: "annihilate" } }),
+      result: "lost" as const,
+    };
     const callbacks = {
       onNextBriefing: vi.fn(),
       onCampaignVictory: vi.fn(),
@@ -260,7 +273,9 @@ describe("game overlay surfaces", () => {
     const won = { ...lost, result: "won" as const };
     rerender(<MissionResult state={won} {...callbacks} />);
     expect(screen.getByTestId("mission-result")).toHaveAttribute("data-result", "won");
-    expect(screen.getByTestId("mission-result")).toHaveStyle({ "--result-art": 'url("/art/results/victory.webp")' });
+    expect(screen.getByTestId("mission-result")).toHaveStyle({
+      "--result-art": 'url("/art/results/victory.webp")',
+    });
     expect(screen.getByText("Mission 1 // Fixture")).toBeInTheDocument();
     expect(screen.queryByTestId("deployment-choices")).toBeNull();
     for (const label of ["Veteran squad", "Forward turret", "Air sortie", "Power reserve"]) {
@@ -290,7 +305,9 @@ describe("game overlay surfaces", () => {
       onRetry: vi.fn(),
       onMenu: vi.fn(),
     };
-    const { rerender } = render(<MissionResult state={{ ...match, result: "won", winner: 0 }} {...callbacks} />);
+    const { rerender } = render(
+      <MissionResult state={{ ...match, result: "won", winner: 0 }} {...callbacks} />,
+    );
 
     expect(screen.getByRole("heading", { name: "Skirmish won" })).toBeVisible();
     expect(screen.getByTestId("result-winner")).toHaveTextContent("Northwest Command");
@@ -327,9 +344,25 @@ describe("game overlay surfaces", () => {
       rescued: 0,
       required: 1,
       secondary: [
-        { id: "yard", kind: "preserveYard", label: "Keep the Command HQ standing", completed: false },
-        { id: "time", kind: "completeBefore", label: "Complete the operation within 12 min", target: 144, completed: true },
-        { id: "survivors", kind: "keepUnits", label: "Keep at least one combat unit alive", completed: false },
+        {
+          id: "yard",
+          kind: "preserveYard",
+          label: "Keep the Command HQ standing",
+          completed: false,
+        },
+        {
+          id: "time",
+          kind: "completeBefore",
+          label: "Complete the operation within 12 min",
+          target: 144,
+          completed: true,
+        },
+        {
+          id: "survivors",
+          kind: "keepUnits",
+          label: "Keep at least one combat unit alive",
+          completed: false,
+        },
       ],
     };
 
@@ -337,8 +370,12 @@ describe("game overlay surfaces", () => {
 
     expect(screen.getByTestId("required-objectives")).toHaveTextContent("Primary objectives");
     expect(screen.getByTestId("required-objectives")).toHaveTextContent("Command HQ destroyed");
-    expect(screen.getByTestId("required-objectives")).toHaveTextContent("Operation not finished within 12 min");
-    expect(screen.getByTestId("required-objectives")).toHaveTextContent("Stranded units return to Command HQ");
+    expect(screen.getByTestId("required-objectives")).toHaveTextContent(
+      "Operation not finished within 12 min",
+    );
+    expect(screen.getByTestId("required-objectives")).toHaveTextContent(
+      "Stranded units return to Command HQ",
+    );
     expect(screen.getByTestId("optional-objectives")).toHaveTextContent("Bonus objectives");
     expect(screen.getByTestId("optional-objectives")).toHaveTextContent("No combat unit survived");
     expect(screen.queryByText("Secondary objectives")).toBeNull();

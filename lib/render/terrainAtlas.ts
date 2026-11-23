@@ -1,56 +1,56 @@
-import { bakeTerrainInWorker, disposeTerrainWorker } from "./terrainWorkerClient";
+import { MAP_SKIRT } from "../gen/map";
 import { biomeArt, TERRAIN_ART } from "../gen/visualAssets";
 import { generateCampaignVisualProfile } from "../gen/visualProfile";
-import { MAP_SKIRT } from "../gen/map";
-import { ATLAS_CELL } from "./terrainMaterials";
 import {
   bakeTerrainAtlasData as bakeAtlas,
-  makeAtlasKey,
-  type TerrainAtlasData,
-  initAtlasBake,
   bakeAtlasRowSlice,
   finalizeAtlasBake,
+  initAtlasBake,
+  makeAtlasKey,
+  type TerrainAtlasData,
 } from "./terrainAtlasBake";
 import type { AtlasWorld } from "./terrainMaterials";
+import { ATLAS_CELL } from "./terrainMaterials";
+import { bakeTerrainInWorker, disposeTerrainWorker } from "./terrainWorkerClient";
 
+export type { TerrainAtlasData } from "./terrainAtlasBake";
 export {
-  ATLAS_CELL,
-  TERRAIN_ATLAS_REV,
-  CONCRETE_STEEL,
-  CONCRETE_STEEL_LIGHT,
-  CONCRETE_STEEL_DARK,
-  biomeMaterials,
-  fogTerrainGain,
-  tileVariant,
-  terrainColors,
-} from "./terrainMaterials";
+  atlasPixelAtTile,
+  atlasRectForTile,
+  resourceSignature,
+  sampleTerrainMaterial,
+  terrainLayoutSignature,
+  waterShoreDist,
+} from "./terrainAtlasBake";
 export type { AtlasWorld, TerrainSample } from "./terrainMaterials";
 export {
-  ORE_GLINT_RIDGE,
-  ORE_CRYSTAL_MIN_AMOUNT,
-  ORE_VEIN_PROBES,
-  oreVeinAt,
-  oreVeinPeak,
-  oreShardCount,
-  oreCrystalCluster,
-} from "./terrainOre";
+  ATLAS_CELL,
+  biomeMaterials,
+  CONCRETE_STEEL,
+  CONCRETE_STEEL_DARK,
+  CONCRETE_STEEL_LIGHT,
+  fogTerrainGain,
+  TERRAIN_ATLAS_REV,
+  terrainColors,
+  tileVariant,
+} from "./terrainMaterials";
 export type {
-  OreVeinSample,
-  OreVeinPeak,
-  OreShardPose,
   OreBurstOrigin,
   OreCrystalCluster,
+  OreShardPose,
+  OreVeinPeak,
+  OreVeinSample,
 } from "./terrainOre";
 export {
-  resourceSignature,
-  terrainLayoutSignature,
-  atlasRectForTile,
-  waterShoreDist,
-  sampleTerrainMaterial,
-  atlasPixelAtTile,
-} from "./terrainAtlasBake";
-export { tintGroundPatches, applyBiomeGroundPattern } from "./terrainPatches";
-export type { TerrainAtlasData } from "./terrainAtlasBake";
+  ORE_CRYSTAL_MIN_AMOUNT,
+  ORE_GLINT_RIDGE,
+  ORE_VEIN_PROBES,
+  oreCrystalCluster,
+  oreShardCount,
+  oreVeinAt,
+  oreVeinPeak,
+} from "./terrainOre";
+export { applyBiomeGroundPattern, tintGroundPatches } from "./terrainPatches";
 
 export type TerrainAtlas = TerrainAtlasData & {
   canvas: HTMLCanvasElement | null;
@@ -103,7 +103,8 @@ export function preloadTerrainAtlas(
   options?: { rowsPerChunk?: number },
 ): Promise<boolean> {
   if (typeof Image === "undefined") return Promise.resolve(true);
-  if (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom")) return Promise.resolve(true);
+  if (typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))
+    return Promise.resolve(true);
   const preloadKey = makeAtlasKey(state, 0);
   const existing = atlasPreloadPromises.get(preloadKey);
   if (existing) return existing;
@@ -171,7 +172,12 @@ function requestGrain(src: string): HTMLImageElement | null {
   return null;
 }
 
-function overlayGrain(ctx: CanvasRenderingContext2D, state: AtlasWorld, width: number, height: number): void {
+function overlayGrain(
+  ctx: CanvasRenderingContext2D,
+  state: AtlasWorld,
+  width: number,
+  height: number,
+): void {
   const biomeImg = requestGrain(biomeArt(state.biome));
   const treatment = generateCampaignVisualProfile(state.seed).terrainTreatment;
   const plateImg = requestGrain(TERRAIN_ART[treatment]);
@@ -195,7 +201,6 @@ function overlayGrain(ctx: CanvasRenderingContext2D, state: AtlasWorld, width: n
   }
   ctx.restore();
 }
-
 
 function createTerrainAtlas(state: AtlasWorld, baked: TerrainAtlasData): TerrainAtlas {
   let canvas: HTMLCanvasElement | null = null;
@@ -297,11 +302,21 @@ export async function getTerrainAtlasAsync(
     const workerBake = bakeTerrainInWorker(state, grainGeneration, controller.signal);
     let baked: TerrainAtlasData;
     try {
-      baked = workerBake ? await workerBake : await bakeTerrainAtlasDataAsync(state, { ...options, rowsPerChunk: fallbackRowsPerChunk, signal: controller.signal });
+      baked = workerBake
+        ? await workerBake
+        : await bakeTerrainAtlasDataAsync(state, {
+            ...options,
+            rowsPerChunk: fallbackRowsPerChunk,
+            signal: controller.signal,
+          });
     } catch (error) {
       controller.signal.throwIfAborted();
       if (error instanceof Error && error.name === "AbortError") throw error;
-      baked = await bakeTerrainAtlasDataAsync(state, { ...options, rowsPerChunk: fallbackRowsPerChunk, signal: controller.signal });
+      baked = await bakeTerrainAtlasDataAsync(state, {
+        ...options,
+        rowsPerChunk: fallbackRowsPerChunk,
+        signal: controller.signal,
+      });
     }
     const atlas = createTerrainAtlas(state, baked);
     if (invalidationGeneration === atlasInvalidationGeneration && terrainAtlasKey(state) === key) {
@@ -323,9 +338,13 @@ export function getTerrainAtlas(state: AtlasWorld): TerrainAtlas {
   const key = terrainAtlasKey(state);
   if (atlasCache && atlasCache.key === key) return atlasCache;
   const preloading = atlasPreloadPromises.has(makeAtlasKey(state, 0));
-  if (!preloading && !atlasBakePromises.has(key)
-      && typeof document !== "undefined" && typeof requestAnimationFrame === "function"
-      && !(typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))) {
+  if (
+    !preloading &&
+    !atlasBakePromises.has(key) &&
+    typeof document !== "undefined" &&
+    typeof requestAnimationFrame === "function" &&
+    !(typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom"))
+  ) {
     // Live layout changes need the same responsive preparation as initial load.
     void getTerrainAtlasAsync(state, { rowsPerChunk: 1 }).catch(() => undefined);
   }

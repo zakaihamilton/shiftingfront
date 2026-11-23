@@ -5,6 +5,7 @@ import type { BeepKind } from "./synth";
 export function beepForCommands(commands: Command[]): BeepKind | undefined {
   if (commands.length === 0) return undefined;
   if (commands.some((command) => command.type === "harvest")) return "ackHarvest";
-  if (commands.some((command) => command.type === "attack" || command.type === "attackMove")) return "ackAttack";
+  if (commands.some((command) => command.type === "attack" || command.type === "attackMove"))
+    return "ackAttack";
   return "ack";
 }

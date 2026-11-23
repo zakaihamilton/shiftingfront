@@ -2,40 +2,148 @@
 import type { PortraitMouthCalibration } from "./portraitCalibration";
 
 export const GENERATED_PORTRAIT_MOUTH_CALIBRATIONS = {
-  "commander-01": { clip: { cx: 0.489846, cy: 0.6875, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 9, dy: 0 } },
-  "commander-02": { clip: { cx: 0.497098, cy: 0.591667, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "commander-03": { clip: { cx: 0.499948, cy: 0.579167, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "commander-04": { clip: { cx: 0.493477, cy: 0.579167, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "commander-05": { clip: { cx: 0.516016, cy: 0.566667, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 1, dy: 0 } },
-  "commander-06": { clip: { cx: 0.518113, cy: 0.575, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "commander-07": { clip: { cx: 0.489095, cy: 0.591667, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "commander-08": { clip: { cx: 0.51981, cy: 0.616667, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "commander-09": { clip: { cx: 0.494736, cy: 0.583333, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "commander-10": { clip: { cx: 0.530222, cy: 0.6125, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "commander-11": { clip: { cx: 0.502275, cy: 0.5875, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "commander-12": { clip: { cx: 0.519023, cy: 0.65, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "advisor-01": { clip: { cx: 0.509271, cy: 0.725, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 1, dy: 0 } },
-  "advisor-02": { clip: { cx: 0.504912, cy: 0.654167, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 2, dy: 0 } },
-  "advisor-03": { clip: { cx: 0.512519, cy: 0.8625, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "advisor-04": { clip: { cx: 0.503045, cy: 0.675, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "advisor-05": { clip: { cx: 0.507129, cy: 0.845833, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "advisor-06": { clip: { cx: 0.50186, cy: 0.716667, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "advisor-07": { clip: { cx: 0.512491, cy: 0.7125, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "advisor-08": { clip: { cx: 0.512975, cy: 0.741667, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 2, dy: 0 } },
-  "advisor-09": { clip: { cx: 0.495989, cy: 0.725, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "advisor-10": { clip: { cx: 0.512272, cy: 0.791667, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "advisor-11": { clip: { cx: 0.516887, cy: 0.770833, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "advisor-12": { clip: { cx: 0.515127, cy: 0.791667, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "enemy-leader-01": { clip: { cx: 0.509036, cy: 0.679167, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 6, dy: 0 } },
-  "enemy-leader-02": { clip: { cx: 0.464038, cy: 0.804167, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "enemy-leader-03": { clip: { cx: 0.544137, cy: 0.829167, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "enemy-leader-04": { clip: { cx: 0.529758, cy: 0.7, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 1, dy: -3 } },
-  "enemy-leader-05": { clip: { cx: 0.520997, cy: 0.8375, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "enemy-leader-06": { clip: { cx: 0.497556, cy: 0.670833, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "enemy-leader-07": { clip: { cx: 0.513524, cy: 0.833333, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "enemy-leader-08": { clip: { cx: 0.505043, cy: 0.779167, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "enemy-leader-09": { clip: { cx: 0.500686, cy: 0.795833, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 3, dy: -1 } },
-  "enemy-leader-10": { clip: { cx: 0.513982, cy: 0.733333, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "enemy-leader-11": { clip: { cx: 0.518325, cy: 0.745833, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
-  "enemy-leader-12": { clip: { cx: 0.50852, cy: 0.725, rx: 0.18, ry: 0.09 }, talkOffset: { dx: 0, dy: 0 } },
+  "commander-01": {
+    clip: { cx: 0.489846, cy: 0.6875, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 9, dy: 0 },
+  },
+  "commander-02": {
+    clip: { cx: 0.497098, cy: 0.591667, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "commander-03": {
+    clip: { cx: 0.499948, cy: 0.579167, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "commander-04": {
+    clip: { cx: 0.493477, cy: 0.579167, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "commander-05": {
+    clip: { cx: 0.516016, cy: 0.566667, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 1, dy: 0 },
+  },
+  "commander-06": {
+    clip: { cx: 0.518113, cy: 0.575, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "commander-07": {
+    clip: { cx: 0.489095, cy: 0.591667, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "commander-08": {
+    clip: { cx: 0.51981, cy: 0.616667, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "commander-09": {
+    clip: { cx: 0.494736, cy: 0.583333, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "commander-10": {
+    clip: { cx: 0.530222, cy: 0.6125, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "commander-11": {
+    clip: { cx: 0.502275, cy: 0.5875, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "commander-12": {
+    clip: { cx: 0.519023, cy: 0.65, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "advisor-01": {
+    clip: { cx: 0.509271, cy: 0.725, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 1, dy: 0 },
+  },
+  "advisor-02": {
+    clip: { cx: 0.504912, cy: 0.654167, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 2, dy: 0 },
+  },
+  "advisor-03": {
+    clip: { cx: 0.512519, cy: 0.8625, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "advisor-04": {
+    clip: { cx: 0.503045, cy: 0.675, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "advisor-05": {
+    clip: { cx: 0.507129, cy: 0.845833, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "advisor-06": {
+    clip: { cx: 0.50186, cy: 0.716667, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "advisor-07": {
+    clip: { cx: 0.512491, cy: 0.7125, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "advisor-08": {
+    clip: { cx: 0.512975, cy: 0.741667, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 2, dy: 0 },
+  },
+  "advisor-09": {
+    clip: { cx: 0.495989, cy: 0.725, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "advisor-10": {
+    clip: { cx: 0.512272, cy: 0.791667, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "advisor-11": {
+    clip: { cx: 0.516887, cy: 0.770833, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "advisor-12": {
+    clip: { cx: 0.515127, cy: 0.791667, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "enemy-leader-01": {
+    clip: { cx: 0.509036, cy: 0.679167, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 6, dy: 0 },
+  },
+  "enemy-leader-02": {
+    clip: { cx: 0.464038, cy: 0.804167, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "enemy-leader-03": {
+    clip: { cx: 0.544137, cy: 0.829167, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "enemy-leader-04": {
+    clip: { cx: 0.529758, cy: 0.7, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 1, dy: -3 },
+  },
+  "enemy-leader-05": {
+    clip: { cx: 0.520997, cy: 0.8375, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "enemy-leader-06": {
+    clip: { cx: 0.497556, cy: 0.670833, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "enemy-leader-07": {
+    clip: { cx: 0.513524, cy: 0.833333, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "enemy-leader-08": {
+    clip: { cx: 0.505043, cy: 0.779167, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "enemy-leader-09": {
+    clip: { cx: 0.500686, cy: 0.795833, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 3, dy: -1 },
+  },
+  "enemy-leader-10": {
+    clip: { cx: 0.513982, cy: 0.733333, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "enemy-leader-11": {
+    clip: { cx: 0.518325, cy: 0.745833, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
+  "enemy-leader-12": {
+    clip: { cx: 0.50852, cy: 0.725, rx: 0.18, ry: 0.09 },
+    talkOffset: { dx: 0, dy: 0 },
+  },
 } as const satisfies Readonly<Record<string, PortraitMouthCalibration>>;

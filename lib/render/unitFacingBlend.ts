@@ -17,7 +17,9 @@ function sample(transition: FacingTransition, clockMs: number): UnitFacingLayer[
   const weights = new Map<Facing, number>();
   for (const layer of transition.from) weights.set(layer.facing, layer.weight * (1 - blend));
   weights.set(transition.target, (weights.get(transition.target) ?? 0) + blend);
-  return [...weights].filter(([, weight]) => weight > 0).map(([facing, weight]) => ({ facing, weight }));
+  return [...weights]
+    .filter(([, weight]) => weight > 0)
+    .map(([facing, weight]) => ({ facing, weight }));
 }
 
 /** Retarget from the visible mix so a second turn never snaps back to an old view. */

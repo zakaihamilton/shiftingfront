@@ -1,17 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { TILE_H, createCamera, tileToScreen } from "../../lib/iso";
-import { finalizeMultiSelect, pickEntity } from "../../lib/render/pick";
-import { entityAtPointer } from "../../lib/render/renderPicking";
-import { tooltipLines } from "../../lib/render/renderer";
-import { pickTile } from "../../lib/render/renderer";
-import { issue, tick } from "../../lib/sim/api";
-import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
-import { heightAt } from "../../lib/sim/world";
-import { setHeight } from "../../lib/sim/fixtures";
-import { computeUnitDynamicTransform, resetUnitTransformTracker, updateUnitHistory } from "../../lib/render/gl/unitTransformTracker";
-import { selectionProjectionPoint } from "../../components/game/hooks/selectionBox";
-import { pointerTile, selectVisibleUnitsOfKind, selectionIdsInBox } from "../../components/game/hooks/gameInputOrders";
+import {
+  pointerTile,
+  selectionIdsInBox,
+  selectVisibleUnitsOfKind,
+} from "../../components/game/hooks/gameInputOrders";
 import { resolvePointerUp } from "../../components/game/hooks/gamePointerUp";
+import { selectionProjectionPoint } from "../../components/game/hooks/selectionBox";
+import { createCamera, TILE_H, tileToScreen } from "../../lib/iso";
+import {
+  computeUnitDynamicTransform,
+  resetUnitTransformTracker,
+  updateUnitHistory,
+} from "../../lib/render/gl/unitTransformTracker";
+import { finalizeMultiSelect, pickEntity } from "../../lib/render/pick";
+import { pickTile, tooltipLines } from "../../lib/render/renderer";
+import { entityAtPointer } from "../../lib/render/renderPicking";
+import { issue, tick } from "../../lib/sim/api";
+import {
+  addBuilding,
+  addUnit,
+  makeFixture,
+  setHeight,
+  setTile,
+  TILE_RESOURCE,
+} from "../../lib/sim/fixtures";
+import { heightAt } from "../../lib/sim/world";
 
 describe("harvester selection", () => {
   it("selects a harvester from a click on its sprite body", () => {
@@ -271,14 +284,21 @@ describe("same-type on-screen selection", () => {
     otherStranded.neutral = false;
     otherStranded.scenarioRole = "stranded";
     const regular = addUnit(s, 0, "infantry", 5, 6);
-    const strandedScreen = tileToScreen(stranded.x, stranded.y, cam, heightAt(s, stranded.x, stranded.y));
+    const strandedScreen = tileToScreen(
+      stranded.x,
+      stranded.y,
+      cam,
+      heightAt(s, stranded.x, stranded.y),
+    );
 
     expect(selectVisibleUnitsOfKind(s, cam, { width: 800, height: 600 }, stranded)).toEqual([]);
     expect(pickEntity(s, strandedScreen.x, strandedScreen.y - 12, cam)).toBeUndefined();
     const hovered = entityAtPointer(s, strandedScreen.x, strandedScreen.y + TILE_H / 2 - 12, cam);
     expect(hovered?.id).toBe(stranded.id);
     expect(tooltipLines(s, hovered!, {})).toContain("Stranded");
-    expect(selectVisibleUnitsOfKind(s, cam, { width: 800, height: 600 }, regular)).toEqual([regular.id]);
+    expect(selectVisibleUnitsOfKind(s, cam, { width: 800, height: 600 }, regular)).toEqual([
+      regular.id,
+    ]);
     expect(otherStranded.id).not.toBe(regular.id);
   });
 
@@ -294,7 +314,10 @@ describe("same-type on-screen selection", () => {
       y0: Math.min(hPos.y, uPos.y) - 20,
       x1: Math.max(hPos.x, uPos.x) + 20,
       y1: Math.max(hPos.y, uPos.y) + 20,
-      anchor: selectionProjectionPoint({ x: Math.min(hPos.x, uPos.x) - 20, y: Math.min(hPos.y, uPos.y) - 20 }, cam),
+      anchor: selectionProjectionPoint(
+        { x: Math.min(hPos.x, uPos.x) - 20, y: Math.min(hPos.y, uPos.y) - 20 },
+        cam,
+      ),
     };
     const res = resolvePointerUp({
       pointerType: "touch",
@@ -328,7 +351,10 @@ describe("same-type on-screen selection", () => {
       y0: Math.min(h1Pos.y, h2Pos.y) - 20,
       x1: Math.max(h1Pos.x, h2Pos.x) + 20,
       y1: Math.max(h1Pos.y, h2Pos.y) + 20,
-      anchor: selectionProjectionPoint({ x: Math.min(h1Pos.x, h2Pos.x) - 20, y: Math.min(h1Pos.y, h2Pos.y) - 20 }, cam),
+      anchor: selectionProjectionPoint(
+        { x: Math.min(h1Pos.x, h2Pos.x) - 20, y: Math.min(h1Pos.y, h2Pos.y) - 20 },
+        cam,
+      ),
     };
     const res = resolvePointerUp({
       pointerType: "touch",

@@ -1,4 +1,4 @@
-import { createRng, rngFromState, type Rng } from "../seed/rng";
+import { createRng, type Rng, rngFromState } from "../seed/rng";
 import type { BiomeName, Faction, Palette } from "../types";
 import { genFactionPair } from "./names";
 

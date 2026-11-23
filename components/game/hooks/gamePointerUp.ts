@@ -1,9 +1,14 @@
-import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { BeepKind } from "@/lib/audio/synth";
+import { beepForCommands } from "@/lib/audio/uiOrders";
 import type { Camera } from "@/lib/iso";
-import { canPlaceBuilding } from "@/lib/sim/world";
 import { canSell } from "@/lib/sim/sell";
-import { isPlayerSelectableEntity, type BuildingKind, type Command, type SimState } from "@/lib/types";
+import { canPlaceBuilding } from "@/lib/sim/world";
+import {
+  type BuildingKind,
+  type Command,
+  isPlayerSelectableEntity,
+  type SimState,
+} from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
 import {
   contextOrders,
@@ -15,7 +20,7 @@ import {
   selectionIdsInBox,
   selectVisibleUnitsOfKind,
 } from "./gameInputOrders";
-import { selectionBoxDistance, type SelectionBox } from "./selectionBox";
+import { type SelectionBox, selectionBoxDistance } from "./selectionBox";
 
 export const DOUBLE_CLICK_MS = 400;
 export const DOUBLE_CLICK_PX = 24;
@@ -34,14 +39,20 @@ export type LastProducerClick = {
   y: number;
 };
 
-export function isSameKindDoubleClick(last: LastUnitClick | null | undefined, next: LastUnitClick): boolean {
+export function isSameKindDoubleClick(
+  last: LastUnitClick | null | undefined,
+  next: LastUnitClick,
+): boolean {
   if (!last) return false;
   if (next.kind !== last.kind) return false;
   if (next.atMs - last.atMs > DOUBLE_CLICK_MS) return false;
   return Math.hypot(next.x - last.x, next.y - last.y) <= DOUBLE_CLICK_PX;
 }
 
-export function isSameProducerDoubleClick(last: LastProducerClick | null | undefined, next: LastProducerClick): boolean {
+export function isSameProducerDoubleClick(
+  last: LastProducerClick | null | undefined,
+  next: LastProducerClick,
+): boolean {
   if (!last || next.buildingId !== last.buildingId) return false;
   if (next.atMs - last.atMs > DOUBLE_CLICK_MS) return false;
   return Math.hypot(next.x - last.x, next.y - last.y) <= DOUBLE_CLICK_PX;
@@ -87,7 +98,12 @@ export type PointerUpEffect = {
 const DRAG_THRESHOLD = 8;
 
 function selectableIds(state: SimState, hit: SimState["entities"][number] | undefined): number[] {
-  return hit && hit.owner === (state.viewOwner ?? 0) && isPlayerSelectableEntity(hit) && (!hit.neutral || isContactTarget(state, hit)) ? [hit.id] : [];
+  return hit &&
+    hit.owner === (state.viewOwner ?? 0) &&
+    isPlayerSelectableEntity(hit) &&
+    (!hit.neutral || isContactTarget(state, hit))
+    ? [hit.id]
+    : [];
 }
 
 function selectionForHit(
@@ -103,7 +119,10 @@ function selectionForHit(
   return expanded.length ? expanded : ids;
 }
 
-function selectEffect(ids: number[], extra: Omit<PointerUpEffect, "select" | "clearBox" | "beep"> = {}): PointerUpEffect {
+function selectEffect(
+  ids: number[],
+  extra: Omit<PointerUpEffect, "select" | "clearBox" | "beep"> = {},
+): PointerUpEffect {
   return {
     clearBox: true,
     select: ids,
@@ -142,33 +161,53 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
         endSelectionMode: true,
       });
     }
-    return selectEffect(selectionForHit(state, cam, pickSelectableEntity(state, p.x, p.y, tx, ty, cam), doubleClick, viewport), {
-      endSelectionMode: true,
-    });
+    return selectEffect(
+      selectionForHit(
+        state,
+        cam,
+        pickSelectableEntity(state, p.x, p.y, tx, ty, cam),
+        doubleClick,
+        viewport,
+      ),
+      {
+        endSelectionMode: true,
+      },
+    );
   }
 
   if (pointerType === "touch" && mobileCommand) {
     const target = pickSelectableEntity(state, p.x, p.y, tx, ty, cam);
-    const commands = selectedIds.length > 0 ? mobileCommandOrders(state, mobileCommand, selectedIds, target, tx, ty) : [];
+    const commands =
+      selectedIds.length > 0
+        ? mobileCommandOrders(state, mobileCommand, selectedIds, target, tx, ty)
+        : [];
     const issuedLabel = commands.some((command) => command.type === "rally")
       ? "Rally"
       : commands.some((command) => command.type === "support")
-      ? "Support"
-      : mobileCommand === "attackMove" ? "Attack-move" : mobileCommand.charAt(0).toUpperCase() + mobileCommand.slice(1);
+        ? "Support"
+        : mobileCommand === "attackMove"
+          ? "Attack-move"
+          : mobileCommand.charAt(0).toUpperCase() + mobileCommand.slice(1);
     return {
       commands,
       clearMobileCommand: commands.length > 0,
       beep: beepForCommands(commands),
       commandNotice: commands.length
-        ? { text: commands.some((command) => command.type === "rally") ? "Rally point set." : `${issuedLabel} order issued.`, kind: "success" }
+        ? {
+            text: commands.some((command) => command.type === "rally")
+              ? "Rally point set."
+              : `${issuedLabel} order issued.`,
+            kind: "success",
+          }
         : {
-            text: selectedIds.length === 0
-              ? "Select units before issuing an order."
-              : mobileCommand === "attack"
-                ? "Select an enemy target for attack."
-                : mobileCommand === "harvest"
-                  ? "Select an ore field for harvesting."
-                  : "That destination cannot be reached.",
+            text:
+              selectedIds.length === 0
+                ? "Select units before issuing an order."
+                : mobileCommand === "attack"
+                  ? "Select an enemy target for attack."
+                  : mobileCommand === "harvest"
+                    ? "Select an ore field for harvesting."
+                    : "That destination cannot be reached.",
             kind: "error",
           },
     };
@@ -211,14 +250,20 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
         commandNotice: { text: "Repair order issued.", kind: "success" },
       };
     }
-    return { clearBox: true, commandNotice: { text: "Select a friendly building to repair.", kind: "error" } };
+    return {
+      clearBox: true,
+      commandNotice: { text: "Select a friendly building to repair.", kind: "error" },
+    };
   }
 
   if (sellMode) {
     const hit = pickSelectableEntity(state, p.x, p.y, tx, ty, cam);
     if (hit && hit.owner === owner && hit.class === "building") {
       if (!canSell(hit)) {
-        return { clearBox: true, commandNotice: { text: "That building cannot be sold.", kind: "error" } };
+        return {
+          clearBox: true,
+          commandNotice: { text: "That building cannot be sold.", kind: "error" },
+        };
       }
       return {
         clearBox: true,
@@ -226,7 +271,10 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
         commandNotice: { text: "Sell order issued.", kind: "success" },
       };
     }
-    return { clearBox: true, commandNotice: { text: "Select a friendly building to sell.", kind: "error" } };
+    return {
+      clearBox: true,
+      commandNotice: { text: "Select a friendly building to sell.", kind: "error" },
+    };
   }
 
   const drag = box && selectionBoxDistance(box, cam) > DRAG_THRESHOLD;
@@ -250,7 +298,13 @@ export function resolvePointerUp(input: PointerUpInput): PointerUpEffect {
     }
     return selectEffect(selectionForHit(state, cam, hit, doubleClick, viewport));
   }
-  if (pointerType === "touch" && selectedIds.length > 0 && hit && hit.owner !== owner && !hit.neutral) {
+  if (
+    pointerType === "touch" &&
+    selectedIds.length > 0 &&
+    hit &&
+    hit.owner !== owner &&
+    !hit.neutral
+  ) {
     const commands: Command[] = [{ type: "attack", unitIds: selectedIds, targetId: hit.id }];
     return {
       clearBox: true,

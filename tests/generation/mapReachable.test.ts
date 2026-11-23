@@ -7,16 +7,10 @@ describe("map reachability", () => {
     const width = 2;
     const height = 2;
     const heights = new Array(width * height).fill(1);
-    const cut = [
-      TILE_CLEAR, TILE_WATER,
-      TILE_BLOCKED, TILE_CLEAR,
-    ];
+    const cut = [TILE_CLEAR, TILE_WATER, TILE_BLOCKED, TILE_CLEAR];
     expect(reachable(cut, heights, width, height, { x: 0, y: 0 }, { x: 1, y: 1 })).toBe(false);
 
-    const around = [
-      TILE_CLEAR, TILE_WATER,
-      TILE_CLEAR, TILE_CLEAR,
-    ];
+    const around = [TILE_CLEAR, TILE_WATER, TILE_CLEAR, TILE_CLEAR];
     expect(reachable(around, heights, width, height, { x: 0, y: 0 }, { x: 1, y: 1 })).toBe(true);
   });
 });

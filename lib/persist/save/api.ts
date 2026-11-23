@@ -1,17 +1,17 @@
-import { formatSeed } from "../../seed/rng";
 import { generateWorld } from "../../gen/world";
+import { formatSeed } from "../../seed/rng";
 import type { SimState } from "../../types";
-import { safeGetItem, safeSetItem, safeRemoveItem, safeKeys, type StorageAdapter } from "./storage";
 import {
+  decodeSave,
+  encodeSavedState,
+  SAVE_CONTENT_VERSION,
   SAVE_PREFIX,
   SAVE_VERSION,
-  SAVE_CONTENT_VERSION,
   type SaveEnvelope,
   type SaveMeta,
   saveKey,
-  decodeSave,
-  encodeSavedState,
 } from "./serialize";
+import { type StorageAdapter, safeGetItem, safeKeys, safeRemoveItem, safeSetItem } from "./storage";
 
 export function writeSave(storage: StorageAdapter, state: SimState): boolean {
   try {

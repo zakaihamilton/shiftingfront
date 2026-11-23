@@ -31,10 +31,16 @@ export function setAiRetreatTick(state: SimState, owner: Owner, tick: number | u
 }
 
 export function aiRetreatLocked(state: SimState, owner: Owner): boolean {
-  return state.multiplayer ? multiplayerAiMemory(state, owner).retreatLocked === true : state.aiRetreatLocked === true;
+  return state.multiplayer
+    ? multiplayerAiMemory(state, owner).retreatLocked === true
+    : state.aiRetreatLocked === true;
 }
 
-export function setAiRetreatLocked(state: SimState, owner: Owner, locked: boolean | undefined): void {
+export function setAiRetreatLocked(
+  state: SimState,
+  owner: Owner,
+  locked: boolean | undefined,
+): void {
   if (state.multiplayer) multiplayerAiMemory(state, owner).retreatLocked = locked;
   else state.aiRetreatLocked = locked;
 }

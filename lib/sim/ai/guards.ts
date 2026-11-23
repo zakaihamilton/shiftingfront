@@ -1,14 +1,15 @@
 import type { Entity, Owner, SimState } from "../../types";
+import { aiDifficultyMission } from "../difficulty";
+import { homeGuardCount, isTimedRecovery } from "../policy";
 import { byId, closestApproach, distToEntity } from "../world";
 import { assignMove } from "./combat";
 import { contestedResourcePoint, distance } from "./helpers";
-import { aiDifficultyMission } from "../difficulty";
-import { homeGuardCount, isTimedRecovery } from "../policy";
 import { directorPhase } from "./phase";
 
 export function guardScenarioObjectives(state: SimState, units: Entity[]): void {
   const runtime = state.runtime;
-  if (!runtime || !["sabotage", "destroyMarked", "rescue", "extraction"].includes(runtime.kind)) return;
+  if (!runtime || !["sabotage", "destroyMarked", "rescue", "extraction"].includes(runtime.kind))
+    return;
   const targets = runtime.targetIds
     .map((id) => byId(state, id))
     .filter((entity): entity is Entity => {
@@ -20,7 +21,8 @@ export function guardScenarioObjectives(state: SimState, units: Entity[]): void 
 
   const activeTargetIds = new Set(targets.map((target) => target.id));
   for (const unit of units) {
-    if (unit.scenarioGuardTargetId === undefined || activeTargetIds.has(unit.scenarioGuardTargetId)) continue;
+    if (unit.scenarioGuardTargetId === undefined || activeTargetIds.has(unit.scenarioGuardTargetId))
+      continue;
     unit.scenarioGuardTargetId = undefined;
     if (unit.attackTarget === undefined) {
       unit.orderDestination = undefined;
@@ -35,9 +37,10 @@ export function guardScenarioObjectives(state: SimState, units: Entity[]): void 
   // guards, repeatedly assigning the same unit would make it flip between
   // perimeter tiles every tick.
   targets.slice(0, units.length).forEach((target, index) => {
-    const guard = units.find((unit) => unit.scenarioGuardTargetId === target.id)
-      ?? units.find((unit) => unit.scenarioGuardTargetId === undefined)
-      ?? units[index % units.length]!;
+    const guard =
+      units.find((unit) => unit.scenarioGuardTargetId === target.id) ??
+      units.find((unit) => unit.scenarioGuardTargetId === undefined) ??
+      units[index % units.length]!;
     if (guard.attackTarget !== undefined) return;
     // Keep the selected perimeter tile stable while the guard approaches the
     // same building. Recomputing the nearest tile from a sub-tile position
@@ -65,6 +68,11 @@ export function guardResourceLane(
     .filter((unit) => unit.scenarioGuardTargetId === undefined)
     .sort((a, b) => distToEntity(a, yard) - distToEntity(b, yard) || a.id - b.id)[guardIndex];
   if (!guard || guard.attackTarget !== undefined) return;
-  if (guard.orderDestination && distance(guard.orderDestination, point) < 2 && guard.orderMode === "move") return;
+  if (
+    guard.orderDestination &&
+    distance(guard.orderDestination, point) < 2 &&
+    guard.orderMode === "move"
+  )
+    return;
   assignMove(state, guard, point);
 }

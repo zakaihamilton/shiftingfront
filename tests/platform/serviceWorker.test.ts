@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it, vi } from "vitest";
@@ -16,7 +16,10 @@ function cacheKey(input: Request | string): string {
 class MemoryCache {
   private readonly entries = new Map<string, Response>();
 
-  async match(input: Request | string, options?: { ignoreSearch?: boolean }): Promise<Response | undefined> {
+  async match(
+    input: Request | string,
+    options?: { ignoreSearch?: boolean },
+  ): Promise<Response | undefined> {
     const key = cacheKey(input);
     let response = this.entries.get(key);
     if (!response && options?.ignoreSearch) {
@@ -42,7 +45,10 @@ type ServiceWorkerEvent = {
   waitUntil?: (promise: Promise<unknown>) => void;
 };
 
-function createServiceWorker(deploymentId: string, fetchImpl: (request: Request | string, init?: RequestInit) => Promise<Response>) {
+function createServiceWorker(
+  deploymentId: string,
+  fetchImpl: (request: Request | string, init?: RequestInit) => Promise<Response>,
+) {
   const listeners = new Map<string, (event: ServiceWorkerEvent) => void>();
   const storedCaches = new Map<string, MemoryCache>();
   const caches = {
@@ -59,29 +65,50 @@ function createServiceWorker(deploymentId: string, fetchImpl: (request: Request 
   };
   const self = {
     location: new URL(`${APP_ORIGIN}/sw.js?dpl=${deploymentId}`),
-    addEventListener: (type: string, listener: (event: ServiceWorkerEvent) => void) => listeners.set(type, listener),
+    addEventListener: (type: string, listener: (event: ServiceWorkerEvent) => void) =>
+      listeners.set(type, listener),
     skipWaiting: vi.fn(async () => undefined),
     clients: { claim: async () => undefined },
   };
 
-  runInNewContext(SERVICE_WORKER_SOURCE, { self, caches, fetch: fetchImpl, URL, Request, Response });
+  runInNewContext(SERVICE_WORKER_SOURCE, {
+    self,
+    caches,
+    fetch: fetchImpl,
+    URL,
+    Request,
+    Response,
+  });
 
   return {
     caches,
     skipWaiting: self.skipWaiting,
     async install() {
       let lifetime: Promise<unknown> = Promise.resolve();
-      listeners.get("install")?.({ waitUntil: (promise: Promise<unknown>) => { lifetime = promise; } });
+      listeners.get("install")?.({
+        waitUntil: (promise: Promise<unknown>) => {
+          lifetime = promise;
+        },
+      });
       await lifetime;
     },
     async activate() {
       let lifetime: Promise<unknown> = Promise.resolve();
-      listeners.get("activate")?.({ waitUntil: (promise: Promise<unknown>) => { lifetime = promise; } });
+      listeners.get("activate")?.({
+        waitUntil: (promise: Promise<unknown>) => {
+          lifetime = promise;
+        },
+      });
       await lifetime;
     },
     async fetch(request: Request): Promise<Response> {
       let response: Promise<Response> | undefined;
-      listeners.get("fetch")?.({ request, respondWith: (promise: Promise<Response> | Response) => { response = Promise.resolve(promise); } });
+      listeners.get("fetch")?.({
+        request,
+        respondWith: (promise: Promise<Response> | Response) => {
+          response = Promise.resolve(promise);
+        },
+      });
       if (!response) throw new Error("The service worker did not handle the request.");
       return response;
     },
@@ -97,9 +124,9 @@ describe("Service Worker", () => {
     expect(content).toContain("CACHE_NAME");
     expect(content).toContain("CORE_PRECACHE");
     expect(content).toContain("PRECACHE_URLS");
-    expect(content).toContain("addEventListener(\"install\"");
-    expect(content).toContain("addEventListener(\"activate\"");
-    expect(content).toContain("addEventListener(\"fetch\"");
+    expect(content).toContain('addEventListener("install"');
+    expect(content).toContain('addEventListener("activate"');
+    expect(content).toContain('addEventListener("fetch"');
   });
 
   it("precaches existing static assets", () => {
@@ -162,7 +189,10 @@ describe("Service Worker", () => {
       return results;
     }
 
-    const artFiles = collectFiles(resolve(process.cwd(), "public/art"), resolve(process.cwd(), "public"));
+    const artFiles = collectFiles(
+      resolve(process.cwd(), "public/art"),
+      resolve(process.cwd(), "public"),
+    );
     expect(artFiles.length).toBeGreaterThanOrEqual(100);
 
     for (const artFile of artFiles) {
@@ -253,7 +283,9 @@ describe("Service Worker", () => {
     await previousCache.put(routeData, new Response("stale route data"));
 
     await worker.activate();
-    await expect(worker.fetch(routeData)).rejects.toThrow("Offline and no cached response is available.");
+    await expect(worker.fetch(routeData)).rejects.toThrow(
+      "Offline and no cached response is available.",
+    );
     expect(await worker.caches.keys()).not.toContain("shiftingfront-dpl_previous");
   });
 
@@ -270,9 +302,13 @@ describe("Service Worker", () => {
   });
 
   it("installs lazy battlefield code, styles, fonts and workers before the first offline launch", async () => {
-    const assets = ["/_next/static/chunks/game-lazy.js", "/_next/static/css/game-lazy.css",
-      "/_next/static/media/font.woff2", "/_next/static/chunks/terrain-worker.js",
-      "/_next/static/chunks/app/[seed]/page.js"];
+    const assets = [
+      "/_next/static/chunks/game-lazy.js",
+      "/_next/static/css/game-lazy.css",
+      "/_next/static/media/font.woff2",
+      "/_next/static/chunks/terrain-worker.js",
+      "/_next/static/chunks/app/[seed]/page.js",
+    ];
     let online = true;
     const worker = createServiceWorker("dpl_current", async (input, init) => {
       if (!online) throw new Error("offline");
@@ -287,22 +323,34 @@ describe("Service Worker", () => {
     await worker.install();
     expect(worker.skipWaiting).toHaveBeenCalledOnce();
     online = false;
-    for (const path of assets) expect(await (await worker.fetch(new Request(`${APP_ORIGIN}${path}`))).text()).toBe(path);
+    for (const path of assets)
+      expect(await (await worker.fetch(new Request(`${APP_ORIGIN}${path}`))).text()).toBe(path);
   });
 
   it("does not activate an incomplete runtime precache", async () => {
     const worker = createServiceWorker("dpl_current", async (input) => {
-      if (input === "/_next/static/offline-precache.json") return Response.json(["/_next/static/chunks/missing.js"]);
-      if (input === "/_next/static/chunks/missing.js") return new Response("missing", { status: 404 });
+      if (input === "/_next/static/offline-precache.json")
+        return Response.json(["/_next/static/chunks/missing.js"]);
+      if (input === "/_next/static/chunks/missing.js")
+        return new Response("missing", { status: 404 });
       return new Response("asset");
     });
-    await expect(worker.install()).rejects.toThrow("Failed to precache /_next/static/chunks/missing.js: 404");
+    await expect(worker.install()).rejects.toThrow(
+      "Failed to precache /_next/static/chunks/missing.js: 404",
+    );
     expect(worker.skipWaiting).not.toHaveBeenCalled();
   });
 
-  it.each(["https://other.example/chunk.js", "/_next/static/../../outside.js", "/_next/static/%2e%2e/outside.js"])("rejects runtime manifests escaping the static directory (%s)", async (url) => {
+  it.each([
+    "https://other.example/chunk.js",
+    "/_next/static/../../outside.js",
+    "/_next/static/%2e%2e/outside.js",
+  ])("rejects runtime manifests escaping the static directory (%s)", async (url) => {
     const worker = createServiceWorker("dpl_current", async (input) =>
-      input === "/_next/static/offline-precache.json" ? Response.json([url]) : new Response("asset"));
+      input === "/_next/static/offline-precache.json"
+        ? Response.json([url])
+        : new Response("asset"),
+    );
     await expect(worker.install()).rejects.toThrow("Invalid runtime precache manifest");
     expect(worker.skipWaiting).not.toHaveBeenCalled();
   });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { RoomError } from "./rooms";
 import { peerovoErrorReason } from "./peerovo";
+import { RoomError } from "./rooms";
 
 export function multiplayerFailureResponse(error: unknown) {
   const status = error instanceof RoomError ? error.status : 503;

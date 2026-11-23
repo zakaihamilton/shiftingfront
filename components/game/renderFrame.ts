@@ -1,13 +1,13 @@
-import { cameraViewQuad, type Camera } from "@/lib/iso";
-import { renderMinimap } from "@/lib/render/minimap";
-import { renderWorld, type RenderExtras } from "@/lib/render/renderer";
-import { drawPerfHud, isPerfHudEnabled } from "@/lib/render/perfHud";
-import { isTerrainAtlasBaked } from "@/lib/render/terrainAtlas";
-import { cullFx, type FxBurst } from "@/lib/render/fx";
-import type { BuildingKind, SimState } from "@/lib/types";
-import { renderDimensions, renderPixelRatio } from "./renderDimensions";
+import { type Camera, cameraViewQuad } from "@/lib/iso";
 import { prepareRenderContext, resizeRenderCanvas } from "@/lib/render/canvasViewport";
-import { selectionBoxScreen, type SelectionBox } from "./hooks/selectionBox";
+import { cullFx, type FxBurst } from "@/lib/render/fx";
+import { renderMinimap } from "@/lib/render/minimap";
+import { drawPerfHud, isPerfHudEnabled } from "@/lib/render/perfHud";
+import { type RenderExtras, renderWorld } from "@/lib/render/renderer";
+import { isTerrainAtlasBaked } from "@/lib/render/terrainAtlas";
+import type { BuildingKind, SimState } from "@/lib/types";
+import { type SelectionBox, selectionBoxScreen } from "./hooks/selectionBox";
+import { renderDimensions, renderPixelRatio } from "./renderDimensions";
 
 type Point = { x: number; y: number };
 export type RenderFrameOptions = {
@@ -89,9 +89,10 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
   let tooltipCtx: CanvasRenderingContext2D | null = worldCtx;
   if (tooltipCanvas) {
     const cachedTooltipCtx = options.tooltipCtx;
-    tooltipCtx = cachedTooltipCtx?.canvas === tooltipCanvas
-      ? cachedTooltipCtx
-      : tooltipCanvas.getContext("2d");
+    tooltipCtx =
+      cachedTooltipCtx?.canvas === tooltipCanvas
+        ? cachedTooltipCtx
+        : tooltipCanvas.getContext("2d");
     if (tooltipCtx) {
       prepareRenderContext(tooltipCtx);
       tooltipCtx.clearRect(0, 0, dimensions.width, dimensions.height);
@@ -111,7 +112,15 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
   extras.colorblindMode = options.colorblindMode;
 
   const perfStarted = isPerfHudEnabled() ? performance.now() : 0;
-  const worldTimings = renderWorld(worldCtx, state, cam, selected, hover, extras, tooltipCtx ?? worldCtx);
+  const worldTimings = renderWorld(
+    worldCtx,
+    state,
+    cam,
+    selected,
+    hover,
+    extras,
+    tooltipCtx ?? worldCtx,
+  );
   let miniCtx = options.miniCtx;
   let secondaryMiniCtx = options.secondaryMiniCtx;
   let minimapMs = 0;
@@ -121,7 +130,13 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     }
     if (miniCtx) {
       const miniStarted = worldTimings ? performance.now() : 0;
-      renderMinimap(miniCtx, state, cameraViewQuad(minimapCam, dimensions.width, dimensions.height), selected, options.colorblindMode);
+      renderMinimap(
+        miniCtx,
+        state,
+        cameraViewQuad(minimapCam, dimensions.width, dimensions.height),
+        selected,
+        options.colorblindMode,
+      );
       if (worldTimings) minimapMs = performance.now() - miniStarted;
     }
   }
@@ -131,7 +146,13 @@ export function renderGameFrame(options: RenderFrameOptions): RenderFrameResult 
     }
     if (secondaryMiniCtx) {
       const miniStarted = worldTimings ? performance.now() : 0;
-      renderMinimap(secondaryMiniCtx, state, cameraViewQuad(minimapCam, dimensions.width, dimensions.height), selected, options.colorblindMode);
+      renderMinimap(
+        secondaryMiniCtx,
+        state,
+        cameraViewQuad(minimapCam, dimensions.width, dimensions.height),
+        selected,
+        options.colorblindMode,
+      );
       if (worldTimings) minimapMs += performance.now() - miniStarted;
     }
   }

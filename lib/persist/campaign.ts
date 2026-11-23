@@ -1,8 +1,8 @@
 import { CURRENT_GAMEPLAY_RULES, gameplayRulesVersion } from "../gameplayRules";
+import { assertValidSeed, formatSeed } from "../seed/rng";
 import { missionMedals, missionScore } from "../sim/debrief";
 import type { CampaignProgress, SimState } from "../types";
-import { safeGetItem, safeSetItem, type StorageAdapter } from "./save";
-import { assertValidSeed, formatSeed } from "../seed/rng";
+import { type StorageAdapter, safeGetItem, safeSetItem } from "./save";
 import { isRecord, readPersistedEnvelope } from "./utils";
 
 export const CAMPAIGN_PROGRESS_VERSION = 1 as const;
@@ -30,17 +30,29 @@ export function normalizeCampaignProgress(value: unknown, seed: number): Campaig
   const base = freshCampaignProgress(seed);
   if (!value || typeof value !== "object") return base;
   const raw = value as Partial<CampaignProgress>;
-  const unlockedMission = Math.max(0, Math.min(5, Number.isInteger(raw.unlockedMission) ? raw.unlockedMission! : 0));
+  const unlockedMission = Math.max(
+    0,
+    Math.min(5, Number.isInteger(raw.unlockedMission) ? raw.unlockedMission! : 0),
+  );
   const completedMissions = Array.isArray(raw.completedMissions)
-    ? [...new Set(raw.completedMissions.filter((n): n is number => (
-      Number.isInteger(n) && n >= 0 && n < 6 && n <= unlockedMission
-    )))].sort((a, b) => a - b)
+    ? [
+        ...new Set(
+          raw.completedMissions.filter(
+            (n): n is number => Number.isInteger(n) && n >= 0 && n < 6 && n <= unlockedMission,
+          ),
+        ),
+      ].sort((a, b) => a - b)
     : [];
   const normalizeStats = (stats: unknown): Record<string, number> => {
     if (!isRecord(stats) || Array.isArray(stats)) return {};
     const normalized: Record<string, number> = {};
     for (const [key, score] of Object.entries(stats)) {
-      if (/^[0-5]$/.test(key) && typeof score === "number" && Number.isFinite(score) && score >= 0) {
+      if (
+        /^[0-5]$/.test(key) &&
+        typeof score === "number" &&
+        Number.isFinite(score) &&
+        score >= 0
+      ) {
         normalized[key] = score;
       }
     }
@@ -55,9 +67,13 @@ export function normalizeCampaignProgress(value: unknown, seed: number): Campaig
     completedMissions,
     medals: normalizeStats(raw.medals),
     bestScores: normalizeStats(raw.bestScores),
-    deploymentEdge: raw.deploymentEdge === "veteranSquad" || raw.deploymentEdge === "forwardTurret" || raw.deploymentEdge === "airSortie" || raw.deploymentEdge === "powerReserve"
-      ? raw.deploymentEdge
-      : undefined,
+    deploymentEdge:
+      raw.deploymentEdge === "veteranSquad" ||
+      raw.deploymentEdge === "forwardTurret" ||
+      raw.deploymentEdge === "airSortie" ||
+      raw.deploymentEdge === "powerReserve"
+        ? raw.deploymentEdge
+        : undefined,
   };
 }
 
@@ -73,17 +89,24 @@ export function readCampaignProgress(storage: StorageAdapter, seed: number): Cam
   );
 }
 
-export function writeCampaignProgress(storage: StorageAdapter, progress: CampaignProgress): boolean {
+export function writeCampaignProgress(
+  storage: StorageAdapter,
+  progress: CampaignProgress,
+): boolean {
   try {
     assertValidSeed(progress.seed);
   } catch {
     return false;
   }
-  return safeSetItem(storage, campaignKey(progress.seed), JSON.stringify({
-    version: CAMPAIGN_PROGRESS_VERSION,
-    savedAt: Date.now(),
-    progress,
-  }));
+  return safeSetItem(
+    storage,
+    campaignKey(progress.seed),
+    JSON.stringify({
+      version: CAMPAIGN_PROGRESS_VERSION,
+      savedAt: Date.now(),
+      progress,
+    }),
+  );
 }
 
 /**
@@ -106,10 +129,19 @@ export function recordWonCampaignProgress(storage: StorageAdapter, state: SimSta
   const existing = readCampaignProgress(storage, state.seed);
   return writeCampaignProgress(
     storage,
-    completeMission({
-      ...existing,
-      gameplayRulesVersion: retainedGameplayRules(existing.gameplayRulesVersion, state.gameplayRulesVersion, recordExists),
-    }, state.missionIndex, missionMedals(state), missionScore(state)),
+    completeMission(
+      {
+        ...existing,
+        gameplayRulesVersion: retainedGameplayRules(
+          existing.gameplayRulesVersion,
+          state.gameplayRulesVersion,
+          recordExists,
+        ),
+      },
+      state.missionIndex,
+      missionMedals(state),
+      missionScore(state),
+    ),
   );
 }
 
@@ -123,7 +155,9 @@ export function completeMission(
   const firstCompletion = !progress.completedMissions.includes(missionIndex);
   return {
     ...progress,
-    completedMissions: firstCompletion ? [...progress.completedMissions, missionIndex].sort((a, b) => a - b) : progress.completedMissions,
+    completedMissions: firstCompletion
+      ? [...progress.completedMissions, missionIndex].sort((a, b) => a - b)
+      : progress.completedMissions,
     unlockedMission: Math.max(progress.unlockedMission, Math.min(5, missionIndex + 1)),
     medals: { ...progress.medals, [key]: Math.max(progress.medals[key] ?? 0, medals) },
     bestScores: { ...progress.bestScores, [key]: Math.max(progress.bestScores[key] ?? 0, score) },

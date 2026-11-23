@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { defaultBalanceJobs, balanceScenarios, runBalanceJob, scenarioWorkItems, sortBalanceRecords, stableBalanceRecords, stratifiedBalanceScenarios } from "../../lib/sim/balance";
+import {
+  balanceScenarios,
+  defaultBalanceJobs,
+  runBalanceJob,
+  scenarioWorkItems,
+  sortBalanceRecords,
+  stableBalanceRecords,
+  stratifiedBalanceScenarios,
+} from "../../lib/sim/balance";
 
 describe("defaultBalanceJobs", () => {
   it("returns at least 1", () => {
@@ -49,7 +57,10 @@ describe("balanceScenarios", () => {
 describe("runBalanceJob", () => {
   it("runs a small job and returns records", () => {
     const job = {
-      from: 0, to: 0, missions: [0], maxTicks: 12,
+      from: 0,
+      to: 0,
+      missions: [0],
+      maxTicks: 12,
       strategy: "competent" as const,
       scenarios: [{ seed: 0, mission: 0 }],
     };
@@ -77,9 +88,15 @@ describe("runBalanceJob", () => {
 
   it("calls onRecord for each scenario", () => {
     const job = {
-      from: 0, to: 1, missions: [0], maxTicks: 12,
+      from: 0,
+      to: 1,
+      missions: [0],
+      maxTicks: 12,
       strategy: "competent" as const,
-      scenarios: [{ seed: 0, mission: 0 }, { seed: 1, mission: 0 }],
+      scenarios: [
+        { seed: 0, mission: 0 },
+        { seed: 1, mission: 0 },
+      ],
     };
     const seen: string[] = [];
     runBalanceJob(job, (record) => seen.push(record.seed));
@@ -88,7 +105,10 @@ describe("runBalanceJob", () => {
 
   it("throws for invalid mission index", () => {
     const job = {
-      from: 0, to: 0, missions: [0], maxTicks: 12,
+      from: 0,
+      to: 0,
+      missions: [0],
+      maxTicks: 12,
       strategy: "competent" as const,
       scenarios: [{ seed: 0, mission: 99 }],
     };
@@ -97,7 +117,10 @@ describe("runBalanceJob", () => {
 
   it("runs with baseline strategy", () => {
     const job = {
-      from: 0, to: 0, missions: [0], maxTicks: 12,
+      from: 0,
+      to: 0,
+      missions: [0],
+      maxTicks: 12,
       strategy: "baseline" as const,
       scenarios: [{ seed: 0, mission: 0 }],
     };
@@ -178,9 +201,7 @@ describe("sortBalanceRecords", () => {
       { seed: "0001", mission: 1 } as never,
     ];
     const sorted = sortBalanceRecords(records);
-    expect(sorted.map((r) => `${r.seed}:${r.mission}`)).toEqual([
-      "0001:0", "0001:1", "0002:1",
-    ]);
+    expect(sorted.map((r) => `${r.seed}:${r.mission}`)).toEqual(["0001:0", "0001:1", "0002:1"]);
   });
 });
 

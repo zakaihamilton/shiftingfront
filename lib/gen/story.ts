@@ -1,8 +1,4 @@
-import {
-  generateBriefing,
-  missionObjectives,
-  objectivePhrase,
-} from "./story/index";
+import { generateBriefing, missionObjectives, objectivePhrase } from "./story/index";
 
 export * from "./story/index";
 

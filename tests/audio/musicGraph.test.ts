@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { composeMusic } from "../../lib/audio/compose";
-import { indexPattern, layerMultiplier, stemBus, type MusicGraph } from "../../lib/audio/musicGraph";
+import {
+  indexPattern,
+  layerMultiplier,
+  type MusicGraph,
+  stemBus,
+} from "../../lib/audio/musicGraph";
 
 describe("layered music graph", () => {
   it("indexes the harmony stem alongside the existing lanes", () => {
@@ -19,6 +24,8 @@ describe("layered music graph", () => {
 
     expect(stemBus(graph, "harmony")).toBe(pianoBus);
     expect(layerMultiplier("harmony", "calm")).toBeLessThan(layerMultiplier("melody", "calm"));
-    expect(layerMultiplier("harmony", "critical")).toBeGreaterThan(layerMultiplier("harmony", "calm"));
+    expect(layerMultiplier("harmony", "critical")).toBeGreaterThan(
+      layerMultiplier("harmony", "calm"),
+    );
   });
 });

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { memoryStorage } from "../../lib/persist/save";
 import {
+  clearTelemetry,
   normalizeTelemetry,
   readTelemetry,
   recordTelemetry,
-  clearTelemetry,
   serializeTelemetry,
   summarizeTelemetry,
   TELEMETRY_KEY,
@@ -22,13 +22,13 @@ const record = (index: number) => ({
   casualties: 2,
   commandsIssued: 10,
   commandRejections: 1,
-      secondaryObjectivesCompleted: 1,
-      secondaryObjectivesTotal: 2,
-      assaultTransitions: 2,
-      firstPressureTick: 48,
-      firstHqThreatTick: 72,
-      hqHealthAtEnd: 0,
-      recordedAt: index,
+  secondaryObjectivesCompleted: 1,
+  secondaryObjectivesTotal: 2,
+  assaultTransitions: 2,
+  firstPressureTick: 48,
+  firstHqThreatTick: 72,
+  hqHealthAtEnd: 0,
+  recordedAt: index,
 });
 
 describe("local telemetry", () => {
@@ -45,7 +45,12 @@ describe("local telemetry", () => {
   it("round-trips records and summarizes only aggregate fields", () => {
     const storage = memoryStorage();
     recordTelemetry(storage, record(0));
-    recordTelemetry(storage, { ...record(1), result: "lost", deadlineOutcome: "timedOut", casualties: 6 });
+    recordTelemetry(storage, {
+      ...record(1),
+      result: "lost",
+      deadlineOutcome: "timedOut",
+      casualties: 6,
+    });
     expect(readTelemetry(storage)).toHaveLength(2);
     expect(readTelemetry(storage)[1]?.hqHealthAtEnd).toBe(0);
     expect(JSON.parse(storage.getItem(TELEMETRY_KEY)!)).not.toHaveProperty("coordinates");
@@ -85,18 +90,25 @@ describe("local telemetry", () => {
       firstProductionTick: 40,
       commandRejectionsByReason: { invalidDestination: 2 },
     });
-    expect(readTelemetry(memoryStorage({
-      [TELEMETRY_KEY]: JSON.stringify({ version: 1, records: [record(1)] }),
-    }))[0]?.ux).toMatchObject({ commandFeedbackCount: 0 });
+    expect(
+      readTelemetry(
+        memoryStorage({
+          [TELEMETRY_KEY]: JSON.stringify({ version: 1, records: [record(1)] }),
+        }),
+      )[0]?.ux,
+    ).toMatchObject({ commandFeedbackCount: 0 });
   });
 
   it("exports a versioned normalized envelope and clears only telemetry", () => {
     const storage = memoryStorage({ "shiftingfront:save:421": "keep this save" });
     recordTelemetry(storage, record(0));
-    storage.setItem(TELEMETRY_KEY, JSON.stringify({
-      version: 1,
-      records: [record(0), { missionIndex: "invalid" }],
-    }));
+    storage.setItem(
+      TELEMETRY_KEY,
+      JSON.stringify({
+        version: 1,
+        records: [record(0), { missionIndex: "invalid" }],
+      }),
+    );
 
     const exported = JSON.parse(serializeTelemetry(storage));
     expect(exported).toMatchObject({ version: 1, records: [record(0)] });

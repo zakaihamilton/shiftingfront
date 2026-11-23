@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { createCampaign } from "../../lib/gen/campaign";
 import { generateCharacters } from "../../lib/gen/characters";
 import { generateFactions } from "../../lib/gen/factions";
-import { generateWorld } from "../../lib/gen/world";
 import {
-  NEUTRAL_PLACE_ADJ,
+  BIOME_FACTION_ADJ,
   BIOME_PLACE_ADJ,
   NEUTRAL_FACTION_ADJ,
-  BIOME_FACTION_ADJ,
+  NEUTRAL_PLACE_ADJ,
 } from "../../lib/gen/names";
+import { generateWorld } from "../../lib/gen/world";
 
 const ENGLISH_NAME = /^[A-Z][a-z]+ [A-Z][a-z]+$/;
 
@@ -34,7 +34,9 @@ describe("generated names", () => {
       expect(mission.name).toMatch(/^[A-Za-z][A-Za-z ]+$/);
       expect(mission.name).not.toMatch(/Directive|Zha|Keth|Dax/i);
       expect(mission.briefing[0]!.text).not.toContain(mission.name);
-      expect(mission.briefing.map((line) => line.text).join(" ")).not.toMatch(/under strength|levy|form up|right of it/i);
+      expect(mission.briefing.map((line) => line.text).join(" ")).not.toMatch(
+        /under strength|levy|form up|right of it/i,
+      );
     }
   });
 

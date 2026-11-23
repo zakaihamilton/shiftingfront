@@ -56,7 +56,11 @@ function applyLevels(audio: AudioContext): void {
     activeDuck ? 0.018 : RAMP_S,
   );
   if (activeDuck) {
-    music?.gain.setTargetAtTime(enabled.music && foreground ? levels.musicVolume : 0, activeDuck.until, 0.08);
+    music?.gain.setTargetAtTime(
+      enabled.music && foreground ? levels.musicVolume : 0,
+      activeDuck.until,
+      0.08,
+    );
   }
   sfx?.gain.setTargetAtTime(enabled.sfx && foreground ? levels.sfxVolume : 0, now, RAMP_S);
 }
@@ -91,10 +95,19 @@ function configureLimiter(limiter: DynamicsCompressorNode, now: number): void {
 }
 
 function ensureMixer(audio: AudioContext): void {
-  const contextChanged = Boolean(master?.context && master.context !== (audio as unknown as BaseAudioContext));
+  const contextChanged = Boolean(
+    master?.context && master.context !== (audio as unknown as BaseAudioContext),
+  );
   if (contextChanged) musicDuck = null;
 
-  if (master && music && sfx && sfxLimiter && sfxMakeup && (!master.context || master.context === (audio as unknown as BaseAudioContext))) {
+  if (
+    master &&
+    music &&
+    sfx &&
+    sfxLimiter &&
+    sfxMakeup &&
+    (!master.context || master.context === (audio as unknown as BaseAudioContext))
+  ) {
     applyLevels(audio);
     return;
   }
@@ -145,10 +158,13 @@ export function getAudioBus(bus: AudioBus): AudioNode | null {
 
 export function setAudioLevels(next: Partial<AudioLevels>): void {
   levels = {
-    masterVolume: next.masterVolume === undefined ? levels.masterVolume : clampAudioVolume(next.masterVolume),
-    musicVolume: next.musicVolume === undefined ? levels.musicVolume : clampAudioVolume(next.musicVolume),
+    masterVolume:
+      next.masterVolume === undefined ? levels.masterVolume : clampAudioVolume(next.masterVolume),
+    musicVolume:
+      next.musicVolume === undefined ? levels.musicVolume : clampAudioVolume(next.musicVolume),
     sfxVolume: next.sfxVolume === undefined ? levels.sfxVolume : clampAudioVolume(next.sfxVolume),
-    voiceVolume: next.voiceVolume === undefined ? levels.voiceVolume : clampAudioVolume(next.voiceVolume),
+    voiceVolume:
+      next.voiceVolume === undefined ? levels.voiceVolume : clampAudioVolume(next.voiceVolume),
   };
   const audio = peekAudioContext();
   if (audio) {

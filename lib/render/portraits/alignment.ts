@@ -1,7 +1,12 @@
-import type { PortraitClip, PortraitOffset, PortraitSearchWindow } from "./types";
-import { PORTRAIT_OFFSET_NONE, PORTRAIT_DRIFT_THRESHOLD, PORTRAIT_MOUTH_CLIP, PORTRAIT_EYE_CLIPS } from "./types";
 import { lumaBuffer, lumaSad, lumaSadSubpixel } from "./luma";
 import { detectPortraitMouthClip } from "./mouthDetection";
+import type { PortraitClip, PortraitOffset, PortraitSearchWindow } from "./types";
+import {
+  PORTRAIT_DRIFT_THRESHOLD,
+  PORTRAIT_EYE_CLIPS,
+  PORTRAIT_MOUTH_CLIP,
+  PORTRAIT_OFFSET_NONE,
+} from "./types";
 
 export function portraitClipWindow(
   clips: readonly PortraitClip[],
@@ -46,11 +51,17 @@ export function portraitRegistrationWindow(width: number, height: number): Portr
   };
 }
 
-export function portraitHasDrift(offset: PortraitOffset, threshold = PORTRAIT_DRIFT_THRESHOLD): boolean {
+export function portraitHasDrift(
+  offset: PortraitOffset,
+  threshold = PORTRAIT_DRIFT_THRESHOLD,
+): boolean {
   return Math.abs(offset.dx) >= threshold || Math.abs(offset.dy) >= threshold;
 }
 
-export function choosePortraitMouthClip(detected: PortraitClip, fallback = PORTRAIT_MOUTH_CLIP): PortraitClip {
+export function choosePortraitMouthClip(
+  detected: PortraitClip,
+  fallback = PORTRAIT_MOUTH_CLIP,
+): PortraitClip {
   if (detected.cy < 0.56 || detected.cy > 0.7 || Math.abs(detected.cx - fallback.cx) > 0.1) {
     return fallback;
   }
@@ -72,7 +83,9 @@ export function resolvePortraitAnimation(
   const talkDrift = talkRgba
     ? measurePortraitOffset(idleRgba, talkRgba, width, height, 16, faceWindow)
     : PORTRAIT_OFFSET_NONE;
-  const mouthClip = choosePortraitMouthClip(detectPortraitMouthClip(idleRgba, width, height, talkRgba));
+  const mouthClip = choosePortraitMouthClip(
+    detectPortraitMouthClip(idleRgba, width, height, talkRgba),
+  );
 
   if (!portraitHasDrift(blinkDrift) && !portraitHasDrift(talkDrift)) {
     return { blink: PORTRAIT_OFFSET_NONE, talk: PORTRAIT_OFFSET_NONE, mouthClip };

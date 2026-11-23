@@ -1,16 +1,16 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { DocumentTitle } from "@/components/ui/DocumentTitle";
 import { RASTER_ART } from "@/lib/gen/visualAssets";
 import { APP_REPO_URL, APP_VERSION } from "@/lib/site";
 import { MenuHero } from "./MenuHero";
 import { MenuMainPanel } from "./MenuMainPanel";
 import { MenuOverlay } from "./MenuOverlay";
+import styles from "./MenuScreen.module.css";
 import { MenuSignalOverlay } from "./MenuSignalOverlay";
 import { useMenuController } from "./useMenuController";
-import styles from "./MenuScreen.module.css";
 
 export function MenuScreen() {
   const controller = useMenuController();
@@ -62,19 +62,26 @@ export function MenuScreen() {
               onMultiplayer={() => controller.openMultiplayer()}
             />
             <footer className={styles.menuFooter}>
-              <button
-                type="button"
-                className={styles.footerLink}
-                onClick={controller.openCredits}
-              >
+              <button type="button" className={styles.footerLink} onClick={controller.openCredits}>
                 Credits
               </button>
               <span className={styles.footerDot}>·</span>
-              <Link href="/privacy" className={styles.footerLink}>Privacy</Link>
+              <Link href="/privacy" className={styles.footerLink}>
+                Privacy
+              </Link>
               <span className={styles.footerDot}>·</span>
-              <Link href="/terms" className={styles.footerLink}>Terms</Link>
+              <Link href="/terms" className={styles.footerLink}>
+                Terms
+              </Link>
               <span className={styles.footerDot}>·</span>
-              <a href={APP_REPO_URL} target="_blank" rel="noopener noreferrer" className={styles.footerLink}>v{APP_VERSION}</a>
+              <a
+                href={APP_REPO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.footerLink}
+              >
+                v{APP_VERSION}
+              </a>
             </footer>
           </div>
         </main>

@@ -44,9 +44,9 @@ export function safeKeys(storage: StorageAdapter): string[] {
 
 export function clearAllGameData(storage: StorageAdapter): boolean {
   try {
-    const gameKeys = storage.keys().filter((key) =>
-      key.startsWith("shiftingfront:") || key.startsWith("shifting-front:"),
-    );
+    const gameKeys = storage
+      .keys()
+      .filter((key) => key.startsWith("shiftingfront:") || key.startsWith("shifting-front:"));
     for (const key of gameKeys) {
       try {
         storage.removeItem(key);
@@ -54,9 +54,9 @@ export function clearAllGameData(storage: StorageAdapter): boolean {
         return false;
       }
     }
-    return !storage.keys().some((key) =>
-      key.startsWith("shiftingfront:") || key.startsWith("shifting-front:"),
-    );
+    return !storage
+      .keys()
+      .some((key) => key.startsWith("shiftingfront:") || key.startsWith("shifting-front:"));
   } catch {
     return false;
   }

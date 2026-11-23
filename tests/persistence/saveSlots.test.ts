@@ -1,4 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import { generateWorld } from "../../lib/gen/world";
+import {
+  completeMission,
+  freshCampaignProgress,
+  readCampaignProgress,
+  writeCampaignProgress,
+} from "../../lib/persist/campaign";
 import {
   createSlotId,
   defaultSlotName,
@@ -14,19 +21,17 @@ import {
   readSlot,
   removeSave,
   removeSlot,
-  SLOT_NAME_MAX,
+  SAVE_CONTENT_VERSION,
   SLOT_IMPORT_MAX_BYTES,
+  SLOT_NAME_MAX,
   SLOT_PREFIX,
-  slotKey,
   SLOT_VERSION,
+  saveKey,
+  slotKey,
   writeSave,
   writeSlot,
-  SAVE_CONTENT_VERSION,
-  saveKey,
 } from "../../lib/persist/save";
-import { completeMission, freshCampaignProgress, readCampaignProgress, writeCampaignProgress } from "../../lib/persist/campaign";
 import { makeFixture } from "../../lib/sim/fixtures";
-import { generateWorld } from "../../lib/gen/world";
 
 function makeState(seed: number) {
   const state = makeFixture({ seed, win: { kind: "annihilate" } });
@@ -61,8 +66,12 @@ describe("named save slots", () => {
   it("rejects blank names and mismatched campaign seeds", () => {
     const storage = memoryStorage();
     const state = makeState(421);
-    expect(writeSlot(storage, { name: "   ", state, campaign: freshCampaignProgress(421) })).toEqual({ ok: false });
-    expect(writeSlot(storage, { name: "Valid", state, campaign: freshCampaignProgress(422) })).toEqual({ ok: false });
+    expect(
+      writeSlot(storage, { name: "   ", state, campaign: freshCampaignProgress(421) }),
+    ).toEqual({ ok: false });
+    expect(
+      writeSlot(storage, { name: "Valid", state, campaign: freshCampaignProgress(422) }),
+    ).toEqual({ ok: false });
     expect(listSlots(storage)).toEqual([]);
   });
 
@@ -91,11 +100,13 @@ describe("named save slots", () => {
     storage.setItem = () => {
       throw new Error("quota exceeded");
     };
-    expect(writeSlot(storage, {
-      name: "Quota",
-      state: makeState(1),
-      campaign: freshCampaignProgress(1),
-    })).toEqual({ ok: false });
+    expect(
+      writeSlot(storage, {
+        name: "Quota",
+        state: makeState(1),
+        campaign: freshCampaignProgress(1),
+      }),
+    ).toEqual({ ok: false });
   });
 
   it("lists newest slots first and skips unreadable payloads", () => {
@@ -117,8 +128,16 @@ describe("named save slots", () => {
 
   it("removes only the requested slot", () => {
     const storage = memoryStorage();
-    const first = writeSlot(storage, { name: "Keep", state: makeState(1), campaign: freshCampaignProgress(1) });
-    const second = writeSlot(storage, { name: "Drop", state: makeState(2), campaign: freshCampaignProgress(2) });
+    const first = writeSlot(storage, {
+      name: "Keep",
+      state: makeState(1),
+      campaign: freshCampaignProgress(1),
+    });
+    const second = writeSlot(storage, {
+      name: "Drop",
+      state: makeState(2),
+      campaign: freshCampaignProgress(2),
+    });
     expect(first.ok && second.ok).toBe(true);
     if (!first.ok || !second.ok) return;
     removeSlot(storage, second.id);
@@ -146,10 +165,17 @@ describe("named save slots", () => {
       vi.setSystemTime(new Date(1000));
       writeSave(storage, makeState(9));
       vi.setSystemTime(new Date(2000));
-      writeSlot(storage, { name: "Strike", state: makeState(421), campaign: freshCampaignProgress(421) });
+      writeSlot(storage, {
+        name: "Strike",
+        state: makeState(421),
+        campaign: freshCampaignProgress(421),
+      });
       const listed = listArchiveEntries(storage);
       expect(listed.map((entry) => entry.kind)).toEqual(["slot", "autosave"]);
-      expect(listPauseLoadEntries(storage, 9).map((entry) => entry.kind)).toEqual(["slot", "autosave"]);
+      expect(listPauseLoadEntries(storage, 9).map((entry) => entry.kind)).toEqual([
+        "slot",
+        "autosave",
+      ]);
       expect(listPauseLoadEntries(storage, 421).map((entry) => entry.kind)).toEqual(["slot"]);
       expect(hasLoadableSaves(storage, 9)).toBe(true);
       expect(hasLoadableSaves(memoryStorage(), 9)).toBe(false);
@@ -161,7 +187,11 @@ describe("named save slots", () => {
   it("excludes deleted autosaves and slots from archive and pause load entries", () => {
     const storage = memoryStorage();
     writeSave(storage, makeState(9));
-    const slot = writeSlot(storage, { name: "Strike", state: makeState(9), campaign: freshCampaignProgress(9) });
+    const slot = writeSlot(storage, {
+      name: "Strike",
+      state: makeState(9),
+      campaign: freshCampaignProgress(9),
+    });
     expect(slot.ok).toBe(true);
     if (!slot.ok) return;
 
@@ -221,7 +251,10 @@ describe("named save slots", () => {
     expect(imported.ok).toBe(true);
     if (!imported.ok) return;
     expect(imported.id).not.toBe(written.id);
-    expect(readSlot(destination, imported.id)).toMatchObject({ name: "Portable", state: { seed: 421 } });
+    expect(readSlot(destination, imported.id)).toMatchObject({
+      name: "Portable",
+      state: { seed: 421 },
+    });
     expect(listSlots(destination)).toHaveLength(1);
   });
 
@@ -233,13 +266,30 @@ describe("named save slots", () => {
     const written = writeSlot(source, {
       name: "Previous rules",
       state: legacy,
-      campaign: { ...freshCampaignProgress(421), gameplayRulesVersion: 1, unlockedMission: 2, completedMissions: [0, 1], medals: { "0": 2 }, bestScores: { "1": 40 } },
+      campaign: {
+        ...freshCampaignProgress(421),
+        gameplayRulesVersion: 1,
+        unlockedMission: 2,
+        completedMissions: [0, 1],
+        medals: { "0": 2 },
+        bestScores: { "1": 40 },
+      },
     });
     expect(written.ok).toBe(true);
     if (!written.ok) return;
     const destination = memoryStorage();
-    writeCampaignProgress(destination, { ...freshCampaignProgress(421), gameplayRulesVersion: 2, unlockedMission: 1, completedMissions: [0], medals: { "0": 1 }, bestScores: { "0": 10 } });
-    expect(importSlot(destination, exportSlot(source, written.id)!)).toEqual({ ok: false, reason: "legacy-rules" });
+    writeCampaignProgress(destination, {
+      ...freshCampaignProgress(421),
+      gameplayRulesVersion: 2,
+      unlockedMission: 1,
+      completedMissions: [0],
+      medals: { "0": 1 },
+      bestScores: { "0": 10 },
+    });
+    expect(importSlot(destination, exportSlot(source, written.id)!)).toEqual({
+      ok: false,
+      reason: "legacy-rules",
+    });
     expect(listSlots(destination)).toHaveLength(0);
     expect(readCampaignProgress(destination, 421)).toMatchObject({
       gameplayRulesVersion: 2,
@@ -261,7 +311,9 @@ describe("named save slots", () => {
     const before = storage.keys().map((key) => [key, storage.getItem(key)]);
 
     expect(importSlot(storage, "not-json")).toEqual({ ok: false });
-    expect(importSlot(storage, JSON.stringify({ version: SLOT_VERSION + 1 }))).toEqual({ ok: false });
+    expect(importSlot(storage, JSON.stringify({ version: SLOT_VERSION + 1 }))).toEqual({
+      ok: false,
+    });
     expect(importSlot(storage, "x".repeat(SLOT_IMPORT_MAX_BYTES + 1))).toEqual({ ok: false });
     expect(storage.keys().map((key) => [key, storage.getItem(key)])).toEqual(before);
   });
@@ -288,10 +340,12 @@ describe("named save slots", () => {
     const fallbackId = `${baseId}0`;
     storage.setItem(slotKey(baseId), "existing-base");
     storage.setItem(slotKey(fallbackId), "existing-fallback");
-    const randomValues = vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation((bytes) => {
-      if (bytes) new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength).fill(0xab);
-      return bytes;
-    });
+    const randomValues = vi
+      .spyOn(globalThis.crypto, "getRandomValues")
+      .mockImplementation((bytes) => {
+        if (bytes) new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength).fill(0xab);
+        return bytes;
+      });
     vi.useFakeTimers();
     vi.setSystemTime(0);
     try {

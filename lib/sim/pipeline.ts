@@ -1,18 +1,18 @@
 import type { SimEvent, SimState } from "../types";
 import { tickAi, tickMultiplayerAi } from "./ai";
 import { tickCombat } from "./combat";
+import { ensureMissionDirector, tickMissionDirector } from "./director";
 import { tickEconomy } from "./economy";
 import { tickFog } from "./fog";
-import { applyCommands } from "./orders";
+import { tickMovement } from "./movement";
 import { evaluateObjectives } from "./objectives";
+import { applyCommands } from "./orders";
 import { tickProduction } from "./production";
 import { tickRepair } from "./repair";
-import { tickSupport } from "./support";
-import { ensureMissionDirector, tickMissionDirector } from "./director";
 import { tickScenario } from "./scenarios";
-import { compactDestroyedEntities } from "./world";
-import { tickMovement } from "./movement";
+import { tickSupport } from "./support";
 import { advanceTutorialAfterTick } from "./tutorialStage";
+import { compactDestroyedEntities } from "./world";
 
 export type SimulationTickOptions = {
   evaluateObjectives?: boolean;
@@ -65,11 +65,37 @@ export const SIMULATION_SYSTEMS: readonly SimulationSystem[] = [
   { id: "tutorial", run: ({ state }) => advanceTutorialAfterTick(state) },
   { id: "repair", run: (context) => runWithEvents(context, tickRepair) },
   { id: "support", run: (context) => runWithEvents(context, tickSupport) },
-  { id: "director", run: (context) => { if (!context.state.multiplayer) runWithEvents(context, tickMissionDirector); } },
-  { id: "ai", run: ({ state }) => { if (state.multiplayer) tickMultiplayerAi(state); else tickAi(state); } },
-  { id: "fog", run: ({ state, options }) => { if (options.updateFog !== false) tickFog(state); } },
-  { id: "clock", run: ({ state }) => { state.tick += 1; } },
-  { id: "scenario", run: (context) => { if (!context.state.multiplayer) runWithEvents(context, tickScenario); } },
+  {
+    id: "director",
+    run: (context) => {
+      if (!context.state.multiplayer) runWithEvents(context, tickMissionDirector);
+    },
+  },
+  {
+    id: "ai",
+    run: ({ state }) => {
+      if (state.multiplayer) tickMultiplayerAi(state);
+      else tickAi(state);
+    },
+  },
+  {
+    id: "fog",
+    run: ({ state, options }) => {
+      if (options.updateFog !== false) tickFog(state);
+    },
+  },
+  {
+    id: "clock",
+    run: ({ state }) => {
+      state.tick += 1;
+    },
+  },
+  {
+    id: "scenario",
+    run: (context) => {
+      if (!context.state.multiplayer) runWithEvents(context, tickScenario);
+    },
+  },
   {
     id: "objectives",
     run: (context) => {
@@ -106,7 +132,10 @@ export function runSimulationSystems(
 }
 
 /** Apply queued player intent before the authoritative system pipeline. */
-export function applyQueuedCommands(state: SimState, commands: Parameters<typeof applyCommands>[1] | undefined): SimEvent[] {
+export function applyQueuedCommands(
+  state: SimState,
+  commands: Parameters<typeof applyCommands>[1] | undefined,
+): SimEvent[] {
   return commands?.length ? applyCommands(state, commands) : [];
 }
 

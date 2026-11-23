@@ -9,10 +9,12 @@ const IDENTITY_PATHS = [
   "lib/seed",
   "lib/iso.ts",
   "lib/catalog.ts",
+  "lib/types",
   "lib/types.ts",
   "lib/gameplayRules.ts",
   "lib/multiplayer/protocol.ts",
   "lib/multiplayer/checksum.ts",
+  "lib/persist/save/validation",
   "lib/persist/save/validation.ts",
   "lib/persist/utils.ts",
   "pnpm-lock.yaml",
@@ -29,6 +31,11 @@ export function simulationBuildIdentity(root: string): string {
   };
   for (const path of IDENTITY_PATHS) visit(path);
   const hash = createHash("sha256");
-  for (const path of files.sort()) hash.update(path).update("\0").update(readFileSync(join(root, path))).update("\0");
+  for (const path of files.sort())
+    hash
+      .update(path)
+      .update("\0")
+      .update(readFileSync(join(root, path)))
+      .update("\0");
   return hash.digest("hex");
 }

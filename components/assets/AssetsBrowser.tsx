@@ -5,17 +5,11 @@ import type { Palette } from "@/lib/types";
 import { AssetList } from "./AssetList";
 import { AssetPreview } from "./AssetPreview";
 import { AssetsBayHeader } from "./AssetsBayHeader";
+import styles from "./AssetsBrowser.module.css";
 import { useAssetBayPreview } from "./useAssetBayPreview";
 import { useAssetsBrowser } from "./useAssetsBrowser";
-import styles from "./AssetsBrowser.module.css";
 
-export function AssetsBrowser({
-  palette,
-  onClose,
-}: {
-  palette: Palette;
-  onClose: () => void;
-}) {
+export function AssetsBrowser({ palette, onClose }: { palette: Palette; onClose: () => void }) {
   const {
     assets,
     selected,
@@ -56,7 +50,12 @@ export function AssetsBrowser({
   if (!selected) return null;
 
   return (
-    <MetalPanel className={styles.browser} data-testid="assets-browser" role="dialog" aria-labelledby="assets-title">
+    <MetalPanel
+      className={styles.browser}
+      data-testid="assets-browser"
+      role="dialog"
+      aria-labelledby="assets-title"
+    >
       <AssetsBayHeader onClose={onClose} />
 
       <div className={styles.body}>

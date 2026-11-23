@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  drawUnitShadow,
   GROUND_DUST_FILL,
+  movementDustFill,
+  paintUnitMovementFx,
   UNIT_SHADOW_FILL,
   UNIT_SHADOW_OFFSET_X,
   UNIT_SHADOW_OFFSET_Y,
-  drawUnitShadow,
-  movementDustFill,
-  paintUnitMovementFx,
   unitShadowRadii,
 } from "../../lib/render/unitMotion";
 import type { UnitKind } from "../../lib/types";

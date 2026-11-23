@@ -1,7 +1,8 @@
 "use client";
 
-import { MetalPanel } from "@/components/ui/MetalPanel";
+import { PauseOptions } from "@/components/settings/PauseOptions";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
+import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
 import type { AudioVolumeKey } from "@/lib/audio/mixer";
 import type { ArchiveEntry, SlotMeta } from "@/lib/persist/save";
@@ -11,9 +12,8 @@ import { PauseControls } from "./PauseControls";
 import { PauseDiagnostics } from "./PauseDiagnostics";
 import { PauseLoadSlots } from "./PauseLoadSlots";
 import { PauseMainMenu } from "./PauseMainMenu";
-import { PauseOptions } from "@/components/settings/PauseOptions";
-import { PauseSaveSlots } from "./PauseSaveSlots";
 import styles from "./PauseMenu.module.css";
+import { PauseSaveSlots } from "./PauseSaveSlots";
 
 export function PauseMenu({
   view,
@@ -152,14 +152,22 @@ export function PauseMenu({
             onBack={onBack}
           />
         )}
-        {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
+        {notice ? (
+          <p className={styles.notice} role="status">
+            {notice}
+          </p>
+        ) : null}
         {view === "main" && onLeaveWithoutSave ? (
           <ConsoleButton className={styles.action} onClick={onLeaveWithoutSave}>
             Leave without saving
           </ConsoleButton>
         ) : null}
         <p className={styles.hint}>
-          {view === "main" ? "Escape resumes the mission" : view === "diagnostics" ? "Escape returns to game options" : "Escape returns to the pause menu"}
+          {view === "main"
+            ? "Escape resumes the mission"
+            : view === "diagnostics"
+              ? "Escape returns to game options"
+              : "Escape returns to the pause menu"}
         </p>
       </MetalPanel>
     </div>

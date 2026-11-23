@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildAntiArmorModel,
   buildAntiAirTurretModel,
+  buildAntiArmorModel,
   buildConvoyTruckModel,
   buildHarvesterModel,
   buildInfantryModel,
@@ -46,7 +46,17 @@ describe("modelLoader 3D meshes and parser", () => {
     const cylX = createCylinderXMesh(0, 1, 0, 0, 0.5, 0.5, 8, 4);
     expect(cylX.positions.length).toBeGreaterThan(0);
 
-    const prism = createPolygonPrismMesh([[-1, -1], [1, -1], [1, 1], [-1, 1]], 0, 1, 1);
+    const prism = createPolygonPrismMesh(
+      [
+        [-1, -1],
+        [1, -1],
+        [1, 1],
+        [-1, 1],
+      ],
+      0,
+      1,
+      1,
+    );
     expect(prism.positions.length).toBeGreaterThan(0);
   });
 

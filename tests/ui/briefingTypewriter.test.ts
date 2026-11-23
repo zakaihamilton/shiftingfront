@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { briefingActiveLineIndex, wrapBreakOffsets, briefingLineStarts, briefingRevealedLines } from "../../components/briefing/briefingWrap";
+import {
+  briefingActiveLineIndex,
+  briefingLineStarts,
+  briefingRevealedLines,
+  wrapBreakOffsets,
+} from "../../components/briefing/briefingWrap";
 
 const byLength = (s: string) => s.length;
 
@@ -33,11 +38,13 @@ describe("briefing typewriter reveal", () => {
 
   it("reveals characters without scanning prior lines each time", () => {
     expect(briefingRevealedLines(lines, 0).map((line) => line.visible)).toEqual(["", ""]);
-    expect(briefingRevealedLines(lines, 3).map((line) => ({
-      visible: line.visible,
-      started: line.started,
-      complete: line.complete,
-    }))).toEqual([
+    expect(
+      briefingRevealedLines(lines, 3).map((line) => ({
+        visible: line.visible,
+        started: line.started,
+        complete: line.complete,
+      })),
+    ).toEqual([
       { visible: "Hol", started: true, complete: false },
       { visible: "", started: false, complete: false },
     ]);

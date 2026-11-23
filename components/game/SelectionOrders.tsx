@@ -1,8 +1,8 @@
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
-import { SHORTCUT } from "@/lib/ui/shortcuts";
-import { FORMATION_OPTIONS, STANCE_OPTIONS } from "@/lib/ui/orders";
 import type { Formation, Stance } from "@/lib/types";
 import { triggerHaptic } from "@/lib/ui/haptics";
+import { FORMATION_OPTIONS, STANCE_OPTIONS } from "@/lib/ui/orders";
+import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./SelectionPanel.module.css";
 
 export function SelectionOrders({

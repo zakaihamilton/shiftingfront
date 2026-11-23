@@ -1,7 +1,6 @@
-import type { AtlasWorld } from "../terrainMaterials";
 import type { TerrainFeatureSample } from "../../gen/map";
-import type { materialsFor } from "../terrainMaterials";
 import type { terrainLightRigForBiome } from "../terrainLighting";
+import type { AtlasWorld, materialsFor } from "../terrainMaterials";
 
 export const WATER_CELL_CLASS = 0;
 export const ROAD_CELL_CLASS = 1;

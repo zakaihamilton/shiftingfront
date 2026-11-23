@@ -14,7 +14,8 @@ export function frameTickBudget(
 ): { ticks: number; acc: number } {
   const normalAvailable = Math.max(0, Math.floor(acc / tickMs));
   const available = normalAvailable + Math.max(0, extraAvailableTicks);
-  const frameCap = available > maxTicks ? Math.max(maxTicks, MAX_CATCH_UP_TICKS_PER_FRAME) : maxTicks;
+  const frameCap =
+    available > maxTicks ? Math.max(maxTicks, MAX_CATCH_UP_TICKS_PER_FRAME) : maxTicks;
   const ticks = Math.min(available, frameCap);
   const fromAcc = Math.min(normalAvailable, ticks);
   return { ticks, acc: Math.max(0, acc - fromAcc * tickMs) };
@@ -24,7 +25,10 @@ export type LoopHandle = {
   stop: () => void;
 };
 
-export type SimulationStep = (state: SimState, commands?: Command[]) => { state: SimState; events: SimEvent[] };
+export type SimulationStep = (
+  state: SimState,
+  commands?: Command[],
+) => { state: SimState; events: SimEvent[] };
 
 export type FrameTiming = {
   /** Synchronous loop work, including simulation, presentation, persistence, and drawing. */
@@ -43,7 +47,13 @@ export type LoopOptions = {
   isPaused?: () => boolean;
   canStep?: (state: SimState) => boolean;
   getExtraTicks?: (state: SimState) => number;
-  onFrame?: (now: number, state: SimState, paused: boolean, subTickAlpha: number, frameMs: number) => void;
+  onFrame?: (
+    now: number,
+    state: SimState,
+    paused: boolean,
+    subTickAlpha: number,
+    frameMs: number,
+  ) => void;
   onTick?: (state: SimState, events: SimEvent[], now: number) => void;
   onEvents?: (events: SimEvent[]) => void;
   onFrameTiming?: (timing: FrameTiming) => void;

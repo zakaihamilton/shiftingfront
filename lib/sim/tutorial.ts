@@ -8,6 +8,8 @@ export const TUTORIAL_SEED = 0;
 export {
   advanceTutorialAfterTick,
   enterTutorialStage,
+  TUTORIAL_STAGES,
+  type TutorialWorldTarget,
   tutorialBuildTile,
   tutorialCommandCompletesStage,
   tutorialFocusPoint,
@@ -16,8 +18,6 @@ export {
   tutorialSelectionCompletesStage,
   tutorialStageIndex,
   tutorialTargets,
-  TUTORIAL_STAGES,
-  type TutorialWorldTarget,
 } from "./tutorialStage";
 
 export function createTutorialMission(): SimState {

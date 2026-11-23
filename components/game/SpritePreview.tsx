@@ -1,22 +1,22 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { isUnitKind } from "@/lib/catalog";
 import { buildingSprite, unitSprite } from "@/lib/gen/assets";
-import { drawSprite, rasterize, spriteContentBounds } from "@/lib/render/sprites";
 import { paintBuildingAssetOverlay } from "@/lib/render/previewEffects";
 import {
-  SPRITE_PREVIEW_HEIGHT,
   SPRITE_PREVIEW_CSS_HEIGHT,
   SPRITE_PREVIEW_CSS_WIDTH,
+  SPRITE_PREVIEW_HEIGHT,
   SPRITE_PREVIEW_WIDTH,
   spritePreviewCanvasSize,
   spritePreviewDpr,
   spritePreviewLayout,
 } from "@/lib/render/spritePreview";
+import { drawSprite, rasterize, spriteContentBounds } from "@/lib/render/sprites";
 import { drawUnitShadow } from "@/lib/render/unitMotion";
-import { isUnitKind } from "@/lib/catalog";
-import { cx } from "@/lib/ui/cx";
 import type { BuildingKind, FactionVisualProfile, Palette, UnitKind } from "@/lib/types";
+import { cx } from "@/lib/ui/cx";
 import styles from "./SpritePreview.module.css";
 
 export function SpritePreview({
@@ -60,7 +60,12 @@ export function SpritePreview({
       const image = rasterize(previewSpec, () => {
         if (!disposed) paint();
       });
-      const bounds = spriteContentBounds(image) ?? { minX: 0, minY: 0, width: image.width, height: image.height };
+      const bounds = spriteContentBounds(image) ?? {
+        minX: 0,
+        minY: 0,
+        width: image.width,
+        height: image.height,
+      };
       const layout = spritePreviewLayout(bounds, logicalWidth, logicalHeight);
       ctx.imageSmoothingEnabled = true;
       if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
@@ -71,22 +76,24 @@ export function SpritePreview({
       const groundY = Math.round((logicalHeight + layout.height) / 2);
 
       if (isUnitKind(kind)) {
-        drawUnitShadow(
-          ctx,
-          kind,
-          groundX,
-          groundY,
-          layout.scale,
-          1,
-          false,
-        );
+        drawUnitShadow(ctx, kind, groundX, groundY, layout.scale, 1, false);
       }
 
       drawSprite(ctx, previewSpec, image, renderDx, renderDy, layout.width, layout.height, bounds);
       if (!isUnitKind(kind) && !staticAntiAirPreview) {
         const overlayScale = kind === "turret" ? layout.scale * 2 : layout.scale;
         const overlayY = logicalHeight / 2 - (kind === "turret" ? 8 : 0);
-        paintBuildingAssetOverlay(ctx, kind, logicalWidth / 2, overlayY, overlayScale, 0, 3, false, palette);
+        paintBuildingAssetOverlay(
+          ctx,
+          kind,
+          logicalWidth / 2,
+          overlayY,
+          overlayScale,
+          0,
+          3,
+          false,
+          palette,
+        );
       }
     };
     paint();

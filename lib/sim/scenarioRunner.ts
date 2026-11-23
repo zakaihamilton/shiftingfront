@@ -1,5 +1,5 @@
 import type { Command, SimState } from "../types";
-import { tick, type TickOptions } from "./api";
+import { type TickOptions, tick } from "./api";
 
 export type ScenarioTickResult = ReturnType<typeof tick>;
 
@@ -29,7 +29,10 @@ export type ScenarioRunner = {
  * Runs one deterministic simulation state either a tick at a time or in an
  * unpaced headless loop. Frame timing remains the caller's responsibility.
  */
-export function createScenarioRunner(initialState: SimState, tickOptions: TickOptions = {}): ScenarioRunner {
+export function createScenarioRunner(
+  initialState: SimState,
+  tickOptions: TickOptions = {},
+): ScenarioRunner {
   let state = initialState;
 
   const step = (commands?: Command[]): ScenarioTickResult => {

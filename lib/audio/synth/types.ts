@@ -1,4 +1,13 @@
-export type BeepKind = "select" | "ack" | "ackAttack" | "ackHarvest" | "build" | "cancel" | "alert" | "win" | "lose";
+export type BeepKind =
+  | "select"
+  | "ack"
+  | "ackAttack"
+  | "ackHarvest"
+  | "build"
+  | "cancel"
+  | "alert"
+  | "win"
+  | "lose";
 
 export type SfxKind =
   | "uiSelect"

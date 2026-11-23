@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { BUILDING_STATS, UNIT_STATS, buildingLimitReached, producerFor } from "../../lib/catalog";
+import { BUILDING_STATS, buildingLimitReached, producerFor, UNIT_STATS } from "../../lib/catalog";
+import { createRng } from "../../lib/seed/rng";
 import { strike } from "../../lib/sim/combat/damage";
 import { statsFor } from "../../lib/sim/combat/grid";
 import { domainDamageScale } from "../../lib/sim/combat/targeting";
 import { combatUnits } from "../../lib/sim/commander/queries";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { minimapPicture, minimapRadarOnline } from "../../lib/sim/radar";
-import { createRng } from "../../lib/seed/rng";
 import { invalidateEntityCaches, powerFor } from "../../lib/sim/world";
 
 describe("radar minimap power", () => {
@@ -90,7 +90,9 @@ describe("scout vehicle", () => {
     const tank = addUnit(state, 1, "tank", 6, 6);
     const harvester = addUnit(state, 1, "harvester", 6, 10);
     expect(domainDamageScale(scout, infantry)).toBeGreaterThan(domainDamageScale(scout, tank) * 5);
-    expect(domainDamageScale(scout, infantry)).toBeGreaterThan(domainDamageScale(scout, harvester) * 4);
+    expect(domainDamageScale(scout, infantry)).toBeGreaterThan(
+      domainDamageScale(scout, harvester) * 4,
+    );
 
     const infantryHp = infantry.hp;
     strike(state, scout, infantry, statsFor(scout), createRng(3), []);

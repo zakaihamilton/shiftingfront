@@ -1,35 +1,35 @@
 import type { Rng } from "../../seed/rng";
 import {
+  BLUES,
+  BLUES_PROGRESSIONS,
+  DORIAN,
+  DOUBLE_HARMONIC,
+  DOUBLE_HARMONIC_PROGRESSIONS,
+  HARMONIC_MINOR,
+  HARMONIC_MINOR_PROGRESSIONS,
+  LYDIAN,
+  LYDIAN_PROGRESSIONS,
+  MAJOR,
+  MAJOR_PROGRESSIONS,
+  MINOR_PENTATONIC,
+  MINOR_PROGRESSIONS,
+  MIXOLYDIAN,
+  MIXOLYDIAN_PROGRESSIONS,
+  MUSIC_STEPS,
   type MusicCue,
-  type MusicDrumKind,
   type MusicDrumEvent,
+  type MusicDrumKind,
   type MusicFillStyle,
   type MusicGroove,
   type MusicNoteEvent,
+  type MusicScaleName,
   type MusicSectionName,
   type MusicStyleProfile,
-  type MusicScaleName,
-  MUSIC_STEPS,
-  TUTORIAL_MUSIC_MISSION,
   NATURAL_MINOR,
-  DORIAN,
-  MIXOLYDIAN,
-  MAJOR,
-  PHRYGIAN,
-  MINOR_PROGRESSIONS,
-  MAJOR_PROGRESSIONS,
-  MIXOLYDIAN_PROGRESSIONS,
-  PHRYGIAN_PROGRESSIONS,
-  HARMONIC_MINOR,
-  MINOR_PENTATONIC,
-  LYDIAN,
-  DOUBLE_HARMONIC,
-  BLUES,
-  HARMONIC_MINOR_PROGRESSIONS,
   PENTATONIC_PROGRESSIONS,
-  LYDIAN_PROGRESSIONS,
-  DOUBLE_HARMONIC_PROGRESSIONS,
-  BLUES_PROGRESSIONS,
+  PHRYGIAN,
+  PHRYGIAN_PROGRESSIONS,
+  TUTORIAL_MUSIC_MISSION,
 } from "./types";
 
 export function midiToHz(midi: number): number {
@@ -41,17 +41,23 @@ export function musicLabel(cue: MusicCue, missionIndex: number): string {
   return `music:${cue}:${missionIndex}`;
 }
 
-export function bpmFor(cue: MusicCue, roll: number, missionIndex: number, style?: MusicStyleProfile): number {
+export function bpmFor(
+  cue: MusicCue,
+  roll: number,
+  missionIndex: number,
+  style?: MusicStyleProfile,
+): number {
   const mission = Math.max(0, missionIndex);
-  const [min, max, base] = cue === "menu"
-    ? [112, 124, 112 + (roll % 13)]
-    : cue === "briefing"
-      ? [104, 118, 104 + (roll % 15)]
-      : cue === "mission"
-        ? [118, 138, 124 + ((roll + mission) % 11)]
-        : cue === "victory"
-          ? [124, 136, 124 + (roll % 13)]
-          : [88, 100, 88 + (roll % 13)];
+  const [min, max, base] =
+    cue === "menu"
+      ? [112, 124, 112 + (roll % 13)]
+      : cue === "briefing"
+        ? [104, 118, 104 + (roll % 15)]
+        : cue === "mission"
+          ? [118, 138, 124 + ((roll + mission) % 11)]
+          : cue === "victory"
+            ? [124, 136, 124 + (roll % 13)]
+            : [88, 100, 88 + (roll % 13)];
   return Math.max(min, Math.min(max, base + (style?.tempoBias ?? 0)));
 }
 
@@ -68,41 +74,62 @@ const SCALES: Record<MusicScaleName, { notes: readonly number[]; name: MusicScal
   blues: { notes: BLUES, name: "blues" },
 };
 
-export function scaleFor(cue: MusicCue, rng: Rng, style?: MusicStyleProfile): { notes: readonly number[]; name: MusicScaleName } {
-  const fallback: readonly MusicScaleName[] = cue === "victory"
-    ? ["major", "mixolydian", "dorian"]
-    : cue === "briefing"
-      ? ["dorian", "natural minor", "phrygian"]
-      : cue === "defeat"
-        ? ["natural minor", "dorian", "phrygian", "harmonic minor"]
-        : ["natural minor", "dorian", "mixolydian", "major", "phrygian", "harmonic minor", "minor pentatonic", "lydian", "double harmonic", "blues"];
+export function scaleFor(
+  cue: MusicCue,
+  rng: Rng,
+  style?: MusicStyleProfile,
+): { notes: readonly number[]; name: MusicScaleName } {
+  const fallback: readonly MusicScaleName[] =
+    cue === "victory"
+      ? ["major", "mixolydian", "dorian"]
+      : cue === "briefing"
+        ? ["dorian", "natural minor", "phrygian"]
+        : cue === "defeat"
+          ? ["natural minor", "dorian", "phrygian", "harmonic minor"]
+          : [
+              "natural minor",
+              "dorian",
+              "mixolydian",
+              "major",
+              "phrygian",
+              "harmonic minor",
+              "minor pentatonic",
+              "lydian",
+              "double harmonic",
+              "blues",
+            ];
   const name = rng.pick(style?.scalePool ?? fallback);
   return SCALES[name];
 }
 
 export function progressionsFor(scaleName: string, variant = 0): readonly number[][] {
-  const progressions = scaleName === "major"
-    ? MAJOR_PROGRESSIONS
-    : scaleName === "mixolydian"
-      ? MIXOLYDIAN_PROGRESSIONS
-      : scaleName === "phrygian"
-        ? PHRYGIAN_PROGRESSIONS
-        : scaleName === "harmonic minor"
-          ? HARMONIC_MINOR_PROGRESSIONS
-        : scaleName === "minor pentatonic"
-          ? PENTATONIC_PROGRESSIONS
-          : scaleName === "lydian"
-            ? LYDIAN_PROGRESSIONS
-            : scaleName === "double harmonic"
-              ? DOUBLE_HARMONIC_PROGRESSIONS
-              : scaleName === "blues"
-                ? BLUES_PROGRESSIONS
-                : MINOR_PROGRESSIONS;
+  const progressions =
+    scaleName === "major"
+      ? MAJOR_PROGRESSIONS
+      : scaleName === "mixolydian"
+        ? MIXOLYDIAN_PROGRESSIONS
+        : scaleName === "phrygian"
+          ? PHRYGIAN_PROGRESSIONS
+          : scaleName === "harmonic minor"
+            ? HARMONIC_MINOR_PROGRESSIONS
+            : scaleName === "minor pentatonic"
+              ? PENTATONIC_PROGRESSIONS
+              : scaleName === "lydian"
+                ? LYDIAN_PROGRESSIONS
+                : scaleName === "double harmonic"
+                  ? DOUBLE_HARMONIC_PROGRESSIONS
+                  : scaleName === "blues"
+                    ? BLUES_PROGRESSIONS
+                    : MINOR_PROGRESSIONS;
   const offset = ((variant % progressions.length) + progressions.length) % progressions.length;
   return [...progressions.slice(offset), ...progressions.slice(0, offset)];
 }
 
-export function grooveHits(groove: MusicGroove, variation: 0 | 1, variant: 0 | 1 | 2 = 0): { kick: number[]; snare: number[] } {
+export function grooveHits(
+  groove: MusicGroove,
+  variation: 0 | 1,
+  variant: 0 | 1 | 2 = 0,
+): { kick: number[]; snare: number[] } {
   if (groove === "breakbeat") {
     if (variant === 1) {
       return variation === 0
@@ -150,18 +177,14 @@ export function grooveHits(groove: MusicGroove, variation: 0 | 1, variant: 0 | 1
   }
   if (groove === "half-time") {
     if (variant === 1) {
-      return variation === 0
-        ? { kick: [0, 8], snare: [12] }
-        : { kick: [0, 6, 8], snare: [12] };
+      return variation === 0 ? { kick: [0, 8], snare: [12] } : { kick: [0, 6, 8], snare: [12] };
     }
     if (variant === 2) {
       return variation === 0
         ? { kick: [0, 8, 14], snare: [4, 12] }
         : { kick: [0, 6, 8, 14], snare: [12, 14] };
     }
-    return variation === 0
-      ? { kick: [0, 8], snare: [12] }
-      : { kick: [0, 8], snare: [4, 12] };
+    return variation === 0 ? { kick: [0, 8], snare: [12] } : { kick: [0, 8], snare: [4, 12] };
   }
   if (groove === "shuffle") {
     if (variant === 1) {
@@ -203,9 +226,7 @@ export function grooveHits(groove: MusicGroove, variation: 0 | 1, variant: 0 | 1
       ? { kick: [0, 6, 8, 14], snare: [4, 12] }
       : { kick: [0, 4, 6, 8, 14], snare: [4, 12] };
   }
-  return variation === 0
-    ? { kick: [0, 8], snare: [4, 12] }
-    : { kick: [0, 6, 8], snare: [4, 12] };
+  return variation === 0 ? { kick: [0, 8], snare: [4, 12] } : { kick: [0, 6, 8], snare: [4, 12] };
 }
 
 export function sectionEnergy(name: MusicSectionName): number {
@@ -268,7 +289,8 @@ export function placePhraseFill(
     add(origin + 12, "impact", 0.86, true);
   }
   if (fillStyle === "kick-roll") {
-    for (const step of [8, 10, 12, 14]) add(origin + step, "kick", step >= 12 ? 0.8 : 0.62, step >= 12);
+    for (const step of [8, 10, 12, 14])
+      add(origin + step, "kick", step >= 12 ? 0.8 : 0.62, step >= 12);
     add(origin + 12, "snare", 0.7, true);
     if (options.finalBar) {
       for (const step of [6, 10, 12, 14]) add(origin + step, "snare", 0.64, step >= 10);
@@ -288,7 +310,8 @@ export function placePhraseFill(
     return;
   }
   if (fillStyle === "tom-only") {
-    for (const step of [8, 10, 12, 14]) add(origin + step, "tom", step >= 12 ? 0.76 : 0.58, step >= 12);
+    for (const step of [8, 10, 12, 14])
+      add(origin + step, "tom", step >= 12 ? 0.76 : 0.58, step >= 12);
     add(origin + 12, "snare", 0.66, true);
     if (options.finalBar) {
       for (const step of [6, 10, 12, 14]) add(origin + step, "snare", 0.62, step >= 10);
@@ -298,7 +321,8 @@ export function placePhraseFill(
     return;
   }
   const fillSteps = options.finalBar ? [6, 8, 10, 12, 14, 15] : [8, 10, 12, 14];
-  for (const step of fillSteps) add(origin + step, step >= 12 ? "tom" : "snare", step >= 12 ? 0.74 : 0.6, step >= 12);
+  for (const step of fillSteps)
+    add(origin + step, step >= 12 ? "tom" : "snare", step >= 12 ? 0.74 : 0.6, step >= 12);
   if (options.finalBar) {
     add(origin + 14, "snare", 0.7, true);
   }
@@ -311,11 +335,23 @@ export function wrapDegree(scale: readonly number[], degree: number): number {
   return scale[idx]! + oct * 12;
 }
 
-export function chordToneMidi(rootMidi: number, scale: readonly number[], chord: number, tone: number, octave: number): number {
+export function chordToneMidi(
+  rootMidi: number,
+  scale: readonly number[],
+  chord: number,
+  tone: number,
+  octave: number,
+): number {
   return rootMidi + wrapDegree(scale, chord + tone * 2) + octave * 12;
 }
 
-export function scaleToneMidi(rootMidi: number, scale: readonly number[], chord: number, offset: number, octave: number): number {
+export function scaleToneMidi(
+  rootMidi: number,
+  scale: readonly number[],
+  chord: number,
+  offset: number,
+  octave: number,
+): number {
   return rootMidi + wrapDegree(scale, chord + offset) + octave * 12;
 }
 

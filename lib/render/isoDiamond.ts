@@ -20,7 +20,12 @@ export function isoDiamondVertices(
   y: number,
   w: number,
   h: number,
-): readonly [{ x: number; y: number }, { x: number; y: number }, { x: number; y: number }, { x: number; y: number }] {
+): readonly [
+  { x: number; y: number },
+  { x: number; y: number },
+  { x: number; y: number },
+  { x: number; y: number },
+] {
   return [
     { x, y },
     { x: x + w / 2, y: y + h / 2 },
@@ -38,7 +43,8 @@ export function roundedIsoDiamondPath(
   radius: number | IsoDiamondCornerRadii,
 ): void {
   const pts = isoDiamondVertices(x, y, w, h);
-  const radii: IsoDiamondCornerRadii = typeof radius === "number" ? [radius, radius, radius, radius] : radius;
+  const radii: IsoDiamondCornerRadii =
+    typeof radius === "number" ? [radius, radius, radius, radius] : radius;
   ctx.beginPath();
   for (let i = 0; i < 4; i++) {
     const prev = pts[(i + 3) % 4]!;

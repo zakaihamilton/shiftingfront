@@ -2,10 +2,14 @@
 
 import { useMemo } from "react";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
-import { filterGeneratedAssets, type AssetCategoryFilter, type CatalogAsset } from "@/lib/gen/assetCatalog";
+import {
+  type AssetCategoryFilter,
+  type CatalogAsset,
+  filterGeneratedAssets,
+} from "@/lib/gen/assetCatalog";
 import { AssetChip } from "./AssetChip";
-import { AssetListItem } from "./AssetListItem";
 import styles from "./AssetList.module.css";
+import { AssetListItem } from "./AssetListItem";
 
 const FILTERS: readonly { value: CatalogAsset["category"] | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -34,7 +38,9 @@ export function AssetList({
     <div className={styles.pane}>
       <div className={styles.headingRow}>
         <ConsoleLabel className={styles.heading}>Art library</ConsoleLabel>
-        <span className={styles.count}>{visibleAssets.length}/{assets.length}</span>
+        <span className={styles.count}>
+          {visibleAssets.length}/{assets.length}
+        </span>
       </div>
       <div className={styles.filters} role="toolbar" aria-label="Filter art library">
         {FILTERS.map((item) => (

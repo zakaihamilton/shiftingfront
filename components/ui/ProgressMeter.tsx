@@ -13,7 +13,9 @@ export function ProgressMeter({
   return (
     <div className={styles.root}>
       <div className={styles.meta}>
-        <span className={styles.label} data-tooltip={label}>{label}</span>
+        <span className={styles.label} data-tooltip={label}>
+          {label}
+        </span>
         <span className={styles.detail} data-tooltip={`${pct}%${detail ? ` · ${detail}` : ""}`}>
           {pct}%{detail ? ` · ${detail}` : ""}
         </span>

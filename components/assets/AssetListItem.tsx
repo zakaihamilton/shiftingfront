@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { cx } from "@/lib/ui/cx";
 import type { CatalogAsset } from "@/lib/gen/assetCatalog";
+import { cx } from "@/lib/ui/cx";
 import styles from "./AssetListItem.module.css";
 
 const CATEGORY_LABEL: Record<CatalogAsset["category"], string> = {

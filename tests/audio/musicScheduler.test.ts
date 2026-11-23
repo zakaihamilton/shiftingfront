@@ -12,38 +12,38 @@ vi.mock("../../lib/audio/context", () => ({
   resumeAudio,
 }));
 
+import { composeMusic, type MusicPattern, TUTORIAL_MUSIC_MISSION } from "../../lib/audio/compose";
+import { resetMusicPosition, setMusicCue } from "../../lib/audio/music";
+import { indexPattern } from "../../lib/audio/musicGraph";
 import {
   advanceMusicTrack,
   applyPattern,
   ensureMusicPlaying,
   stopMusic,
-  tickScheduler,
   TOTAL_CAMPAIGN_TRACKS,
+  tickScheduler,
 } from "../../lib/audio/musicScheduler";
 import {
   cue,
   missionIndex,
   pattern,
   seed,
-  setEnabled,
-  setPaused,
-  setPattern,
-  setTimer,
   setCue,
-  setSeed,
+  setEnabled,
+  setGraph,
   setMissionIndex,
-  setTrackIndex,
-  setStep,
   setNextNoteTime,
+  setPattern,
+  setPaused,
+  setSeed,
+  setStep,
+  setTimer,
+  setTrackIndex,
+  setTransitioning,
   step,
   trackIndex,
   transitioning,
-  setTransitioning,
-  setGraph,
 } from "../../lib/audio/musicState";
-import { composeMusic, TUTORIAL_MUSIC_MISSION, type MusicPattern } from "../../lib/audio/compose";
-import { indexPattern } from "../../lib/audio/musicGraph";
-import { setMusicCue, resetMusicPosition } from "../../lib/audio/music";
 
 afterEach(() => {
   setEnabled(true);
@@ -102,7 +102,8 @@ function createMockAudioContext(currentTime = 0) {
     createGain: () => node(),
     createBiquadFilter: () => node(),
     createOscillator: () => node(),
-    createPeriodicWave: (real: Float32Array, imag: Float32Array) => ({ real, imag }) as unknown as PeriodicWave,
+    createPeriodicWave: (real: Float32Array, imag: Float32Array) =>
+      ({ real, imag }) as unknown as PeriodicWave,
     createBuffer: (channels: number, length: number, sampleRate: number) => {
       const data = Array.from({ length: channels }, () => new Float32Array(length));
       return {
@@ -318,7 +319,10 @@ describe("automatic music track variety", () => {
 
       // Transition is now active (fade-out in progress)
       expect(transitioning).toBe(true);
-      expect(fakeGraph.master.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.001, 5.0 + 0.275);
+      expect(fakeGraph.master.gain.linearRampToValueAtTime).toHaveBeenCalledWith(
+        0.001,
+        5.0 + 0.275,
+      );
 
       // Advance timers past the crossfade midpoint (275ms)
       vi.advanceTimersByTime(300);

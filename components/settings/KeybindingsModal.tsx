@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DialogPortal } from "@/components/ui/DialogPortal";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
+import { DialogPortal } from "@/components/ui/DialogPortal";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
 import { assignKeyBinding, defaultKeyBindings, type KeyBindings } from "@/lib/persist/settings";
@@ -11,12 +11,29 @@ import { displayKey } from "@/lib/ui/shortcuts";
 import styles from "./KeybindingsModal.module.css";
 
 const ACTION_LABELS: { key: keyof KeyBindings; label: string }[] = [
-  { key: "panUp", label: "Pan Camera Up" }, { key: "panDown", label: "Pan Camera Down" }, { key: "panLeft", label: "Pan Camera Left" }, { key: "panRight", label: "Pan Camera Right" },
-  { key: "home", label: "Jump to Command HQ" }, { key: "center", label: "Center on Selection" }, { key: "repair", label: "Repair Mode" }, { key: "sell", label: "Sell / Scrap Mode" }, { key: "stop", label: "Stop Selected Units" },
-  { key: "construction", label: "Construction Tab" }, { key: "production", label: "Production Tab" }, { key: "selected", label: "Selected Tab" },
+  { key: "panUp", label: "Pan Camera Up" },
+  { key: "panDown", label: "Pan Camera Down" },
+  { key: "panLeft", label: "Pan Camera Left" },
+  { key: "panRight", label: "Pan Camera Right" },
+  { key: "home", label: "Jump to Command HQ" },
+  { key: "center", label: "Center on Selection" },
+  { key: "repair", label: "Repair Mode" },
+  { key: "sell", label: "Sell / Scrap Mode" },
+  { key: "stop", label: "Stop Selected Units" },
+  { key: "construction", label: "Construction Tab" },
+  { key: "production", label: "Production Tab" },
+  { key: "selected", label: "Selected Tab" },
 ];
 
-export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyBindings; onSave: (bindings: KeyBindings) => void; onClose: () => void }) {
+export function KeybindingsModal({
+  bindings,
+  onSave,
+  onClose,
+}: {
+  bindings: KeyBindings;
+  onSave: (bindings: KeyBindings) => void;
+  onClose: () => void;
+}) {
   const [currentBindings, setCurrentBindings] = useState<KeyBindings>(bindings);
   const [activeRebind, setActiveRebind] = useState<keyof KeyBindings | null>(null);
   const [rebindNotice, setRebindNotice] = useState<string | null>(null);
@@ -27,16 +44,24 @@ export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyB
     const handleKeyDown = (event: KeyboardEvent) => {
       event.preventDefault();
       event.stopPropagation();
-      if (event.key === "Escape" || event.key === "Tab") { setActiveRebind(null); return; }
-      const rawKey = event.key === " " ? " " : event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      if (event.key === "Escape" || event.key === "Tab") {
+        setActiveRebind(null);
+        return;
+      }
+      const rawKey =
+        event.key === " " ? " " : event.key.length === 1 ? event.key.toLowerCase() : event.key;
       const assigned = assignKeyBinding(currentBindings, activeRebind, rawKey);
       setCurrentBindings(assigned.bindings);
       onSave(assigned.bindings);
       const displaced = assigned.displaced;
-      const displacedLabel = displaced ? ACTION_LABELS.find((action) => action.key === displaced)?.label : undefined;
-      setRebindNotice(displaced && displacedLabel
-        ? `${displacedLabel} moved to ${displayKey(assigned.bindings[displaced])}.`
-        : null);
+      const displacedLabel = displaced
+        ? ACTION_LABELS.find((action) => action.key === displaced)?.label
+        : undefined;
+      setRebindNotice(
+        displaced && displacedLabel
+          ? `${displacedLabel} moved to ${displayKey(assigned.bindings[displaced])}.`
+          : null,
+      );
       setActiveRebind(null);
     };
     window.addEventListener("keydown", handleKeyDown, true);
@@ -54,12 +79,33 @@ export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyB
   return (
     <DialogPortal>
       <div className={styles.modalBackdrop}>
-        <button type="button" className={styles.backdropDismiss} tabIndex={-1} aria-label="Close keybindings dialog" onClick={onClose} />
-        <MetalPanel ref={dialogRef} tabIndex={-1} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="keybinds-title">
+        <button
+          type="button"
+          className={styles.backdropDismiss}
+          tabIndex={-1}
+          aria-label="Close keybindings dialog"
+          onClick={onClose}
+        />
+        <MetalPanel
+          ref={dialogRef}
+          tabIndex={-1}
+          className={styles.dialog}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="keybinds-title"
+        >
           <ConsoleLabel>Field Configuration</ConsoleLabel>
-          <h2 id="keybinds-title" className={styles.title}>Keybindings</h2>
-          <p className={styles.subtitle}>Click a command, then press any key to reassign it. Press Escape to cancel.</p>
-          {rebindNotice ? <p className={styles.subtitle} role="status">{rebindNotice}</p> : null}
+          <h2 id="keybinds-title" className={styles.title}>
+            Keybindings
+          </h2>
+          <p className={styles.subtitle}>
+            Click a command, then press any key to reassign it. Press Escape to cancel.
+          </p>
+          {rebindNotice ? (
+            <p className={styles.subtitle} role="status">
+              {rebindNotice}
+            </p>
+          ) : null}
           <div className={styles.list}>
             {ACTION_LABELS.map(({ key, label }) => {
               const isListening = activeRebind === key;
@@ -79,7 +125,22 @@ export function KeybindingsModal({ bindings, onSave, onClose }: { bindings: KeyB
               );
             })}
           </div>
-          <div className={styles.actions}><ConsoleButton muted tooltip="Reset all shortcuts to defaults" onClick={handleResetDefaults}>Reset Defaults</ConsoleButton><ConsoleButton className={styles.action} tooltip="Save and return to options" onClick={onClose}>Done</ConsoleButton></div>
+          <div className={styles.actions}>
+            <ConsoleButton
+              muted
+              tooltip="Reset all shortcuts to defaults"
+              onClick={handleResetDefaults}
+            >
+              Reset Defaults
+            </ConsoleButton>
+            <ConsoleButton
+              className={styles.action}
+              tooltip="Save and return to options"
+              onClick={onClose}
+            >
+              Done
+            </ConsoleButton>
+          </div>
         </MetalPanel>
       </div>
     </DialogPortal>

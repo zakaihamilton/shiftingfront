@@ -4,9 +4,11 @@ import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const audioState = vi.hoisted(() => ({ unlocked: false }));
-const unlockAudio = vi.hoisted(() => vi.fn(() => {
-  audioState.unlocked = true;
-}));
+const unlockAudio = vi.hoisted(() =>
+  vi.fn(() => {
+    audioState.unlocked = true;
+  }),
+);
 const isAudioUnlocked = vi.hoisted(() => vi.fn(() => audioState.unlocked));
 const setAudioForeground = vi.hoisted(() => vi.fn());
 

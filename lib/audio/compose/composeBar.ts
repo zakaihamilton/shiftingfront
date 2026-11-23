@@ -24,30 +24,6 @@ import {
   STEPS_PER_BAR,
 } from "./types";
 
-function developMotif(motif: MusicMotif, pass: number): MusicMotif {
-  if (pass <= 0) return motif;
-  const vary = (values: readonly (number | null)[], direction: number) =>
-    values.map((value, index) => {
-      if (value === null || index === 0 || index === values.length - 1) return value;
-      return (index + pass) % 3 === 0 ? value + direction : value;
-    });
-  const direction = pass % 2 === 1 ? 1 : -1;
-  const rhythm = [...motif.rhythm];
-  const rhythmIndex = 1 + ((pass * 2) % Math.max(1, rhythm.length - 2));
-  if (rhythm.length > 2) {
-    const shift = pass % 2 === 1 ? 1 : -1;
-    const next = Math.max(0, Math.min(STEPS_PER_BAR - 1, rhythm[rhythmIndex]! + shift));
-    const occupied = new Set(rhythm.filter((_, index) => index !== rhythmIndex));
-    if (!occupied.has(next)) rhythm[rhythmIndex] = next;
-  }
-  return {
-    ...motif,
-    degrees: vary(motif.degrees, direction),
-    response: vary(motif.response, -direction),
-    rhythm,
-  };
-}
-
 function materialIndexForSection(name: MusicSection["name"]): 0 | 1 | 2 | 3 {
   if (name === "intro" || name === "groove" || name === "breakdown") return 0;
   if (name === "development") return 1;
@@ -106,8 +82,44 @@ export type ComposeBarInput = {
   drumRng: Rng;
 };
 
-/** Append one bar onto the stem arrays and advance the voice-leading memory. */
-export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCarry): void {
+type BarContext = {
+  bar: number;
+  sectionIndex: number;
+  section: MusicSection;
+  origin: number;
+  phraseBar: number;
+  cycle: number;
+  chorusReturn: boolean;
+  riff: readonly BassHit[];
+  arpFigure: readonly number[];
+  openHatSteps: readonly number[];
+  fill: boolean;
+  intro: boolean;
+  breakdown: boolean;
+  climax: boolean;
+  hookSection: boolean;
+  clearBreakdown: boolean;
+  holdBass: boolean;
+  energy: number;
+  miniFill: boolean;
+  hole: boolean;
+  fullDrums: boolean;
+  phraseEnd: boolean;
+  lightDrums: boolean;
+  usePulse: boolean;
+  bridge: boolean;
+  response: boolean;
+  useHookLead: boolean;
+  useMelody: boolean;
+  useCounter: boolean;
+  sequenceOctave: number;
+  variant: number;
+  chord: number;
+  melodyChord: number;
+  lead: MusicMotif;
+};
+
+function resolveBarContext(bar: number, input: ComposeBarInput, carry: ComposeCarry): BarContext {
   const {
     sections,
     phrasePlans,
@@ -128,26 +140,11 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
     openHatC,
     openHatD,
     sparse,
-    groove,
     arrangement,
     cue,
     style,
-    rootMidi,
-    scalePick,
-    hook,
-    developmentMotif,
-    motif,
-    notes,
-    drums,
-    padRoot,
-    padThird,
-    padFifth,
-    padSeventh,
-    drumRng,
   } = input;
-  let previousMelodyMidi = carry.previousMelodyMidi;
-  let previousBassMidi = carry.previousBassMidi;
-  let previousPadVoicing = carry.previousPadVoicing;
+
   const sectionIndex = Math.floor(bar / BARS_PER_SECTION);
   const section = sections[sectionIndex]!;
   const origin = bar * STEPS_PER_BAR;
@@ -155,12 +152,9 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const halfPhrase = phraseBar % 8;
   const phrasePlan = phrasePlans[Math.floor(bar / 8)]!;
   const materialIndex = materialIndexForSection(section.name);
-  // Menu, briefing, battle, victory, and defeat each play as one song.
-  const song = true;
   const chorusReturn =
     section.name === "hook" || section.name === "climax" || section.name === "turnaround";
   const cycle = Math.floor(bar / (BARS_PER_SECTION * 2)) % 4;
-  const recurringHookSection = chorusReturn;
   const progression = [progressionA, progressionB, progressionC, progressionD][materialIndex]!;
   // Every chorus, including the ending, sits on the hook's chords.
   const leadProgression = section.name === "turnaround" ? progressionC : progression;
@@ -177,86 +171,40 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
   const climax = section.name === "climax";
   const hookSection = section.name === "hook" || section.name === "turnaround" || climax;
   const clearBreakdown = breakdown && cue !== "victory";
-  if (phraseBar === 0 && recurringHookSection) previousMelodyMidi = null;
+  if (phraseBar === 0 && chorusReturn) carry.previousMelodyMidi = null;
   const holdBass = arrangement.holdBass[sectionIndex]!;
   const energy = section.energy;
   const thinBar = halfPhrase === 2 || halfPhrase === 3;
-  const liftBar = phrasePlan.liftBar === halfPhrase;
-  const dropTexture = phrasePlan.textureDropBar === halfPhrase && !song;
   const miniFill = phrasePlan.miniFillBar === halfPhrase && thinBar;
-  const dropHats = dropTexture && !hookSection;
-  const dropPulse = dropTexture && !hookSection;
   const hole = holdBass && !chorusReturn && phraseBar < 8;
   const introDrums = !intro || phraseBar >= 8;
-  const fullDrums =
-    !sparse && !dropTexture && !clearBreakdown && (cue === "victory" || (!hole && introDrums));
+  const fullDrums = !sparse && !clearBreakdown && (cue === "victory" || (!hole && introDrums));
   const phraseEnd = phraseBar === 7 || phraseBar === 15;
   const lightDrums =
     sparse && !hole && !clearBreakdown && introDrums && (phraseBar % 2 === 0 || phraseEnd);
+
+  const bridge = breakdown;
   let usePulse = arrangement.pulseEnabled[sectionIndex]!;
-  if (intro && phraseBar < 8) usePulse = false;
-  if (hole) usePulse = false;
-  if (dropPulse) usePulse = false;
-  const phraseSlot = phraseBar % 4;
-  const phrasePass = Math.floor(phraseBar / 4);
-  const bridge = song && breakdown;
-  if (bridge && holdBass) usePulse = false;
+  if ((intro && phraseBar < 8) || hole || (bridge && holdBass)) usePulse = false;
+
   const songCycle = phraseBar % 8;
   // Verse and chorus are 8-bar sentences: four bars of the call, four of the answer, then the sentence repeats.
-  const response = song
-    ? bridge
-      ? true
-      : intro
-        ? false
-        : songCycle >= 4
-    : phraseSlot === 1 || phraseSlot === 3;
-  const restBar = section.name === "breakdown" && phraseSlot === 3 && !bridge;
+  const response = bridge ? true : intro ? false : songCycle >= 4;
   const useHookLead =
     hookSection ||
     (breakdown && !clearBreakdown && phraseBar >= 8) ||
     (section.name === "escalation" && phraseBar >= 8);
-  const echoBar =
-    arrangement.echoMelody && section.name === "groove" && phraseBar % 2 === 0 && !song;
-  const songSection =
-    song &&
-    (section.name === "groove" ||
-      section.name === "development" ||
-      section.name === "escalation" ||
-      hookSection ||
-      bridge);
-  const useMelody =
-    !restBar &&
-    !echoBar &&
-    (songSection ||
-      (arrangement.melodyEnabled[sectionIndex] &&
-        (section.name === "groove" ||
-          section.name === "development" ||
-          section.name === "escalation" ||
-          hookSection ||
-          (intro && phraseBar >= 12) ||
-          (breakdown && !clearBreakdown && phraseBar >= 8))));
+  const useMelody = !intro || Boolean(arrangement.melodyEnabled[sectionIndex] && phraseBar >= 12);
   const useCounter =
     !sparse &&
     arrangement.counterEnabled[sectionIndex]! &&
-    (useMelody || echoBar) &&
+    useMelody &&
     response &&
     halfPhrase >= 4;
-  const sequenceOffset = song || hookSection ? 0 : liftBar ? 2 : 0;
+
   const sequenceOctave = style.melodyOctave;
-  const variant =
-    (song
-      ? 0
-      : climax
-        ? 0
-        : section.name === "development"
-          ? 1
-          : section.name === "escalation" && !useHookLead
-            ? 1
-            : 0) +
-    arrangement.melodyDegreeOffset +
-    sequenceOffset;
-  const preChorus = song && section.name === "escalation" && phraseBar < 8;
-  const loopHarmony = song && !intro;
+  const variant = arrangement.melodyDegreeOffset;
+  const preChorus = section.name === "escalation" && phraseBar < 8;
   const harmonyProgression = bridge
     ? progressionB
     : preChorus
@@ -266,45 +214,102 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
         : progression;
   const chord = phraseEnd
     ? 0
-    : loopHarmony
+    : !intro
       ? (harmonyProgression[Math.floor(songCycle / 2)] ?? 0)
       : (progression[Math.floor(phraseBar / 2)] ?? 0);
   const leadChord = phraseEnd ? 0 : (leadProgression[Math.floor(phraseBar / 2)] ?? 0);
   const melodyProgression = bridge ? progressionB : preChorus ? progressionA : leadProgression;
-  const melodyChord =
-    song && !intro
-      ? songCycle === 7
-        ? 0
-        : (melodyProgression[Math.floor(songCycle / 2)] ?? 0)
-      : leadChord;
+  const melodyChord = !intro
+    ? songCycle === 7
+      ? 0
+      : (melodyProgression[Math.floor(songCycle / 2)] ?? 0)
+    : leadChord;
+  const lead = useHookLead
+    ? input.hook
+    : section.name === "development"
+      ? input.developmentMotif
+      : input.motif;
 
-  const padVoicing = voiceLeadPad(rootMidi, scalePick.notes, chord, previousPadVoicing);
-  previousPadVoicing = padVoicing;
-  padRoot.push(midiToHz(padVoicing[0]));
-  padThird.push(midiToHz(padVoicing[1]));
-  padFifth.push(midiToHz(padVoicing[2]));
-  padSeventh.push(midiToHz(padVoicing[3]));
+  return {
+    bar,
+    sectionIndex,
+    section,
+    origin,
+    phraseBar,
+    cycle,
+    chorusReturn,
+    riff,
+    arpFigure,
+    openHatSteps,
+    fill,
+    intro,
+    breakdown,
+    climax,
+    hookSection,
+    clearBreakdown,
+    holdBass,
+    energy,
+    miniFill,
+    hole,
+    fullDrums,
+    phraseEnd,
+    lightDrums,
+    usePulse,
+    bridge,
+    response,
+    useHookLead,
+    useMelody,
+    useCounter,
+    sequenceOctave,
+    variant,
+    chord,
+    melodyChord,
+    lead,
+  };
+}
 
+function writePadStem(ctx: BarContext, input: ComposeBarInput, carry: ComposeCarry): number[] {
+  const padVoicing = voiceLeadPad(
+    input.rootMidi,
+    input.scalePick.notes,
+    ctx.chord,
+    carry.previousPadVoicing,
+  );
+  carry.previousPadVoicing = padVoicing;
+  input.padRoot.push(midiToHz(padVoicing[0]));
+  input.padThird.push(midiToHz(padVoicing[1]));
+  input.padFifth.push(midiToHz(padVoicing[2]));
+  input.padSeventh.push(midiToHz(padVoicing[3]));
+  return padVoicing;
+}
+
+function writeHarmonyStem(ctx: BarContext, input: ComposeBarInput, padVoicing: number[]): void {
   const pianoSteps =
-    intro || breakdown ? [] : hookSection || section.name === "escalation" ? [0, 8] : [0];
+    ctx.intro || ctx.breakdown
+      ? []
+      : ctx.hookSection || ctx.section.name === "escalation"
+        ? [0, 8]
+        : [0];
   const pianoVoicing = closeChord(padVoicing.slice(0, 3), 58, 76);
   for (const pianoStep of pianoSteps) {
     placeHarmony(
-      notes.harmony,
-      origin,
+      input.notes.harmony,
+      ctx.origin,
       pianoVoicing,
       pianoStep,
       pianoStep === 0 ? 6 : 4,
-      mixEnergy(hookSection ? 0.24 : 0.18, energy),
-      pianoStep === 0 && phraseBar % 4 === 0,
+      mixEnergy(ctx.hookSection ? 0.24 : 0.18, ctx.energy),
+      pianoStep === 0 && ctx.phraseBar % 4 === 0,
     );
   }
+}
 
-  const sectionBassStride = arrangement.bassStrides[chorusReturn ? 2 : sectionIndex]!;
+function writeBassStem(ctx: BarContext, input: ComposeBarInput, carry: ComposeCarry): void {
+  const sectionBassStride = input.arrangement.bassStrides[ctx.chorusReturn ? 2 : ctx.sectionIndex]!;
   const bassStride =
-    holdBass && !chorusReturn
+    ctx.holdBass && !ctx.chorusReturn
       ? 8
-      : intro
+      : ctx.intro
         ? (Math.max(4, sectionBassStride) as 4 | 8)
         : sectionBassStride;
   const addBass = (
@@ -316,235 +321,211 @@ export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCa
     accent = false,
   ) => {
     const midi = voiceLeadBass(
-      chordToneMidi(rootMidi, scalePick.notes, chord, tone, octave),
-      previousBassMidi,
+      chordToneMidi(input.rootMidi, input.scalePick.notes, ctx.chord, tone, octave),
+      carry.previousBassMidi,
     );
-    previousBassMidi = midi;
-    noteEvent(notes.bass, step, midi, duration, velocity, accent);
+    carry.previousBassMidi = midi;
+    noteEvent(input.notes.bass, step, midi, duration, velocity, accent);
   };
-  const bassLift = hookSection ? 1.08 : intro ? 0.82 : 1;
-  if (holdBass && !chorusReturn) {
-    addBass(origin, 0, -1, 8, mixEnergy(0.58 * bassLift, energy), true);
-    if (bar % 2 === 1) addBass(origin + 8, 0, 0, 6, mixEnergy(0.46 * bassLift, energy));
-  } else if (section.name === "development") {
+  const bassLift = ctx.hookSection ? 1.08 : ctx.intro ? 0.82 : 1;
+  if (ctx.holdBass && !ctx.chorusReturn) {
+    addBass(ctx.origin, 0, -1, 8, mixEnergy(0.58 * bassLift, ctx.energy), true);
+    if (ctx.bar % 2 === 1) addBass(ctx.origin + 8, 0, 0, 6, mixEnergy(0.46 * bassLift, ctx.energy));
+    return;
+  }
+  if (ctx.section.name === "development") {
     const answer = [0, 2, 3, 4, 2, 4, 1, 0];
     const answerStride = Math.min(bassStride, 4);
     for (let i = 0; i < 8; i += 1) {
       if (i % (answerStride / 2) !== 0) continue;
       addBass(
-        origin + i * 2,
+        ctx.origin + i * 2,
         answer[i]!,
         i % 4 === 2 ? 1 : 0,
         2,
-        mixEnergy(i === 0 || i === 4 ? 0.84 : 0.66, energy),
+        mixEnergy(i === 0 || i === 4 ? 0.84 : 0.66, ctx.energy),
         i === 0,
       );
     }
-  } else {
-    for (let i = 0; i < 8; i++) {
-      if (i % (bassStride / 2) !== 0 && bassStride > 2) continue;
-      const hit = riff[i];
-      if (!hit) continue;
-      const octave = climax && i % 3 === 2 ? hit.oct + 1 : hit.oct;
-      addBass(
-        origin + i * 2,
-        hit.tone,
-        octave,
-        intro ? 3 : 2,
-        mixEnergy((i === 0 || i === 4 ? 0.92 : 0.7) * bassLift, energy),
-        i === 0 || i === 4,
-      );
-    }
+    return;
   }
+  for (let i = 0; i < 8; i++) {
+    if (i % (bassStride / 2) !== 0 && bassStride > 2) continue;
+    const hit = ctx.riff[i];
+    if (!hit) continue;
+    const octave = ctx.climax && i % 3 === 2 ? hit.oct + 1 : hit.oct;
+    addBass(
+      ctx.origin + i * 2,
+      hit.tone,
+      octave,
+      ctx.intro ? 3 : 2,
+      mixEnergy((i === 0 || i === 4 ? 0.92 : 0.7) * bassLift, ctx.energy),
+      i === 0 || i === 4,
+    );
+  }
+}
 
-  if (usePulse && style.pulseRole !== "none") {
-    const sectionPulseStride = arrangement.pulseStrides[sectionIndex]!;
-    const requestedPulseStride =
-      hole || (sparse && cue === "defeat")
-        ? 4
-        : hookSection && sectionPulseStride === 1
-          ? 2
-          : sectionPulseStride;
-    // Sixteenth-note arps read as a game-console texture. Let the drums
-    // provide urgency at the peak while the fastest pulse stays musical.
-    const pulseStride = Math.max(4, requestedPulseStride);
-    for (const i of pulseStepsFor(style.pulseRole, pulseStride)) {
-      const figureIndex = Math.floor(i / 2) % arpFigure.length;
-      const velocity = climax
-        ? i % 2 === 0
-          ? 0.7
-          : 0.36
-        : section.name === "hook" || section.name === "escalation"
-          ? 0.56
-          : 0.48;
+function writePulseStem(ctx: BarContext, input: ComposeBarInput): void {
+  if (!ctx.usePulse || input.style.pulseRole === "none") return;
+  const sectionPulseStride = input.arrangement.pulseStrides[ctx.sectionIndex]!;
+  const requestedPulseStride =
+    ctx.hole || (input.sparse && input.cue === "defeat")
+      ? 4
+      : ctx.hookSection && sectionPulseStride === 1
+        ? 2
+        : sectionPulseStride;
+  // Sixteenth-note arps read as a game-console texture. Let the drums
+  // provide urgency at the peak while the fastest pulse stays musical.
+  const pulseStride = Math.max(4, requestedPulseStride);
+  for (const i of pulseStepsFor(input.style.pulseRole, pulseStride)) {
+    const figureIndex = Math.floor(i / 2) % ctx.arpFigure.length;
+    const velocity = ctx.climax
+      ? i % 2 === 0
+        ? 0.7
+        : 0.36
+      : ctx.section.name === "hook" || ctx.section.name === "escalation"
+        ? 0.56
+        : 0.48;
+    noteEvent(
+      input.notes.pulse,
+      ctx.origin + i,
+      chordToneMidi(
+        input.rootMidi,
+        input.scalePick.notes,
+        ctx.chord,
+        ctx.arpFigure[figureIndex]!,
+        1,
+      ),
+      input.style.pulseRole === "stab" ? 3 : 1,
+      mixEnergy(velocity, ctx.energy),
+      i % 4 === 0,
+    );
+  }
+}
+
+function writeMelodyStem(ctx: BarContext, input: ComposeBarInput, carry: ComposeCarry): void {
+  if (!ctx.useMelody) return;
+  const leadBase = ctx.intro
+    ? 0.58
+    : ctx.bridge
+      ? 0.6
+      : ctx.clearBreakdown
+        ? 0.52
+        : ctx.section.name === "hook" || ctx.section.name === "turnaround" || ctx.climax
+          ? 1
+          : ctx.section.name === "escalation"
+            ? 0.9
+            : 0.72;
+  const velocity = mixEnergy(leadBase, ctx.energy);
+  const durationFor = (index: number, sounding: number, gap = 1) => {
+    const last = index === sounding - 1;
+    if (ctx.useHookLead) return last && ctx.phraseEnd ? Math.min(gap + 2, 6) : Math.min(gap, 5);
+    if (last && ctx.phraseEnd) return Math.min(gap + 1, 3);
+    return Math.max(1, Math.min(gap, 5) - 1);
+  };
+  carry.previousMelodyMidi = placeMelody(
+    input.notes.melody,
+    ctx.origin,
+    ctx.lead,
+    ctx.response,
+    input.rootMidi,
+    input.scalePick.notes,
+    ctx.melodyChord,
+    ctx.variant,
+    ctx.sequenceOctave,
+    durationFor,
+    velocity,
+    ctx.climax,
+    null,
+    ctx.phraseEnd,
+    carry.previousMelodyMidi,
+    0,
+  );
+}
+
+function writeGuitarStem(ctx: BarContext, input: ComposeBarInput, padVoicing: number[]): void {
+  if (input.sparse || ctx.intro || ctx.breakdown) return;
+  const busy = ctx.hookSection || ctx.section.name === "escalation";
+  const guitarSteps = (busy ? [6, 14] : [10]).filter((step) => !(ctx.fill && step >= 12));
+  const strum = closeChord(padVoicing.slice(0, 3), 64, 84);
+  for (const guitarStep of guitarSteps) {
+    const step = ctx.origin + guitarStep;
+    strum.forEach((midi, chordIndex) => {
+      let pitch = midi;
+      if (lineClashes(input.notes.melody, step, pitch)) pitch += 12;
+      if (pitch > 96 || lineClashes(input.notes.melody, step, pitch)) return;
       noteEvent(
-        notes.pulse,
-        origin + i,
-        chordToneMidi(rootMidi, scalePick.notes, chord, arpFigure[figureIndex]!, 1),
-        style.pulseRole === "stab" ? 3 : 1,
-        mixEnergy(velocity, energy),
-        i % 4 === 0,
+        input.notes.guitar,
+        step,
+        pitch,
+        2,
+        mixEnergy((busy ? 0.2 : 0.15) * (chordIndex === 0 ? 1 : 0.74), ctx.energy),
+        chordIndex === 0 && busy,
       );
-    }
+    });
   }
+}
 
-  // Keep the written rhythm on the drum grid. A shift inside the bar wraps the
-  // phrase's last sixteenths onto the downbeat.
-  const phraseStepShift = 0;
-  const songMotif = (hookLead: boolean) =>
-    hookLead ? hook : section.name === "development" ? developmentMotif : motif;
-  if (useMelody) {
-    const baseLead = song
-      ? songMotif(useHookLead)
-      : useHookLead
-        ? hook
-        : section.name === "development" || (phraseBar >= 8 && !intro)
-          ? developmentMotif
-          : motif;
-    const lead = song ? baseLead : developMotif(baseLead, phrasePass);
-    const leadBase = intro
-      ? 0.58
-      : bridge
-        ? 0.6
-        : clearBreakdown
-          ? 0.52
-          : section.name === "hook" || section.name === "turnaround"
-            ? 1
-            : climax
-              ? 1
-              : section.name === "escalation"
-                ? 0.9
-                : 0.72;
-    const velocity = mixEnergy(leadBase, energy);
-    const durationFor = (index: number, sounding: number, gap = 1) => {
-      const last = index === sounding - 1;
-      if (useHookLead) return last && phraseEnd ? Math.min(gap + 2, 6) : Math.min(gap, 5);
-      if (last && phraseEnd) return Math.min(gap + 1, 3);
-      return Math.max(1, Math.min(gap, 5) - (song || !liftBar ? 1 : 0));
-    };
-    previousMelodyMidi = placeMelody(
-      notes.melody,
-      origin,
-      lead,
-      response,
-      rootMidi,
-      scalePick.notes,
-      melodyChord,
-      variant,
-      sequenceOctave,
-      durationFor,
-      velocity,
-      climax,
-      null,
-      phraseEnd,
-      previousMelodyMidi,
-      phraseStepShift,
-    );
-  }
+function writeCounterStem(ctx: BarContext, input: ComposeBarInput): void {
+  if (!ctx.useCounter) return;
+  const interval = ctx.climax ? 5 : ctx.hookSection ? 2 : 5;
+  const counterOctave = 1;
+  placeCounter(
+    input.notes.counter,
+    input.notes.melody,
+    ctx.origin,
+    ctx.lead,
+    ctx.response,
+    input.rootMidi,
+    input.scalePick.notes,
+    ctx.melodyChord,
+    ctx.variant,
+    counterOctave,
+    interval,
+    0,
+    ctx.climax ? 4 : 2,
+    mixEnergy(ctx.climax ? 0.38 : 0.18 + input.style.counterChance * 0.14, ctx.energy),
+  );
+}
 
-  if (echoBar && (song || phraseBar > 0)) {
-    previousMelodyMidi = placeMelody(
-      notes.melody,
-      origin,
-      song ? motif : developMotif(motif, phrasePass),
-      false,
-      rootMidi,
-      scalePick.notes,
-      melodyChord,
-      variant,
-      sequenceOctave,
-      () => 2,
-      mixEnergy(0.48, energy),
-      false,
-      null,
-      false,
-      previousMelodyMidi,
-      phraseStepShift + 2,
-    );
-  }
-
-  if (!sparse && !intro && !breakdown && !dropTexture) {
-    const busy = hookSection || section.name === "escalation";
-    const guitarSteps = (busy ? [6, 14] : [10]).filter((step) => !(fill && step >= 12));
-    const strum = closeChord(padVoicing.slice(0, 3), 64, 84);
-    for (const guitarStep of guitarSteps) {
-      const step = origin + guitarStep;
-      strum.forEach((midi, chordIndex) => {
-        let pitch = midi;
-        if (lineClashes(notes.melody, step, pitch)) pitch += 12;
-        if (pitch > 96 || lineClashes(notes.melody, step, pitch)) return;
-        noteEvent(
-          notes.guitar,
-          step,
-          pitch,
-          2,
-          mixEnergy((busy ? 0.2 : 0.15) * (chordIndex === 0 ? 1 : 0.74), energy),
-          chordIndex === 0 && busy,
-        );
-      });
-    }
-  }
-
-  if (useCounter) {
-    const baseLead = song
-      ? songMotif(useHookLead)
-      : useHookLead
-        ? hook
-        : section.name === "development" || (phraseBar >= 8 && !intro)
-          ? developmentMotif
-          : motif;
-    const lead = song ? baseLead : developMotif(baseLead, phrasePass);
-    const interval = climax ? 5 : hookSection ? 2 : 5;
-    const counterOctave = 1;
-    placeCounter(
-      notes.counter,
-      notes.melody,
-      origin,
-      lead,
-      response,
-      rootMidi,
-      scalePick.notes,
-      melodyChord,
-      variant,
-      counterOctave,
-      interval,
-      phraseStepShift,
-      climax ? 4 : 2,
-      mixEnergy(climax ? 0.38 : 0.18 + style.counterChance * 0.14, energy),
-    );
-  }
-
+/** Append one bar onto the stem arrays and advance the voice-leading memory. */
+export function composeBar(bar: number, input: ComposeBarInput, carry: ComposeCarry): void {
+  const ctx = resolveBarContext(bar, input, carry);
+  const padVoicing = writePadStem(ctx, input, carry);
+  writeHarmonyStem(ctx, input, padVoicing);
+  writeBassStem(ctx, input, carry);
+  writePulseStem(ctx, input);
+  writeMelodyStem(ctx, input, carry);
+  writeGuitarStem(ctx, input, padVoicing);
+  writeCounterStem(ctx, input);
   composeBarDrums({
-    bar,
-    cycle,
-    origin,
-    phraseBar,
-    sectionIndex,
-    section,
-    cue,
-    sparse,
-    hole,
-    chorusReturn,
-    climax,
-    intro,
-    hookSection,
-    dropHats,
-    clearBreakdown,
-    fullDrums,
-    lightDrums,
-    fill,
-    miniFill,
-    energy,
-    groove,
-    style,
-    arrangement,
-    openHatSteps,
-    drums,
-    drumRng,
+    bar: ctx.bar,
+    cycle: ctx.cycle,
+    origin: ctx.origin,
+    phraseBar: ctx.phraseBar,
+    sectionIndex: ctx.sectionIndex,
+    section: ctx.section,
+    cue: input.cue,
+    sparse: input.sparse,
+    hole: ctx.hole,
+    chorusReturn: ctx.chorusReturn,
+    climax: ctx.climax,
+    intro: ctx.intro,
+    hookSection: ctx.hookSection,
+    dropHats: false,
+    clearBreakdown: ctx.clearBreakdown,
+    fullDrums: ctx.fullDrums,
+    lightDrums: ctx.lightDrums,
+    fill: ctx.fill,
+    miniFill: ctx.miniFill,
+    energy: ctx.energy,
+    groove: input.groove,
+    style: input.style,
+    arrangement: input.arrangement,
+    openHatSteps: ctx.openHatSteps,
+    drums: input.drums,
+    drumRng: input.drumRng,
   });
-  carry.previousMelodyMidi = previousMelodyMidi;
-  carry.previousBassMidi = previousBassMidi;
-  carry.previousPadVoicing = previousPadVoicing;
 }
 
 function lineClashes(melody: readonly MusicNoteEvent[], step: number, midi: number): boolean {

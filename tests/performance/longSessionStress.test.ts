@@ -6,7 +6,9 @@ import { createMission, tick } from "../../lib/sim/api";
 import type { SimState } from "../../lib/types";
 
 describe("long-session stress and reliability", () => {
-  it("runs 5,000+ continuous simulation ticks across 5 mission cycles without heap leaks or entity explosion", { timeout: 60_000 }, () => {
+  it("runs 5,000+ continuous simulation ticks across 5 mission cycles without heap leaks or entity explosion", {
+    timeout: 60_000,
+  }, () => {
     // Worker threads reject --expose-gc, and heapUsed without a collection
     // still includes the previous mission. Measure retained heap in a child
     // process that can actually collect.
@@ -44,7 +46,9 @@ describe("long-session stress and reliability", () => {
 
     const loop = startLoop({
       getState: () => state,
-      setState: (s) => { state = s; },
+      setState: (s) => {
+        state = s;
+      },
       drainCommands: () => [],
       step: (s, cmds) => {
         totalTicksExecuted++;

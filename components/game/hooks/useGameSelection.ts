@@ -1,7 +1,12 @@
-import { useCallback, useRef, useState, type MutableRefObject } from "react";
-import { isPlayerSelectableEntity, isPlayerSelectableUnit, type ControlGroupSlot, type SimState } from "@/lib/types";
+import { type MutableRefObject, useCallback, useRef, useState } from "react";
 import type { MissionUxTelemetry } from "@/lib/persist/telemetry";
 import { enterTutorialStage, tutorialSelectionCompletesStage } from "@/lib/sim/tutorialStage";
+import {
+  type ControlGroupSlot,
+  isPlayerSelectableEntity,
+  isPlayerSelectableUnit,
+  type SimState,
+} from "@/lib/types";
 
 export function useGameSelection({
   stateRef,
@@ -19,52 +24,75 @@ export function useGameSelection({
   const [selectionMode, setSelectionMode] = useState(false);
   const selectionModeRef = useRef(false);
 
-  const commitSelection = useCallback((ids: number[]) => {
-    const owner = stateRef.current.viewOwner ?? 0;
-    const selectableIds = ids.filter((id) => {
-      const entity = stateRef.current.entities.find((candidate) => candidate.id === id);
-      return Boolean(entity && entity.owner === owner && isPlayerSelectableEntity(entity) && entity.hp > 0);
-    });
-    selected.current = new Set(selectableIds);
-    setSelectedIds(selectableIds);
-    if (selectableIds.length > 0) onSelectionTab?.();
-    if (selectableIds.length > 0 && uxRef && uxRef.current.firstSelectionTick === undefined) {
-      uxRef.current.firstSelectionTick = stateRef.current.tick;
-    }
-    const current = stateRef.current;
-    if (tutorialSelectionCompletesStage(current, selectableIds)) {
-      enterTutorialStage(current, "move");
-      setState({ ...current, entities: [...current.entities] });
-    }
-  }, [onSelectionTab, setState, stateRef, uxRef]);
+  const commitSelection = useCallback(
+    (ids: number[]) => {
+      const owner = stateRef.current.viewOwner ?? 0;
+      const selectableIds = ids.filter((id) => {
+        const entity = stateRef.current.entities.find((candidate) => candidate.id === id);
+        return Boolean(
+          entity && entity.owner === owner && isPlayerSelectableEntity(entity) && entity.hp > 0,
+        );
+      });
+      selected.current = new Set(selectableIds);
+      setSelectedIds(selectableIds);
+      if (selectableIds.length > 0) onSelectionTab?.();
+      if (selectableIds.length > 0 && uxRef && uxRef.current.firstSelectionTick === undefined) {
+        uxRef.current.firstSelectionTick = stateRef.current.tick;
+      }
+      const current = stateRef.current;
+      if (tutorialSelectionCompletesStage(current, selectableIds)) {
+        enterTutorialStage(current, "move");
+        setState({ ...current, entities: [...current.entities] });
+      }
+    },
+    [onSelectionTab, setState, stateRef, uxRef],
+  );
 
-  const assignControlGroup = useCallback((slot: ControlGroupSlot): number => {
-    const state = stateRef.current;
-    const owner = state.viewOwner ?? 0;
-    const ids = [...selected.current].filter((id) => {
-      const entity = state.entities.find((candidate) => candidate.id === id);
-      return Boolean(entity && entity.hp > 0 && entity.owner === owner && isPlayerSelectableUnit(entity) && !entity.neutral);
-    });
-    const controlGroups = { ...(state.controlGroups ?? {}), [slot]: ids };
-    state.controlGroups = controlGroups;
-    setState({ ...state, controlGroups });
-    return ids.length;
-  }, [setState, stateRef]);
+  const assignControlGroup = useCallback(
+    (slot: ControlGroupSlot): number => {
+      const state = stateRef.current;
+      const owner = state.viewOwner ?? 0;
+      const ids = [...selected.current].filter((id) => {
+        const entity = state.entities.find((candidate) => candidate.id === id);
+        return Boolean(
+          entity &&
+            entity.hp > 0 &&
+            entity.owner === owner &&
+            isPlayerSelectableUnit(entity) &&
+            !entity.neutral,
+        );
+      });
+      const controlGroups = { ...(state.controlGroups ?? {}), [slot]: ids };
+      state.controlGroups = controlGroups;
+      setState({ ...state, controlGroups });
+      return ids.length;
+    },
+    [setState, stateRef],
+  );
 
-  const recallControlGroup = useCallback((slot: ControlGroupSlot): number => {
-    const state = stateRef.current;
-    const owner = state.viewOwner ?? 0;
-    const existing = state.controlGroups?.[slot] ?? [];
-    const ids = [...new Set(existing)].filter((id) => {
-      const entity = state.entities.find((candidate) => candidate.id === id);
-      return Boolean(entity && entity.hp > 0 && entity.owner === owner && isPlayerSelectableUnit(entity) && !entity.neutral);
-    });
-    const controlGroups = { ...(state.controlGroups ?? {}), [slot]: ids };
-    state.controlGroups = controlGroups;
-    setState({ ...state, controlGroups });
-    commitSelection(ids);
-    return ids.length;
-  }, [commitSelection, setState, stateRef]);
+  const recallControlGroup = useCallback(
+    (slot: ControlGroupSlot): number => {
+      const state = stateRef.current;
+      const owner = state.viewOwner ?? 0;
+      const existing = state.controlGroups?.[slot] ?? [];
+      const ids = [...new Set(existing)].filter((id) => {
+        const entity = state.entities.find((candidate) => candidate.id === id);
+        return Boolean(
+          entity &&
+            entity.hp > 0 &&
+            entity.owner === owner &&
+            isPlayerSelectableUnit(entity) &&
+            !entity.neutral,
+        );
+      });
+      const controlGroups = { ...(state.controlGroups ?? {}), [slot]: ids };
+      state.controlGroups = controlGroups;
+      setState({ ...state, controlGroups });
+      commitSelection(ids);
+      return ids.length;
+    },
+    [commitSelection, setState, stateRef],
+  );
 
   const setSelectionModeState = useCallback((active: boolean) => {
     selectionModeRef.current = active;

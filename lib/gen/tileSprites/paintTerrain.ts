@@ -1,9 +1,19 @@
 import type { BiomeName, Palette, ShapeSpec } from "../../types";
-import { hash, mixHex, pick, signed, ORE } from "../tilePalette";
 import { appendPropArtShapes, blockerPropPrims, blockerToneFromPalette } from "../blockerPropArt";
 import { blockerPropKind } from "../terrainDecorKinds";
-import { tileCx, tileCy, INK, poly, ell, line, irregularIso } from "./constants";
-import { wetGround, shoreSand, waterDeep, waterMid, waterHi, foam, rockColors, diamondEdges, insetBand } from "./colors";
+import { hash, mixHex, ORE, pick, signed } from "../tilePalette";
+import {
+  diamondEdges,
+  foam,
+  insetBand,
+  rockColors,
+  shoreSand,
+  waterDeep,
+  waterHi,
+  waterMid,
+  wetGround,
+} from "./colors";
+import { ell, INK, irregularIso, line, poly, tileCx, tileCy } from "./constants";
 
 export function paintWater(shapes: ShapeSpec[], biome: BiomeName, v: number, mask: number): void {
   const cx = tileCx();
@@ -37,7 +47,13 @@ export function paintBanks(shapes: ShapeSpec[], biome: BiomeName, mask: number, 
   }
 }
 
-export function paintRidge(shapes: ShapeSpec[], biome: BiomeName, p: Palette, v: number, mask: number): void {
+export function paintRidge(
+  shapes: ShapeSpec[],
+  biome: BiomeName,
+  p: Palette,
+  v: number,
+  mask: number,
+): void {
   const rock = rockColors(biome, p);
   if (!mask) {
     shapes.push(ell(tileCx() + ((v % 7) - 3), tileCy() + 1, 7, 3, rock.dark));
@@ -49,11 +65,19 @@ export function paintRidge(shapes: ShapeSpec[], biome: BiomeName, p: Palette, v:
     const face = insetBand(edge.a, edge.b, 8);
     shapes.push(poly([...edge.a, ...edge.b, ...face.b, ...face.a], rock.mid, rock.ink, 1));
     const facet = insetBand(edge.a, edge.b, 4);
-    shapes.push(poly([
-      edge.a[0]!, edge.a[1]!,
-      (edge.a[0]! + edge.b[0]!) / 2, (edge.a[1]! + edge.b[1]!) / 2,
-      facet.a[0]!, facet.a[1]!,
-    ], rock.hi));
+    shapes.push(
+      poly(
+        [
+          edge.a[0]!,
+          edge.a[1]!,
+          (edge.a[0]! + edge.b[0]!) / 2,
+          (edge.a[1]! + edge.b[1]!) / 2,
+          facet.a[0]!,
+          facet.a[1]!,
+        ],
+        rock.hi,
+      ),
+    );
     shapes.push(line(face.a[0]!, face.a[1]!, face.b[0]!, face.b[1]!, rock.dark, 2));
     const mx = (edge.a[0]! + edge.b[0]!) / 2 + ((v % 3) - 1);
     const my = (edge.a[1]! + edge.b[1]!) / 2;
@@ -67,16 +91,28 @@ export function paintRidge(shapes: ShapeSpec[], biome: BiomeName, p: Palette, v:
   }
 }
 
-export function paintOreField(shapes: ShapeSpec[], biome: BiomeName, v: number, level: number, continuous = false): void {
+export function paintOreField(
+  shapes: ShapeSpec[],
+  biome: BiomeName,
+  v: number,
+  level: number,
+  continuous = false,
+): void {
   const cx = tileCx();
   const cy = tileCy();
   const n = Math.max(1, Math.min(4, level));
-  const fieldTint = biome === "crystal flats" ? "#34594f"
-    : biome === "rust canyons" ? "#5f321d"
-      : biome === "tundra grid" ? "#465b5c"
-        : biome === "volcanic shelf" ? "#2c1e1a"
-          : biome === "jungle wreckage" ? "#2a3c22"
-            : ORE.stainLo;
+  const fieldTint =
+    biome === "crystal flats"
+      ? "#34594f"
+      : biome === "rust canyons"
+        ? "#5f321d"
+        : biome === "tundra grid"
+          ? "#465b5c"
+          : biome === "volcanic shelf"
+            ? "#2c1e1a"
+            : biome === "jungle wreckage"
+              ? "#2a3c22"
+              : ORE.stainLo;
   const density = 1 + pick(v, 401, 4);
   if (!continuous) {
     shapes.push(poly(irregularIso(cx, cy + 1, 76, 36, v, 2), fieldTint));
@@ -86,8 +122,26 @@ export function paintOreField(shapes: ShapeSpec[], biome: BiomeName, v: number, 
     const ox = -16 + i * 11 + signed(v, 404 + i, 2);
     const oy = 4 - i * 5 + signed(v, 410 + i, 2);
     const seam = 10 + pick(v, 416 + i, 7);
-    shapes.push(line(cx + ox, cy + oy, cx + ox + seam, cy + oy - Math.max(2, Math.round(seam * 0.28)), ORE.south, 3));
-    shapes.push(line(cx + ox + 1, cy + oy - 1, cx + ox + seam - 1, cy + oy - Math.max(3, Math.round(seam * 0.28)) - 1, ORE.lit, 1));
+    shapes.push(
+      line(
+        cx + ox,
+        cy + oy,
+        cx + ox + seam,
+        cy + oy - Math.max(2, Math.round(seam * 0.28)),
+        ORE.south,
+        3,
+      ),
+    );
+    shapes.push(
+      line(
+        cx + ox + 1,
+        cy + oy - 1,
+        cx + ox + seam - 1,
+        cy + oy - Math.max(3, Math.round(seam * 0.28)) - 1,
+        ORE.lit,
+        1,
+      ),
+    );
   }
 
   const slots: Array<[number, number, number, number]> = [
@@ -113,8 +167,31 @@ export function paintOreField(shapes: ShapeSpec[], biome: BiomeName, v: number, 
     const x = cx + ox;
     const y = cy + oy;
     const half = Math.max(3, Math.round(width * 0.38));
-    shapes.push(poly([x - half, y, x, y - z, x + half, y, x, y + Math.max(2, half * 0.42)], ORE.top, ORE.ink, 1));
-    shapes.push(poly([x - half, y, x, y + Math.max(2, half * 0.42), x, y + Math.max(2, half * 0.42) + 2, x - half, y + 2], ORE.south, ORE.ink, 1));
+    shapes.push(
+      poly(
+        [x - half, y, x, y - z, x + half, y, x, y + Math.max(2, half * 0.42)],
+        ORE.top,
+        ORE.ink,
+        1,
+      ),
+    );
+    shapes.push(
+      poly(
+        [
+          x - half,
+          y,
+          x,
+          y + Math.max(2, half * 0.42),
+          x,
+          y + Math.max(2, half * 0.42) + 2,
+          x - half,
+          y + 2,
+        ],
+        ORE.south,
+        ORE.ink,
+        1,
+      ),
+    );
     shapes.push(line(x - half + 1, y - 1, x - 1, y - z + 1, ORE.lit, 1));
   }
 

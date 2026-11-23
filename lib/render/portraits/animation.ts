@@ -1,4 +1,4 @@
-import { portraitHash, nextPortraitRandom } from "./types";
+import { nextPortraitRandom, portraitHash } from "./types";
 
 export function portraitBlinking(time: number, portraitId: string): boolean {
   const hash = portraitHash(portraitId);

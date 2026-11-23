@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { BUILDING_KINDS, UNIT_KINDS } from "../../lib/catalog";
-import { assetById, assetPreviewSpec, spriteSpecToSvg, toAssetApiItem } from "../../lib/gen/assetApi";
+import {
+  assetById,
+  assetPreviewSpec,
+  spriteSpecToSvg,
+  toAssetApiItem,
+} from "../../lib/gen/assetApi";
 import { listGeneratedAssets } from "../../lib/gen/assetCatalog";
 
 describe("asset API contract", () => {
@@ -9,7 +14,9 @@ describe("asset API contract", () => {
     const items = assets.map((asset) => toAssetApiItem(asset, "https://example.test/"));
 
     expect(items).toHaveLength(UNIT_KINDS.length * 2 + BUILDING_KINDS.length * 2);
-    expect(items.every((item) => item.metadataUrl.startsWith("https://example.test/api/assets/"))).toBe(true);
+    expect(
+      items.every((item) => item.metadataUrl.startsWith("https://example.test/api/assets/")),
+    ).toBe(true);
     expect(items.every((item) => item.previewUrl.endsWith("/preview"))).toBe(true);
     expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
 
@@ -22,7 +29,12 @@ describe("asset API contract", () => {
     const convoy = items.find((item) => item.id === "unit:convoyTruck")!;
     expect(convoy.label).toBe("Convoy Truck");
     expect(convoy.render.directions).toHaveLength(8);
-    expect(convoy.details.stats).toMatchObject({ damage: 0, range: 0, cooldown: 0, scenarioOnly: true });
+    expect(convoy.details.stats).toMatchObject({
+      damage: 0,
+      range: 0,
+      cooldown: 0,
+      scenarioOnly: true,
+    });
     expect(items.find((item) => item.id === "building:power")!.render.directions).toHaveLength(0);
   });
 
@@ -51,13 +63,16 @@ describe("asset API contract", () => {
     }
 
     const infantry = assetById("unit:infantry")!;
-    expect(spriteSpecToSvg(assetPreviewSpec(infantry, 0), "https://example.test/infantry.png"))
-      .toContain('width="46" height="51" viewBox="0 0 46 51"');
-    expect(spriteSpecToSvg(assetPreviewSpec(infantry, 6), "https://example.test/infantry.png"))
-      .toContain('width="46" height="51" viewBox="0 0 46 51"');
+    expect(
+      spriteSpecToSvg(assetPreviewSpec(infantry, 0), "https://example.test/infantry.png"),
+    ).toContain('width="46" height="51" viewBox="0 0 46 51"');
+    expect(
+      spriteSpecToSvg(assetPreviewSpec(infantry, 6), "https://example.test/infantry.png"),
+    ).toContain('width="46" height="51" viewBox="0 0 46 51"');
 
     const harvester = assetById("unit:harvester")!;
-    expect(spriteSpecToSvg(assetPreviewSpec(harvester, 2), "https://example.test/harvester.png"))
-      .toContain('viewBox="0 0 535 580"');
+    expect(
+      spriteSpecToSvg(assetPreviewSpec(harvester, 2), "https://example.test/harvester.png"),
+    ).toContain('viewBox="0 0 535 580"');
   });
 });

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { performance } from "node:perf_hooks";
+import { describe, expect, it } from "vitest";
 import {
   ARCHETYPE_STRATEGIES,
   balanceScenarios,
@@ -14,8 +14,15 @@ describe("balance runner", () => {
     const options = { from: 0, to: 3, missions: [0], maxTicks: 24, strategy: "competent" as const };
     const serial = await runBalanceScenarios({ ...options, jobs: 1 });
     const parallel = await runBalanceScenarios({ ...options, jobs: 2 });
-    expect(JSON.stringify(stableBalanceRecords(parallel))).toBe(JSON.stringify(stableBalanceRecords(serial)));
-    expect(parallel.map((record) => `${record.seed}:${record.mission}`)).toEqual(["0000:0", "0001:0", "0002:0", "0003:0"]);
+    expect(JSON.stringify(stableBalanceRecords(parallel))).toBe(
+      JSON.stringify(stableBalanceRecords(serial)),
+    );
+    expect(parallel.map((record) => `${record.seed}:${record.mission}`)).toEqual([
+      "0000:0",
+      "0001:0",
+      "0002:0",
+      "0003:0",
+    ]);
   });
 
   it.each(["rush", "turtle", "greed", "infantry", "vehicles"] as const)(
@@ -24,7 +31,9 @@ describe("balance runner", () => {
       const options = { from: 0, to: 1, missions: [0, 1], maxTicks: 24, strategy };
       const serial = await runBalanceScenarios({ ...options, jobs: 1 });
       const parallel = await runBalanceScenarios({ ...options, jobs: 2 });
-      expect(JSON.stringify(stableBalanceRecords(parallel))).toBe(JSON.stringify(stableBalanceRecords(serial)));
+      expect(JSON.stringify(stableBalanceRecords(parallel))).toBe(
+        JSON.stringify(stableBalanceRecords(serial)),
+      );
     },
   );
 
@@ -45,16 +54,21 @@ describe("balance runner", () => {
   });
 
   it("stops worker execution when the elapsed budget has expired", async () => {
-    await expect(runBalanceSweepScenarios({
-      from: 0,
-      to: 1,
-      missions: [0],
-      maxTicks: 24,
-      strategies: [...ARCHETYPE_STRATEGIES],
-      scenarioList: [{ seed: 0, mission: 0 }, { seed: 1, mission: 0 }],
-      jobs: 2,
-      deadlineAt: performance.now() - 1,
-    })).rejects.toThrow("Balance sweep exceeded its elapsed-time budget");
+    await expect(
+      runBalanceSweepScenarios({
+        from: 0,
+        to: 1,
+        missions: [0],
+        maxTicks: 24,
+        strategies: [...ARCHETYPE_STRATEGIES],
+        scenarioList: [
+          { seed: 0, mission: 0 },
+          { seed: 1, mission: 0 },
+        ],
+        jobs: 2,
+        deadlineAt: performance.now() - 1,
+      }),
+    ).rejects.toThrow("Balance sweep exceeded its elapsed-time budget");
   });
 
   it("keeps the optimized archetype sweep equivalent and isolated", async () => {
@@ -67,17 +81,21 @@ describe("balance runner", () => {
       strategies: [...ARCHETYPE_STRATEGIES],
       scenarioList,
     };
-    const expected = (await Promise.all(ARCHETYPE_STRATEGIES.map((strategy) =>
-      runBalanceScenarios({
-        from: options.from,
-        to: options.to,
-        missions: options.missions,
-        maxTicks: options.maxTicks,
-        strategy,
-        scenarioList,
-        jobs: 1,
-      }),
-    ))).flat();
+    const expected = (
+      await Promise.all(
+        ARCHETYPE_STRATEGIES.map((strategy) =>
+          runBalanceScenarios({
+            from: options.from,
+            to: options.to,
+            missions: options.missions,
+            maxTicks: options.maxTicks,
+            strategy,
+            scenarioList,
+            jobs: 1,
+          }),
+        ),
+      )
+    ).flat();
     const progress: Array<{ completed: number; total: number }> = [];
     const serial = await runBalanceSweepScenarios({
       ...options,

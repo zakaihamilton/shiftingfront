@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 
-import { useEffect, useRef } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useEffect, useRef } from "react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  type LobbyEscapeHandlers,
+  useLobbyMode,
+} from "../../components/multiplayer/lobby/useLobbyMode";
 import type { MultiplayerSession } from "../../lib/multiplayer/session";
-import { useLobbyMode, type LobbyEscapeHandlers } from "../../components/multiplayer/lobby/useLobbyMode";
 
 function Probe({
   session,
@@ -36,10 +39,18 @@ function Probe({
   return (
     <>
       <span data-testid="mode">{lobby.mode}</span>
-      <button type="button" onClick={lobby.showHostSetup}>Host setup</button>
-      <button type="button" onClick={() => lobby.setMode("joining")}>Joining</button>
-      <button type="button" onClick={() => lobby.setMode("waiting")}>Waiting</button>
-      <button type="button" onClick={lobby.enterBattle}>Battle</button>
+      <button type="button" onClick={lobby.showHostSetup}>
+        Host setup
+      </button>
+      <button type="button" onClick={() => lobby.setMode("joining")}>
+        Joining
+      </button>
+      <button type="button" onClick={() => lobby.setMode("waiting")}>
+        Waiting
+      </button>
+      <button type="button" onClick={lobby.enterBattle}>
+        Battle
+      </button>
     </>
   );
 }
@@ -77,7 +88,9 @@ describe("useLobbyMode", () => {
 
   it("ignores Escape during a live battle and ends a disconnected one", () => {
     const calls = { backToMenu: vi.fn(), cancelJoin: vi.fn(), endCurrentMatch: vi.fn() };
-    const { rerender } = render(<Probe session={{ status: "connected" } as MultiplayerSession} calls={calls} />);
+    const { rerender } = render(
+      <Probe session={{ status: "connected" } as MultiplayerSession} calls={calls} />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Battle" }));
     expect(screen.getByTestId("mode")).toHaveTextContent("battle");
     pressEscape();

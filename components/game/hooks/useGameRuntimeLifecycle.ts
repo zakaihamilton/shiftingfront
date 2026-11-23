@@ -1,27 +1,49 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from "react";
+import { useCallback, useEffect } from "react";
 import type { SaveSession } from "@/lib/persist/save";
 import type { GameSettings } from "@/lib/persist/settings";
+import { acquireRenderSessionCacheLease } from "@/lib/render/sessionCache";
 import type { SimState } from "@/lib/types";
 import type { PauseView } from "@/lib/ui/shortcuts";
-import { acquireRenderSessionCacheLease } from "@/lib/render/sessionCache";
+import { useWakeLock } from "@/lib/ui/wakeLock";
+import type { RuntimeCommandPort } from "./runtime/facade";
 import { useGameAudioLifecycle } from "./useGameAudioLifecycle";
 import { useGameKeyboard } from "./useGameKeyboard";
 import { useGameLoop } from "./useGameLoop";
-import { useGameSession } from "./useGameSession";
 import type { GameRuntimeFeedback } from "./useGameRuntimeFeedback";
 import type { GameRuntimeInteraction } from "./useGameRuntimeInteraction";
-import type { RuntimeCommandPort } from "./runtime/facade";
-import { useWakeLock } from "@/lib/ui/wakeLock";
+import { useGameSession } from "./useGameSession";
 
 export function useGameRuntimeLifecycle({
-  seed, tutorial, state, stateRef, setState, saveSession, commitSelection, commandPort, cmdQ,
+  seed,
+  tutorial,
+  state,
+  stateRef,
+  setState,
+  saveSession,
+  commitSelection,
+  commandPort,
+  cmdQ,
   multiplayerSession,
-  interaction, feedback, audioSettings, setAudioSettings, paused, setPaused, pausedRef, pauseViewRef,
-  setPauseView, setPauseNotice, activeTabRef, setActiveTab, mobilePanelOpen,
-  terminalSaveRef, campaignRecordedRef, suppressImplicitSavesRef, canvasRef,
+  interaction,
+  feedback,
+  audioSettings,
+  setAudioSettings,
+  paused,
+  setPaused,
+  pausedRef,
+  pauseViewRef,
+  setPauseView,
+  setPauseNotice,
+  activeTabRef,
+  setActiveTab,
+  mobilePanelOpen,
+  terminalSaveRef,
+  campaignRecordedRef,
+  suppressImplicitSavesRef,
+  canvasRef,
 }: {
   seed: number;
   tutorial: boolean;
@@ -52,11 +74,28 @@ export function useGameRuntimeLifecycle({
   suppressImplicitSavesRef: MutableRefObject<() => void>;
 }) {
   const session = useGameSession({
-    seed, stateRef, setState, commitSelection, commandPort, cmdQRef: cmdQ,
-    fxRef: interaction.renderer.fxRef, clearTools: interaction.clearTools, resetInput: interaction.resetInput,
-    resetCamera: interaction.resetCamera, pausedRef, setPaused, setPauseView, setPauseNotice,
-    campaignRecordedRef, terminalSaveRef, settings: audioSettings, setSettings: setAudioSettings, saveSession,
-    tutorial, suppressImplicitSavesRef, browserBackGuardEnabled: !tutorial && state.result === "playing",
+    seed,
+    stateRef,
+    setState,
+    commitSelection,
+    commandPort,
+    cmdQRef: cmdQ,
+    fxRef: interaction.renderer.fxRef,
+    clearTools: interaction.clearTools,
+    resetInput: interaction.resetInput,
+    resetCamera: interaction.resetCamera,
+    pausedRef,
+    setPaused,
+    setPauseView,
+    setPauseNotice,
+    campaignRecordedRef,
+    terminalSaveRef,
+    settings: audioSettings,
+    setSettings: setAudioSettings,
+    saveSession,
+    tutorial,
+    suppressImplicitSavesRef,
+    browserBackGuardEnabled: !tutorial && state.result === "playing",
     onBrowserBackLeave: interaction.resetTransientMobileUi,
   });
 
@@ -65,11 +104,14 @@ export function useGameRuntimeLifecycle({
   const exitTutorial = session.exitTutorial;
   const recordControlsOpened = feedback.recordControlsOpened;
   const announceCommandFeedback = feedback.announceCommandFeedback;
-  const openPauseMenu = useCallback((view: PauseView = "main") => {
-    if (view === "controls") recordControlsOpened();
-    resetTransientMobileUi();
-    openMissionPause(view);
-  }, [openMissionPause, recordControlsOpened, resetTransientMobileUi]);
+  const openPauseMenu = useCallback(
+    (view: PauseView = "main") => {
+      if (view === "controls") recordControlsOpened();
+      resetTransientMobileUi();
+      openMissionPause(view);
+    },
+    [openMissionPause, recordControlsOpened, resetTransientMobileUi],
+  );
 
   const onExitTutorial = useCallback(() => {
     feedback.recordTutorialResult(state.tutorialStage === "complete");
@@ -135,17 +177,41 @@ export function useGameRuntimeLifecycle({
   });
 
   useGameLoop({
-    stateRef, setState, cmdQ, pausedRef, camRef: interaction.camRef, canvasRef,
-    keys, edgePanHover: interaction.edgePanHover, panHold: interaction.panHold,
-    panAvailRef: interaction.panAvailRef, setPanAvail: interaction.camera.setPanAvail, applyEdgePan: interaction.camera.applyEdgePan,
-    fxRef: interaction.renderer.fxRef, fxSeq: interaction.renderer.fxSeq, screenShakeRef: interaction.renderer.screenShakeRef,
-    terminalSaveRef, campaignRecordedRef, saveSession, redraw: interaction.renderer.redraw,
-    onAlert: feedback.onAlert, onCommandNotice: feedback.announceCommandFeedback,
-    uxRef: feedback.uxRef, suppressImplicitSavesRef, keyBindings: audioSettings.keyBindings,
-    multiplayerSession, persistCampaign: !tutorial && !state.multiplayer,
+    stateRef,
+    setState,
+    cmdQ,
+    pausedRef,
+    camRef: interaction.camRef,
+    canvasRef,
+    keys,
+    edgePanHover: interaction.edgePanHover,
+    panHold: interaction.panHold,
+    panAvailRef: interaction.panAvailRef,
+    setPanAvail: interaction.camera.setPanAvail,
+    applyEdgePan: interaction.camera.applyEdgePan,
+    fxRef: interaction.renderer.fxRef,
+    fxSeq: interaction.renderer.fxSeq,
+    screenShakeRef: interaction.renderer.screenShakeRef,
+    terminalSaveRef,
+    campaignRecordedRef,
+    saveSession,
+    redraw: interaction.renderer.redraw,
+    onAlert: feedback.onAlert,
+    onCommandNotice: feedback.announceCommandFeedback,
+    uxRef: feedback.uxRef,
+    suppressImplicitSavesRef,
+    keyBindings: audioSettings.keyBindings,
+    multiplayerSession,
+    persistCampaign: !tutorial && !state.multiplayer,
   });
 
-  useGameAudioLifecycle({ seed, missionIndex: state.missionIndex, tutorial, paused, result: state.result });
+  useGameAudioLifecycle({
+    seed,
+    missionIndex: state.missionIndex,
+    tutorial,
+    paused,
+    result: state.result,
+  });
   useEffect(() => acquireRenderSessionCacheLease(), []);
 
   return { session, openPauseMenu, onExitTutorial };

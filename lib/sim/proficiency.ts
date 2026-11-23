@@ -1,8 +1,8 @@
-import { UNIT_STATS, isSupportUnit } from "../catalog";
+import { isSupportUnit, UNIT_STATS } from "../catalog";
 import { TICKS_PER_MINUTE } from "../gen/pacing";
-import { isUnitEntity, type Entity, type MissionDirectorPhase } from "../types";
-import { homeGuardCount } from "./policy";
+import { type Entity, isUnitEntity, type MissionDirectorPhase } from "../types";
 import { RETREAT_ENTER_HEALTH, RETREAT_RECOVER_HEALTH } from "./ai/helpers";
+import { homeGuardCount } from "./policy";
 
 /** One step easier, unchanged, or one step harder. */
 export type ProficiencyBand = -1 | 0 | 1;
@@ -36,16 +36,24 @@ export type CampaignProficiencyRecord = {
 
 function recordLean(record: CampaignProficiencyRecord): ProficiencyBand {
   const hq = record.hqHealthAtEnd;
-  if (record.result === "lost" || record.deadlineOutcome === "timedOut" || (hq !== undefined && hq < DAMAGED_HQ)) return -1;
-  const optionalsCleared = record.secondaryObjectivesTotal === 0
-    || record.secondaryObjectivesCompleted >= record.secondaryObjectivesTotal;
-  const fast = record.deadlineOutcome === "completed"
-    || (record.primaryCompletedTick !== undefined && record.primaryCompletedTick <= FAST_WIN_TICKS);
-  const clean = record.result === "won"
-    && record.casualties <= LOW_CASUALTIES
-    && (hq === undefined || hq >= HEALTHY_HQ)
-    && optionalsCleared
-    && fast;
+  if (
+    record.result === "lost" ||
+    record.deadlineOutcome === "timedOut" ||
+    (hq !== undefined && hq < DAMAGED_HQ)
+  )
+    return -1;
+  const optionalsCleared =
+    record.secondaryObjectivesTotal === 0 ||
+    record.secondaryObjectivesCompleted >= record.secondaryObjectivesTotal;
+  const fast =
+    record.deadlineOutcome === "completed" ||
+    (record.primaryCompletedTick !== undefined && record.primaryCompletedTick <= FAST_WIN_TICKS);
+  const clean =
+    record.result === "won" &&
+    record.casualties <= LOW_CASUALTIES &&
+    (hq === undefined || hq >= HEALTHY_HQ) &&
+    optionalsCleared &&
+    fast;
   return clean ? 1 : 0;
 }
 
@@ -53,7 +61,9 @@ function recordLean(record: CampaignProficiencyRecord): ProficiencyBand {
  * Campaign band from recent finished battles. Fewer than two results stays neutral.
  * Command rejections are ignored; they measure interface friction.
  */
-export function campaignProficiencyBand(records: readonly CampaignProficiencyRecord[]): ProficiencyBand {
+export function campaignProficiencyBand(
+  records: readonly CampaignProficiencyRecord[],
+): ProficiencyBand {
   const finished = records.filter((record) => record.result === "won" || record.result === "lost");
   if (finished.length < 2) return 0;
   const leans = finished.slice(-PROFICIENCY_SAMPLE_SIZE).map(recordLean);
@@ -67,7 +77,10 @@ export function campaignProficiencyBand(records: readonly CampaignProficiencyRec
   return 0;
 }
 
-export function briefingProficiencyNote(band: ProficiencyBand, missionIndex: number): string | undefined {
+export function briefingProficiencyNote(
+  band: ProficiencyBand,
+  missionIndex: number,
+): string | undefined {
   const shown: ProficiencyBand = missionIndex <= 0 ? (band > 0 ? 0 : band) : band;
   if (shown > 0) return "The opponent is pressing harder.";
   if (shown < 0) return "The opponent is easing off.";
@@ -88,10 +101,12 @@ export type LivePressureInput = {
 const PRESSURE_BASE_KINDS = new Set<Entity["kind"]>(["refinery", "barracks", "factory", "turret"]);
 
 export function isPressureCombatant(entity: Entity): boolean {
-  return isUnitEntity(entity)
-    && entity.kind !== "harvester"
-    && !isSupportUnit(entity.kind)
-    && UNIT_STATS[entity.kind].damage > 0;
+  return (
+    isUnitEntity(entity) &&
+    entity.kind !== "harvester" &&
+    !isSupportUnit(entity.kind) &&
+    UNIT_STATS[entity.kind].damage > 0
+  );
 }
 
 export function isPressureBase(entity: Entity): boolean {
@@ -100,22 +115,33 @@ export function isPressureBase(entity: Entity): boolean {
 
 /** Fog-limited lead or deficit. Hidden credits and unseen armies are not inputs. */
 export function livePressureFromForces(input: LivePressureInput): ProficiencyBand {
-  const ahead = (input.playerCombat >= 4 && input.playerCombat >= input.enemyCombat + 3)
-    || (input.playerBases >= 3 && input.playerBases >= input.enemyBases + 2)
-    || (input.phase === "opening" && input.openingYardThreat)
-    || (input.enemyUnitLosses >= 6 && input.playerCombat >= 2 && input.playerCombat >= input.enemyCombat);
+  const ahead =
+    (input.playerCombat >= 4 && input.playerCombat >= input.enemyCombat + 3) ||
+    (input.playerBases >= 3 && input.playerBases >= input.enemyBases + 2) ||
+    (input.phase === "opening" && input.openingYardThreat) ||
+    (input.enemyUnitLosses >= 6 &&
+      input.playerCombat >= 2 &&
+      input.playerCombat >= input.enemyCombat);
   if (ahead) return 1;
-  const hqUnderPressure = input.playerHqHealthRatio !== undefined && input.playerHqHealthRatio < 0.7;
-  if (hqUnderPressure && input.enemyCombat >= 4 && input.playerCombat * 2 <= input.enemyCombat) return -1;
+  const hqUnderPressure =
+    input.playerHqHealthRatio !== undefined && input.playerHqHealthRatio < 0.7;
+  if (hqUnderPressure && input.enemyCombat >= 4 && input.playerCombat * 2 <= input.enemyCombat)
+    return -1;
   return 0;
 }
 
 export function adaptiveDifficultyShift(
-  state: { tutorialStage?: unknown; multiplayer?: boolean; missionIndex: number; proficiencyBand?: number },
+  state: {
+    tutorialStage?: unknown;
+    multiplayer?: boolean;
+    missionIndex: number;
+    proficiencyBand?: number;
+  },
   live: ProficiencyBand,
 ): number {
   if (state.tutorialStage !== undefined || state.multiplayer) return 0;
-  const campaign = state.proficiencyBand === -1 || state.proficiencyBand === 1 ? state.proficiencyBand : 0;
+  const campaign =
+    state.proficiencyBand === -1 || state.proficiencyBand === 1 ? state.proficiencyBand : 0;
   let shift = Math.max(-2, Math.min(2, campaign + live));
   if (state.missionIndex <= 0) shift = Math.min(0, shift);
   return shift;
@@ -157,10 +183,10 @@ export function adaptiveCombatWant(
 ): "infantry" | "tank" | "antiArmor" {
   if (shift < 0) return rollTank(0.4) ? "tank" : "infantry";
   if (
-    shift > 0
-    && counts.tanks > 0
-    && counts.tanks >= counts.infantry
-    && counts.tanks >= counts.antiArmor
+    shift > 0 &&
+    counts.tanks > 0 &&
+    counts.tanks >= counts.infantry &&
+    counts.tanks >= counts.antiArmor
   ) {
     return "antiArmor";
   }

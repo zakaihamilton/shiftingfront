@@ -13,9 +13,15 @@ function controlRows(bindings: KeyBindings): { label: string; keys: string }[] {
     { label: "Pan camera", keys: pan },
     { label: "Jump to Command HQ", keys: displayKey(bindings.home) },
     { label: "Center selection", keys: displayKey(bindings.center) },
-    { label: "Construction / production / selected", keys: `${displayKey(bindings.construction)} / ${displayKey(bindings.production)} / ${displayKey(bindings.selected)}` },
+    {
+      label: "Construction / production / selected",
+      keys: `${displayKey(bindings.construction)} / ${displayKey(bindings.production)} / ${displayKey(bindings.selected)}`,
+    },
     { label: "Cameos", keys: "Alt+1–6" },
-    { label: "Repair / sell / stop", keys: `${displayKey(bindings.repair)} / ${displayKey(bindings.sell)} / ${displayKey(bindings.stop)}` },
+    {
+      label: "Repair / sell / stop",
+      keys: `${displayKey(bindings.repair)} / ${displayKey(bindings.sell)} / ${displayKey(bindings.stop)}`,
+    },
     { label: "Select", keys: "Left click / drag" },
     { label: "Select all of type", keys: "Double-click" },
     { label: "Move / attack / harvest", keys: "Right click" },
@@ -26,23 +32,39 @@ function controlRows(bindings: KeyBindings): { label: string; keys: string }[] {
   ];
 }
 
-export function PauseControls({ onBack, keyBindings }: { onBack: () => void; keyBindings?: KeyBindings }) {
+export function PauseControls({
+  onBack,
+  keyBindings,
+}: {
+  onBack: () => void;
+  keyBindings?: KeyBindings;
+}) {
   const cameoShortcut = useShortcutLabel("Alt+1–6");
   const rows = controlRows(keyBindings ?? defaultKeyBindings());
   return (
     <>
       <ConsoleLabel>Field manual</ConsoleLabel>
-      <h2 id="pause-title" className={styles.title}>Controls</h2>
+      <h2 id="pause-title" className={styles.title}>
+        Controls
+      </h2>
       <dl className={styles.controlList} data-testid="pause-controls">
         {rows.map((row) => (
           <div className={styles.controlRow} key={row.label}>
             <dt>{row.label}</dt>
-            <dd><kbd>{row.label === "Cameos" ? cameoShortcut : row.keys}</kbd></dd>
+            <dd>
+              <kbd>{row.label === "Cameos" ? cameoShortcut : row.keys}</kbd>
+            </dd>
           </div>
         ))}
       </dl>
       <div className={styles.actions}>
-        <ConsoleButton muted className={styles.action} tooltip="Return to the pause menu" shortcut={SHORTCUT.back} onClick={onBack}>
+        <ConsoleButton
+          muted
+          className={styles.action}
+          tooltip="Return to the pause menu"
+          shortcut={SHORTCUT.back}
+          onClick={onBack}
+        >
           Back
         </ConsoleButton>
       </div>

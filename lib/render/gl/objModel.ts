@@ -34,17 +34,9 @@ export function parseObjModelData(
     const tag = parts[0];
 
     if (tag === "v" && parts.length >= 4) {
-      globalPositions.push([
-        parseFloat(parts[1]!),
-        parseFloat(parts[2]!),
-        parseFloat(parts[3]!),
-      ]);
+      globalPositions.push([parseFloat(parts[1]!), parseFloat(parts[2]!), parseFloat(parts[3]!)]);
     } else if (tag === "vn" && parts.length >= 4) {
-      globalNormals.push([
-        parseFloat(parts[1]!),
-        parseFloat(parts[2]!),
-        parseFloat(parts[3]!),
-      ]);
+      globalNormals.push([parseFloat(parts[1]!), parseFloat(parts[2]!), parseFloat(parts[3]!)]);
     } else if (tag === "o" || tag === "g") {
       if (currentGroup.indices.length > 0) groups.push(currentGroup);
       currentGroup = {
@@ -58,7 +50,8 @@ export function parseObjModelData(
       const mat = parts[1]?.toLowerCase() || "";
       if (mat.includes("primary") || mat.includes("team")) currentMask = 1;
       else if (mat.includes("secondary")) currentMask = 2;
-      else if (mat.includes("accent") || mat.includes("glass") || mat.includes("glow")) currentMask = 3;
+      else if (mat.includes("accent") || mat.includes("glass") || mat.includes("glow"))
+        currentMask = 3;
       else if (mat.includes("dark") || mat.includes("track")) currentMask = 4;
       else if (mat.includes("bronze") || mat.includes("heat")) currentMask = 5;
       else if (mat.includes("hazard") || mat.includes("yellow")) currentMask = 6;
@@ -71,7 +64,10 @@ export function parseObjModelData(
         const pi = parseInt(segs[0]!, 10) - 1;
         const ni = segs.length >= 3 && segs[2] ? parseInt(segs[2]!, 10) - 1 : -1;
         const p = globalPositions[pi] || ([0, 0, 0] as [number, number, number]);
-        const n = ni >= 0 && globalNormals[ni] ? globalNormals[ni]! : ([0, 0, 1] as [number, number, number]);
+        const n =
+          ni >= 0 && globalNormals[ni]
+            ? globalNormals[ni]!
+            : ([0, 0, 1] as [number, number, number]);
         faceVerts.push({ p, n });
       }
       for (let i = 1; i < faceVerts.length - 1; i++) {

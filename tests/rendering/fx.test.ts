@@ -4,13 +4,13 @@ import {
   burstsFromDestroyed,
   burstsFromEvents,
   cullFx,
+  FX_DURATION,
+  type FxBurst,
   fxAlive,
   fxProgress,
   fxTargetDomain,
-  FX_DURATION,
   MAX_PERSISTENT_FX,
   MAX_TRANSIENT_FX,
-  type FxBurst,
 } from "../../lib/render/fx";
 import { drawFxLayer } from "../../lib/render/renderCombat";
 import { drawSprite } from "../../lib/render/sprites";
@@ -18,11 +18,13 @@ import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import type { SimEvent } from "../../lib/types";
 
 vi.mock("../../lib/render/sprites", async () => {
-  const actual = await vi.importActual<typeof import("../../lib/render/sprites")>("../../lib/render/sprites");
+  const actual = await vi.importActual<typeof import("../../lib/render/sprites")>(
+    "../../lib/render/sprites",
+  );
   return {
     ...actual,
     drawSprite: vi.fn(),
-    rasterize: vi.fn(() => ({ width: 1, height: 1 } as HTMLCanvasElement)),
+    rasterize: vi.fn(() => ({ width: 1, height: 1 }) as HTMLCanvasElement),
   };
 });
 
@@ -84,9 +86,13 @@ describe("combat fx bursts", () => {
     const live = burst({ id: 2, kind: "rubble", bornMs: 900 });
     const dead = burst({ id: 1, kind: "explosion", bornMs: 0, durationMs: 10 });
     expect(cullFx([dead, live], 1000).map((item) => item.id)).toEqual([2]);
-    const many = Array.from({ length: 70 }, (_, i) => burst({ id: i, kind: "impact", bornMs: 990, durationMs: 200 }));
+    const many = Array.from({ length: 70 }, (_, i) =>
+      burst({ id: i, kind: "impact", bornMs: 990, durationMs: 200 }),
+    );
     expect(cullFx(many, 1000)).toHaveLength(MAX_TRANSIENT_FX);
-    const aftermath = Array.from({ length: MAX_PERSISTENT_FX + 6 }, (_, i) => burst({ id: 100 + i, kind: "scorch", bornMs: 990 }));
+    const aftermath = Array.from({ length: MAX_PERSISTENT_FX + 6 }, (_, i) =>
+      burst({ id: 100 + i, kind: "scorch", bornMs: 990 }),
+    );
     const culled = cullFx([...many, ...aftermath], 1000);
     expect(culled.filter((item) => item.kind === "scorch")).toHaveLength(MAX_PERSISTENT_FX);
     expect(culled.filter((item) => item.kind === "impact")).toHaveLength(MAX_TRANSIENT_FX);
@@ -101,7 +107,14 @@ describe("combat fx bursts", () => {
     const { bursts, nextId } = burstsFromDestroyed(
       [
         { type: "destroyed", id: tank.id, owner: tank.owner, kind: "tank", x: tank.x, y: tank.y },
-        { type: "destroyed", id: yard.id, owner: yard.owner, kind: "constructionYard", x: yard.x, y: yard.y },
+        {
+          type: "destroyed",
+          id: yard.id,
+          owner: yard.owner,
+          kind: "constructionYard",
+          x: yard.x,
+          y: yard.y,
+        },
       ],
       state,
       500,
@@ -112,8 +125,14 @@ describe("combat fx bursts", () => {
     expect(bursts.some((item) => item.kind === "scorch")).toBe(true);
     expect(bursts.some((item) => item.kind === "wreck")).toBe(true);
     expect(bursts.some((item) => item.kind === "rubble")).toBe(true);
-    expect(bursts.some((item) => item.entityKind === "tank" && item.entityClass === "unit")).toBe(true);
-    expect(bursts.some((item) => item.entityKind === "constructionYard" && item.entityClass === "building")).toBe(true);
+    expect(bursts.some((item) => item.entityKind === "tank" && item.entityClass === "unit")).toBe(
+      true,
+    );
+    expect(
+      bursts.some(
+        (item) => item.entityKind === "constructionYard" && item.entityClass === "building",
+      ),
+    ).toBe(true);
     expect(bursts.find((item) => item.entityKind === "tank")?.x).toBe(4);
     expect(bursts.find((item) => item.entityKind === "constructionYard")?.y).toBe(6);
   });
@@ -125,8 +144,22 @@ describe("combat fx bursts", () => {
 
     const { bursts } = burstsFromDestroyed(
       [
-        { type: "destroyed", id: organic.id, owner: organic.owner, kind: organic.kind, x: organic.x, y: organic.y },
-        { type: "destroyed", id: vehicle.id, owner: vehicle.owner, kind: vehicle.kind, x: vehicle.x, y: vehicle.y },
+        {
+          type: "destroyed",
+          id: organic.id,
+          owner: organic.owner,
+          kind: organic.kind,
+          x: organic.x,
+          y: organic.y,
+        },
+        {
+          type: "destroyed",
+          id: vehicle.id,
+          owner: vehicle.owner,
+          kind: vehicle.kind,
+          x: vehicle.x,
+          y: vehicle.y,
+        },
       ],
       state,
       500,
@@ -162,7 +195,8 @@ describe("combat fx bursts", () => {
     vi.mocked(drawSprite).mockClear();
     drawFxLayer(animated, state, createCamera(), [unit, building], 1200, "burst", false);
     expect(drawSprite).toHaveBeenCalledTimes(4);
-    const animatedDebrisCalls = (animated.stroke as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+    const animatedDebrisCalls = (animated.stroke as unknown as { mock: { calls: unknown[] } }).mock
+      .calls.length;
 
     const reduced = mockCtx();
     vi.mocked(drawSprite).mockClear();
@@ -190,15 +224,27 @@ describe("combat fx bursts", () => {
     drawFxLayer(animated, state, createCamera(), [organic], 1300, "burst", false);
 
     expect(drawSprite).toHaveBeenCalledTimes(2);
-    expect((animated.scale as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[1]).toBeLessThan(1);
-    expect((animated.rotate as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0]).not.toBe(0);
-    expect((animated.ellipse as unknown as { mock: { calls: unknown[][] } }).mock.calls).toHaveLength(1);
-    expect((animated.stroke as unknown as { mock: { calls: unknown[][] } }).mock.calls).toHaveLength(1);
+    expect(
+      (animated.scale as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[1],
+    ).toBeLessThan(1);
+    expect(
+      (animated.rotate as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0],
+    ).not.toBe(0);
+    expect(
+      (animated.ellipse as unknown as { mock: { calls: unknown[][] } }).mock.calls,
+    ).toHaveLength(1);
+    expect(
+      (animated.stroke as unknown as { mock: { calls: unknown[][] } }).mock.calls,
+    ).toHaveLength(1);
 
     const reduced = mockCtx();
     drawFxLayer(reduced, state, createCamera(), [organic], 1300, "burst", true);
-    expect((reduced.rotate as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0]).toBe(0);
-    expect((reduced.ellipse as unknown as { mock: { calls: unknown[][] } }).mock.calls).toHaveLength(1);
+    expect((reduced.rotate as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0]).toBe(
+      0,
+    );
+    expect(
+      (reduced.ellipse as unknown as { mock: { calls: unknown[][] } }).mock.calls,
+    ).toHaveLength(1);
   });
 
   it("keeps the destroyed owner's palette metadata after compaction", () => {
@@ -255,14 +301,22 @@ describe("combat fx bursts", () => {
       20,
     );
 
-    expect(bursts.map((item) => item.kind)).toEqual(["muzzle", "impact", "heal", "build", "deploy"]);
+    expect(bursts.map((item) => item.kind)).toEqual([
+      "muzzle",
+      "impact",
+      "heal",
+      "build",
+      "deploy",
+    ]);
     expect(bursts.find((item) => item.kind === "impact")).toMatchObject({
       weapon: "cannon",
       targetDomain: "vehicle",
       sourceX: 2,
       sourceY: 3,
     });
-    expect(bursts.every((item) => item.variant !== undefined && item.magnitude !== undefined)).toBe(true);
+    expect(bursts.every((item) => item.variant !== undefined && item.magnitude !== undefined)).toBe(
+      true,
+    );
   });
 
   it("times bombard kills out to the blast radius and leaves weapon splash unchanged", () => {
@@ -282,9 +336,16 @@ describe("combat fx bursts", () => {
       areaRadius: 3.2,
     };
     const killed: SimEvent = { type: "destroyed", id: 9, owner: 1, kind: "infantry", x: 5, y: 8 };
-    const matched = burstsFromEvents([blast, killed], state, 1_000, 1).bursts.find((burst) => burst.kind === "destruction");
+    const matched = burstsFromEvents([blast, killed], state, 1_000, 1).bursts.find(
+      (burst) => burst.kind === "destruction",
+    );
     expect(matched?.impactAtMs).toBeGreaterThan(1_000);
-    const unmatched = burstsFromEvents([{ ...blast, areaRadius: undefined }, killed], state, 1_000, 1).bursts.find((burst) => burst.kind === "destruction");
+    const unmatched = burstsFromEvents(
+      [{ ...blast, areaRadius: undefined }, killed],
+      state,
+      1_000,
+      1,
+    ).bursts.find((burst) => burst.kind === "destruction");
     expect(unmatched?.impactAtMs).toBeUndefined();
   });
 

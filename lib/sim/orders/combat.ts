@@ -1,18 +1,19 @@
-import { UNIT_STATS, isAirUnit, isSupportUnit } from "../../catalog";
-import { isUnitEntity, type Formation, type SimEvent, type SimState } from "../../types";
-import { findPathDetailed, routePendingFor } from "../pathfinding";
-import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
-import { byId, closestApproach } from "../world";
-import { assignSupportTarget, canSupportEntity } from "../support";
+import { isAirUnit, isSupportUnit, UNIT_STATS } from "../../catalog";
+import { type Formation, isUnitEntity, type SimEvent, type SimState } from "../../types";
 import { launchAircraft } from "../aircraft";
+import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
+import { findPathDetailed, routePendingFor } from "../pathfinding";
+import { assignSupportTarget, canSupportEntity } from "../support";
 import { directFireRangeBonusAt } from "../terrainRules";
-import { commandOwner } from "./commandOwner";
 import { braceRangeBonus, clearPlanted } from "../verbs";
+import { byId, closestApproach } from "../world";
+import { commandOwner } from "./commandOwner";
 
 export function attackUnits(state: SimState, ids: number[], targetId: number): SimEvent[] {
   const owner = commandOwner(state);
   const target = byId(state, targetId);
-  if (!target || target.owner === owner || target.neutral) return [{ type: "commandRejected", reason: "invalid attack target" }];
+  if (!target || target.owner === owner || target.neutral)
+    return [{ type: "commandRejected", reason: "invalid attack target" }];
   let searches = 0;
   for (const id of ids) {
     const e = byId(state, id);
@@ -63,7 +64,8 @@ export function supportUnits(state: SimState, ids: number[], targetId: number): 
   let assigned = 0;
   for (const id of ids) {
     const provider = byId(state, id);
-    if (!provider || !isUnitEntity(provider) || provider.owner !== owner || provider.neutral) continue;
+    if (!provider || !isUnitEntity(provider) || provider.owner !== owner || provider.neutral)
+      continue;
     if (!isSupportUnit(provider.kind) || !canSupportEntity(provider, target)) continue;
     assignSupportTarget(state, provider, target);
     assigned += 1;
@@ -71,7 +73,11 @@ export function supportUnits(state: SimState, ids: number[], targetId: number): 
   return assigned ? [] : [{ type: "commandRejected", reason: "no eligible support unit" }];
 }
 
-export function setStance(state: SimState, ids: number[], stance: "aggressive" | "defensive" | "hold"): SimEvent[] {
+export function setStance(
+  state: SimState,
+  ids: number[],
+  stance: "aggressive" | "defensive" | "hold",
+): SimEvent[] {
   const owner = commandOwner(state);
   for (const id of ids) {
     const e = byId(state, id);

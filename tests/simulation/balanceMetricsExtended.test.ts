@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { archetypeFailureRecords, checkArchetypeBalance, checkBalance, DEFAULT_BALANCE_THRESHOLDS, summarizeBalance, type BalanceRecord } from "../../lib/sim/balance";
+import {
+  archetypeFailureRecords,
+  type BalanceRecord,
+  checkArchetypeBalance,
+  checkBalance,
+  DEFAULT_BALANCE_THRESHOLDS,
+  summarizeBalance,
+} from "../../lib/sim/balance";
 
 function makeRecord(overrides: Partial<BalanceRecord> = {}): BalanceRecord {
   return {
@@ -41,8 +48,24 @@ describe("summarizeBalance", () => {
 
   it("computes all average and rate fields", () => {
     const records = [
-      makeRecord({ result: "won", duration: 100, credits: 200, casualties: 5, unitsProduced: 3, commandsIssued: 10, commandRejections: 1 }),
-      makeRecord({ result: "lost", duration: 200, credits: 400, casualties: 10, unitsProduced: 5, commandsIssued: 20, commandRejections: 2 }),
+      makeRecord({
+        result: "won",
+        duration: 100,
+        credits: 200,
+        casualties: 5,
+        unitsProduced: 3,
+        commandsIssued: 10,
+        commandRejections: 1,
+      }),
+      makeRecord({
+        result: "lost",
+        duration: 200,
+        credits: 400,
+        casualties: 10,
+        unitsProduced: 5,
+        commandsIssued: 20,
+        commandRejections: 2,
+      }),
     ];
     const summary = summarizeBalance(records);
     expect(summary.averageDuration).toBeCloseTo(150);
@@ -57,10 +80,7 @@ describe("summarizeBalance", () => {
   });
 
   it("counts non-finite state records", () => {
-    const summary = summarizeBalance([
-      makeRecord(),
-      makeRecord({ nonFiniteState: true }),
-    ]);
+    const summary = summarizeBalance([makeRecord(), makeRecord({ nonFiniteState: true })]);
 
     expect(summary.nonFiniteStateRate).toBe(0.5);
   });
@@ -122,19 +142,25 @@ describe("summarizeBalance", () => {
 
 describe("checkBalance", () => {
   it("optionally gates successful completions in the inclusive 5–12 minute window", () => {
-    const records = Array.from({ length: 10 }, (_, index) => makeRecord({ duration: index < 7 ? index % 2 ? 3600 : 8640 : 3599 }));
+    const records = Array.from({ length: 10 }, (_, index) =>
+      makeRecord({ duration: index < 7 ? (index % 2 ? 3600 : 8640) : 3599 }),
+    );
     const thresholds = { ...DEFAULT_BALANCE_THRESHOLDS, minCompletionWindowRate: 0.7 };
     expect(checkBalance(summarizeBalance(records), thresholds).passed).toBe(true);
     records[0].duration = 8641;
-    expect(checkBalance(summarizeBalance(records), thresholds).failures).toContain("successful completions in 5–12 minutes 60.0% is below 70.0%");
+    expect(checkBalance(summarizeBalance(records), thresholds).failures).toContain(
+      "successful completions in 5–12 minutes 60.0% is below 70.0%",
+    );
     expect(checkBalance(summarizeBalance(records), DEFAULT_BALANCE_THRESHOLDS).passed).toBe(true);
     expect(checkBalance(summarizeBalance([]), thresholds).passed).toBe(false);
   });
   it("enforces targeted mission-kind win-rate floors", () => {
-    const records = Array.from({ length: 4 }, (_, index) => makeRecord({
-      kind: "rescue",
-      result: index < 2 ? "won" : "lost",
-    }));
+    const records = Array.from({ length: 4 }, (_, index) =>
+      makeRecord({
+        kind: "rescue",
+        result: index < 2 ? "won" : "lost",
+      }),
+    );
     const result = checkBalance(summarizeBalance(records), {
       minWinRate: 0,
       maxTimeoutRate: 1,
@@ -154,7 +180,9 @@ describe("checkBalance", () => {
   });
 
   it("enforces targeted mission-kind casualty ceilings", () => {
-    const records = Array.from({ length: 4 }, () => makeRecord({ kind: "annihilate", casualties: 70 }));
+    const records = Array.from({ length: 4 }, () =>
+      makeRecord({ kind: "annihilate", casualties: 70 }),
+    );
     const result = checkBalance(summarizeBalance(records), {
       minWinRate: 0,
       maxTimeoutRate: 1,
@@ -174,7 +202,9 @@ describe("checkBalance", () => {
   });
 
   it("skips targeted casualty ceilings when below the minimum sample count", () => {
-    const records = Array.from({ length: 3 }, () => makeRecord({ kind: "decapitate", casualties: 100 }));
+    const records = Array.from({ length: 3 }, () =>
+      makeRecord({ kind: "decapitate", casualties: 100 }),
+    );
     const result = checkBalance(summarizeBalance(records), {
       minWinRate: 0,
       maxTimeoutRate: 1,
@@ -193,7 +223,9 @@ describe("checkBalance", () => {
   });
 
   it("passes with reasonable thresholds", () => {
-    const records = Array.from({ length: 10 }, (_, i) => makeRecord({ result: i < 8 ? "won" : "lost" }));
+    const records = Array.from({ length: 10 }, (_, i) =>
+      makeRecord({ result: i < 8 ? "won" : "lost" }),
+    );
     const result = checkBalance(summarizeBalance(records), {
       minWinRate: 0.5,
       maxWinRate: 0.95,
@@ -216,12 +248,12 @@ describe("checkBalance", () => {
 
     expect(DEFAULT_BALANCE_THRESHOLDS.maxWinRate).toBeUndefined();
     expect(DEFAULT_BALANCE_THRESHOLDS.targetedKindWinRates).toMatchObject({
-      destroyMarked: 0.70,
+      destroyMarked: 0.7,
       sabotage: 0.85,
       annihilate: 0.85,
-      decapitate: 0.70,
+      decapitate: 0.7,
       razeAll: 0.85,
-      rescue: 0.80,
+      rescue: 0.8,
       extraction: 0.85,
     });
     expect(result.passed).toBe(true);
@@ -390,11 +422,17 @@ describe("checkArchetypeBalance", () => {
 
   it("rejects reliability failures and anti-cheese universal wins", () => {
     const records = ["rush", "turtle", "greed", "infantry", "vehicles"].flatMap((strategy) =>
-      Array.from({ length: 8 }, (_, index): BalanceRecord => ({
-        ...makeRecord({ strategy: strategy as BalanceRecord["strategy"], kind: strategy === "rush" ? "harvestQuota" : "decapitate" }),
-        result: "won",
-        commandRejections: strategy === "turtle" && index === 0 ? 1 : 0,
-      })),
+      Array.from(
+        { length: 8 },
+        (_, index): BalanceRecord => ({
+          ...makeRecord({
+            strategy: strategy as BalanceRecord["strategy"],
+            kind: strategy === "rush" ? "harvestQuota" : "decapitate",
+          }),
+          result: "won",
+          commandRejections: strategy === "turtle" && index === 0 ? 1 : 0,
+        }),
+      ),
     );
     const result = checkArchetypeBalance(summarizeBalance(records), records);
     expect(result.passed).toBe(false);
@@ -403,40 +441,48 @@ describe("checkArchetypeBalance", () => {
   });
 
   it("reports successful records contributing to an anti-cheese violation", () => {
-    const records = Array.from({ length: 8 }, () => makeRecord({
-      strategy: "rush",
-      family: "economy",
-      kind: "harvestQuota",
-      result: "won",
-    }));
+    const records = Array.from({ length: 8 }, () =>
+      makeRecord({
+        strategy: "rush",
+        family: "economy",
+        kind: "harvestQuota",
+        result: "won",
+      }),
+    );
     const failures = archetypeFailureRecords(summarizeBalance(records), records, ["rush"]);
     expect(failures).toHaveLength(8);
   });
 
   it("allows seven of eight rush hold-the-line wins and rejects eight of eight", () => {
-    const seven = Array.from({ length: 8 }, (_, index) => makeRecord({
-      strategy: "rush",
-      kind: "holdTheLine",
-      result: index === 0 ? "lost" : "won",
-    }));
+    const seven = Array.from({ length: 8 }, (_, index) =>
+      makeRecord({
+        strategy: "rush",
+        kind: "holdTheLine",
+        result: index === 0 ? "lost" : "won",
+      }),
+    );
     expect(checkArchetypeBalance(summarizeBalance(seven), seven, ["rush"]).passed).toBe(true);
 
-    const eight = Array.from({ length: 8 }, () => makeRecord({
-      strategy: "rush",
-      kind: "holdTheLine",
-      result: "won",
-    }));
+    const eight = Array.from({ length: 8 }, () =>
+      makeRecord({
+        strategy: "rush",
+        kind: "holdTheLine",
+        result: "won",
+      }),
+    );
     const result = checkArchetypeBalance(summarizeBalance(eight), eight, ["rush"]);
     expect(result.passed).toBe(false);
     expect(result.failures.join(" ")).toContain("exceeds 87.5%");
   });
 
   it("does not cap an autonomous escort objective for an archetype", () => {
-    const records = Array.from({ length: 8 }, () => makeRecord({
-      strategy: "greed",
-      kind: "escort",
-      result: "won",
-    }));
+    const records = Array.from({ length: 8 }, () =>
+      makeRecord({
+        strategy: "greed",
+        kind: "escort",
+        result: "won",
+      }),
+    );
     const result = checkArchetypeBalance(summarizeBalance(records), records, ["greed"]);
     expect(result).toEqual({ passed: true, failures: [] });
   });

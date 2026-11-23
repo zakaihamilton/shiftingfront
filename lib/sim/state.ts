@@ -2,7 +2,24 @@ import type { SimState } from "../types";
 import { emptyRoleCounts } from "./world";
 
 export function createBaseState(
-  overrides: Pick<SimState, "seed" | "missionIndex" | "width" | "height" | "tiles" | "heights" | "surfaces" | "biome" | "resourceAmount" | "fog" | "credits" | "win" | "rngState" | "factions" | "missionName">,
+  overrides: Pick<
+    SimState,
+    | "seed"
+    | "missionIndex"
+    | "width"
+    | "height"
+    | "tiles"
+    | "heights"
+    | "surfaces"
+    | "biome"
+    | "resourceAmount"
+    | "fog"
+    | "credits"
+    | "win"
+    | "rngState"
+    | "factions"
+    | "missionName"
+  >,
 ): SimState {
   return {
     tick: 0,

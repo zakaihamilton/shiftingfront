@@ -51,14 +51,18 @@ export function MobileOrientationHint() {
   };
 
   return (
-    <aside
-      className={styles.hint}
-      role="status"
-      aria-live="polite"
-      data-testid="orientation-hint"
-    >
+    <aside className={styles.hint} role="status" aria-live="polite" data-testid="orientation-hint">
       <div className={styles.icon} aria-hidden="true">
-        <svg aria-hidden="true" className={styles.iconSvg} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          aria-hidden="true"
+          className={styles.iconSvg}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
           <path d="M12 18h.01" />
           <path d="M2 9l2-2 2 2" />
@@ -67,7 +71,9 @@ export function MobileOrientationHint() {
       </div>
       <div className={styles.content}>
         <strong className={styles.title}>Rotate For Tactical View</strong>
-        <span className={styles.description}>Landscape recommended for optimal radar & command overview</span>
+        <span className={styles.description}>
+          Landscape recommended for optimal radar & command overview
+        </span>
       </div>
       <button
         type="button"

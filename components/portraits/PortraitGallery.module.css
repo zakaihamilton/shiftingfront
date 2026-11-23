@@ -3,8 +3,7 @@
   padding: 2.5rem clamp(1rem, 3vw, 3rem) 4rem;
   background:
     linear-gradient(rgba(92, 225, 230, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(92, 225, 230, 0.025) 1px, transparent 1px),
-    var(--chrome-bg);
+    linear-gradient(90deg, rgba(92, 225, 230, 0.025) 1px, transparent 1px), var(--chrome-bg);
   background-size: 32px 32px;
 }
 
@@ -138,7 +137,9 @@
   border: 1px solid var(--chrome-line);
   background: rgba(5, 8, 14, 0.92);
   box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.35);
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .card:hover {

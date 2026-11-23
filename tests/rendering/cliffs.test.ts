@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { cliffFaces } from "../../lib/gen/tilePalette";
-import { drawElevationFaces, fillElevationPoly, fillElevationRamp } from "../../lib/render/terrainPaint/cliffs";
+import {
+  drawElevationFaces,
+  fillElevationPoly,
+  fillElevationRamp,
+} from "../../lib/render/terrainPaint/cliffs";
 
 function createMockCtx(): CanvasRenderingContext2D {
   const gradient = { addColorStop: vi.fn() } as unknown as CanvasGradient;
@@ -67,9 +71,17 @@ describe("cliff canvas painting", () => {
 
   it("fills a ramp with a blended elevation gradient", () => {
     const ctx = createMockCtx();
-    fillElevationRamp(ctx, [0, 0, 8, 0, 8, 8], { x: 2, y: 3 }, { x: 6, y: 11 }, "#7f8f78", "#59675a");
+    fillElevationRamp(
+      ctx,
+      [0, 0, 8, 0, 8, 8],
+      { x: 2, y: 3 },
+      { x: 6, y: 11 },
+      "#7f8f78",
+      "#59675a",
+    );
 
-    const gradient = (ctx.createLinearGradient as unknown as ReturnType<typeof vi.fn>).mock.results[0]?.value as { addColorStop: ReturnType<typeof vi.fn> };
+    const gradient = (ctx.createLinearGradient as unknown as ReturnType<typeof vi.fn>).mock
+      .results[0]?.value as { addColorStop: ReturnType<typeof vi.fn> };
     expect(ctx.createLinearGradient).toHaveBeenCalledWith(2, 3, 6, 11);
     expect(gradient.addColorStop).toHaveBeenNthCalledWith(1, 0, "#7f8f78");
     expect(gradient.addColorStop).toHaveBeenNthCalledWith(2, 1, "#59675a");

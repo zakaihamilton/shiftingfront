@@ -13,7 +13,12 @@ type ErrorBoundaryProps = {
   eyebrow?: string;
   fallback?: ReactNode;
 };
-type ErrorBoundaryState = { hasError: boolean; error: Error | null; copied: boolean; retryKey: number };
+type ErrorBoundaryState = {
+  hasError: boolean;
+  error: Error | null;
+  copied: boolean;
+  retryKey: number;
+};
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false, error: null, copied: false, retryKey: 0 };
@@ -36,7 +41,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           detail={this.state.error?.message || "An unexpected error occurred."}
           testId="screen-error"
         >
-          <ConsoleButton onClick={() => this.setState((state) => ({ hasError: false, error: null, copied: false, retryKey: state.retryKey + 1 }))}>
+          <ConsoleButton
+            onClick={() =>
+              this.setState((state) => ({
+                hasError: false,
+                error: null,
+                copied: false,
+                retryKey: state.retryKey + 1,
+              }))
+            }
+          >
             Try again
           </ConsoleButton>
           <ConsoleButton

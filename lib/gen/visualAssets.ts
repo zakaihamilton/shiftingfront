@@ -1,5 +1,15 @@
-import { isHiddenObjectiveAsset, type AnimFrame, type BiomeName, type BuildingKind, type Entity, type Facing, type SimState, type SpriteCrop, type UnitKind } from "../types";
 import { fogAt } from "../sim/fog";
+import {
+  type AnimFrame,
+  type BiomeName,
+  type BuildingKind,
+  type Entity,
+  type Facing,
+  isHiddenObjectiveAsset,
+  type SimState,
+  type SpriteCrop,
+  type UnitKind,
+} from "../types";
 import { unitAnimationSources } from "./unitAnimationAssets";
 
 export type RasterArtKey = "menu" | "victory" | "defeat" | BiomeName;
@@ -43,7 +53,6 @@ export const ANTI_AIR_TURRET_BASE_CROP = {
   refH: 1197,
 } as const;
 
-
 export type UnitView =
   | "right"
   | "front-right"
@@ -78,8 +87,8 @@ export const STRIKE_PLANE_IMAGE_ANCHORS: Record<UnitView, readonly [number, numb
   "front-right": [0.5003, 0.4829],
   front: [0.5007, 0.4976],
   "front-left": [0.5192, 0.4927],
-  left: [0.5190, 0.5049],
-  "back-left": [0.5055, 0.5060],
+  left: [0.519, 0.5049],
+  "back-left": [0.5055, 0.506],
   back: [0.5003, 0.4634],
   "back-right": [0.5212, 0.4858],
 };
@@ -251,7 +260,9 @@ export function unitWalkFrameCrop(frame: AnimFrame): SpriteCrop {
 }
 
 /** Generated direction sheets contain a few neighboring partial renders at the edge. */
-export const UNIT_DIRECTION_CROPS: Partial<Record<UnitKind, Partial<Record<UnitView, SpriteCrop>>>> = {
+export const UNIT_DIRECTION_CROPS: Partial<
+  Record<UnitKind, Partial<Record<UnitView, SpriteCrop>>>
+> = {
   tank: {
     right: { x: 0, y: 0, w: 722, h: 473, sourceW: 722, sourceH: 473, refW: 722, refH: 502 },
     "front-right": { x: 0, y: 0, w: 704, h: 460, sourceW: 704, sourceH: 491, refW: 722, refH: 502 },
@@ -343,7 +354,8 @@ export function listTacticalRasterSources(): string[] {
   for (const views of Object.values(UNIT_WALK_CYCLE_ART)) {
     srcs.push(...Object.values(views));
   }
-  for (const kind of Object.keys(UNIT_DIRECTION_ART) as UnitKind[]) srcs.push(...unitAnimationSources(kind));
+  for (const kind of Object.keys(UNIT_DIRECTION_ART) as UnitKind[])
+    srcs.push(...unitAnimationSources(kind));
   return srcs;
 }
 

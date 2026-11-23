@@ -10,7 +10,9 @@
   pointer-events: none;
   border: 1px solid var(--chrome-cyan-dim);
   background: var(--chrome-steel-lo);
-  box-shadow: 2px 2px 0 var(--chrome-void), 0 0 0 1px var(--chrome-inset);
+  box-shadow:
+    2px 2px 0 var(--chrome-void),
+    0 0 0 1px var(--chrome-inset);
   color: var(--chrome-text);
   padding: 0.35rem 0.55rem;
   font-size: var(--text-sm);

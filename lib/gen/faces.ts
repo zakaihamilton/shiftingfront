@@ -1,6 +1,6 @@
 import type { Rng } from "../seed/rng";
 import type { CharacterRole, FaceDna } from "../types";
-import { portraitCandidates, type PortraitPickOptions } from "./portraitCatalog";
+import { type PortraitPickOptions, portraitCandidates } from "./portraitCatalog";
 
 export function generateFace(
   rng: Rng,
@@ -8,12 +8,14 @@ export function generateFace(
   opts?: { feminine?: boolean } & Pick<PortraitPickOptions, "excludeIds" | "excludeSheets">,
 ): FaceDna {
   const feminine = opts?.feminine ?? rng.chance(0.48);
-  const asset = rng.pick(portraitCandidates({
-    role,
-    feminine,
-    excludeIds: opts?.excludeIds,
-    excludeSheets: opts?.excludeSheets,
-  }));
+  const asset = rng.pick(
+    portraitCandidates({
+      role,
+      feminine,
+      excludeIds: opts?.excludeIds,
+      excludeSheets: opts?.excludeSheets,
+    }),
+  );
   return {
     portraitId: asset.id,
     feminine: asset.feminine,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
 import { issue } from "../../lib/sim/api";
+import { addBuilding, makeFixture } from "../../lib/sim/fixtures";
 import { canRepair, tickRepair } from "../../lib/sim/repair";
 
 describe("repair edge cases", () => {

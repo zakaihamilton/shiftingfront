@@ -1,59 +1,70 @@
-import { composeMusic, TITLE_MUSIC_SEED, TUTORIAL_MUSIC_MISSION, type MusicCue, type MusicIntensity } from "./compose";
+import {
+  composeMusic,
+  type MusicCue,
+  type MusicIntensity,
+  TITLE_MUSIC_SEED,
+  TUTORIAL_MUSIC_MISSION,
+} from "./compose";
 import { peekAudioContext, unlockAudioContext } from "./context";
 import { setAudioBusEnabled } from "./mixer";
 import { masterGain } from "./musicGraph";
 import {
-  intensity,
-  pendingIntensity,
-  setIntensity,
-  setPendingIntensity,
-  graph,
-  pattern,
-  timer,
-  setPattern,
-  cue,
-  seed,
-  missionIndex,
-  trackIndex,
-  setTrackIndex,
-  setTransitioning,
-  enabled,
-  setEnabled,
-  setPaused,
-  setCue,
-  setSeed,
-  setMissionIndex,
-  setDucked,
-  setStep,
-} from "./musicState";
-import {
-  ensureMusicPlaying,
-  applyPattern,
-  stopMusic,
-  readMusicPosition,
-  saveMusicPosition,
-  clearMusicPosition,
-  getAudibleStep,
-  saveAudibleMusicPosition,
   advanceMusicTrack,
+  applyPattern,
+  clearMusicPosition,
+  ensureMusicPlaying,
+  getAudibleStep,
+  readMusicPosition,
+  saveAudibleMusicPosition,
+  saveMusicPosition,
+  stopMusic,
   TOTAL_CAMPAIGN_TRACKS,
 } from "./musicScheduler";
+import {
+  cue,
+  enabled,
+  graph,
+  intensity,
+  missionIndex,
+  pattern,
+  pendingIntensity,
+  seed,
+  setCue,
+  setDucked,
+  setEnabled,
+  setIntensity,
+  setMissionIndex,
+  setPattern,
+  setPaused,
+  setPendingIntensity,
+  setSeed,
+  setStep,
+  setTrackIndex,
+  setTransitioning,
+  timer,
+  trackIndex,
+} from "./musicState";
 
-export { TITLE_MUSIC_SEED, TUTORIAL_MUSIC_MISSION };
 export type { MusicIntensity } from "./compose";
 export { isAudioUnlocked } from "./context";
 export {
-  readMusicPosition,
-  saveMusicPosition,
+  advanceMusicTrack,
   clearMusicPosition,
   getAudibleStep,
+  readMusicPosition,
   saveAudibleMusicPosition,
-  advanceMusicTrack,
+  saveMusicPosition,
+  TITLE_MUSIC_SEED,
   TOTAL_CAMPAIGN_TRACKS,
+  TUTORIAL_MUSIC_MISSION,
   trackIndex,
 };
 
-export function resetMusicPosition(targetCue?: MusicCue, targetSeed?: number, targetMissionIndex?: number): void {
+export function resetMusicPosition(
+  targetCue?: MusicCue,
+  targetSeed?: number,
+  targetMissionIndex?: number,
+): void {
   clearMusicPosition(targetCue, targetSeed, targetMissionIndex);
   if (
     targetCue === undefined ||

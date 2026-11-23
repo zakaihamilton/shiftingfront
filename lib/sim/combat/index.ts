@@ -1,16 +1,30 @@
-import { isAirUnit, isDefensiveTurret, POWER_SHORTAGE_TURRET_COOLDOWN_RATE, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER } from "../../catalog";
-import { isPlayerControlledOwner } from "../ownership";
-import { distToEntity, livingView } from "../world";
+import {
+  isAirUnit,
+  isDefensiveTurret,
+  POWER_SHORTAGE_TURRET_COOLDOWN_RATE,
+  POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER,
+} from "../../catalog";
 import { rngFromState } from "../../seed/rng";
-import { buildGrid, statsFor, canTarget, isCombatTarget, isCombatThreat, acquire, acquirePreferred, closestEnemy } from "./grid";
-import { lineOfSight, firingPosition, heightRangeBonus } from "./targeting";
-import { strike, chase } from "./damage";
-import { createPendingAlerts, flushPlayerAlerts } from "./alerts";
 import type { SimEvent, SimState } from "../../types";
+import { isPlayerControlledOwner } from "../ownership";
 import { tryFindPath } from "../pathBudget";
+import { powerShortageByOwner } from "../powerShortage";
 import { directFireRangeBonusAt } from "../terrainRules";
 import { braceRangeBonus, tickBombards } from "../verbs";
-import { powerShortageByOwner } from "../powerShortage";
+import { distToEntity, livingView } from "../world";
+import { createPendingAlerts, flushPlayerAlerts } from "./alerts";
+import { chase, strike } from "./damage";
+import {
+  acquire,
+  acquirePreferred,
+  buildGrid,
+  canTarget,
+  closestEnemy,
+  isCombatTarget,
+  isCombatThreat,
+  statsFor,
+} from "./grid";
+import { firingPosition, heightRangeBonus, lineOfSight } from "./targeting";
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
@@ -23,7 +37,11 @@ function turretCooldownAdvances(tick: number, shortage: boolean): boolean {
   return tick % stride === 0;
 }
 
-export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
+export function tickCombat(
+  state: SimState,
+  eventSink?: SimEvent[],
+  collectEvents = true,
+): SimEvent[] {
   const events = eventSink ?? (collectEvents ? [] : undefined);
   tickBombards(state, events);
   const pending = collectEvents ? createPendingAlerts() : undefined;
@@ -37,10 +55,16 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     const isTurret = e.class === "building" && isDefensiveTurret(e.kind);
     const hasPowerShortage = isTurret && lowPower[e.owner];
     const st = statsFor(e);
-    const baseRange = hasPowerShortage ? st.range * POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER : st.range;
-    const weaponRange = baseRange + (st.weapon === "airStrike" ? 0 : directFireRangeBonusAt(state, e)) + braceRangeBonus(e);
+    const baseRange = hasPowerShortage
+      ? st.range * POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER
+      : st.range;
+    const weaponRange =
+      baseRange +
+      (st.weapon === "airStrike" ? 0 : directFireRangeBonusAt(state, e)) +
+      braceRangeBonus(e);
     if (st.damage <= 0 || e.neutral) continue;
-    if (e.class === "unit" && (e.flightState === "servicing" || e.landingRunwayId !== undefined)) continue;
+    if (e.class === "unit" && (e.flightState === "servicing" || e.landingRunwayId !== undefined))
+      continue;
     if (e.constructing > 0) continue;
     if (e.cooldown > 0 && turretCooldownAdvances(state.tick, hasPowerShortage)) {
       e.cooldown -= 1;
@@ -50,9 +74,13 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     if (ordered && e.orderMode === "attackMove") e.attackTarget = undefined;
     if (ordered && e.attackTarget !== undefined && e.orderMode !== "attackMove") {
       const assignedCandidate = grid.byId[e.attackTarget];
-        const assigned = assignedCandidate && assignedCandidate.hp > 0 && isCombatTarget(state, assignedCandidate) && canTarget(e, assignedCandidate)
-        ? assignedCandidate
-        : undefined;
+      const assigned =
+        assignedCandidate &&
+        assignedCandidate.hp > 0 &&
+        isCombatTarget(state, assignedCandidate) &&
+        canTarget(e, assignedCandidate)
+          ? assignedCandidate
+          : undefined;
       if (!assigned) {
         e.attackTarget = undefined;
       } else {
@@ -62,7 +90,10 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
           e.path = [];
           e.routePending = false;
           e.flowGoal = undefined;
-          if ((e.class === "unit" && isAirUnit(e.kind)) || (assigned.class === "unit" && isAirUnit(assigned.kind))) {
+          if (
+            (e.class === "unit" && isAirUnit(e.kind)) ||
+            (assigned.class === "unit" && isAirUnit(assigned.kind))
+          ) {
             strike(state, e, assigned, st, rng, events, pending, grid);
           } else if (lineOfSight(state, e, assigned)) {
             strike(state, e, assigned, st, rng, events, pending, grid);
@@ -74,10 +105,16 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
             }
           }
         } else {
-          const intercept = !isPlayerControlledOwner(state, e.owner) && !isCombatThreat(state, assigned)
-            ? closestEnemy(grid, e, weaponRange, true)
-            : undefined;
-          if (intercept && ((e.class === "unit" && isAirUnit(e.kind)) || (intercept.class === "unit" && isAirUnit(intercept.kind)) || lineOfSight(state, e, intercept))) {
+          const intercept =
+            !isPlayerControlledOwner(state, e.owner) && !isCombatThreat(state, assigned)
+              ? closestEnemy(grid, e, weaponRange, true)
+              : undefined;
+          if (
+            intercept &&
+            ((e.class === "unit" && isAirUnit(e.kind)) ||
+              (intercept.class === "unit" && isAirUnit(intercept.kind)) ||
+              lineOfSight(state, e, intercept))
+          ) {
             e.attackTarget = intercept.id;
             e.path = [];
             e.routePending = false;
@@ -97,7 +134,13 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
       // goal or pending route are still in transit: marking them idle or
       // chasing would strand the original destination.
       const opportunity = closestEnemy(grid, e, weaponRange, false);
-      if (opportunity && ((e.class === "unit" && isAirUnit(e.kind)) || (opportunity.class === "unit" && isAirUnit(opportunity.kind)) || lineOfSight(state, e, opportunity))) strike(state, e, opportunity, st, rng, events, pending, grid);
+      if (
+        opportunity &&
+        ((e.class === "unit" && isAirUnit(e.kind)) ||
+          (opportunity.class === "unit" && isAirUnit(opportunity.kind)) ||
+          lineOfSight(state, e, opportunity))
+      )
+        strike(state, e, opportunity, st, rng, events, pending, grid);
       continue;
     }
 
@@ -107,10 +150,13 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
     const hold = stance === "hold";
     const defend = stance === "defensive";
     const inRangeThreat = hold ? undefined : closestEnemy(grid, e, weaponRange, true, defend);
-    let target = inRangeThreat ?? (hold ? undefined : e.attackTarget !== undefined ? grid.byId[e.attackTarget] : undefined);
+    let target =
+      inRangeThreat ??
+      (hold ? undefined : e.attackTarget !== undefined ? grid.byId[e.attackTarget] : undefined);
     if (target && target.hp <= 0) target = undefined;
     if (target && !isCombatThreat(state, target)) {
-      const threat = hold || defend ? closestEnemy(grid, e, weaponRange, true, defend) : acquire(grid, e, true);
+      const threat =
+        hold || defend ? closestEnemy(grid, e, weaponRange, true, defend) : acquire(grid, e, true);
       if (threat) {
         target = threat;
         e.path = [];
@@ -126,7 +172,12 @@ export function tickCombat(state: SimState, eventSink?: SimEvent[], collectEvent
 
     const d = distToEntity(e, target);
     const effectiveRange = weaponRange + heightRangeBonus(state, e, target);
-    if (d <= effectiveRange && ((e.class === "unit" && isAirUnit(e.kind)) || (target.class === "unit" && isAirUnit(target.kind)) || lineOfSight(state, e, target))) {
+    if (
+      d <= effectiveRange &&
+      ((e.class === "unit" && isAirUnit(e.kind)) ||
+        (target.class === "unit" && isAirUnit(target.kind)) ||
+        lineOfSight(state, e, target))
+    ) {
       e.path = [];
       e.routePending = false;
       strike(state, e, target, st, rng, events, pending, grid);

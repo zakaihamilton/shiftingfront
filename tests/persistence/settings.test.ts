@@ -12,10 +12,30 @@ import {
 describe("audio settings", () => {
   it("round-trips music and sound toggles through memory storage", () => {
     const storage = memoryStorage();
-    writeSettings(storage, { ...defaultSettings(), sfxEnabled: false, musicEnabled: true, musicVolume: 0.4 });
-    expect(readSettings(storage)).toEqual({ ...defaultSettings(), sfxEnabled: false, musicEnabled: true, musicVolume: 0.4 });
-    writeSettings(storage, { ...defaultSettings(), sfxEnabled: true, musicEnabled: false, sfxVolume: 0.25 });
-    expect(readSettings(storage)).toEqual({ ...defaultSettings(), sfxEnabled: true, musicEnabled: false, sfxVolume: 0.25 });
+    writeSettings(storage, {
+      ...defaultSettings(),
+      sfxEnabled: false,
+      musicEnabled: true,
+      musicVolume: 0.4,
+    });
+    expect(readSettings(storage)).toEqual({
+      ...defaultSettings(),
+      sfxEnabled: false,
+      musicEnabled: true,
+      musicVolume: 0.4,
+    });
+    writeSettings(storage, {
+      ...defaultSettings(),
+      sfxEnabled: true,
+      musicEnabled: false,
+      sfxVolume: 0.25,
+    });
+    expect(readSettings(storage)).toEqual({
+      ...defaultSettings(),
+      sfxEnabled: true,
+      musicEnabled: false,
+      sfxVolume: 0.25,
+    });
   });
 
   it("defaults both channels on when nothing is stored", () => {
@@ -41,25 +61,34 @@ describe("audio settings", () => {
 
   it("rejects mismatched versions and malformed envelopes", () => {
     const storage = memoryStorage();
-    storage.setItem(SETTINGS_KEY, JSON.stringify({
-      version: SETTINGS_VERSION + 1,
-      savedAt: 1,
-      settings: { sfxEnabled: false, musicEnabled: false },
-    }));
+    storage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({
+        version: SETTINGS_VERSION + 1,
+        savedAt: 1,
+        settings: { sfxEnabled: false, musicEnabled: false },
+      }),
+    );
     expect(readSettings(storage)).toEqual(defaultSettings());
 
-    storage.setItem(SETTINGS_KEY, JSON.stringify({
-      version: 1,
-      savedAt: 1,
-      settings: { sfxEnabled: false, musicEnabled: true },
-    }));
+    storage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({
+        version: 1,
+        savedAt: 1,
+        settings: { sfxEnabled: false, musicEnabled: true },
+      }),
+    );
     expect(readSettings(storage)).toEqual({ ...defaultSettings(), sfxEnabled: false });
 
-    storage.setItem(SETTINGS_KEY, JSON.stringify({
-      version: 2,
-      savedAt: 1,
-      settings: { musicEnabled: false },
-    }));
+    storage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({
+        version: 2,
+        savedAt: 1,
+        settings: { musicEnabled: false },
+      }),
+    );
     expect(readSettings(storage)).toEqual({ ...defaultSettings(), musicEnabled: false });
 
     storage.setItem(SETTINGS_KEY, "{not-json");
@@ -89,7 +118,11 @@ describe("audio settings", () => {
     writeSettings(storage, { ...defaultSettings(), sfxEnabled: false, musicEnabled: false });
     const envelope = JSON.parse(storage.getItem(SETTINGS_KEY)!);
     expect(envelope.version).toBe(SETTINGS_VERSION);
-    expect(envelope.settings).toEqual({ ...defaultSettings(), sfxEnabled: false, musicEnabled: false });
+    expect(envelope.settings).toEqual({
+      ...defaultSettings(),
+      sfxEnabled: false,
+      musicEnabled: false,
+    });
     expect(typeof envelope.savedAt).toBe("number");
   });
 
@@ -171,17 +204,22 @@ describe("audio settings", () => {
     expect(readSettings(storage)).toEqual({ ...defaultSettings(), sfxEnabled: false });
 
     writeSettings(storage, readSettings(storage));
-    expect(JSON.parse(storage.getItem(SETTINGS_KEY)!).settings).not.toHaveProperty("seenFieldGuideTopics");
+    expect(JSON.parse(storage.getItem(SETTINGS_KEY)!).settings).not.toHaveProperty(
+      "seenFieldGuideTopics",
+    );
   });
 
   it("accepts settings versions 1 through 4", () => {
     const storage = memoryStorage();
     for (const version of [1, 2, 3, 4]) {
-      storage.setItem(SETTINGS_KEY, JSON.stringify({
-        version,
-        savedAt: 1,
-        settings: { sfxEnabled: false, seenFieldGuideTopics: ["scenario:rescue"] },
-      }));
+      storage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify({
+          version,
+          savedAt: 1,
+          settings: { sfxEnabled: false, seenFieldGuideTopics: ["scenario:rescue"] },
+        }),
+      );
       expect(readSettings(storage)).toEqual({ ...defaultSettings(), sfxEnabled: false });
     }
   });

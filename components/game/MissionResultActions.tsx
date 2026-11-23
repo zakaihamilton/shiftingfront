@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { ActionRail } from "@/components/ui/Dossier";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
-import { SHORTCUT } from "@/lib/ui/shortcuts";
-import { formatMissionShareCard } from "@/lib/ui/shareCard";
+import { ActionRail } from "@/components/ui/Dossier";
 import { MISSION_MAX } from "@/lib/seed/rng";
 import type { SimState } from "@/lib/types";
-import styles from "./MissionResult.module.css";
+import { formatMissionShareCard } from "@/lib/ui/shareCard";
+import { SHORTCUT } from "@/lib/ui/shortcuts";
+import styles from "./MissionResultActions.module.css";
 
 export function MissionResultActions({
   state,
@@ -22,6 +22,8 @@ export function MissionResultActions({
 }) {
   const [copied, setCopied] = useState(false);
   const multiplayer = state.multiplayer === true;
+  const draw = multiplayer && state.winner === null;
+  const outcome = draw ? "draw" : state.result;
 
   const handleShare = async () => {
     try {
@@ -35,14 +37,27 @@ export function MissionResultActions({
   };
 
   return (
-    <ActionRail className={styles.actions}>
+    <ActionRail
+      className={styles.actions}
+      data-outcome={outcome}
+      data-multiplayer={multiplayer ? "true" : "false"}
+      data-result={state.result}
+    >
       {!multiplayer && state.result === "won" && state.missionIndex < MISSION_MAX ? (
-        <ConsoleButton tooltip="Advance to the next briefing" shortcut={SHORTCUT.resultPrimary} onClick={onNextBriefing}>
+        <ConsoleButton
+          tooltip="Advance to the next briefing"
+          shortcut={SHORTCUT.resultPrimary}
+          onClick={onNextBriefing}
+        >
           Next briefing
         </ConsoleButton>
       ) : null}
       {!multiplayer && state.result === "won" && state.missionIndex >= MISSION_MAX ? (
-        <ConsoleButton tooltip="Return to the main menu" shortcut={SHORTCUT.resultPrimary} onClick={onCampaignVictory}>
+        <ConsoleButton
+          tooltip="Return to the main menu"
+          shortcut={SHORTCUT.resultPrimary}
+          onClick={onCampaignVictory}
+        >
           Campaign victory
         </ConsoleButton>
       ) : null}
@@ -62,7 +77,11 @@ export function MissionResultActions({
         </ConsoleButton>
       ) : null}
       {!multiplayer && state.result === "lost" ? (
-        <ConsoleButton tooltip="Retry this mission" shortcut={SHORTCUT.resultPrimary} onClick={onRetry}>
+        <ConsoleButton
+          tooltip="Retry this mission"
+          shortcut={SHORTCUT.resultPrimary}
+          onClick={onRetry}
+        >
           Retry
         </ConsoleButton>
       ) : null}

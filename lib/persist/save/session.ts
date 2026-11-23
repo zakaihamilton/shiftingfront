@@ -1,11 +1,8 @@
-import { getSaveRepository } from "./repository";
 import type { SimState } from "../../types";
-import { saveKey } from "./serialize";
-import {
-  safeGetItem,
-  type StorageAdapter,
-} from "./storage";
 import { writeSave } from "./api";
+import { getSaveRepository } from "./repository";
+import { saveKey } from "./serialize";
+import { type StorageAdapter, safeGetItem } from "./storage";
 
 export type SaveWriteMode = "implicit" | "explicit";
 export type SaveWriteStatus = "saved" | "conflict" | "failed";
@@ -39,7 +36,8 @@ function sameSnapshot(a: SaveStorageSnapshot, b: SaveStorageSnapshot): boolean {
  */
 export function createSaveSession(storage: StorageAdapter, seed: number): SaveSession {
   const repository = getSaveRepository();
-  if (repository?.storage === storage && repository.mode === "indexeddb") return repository.createSession(seed);
+  if (repository?.storage === storage && repository.mode === "indexeddb")
+    return repository.createSession(seed);
   let expected = saveStorageSnapshot(storage, seed);
   let externallyChanged = false;
 

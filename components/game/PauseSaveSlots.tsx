@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DialogPortal } from "@/components/ui/DialogPortal";
+import { SaveSlotList } from "@/components/save/SaveSlotList";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
+import { DialogPortal } from "@/components/ui/DialogPortal";
 import { MetalPanel } from "@/components/ui/MetalPanel";
-import { SaveSlotList } from "@/components/save/SaveSlotList";
 import { useModalFocus } from "@/components/ui/useModalFocus";
 import type { ArchiveEntry, SlotMeta } from "@/lib/persist/save";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
@@ -28,7 +28,11 @@ export function PauseSaveSlots({
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingOverwrite, setPendingOverwrite] = useState<SlotMeta | null>(null);
-  const overwriteDialogRef = useModalFocus(Boolean(pendingOverwrite), pendingOverwrite?.id, "dialog");
+  const overwriteDialogRef = useModalFocus(
+    Boolean(pendingOverwrite),
+    pendingOverwrite?.id,
+    "dialog",
+  );
 
   const visibleSlots = useMemo(
     () => slots.filter((slot) => !deletedIds.has(slot.id)),
@@ -53,7 +57,7 @@ export function PauseSaveSlots({
   }, [pendingOverwrite]);
 
   const save = async (overwriteId: string | null) => {
-    if (!await onCommit(name, overwriteId)) return;
+    if (!(await onCommit(name, overwriteId))) return;
     setPendingOverwrite(null);
   };
 
@@ -77,7 +81,9 @@ export function PauseSaveSlots({
   return (
     <>
       <ConsoleLabel>Save slots</ConsoleLabel>
-      <h2 id="pause-title" className={styles.title}>Save mission</h2>
+      <h2 id="pause-title" className={styles.title}>
+        Save mission
+      </h2>
       <p className={styles.slotCopy}>Name this save, or pick a slot to overwrite.</p>
       <label className={styles.slotName}>
         <span>Save name</span>
@@ -126,7 +132,13 @@ export function PauseSaveSlots({
         >
           Save
         </ConsoleButton>
-        <ConsoleButton muted className={styles.action} tooltip="Return to the pause menu" shortcut={SHORTCUT.back} onClick={onBack}>
+        <ConsoleButton
+          muted
+          className={styles.action}
+          tooltip="Return to the pause menu"
+          shortcut={SHORTCUT.back}
+          onClick={onBack}
+        >
           Back
         </ConsoleButton>
       </div>
@@ -141,10 +153,16 @@ export function PauseSaveSlots({
               aria-modal="true"
               aria-labelledby="overwrite-slot-title"
             >
-              <ConsoleLabel as="h2" id="overwrite-slot-title">Overwrite save slot?</ConsoleLabel>
-              <p className={styles.slotCopy}>Replace {pendingOverwrite.name}? The previous snapshot cannot be recovered.</p>
+              <ConsoleLabel as="h2" id="overwrite-slot-title">
+                Overwrite save slot?
+              </ConsoleLabel>
+              <p className={styles.slotCopy}>
+                Replace {pendingOverwrite.name}? The previous snapshot cannot be recovered.
+              </p>
               <div className={styles.slotConfirmActions}>
-                <ConsoleButton muted onClick={() => setPendingOverwrite(null)}>Cancel</ConsoleButton>
+                <ConsoleButton muted onClick={() => setPendingOverwrite(null)}>
+                  Cancel
+                </ConsoleButton>
                 <ConsoleButton onClick={() => save(pendingOverwrite.id)}>Overwrite</ConsoleButton>
               </div>
             </MetalPanel>

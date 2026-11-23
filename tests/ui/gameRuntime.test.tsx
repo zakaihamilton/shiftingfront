@@ -1,26 +1,40 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, render, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, useRef } from "react";
-import { createCamera, tileToScreen } from "../../lib/iso";
-import { heightAt } from "../../lib/sim/world";
-import { tutorialTargets } from "../../lib/sim/tutorial";
-import { makeFixture } from "../../lib/sim/fixtures";
-import { markFreshLaunchIntent } from "../../lib/persist/navigation";
-import { localStorageAdapter, readSave, saveKey, writeSave, writeSlot } from "../../lib/persist/save";
-import { freshCampaignProgress, campaignKey, readCampaignProgress, writeCampaignProgress, completeMission } from "../../lib/persist/campaign";
-import { TELEMETRY_KEY } from "../../lib/persist/telemetry";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LoopOptions } from "../../lib/game/loop";
+import { createCamera, tileToScreen } from "../../lib/iso";
+import {
+  campaignKey,
+  completeMission,
+  freshCampaignProgress,
+  readCampaignProgress,
+  writeCampaignProgress,
+} from "../../lib/persist/campaign";
+import { markFreshLaunchIntent } from "../../lib/persist/navigation";
+import {
+  localStorageAdapter,
+  readSave,
+  saveKey,
+  writeSave,
+  writeSlot,
+} from "../../lib/persist/save";
+import { TELEMETRY_KEY } from "../../lib/persist/telemetry";
+import { makeFixture } from "../../lib/sim/fixtures";
+import { tutorialTargets } from "../../lib/sim/tutorial";
+import { heightAt } from "../../lib/sim/world";
 import type { BuildingKind, SimEvent } from "../../lib/types";
 
-const renderGameFrame = vi.hoisted(() => vi.fn(() => ({
-  worldCtx: null,
-  tooltipCtx: null,
-  miniCtx: null,
-  secondaryMiniCtx: null,
-  fx: [],
-})));
+const renderGameFrame = vi.hoisted(() =>
+  vi.fn(() => ({
+    worldCtx: null,
+    tooltipCtx: null,
+    miniCtx: null,
+    secondaryMiniCtx: null,
+    fx: [],
+  })),
+);
 
 const stopLoop = vi.hoisted(() => vi.fn());
 const startLoop = vi.hoisted(() => vi.fn(() => ({ stop: stopLoop })));
@@ -41,10 +55,13 @@ vi.mock("@/lib/audio/battlefield", () => ({ dispatchBattlefieldAudio: vi.fn() })
 vi.mock("@/lib/game/loop", () => ({ startLoop }));
 vi.mock("../../components/game/renderFrame", () => ({ renderGameFrame }));
 
+import {
+  createGameRuntimeSurfaceCache,
+  createGameRuntimeSurfaces,
+} from "../../components/game/hooks/runtime/surfaces";
 import { useGameRenderer } from "../../components/game/hooks/useGameRenderer";
-import { initialMission } from "../../components/game/hooks/useGameSession";
 import { useGameRuntime } from "../../components/game/hooks/useGameRuntime";
-import { createGameRuntimeSurfaceCache, createGameRuntimeSurfaces } from "../../components/game/hooks/runtime/surfaces";
+import { initialMission } from "../../components/game/hooks/useGameSession";
 
 function Training({
   onRuntime,
@@ -56,10 +73,12 @@ function Training({
   const runtime = useGameRuntime({ seed: 0, mission: 0, resume: false, tutorial: true });
   onRuntime(runtime);
   return (
-    <div ref={(node) => {
-      runtime.hostRef.current = node;
-      if (node) onHost(node);
-    }}>
+    <div
+      ref={(node) => {
+        runtime.hostRef.current = node;
+        if (node) onHost(node);
+      }}
+    >
       <canvas ref={runtime.canvasRef} />
     </div>
   );
@@ -100,12 +119,27 @@ it("keeps the first tutorial target centered through Strict Mode and viewport ch
       clientHeight: { configurable: true, value: 450 },
     });
   };
-  render(<StrictMode><Training onRuntime={(value) => { runtime = value; }} onHost={setHost} /></StrictMode>);
+  render(
+    <StrictMode>
+      <Training
+        onRuntime={(value) => {
+          runtime = value;
+        }}
+        onHost={setHost}
+      />
+    </StrictMode>,
+  );
 
   function expectTargetCentered(x: number, y: number) {
     const target = tutorialTargets(runtime.state)[0]!;
-    if (target.x === undefined || target.y === undefined) throw new Error("First lesson has no positioned target");
-    const point = tileToScreen(target.x, target.y, runtime.camera.camRef.current, heightAt(runtime.state, target.x, target.y));
+    if (target.x === undefined || target.y === undefined)
+      throw new Error("First lesson has no positioned target");
+    const point = tileToScreen(
+      target.x,
+      target.y,
+      runtime.camera.camRef.current,
+      heightAt(runtime.state, target.x, target.y),
+    );
     expect(point.x).toBeCloseTo(x);
     expect(point.y).toBeCloseTo(y);
   }
@@ -171,13 +205,15 @@ describe("useGameRenderer", () => {
       result.current.renderer.redraw(1_000, 0.25);
     });
     expect(renderGameFrame).toHaveBeenCalledOnce();
-    expect(renderGameFrame).toHaveBeenCalledWith(expect.objectContaining({
-      state,
-      canvas,
-      host,
-      nowMs: 1_000,
-      subTickAlpha: 0.25,
-    }));
+    expect(renderGameFrame).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state,
+        canvas,
+        host,
+        nowMs: 1_000,
+        subTickAlpha: 0.25,
+      }),
+    );
   });
 });
 
@@ -205,7 +241,13 @@ describe("useGameRuntime", () => {
   });
 
   it("starts a fresh campaign unpaused and ready for immediate play", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, fresh: true, tutorial: false });
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      fresh: true,
+      tutorial: false,
+    });
 
     expect(result.current.paused).toBe(false);
   });
@@ -216,9 +258,9 @@ describe("useGameRuntime", () => {
     saved.credits[0] = 9876;
     expect(writeSave(localStorageAdapter(), saved)).toBe(true);
 
-    const getEntriesByType = vi.spyOn(window.performance, "getEntriesByType").mockReturnValue([
-      { type: "reload" } as PerformanceNavigationTiming,
-    ]);
+    const getEntriesByType = vi
+      .spyOn(window.performance, "getEntriesByType")
+      .mockReturnValue([{ type: "reload" } as PerformanceNavigationTiming]);
 
     const resumed = initialMission(421, 0, false, false, true);
 
@@ -232,9 +274,9 @@ describe("useGameRuntime", () => {
     saved.tick = 120;
     expect(writeSave(localStorageAdapter(), saved)).toBe(true);
 
-    const getEntriesByType = vi.spyOn(window.performance, "getEntriesByType").mockReturnValue([
-      { type: "reload" } as PerformanceNavigationTiming,
-    ]);
+    const getEntriesByType = vi
+      .spyOn(window.performance, "getEntriesByType")
+      .mockReturnValue([{ type: "reload" } as PerformanceNavigationTiming]);
     markFreshLaunchIntent(421, 0);
 
     const fresh = initialMission(421, 0, false, false, true);
@@ -248,9 +290,9 @@ describe("useGameRuntime", () => {
     saved.tick = 120;
     expect(writeSave(localStorageAdapter(), saved)).toBe(true);
 
-    const getEntriesByType = vi.spyOn(window.performance, "getEntriesByType").mockReturnValue([
-      { type: "reload" } as PerformanceNavigationTiming,
-    ]);
+    const getEntriesByType = vi
+      .spyOn(window.performance, "getEntriesByType")
+      .mockReturnValue([{ type: "reload" } as PerformanceNavigationTiming]);
     const setItem = vi.spyOn(window.sessionStorage, "setItem").mockImplementation(() => {
       throw new Error("session storage unavailable");
     });
@@ -267,7 +309,10 @@ describe("useGameRuntime", () => {
     const saved = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     saved.tick = 120;
     expect(writeSave(localStorageAdapter(), saved)).toBe(true);
-    writeCampaignProgress(localStorageAdapter(), completeMission(freshCampaignProgress(421), 1, 3, 800));
+    writeCampaignProgress(
+      localStorageAdapter(),
+      completeMission(freshCampaignProgress(421), 1, 3, 800),
+    );
 
     const slotState = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     slotState.tick = 12;
@@ -304,9 +349,9 @@ describe("useGameRuntime", () => {
     liveAutosave.credits[0] = 2500;
     expect(writeSave(localStorageAdapter(), liveAutosave)).toBe(true);
 
-    const getEntriesByType = vi.spyOn(window.performance, "getEntriesByType").mockReturnValue([
-      { type: "reload" } as PerformanceNavigationTiming,
-    ]);
+    const getEntriesByType = vi
+      .spyOn(window.performance, "getEntriesByType")
+      .mockReturnValue([{ type: "reload" } as PerformanceNavigationTiming]);
 
     // On browser reload, initialMission with slotId should resume live autosave, NOT revert to slot snapshot
     const resumed = initialMission(421, 0, false, false, false, written.id);
@@ -338,8 +383,15 @@ describe("useGameRuntime", () => {
   });
 
   it("saves the current state when the page is unloaded", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
-    const loopOptions = (startLoop.mock.calls as unknown[][])[0]?.[0] as { setState: (state: typeof result.current.state) => void };
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
+    const loopOptions = (startLoop.mock.calls as unknown[][])[0]?.[0] as {
+      setState: (state: typeof result.current.state) => void;
+    };
     const current = { ...result.current.state, tick: 120 };
 
     loopOptions.setState(current);
@@ -351,8 +403,17 @@ describe("useGameRuntime", () => {
   });
 
   it("does not overwrite a checkpoint when loading another mission triggers pagehide", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
-    const checkpoint = { ...makeFixture({ seed: 421, win: { kind: "annihilate" } }), missionIndex: 1, tick: 88 };
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
+    const checkpoint = {
+      ...makeFixture({ seed: 421, win: { kind: "annihilate" } }),
+      missionIndex: 1,
+      tick: 88,
+    };
     const written = writeSlot(localStorageAdapter(), {
       name: "Earlier mission",
       state: checkpoint,
@@ -361,7 +422,9 @@ describe("useGameRuntime", () => {
     expect(written.ok).toBe(true);
     if (!written.ok) return;
 
-    const entry = result.current.session.listLoadEntries().find((candidate) => candidate.kind === "slot" && candidate.id === written.id);
+    const entry = result.current.session
+      .listLoadEntries()
+      .find((candidate) => candidate.kind === "slot" && candidate.id === written.id);
     expect(entry).toBeDefined();
     act(() => result.current.session.loadArchiveEntry(entry!));
 
@@ -371,8 +434,15 @@ describe("useGameRuntime", () => {
   });
 
   it("does not replace a newer same-seed save during unload", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
-    const loopOptions = (startLoop.mock.calls as unknown[][])[0]?.[0] as { setState: (state: typeof result.current.state) => void };
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
+    const loopOptions = (startLoop.mock.calls as unknown[][])[0]?.[0] as {
+      setState: (state: typeof result.current.state) => void;
+    };
     loopOptions.setState({ ...result.current.state, tick: 120 });
 
     const replacement = makeFixture({ seed: 421, win: { kind: "annihilate" } });
@@ -389,16 +459,25 @@ describe("useGameRuntime", () => {
     const saved = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     expect(writeSave(localStorageAdapter(), saved)).toBe(true);
     const raw = window.localStorage.getItem(saveKey(421));
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: true, tutorial: false });
-    const loopOptions = (startLoop.mock.calls as unknown[][])[0]?.[0] as { setState: (state: typeof result.current.state) => void };
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: true,
+      tutorial: false,
+    });
+    const loopOptions = (startLoop.mock.calls as unknown[][])[0]?.[0] as {
+      setState: (state: typeof result.current.state) => void;
+    };
     loopOptions.setState({ ...result.current.state, tick: 120 });
 
     act(() => {
-      window.dispatchEvent(new StorageEvent("storage", {
-        key: saveKey(421),
-        oldValue: raw,
-        newValue: raw,
-      }));
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: saveKey(421),
+          oldValue: raw,
+          newValue: raw,
+        }),
+      );
       window.dispatchEvent(new Event("pagehide"));
     });
 
@@ -406,7 +485,12 @@ describe("useGameRuntime", () => {
   });
 
   it("starts the sim loop and exposes the gameplay runtime contract", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
 
     expect(startLoop).toHaveBeenCalledOnce();
     expect(result.current.campaign.seedNumber).toBe(421);
@@ -437,7 +521,12 @@ describe("useGameRuntime", () => {
   });
 
   it("adapts the runtime contract into independent screen surfaces", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
     const cache = createGameRuntimeSurfaceCache();
     const surfaces = createGameRuntimeSurfaces(result.current, cache);
 
@@ -451,11 +540,18 @@ describe("useGameRuntime", () => {
     expect(surfaces.overlays.pause).toBeNull();
     act(() => result.current.onPause());
     const pausedSurfaces = createGameRuntimeSurfaces(result.current, cache);
-    expect(pausedSurfaces.overlays.pause?.session.onResume).toBe(result.current.session.resumeMission);
+    expect(pausedSurfaces.overlays.pause?.session.onResume).toBe(
+      result.current.session.resumeMission,
+    );
   });
 
   it("reuses the cached power model while the building signature is unchanged", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
     const cache = createGameRuntimeSurfaceCache();
 
     createGameRuntimeSurfaces(result.current, cache);
@@ -467,7 +563,12 @@ describe("useGameRuntime", () => {
   });
 
   it("wires runtime lifecycle callbacks and stops the loop on unmount", async () => {
-    const { unmount } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
+    const { unmount } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
     const options = (startLoop.mock.calls[0] as unknown as [LoopOptions])[0];
 
     expect(options.drainCommands).toEqual(expect.any(Function));
@@ -478,7 +579,12 @@ describe("useGameRuntime", () => {
   });
 
   it("returns focus to the launcher when a mobile panel action closes it", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
     const launcher = document.createElement("button");
     document.body.append(launcher);
     (result.current.mobileLauncherRef as { current: HTMLButtonElement | null }).current = launcher;
@@ -504,37 +610,93 @@ describe("useGameRuntime", () => {
     expect(writeSave(localStorageAdapter(), terminalState)).toBe(true);
 
     await renderGameRuntime({ seed: 421, mission: 0, resume: true, tutorial: false });
-    const firstCall = startLoop.mock.calls[0] as unknown as [{ onFrame: (now: number, state: typeof terminalState, paused: boolean, alpha: number) => void }] | undefined;
+    const firstCall = startLoop.mock.calls[0] as unknown as
+      | [
+          {
+            onFrame: (
+              now: number,
+              state: typeof terminalState,
+              paused: boolean,
+              alpha: number,
+            ) => void;
+          },
+        ]
+      | undefined;
     expect(firstCall).toBeDefined();
     act(() => firstCall?.[0].onFrame(1_000, terminalState, false, 0));
 
     expect(window.localStorage.getItem(TELEMETRY_KEY)).toBeNull();
   });
 
-  it.each(["won", "lost"] as const)("starts the result score when the simulation reaches a %s result", async (outcome) => {
-    const { pauseMusic, setMusicCue } = await import("@/lib/audio/music");
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
-    const options = (startLoop.mock.calls[0] as unknown as [{ onTick: (state: typeof result.current.state, events: SimEvent[], now: number) => void }] | undefined)?.[0];
-    expect(options).toBeDefined();
+  it.each(["won", "lost"] as const)(
+    "starts the result score when the simulation reaches a %s result",
+    async (outcome) => {
+      const { pauseMusic, setMusicCue } = await import("@/lib/audio/music");
+      const { result } = await renderGameRuntime({
+        seed: 421,
+        mission: 0,
+        resume: false,
+        tutorial: false,
+      });
+      const options = (
+        startLoop.mock.calls[0] as unknown as
+          | [
+              {
+                onTick: (
+                  state: typeof result.current.state,
+                  events: SimEvent[],
+                  now: number,
+                ) => void;
+              },
+            ]
+          | undefined
+      )?.[0];
+      expect(options).toBeDefined();
 
-    vi.mocked(pauseMusic).mockClear();
-    vi.mocked(setMusicCue).mockClear();
-    const terminalState = { ...result.current.state, tick: 1, result: outcome };
-    act(() => options?.onTick(terminalState, [{ type: outcome }], 1_000));
+      vi.mocked(pauseMusic).mockClear();
+      vi.mocked(setMusicCue).mockClear();
+      const terminalState = { ...result.current.state, tick: 1, result: outcome };
+      act(() => options?.onTick(terminalState, [{ type: outcome }], 1_000));
 
-    expect(pauseMusic).not.toHaveBeenCalled();
-    expect(setMusicCue).toHaveBeenCalledWith(outcome === "won" ? "victory" : "defeat", terminalState.seed, terminalState.missionIndex);
-  });
+      expect(pauseMusic).not.toHaveBeenCalled();
+      expect(setMusicCue).toHaveBeenCalledWith(
+        outcome === "won" ? "victory" : "defeat",
+        terminalState.seed,
+        terminalState.missionIndex,
+      );
+    },
+  );
 });
 
 describe("automatic save recovery", () => {
   it("retries a failed terminal save without duplicating telemetry", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
     const state = { ...result.current.state, result: "lost" as const };
-    const options = (startLoop.mock.calls as unknown as [{ onFrame: (now: number, snapshot: typeof state, paused: boolean, alpha: number, frameMs: number) => void }][])[0]![0];
+    const options = (
+      startLoop.mock.calls as unknown as [
+        {
+          onFrame: (
+            now: number,
+            snapshot: typeof state,
+            paused: boolean,
+            alpha: number,
+            frameMs: number,
+          ) => void;
+        },
+      ][]
+    )[0]![0];
     const original = Storage.prototype.setItem;
     let attempts = 0;
-    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+      this: Storage,
+      key,
+      value,
+    ) {
       if (key === saveKey(421) && ++attempts === 1) throw new Error("quota");
       original.call(this, key, value);
     });
@@ -553,11 +715,28 @@ describe("automatic save recovery", () => {
   });
 
   it("does not overwrite an external save after a terminal conflict", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
     const state = { ...result.current.state, result: "lost" as const };
     const external = { ...state, tick: 123, result: "playing" as const };
     writeSave(localStorageAdapter(), external);
-    const options = (startLoop.mock.calls as unknown as [{ onFrame: (now: number, snapshot: typeof state, paused: boolean, alpha: number, frameMs: number) => void }][])[0]![0];
+    const options = (
+      startLoop.mock.calls as unknown as [
+        {
+          onFrame: (
+            now: number,
+            snapshot: typeof state,
+            paused: boolean,
+            alpha: number,
+            frameMs: number,
+          ) => void;
+        },
+      ][]
+    )[0]![0];
     act(() => options.onFrame(1000, state, false, 0, 16));
     act(() => options.onFrame(3000, state, false, 0, 16));
     expect(readSave(localStorageAdapter(), 421)?.tick).toBe(123);
@@ -567,7 +746,12 @@ describe("automatic save recovery", () => {
 
 describe("mission replacement in a mounted loop", () => {
   it("saves and records each terminal result after restarting in place", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
     const options = (startLoop.mock.calls as unknown as [LoopOptions][])[0]![0];
     const finish = (now: number) => {
       const state = options.getState();
@@ -585,9 +769,18 @@ describe("mission replacement in a mounted loop", () => {
   });
 
   it("does not replay terminal telemetry when loading a finished slot in place", async () => {
-    const { result } = await renderGameRuntime({ seed: 421, mission: 0, resume: false, tutorial: false });
+    const { result } = await renderGameRuntime({
+      seed: 421,
+      mission: 0,
+      resume: false,
+      tutorial: false,
+    });
     const state = { ...result.current.state, result: "lost" as const };
-    const slot = writeSlot(localStorageAdapter(), { name: "Finished", state, campaign: freshCampaignProgress(421) });
+    const slot = writeSlot(localStorageAdapter(), {
+      name: "Finished",
+      state,
+      campaign: freshCampaignProgress(421),
+    });
     expect(slot.ok).toBe(true);
     const entry = result.current.session.listLoadEntries().find((entry) => entry.kind === "slot")!;
     act(() => result.current.session.loadArchiveEntry(entry));
@@ -602,7 +795,9 @@ describe("mission replacement in a mounted loop", () => {
       owner: 0,
       owners: [0, 1],
       aiOwners: [],
-      get connected() { return connected; },
+      get connected() {
+        return connected;
+      },
       canAdvance: vi.fn(() => true),
       queuedFramesCount: vi.fn(() => 0),
       submit: vi.fn(),
@@ -643,19 +838,29 @@ describe("initial slot load failures", () => {
     writeSave(storage, state);
     const before = storage.getItem(saveKey(421));
     const written = writeSlot(storage, {
-      name: "Earlier", state: { ...state, tick: 12 }, campaign: freshCampaignProgress(421),
+      name: "Earlier",
+      state: { ...state, tick: 12 },
+      campaign: freshCampaignProgress(421),
     });
     if (!written.ok) throw new Error("Slot fixture failed");
     window.history.replaceState({}, "", `/play?seed=0421&mission=0&slot=${written.id}`);
     const original = Storage.prototype.setItem;
-    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+      this: Storage,
+      key,
+      value,
+    ) {
       if (key === campaignKey(421)) throw new Error("quota");
       original.call(this, key, value);
     });
     try {
-      expect(() => initialMission(421, 0, false, false, false, written.id)).toThrow("previous autosave was restored");
+      expect(() => initialMission(421, 0, false, false, false, written.id)).toThrow(
+        "previous autosave was restored",
+      );
       expect(storage.getItem(saveKey(421))).toBe(before);
       expect(window.location.search).toContain(`slot=${written.id}`);
-    } finally { spy.mockRestore(); }
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

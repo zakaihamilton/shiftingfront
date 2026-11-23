@@ -1,13 +1,22 @@
 // @vitest-environment jsdom
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearVisualProfileCache, generateCampaignVisualProfile, generateVisualProfile, visualProfileCacheSize } from "../../lib/gen/visualProfile";
-import { clearRenderSessionCaches } from "../../lib/render/sessionCache";
-import { entityVisibilityCacheSize, pruneEntityVisibilityCache, renderEntityOpacity } from "../../lib/render/renderPicking";
+import {
+  clearVisualProfileCache,
+  generateCampaignVisualProfile,
+  generateVisualProfile,
+  visualProfileCacheSize,
+} from "../../lib/gen/visualProfile";
+import {
+  entityVisibilityCacheSize,
+  pruneEntityVisibilityCache,
+  renderEntityOpacity,
+} from "../../lib/render/renderPicking";
 import { pruneTurretAimCache, turretAimMap } from "../../lib/render/renderStructures/turret";
+import { clearRenderSessionCaches } from "../../lib/render/sessionCache";
+import { cachedSprite, rasterize, spriteCacheSize } from "../../lib/render/sprites";
 import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { fogIndex } from "../../lib/sim/fog";
-import { cachedSprite, rasterize, spriteCacheSize } from "../../lib/render/sprites";
 import type { SpriteSpec } from "../../lib/types";
 
 function sprite(id: string): SpriteSpec {

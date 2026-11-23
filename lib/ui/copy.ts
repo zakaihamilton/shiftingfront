@@ -36,7 +36,8 @@ export function commandRejectionMessage(reason: string): string {
   const mapped = REJECTION_MESSAGES[reason];
   if (mapped) return mapped;
   const training = /^training step: (.+)$/.exec(reason);
-  if (training) return TRAINING_STEP_MESSAGES[training[1]!] ?? "Finish the current training step first.";
+  if (training)
+    return TRAINING_STEP_MESSAGES[training[1]!] ?? "Finish the current training step first.";
   return "That order couldn't be completed.";
 }
 

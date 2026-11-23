@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MultiplayerSession, sanitizeCommand, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
-import { MAX_COMMANDS_PER_TICK, type TickFrame } from "@/lib/multiplayer/protocol";
-import { createSkirmish } from "@/lib/sim/api";
 import { stateChecksum } from "@/lib/multiplayer/checksum";
+import { MAX_COMMANDS_PER_TICK, type TickFrame } from "@/lib/multiplayer/protocol";
+import {
+  MultiplayerSession,
+  SKIRMISH_MATCH_SETTINGS,
+  sanitizeCommand,
+  validSkirmishMatchSettings,
+} from "@/lib/multiplayer/session";
+import { createSkirmish } from "@/lib/sim/api";
 import { fogAt } from "@/lib/sim/fog";
 import type { Command, Owner } from "@/lib/types";
 
@@ -14,21 +19,29 @@ describe("four-player canonical multiplayer command stream", () => {
     const guest = new MultiplayerSession("guest", 1, 42, { send: (value) => replies.push(value) });
     const frames: TickFrame[] = [];
     const host = new MultiplayerSession("host", 0, 42, { send() {} });
-    host.addGuest("guest-1", 1, { send: (value) => {
-      frames.push(value as TickFrame);
-      guest.receive(value);
-    } });
+    host.addGuest("guest-1", 1, {
+      send: (value) => {
+        frames.push(value as TickFrame);
+        guest.receive(value);
+      },
+    });
 
     const submitted: Command = { type: "stop", unitIds: [1] };
-    const local: Command[] = Array.from({ length: MAX_COMMANDS_PER_TICK * 2 + 1 }, (_, i) => ({ type: "stop", unitIds: [i + 2] }));
-    const remote: Command[] = Array.from({ length: MAX_COMMANDS_PER_TICK + 1 }, (_, i) => ({ type: "stop", unitIds: [i + 1] }));
+    const local: Command[] = Array.from({ length: MAX_COMMANDS_PER_TICK * 2 + 1 }, (_, i) => ({
+      type: "stop",
+      unitIds: [i + 2],
+    }));
+    const remote: Command[] = Array.from({ length: MAX_COMMANDS_PER_TICK + 1 }, (_, i) => ({
+      type: "stop",
+      unitIds: [i + 1],
+    }));
     host.submit(submitted);
     for (const command of remote) host.receiveFrom("guest-1", { type: "intent", command });
 
     const applied: Command[] = [];
-    const expected = [
-      submitted, ...local,
-    ].map((command) => ({ ...command, owner: 0 })).concat(remote.map((command) => ({ ...command, owner: 1 })));
+    const expected = [submitted, ...local]
+      .map((command) => ({ ...command, owner: 0 }))
+      .concat(remote.map((command) => ({ ...command, owner: 1 })));
     for (let tick = 0; applied.length < expected.length; tick++) {
       const state = { tick } as never;
       const commands = host.drainTick(state, tick === 0 ? local : []);
@@ -47,15 +60,31 @@ describe("four-player canonical multiplayer command stream", () => {
   it("rejects oversized tick frames while accepting the shared command limit", () => {
     const guest = new MultiplayerSession("guest", 1, 42, { send() {} });
     const command: Command = { type: "stop", unitIds: [1], owner: 0 };
-    guest.receive({ type: "tick", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: 1, commands: Array(MAX_COMMANDS_PER_TICK + 1).fill(command) });
+    guest.receive({
+      type: "tick",
+      protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+      tick: 1,
+      commands: Array(MAX_COMMANDS_PER_TICK + 1).fill(command),
+    });
     expect(guest.canAdvance({ tick: 0 } as never)).toBe(false);
-    guest.receive({ type: "tick", protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion, tick: 1, commands: Array(MAX_COMMANDS_PER_TICK).fill(command) });
+    guest.receive({
+      type: "tick",
+      protocolVersion: SKIRMISH_MATCH_SETTINGS.protocolVersion,
+      tick: 1,
+      commands: Array(MAX_COMMANDS_PER_TICK).fill(command),
+    });
     expect(guest.canAdvance({ tick: 0 } as never)).toBe(true);
   });
 
   it("rejects one guest's order when that guest's backlog is full", () => {
     const host = new MultiplayerSession("host", 0, 42, { send() {} }, [0, 1, 2]);
-    const guest = new MultiplayerSession("guest", 1, 42, { send: (value) => host.receiveFrom("guest-1", value) }, [0, 1, 2]);
+    const guest = new MultiplayerSession(
+      "guest",
+      1,
+      42,
+      { send: (value) => host.receiveFrom("guest-1", value) },
+      [0, 1, 2],
+    );
     const notes: string[] = [];
     guest.subscribeCommandFeedback((text) => notes.push(text));
     host.addGuest("guest-1", 1, { send: (value) => guest.receive(value) });
@@ -69,15 +98,22 @@ describe("four-player canonical multiplayer command stream", () => {
     expect(guest.status).toBe("connected");
     const applied: Command[] = [];
     for (let tick = 0; tick < 8; tick++) applied.push(...host.drainTick({ tick } as never, []));
-    expect(applied.filter((command) => command.owner === 1)).toHaveLength(MAX_COMMANDS_PER_TICK * 2);
-    expect(applied.some((command) => command.type === "stop" && command.unitIds[0] === 9)).toBe(false);
+    expect(applied.filter((command) => command.owner === 1)).toHaveLength(
+      MAX_COMMANDS_PER_TICK * 2,
+    );
+    expect(applied.some((command) => command.type === "stop" && command.unitIds[0] === 9)).toBe(
+      false,
+    );
     expect(applied).toContainEqual({ type: "stop", unitIds: [2], owner: 2 });
   });
 
   it("removes deferred commands from a forfeited guest while preserving the other seat's commands", () => {
     const state = createSkirmish(42, 0, [0, 1, 2]).state;
     const host = new MultiplayerSession("host", 0, 42, { send() {} }, [0, 1, 2]);
-    host.bindState(() => state, () => {});
+    host.bindState(
+      () => state,
+      () => {},
+    );
     host.addGuest("guest-1", 1, { send() {} });
     host.addGuest("guest-2", 2, { send() {} });
     for (let i = 0; i <= MAX_COMMANDS_PER_TICK; i++) {
@@ -93,12 +129,23 @@ describe("four-player canonical multiplayer command stream", () => {
   it("holds ticks behind the intro-ready barrier until every human seat is ready", () => {
     const sentToGuest: unknown[] = [];
     const host = new MultiplayerSession("host", 0, 9123, { send() {} }, [0, 1]);
-    const guest = new MultiplayerSession("guest", 1, 9123, {
-      send: (value) => host.receiveFrom("guest-1", value),
-    }, [0, 1]);
-    expect(host.addGuest("guest-1", 1, {
-      send: (value) => { sentToGuest.push(value); guest.receive(value); },
-    })).toBe(true);
+    const guest = new MultiplayerSession(
+      "guest",
+      1,
+      9123,
+      {
+        send: (value) => host.receiveFrom("guest-1", value),
+      },
+      [0, 1],
+    );
+    expect(
+      host.addGuest("guest-1", 1, {
+        send: (value) => {
+          sentToGuest.push(value);
+          guest.receive(value);
+        },
+      }),
+    ).toBe(true);
     host.armIntroBarrier();
     guest.armIntroBarrier();
 
@@ -125,13 +172,24 @@ describe("four-player canonical multiplayer command stream", () => {
     const host = new MultiplayerSession("host", 0, 8123, { send() {} }, owners);
     for (const owner of [1, 2, 3] as const) {
       const peerId = `guest-${owner}`;
-      const guest = new MultiplayerSession("guest", owner, 8123, {
-        send: (value) => host.receiveFrom(peerId, value),
-      }, owners);
+      const guest = new MultiplayerSession(
+        "guest",
+        owner,
+        8123,
+        {
+          send: (value) => host.receiveFrom(peerId, value),
+        },
+        owners,
+      );
       guests.set(peerId, guest);
-      expect(host.addGuest(peerId, owner, {
-        send: (value) => { hostFrames.push({ peerId, value }); guest.receive(value); },
-      })).toBe(true);
+      expect(
+        host.addGuest(peerId, owner, {
+          send: (value) => {
+            hostFrames.push({ peerId, value });
+            guest.receive(value);
+          },
+        }),
+      ).toBe(true);
     }
 
     host.submit({ type: "stop", unitIds: [10] });
@@ -158,7 +216,10 @@ describe("four-player canonical multiplayer command stream", () => {
       expect(guest.drainTick({ tick: 0 } as never, [])).toEqual(commands);
     }
     expect(guests.get("guest-3")!.canAdvance({ tick: 1 } as never)).toBe(false);
-    host.receiveFrom("unregistered-peer", { type: "intent", command: { type: "stop", unitIds: [999] } });
+    host.receiveFrom("unregistered-peer", {
+      type: "intent",
+      command: { type: "stop", unitIds: [999] },
+    });
     expect(host.drainTick({ tick: 1 } as never, [])).toEqual([]);
   });
 
@@ -180,7 +241,12 @@ describe("four-player canonical multiplayer command stream", () => {
     host.addGuest("guest-1", 1, { send() {} });
     host.addGuest("guest-2", 2, { send() {} });
     let restored: typeof state | null = null;
-    host.bindState(() => state, (next) => { restored = next; });
+    host.bindState(
+      () => state,
+      (next) => {
+        restored = next;
+      },
+    );
     host.disconnectGuest("guest-2");
 
     expect(host.forfeitGuest("guest-2")).toBe(2);
@@ -194,11 +260,17 @@ describe("four-player canonical multiplayer command stream", () => {
     const messages: unknown[][] = [[], [], []];
     const host = new MultiplayerSession("host", 0, 42, { send() {} }, [0, 1, 2, 3]);
     [1, 2, 3].forEach((owner) => {
-      host.addGuest(`g${owner}`, owner as Owner, { send: (value) => messages[owner - 1]!.push(value) });
+      host.addGuest(`g${owner}`, owner as Owner, {
+        send: (value) => messages[owner - 1]!.push(value),
+      });
     });
     host.disconnectGuest("g2");
     host.end();
-    expect(messages.map((items) => items.at(-1))).toEqual([{ type: "ended" }, undefined, { type: "ended" }]);
+    expect(messages.map((items) => items.at(-1))).toEqual([
+      { type: "ended" },
+      undefined,
+      { type: "ended" },
+    ]);
     expect(host.reconnectGuest("g2", { send() {} })).toBe(false);
   });
 
@@ -207,9 +279,16 @@ describe("four-player canonical multiplayer command stream", () => {
     expect(sanitizeCommand({ type: "attack", unitIds: [1], targetId: -2 })).toBeNull();
     expect(sanitizeCommand({ type: "build", building: "constructionYard", x: 4, y: 4 })).toBeNull();
     expect(sanitizeCommand({ type: "move", unitIds: [1], x: 4, y: 4 }, true)).toBeNull();
-    expect(sanitizeCommand({ type: "move", unitIds: [1], x: 4, y: 4 })).toEqual({ type: "move", unitIds: [1], x: 4, y: 4 });
+    expect(sanitizeCommand({ type: "move", unitIds: [1], x: 4, y: 4 })).toEqual({
+      type: "move",
+      unitIds: [1],
+      x: 4,
+      y: 4,
+    });
     expect(validSkirmishMatchSettings(SKIRMISH_MATCH_SETTINGS)).toBe(true);
-    expect(validSkirmishMatchSettings({ ...SKIRMISH_MATCH_SETTINGS, protocolVersion: 1 })).toBe(false);
+    expect(validSkirmishMatchSettings({ ...SKIRMISH_MATCH_SETTINGS, protocolVersion: 1 })).toBe(
+      false,
+    );
     expect(validSkirmishMatchSettings({ ...SKIRMISH_MATCH_SETTINGS, mode: "teams" })).toBe(false);
   });
 
@@ -220,9 +299,15 @@ describe("four-player canonical multiplayer command stream", () => {
     const guest = new MultiplayerSession("guest", 2, 91, { send() {} }, owners, aiOwners);
     expect(host.aiOwners).toEqual(aiOwners);
     expect(guest.aiOwners).toEqual(aiOwners);
-    expect(() => new MultiplayerSession("host", 0, 91, { send() {} }, owners, [3])).toThrow("Invalid multiplayer roster");
-    expect(() => new MultiplayerSession("host", 0, 91, { send() {} }, owners, [0])).toThrow("Invalid multiplayer roster");
-    expect(() => new MultiplayerSession("guest", 1, 91, { send() {} }, owners, [1])).toThrow("Invalid multiplayer roster");
+    expect(() => new MultiplayerSession("host", 0, 91, { send() {} }, owners, [3])).toThrow(
+      "Invalid multiplayer roster",
+    );
+    expect(() => new MultiplayerSession("host", 0, 91, { send() {} }, owners, [0])).toThrow(
+      "Invalid multiplayer roster",
+    );
+    expect(() => new MultiplayerSession("guest", 1, 91, { send() {} }, owners, [1])).toThrow(
+      "Invalid multiplayer roster",
+    );
     expect(host.addGuest("ai-seat", 1, { send() {} })).toBe(false);
     expect(host.addGuest("human-seat", 2, { send() {} })).toBe(true);
   });
@@ -234,12 +319,26 @@ describe("four-player canonical multiplayer command stream", () => {
     hostState.winner = 0;
     let restored: typeof guestState | null = null;
     const guest = new MultiplayerSession("guest", 3, 8123, { send() {} }, [0, 1, 2, 3]);
-    guest.bindState(() => guestState, (state) => { restored = state; });
-    guest.receive({ type: "resync", protocolVersion: 5, state: hostState, checksum: stateChecksum(hostState) });
+    guest.bindState(
+      () => guestState,
+      (state) => {
+        restored = state;
+      },
+    );
+    guest.receive({
+      type: "resync",
+      protocolVersion: 5,
+      state: hostState,
+      checksum: stateChecksum(hostState),
+    });
     guest.syncSnapshot();
 
-    const hostYard = hostState.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard")!;
-    const guestYard = hostState.entities.find((entity) => entity.owner === 3 && entity.kind === "constructionYard")!;
+    const hostYard = hostState.entities.find(
+      (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+    )!;
+    const guestYard = hostState.entities.find(
+      (entity) => entity.owner === 3 && entity.kind === "constructionYard",
+    )!;
     expect(restored).toMatchObject({ viewOwner: 3, result: "lost", winner: 0 });
     expect(fogAt(restored!, guestYard.x, guestYard.y)).toBe(2);
     expect(fogAt(restored!, hostYard.x, hostYard.y)).toBeLessThan(2);
@@ -268,7 +367,12 @@ describe("four-player canonical multiplayer command stream", () => {
     const guestState = createSkirmish(8123, 2, owners).state;
     const guest = new MultiplayerSession("guest", 2, 8123, { send() {} }, owners);
     let synced: typeof guestState | null = null;
-    guest.bindState(() => guestState, (s) => { synced = s; });
+    guest.bindState(
+      () => guestState,
+      (s) => {
+        synced = s;
+      },
+    );
 
     // Buffer old frames 1 and 2, and future frame 5
     guest.receive({ type: "tick", protocolVersion: 5, tick: 1, commands: [] });
@@ -278,7 +382,12 @@ describe("four-player canonical multiplayer command stream", () => {
     // Host sends resync at tick 4 where guest 2 has been forfeited (multiplayerOwners = [0, 1])
     const resyncState = createSkirmish(8123, 0, [0, 1]).state;
     resyncState.tick = 4;
-    guest.receive({ type: "resync", protocolVersion: 5, state: resyncState, checksum: stateChecksum(resyncState) });
+    guest.receive({
+      type: "resync",
+      protocolVersion: 5,
+      state: resyncState,
+      checksum: stateChecksum(resyncState),
+    });
     guest.syncSnapshot();
 
     expect(synced).toBeDefined();
@@ -293,12 +402,24 @@ describe("four-player canonical multiplayer command stream", () => {
     let hostSent: unknown = null;
 
     const host = new MultiplayerSession("host", 0, 8123, { send() {} }, owners);
-    const guest = new MultiplayerSession("guest", 1, 8123, {
-      send: (value) => { guestSent = value; host.receiveFrom("guest-1", value); },
-    }, owners);
+    const guest = new MultiplayerSession(
+      "guest",
+      1,
+      8123,
+      {
+        send: (value) => {
+          guestSent = value;
+          host.receiveFrom("guest-1", value);
+        },
+      },
+      owners,
+    );
 
     host.addGuest("guest-1", 1, {
-      send: (value) => { hostSent = value; guest.receive(value); },
+      send: (value) => {
+        hostSent = value;
+        guest.receive(value);
+      },
     });
 
     expect(host.hasPeerConnection).toBe(true);
@@ -308,8 +429,12 @@ describe("four-player canonical multiplayer command stream", () => {
 
     let hostPingNotified = 0;
     let guestPingNotified = 0;
-    const unsubHost = host.subscribePing(() => { hostPingNotified++; });
-    const unsubGuest = guest.subscribePing(() => { guestPingNotified++; });
+    const unsubHost = host.subscribePing(() => {
+      hostPingNotified++;
+    });
+    const unsubGuest = guest.subscribePing(() => {
+      guestPingNotified++;
+    });
 
     // Start latency probes
     const stopHost = host.startLatencyProbes();
@@ -340,7 +465,12 @@ describe("four-player canonical multiplayer command stream", () => {
     expect(host.hasPeerConnection).toBe(false);
 
     host.addGuest("guest-1", 1, {
-      send: (value) => host.receiveFrom("guest-1", { type: "pong", protocolVersion: 5, id: (value as { id: number }).id }),
+      send: (value) =>
+        host.receiveFrom("guest-1", {
+          type: "pong",
+          protocolVersion: 5,
+          id: (value as { id: number }).id,
+        }),
     });
     expect(host.hasPeerConnection).toBe(true);
 
@@ -358,14 +488,17 @@ describe("four-player canonical multiplayer command stream", () => {
     vi.useFakeTimers();
     const host = new MultiplayerSession("host", 0, 8123, { send() {} }, [0, 1]);
     const replyToHost = (value: unknown) => host.receiveFrom("guest-1", value);
-    const replyToGuest = (value: unknown) => replyToHost({
-      type: "pong",
-      protocolVersion: 5,
-      id: (value as { id: number }).id,
-    });
+    const replyToGuest = (value: unknown) =>
+      replyToHost({
+        type: "pong",
+        protocolVersion: 5,
+        id: (value as { id: number }).id,
+      });
     host.addGuest("guest-1", 1, { send: replyToGuest });
     let notifications = 0;
-    host.subscribePing(() => { notifications++; });
+    host.subscribePing(() => {
+      notifications++;
+    });
 
     const stop = host.startLatencyProbes();
     expect(typeof host.pingMs).toBe("number");

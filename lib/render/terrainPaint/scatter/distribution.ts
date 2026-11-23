@@ -1,4 +1,9 @@
-import { sceneryAt, terrainFeatureAt, type TerrainFeatureKind, type TerrainFeatureSample } from "../../../gen/map";
+import {
+  sceneryAt,
+  type TerrainFeatureKind,
+  type TerrainFeatureSample,
+  terrainFeatureAt,
+} from "../../../gen/map";
 import type { BiomeName, SurfaceKind } from "../../../types";
 import {
   SURFACE_CONCRETE,
@@ -16,13 +21,29 @@ const POOLS: Record<BiomeName, ScatterKind[]> = {
   "jungle wreckage": ["tuft", "tuft", "shrub", "reed", "pebble", "tuft", "pebble", "dryBrush"],
   "salt marshes": ["tuft", "reed", "reed", "shrub", "shrub", "pebble", "dryBrush"],
   "ash plains": ["pebble", "pebble", "tuft", "pebbleCluster", "tuft", "rockSlab"],
-  "crystal flats": ["crystalChip", "crystalChip", "pebble", "pebbleCluster", "mineralFlake", "mineralFragment"],
+  "crystal flats": [
+    "crystalChip",
+    "crystalChip",
+    "pebble",
+    "pebbleCluster",
+    "mineralFlake",
+    "mineralFragment",
+  ],
   "tundra grid": ["iceChip", "iceChip", "pebble", "tuft", "tuft", "mineralFlake"],
   "rust canyons": ["pebble", "debris", "debris", "pebbleCluster", "pebble", "rockSlab"],
   "volcanic shelf": ["pebble", "cinder", "cinder", "debris", "pebbleCluster", "rockSlab"],
   "glass desert": [
-    "pebble", "pebbleCluster", "debris", "cinder", "rockSlab", "mineralFragment", "mineralFragment", "dryBrush",
-    "desertTree", "cactus", "desertShrub",
+    "pebble",
+    "pebbleCluster",
+    "debris",
+    "cinder",
+    "rockSlab",
+    "mineralFragment",
+    "mineralFragment",
+    "dryBrush",
+    "desertTree",
+    "cactus",
+    "desertShrub",
   ],
 };
 
@@ -39,9 +60,36 @@ const FEATURE_POOLS: Partial<Record<TerrainFeatureKind, readonly ScatterKind[]>>
   mudflat: ["reed", "tuft", "pebble"],
   reedBed: ["reed", "reed", "shrub"],
   saltPan: ["pebble", "iceChip", "tuft", "dryBrush"],
-  duneSea: ["cactus", "cactus", "desertShrub", "desertTree", "pebble", "pebbleCluster", "mineralFragment", "rockSlab"],
-  glassShards: ["mineralFragment", "mineralFragment", "crystalChip", "pebble", "debris", "mineralFlake", "cactus", "desertShrub"],
-  dryWash: ["desertTree", "desertShrub", "desertShrub", "pebble", "pebbleCluster", "debris", "rockSlab", "mineralFragment"],
+  duneSea: [
+    "cactus",
+    "cactus",
+    "desertShrub",
+    "desertTree",
+    "pebble",
+    "pebbleCluster",
+    "mineralFragment",
+    "rockSlab",
+  ],
+  glassShards: [
+    "mineralFragment",
+    "mineralFragment",
+    "crystalChip",
+    "pebble",
+    "debris",
+    "mineralFlake",
+    "cactus",
+    "desertShrub",
+  ],
+  dryWash: [
+    "desertTree",
+    "desertShrub",
+    "desertShrub",
+    "pebble",
+    "pebbleCluster",
+    "debris",
+    "rockSlab",
+    "mineralFragment",
+  ],
   frostPan: ["iceChip", "iceChip", "pebble"],
   iceRift: ["iceChip", "pebble", "tuft"],
   driftMoraine: ["pebbleCluster", "iceChip", "pebble", "mineralFlake"],
@@ -54,7 +102,7 @@ const FEATURE_POOLS: Partial<Record<TerrainFeatureKind, readonly ScatterKind[]>>
 };
 
 export function mix(v: number, salt: number): number {
-  return (Math.imul(v ^ salt, 1597334677) >>> 0);
+  return Math.imul(v ^ salt, 1597334677) >>> 0;
 }
 
 export function unit(v: number, salt: number): number {
@@ -67,14 +115,22 @@ export function signed(v: number, salt: number, span: number): number {
 
 function scatterChance(biome: BiomeName): number {
   switch (biome) {
-    case "jungle wreckage": return 60;
-    case "salt marshes": return 58;
-    case "ash plains": return 50;
-    case "rust canyons": return 47;
-    case "crystal flats": return 45;
-    case "volcanic shelf": return 45;
-    case "tundra grid": return 42;
-    case "glass desert": return 44;
+    case "jungle wreckage":
+      return 60;
+    case "salt marshes":
+      return 58;
+    case "ash plains":
+      return 50;
+    case "rust canyons":
+      return 47;
+    case "crystal flats":
+      return 45;
+    case "volcanic shelf":
+      return 45;
+    case "tundra grid":
+      return 42;
+    case "glass desert":
+      return 44;
   }
 }
 
@@ -88,7 +144,12 @@ function makeItem(
 ): ScatterItem {
   let hashed = mix(v, 31 + slot * 17);
   let kind = pool[hashed % pool.length]!;
-  const distinctKinds = new Set<ScatterKind>(["desertTree", "cactus", "desertShrub", "mineralFragment"]);
+  const distinctKinds = new Set<ScatterKind>([
+    "desertTree",
+    "cactus",
+    "desertShrub",
+    "mineralFragment",
+  ]);
   if (grouped && usedKinds && distinctKinds.has(kind)) {
     for (let attempt = 1; attempt < pool.length; attempt++) {
       const candidate = pool[(hashed + attempt) % pool.length]!;
@@ -109,14 +170,23 @@ function makeItem(
   };
 }
 
-function groundItems(biome: BiomeName, v: number, feature: TerrainFeatureSample, coverage: number): ScatterItem[] {
+function groundItems(
+  biome: BiomeName,
+  v: number,
+  feature: TerrainFeatureSample,
+  coverage: number,
+): ScatterItem[] {
   const tuning = terrainVisualTuningFor(biome);
-  const chance = Math.min(72, Math.round((scatterChance(biome) * tuning.scatterDensity + feature.intensity * 12) * coverage));
+  const chance = Math.min(
+    72,
+    Math.round((scatterChance(biome) * tuning.scatterDensity + feature.intensity * 12) * coverage),
+  );
   const roll = Math.floor(unit(v, 397) * 100);
   if (roll >= chance) return [];
   const grouped = unit(v, 401) < 0.16 + tuning.clusterBias * 0.26;
   const count = grouped ? 3 : roll < chance * (0.32 + tuning.clusterBias * 0.1) ? 2 : 1;
-  const pool = feature.intensity >= 0.24 ? FEATURE_POOLS[feature.kind] ?? POOLS[biome] : POOLS[biome];
+  const pool =
+    feature.intensity >= 0.24 ? (FEATURE_POOLS[feature.kind] ?? POOLS[biome]) : POOLS[biome];
   const items: ScatterItem[] = [];
   const usedKinds = new Set<ScatterKind>();
   for (let i = 0; i < count; i++) {
@@ -134,14 +204,16 @@ function groundItems(biome: BiomeName, v: number, feature: TerrainFeatureSample,
 
 function roadItems(v: number): ScatterItem[] {
   if (v % 14 !== 0) return [];
-  return [{
-    kind: "pebble",
-    ox: signed(v, 88, 8),
-    oy: signed(v, 89, 3),
-    rotation: signed(v, 92, 0.1),
-    scale: 0.65 + unit(v, 90) * 0.3,
-    variant: mix(v, 91),
-  }];
+  return [
+    {
+      kind: "pebble",
+      ox: signed(v, 88, 8),
+      oy: signed(v, 89, 3),
+      rotation: signed(v, 92, 0.1),
+      scale: 0.65 + unit(v, 90) * 0.3,
+      variant: mix(v, 91),
+    },
+  ];
 }
 
 export function scatterForTile(
@@ -153,9 +225,9 @@ export function scatterForTile(
 ): ScatterItem[] {
   const v = tileVariant(state.seed, x, y);
   const inMap = x >= 0 && y >= 0 && x < state.width && y < state.height;
-  const tile = tileKind ?? (
-    inMap ? (state.tiles[y * state.width + x] ?? TILE_CLEAR) : sceneryAt(state, x, y).kind
-  );
+  const tile =
+    tileKind ??
+    (inMap ? (state.tiles[y * state.width + x] ?? TILE_CLEAR) : sceneryAt(state, x, y).kind);
   const surf = surface ?? (inMap ? (state.surfaces[y * state.width + x] ?? 0) : 0);
   if (tile === TILE_WATER || tile === TILE_RESOURCE || tile === TILE_BLOCKED) return [];
   if (surf === SURFACE_CONCRETE) return [];

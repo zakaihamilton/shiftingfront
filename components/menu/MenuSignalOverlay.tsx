@@ -1,28 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { cx } from "@/lib/ui/cx";
 import {
   cinemaShotCamera,
   createCinemaScene,
+  isCinemaSceneReady,
   PREVIEW_INITIAL_DELAY_MS,
-  PREVIEW_PLAY_MS,
   PREVIEW_LOCK_COUNT,
   PREVIEW_LOCK_IDS,
+  PREVIEW_PLAY_MS,
   PREVIEW_SHOT_COUNT,
+  type PreparedCinemaScene,
+  type PreviewPhase,
+  prepareCinemaScene,
   previewAt,
   previewMissionIndex,
   previewScenarioKind,
   previewSeed,
-  isCinemaSceneReady,
-  prepareCinemaScene,
   renderCinemaFrame,
   resetUnitTransformTracker,
-  stepCinemaScene,
-  type PreparedCinemaScene,
-  type PreviewPhase,
   type Shot,
+  stepCinemaScene,
 } from "@/components/shared/ambient/menuBackdropSim";
+import { cx } from "@/lib/ui/cx";
 import styles from "./MenuSignalOverlay.module.css";
 
 const REDUCE_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -45,7 +45,11 @@ function reduceMotionServerSnapshot() {
 }
 
 function usePrefersReducedMotion() {
-  return useSyncExternalStore(subscribeReduceMotion, reduceMotionSnapshot, reduceMotionServerSnapshot);
+  return useSyncExternalStore(
+    subscribeReduceMotion,
+    reduceMotionSnapshot,
+    reduceMotionServerSnapshot,
+  );
 }
 
 function previewChanged(a: PreviewPhase, b: PreviewPhase): boolean {
@@ -78,11 +82,13 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
     resetUnitTransformTracker();
     const initialCycleIndex = previewRef.current.cycleIndex;
     const initialSeed = previewSeed(initialCycleIndex);
-    let prepared = prepareCinemaScene(createCinemaScene(
-      initialSeed,
-      previewMissionIndex(initialCycleIndex, initialSeed),
-      previewScenarioKind(initialCycleIndex),
-    ));
+    let prepared = prepareCinemaScene(
+      createCinemaScene(
+        initialSeed,
+        previewMissionIndex(initialCycleIndex, initialSeed),
+        previewScenarioKind(initialCycleIndex),
+      ),
+    );
 
     let nextPrepared: PreparedCinemaScene | null = null;
     let cycleIndex = previewRef.current.cycleIndex;
@@ -104,30 +110,35 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
       if (next.cycleIndex !== cycleIndex) {
         resetUnitTransformTracker();
         const seed = previewSeed(next.cycleIndex);
-        prepared = nextPrepared ?? prepareCinemaScene(createCinemaScene(
-          seed,
-          previewMissionIndex(next.cycleIndex, seed),
-          previewScenarioKind(next.cycleIndex),
-        ));
+        prepared =
+          nextPrepared ??
+          prepareCinemaScene(
+            createCinemaScene(
+              seed,
+              previewMissionIndex(next.cycleIndex, seed),
+              previewScenarioKind(next.cycleIndex),
+            ),
+          );
         nextPrepared = null;
         shots.length = 0;
         cycleIndex = next.cycleIndex;
       } else if (
-        !next.expanded
-        && elapsedRef.current >= PREVIEW_INITIAL_DELAY_MS + PREVIEW_PLAY_MS
-        && nextPrepared === null
+        !next.expanded &&
+        elapsedRef.current >= PREVIEW_INITIAL_DELAY_MS + PREVIEW_PLAY_MS &&
+        nextPrepared === null
       ) {
         const nextSeed = previewSeed(next.cycleIndex + 1);
-        nextPrepared = prepareCinemaScene(createCinemaScene(
-          nextSeed,
-          previewMissionIndex(next.cycleIndex + 1, nextSeed),
-          previewScenarioKind(next.cycleIndex + 1),
-        ));
+        nextPrepared = prepareCinemaScene(
+          createCinemaScene(
+            nextSeed,
+            previewMissionIndex(next.cycleIndex + 1, nextSeed),
+            previewScenarioKind(next.cycleIndex + 1),
+          ),
+        );
       }
 
-      let effectivePreview: PreviewPhase = isCinemaSceneReady(prepared) && next.expanded
-        ? next
-        : { ...next, expanded: false };
+      let effectivePreview: PreviewPhase =
+        isCinemaSceneReady(prepared) && next.expanded ? next : { ...next, expanded: false };
 
       if (effectivePreview.expanded) {
         try {
@@ -138,7 +149,12 @@ export function MenuSignalOverlay({ paused = false }: { paused?: boolean }) {
           if (canvas.width !== FEED_WIDTH) canvas.width = FEED_WIDTH;
           if (canvas.height !== FEED_HEIGHT) canvas.height = FEED_HEIGHT;
           renderCinemaFrame(ctx, canvas.width, canvas.height, t, prepared.scene, shots, {
-            camera: cinemaShotCamera(prepared.scene, effectivePreview.shotIndex, canvas.width, canvas.height),
+            camera: cinemaShotCamera(
+              prepared.scene,
+              effectivePreview.shotIndex,
+              canvas.width,
+              canvas.height,
+            ),
             renderMode: "gameplay",
           });
         } catch {

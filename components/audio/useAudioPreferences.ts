@@ -1,10 +1,19 @@
-import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { type Dispatch, type SetStateAction, useCallback } from "react";
+import { type AudioVolumeKey, setAudioLevels } from "@/lib/audio/mixer";
 import { setMusicEnabled as applyMusicEnabled } from "@/lib/audio/music";
 import { setSfxEnabled as applySfxEnabled } from "@/lib/audio/synth";
-import { setVoiceEnabled as applyVoiceEnabled, setVoiceVolume as applyVoiceVolume } from "@/lib/audio/voice";
-import { setAudioLevels, type AudioVolumeKey } from "@/lib/audio/mixer";
+import {
+  setVoiceEnabled as applyVoiceEnabled,
+  setVoiceVolume as applyVoiceVolume,
+} from "@/lib/audio/voice";
 import { cachedLocalStorage } from "@/lib/persist/save";
-import { writeSettings, type ColorblindMode, type GameSettings, type HudScale, type KeyBindings } from "@/lib/persist/settings";
+import {
+  type ColorblindMode,
+  type GameSettings,
+  type HudScale,
+  type KeyBindings,
+  writeSettings,
+} from "@/lib/persist/settings";
 
 export function useAudioPreferences(
   settings: GameSettings,
@@ -31,15 +40,18 @@ export function useAudioPreferences(
     writeSettings(cachedLocalStorage(), next);
   }, [setSettings, settings]);
 
-  const updateVolume = useCallback((key: AudioVolumeKey, value: number) => {
-    const next = { ...settings, [key]: value };
-    setSettings(next);
-    setAudioLevels(next);
-    if (key === "voiceVolume") {
-      applyVoiceVolume(value);
-    }
-    writeSettings(cachedLocalStorage(), next);
-  }, [setSettings, settings]);
+  const updateVolume = useCallback(
+    (key: AudioVolumeKey, value: number) => {
+      const next = { ...settings, [key]: value };
+      setSettings(next);
+      setAudioLevels(next);
+      if (key === "voiceVolume") {
+        applyVoiceVolume(value);
+      }
+      writeSettings(cachedLocalStorage(), next);
+    },
+    [setSettings, settings],
+  );
 
   const toggleReducedMotion = useCallback(() => {
     const next = { ...settings, reducedMotion: !settings.reducedMotion };
@@ -71,11 +83,14 @@ export function useAudioPreferences(
     writeSettings(cachedLocalStorage(), next);
   }, [setSettings, settings]);
 
-  const updateKeyBindings = useCallback((keyBindings: KeyBindings) => {
-    const next = { ...settings, keyBindings };
-    setSettings(next);
-    writeSettings(cachedLocalStorage(), next);
-  }, [setSettings, settings]);
+  const updateKeyBindings = useCallback(
+    (keyBindings: KeyBindings) => {
+      const next = { ...settings, keyBindings };
+      setSettings(next);
+      writeSettings(cachedLocalStorage(), next);
+    },
+    [setSettings, settings],
+  );
 
   return {
     toggleSound,

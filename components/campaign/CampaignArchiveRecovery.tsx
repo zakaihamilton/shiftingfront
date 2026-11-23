@@ -17,18 +17,30 @@ export function CampaignArchiveRecovery({
   return (
     <div className={styles.recovery} role="alert">
       {unreadableSaves.length ? (
-        <span>Damaged save{unreadableSaves.length === 1 ? "" : "s"}: {unreadableSaves.join(", ")}</span>
+        <span>
+          Damaged save{unreadableSaves.length === 1 ? "" : "s"}: {unreadableSaves.join(", ")}
+        </span>
       ) : null}
       {unreadableSlots.length ? (
-        <span>Damaged slot{unreadableSlots.length === 1 ? "" : "s"}: {unreadableSlots.join(", ")}</span>
+        <span>
+          Damaged slot{unreadableSlots.length === 1 ? "" : "s"}: {unreadableSlots.join(", ")}
+        </span>
       ) : null}
       {unreadableSaves.map((seed) => (
-        <ConsoleButton key={seed} tooltip={`Remove damaged save ${seed}`} onClick={() => onResetSave(seed)}>
+        <ConsoleButton
+          key={seed}
+          tooltip={`Remove damaged save ${seed}`}
+          onClick={() => onResetSave(seed)}
+        >
           Reset {seed}
         </ConsoleButton>
       ))}
       {unreadableSlots.map((id) => (
-        <ConsoleButton key={id} tooltip={`Remove damaged save slot ${id}`} onClick={() => onResetSlot(id)}>
+        <ConsoleButton
+          key={id}
+          tooltip={`Remove damaged save slot ${id}`}
+          onClick={() => onResetSlot(id)}
+        >
           Reset {id.slice(0, 8)}
         </ConsoleButton>
       ))}

@@ -1,11 +1,9 @@
-import {
-  buildingSprite,
-} from "@/lib/gen/assets";
+import { buildingSprite } from "@/lib/gen/assets";
 import { generateVisualProfile } from "@/lib/gen/visualProfile";
-import { TILE_H, type Camera, tileToScreen } from "@/lib/iso";
+import { type Camera, TILE_H, tileToScreen } from "@/lib/iso";
 import { rasterize } from "@/lib/render/sprites";
-import { paintTerrainBlockers, paintTerrainSurface } from "@/lib/render/terrainPaint";
 import type { AtlasWorld } from "@/lib/render/terrainAtlas";
+import { paintTerrainBlockers, paintTerrainSurface } from "@/lib/render/terrainPaint";
 import type { CinemaScene } from "./scene";
 
 export function cinemaCamera(w: number, h: number, t: number): Camera {
@@ -46,6 +44,12 @@ export function paintCinemaStatic(
     const img = rasterize(spec);
     const ax = (spec.anchorX ?? spec.w / 2) * cam.zoom;
     const ay = (spec.anchorY ?? spec.h) * cam.zoom;
-    ctx.drawImage(img, s.x - ax, s.y + (TILE_H / 2) * cam.zoom - ay, spec.w * cam.zoom, spec.h * cam.zoom);
+    ctx.drawImage(
+      img,
+      s.x - ax,
+      s.y + (TILE_H / 2) * cam.zoom - ay,
+      spec.w * cam.zoom,
+      spec.h * cam.zoom,
+    );
   }
 }

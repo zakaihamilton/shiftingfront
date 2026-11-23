@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DialogPortal } from "@/components/ui/DialogPortal";
+import { archiveEntryKey, SaveSlotList } from "@/components/save/SaveSlotList";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
+import { DialogPortal } from "@/components/ui/DialogPortal";
 import { MetalPanel } from "@/components/ui/MetalPanel";
-import { archiveEntryKey, SaveSlotList } from "@/components/save/SaveSlotList";
 import { useModalFocus } from "@/components/ui/useModalFocus";
 import type { ArchiveEntry } from "@/lib/persist/save";
 import { SHORTCUT } from "@/lib/ui/shortcuts";
@@ -25,7 +25,11 @@ export function PauseLoadSlots({
   const [deletedKeys, setDeletedKeys] = useState<Set<string>>(() => new Set());
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [pending, setPending] = useState<ArchiveEntry | null>(null);
-  const confirmRef = useModalFocus(Boolean(pending), pending ? archiveEntryKey(pending) : undefined, "dialog");
+  const confirmRef = useModalFocus(
+    Boolean(pending),
+    pending ? archiveEntryKey(pending) : undefined,
+    "dialog",
+  );
 
   const entryList = useMemo(
     () => entries.filter((entry) => !deletedKeys.has(archiveEntryKey(entry))),
@@ -76,7 +80,9 @@ export function PauseLoadSlots({
   return (
     <>
       <ConsoleLabel>Save slots</ConsoleLabel>
-      <h2 id="pause-title" className={styles.title}>Load mission</h2>
+      <h2 id="pause-title" className={styles.title}>
+        Load mission
+      </h2>
       <p className={styles.slotCopy}>Choose a named save or this campaign&apos;s autosave.</p>
       <SaveSlotList
         entries={entryList}
@@ -96,7 +102,13 @@ export function PauseLoadSlots({
         >
           Load
         </ConsoleButton>
-        <ConsoleButton muted className={styles.action} tooltip="Return to the pause menu" shortcut={SHORTCUT.back} onClick={onBack}>
+        <ConsoleButton
+          muted
+          className={styles.action}
+          tooltip="Return to the pause menu"
+          shortcut={SHORTCUT.back}
+          onClick={onBack}
+        >
           Back
         </ConsoleButton>
       </div>
@@ -111,12 +123,17 @@ export function PauseLoadSlots({
               aria-modal="true"
               aria-labelledby="load-slot-title"
             >
-              <ConsoleLabel as="h2" id="load-slot-title">Load mission?</ConsoleLabel>
+              <ConsoleLabel as="h2" id="load-slot-title">
+                Load mission?
+              </ConsoleLabel>
               <p className={styles.slotCopy}>
-                Load {pending.kind === "slot" ? pending.name : "the autosave for this campaign"}? Unsaved progress will be lost.
+                Load {pending.kind === "slot" ? pending.name : "the autosave for this campaign"}?
+                Unsaved progress will be lost.
               </p>
               <div className={styles.slotConfirmActions}>
-                <ConsoleButton muted onClick={() => setPending(null)}>Cancel</ConsoleButton>
+                <ConsoleButton muted onClick={() => setPending(null)}>
+                  Cancel
+                </ConsoleButton>
                 <ConsoleButton
                   onClick={() => {
                     onLoad(pending);

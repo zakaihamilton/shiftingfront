@@ -30,7 +30,10 @@ function forceDebriefForOwners(state: SimState, owners: readonly Owner[]): Force
     unitsRemaining: active.filter((entity) => entity.class === "unit").length,
     buildingsRemaining: active.filter((entity) => entity.class === "building").length,
     unitsLost: owners.reduce<number>((total, owner) => total + (state.losses.units[owner] ?? 0), 0),
-    buildingsLost: owners.reduce<number>((total, owner) => total + (state.losses.buildings[owner] ?? 0), 0),
+    buildingsLost: owners.reduce<number>(
+      (total, owner) => total + (state.losses.buildings[owner] ?? 0),
+      0,
+    ),
   };
 }
 
@@ -63,8 +66,11 @@ export function shouldShowCommandSidebar(result: SimState["result"]): boolean {
 export function missionMedals(state: SimState): number {
   if (state.multiplayer) return 0;
   if (state.result !== "won") return 0;
-  const secondaries = secondaryProgress(state).filter(objective => objectivePriorityFor(objective.id, objective.priority) === "optional");
-  const allSecondaries = secondaries.length > 0 && secondaries.every((objective) => objective.completed);
+  const secondaries = secondaryProgress(state).filter(
+    (objective) => objectivePriorityFor(objective.id, objective.priority) === "optional",
+  );
+  const allSecondaries =
+    secondaries.length > 0 && secondaries.every((objective) => objective.completed);
   return 1 + (allSecondaries ? 1 : 0) + (state.losses.units[0] === 0 ? 1 : 0);
 }
 
@@ -75,18 +81,28 @@ function remainingTimeBonus(state: SimState): number {
   const deadline = state.runtime?.deadline;
   if (deadline === undefined || deadline <= 0) return 0;
   const remaining = Math.max(0, deadline - state.tick);
-  const normalizedRemaining = remaining * MAX_MISSION_TICKS / deadline;
-  return Math.floor(Math.min(normalizedRemaining, MAX_MISSION_TICKS) / TICKS_PER_SECOND) * SPEED_BONUS_PER_SECOND;
+  const normalizedRemaining = (remaining * MAX_MISSION_TICKS) / deadline;
+  return (
+    Math.floor(Math.min(normalizedRemaining, MAX_MISSION_TICKS) / TICKS_PER_SECOND) *
+    SPEED_BONUS_PER_SECOND
+  );
 }
 
 export function missionScore(state: SimState): number {
   if (state.multiplayer) return 0;
   if (state.result !== "won") return 0;
-  const completedSecondaries = secondaryProgress(state).filter((objective) => objective.completed && objectivePriorityFor(objective.id, objective.priority) === "optional").length;
+  const completedSecondaries = secondaryProgress(state).filter(
+    (objective) =>
+      objective.completed && objectivePriorityFor(objective.id, objective.priority) === "optional",
+  ).length;
   return Math.max(
     0,
-    1000 + state.creditsEarned[0] + completedSecondaries * 250 + remainingTimeBonus(state)
-      - state.losses.units[0] * 100 - state.losses.buildings[0] * 200,
+    1000 +
+      state.creditsEarned[0] +
+      completedSecondaries * 250 +
+      remainingTimeBonus(state) -
+      state.losses.units[0] * 100 -
+      state.losses.buildings[0] * 200,
   );
 }
 
@@ -111,19 +127,29 @@ export function missionDebrief(state: SimState) {
   const playerOwner = state.multiplayer ? (state.viewOwner ?? 0) : 0;
   const enemyOwners = (state.multiplayerOwners ?? [0, 1]).filter((owner) => owner !== playerOwner);
   const draw = state.multiplayer === true && state.winner === null;
-  const profile = profileContractFor(resolveMissionProfile(state.seed, state.missionIndex, state.win.kind));
+  const profile = profileContractFor(
+    resolveMissionProfile(state.seed, state.missionIndex, state.win.kind),
+  );
   const secondary = secondaryProgress(state);
   const targetObjective = scenarioTargetObjective(state, won);
   const primaryObjectives = [
     ...secondary.filter((item) => objectivePriorityFor(item.id, item.priority) === "primary"),
     ...(targetObjective ? [targetObjective] : []),
   ];
-  const optionalObjectives = secondary.filter((item) => objectivePriorityFor(item.id, item.priority) === "optional");
+  const optionalObjectives = secondary.filter(
+    (item) => objectivePriorityFor(item.id, item.priority) === "optional",
+  );
   return {
-    status: won ? "won" as const : "lost" as const,
+    status: won ? ("won" as const) : ("lost" as const),
     outcome: state.multiplayer
-      ? draw ? "The skirmish ended in a draw." : won ? "All rival Command HQs destroyed." : "Your Command HQ was destroyed."
-      : won ? "Primary objective achieved." : missionLossMessage(state),
+      ? draw
+        ? "The skirmish ended in a draw."
+        : won
+          ? "All rival Command HQs destroyed."
+          : "Your Command HQ was destroyed."
+      : won
+        ? "Primary objective achieved."
+        : missionLossMessage(state),
     retryGuidance: won || state.multiplayer ? undefined : retryGuidance(state),
     lesson: battleLesson(state),
     objective: {
@@ -157,26 +183,34 @@ export function missionDebrief(state: SimState) {
 }
 
 export function battleLesson(state: SimState): string | undefined {
-  if (state.multiplayer || state.tutorialStage !== undefined || state.result === "won") return undefined;
-  const harvesters = livingView(state).filter((entity) => entity.owner === 0 && entity.kind === "harvester" && entity.hp > 0).length;
+  if (state.multiplayer || state.tutorialStage !== undefined || state.result === "won")
+    return undefined;
+  const harvesters = livingView(state).filter(
+    (entity) => entity.owner === 0 && entity.kind === "harvester" && entity.hp > 0,
+  ).length;
   const refineries = state.buildingsCompletedByKind.refinery ?? 0;
-  const antiArmorInField = livingView(state).some((entity) => entity.owner === 0 && entity.kind === "antiArmor");
+  const antiArmorInField = livingView(state).some(
+    (entity) => entity.owner === 0 && entity.kind === "antiArmor",
+  );
   const finale = state.runtime?.director?.phase === "finale";
-  if (harvesters === 0 && refineries < 2) return "Harvesters were gone before a second refinery came online.";
+  if (harvesters === 0 && refineries < 2)
+    return "Harvesters were gone before a second refinery came online.";
   if (!antiArmorInField && finale) return "The finale arrived with no anti-armor in the field.";
-  if (!antiArmorInField && state.lossReason === "deadline") return "Time ran out with no anti-armor in the field.";
+  if (!antiArmorInField && state.lossReason === "deadline")
+    return "Time ran out with no anti-armor in the field.";
   return undefined;
 }
 
 function retryGuidance(state: SimState): string {
   const lesson = battleLesson(state);
-  const guidance = state.lossReason === "deadline"
-    ? "Open with power and a refinery. Keep the timer visible and move before the final minute."
-    : state.lossReason === "objectiveTargetLost"
-      ? "Protect the target first. Escort the route and keep support units behind the front line."
-      : state.lossReason === "yardDestroyed"
-        ? "Rebuild the screen around Command HQ. Repair damaged structures before pushing again."
-        : "Secure the opening economy, then issue focused orders from the Selected tab.";
+  const guidance =
+    state.lossReason === "deadline"
+      ? "Open with power and a refinery. Keep the timer visible and move before the final minute."
+      : state.lossReason === "objectiveTargetLost"
+        ? "Protect the target first. Escort the route and keep support units behind the front line."
+        : state.lossReason === "yardDestroyed"
+          ? "Rebuild the screen around Command HQ. Repair damaged structures before pushing again."
+          : "Secure the opening economy, then issue focused orders from the Selected tab.";
   return lesson ? `${lesson} ${guidance}` : guidance;
 }
 

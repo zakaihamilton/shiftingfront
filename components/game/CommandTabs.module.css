@@ -5,7 +5,9 @@
   gap: 3px;
   padding: 4px;
   background: var(--chrome-steel-lo);
-  box-shadow: inset 0 1px 0 var(--chrome-void), inset 0 -1px 0 var(--chrome-steel-hi);
+  box-shadow:
+    inset 0 1px 0 var(--chrome-void),
+    inset 0 -1px 0 var(--chrome-steel-hi);
 }
 
 .tab {
@@ -27,18 +29,28 @@
 .tab[aria-pressed="true"] {
   color: var(--chrome-text);
   background: linear-gradient(var(--chrome-steel-hi), var(--chrome-steel));
-  box-shadow: inset 1px 1px var(--chrome-bevel), inset -1px -1px var(--chrome-inset), 0 0 0 1px var(--a, var(--chrome-cyan));
+  box-shadow:
+    inset 1px 1px var(--chrome-bevel),
+    inset -1px -1px var(--chrome-inset),
+    0 0 0 1px var(--a, var(--chrome-cyan));
 }
 
 .tutorialFocus {
   position: relative;
   z-index: 3;
   border-color: var(--chrome-gold) !important;
-  box-shadow: 0 0 0 1px var(--chrome-gold), 0 0 16px color-mix(in srgb, var(--chrome-gold) 42%, transparent);
+  box-shadow:
+    0 0 0 1px var(--chrome-gold),
+    0 0 16px color-mix(in srgb, var(--chrome-gold) 42%, transparent);
   animation: tutorialTabPulse 1.35s ease-in-out infinite;
 }
 
 @keyframes tutorialTabPulse {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.3); }
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.3);
+  }
 }

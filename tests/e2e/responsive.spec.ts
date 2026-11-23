@@ -1,16 +1,26 @@
-import { readCampaignRecord } from "./saveRepositoryHelpers";
 import { expect, test } from "@playwright/test";
-import { waitForBattlefieldReady } from "./battlefieldReady";
 import { PLACEABLE } from "../../components/game/hooks/gameActions";
 import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "../../components/game/renderDimensions";
-import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { TILE_H, tileToScreen } from "../../lib/iso";
-import { SAVE_CONTENT_VERSION, SAVE_VERSION, SLOT_VERSION, saveKey, slotKey } from "../../lib/persist/save";
-import { CAMPAIGN_PROGRESS_VERSION, campaignKey, freshCampaignProgress } from "../../lib/persist/campaign";
+import {
+  CAMPAIGN_PROGRESS_VERSION,
+  campaignKey,
+  freshCampaignProgress,
+} from "../../lib/persist/campaign";
+import {
+  SAVE_CONTENT_VERSION,
+  SAVE_VERSION,
+  SLOT_VERSION,
+  saveKey,
+  slotKey,
+} from "../../lib/persist/save";
+import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { createMission } from "../../lib/sim/api";
 import { addUnit, setHeight } from "../../lib/sim/fixtures";
 import { heightAt } from "../../lib/sim/world";
 import type { Entity, SimState } from "../../lib/types";
+import { waitForBattlefieldReady } from "./battlefieldReady";
+import { readCampaignRecord } from "./saveRepositoryHelpers";
 
 const TEST_SEED = 421;
 
@@ -41,7 +51,9 @@ async function expectNoHorizontalOverflow(page: import("@playwright/test").Page)
 }
 
 test.describe("UI review regressions", () => {
-  test("keeps keyboard navigation inside new campaign and activates the focused Back button", async ({ page }) => {
+  test("keeps keyboard navigation inside new campaign and activates the focused Back button", async ({
+    page,
+  }) => {
     await page.goto("/");
     const opener = page.getByRole("button", { name: "NEW GAME", exact: true });
     await opener.click();
@@ -59,8 +71,13 @@ test.describe("UI review regressions", () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
-  test("lets players select the first tutorial target on phones and after rotation", async ({ page }) => {
-    for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+  test("lets players select the first tutorial target on phones and after rotation", async ({
+    page,
+  }) => {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 844, height: 390 },
+    ]) {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto("/tutorial");
       await waitForBattlefield(page);
@@ -76,7 +93,10 @@ test.describe("UI review regressions", () => {
   });
 
   test("keeps phone command cards clickable with an expanded tutorial hint", async ({ page }) => {
-    for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 320, height: 568 },
+    ]) {
       await page.setViewportSize(viewport);
       await page.goto("/tutorial");
       await waitForBattlefield(page);
@@ -90,7 +110,10 @@ test.describe("UI review regressions", () => {
       expect(coachBounds).not.toBeNull();
       expect(sidebarBounds!.y + sidebarBounds!.height).toBeLessThanOrEqual(coachBounds!.y);
       await sidebar.getByRole("button", { name: /^Barracks, 375 credits/ }).click();
-      await expect(page.getByTestId("mobile-command-toggle")).toHaveAttribute("aria-expanded", "false");
+      await expect(page.getByTestId("mobile-command-toggle")).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
       await expectNoHorizontalOverflow(page);
     }
   });
@@ -109,7 +132,8 @@ async function expectWelcomePreviewsBelowMenu(
     const overlay = document.querySelector<HTMLElement>("[data-testid='menu-signal-overlay']");
     const effects = overlay?.querySelector<HTMLElement>("[class*='viewportEffects']");
     const screen = document.querySelector<HTMLElement>("[class*='screen']");
-    if (!menu || !overlay || !effects || !screen) throw new Error("Missing welcome layout elements");
+    if (!menu || !overlay || !effects || !screen)
+      throw new Error("Missing welcome layout elements");
 
     const menuRect = menu.getBoundingClientRect();
     const overlayRect = overlay.getBoundingClientRect();
@@ -183,22 +207,37 @@ async function expectOperationsMapFit(
 async function waitForBattlefield(page: import("@playwright/test").Page) {
   const canvas = page.getByTestId("battlefield-canvas");
   await expect(canvas).toBeVisible({ timeout: 15_000 });
-  await expect.poll(async () => canvas.evaluate((element, mins) => {
-    const canvasEl = element as HTMLCanvasElement;
-    const host = canvasEl.parentElement;
-    if (!host) return false;
-    const width = Math.max(mins.width, Math.floor(host.clientWidth));
-    const height = Math.max(mins.height, Math.floor(host.clientHeight));
-    const density = Math.min(
-      window.devicePixelRatio || 1,
-      navigator.maxTouchPoints > 0 ? 1.5 : 2,
-      Math.sqrt((navigator.maxTouchPoints > 0 ? 1_500_000 : 4_000_000) / (width * height)),
-    );
-    return canvasEl.width === Math.round(width * density) && canvasEl.height === Math.round(height * density);
-  }, { width: MIN_RENDER_WIDTH, height: MIN_RENDER_HEIGHT }), { timeout: 15_000 }).toBe(true);
-  await page.evaluate(() => new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  }));
+  await expect
+    .poll(
+      async () =>
+        canvas.evaluate(
+          (element, mins) => {
+            const canvasEl = element as HTMLCanvasElement;
+            const host = canvasEl.parentElement;
+            if (!host) return false;
+            const width = Math.max(mins.width, Math.floor(host.clientWidth));
+            const height = Math.max(mins.height, Math.floor(host.clientHeight));
+            const density = Math.min(
+              window.devicePixelRatio || 1,
+              navigator.maxTouchPoints > 0 ? 1.5 : 2,
+              Math.sqrt((navigator.maxTouchPoints > 0 ? 1_500_000 : 4_000_000) / (width * height)),
+            );
+            return (
+              canvasEl.width === Math.round(width * density) &&
+              canvasEl.height === Math.round(height * density)
+            );
+          },
+          { width: MIN_RENDER_WIDTH, height: MIN_RENDER_HEIGHT },
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
   await waitForBattlefieldReady(page);
 }
 
@@ -206,33 +245,40 @@ async function waitForCommandSidebarToSettle(
   sidebar: import("@playwright/test").Locator,
   viewportWidth: number,
 ) {
-  await expect.poll(async () => {
-    const bounds = await sidebar.boundingBox();
-    return bounds ? bounds.x + bounds.width : Number.POSITIVE_INFINITY;
-  }).toBeLessThanOrEqual(viewportWidth);
+  await expect
+    .poll(async () => {
+      const bounds = await sidebar.boundingBox();
+      return bounds ? bounds.x + bounds.width : Number.POSITIVE_INFINITY;
+    })
+    .toBeLessThanOrEqual(viewportWidth);
 }
 
 async function cameoLabelMetrics(sidebar: import("@playwright/test").Locator) {
-  return sidebar.locator("[data-testid^='cameo-label-']").evaluateAll((labels) => labels.map((node) => {
-    const label = node as HTMLElement;
-    const style = getComputedStyle(label);
-    return {
-      text: label.textContent?.trim() ?? "",
-      clientWidth: label.clientWidth,
-      scrollWidth: label.scrollWidth,
-      clientHeight: label.clientHeight,
-      scrollHeight: label.scrollHeight,
-      whiteSpace: style.whiteSpace,
-      textOverflow: style.textOverflow,
-    };
-  }));
+  return sidebar.locator("[data-testid^='cameo-label-']").evaluateAll((labels) =>
+    labels.map((node) => {
+      const label = node as HTMLElement;
+      const style = getComputedStyle(label);
+      return {
+        text: label.textContent?.trim() ?? "",
+        clientWidth: label.clientWidth,
+        scrollWidth: label.scrollWidth,
+        clientHeight: label.clientHeight,
+        scrollHeight: label.scrollHeight,
+        whiteSpace: style.whiteSpace,
+        textOverflow: style.textOverflow,
+      };
+    }),
+  );
 }
 
 async function waitForStableSelection(page: import("@playwright/test").Page) {
   await page.waitForTimeout(100);
-  await page.evaluate(() => new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  }));
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
 }
 
 async function collapseMissionDirective(page: import("@playwright/test").Page) {
@@ -246,11 +292,16 @@ async function collapseMissionDirective(page: import("@playwright/test").Page) {
 }
 
 async function persistedUnitOrder(page: import("@playwright/test").Page, unitId: number) {
-  await page.evaluate(async () => { window.dispatchEvent(new Event("pagehide")); await new Promise((resolve) => setTimeout(resolve, 100)); });
+  await page.evaluate(async () => {
+    window.dispatchEvent(new Event("pagehide"));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  });
   const record = await readCampaignRecord(page, TEST_SEED);
   const state = record?.autosave ? JSON.parse(record.autosave).state : null;
   const unit = state?.entities?.find((entity: { id: number }) => entity.id === unitId);
-  return unit ? { orderMode: unit.orderMode ?? null, orderDestination: unit.orderDestination ?? null } : null;
+  return unit
+    ? { orderMode: unit.orderMode ?? null, orderDestination: unit.orderDestination ?? null }
+    : null;
 }
 
 async function pageCamera(page: import("@playwright/test").Page, state: SimState) {
@@ -261,16 +312,26 @@ async function pageCamera(page: import("@playwright/test").Page, state: SimState
   }));
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Battlefield canvas has no layout bounds");
-  const constructionYard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+  const constructionYard = state.entities.find(
+    (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+  );
   if (!constructionYard) throw new Error("Mission has no construction yard");
   const origin = { x: 0, y: 0, zoom: 1 };
-  const anchor = tileToScreen(constructionYard.x, constructionYard.y, origin, heightAt(state, constructionYard.x, constructionYard.y));
+  const anchor = tileToScreen(
+    constructionYard.x,
+    constructionYard.y,
+    origin,
+    heightAt(state, constructionYard.x, constructionYard.y),
+  );
   const camera = {
     x: dimensions.width / 2 - anchor.x,
     y: dimensions.height / 3 - anchor.y,
     zoom: 1,
   };
-  clampCamera(camera, cameraPanBounds(state.width, state.height, dimensions.width, dimensions.height));
+  clampCamera(
+    camera,
+    cameraPanBounds(state.width, state.height, dimensions.width, dimensions.height),
+  );
   return { dimensions, bounds, camera };
 }
 
@@ -294,12 +355,21 @@ async function pointForTile(page: import("@playwright/test").Page, x: number, y:
 async function pointForEntity(page: import("@playwright/test").Page, entity: Entity) {
   const state = createMission({ seed: TEST_SEED, missionIndex: 0 });
   const { dimensions, bounds, camera } = await pageCamera(page, state);
-  const point = tileToScreen(entity.x, entity.y, camera, heightAt(state, Math.round(entity.x), Math.round(entity.y)));
+  const point = tileToScreen(
+    entity.x,
+    entity.y,
+    camera,
+    heightAt(state, Math.round(entity.x), Math.round(entity.y)),
+  );
   const zoom = camera.zoom;
-  return canvasCssPoint({
-    x: point.x,
-    y: point.y + (TILE_H / 2) * zoom - 12 * zoom,
-  }, bounds, dimensions);
+  return canvasCssPoint(
+    {
+      x: point.x,
+      y: point.y + (TILE_H / 2) * zoom - 12 * zoom,
+    },
+    bounds,
+    dimensions,
+  );
 }
 
 async function dispatchTouch(
@@ -308,19 +378,24 @@ async function dispatchTouch(
   point: { x: number; y: number },
   pointerId = 1,
 ) {
-  await page.getByTestId("battlefield-canvas").evaluate((element, event) => {
-    element.dispatchEvent(new PointerEvent(event.type, {
-      bubbles: true,
-      cancelable: true,
-      pointerId: event.pointerId,
-      pointerType: "touch",
-      isPrimary: true,
-      button: event.type === "pointerup" ? 0 : 0,
-      buttons: event.type === "pointerup" ? 0 : 1,
-      clientX: event.x,
-      clientY: event.y,
-    }));
-  }, { type, pointerId, x: point.x, y: point.y });
+  await page.getByTestId("battlefield-canvas").evaluate(
+    (element, event) => {
+      element.dispatchEvent(
+        new PointerEvent(event.type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: event.pointerId,
+          pointerType: "touch",
+          isPrimary: true,
+          button: event.type === "pointerup" ? 0 : 0,
+          buttons: event.type === "pointerup" ? 0 : 1,
+          clientX: event.x,
+          clientY: event.y,
+        }),
+      );
+    },
+    { type, pointerId, x: point.x, y: point.y },
+  );
 }
 
 test.describe("operations map responsive layout", () => {
@@ -358,7 +433,9 @@ test.describe("operations map responsive layout", () => {
 });
 
 test.describe("campaign complete responsive layout", () => {
-  test("keeps the final controls reachable after scrolling the campaign record", async ({ page }) => {
+  test("keeps the final controls reachable after scrolling the campaign record", async ({
+    page,
+  }) => {
     for (const viewport of [
       { width: 1280, height: 720 },
       { width: 390, height: 844 },
@@ -388,7 +465,9 @@ test.describe("campaign complete responsive layout", () => {
     }
   });
 
-  test("centers the completed campaign finale and keeps its record controls reachable", async ({ page }) => {
+  test("centers the completed campaign finale and keeps its record controls reachable", async ({
+    page,
+  }) => {
     const completedProgress = {
       ...freshCampaignProgress(TEST_SEED),
       unlockedMission: 5,
@@ -398,7 +477,11 @@ test.describe("campaign complete responsive layout", () => {
     };
     await page.addInitScript(({ key, raw }) => localStorage.setItem(key, raw), {
       key: campaignKey(TEST_SEED),
-      raw: JSON.stringify({ version: CAMPAIGN_PROGRESS_VERSION, savedAt: Date.now(), progress: completedProgress }),
+      raw: JSON.stringify({
+        version: CAMPAIGN_PROGRESS_VERSION,
+        savedAt: Date.now(),
+        progress: completedProgress,
+      }),
     });
 
     for (const viewport of [
@@ -542,7 +625,15 @@ test.describe("mission briefing responsive layout", () => {
         const [mast, panel] = Array.from(inner.children);
         const rect = (node: Element | undefined) => {
           const bounds = node?.getBoundingClientRect();
-          return bounds ? { x: bounds.x, y: bounds.y, right: bounds.right, bottom: bounds.bottom, width: bounds.width } : null;
+          return bounds
+            ? {
+                x: bounds.x,
+                y: bounds.y,
+                right: bounds.right,
+                bottom: bounds.bottom,
+                width: bounds.width,
+              }
+            : null;
         };
         const lines = Array.from(element.querySelectorAll('[data-testid="briefing-line"]'));
         const portraits = Array.from(element.querySelectorAll('[data-testid="briefing-portrait"]'));
@@ -557,11 +648,17 @@ test.describe("mission briefing responsive layout", () => {
           mast: mastRect,
           panel: panelRect,
           panelBelowMast: Boolean(mastRect && panelRect && panelRect.y >= mastRect.bottom),
-          panelMatchesMastWidth: Boolean(mastRect && panelRect && Math.abs(mastRect.width - panelRect.width) <= 1),
+          panelMatchesMastWidth: Boolean(
+            mastRect && panelRect && Math.abs(mastRect.width - panelRect.width) <= 1,
+          ),
           lineCount: lines.length,
           portraitCount: portraits.length,
-          everyLineHasPortrait: lines.length > 0 && lines.every((line) => line.querySelector('[data-testid="briefing-portrait"]')),
-          portraitsBelongToDialogue: portraits.every((portrait) => portrait.closest('[data-testid="briefing-line"]')),
+          everyLineHasPortrait:
+            lines.length > 0 &&
+            lines.every((line) => line.querySelector('[data-testid="briefing-portrait"]')),
+          portraitsBelongToDialogue: portraits.every((portrait) =>
+            portrait.closest('[data-testid="briefing-line"]'),
+          ),
         };
       });
 
@@ -576,7 +673,9 @@ test.describe("mission briefing responsive layout", () => {
     });
   }
 
-  test("keeps the primary briefing action docked when transmission is skipped", async ({ page }) => {
+  test("keeps the primary briefing action docked when transmission is skipped", async ({
+    page,
+  }) => {
     for (const viewport of [
       { width: 1280, height: 720 },
       { width: 700, height: 400 },
@@ -606,7 +705,9 @@ test.describe("mission briefing responsive layout", () => {
 });
 
 test.describe("selected unit actions", () => {
-  test("refreshes stance and formation after using selected actions", async ({ page }, testInfo) => {
+  test("refreshes stance and formation after using selected actions", async ({
+    page,
+  }, testInfo) => {
     test.setTimeout(60_000);
 
     const activate = async (control: import("@playwright/test").Locator) => {
@@ -653,7 +754,9 @@ test.describe("desktop marquee selection", () => {
   test("keeps units selected across an edge-scrolled drag", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     const state = createMission({ seed: TEST_SEED, missionIndex: 0 });
-    const yard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+    const yard = state.entities.find(
+      (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+    );
     if (!yard) throw new Error("Mission has no construction yard");
     // The map generator now rotates each base around its dynamic spawn point.
     // Keep the fixture beside the current player base so the drag begins in
@@ -670,21 +773,33 @@ test.describe("desktop marquee selection", () => {
       savedAt: Date.now(),
       state,
     });
-    await page.addInitScript(({ saveStorageKey, saveRaw }) => {
-      localStorage.setItem(saveStorageKey, saveRaw);
-    }, {
-      saveStorageKey: saveKey(TEST_SEED),
-      saveRaw: save,
-    });
+    await page.addInitScript(
+      ({ saveStorageKey, saveRaw }) => {
+        localStorage.setItem(saveStorageKey, saveRaw);
+      },
+      {
+        saveStorageKey: saveKey(TEST_SEED),
+        saveRaw: save,
+      },
+    );
     await page.goto(`/play?seed=${String(TEST_SEED).padStart(4, "0")}&mission=0&resume=1`);
     await waitForBattlefield(page);
 
     const { dimensions, bounds, camera } = await pageCamera(page, state);
-    const anchorPoint = tileToScreen(anchorUnit.x, anchorUnit.y, camera, heightAt(state, anchorUnit.x, anchorUnit.y));
-    const start = canvasCssPoint({
-      x: anchorPoint.x - 18,
-      y: anchorPoint.y + (TILE_H / 2) * camera.zoom - 12 * camera.zoom - 24,
-    }, bounds, dimensions);
+    const anchorPoint = tileToScreen(
+      anchorUnit.x,
+      anchorUnit.y,
+      camera,
+      heightAt(state, anchorUnit.x, anchorUnit.y),
+    );
+    const start = canvasCssPoint(
+      {
+        x: anchorPoint.x - 18,
+        y: anchorPoint.y + (TILE_H / 2) * camera.zoom - 12 * camera.zoom - 24,
+      },
+      bounds,
+      dimensions,
+    );
     const end = {
       x: bounds.x + bounds.width - 4,
       y: start.y + 96,
@@ -733,7 +848,9 @@ test.describe("mobile-first layouts", () => {
         const launcherButton = launcher.getByTestId("mobile-command-toggle");
         const launcherButtonBounds = await launcherButton.boundingBox();
         expect(launcherButtonBounds).not.toBeNull();
-        expect(Math.abs(launcherButtonBounds!.x + launcherButtonBounds!.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(1);
+        expect(
+          Math.abs(launcherButtonBounds!.x + launcherButtonBounds!.width / 2 - viewport.width / 2),
+        ).toBeLessThanOrEqual(1);
         await expect(launcher.locator("span")).toBeHidden();
         const sidebar = page.getByTestId("command-sidebar");
         await expect(sidebar).not.toBeVisible();
@@ -760,8 +877,10 @@ test.describe("mobile-first layouts", () => {
       const opBounds = await operation.boundingBox();
       const dirBounds = await directiveStack.boundingBox();
       if (opBounds && dirBounds) {
-        const horizontalOverlap = opBounds.x < dirBounds.x + dirBounds.width && opBounds.x + opBounds.width > dirBounds.x;
-        const verticalOverlap = opBounds.y < dirBounds.y + dirBounds.height && opBounds.y + opBounds.height > dirBounds.y;
+        const horizontalOverlap =
+          opBounds.x < dirBounds.x + dirBounds.width && opBounds.x + opBounds.width > dirBounds.x;
+        const verticalOverlap =
+          opBounds.y < dirBounds.y + dirBounds.height && opBounds.y + opBounds.height > dirBounds.y;
         expect(horizontalOverlap && verticalOverlap).toBe(false);
       }
     });
@@ -802,7 +921,9 @@ test.describe("mobile-first layouts", () => {
     await expect(panel).not.toBeVisible();
   });
 
-  test("caps the portrait command sidebar and keeps its items proportional", async ({ page }, testInfo) => {
+  test("caps the portrait command sidebar and keeps its items proportional", async ({
+    page,
+  }, testInfo) => {
     test.setTimeout(60_000);
 
     for (const viewport of [
@@ -829,7 +950,11 @@ test.describe("mobile-first layouts", () => {
             const rect = node.getBoundingClientRect();
             return { right: rect.right, width: rect.width, height: rect.height };
           };
-          const cards = Array.from(element.querySelectorAll("[data-testid='build-progress'] button[aria-label*='credits']"));
+          const cards = Array.from(
+            element.querySelectorAll(
+              "[data-testid='build-progress'] button[aria-label*='credits']",
+            ),
+          );
           const tabs = element.querySelector("[role='toolbar']");
           return {
             sidebar: bounds(element),
@@ -877,26 +1002,48 @@ test.describe("mobile-first layouts", () => {
 
         const constructionLabels = await cameoLabelMetrics(sidebar);
         expect(constructionLabels.map(({ text }) => text)).toContain("Vehicle Plant");
-        expect(constructionLabels.every(({ text, clientWidth, scrollWidth, clientHeight, scrollHeight, whiteSpace, textOverflow }) =>
-          text.length > 0 &&
-          scrollWidth <= clientWidth + 1 &&
-          scrollHeight <= clientHeight + 1 &&
-          whiteSpace === "normal" &&
-          textOverflow === "clip",
-        )).toBe(true);
+        expect(
+          constructionLabels.every(
+            ({
+              text,
+              clientWidth,
+              scrollWidth,
+              clientHeight,
+              scrollHeight,
+              whiteSpace,
+              textOverflow,
+            }) =>
+              text.length > 0 &&
+              scrollWidth <= clientWidth + 1 &&
+              scrollHeight <= clientHeight + 1 &&
+              whiteSpace === "normal" &&
+              textOverflow === "clip",
+          ),
+        ).toBe(true);
 
         const productionTab = sidebar.getByRole("tab", { name: "Production" });
         if (testInfo.project.name === "desktop") await productionTab.click();
         else await productionTab.tap();
         const productionLabels = await cameoLabelMetrics(sidebar);
         expect(productionLabels.map(({ text }) => text)).toContain("Repair Truck");
-        expect(productionLabels.every(({ text, clientWidth, scrollWidth, clientHeight, scrollHeight, whiteSpace, textOverflow }) =>
-          text.length > 0 &&
-          scrollWidth <= clientWidth + 1 &&
-          scrollHeight <= clientHeight + 1 &&
-          whiteSpace === "normal" &&
-          textOverflow === "clip",
-        )).toBe(true);
+        expect(
+          productionLabels.every(
+            ({
+              text,
+              clientWidth,
+              scrollWidth,
+              clientHeight,
+              scrollHeight,
+              whiteSpace,
+              textOverflow,
+            }) =>
+              text.length > 0 &&
+              scrollWidth <= clientWidth + 1 &&
+              scrollHeight <= clientHeight + 1 &&
+              whiteSpace === "normal" &&
+              textOverflow === "clip",
+          ),
+        ).toBe(true);
       } finally {
         await viewportPage.close();
       }
@@ -928,7 +1075,9 @@ test.describe("mobile-first layouts", () => {
     await expect(page.getByRole("button", { name: "Collapse mission directive" })).toHaveCount(0);
   });
 
-  test("places the mobile directive to the right of seed and operation metadata", async ({ page }) => {
+  test("places the mobile directive to the right of seed and operation metadata", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/play?seed=0421&mission=0");
     await waitForBattlefield(page);
@@ -948,7 +1097,8 @@ test.describe("mobile-first layouts", () => {
       return {
         directiveTop: directiveBounds.top - statusBounds.top,
         statusPaddingTop: Number.parseFloat(style.paddingTop),
-        metadataLineOffset: levelText.getBoundingClientRect().top - seed.getBoundingClientRect().top,
+        metadataLineOffset:
+          levelText.getBoundingClientRect().top - seed.getBoundingClientRect().top,
         operationTop: operationBounds.top - statusBounds.top,
         operationRight: operationBounds.right,
         directiveLeft: directiveBounds.left,
@@ -970,7 +1120,9 @@ test.describe("mobile-first layouts", () => {
     await dispatchTouch(page, "pointerdown", yard);
     await dispatchTouch(page, "pointerup", yard);
     await page.getByTestId("mobile-command-toggle").click();
-    await expect(page.getByTestId("command-sidebar").getByRole("tab", { name: "Construction" })).toBeVisible();
+    await expect(
+      page.getByTestId("command-sidebar").getByRole("tab", { name: "Construction" }),
+    ).toBeVisible();
   });
 
   test("supports touch panning and direct commands for a selected unit", async ({ page }) => {
@@ -998,7 +1150,9 @@ test.describe("mobile-first layouts", () => {
     await dispatchTouch(page, "pointerup", orderPoint);
     // Ground commands for combat units are attack-move orders so they keep
     // advancing while engaging threats along the route.
-    await expect.poll(() => persistedUnitOrder(page, infantryEntity.id)).toMatchObject({ orderMode: "attackMove" });
+    await expect
+      .poll(() => persistedUnitOrder(page, infantryEntity.id))
+      .toMatchObject({ orderMode: "attackMove" });
   });
 
   test("uses two fingers for marquee selection instead of camera zoom", async ({ page }) => {
@@ -1025,7 +1179,9 @@ test.describe("mobile-first layouts", () => {
     await expect(page.getByTestId("selected-panel")).toContainText("Health");
   });
 
-  test("keeps tutorial controls above the battlefield and reachable on small phones", async ({ page }) => {
+  test("keeps tutorial controls above the battlefield and reachable on small phones", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto("/tutorial");
     await waitForBattlefield(page);
@@ -1055,16 +1211,19 @@ test.describe("mobile-first layouts", () => {
     await expect(page.getByTestId("campaign-archive")).toBeVisible();
     await expect(page.getByRole("button", { name: "IMPORT SAVE" })).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
-    const archiveScrollContainers = await page.getByTestId("campaign-archive").evaluate((element) => {
-      const containers: string[] = [];
-      let current: Element | null = element;
-      while (current) {
-        const overflowY = window.getComputedStyle(current).overflowY;
-        if (overflowY === "auto" || overflowY === "scroll") containers.push(current.tagName.toLowerCase());
-        current = current.parentElement;
-      }
-      return containers;
-    });
+    const archiveScrollContainers = await page
+      .getByTestId("campaign-archive")
+      .evaluate((element) => {
+        const containers: string[] = [];
+        let current: Element | null = element;
+        while (current) {
+          const overflowY = window.getComputedStyle(current).overflowY;
+          if (overflowY === "auto" || overflowY === "scroll")
+            containers.push(current.tagName.toLowerCase());
+          current = current.parentElement;
+        }
+        return containers;
+      });
     expect(archiveScrollContainers).toEqual(["div"]);
     await page.getByRole("button", { name: "Return to menu" }).click();
 
@@ -1079,8 +1238,18 @@ test.describe("mobile-first layouts", () => {
       const codeRect = codePane.getBoundingClientRect();
       const infoRect = infoPane.getBoundingClientRect();
       return {
-        code: { top: codeRect.top, bottom: codeRect.bottom, left: codeRect.left, right: codeRect.right },
-        info: { top: infoRect.top, bottom: infoRect.bottom, left: infoRect.left, right: infoRect.right },
+        code: {
+          top: codeRect.top,
+          bottom: codeRect.bottom,
+          left: codeRect.left,
+          right: codeRect.right,
+        },
+        info: {
+          top: infoRect.top,
+          bottom: infoRect.bottom,
+          left: infoRect.left,
+          right: infoRect.right,
+        },
       };
     });
     expect(mobileCampaignLayout.code.bottom).toBeLessThanOrEqual(mobileCampaignLayout.info.top + 1);
@@ -1088,8 +1257,13 @@ test.describe("mobile-first layouts", () => {
     expect(mobileCampaignLayout.code.right).toBeLessThanOrEqual(320);
     expect(mobileCampaignLayout.info.left).toBeGreaterThanOrEqual(0);
     expect(mobileCampaignLayout.info.right).toBeLessThanOrEqual(320);
-    await page.getByTestId("campaign-info-pane").getByRole("button", { name: "Start" }).scrollIntoViewIfNeeded();
-    await expect(page.getByTestId("campaign-info-pane").getByRole("button", { name: "Start" })).toBeVisible();
+    await page
+      .getByTestId("campaign-info-pane")
+      .getByRole("button", { name: "Start" })
+      .scrollIntoViewIfNeeded();
+    await expect(
+      page.getByTestId("campaign-info-pane").getByRole("button", { name: "Start" }),
+    ).toBeVisible();
 
     await page.goto("/briefing?seed=0421&mission=0");
     await expect(page.getByTestId("briefing-actions")).toBeVisible();
@@ -1136,7 +1310,9 @@ test.describe("mobile-first layouts", () => {
     const shortPhone = await expectWelcomePreviewsBelowMenu(page, { width: 320, height: 568 });
     expect(shortPhone.screen.scrollHeight).toBeGreaterThan(shortPhone.screen.clientHeight);
 
-    const expandedLock = page.locator("[data-testid='menu-signal-overlay'] [data-lock][data-expanded='true']");
+    const expandedLock = page.locator(
+      "[data-testid='menu-signal-overlay'] [data-lock][data-expanded='true']",
+    );
     await expect(expandedLock).toHaveCount(1, { timeout: 10_000 });
     const expandedBounds = await expandedLock.boundingBox();
     expect(expandedBounds).not.toBeNull();
@@ -1159,7 +1335,9 @@ test.describe("mobile-first layouts", () => {
     await expectNoHorizontalOverflow(page);
   });
 
-  test("preserves selection through rotation and cancels the open portrait panel", async ({ page }) => {
+  test("preserves selection through rotation and cancels the open portrait panel", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/play?seed=${String(TEST_SEED).padStart(4, "0")}&mission=0`);
     await waitForBattlefield(page);
@@ -1187,7 +1365,9 @@ test.describe("mobile-first layouts", () => {
     await expect(page.getByTestId("command-sidebar")).not.toBeVisible();
   });
 
-  test("guards browser Back in a live mission and preserves briefing Back destinations", async ({ page }) => {
+  test("guards browser Back in a live mission and preserves briefing Back destinations", async ({
+    page,
+  }) => {
     test.setTimeout(60_000);
 
     await page.setViewportSize({ width: 390, height: 844 });

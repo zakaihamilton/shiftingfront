@@ -14,12 +14,12 @@ export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete
   const autoFollowStoryRef = useRef(true);
   const shownRef = useRef(0);
   const completedRef = useRef(false);
-  const [reducedMotion, setReducedMotion] = useState(() => (
-    typeof window !== "undefined" && (
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-      || readSettings(cachedLocalStorage()).reducedMotion
-    )
-  ));
+  const [reducedMotion, setReducedMotion] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ||
+        readSettings(cachedLocalStorage()).reducedMotion),
+  );
   const totalChars = lines.reduce((n, line) => n + line.text.length, 0);
   const resetKey = `${playId}:${totalChars}`;
   const [activeKey, setActiveKey] = useState(resetKey);
@@ -59,9 +59,10 @@ export function useBriefingTypewriter(lines: readonly BriefingLine[], onComplete
 
   useEffect(() => {
     const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    const update = () => setReducedMotion(
-      (media?.matches ?? false) || readSettings(cachedLocalStorage()).reducedMotion,
-    );
+    const update = () =>
+      setReducedMotion(
+        (media?.matches ?? false) || readSettings(cachedLocalStorage()).reducedMotion,
+      );
     update();
     if (!media) return;
     media.addEventListener("change", update);

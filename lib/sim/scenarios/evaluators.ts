@@ -1,7 +1,7 @@
-import type { Entity, SimState } from "../../types";
-import type { ScenarioProgress } from "./contract";
 import { formatMissionClockFromTicks } from "../../gen/pacing";
+import type { Entity, SimState } from "../../types";
 import { entitiesFor } from "../entities";
+import type { ScenarioProgress } from "./contract";
 import { ensureRescueReturnTracking } from "./rescueExtraction";
 
 export function isEntityAlive(state: SimState, id: number): boolean {
@@ -26,7 +26,10 @@ export type EliminationResult = {
  * Evaluates elimination objectives.
  * Supports explicit target IDs (destroyMarked, sabotage) or entity filter predicates (razeAll, decapitate, annihilate).
  */
-export function evaluateElimination(state: SimState, options: EliminationOptions): EliminationResult {
+export function evaluateElimination(
+  state: SimState,
+  options: EliminationOptions,
+): EliminationResult {
   if (options.targetIds !== undefined) {
     const ids = options.targetIds;
     const defeatedCount = ids.filter((id) => !isEntityAlive(state, id)).length;
@@ -48,7 +51,9 @@ export function evaluateElimination(state: SimState, options: EliminationOptions
   }
 
   if (options.filter) {
-    const living = entitiesFor(state).filter((e) => e.hp > 0 && !e.optionalChallenge && options.filter!(e));
+    const living = entitiesFor(state).filter(
+      (e) => e.hp > 0 && !e.optionalChallenge && options.filter!(e),
+    );
     const isComplete = living.length === 0;
     return {
       isComplete,
@@ -79,7 +84,8 @@ export function evaluateExtractionEscort(state: SimState): ExtractionEscortResul
 
   let isComplete = false;
   if (kind === "rescue" && runtime?.rescuedIds !== undefined) {
-    isComplete = runtime.rescuedIds.length >= (state.win.targetCount ?? runtime.required ?? Infinity);
+    isComplete =
+      runtime.rescuedIds.length >= (state.win.targetCount ?? runtime.required ?? Infinity);
   } else {
     isComplete = current >= (state.win.targetCount ?? runtime?.required ?? Infinity);
   }
@@ -90,16 +96,22 @@ export function evaluateExtractionEscort(state: SimState): ExtractionEscortResul
       isTargetLost = runtime.targetIds.some((id) => !isEntityAlive(state, id));
     } else if (kind === "extraction") {
       const extracted = new Set(runtime.extractedIds ?? []);
-      isTargetLost = runtime.targetIds.some((id) => !extracted.has(id) && !isEntityAlive(state, id));
+      isTargetLost = runtime.targetIds.some(
+        (id) => !extracted.has(id) && !isEntityAlive(state, id),
+      );
     } else if (kind === "rescue") {
       // Rescue runs track contacted and rescued IDs explicitly.
       if (runtime.contactedIds !== undefined || runtime.rescuedIds !== undefined) {
         const rescued = new Set(runtime.rescuedIds ?? []);
-        isTargetLost = runtime.targetIds.some((id) => !rescued.has(id) && !isEntityAlive(state, id));
+        isTargetLost = runtime.targetIds.some(
+          (id) => !rescued.has(id) && !isEntityAlive(state, id),
+        );
       } else {
         const required = state.win.targetCount ?? runtime.required ?? runtime.targetIds.length;
         const remaining = runtime.targetIds.filter((id) =>
-          entitiesFor(state).some((entity) => entity.id === id && entity.hp > 0 && entity.neutral === true),
+          entitiesFor(state).some(
+            (entity) => entity.id === id && entity.hp > 0 && entity.neutral === true,
+          ),
         ).length;
         isTargetLost = runtime.rescued + remaining < required;
       }
@@ -110,9 +122,10 @@ export function evaluateExtractionEscort(state: SimState): ExtractionEscortResul
   if (kind === "escort") {
     label = `Convoy ${current} / ${target}`;
   } else if (kind === "rescue") {
-    label = runtime?.contactedIds !== undefined || runtime?.rescuedIds !== undefined
-      ? `Contacted ${runtime?.contactedIds?.length ?? 0} · Returned ${current} / ${target}`
-      : `Rescued ${current} / ${target}`;
+    label =
+      runtime?.contactedIds !== undefined || runtime?.rescuedIds !== undefined
+        ? `Contacted ${runtime?.contactedIds?.length ?? 0} · Returned ${current} / ${target}`
+        : `Rescued ${current} / ${target}`;
   }
 
   return {
@@ -132,7 +145,9 @@ export type ZoneHoldResult = {
  */
 export function evaluateZoneHold(state: SimState): ZoneHoldResult {
   const t = state.win.ticks;
-  const playerCy = entitiesFor(state).some((e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0);
+  const playerCy = entitiesFor(state).some(
+    (e) => e.owner === 0 && e.kind === "constructionYard" && e.hp > 0,
+  );
   if (t === undefined) {
     return {
       isComplete: false,

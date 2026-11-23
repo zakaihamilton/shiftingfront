@@ -1,9 +1,21 @@
 import { useEffect } from "react";
-import { TUTORIAL_MUSIC_MISSION, pauseMusic, setMusicCue, setMusicDucked } from "@/lib/audio/music";
+import { pauseMusic, setMusicCue, setMusicDucked, TUTORIAL_MUSIC_MISSION } from "@/lib/audio/music";
 import { cancelVoiceSpeech } from "@/lib/audio/voice";
 import type { SimState } from "@/lib/types";
 
-export function useGameAudioLifecycle({ seed, missionIndex, tutorial, paused, result }: { seed: number; missionIndex: number; tutorial: boolean; paused: boolean; result: SimState["result"] }) {
+export function useGameAudioLifecycle({
+  seed,
+  missionIndex,
+  tutorial,
+  paused,
+  result,
+}: {
+  seed: number;
+  missionIndex: number;
+  tutorial: boolean;
+  paused: boolean;
+  result: SimState["result"];
+}) {
   useEffect(() => {
     if (paused) {
       pauseMusic();
@@ -29,9 +41,12 @@ export function useGameAudioLifecycle({ seed, missionIndex, tutorial, paused, re
     setMusicCue("mission", seed, missionIndex);
   }, [missionIndex, paused, result, seed, tutorial]);
 
-  useEffect(() => () => {
-    setMusicDucked(false);
-    pauseMusic();
-    cancelVoiceSpeech();
-  }, []);
+  useEffect(
+    () => () => {
+      setMusicDucked(false);
+      pauseMusic();
+      cancelVoiceSpeech();
+    },
+    [],
+  );
 }

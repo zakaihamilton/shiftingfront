@@ -1,6 +1,6 @@
+import { lumaBuffer } from "./luma";
 import type { PortraitClip } from "./types";
 import { PORTRAIT_MOUTH_CLIP } from "./types";
-import { lumaBuffer } from "./luma";
 
 export function detectPortraitMouthClip(
   rgba: ArrayLike<number>,

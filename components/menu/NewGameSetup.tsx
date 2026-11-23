@@ -1,27 +1,40 @@
+import type { CSSProperties, RefObject } from "react";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
 import { biomeLabel } from "@/lib/gen/names";
 import { biomeArt } from "@/lib/gen/visualAssets";
-import { SHORTCUT } from "@/lib/ui/shortcuts";
 import type { Campaign } from "@/lib/types";
-import type { CSSProperties, RefObject } from "react";
-import { SeedEntry } from "./SeedEntry";
+import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { weeklySeed } from "./menuLaunch";
-import { useWeeklyCountdown } from "./useWeeklyCountdown";
 import styles from "./NewGameSetup.module.css";
+import { SeedEntry } from "./SeedEntry";
+import { useWeeklyCountdown } from "./useWeeklyCountdown";
 
 const LONG_FACTION_CHARS = 24;
 
-export function CampaignPreviewPane({ preview, onLaunch, className }: { preview: Campaign | null; onLaunch?: () => void; className?: string }) {
+export function CampaignPreviewPane({
+  preview,
+  onLaunch,
+  className,
+}: {
+  preview: Campaign | null;
+  onLaunch?: () => void;
+  className?: string;
+}) {
   const factionLine = preview ? `${preview.factions[0].name} vs ${preview.factions[1].name}` : "";
   const wideFactions = factionLine.length > LONG_FACTION_CHARS;
   const worldContext = preview ? `${biomeLabel(preview.world.biome)} · ${preview.world.era}` : "";
-  const conflictLine = preview ? `${preview.world.conflict.charAt(0).toUpperCase() + preview.world.conflict.slice(1)}.` : "";
+  const conflictLine = preview
+    ? `${preview.world.conflict.charAt(0).toUpperCase() + preview.world.conflict.slice(1)}.`
+    : "";
 
   return (
-    <div className={styles.infoPane + (className ? ` ${className}` : "")} data-testid="campaign-info-pane">
+    <div
+      className={styles.infoPane + (className ? ` ${className}` : "")}
+      data-testid="campaign-info-pane"
+    >
       {preview ? (
         <>
           <div
@@ -36,7 +49,11 @@ export function CampaignPreviewPane({ preview, onLaunch, className }: { preview:
             <h3 className={styles.campaignTitle}>{preview.world.name}</h3>
             <p className={styles.worldContext}>{worldContext}</p>
             <p className={styles.conflict}>{conflictLine}</p>
-            <div className={styles.factionMatchup} data-wide={wideFactions ? "true" : undefined} data-testid="campaign-details">
+            <div
+              className={styles.factionMatchup}
+              data-wide={wideFactions ? "true" : undefined}
+              data-testid="campaign-details"
+            >
               <div className={styles.faction}>
                 <span className={styles.detailLabel}>You</span>
                 <strong>{preview.factions[0].name}</strong>
@@ -48,11 +65,22 @@ export function CampaignPreviewPane({ preview, onLaunch, className }: { preview:
               </div>
             </div>
             <div className={styles.infoMeta}>
-              <div><span className={styles.detailLabel}>Commander</span><strong>{preview.characters.commander.name}</strong></div>
-              <div><span className={styles.detailLabel}>Operations</span><strong>6 operations</strong></div>
+              <div>
+                <span className={styles.detailLabel}>Commander</span>
+                <strong>{preview.characters.commander.name}</strong>
+              </div>
+              <div>
+                <span className={styles.detailLabel}>Operations</span>
+                <strong>6 operations</strong>
+              </div>
             </div>
             {onLaunch ? (
-              <ConsoleButton className={styles.start} tooltip="Begin the first briefing" shortcut={SHORTCUT.deploy} onClick={onLaunch}>
+              <ConsoleButton
+                className={styles.start}
+                tooltip="Begin the first briefing"
+                shortcut={SHORTCUT.deploy}
+                onClick={onLaunch}
+              >
                 Start
               </ConsoleButton>
             ) : null}
@@ -60,7 +88,9 @@ export function CampaignPreviewPane({ preview, onLaunch, className }: { preview:
         </>
       ) : (
         <div className={styles.emptyInfo} role="status">
-          <div className={styles.emptyMark} aria-hidden="true">+</div>
+          <div className={styles.emptyMark} aria-hidden="true">
+            +
+          </div>
           <ConsoleLabel>Campaign preview</ConsoleLabel>
           <h3 className={styles.emptyTitle}>Choose a code</h3>
           <p>Enter four digits to reveal your campaign.</p>
@@ -101,7 +131,16 @@ export function NewGameSetup({
   const dialogRef = useModalFocus(true);
   const isSynchronized = code === weeklySeed();
   return (
-    <MetalPanel ref={dialogRef} tabIndex={-1} as="section" className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="new-game-title" data-testid="deploy-screen">
+    <MetalPanel
+      ref={dialogRef}
+      tabIndex={-1}
+      as="section"
+      className={styles.dialog}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-game-title"
+      data-testid="deploy-screen"
+    >
       <div className={styles.codePane} data-testid="campaign-code-pane">
         <div className={styles.paneTopline}>
           <ConsoleLabel>{isSynchronized ? "Weekly" : "Custom"}</ConsoleLabel>
@@ -113,7 +152,9 @@ export function NewGameSetup({
             {isSynchronized ? `Current campaign expires in ${countdown}` : "4 digits"}
           </span>
         </div>
-        <h2 id="new-game-title" className={styles.title}>New campaign</h2>
+        <h2 id="new-game-title" className={styles.title}>
+          New campaign
+        </h2>
         <p className={styles.copy}>Enter four digits. Set the front.</p>
         <div className={styles.codeSection}>
           <ConsoleLabel className={styles.seedLabel}>Campaign code</ConsoleLabel>
@@ -127,7 +168,7 @@ export function NewGameSetup({
             onRandomize={onRandomize}
             onThisWeek={onThisWeek}
             thisWeekDisabled={isSynchronized}
-            trailingAction={(
+            trailingAction={
               <ConsoleButton
                 muted
                 className={styles.copyLink}
@@ -139,18 +180,45 @@ export function NewGameSetup({
                 aria-live="polite"
                 data-testid="copy-campaign-link"
               >
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  aria-hidden="true"
+                  focusable="false"
+                >
                   {copied ? (
-                    <path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="square" strokeLinejoin="miter" />
+                    <path
+                      d="m5 12 4 4L19 6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                    />
                   ) : (
                     <>
-                      <rect x="8" y="8" width="11" height="12" fill="none" stroke="currentColor" strokeWidth="1.7" />
-                      <path d="M16 8V5H5v12h3" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="square" />
+                      <rect
+                        x="8"
+                        y="8"
+                        width="11"
+                        height="12"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                      />
+                      <path
+                        d="M16 8V5H5v12h3"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinecap="square"
+                      />
                     </>
                   )}
                 </svg>
               </ConsoleButton>
-            )}
+            }
             onLaunch={onLaunch}
           />
         </div>

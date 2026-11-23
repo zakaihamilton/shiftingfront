@@ -1,5 +1,4 @@
 import type { SimState, Vec2 } from "../types";
-import { inBounds, staticNavigationFor, type StaticNavigation } from "./world";
 import {
   navigationEdgeReserved,
   navigationStepAllowed,
@@ -8,7 +7,8 @@ import {
   stepFromPreviousCell,
 } from "./navigation/grid";
 import { MinHeap } from "./navigation/heap";
-import { vehicleMovementCostsFor, type NavigationMobility } from "./terrainRules";
+import { type NavigationMobility, vehicleMovementCostsFor } from "./terrainRules";
+import { inBounds, type StaticNavigation, staticNavigationFor } from "./world";
 
 const UNREACHABLE = -1;
 const UNREACHABLE_SORT = 1_000_000_000;
@@ -77,7 +77,11 @@ function rememberField(fields: Map<string, FlowField>, key: string, field: FlowF
   }
 }
 
-export function flowFieldFor(state: SimState, requestedGoal: Vec2, mobility: NavigationMobility = "foot"): FlowField {
+export function flowFieldFor(
+  state: SimState,
+  requestedGoal: Vec2,
+  mobility: NavigationMobility = "foot",
+): FlowField {
   const revision = state.navigationRevision ?? 0;
   const goal = { x: Math.round(requestedGoal.x), y: Math.round(requestedGoal.y) };
   const navigation = staticNavigationFor(state);
@@ -107,18 +111,30 @@ export function flowFieldFor(state: SimState, requestedGoal: Vec2, mobility: Nav
  * can therefore fan out across its arrival area instead of funneling through
  * the single cell that was clicked.
  */
-export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2[], mobility: NavigationMobility = "foot"): FlowField {
+export function flowFieldForGoals(
+  state: SimState,
+  requestedGoals: readonly Vec2[],
+  mobility: NavigationMobility = "foot",
+): FlowField {
   const revision = state.navigationRevision ?? 0;
   const goals = requestedGoals
     .map((goal) => ({ x: Math.round(goal.x), y: Math.round(goal.y) }))
     .filter((goal) => inBounds(state, goal.x, goal.y))
     .sort((a, b) => a.y - b.y || a.x - b.x)
-    .filter((goal, index, all) => index === 0 || goal.x !== all[index - 1]!.x || goal.y !== all[index - 1]!.y);
+    .filter(
+      (goal, index, all) =>
+        index === 0 || goal.x !== all[index - 1]!.x || goal.y !== all[index - 1]!.y,
+    );
   const goal = goals[0] ?? { x: 0, y: 0 };
   const navigation = staticNavigationFor(state);
-  const key = `${navigation.geometryKey}:${mobility === "vehicle" ? `${navigation.featureKey}:vehicle` : "foot"}:${goals.length === 1
-    ? `${goal.x}:${goal.y}`
-    : `goals:${goals.map((candidate) => `${candidate.x},${candidate.y}`).sort().join(";")}`}`;
+  const key = `${navigation.geometryKey}:${mobility === "vehicle" ? `${navigation.featureKey}:vehicle` : "foot"}:${
+    goals.length === 1
+      ? `${goal.x}:${goal.y}`
+      : `goals:${goals
+          .map((candidate) => `${candidate.x},${candidate.y}`)
+          .sort()
+          .join(";")}`
+  }`;
   const fields = fieldsFor(state);
   const cached = cachedField(fields, key);
   if (cached) return cached;
@@ -128,7 +144,12 @@ export function flowFieldForGoals(state: SimState, requestedGoals: readonly Vec2
     rememberField(fields, key, shared);
     return shared;
   }
-  const field = buildMultiGoalFlowField(state, goals.length > 0 ? goals : [goal], revision, mobility);
+  const field = buildMultiGoalFlowField(
+    state,
+    goals.length > 0 ? goals : [goal],
+    revision,
+    mobility,
+  );
   rememberField(fields, key, field);
   sharedFields.set(key, field);
   while (sharedFields.size > SHARED_FLOW_FIELD_LIMIT) {
@@ -208,7 +229,10 @@ export function flowCellTaken(
 }
 
 /** Static terrain reachability from one or more currently occupied unit cells. */
-export function terrainReachabilityForSources(state: SimState, sources: readonly Vec2[]): Int32Array {
+export function terrainReachabilityForSources(
+  state: SimState,
+  sources: readonly Vec2[],
+): Int32Array {
   const navigation = staticNavigationFor(state);
   const distances = new Int32Array(state.width * state.height);
   distances.fill(UNREACHABLE);
@@ -243,7 +267,12 @@ export function terrainReachabilityForSources(state: SimState, sources: readonly
   return distances;
 }
 
-export function flowStep(field: FlowField, x: number, y: number, opts?: FlowStepOptions): Vec2 | undefined {
+export function flowStep(
+  field: FlowField,
+  x: number,
+  y: number,
+  opts?: FlowStepOptions,
+): Vec2 | undefined {
   if (opts?.occupancy) return occupancyAwareFlowStep(field, x, y, opts);
   return greedyFlowStep(field, x, y);
 }
@@ -270,7 +299,12 @@ function greedyFlowStep(field: FlowField, x: number, y: number): Vec2 | undefine
   return best;
 }
 
-function occupancyAwareFlowStep(field: FlowField, x: number, y: number, opts: FlowStepOptions): Vec2 | undefined {
+function occupancyAwareFlowStep(
+  field: FlowField,
+  x: number,
+  y: number,
+  opts: FlowStepOptions,
+): Vec2 | undefined {
   const cx = Math.round(x);
   const cy = Math.round(y);
   if (cx < 0 || cy < 0 || cx >= field.width || cy >= field.height) return undefined;
@@ -297,17 +331,43 @@ function occupancyAwareFlowStep(field: FlowField, x: number, y: number, opts: Fl
     const distance = field.distance[ny * field.width + nx] ?? UNREACHABLE;
     if (distance < 0) continue;
     if (state && !flowTerrainStepOk(state, cx, cy, nx, ny)) continue;
-    if (state && navigationEdgeReserved(edgeReservations, state.width, state.height, cx, cy, nx, ny, ignoreId)) continue;
-    if (distance >= 0 && direction.x !== 0 && direction.y !== 0 &&
-      (flowCellTaken(occupancy, reserved, field.width, cx + direction.x, cy, ignoreId, opts.vacating) ||
-        flowCellTaken(occupancy, reserved, field.width, cx, cy + direction.y, ignoreId, opts.vacating))) continue;
+    if (
+      state &&
+      navigationEdgeReserved(edgeReservations, state.width, state.height, cx, cy, nx, ny, ignoreId)
+    )
+      continue;
+    if (
+      distance >= 0 &&
+      direction.x !== 0 &&
+      direction.y !== 0 &&
+      (flowCellTaken(
+        occupancy,
+        reserved,
+        field.width,
+        cx + direction.x,
+        cy,
+        ignoreId,
+        opts.vacating,
+      ) ||
+        flowCellTaken(
+          occupancy,
+          reserved,
+          field.width,
+          cx,
+          cy + direction.y,
+          ignoreId,
+          opts.vacating,
+        ))
+    )
+      continue;
     const free = !flowCellTaken(occupancy, reserved, field.width, nx, ny, ignoreId, opts.vacating);
     let tier: number;
     if (free && distance < currentDistance) tier = 0;
     else if (free && allowNonImproving) tier = 1;
     else if (distance < currentDistance) tier = 2;
     else continue;
-    const continues = previous !== undefined && direction.x === previous.x && direction.y === previous.y;
+    const continues =
+      previous !== undefined && direction.x === previous.x && direction.y === previous.y;
 
     const betterTier = tier < bestTier;
     const betterDistance = tier === bestTier && distance < bestDistance - 1e-9;
@@ -322,15 +382,27 @@ function occupancyAwareFlowStep(field: FlowField, x: number, y: number, opts: Fl
   return best;
 }
 
-function flowTerrainStepOk(state: SimState, x0: number, y0: number, x1: number, y1: number): boolean {
+function flowTerrainStepOk(
+  state: SimState,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): boolean {
   return navigationStepAllowed(staticNavigationFor(state), x0, y0, x1, y1);
 }
 
-function buildFlowField(state: SimState, requestedGoal: Vec2, revision: number, mobility: NavigationMobility): FlowField {
+function buildFlowField(
+  state: SimState,
+  requestedGoal: Vec2,
+  revision: number,
+  mobility: NavigationMobility,
+): FlowField {
   const width = state.width;
   const height = state.height;
   const navigation = staticNavigationFor(state);
-  const passable = (x: number, y: number) => inBounds(state, x, y) && navigation.walkable[y * width + x] === 1;
+  const passable = (x: number, y: number) =>
+    inBounds(state, x, y) && navigation.walkable[y * width + x] === 1;
   const origin = flowOrigin(state, requestedGoal, passable);
   if (!origin) {
     const distance = new Float64Array(width * height);
@@ -340,11 +412,17 @@ function buildFlowField(state: SimState, requestedGoal: Vec2, revision: number, 
   return buildWeightedFlowField(state, [origin], revision, mobility);
 }
 
-function buildMultiGoalFlowField(state: SimState, requestedGoals: readonly Vec2[], revision: number, mobility: NavigationMobility): FlowField {
+function buildMultiGoalFlowField(
+  state: SimState,
+  requestedGoals: readonly Vec2[],
+  revision: number,
+  mobility: NavigationMobility,
+): FlowField {
   const width = state.width;
   const height = state.height;
   const navigation = staticNavigationFor(state);
-  const passable = (x: number, y: number) => inBounds(state, x, y) && navigation.walkable[y * width + x] === 1;
+  const passable = (x: number, y: number) =>
+    inBounds(state, x, y) && navigation.walkable[y * width + x] === 1;
   const origins = uniqueFlowOrigins(state, requestedGoals, passable);
   if (origins.length === 0) {
     const distance = new Float64Array(width * height);
@@ -354,7 +432,12 @@ function buildMultiGoalFlowField(state: SimState, requestedGoals: readonly Vec2[
   return buildWeightedFlowField(state, origins, revision, mobility);
 }
 
-function buildWeightedFlowField(state: SimState, origins: readonly Vec2[], revision: number, mobility: NavigationMobility): FlowField {
+function buildWeightedFlowField(
+  state: SimState,
+  origins: readonly Vec2[],
+  revision: number,
+  mobility: NavigationMobility,
+): FlowField {
   const width = state.width;
   const height = state.height;
   const distance = new Float64Array(width * height);
@@ -394,12 +477,20 @@ function buildWeightedFlowField(state: SimState, origins: readonly Vec2[], revis
         if (dx === 1 && dy === 1) {
           const horizontalKey = currentY * width + nextX;
           const verticalKey = nextY * width + currentX;
-          if (walkable[horizontalKey] !== 1 || Math.abs((heights[horizontalKey] ?? 0) - currentHeight) > 1) continue;
-          if (walkable[verticalKey] !== 1 || Math.abs((heights[verticalKey] ?? 0) - currentHeight) > 1) continue;
+          if (
+            walkable[horizontalKey] !== 1 ||
+            Math.abs((heights[horizontalKey] ?? 0) - currentHeight) > 1
+          )
+            continue;
+          if (
+            walkable[verticalKey] !== 1 ||
+            Math.abs((heights[verticalKey] ?? 0) - currentHeight) > 1
+          )
+            continue;
         }
         // Flow search runs from the goal backward, so the forward-route
         // destination for this reversed edge is the current cell.
-        const movementCost = mobility === "vehicle" ? vehicleMovementCosts?.[currentKey] ?? 1 : 1;
+        const movementCost = mobility === "vehicle" ? (vehicleMovementCosts?.[currentKey] ?? 1) : 1;
         const nextDistance = open.g + (dx === 1 && dy === 1 ? Math.SQRT2 : 1) * movementCost;
         if (distance[nextKey] >= 0 && nextDistance >= distance[nextKey]! - 1e-9) continue;
         distance[nextKey] = nextDistance;
@@ -432,7 +523,11 @@ function uniqueFlowOrigins(
   return origins;
 }
 
-function flowOrigin(state: SimState, requestedGoal: Vec2, passable: (x: number, y: number) => boolean): Vec2 | undefined {
+function flowOrigin(
+  state: SimState,
+  requestedGoal: Vec2,
+  passable: (x: number, y: number) => boolean,
+): Vec2 | undefined {
   if (state.width <= 0 || state.height <= 0) return undefined;
   const x = Math.max(0, Math.min(state.width - 1, Math.round(requestedGoal.x)));
   const y = Math.max(0, Math.min(state.height - 1, Math.round(requestedGoal.y)));

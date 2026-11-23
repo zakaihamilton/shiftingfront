@@ -49,7 +49,12 @@ export function turretRasterKey(
   return `${modelKind}:${turretYawStep(yaw)}:${turretRecoilStep(recoil)}:${turretPitchStep(barrelPitch)}:${turretZoomStep(zoom)}:${pal}`;
 }
 
-export function quantizedTurretPose(yaw: number, recoil: number, zoom: number, barrelPitch = 0): {
+export function quantizedTurretPose(
+  yaw: number,
+  recoil: number,
+  zoom: number,
+  barrelPitch = 0,
+): {
   yaw: number;
   recoil: number;
   barrelPitch: number;

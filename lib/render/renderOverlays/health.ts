@@ -1,6 +1,6 @@
 import { isSupportUnit } from "../../catalog";
-import { isUnitEntity, type Entity } from "../../types";
 import type { ColorblindMode } from "../../persist/settings";
+import { type Entity, isUnitEntity } from "../../types";
 
 /** Dark steel housing, matching `--chrome-void`. */
 const METER_HOUSING = "rgba(5, 8, 14, 0.92)";
@@ -19,7 +19,10 @@ export function entityHasWorldHealthMeter(
   e: Pick<Entity, "class" | "kind">,
   isRepairing = false,
 ): boolean {
-  return e.class === "unit" || (e.class === "building" && (e.kind === "turret" || e.kind === "antiAirTurret" || isRepairing));
+  return (
+    e.class === "unit" ||
+    (e.class === "building" && (e.kind === "turret" || e.kind === "antiAirTurret" || isRepairing))
+  );
 }
 
 export function entityHasWorldAmmoMeter(e: Pick<Entity, "class" | "kind">): boolean {
@@ -55,9 +58,10 @@ export function worldHealthMeterLayout(
   const centerX = Math.round(dx + (spec.w * z) / 2);
   // Turret sprites include empty sky padding, so dy is far above the 3D cannon.
   // Sit the meter just above the projected turret head (antenna tip ~ tileY - 3z).
-  const meterY = e.kind === "turret" || e.kind === "antiAirTurret"
-    ? Math.round(tileScreenY - 10 * z)
-    : Math.round(dy - 7 * z);
+  const meterY =
+    e.kind === "turret" || e.kind === "antiAirTurret"
+      ? Math.round(tileScreenY - 10 * z)
+      : Math.round(dy - 7 * z);
   return { barW, meterY, centerX };
 }
 

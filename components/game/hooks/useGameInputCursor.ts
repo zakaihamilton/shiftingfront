@@ -1,7 +1,19 @@
-import { canvasViewport } from "@/lib/render/canvasViewport";
-import { useCallback, useEffect, useLayoutEffect, useRef, type MutableRefObject, type RefObject } from "react";
-import { cameraPanBounds, panAvailability, panCamera, type PanAvailability } from "@/lib/render/camera";
+import {
+  type MutableRefObject,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import type { Camera } from "@/lib/iso";
+import {
+  cameraPanBounds,
+  type PanAvailability,
+  panAvailability,
+  panCamera,
+} from "@/lib/render/camera";
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import type { BuildingKind, SimState } from "@/lib/types";
 import { battlefieldCursor } from "@/lib/ui/battlefieldCursor";
 import { entityAt } from "./gameInputOrders";
@@ -34,57 +46,84 @@ export function useGameInputCursor(options: {
   setPanAvailability: (availability: PanAvailability) => void;
 }) {
   const {
-    stateRef, camRef, canvasRef, hoverRef, selectedRef, placeRef, repairRef, sellRef,
-    cancelCameraFocus, pausedRef, panAvailRef, setPanAvailability,
+    stateRef,
+    camRef,
+    canvasRef,
+    hoverRef,
+    selectedRef,
+    placeRef,
+    repairRef,
+    sellRef,
+    cancelCameraFocus,
+    pausedRef,
+    panAvailRef,
+    setPanAvailability,
   } = options;
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
 
-  const syncCursor = useCallback((canvas?: HTMLCanvasElement | null) => {
-    if (canvas) canvasElRef.current = canvas;
-    const target = canvasElRef.current;
-    if (!target?.style) return;
-    const state = stateRef.current;
-    if (!state) {
-      target.style.cursor = "";
-      return;
-    }
-    const tile = hoverRef.current;
-    target.style.cursor = battlefieldCursor({
-      state,
-      hoverTile: tile,
-      hoverEntity: tile ? entityAt(state, tile.x, tile.y) : undefined,
-      selectedIds: [...selectedRef.current],
-      placeKind: placeRef.current,
-      repairMode: repairRef.current,
-      sellMode: sellRef.current,
-    });
-  }, [hoverRef, placeRef, repairRef, selectedRef, sellRef, stateRef]);
+  const syncCursor = useCallback(
+    (canvas?: HTMLCanvasElement | null) => {
+      if (canvas) canvasElRef.current = canvas;
+      const target = canvasElRef.current;
+      if (!target?.style) return;
+      const state = stateRef.current;
+      if (!state) {
+        target.style.cursor = "";
+        return;
+      }
+      const tile = hoverRef.current;
+      target.style.cursor = battlefieldCursor({
+        state,
+        hoverTile: tile,
+        hoverEntity: tile ? entityAt(state, tile.x, tile.y) : undefined,
+        selectedIds: [...selectedRef.current],
+        placeKind: placeRef.current,
+        repairMode: repairRef.current,
+        sellMode: sellRef.current,
+      });
+    },
+    [hoverRef, placeRef, repairRef, selectedRef, sellRef, stateRef],
+  );
 
   useLayoutEffect(() => {
     syncCursor();
   }, [options.placeKind, options.repairMode, options.sellMode, options.selectedIds, syncCursor]);
 
-  const onWheel = useCallback((event: WheelEvent) => {
-    if (event.ctrlKey || event.metaKey) return;
-    event.preventDefault();
+  const onWheel = useCallback(
+    (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
 
-    const canvas = canvasRef.current;
-    const state = stateRef.current;
-    if (!canvas || pausedRef.current || state.result !== "playing") return;
+      const canvas = canvasRef.current;
+      const state = stateRef.current;
+      if (!canvas || pausedRef.current || state.result !== "playing") return;
 
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
-    const deltaX = wheelDeltaInPixels(event.deltaX, event.deltaMode, rect.width) * canvasViewport(canvas).width / rect.width;
-    const deltaY = wheelDeltaInPixels(event.deltaY, event.deltaMode, rect.height) * canvasViewport(canvas).height / rect.height;
-    if (deltaX === 0 && deltaY === 0) return;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const deltaX =
+        (wheelDeltaInPixels(event.deltaX, event.deltaMode, rect.width) *
+          canvasViewport(canvas).width) /
+        rect.width;
+      const deltaY =
+        (wheelDeltaInPixels(event.deltaY, event.deltaMode, rect.height) *
+          canvasViewport(canvas).height) /
+        rect.height;
+      if (deltaX === 0 && deltaY === 0) return;
 
-    cancelCameraFocus();
-    const bounds = cameraPanBounds(state.width, state.height, canvasViewport(canvas).width, canvasViewport(canvas).height);
-    panCamera(camRef.current, { space: "screen", dx: -deltaX, dy: -deltaY }, bounds);
-    const nextAvailability = panAvailability(camRef.current, bounds);
-    panAvailRef.current = nextAvailability;
-    setPanAvailability(nextAvailability);
-  }, [camRef, cancelCameraFocus, canvasRef, panAvailRef, pausedRef, setPanAvailability, stateRef]);
+      cancelCameraFocus();
+      const bounds = cameraPanBounds(
+        state.width,
+        state.height,
+        canvasViewport(canvas).width,
+        canvasViewport(canvas).height,
+      );
+      panCamera(camRef.current, { space: "screen", dx: -deltaX, dy: -deltaY }, bounds);
+      const nextAvailability = panAvailability(camRef.current, bounds);
+      panAvailRef.current = nextAvailability;
+      setPanAvailability(nextAvailability);
+    },
+    [camRef, cancelCameraFocus, canvasRef, panAvailRef, pausedRef, setPanAvailability, stateRef],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;

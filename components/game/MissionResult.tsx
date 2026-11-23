@@ -5,14 +5,18 @@ import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
 import { StatusBadge } from "@/components/ui/Dossier";
 import { MetalPanel } from "@/components/ui/MetalPanel";
 import { useModalFocus } from "@/components/ui/useModalFocus";
-import { biomeArt, RASTER_ART } from "@/lib/gen/visualAssets";
 import { biomeLabel } from "@/lib/gen/names";
+import { biomeArt, RASTER_ART } from "@/lib/gen/visualAssets";
 import { formatSeed } from "@/lib/seed/rng";
 import { missionDebrief } from "@/lib/sim/debrief";
 import type { SimState } from "@/lib/types";
-import { MissionBattleRecord, MissionForceDisposition, MissionOutcome } from "./MissionResultSections";
-import { MissionResultActions } from "./MissionResultActions";
 import styles from "./MissionResult.module.css";
+import { MissionResultActions } from "./MissionResultActions";
+import {
+  MissionBattleRecord,
+  MissionForceDisposition,
+  MissionOutcome,
+} from "./MissionResultSections";
 
 export function MissionResult({
   state,
@@ -31,12 +35,19 @@ export function MissionResult({
   if (state.result === "playing") return null;
   const draw = state.multiplayer && state.winner === null;
   const outcome = draw ? "draw" : state.result;
-  const winnerFaction = state.winner === undefined || state.winner === null
-    ? undefined
-    : state.factions.find((faction) => faction.id === state.winner);
+  const winnerFaction =
+    state.winner === undefined || state.winner === null
+      ? undefined
+      : state.factions.find((faction) => faction.id === state.winner);
   const resultTitle = state.multiplayer
-    ? draw ? "Draw" : state.result === "won" ? "Skirmish won" : "Skirmish lost"
-    : state.result === "won" ? "Mission complete" : "Mission failed";
+    ? draw
+      ? "Draw"
+      : state.result === "won"
+        ? "Skirmish won"
+        : "Skirmish lost"
+    : state.result === "won"
+      ? "Mission complete"
+      : "Mission failed";
   const debrief = missionDebrief(state);
   const resultTone = draw ? "muted" : state.result === "won" ? "gold" : "alert";
   return (
@@ -46,10 +57,12 @@ export function MissionResult({
       data-result={state.result}
       data-outcome={outcome}
       data-multiplayer={state.multiplayer ? "true" : "false"}
-      style={{
-        "--result-art": `url("${RASTER_ART[state.result === "won" ? "victory" : "defeat"]}")`,
-        "--scene-art": `url("${biomeArt(state.biome)}")`,
-      } as CSSProperties}
+      style={
+        {
+          "--result-art": `url("${RASTER_ART[state.result === "won" ? "victory" : "defeat"]}")`,
+          "--scene-art": `url("${biomeArt(state.biome)}")`,
+        } as CSSProperties
+      }
     >
       <MetalPanel
         ref={dialogRef}
@@ -62,17 +75,29 @@ export function MissionResult({
         <header className={styles.header} data-outcome={outcome}>
           <div className={styles.headerCopy}>
             <div className={styles.headerMeta}>
-              <ConsoleLabel className={styles.headerLabel}>{state.multiplayer ? "Skirmish after-action report" : "Campaign after-action report"}</ConsoleLabel>
+              <ConsoleLabel className={styles.headerLabel}>
+                {state.multiplayer
+                  ? "Skirmish after-action report"
+                  : "Campaign after-action report"}
+              </ConsoleLabel>
               <StatusBadge className={styles.headerBadge} tone={resultTone}>
                 {draw ? "Draw" : state.result === "won" ? "Victory" : "Defeat"}
               </StatusBadge>
             </div>
-            <h2 id="mission-result-title" className={styles.title}>{resultTitle}</h2>
-            <p className={styles.mission}>{state.multiplayer ? state.missionName : `Mission ${state.missionIndex + 1} // ${state.missionName}`}</p>
+            <h2 id="mission-result-title" className={styles.title}>
+              {resultTitle}
+            </h2>
+            <p className={styles.mission}>
+              {state.multiplayer
+                ? state.missionName
+                : `Mission ${state.missionIndex + 1} // ${state.missionName}`}
+            </p>
             <p className={styles.heroOutcome}>{debrief.outcome}</p>
           </div>
           <aside className={styles.headerContext} aria-label="Battle context">
-            <span className={styles.headerSignal} aria-hidden="true">{draw ? "=" : state.result === "won" ? "✓" : "!"}</span>
+            <span className={styles.headerSignal} aria-hidden="true">
+              {draw ? "=" : state.result === "won" ? "✓" : "!"}
+            </span>
             <dl className={styles.contextGrid}>
               <div>
                 <dt>Campaign</dt>
@@ -98,8 +123,16 @@ export function MissionResult({
         </header>
         <section className={styles.resultGrid} aria-label="Mission results">
           <MissionOutcome debrief={debrief} draw={draw} />
-          <MissionBattleRecord debrief={debrief} multiplayer={state.multiplayer === true} />
-          <MissionForceDisposition debrief={debrief} multiplayer={state.multiplayer === true} />
+          <MissionBattleRecord
+            debrief={debrief}
+            multiplayer={state.multiplayer === true}
+            outcome={outcome}
+          />
+          <MissionForceDisposition
+            debrief={debrief}
+            multiplayer={state.multiplayer === true}
+            outcome={outcome}
+          />
         </section>
         <MissionResultActions
           state={state}

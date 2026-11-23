@@ -1,8 +1,8 @@
+import type { BuildingKind, Entity, Facing, Palette } from "../types";
 import { buildingAnim } from "./anim";
 import { buildAntiAirTurretModel, buildTurretHeadModel, type UnitModel } from "./gl/modelLoader";
 import { draw3dModel } from "./gl/modelRenderer";
 import { ANTI_AIR_BARREL_PITCH } from "./renderStructures/turret";
-import type { BuildingKind, Entity, Facing, Palette } from "../types";
 
 const cachedTurretModels = new Map<"turret" | "antiAirTurret", UnitModel>();
 
@@ -48,7 +48,14 @@ export function paintBuildingAssetOverlay(
 ): void {
   const anim = buildingAnim(fakeBuilding(kind), 0, timeMs);
   ctx.save();
-  if (anim.lightOn && (kind === "power" || kind === "constructionYard" || kind === "objective" || kind === "turret" || kind === "antiAirTurret")) {
+  if (
+    anim.lightOn &&
+    (kind === "power" ||
+      kind === "constructionYard" ||
+      kind === "objective" ||
+      kind === "turret" ||
+      kind === "antiAirTurret")
+  ) {
     ctx.fillStyle = kind === "objective" ? "#f3dc79" : "#c7f0d4";
     ctx.globalAlpha = 0.5 + anim.smoke * 0.3;
     ctx.beginPath();
@@ -62,7 +69,15 @@ export function paintBuildingAssetOverlay(
       ctx.globalAlpha = (0.2 + puff * 0.22) * (1 - i * 0.18);
       ctx.fillStyle = "rgba(190,190,180,0.55)";
       ctx.beginPath();
-      ctx.ellipse(cx - (8 - i * 6) * scale, cy - rise, (4 + puff * 4 + i * 2) * scale, (3 + puff * 3 + i) * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        cx - (8 - i * 6) * scale,
+        cy - rise,
+        (4 + puff * 4 + i * 2) * scale,
+        (3 + puff * 3 + i) * scale,
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.fill();
     }
   }

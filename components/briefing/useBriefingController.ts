@@ -1,10 +1,15 @@
-import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect } from "react";
 import { clearMusicPosition } from "@/lib/audio/music";
-import { clearBriefingSkippedIntent, clearResultReturnSnapshot, markBriefingSkippedIntent, markFreshLaunchIntent } from "@/lib/persist/navigation";
+import { briefingBackPath, type NavigationOrigin } from "@/lib/navigation/routes";
+import {
+  clearBriefingSkippedIntent,
+  clearResultReturnSnapshot,
+  markBriefingSkippedIntent,
+  markFreshLaunchIntent,
+} from "@/lib/persist/navigation";
 import { formatSeed } from "@/lib/seed/rng";
 import { briefingCommandFromKey, isEditableTarget } from "@/lib/ui/shortcuts";
-import { briefingBackPath, type NavigationOrigin } from "@/lib/navigation/routes";
 
 export function useBriefingController({
   seed,
@@ -31,7 +36,9 @@ export function useBriefingController({
       markFreshLaunchIntent(seed, mission);
       clearMusicPosition("mission", seed, mission);
     }
-    router.push(`/play?seed=${formatSeed(seed)}&mission=${mission}${returnToGame ? "&resume=1" : "&fresh=1"}`);
+    router.push(
+      `/play?seed=${formatSeed(seed)}&mission=${mission}${returnToGame ? "&resume=1" : "&fresh=1"}`,
+    );
   }, [mission, returnToGame, router, seed]);
 
   const back = useCallback(() => {

@@ -8,8 +8,7 @@
   padding: 1rem;
   background:
     linear-gradient(rgba(92, 225, 230, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(92, 225, 230, 0.025) 1px, transparent 1px),
-    var(--chrome-bg);
+    linear-gradient(90deg, rgba(92, 225, 230, 0.025) 1px, transparent 1px), var(--chrome-bg);
   background-size: 32px 32px;
 }
 

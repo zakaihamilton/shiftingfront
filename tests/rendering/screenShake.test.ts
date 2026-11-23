@@ -3,9 +3,9 @@ import {
   addScreenShake,
   cameraForPicking,
   createScreenShakeState,
+  MAX_SHAKE_OFFSET_PX,
   rememberCameraShake,
   updateScreenShake,
-  MAX_SHAKE_OFFSET_PX,
 } from "../../lib/render/screenShake";
 
 describe("screenShake", () => {
@@ -80,35 +80,45 @@ describe("presentation coordinator screen shake filtering", () => {
     } as unknown as import("../../lib/types").SimState;
 
     // 1. Combat attack event (cannon) -> should NOT trigger shake
-    coordinator.onTick(dummyState, [
-      {
-        type: "combat",
-        owner: 0,
-        attackerKind: "tank",
-        weapon: "cannon",
-        x: 5,
-        y: 5,
-        targetX: 5,
-        targetY: 5,
-        targetOwner: 1,
-        targetKind: "infantry",
-        destroyed: false,
-      },
-    ], 100);
+    coordinator.onTick(
+      dummyState,
+      [
+        {
+          type: "combat",
+          owner: 0,
+          attackerKind: "tank",
+          weapon: "cannon",
+          x: 5,
+          y: 5,
+          targetX: 5,
+          targetY: 5,
+          targetOwner: 1,
+          targetKind: "infantry",
+          destroyed: false,
+        },
+      ],
+      100,
+    );
     expect(screenShakeRef.current.trauma).toBe(0);
 
     // 2. Unit casualties (tank, infantry, harvester) -> should NOT trigger shake
-    coordinator.onTick(dummyState, [
-      { type: "destroyed", id: 1, kind: "infantry", x: 5, y: 5, owner: 1 },
-      { type: "destroyed", id: 2, kind: "tank", x: 5, y: 5, owner: 1 },
-      { type: "destroyed", id: 3, kind: "harvester", x: 5, y: 5, owner: 1 },
-    ], 200);
+    coordinator.onTick(
+      dummyState,
+      [
+        { type: "destroyed", id: 1, kind: "infantry", x: 5, y: 5, owner: 1 },
+        { type: "destroyed", id: 2, kind: "tank", x: 5, y: 5, owner: 1 },
+        { type: "destroyed", id: 3, kind: "harvester", x: 5, y: 5, owner: 1 },
+      ],
+      200,
+    );
     expect(screenShakeRef.current.trauma).toBe(0);
 
     // 3. Building destruction (factory, turret, power) -> SHOULD trigger shake
-    coordinator.onTick(dummyState, [
-      { type: "destroyed", id: 4, kind: "factory", x: 5, y: 5, owner: 1 },
-    ], 300);
+    coordinator.onTick(
+      dummyState,
+      [{ type: "destroyed", id: 4, kind: "factory", x: 5, y: 5, owner: 1 }],
+      300,
+    );
     expect(screenShakeRef.current.trauma).toBeCloseTo(0.7);
   });
 
@@ -123,17 +133,31 @@ describe("presentation coordinator screen shake filtering", () => {
       fxRef: { current: [] },
       fxSequence: { current: 0 },
       onAlert: () => undefined,
-      onCommandNotice: (msg) => { notices.push(msg); },
+      onCommandNotice: (msg) => {
+        notices.push(msg);
+      },
     });
 
-    const hostState = { tick: 1, viewOwner: 0, entities: [] } as unknown as import("../../lib/types").SimState;
+    const hostState = {
+      tick: 1,
+      viewOwner: 0,
+      entities: [],
+    } as unknown as import("../../lib/types").SimState;
 
     // Rival rejection (owner 1) -> host should NOT receive notification
-    coordinator.onTick(hostState, [{ type: "commandRejected", reason: "insufficient credits", owner: 1 }], 100);
+    coordinator.onTick(
+      hostState,
+      [{ type: "commandRejected", reason: "insufficient credits", owner: 1 }],
+      100,
+    );
     expect(notices).toHaveLength(0);
 
     // Host rejection (owner 0) -> host SHOULD receive notification
-    coordinator.onTick(hostState, [{ type: "commandRejected", reason: "insufficient credits", owner: 0 }], 200);
+    coordinator.onTick(
+      hostState,
+      [{ type: "commandRejected", reason: "insufficient credits", owner: 0 }],
+      200,
+    );
     expect(notices).toHaveLength(1);
 
     // Untagged rejection (single-player backward compat) -> host SHOULD receive notification

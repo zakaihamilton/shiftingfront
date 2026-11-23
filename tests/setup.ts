@@ -1,10 +1,10 @@
 import { beforeEach, vi } from "vitest";
-import { resetFxTileIndex } from "../lib/render/terrainWeather";
+import { clearVisualProfileCache } from "../lib/gen/visualProfile";
 import { clearTurretRasterCache } from "../lib/render/gl/turretRaster";
 import { invalidateMinimap } from "../lib/render/minimap";
 import { resetPerfHudFlag } from "../lib/render/perfHud";
 import { clearSpriteCache } from "../lib/render/sprites";
-import { clearVisualProfileCache } from "../lib/gen/visualProfile";
+import { resetFxTileIndex } from "../lib/render/terrainWeather";
 
 // Persistence tests intentionally feed corrupted envelopes to the readers;
 // keep their [persist] debug diagnostics out of test output.

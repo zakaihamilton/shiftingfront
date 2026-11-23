@@ -1,20 +1,28 @@
+import { BUILDING_DEFINITIONS, isAirUnit } from "@/lib/catalog";
+import { type Camera, screenToGroundTile, TILE_H, tileToScreen } from "@/lib/iso";
+import { unitRenderPosition, updateUnitHistory } from "@/lib/render/gl/unitTransformTracker";
 import { finalizeMultiSelect, pickEntity } from "@/lib/render/pick";
 import { pickTile, visibleBuildingAt } from "@/lib/render/renderer";
 import { AIR_UNIT_RENDER_ELEVATION, entityElev } from "@/lib/render/renderPicking";
-import { BUILDING_DEFINITIONS, isAirUnit } from "@/lib/catalog";
-import { TILE_H, screenToGroundTile, tileToScreen, type Camera } from "@/lib/iso";
 import { groundOrders } from "@/lib/sim/orders";
 import { canSupportEntity } from "@/lib/sim/support";
 import { groundHeight } from "@/lib/sim/world";
-import { unitRenderPosition, updateUnitHistory } from "@/lib/render/gl/unitTransformTracker";
-import { isBuildingEntity, isPlayerSelectableUnit, type Command, type Entity, type SimState } from "@/lib/types";
+import {
+  type Command,
+  type Entity,
+  isBuildingEntity,
+  isPlayerSelectableUnit,
+  type SimState,
+} from "@/lib/types";
 import type { MobileCommand } from "../mobileCommandTypes";
-import { selectionBoxProjection, type SelectionBox } from "./selectionBox";
+import { type SelectionBox, selectionBoxProjection } from "./selectionBox";
 
 export function isContactTarget(s: SimState, entity: SimState["entities"][number]): boolean {
   return (
     entity.neutral === true &&
-    (s.runtime?.kind === "escort" || s.runtime?.kind === "rescue" || s.runtime?.kind === "extraction") &&
+    (s.runtime?.kind === "escort" ||
+      s.runtime?.kind === "rescue" ||
+      s.runtime?.kind === "extraction") &&
     Boolean(s.runtime.targetIds?.includes(entity.id))
   );
 }
@@ -32,14 +40,34 @@ export function entityAt(s: SimState, tx: number, ty: number) {
   return visibleBuildingAt(s, tx, ty);
 }
 
-export function pickSelectableEntity(s: SimState, x: number, y: number, tx: number, ty: number, cam: Camera) {
+export function pickSelectableEntity(
+  s: SimState,
+  x: number,
+  y: number,
+  tx: number,
+  ty: number,
+  cam: Camera,
+) {
   return (
-    pickEntity(s, x, y, cam, s.runtime?.kind === "escort" || s.runtime?.kind === "rescue" || s.runtime?.kind === "extraction") ??
-    entityAt(s, tx, ty)
+    pickEntity(
+      s,
+      x,
+      y,
+      cam,
+      s.runtime?.kind === "escort" ||
+        s.runtime?.kind === "rescue" ||
+        s.runtime?.kind === "extraction",
+    ) ?? entityAt(s, tx, ty)
   );
 }
 
-export function friendlySupportOrders(s: SimState, ids: number[], target: SimState["entities"][number], x: number, y: number): Command[] {
+export function friendlySupportOrders(
+  s: SimState,
+  ids: number[],
+  target: SimState["entities"][number],
+  x: number,
+  y: number,
+): Command[] {
   const owner = s.viewOwner ?? 0;
   if (target.owner !== owner || target.class !== "unit" || target.neutral) return [];
   const supportIds = ids.filter((id) => {
@@ -64,7 +92,13 @@ export function productionRallyOrder(
   const owner = s.viewOwner ?? 0;
   if (ids.length !== 1) return undefined;
   const building = s.entities.find((entity) => entity.id === ids[0] && entity.hp > 0);
-  if (!building || !isBuildingEntity(building) || building.owner !== owner || building.constructing > 0 || !BUILDING_DEFINITIONS[building.kind].production) {
+  if (
+    !building ||
+    !isBuildingEntity(building) ||
+    building.owner !== owner ||
+    building.constructing > 0 ||
+    !BUILDING_DEFINITIONS[building.kind].production
+  ) {
     return undefined;
   }
   return target ? [] : [{ type: "rally", buildingId: building.id, x, y }];
@@ -85,20 +119,28 @@ function capitalizeNotice(label: string): string {
 }
 
 export function contextOrderNotice(commands: Command[]): string {
-  const labels = ORDER_NOTICE_LABELS
-    .filter((entry) => commands.some((command) => command.type === entry.type))
-    .map((entry) => entry.label);
+  const labels = ORDER_NOTICE_LABELS.filter((entry) =>
+    commands.some((command) => command.type === entry.type),
+  ).map((entry) => entry.label);
   if (!labels.length) return "Order issued.";
   if (labels.length === 1 && labels[0] === "rally point") return "Rally point set.";
   if (labels.length === 1) return `${capitalizeNotice(labels[0]!)} order issued.`;
   const last = labels[labels.length - 1]!;
-  const joined = labels.length === 2
-    ? `${capitalizeNotice(labels[0]!)} and ${last}`
-    : `${capitalizeNotice(labels.slice(0, -1).join(", "))}, and ${last}`;
+  const joined =
+    labels.length === 2
+      ? `${capitalizeNotice(labels[0]!)} and ${last}`
+      : `${capitalizeNotice(labels.slice(0, -1).join(", "))}, and ${last}`;
   return `${joined} orders issued.`;
 }
 
-export function contextOrders(s: SimState, ids: number[], target: SimState["entities"][number] | undefined, x: number, y: number, attackMove = false): Command[] {
+export function contextOrders(
+  s: SimState,
+  ids: number[],
+  target: SimState["entities"][number] | undefined,
+  x: number,
+  y: number,
+  attackMove = false,
+): Command[] {
   const owner = s.viewOwner ?? 0;
   const rallyOrders = productionRallyOrder(s, ids, target, x, y);
   if (rallyOrders !== undefined) return rallyOrders;
@@ -107,16 +149,26 @@ export function contextOrders(s: SimState, ids: number[], target: SimState["enti
   if (target?.owner === owner && target.class === "building" && target.kind === "runway") {
     const aircraft = ids.filter((id) => {
       const entity = s.entities.find((candidate) => candidate.id === id && candidate.hp > 0);
-      const runwayDeadOrMissing = entity?.assignedRunwayId === undefined || !s.entities.some((c) => c.id === entity.assignedRunwayId && c.hp > 0);
-      return entity?.owner === owner && entity.class === "unit" && isAirUnit(entity.kind) &&
-        (entity.assignedRunwayId === target.id || (target.assignedPlaneId === undefined && runwayDeadOrMissing));
+      const runwayDeadOrMissing =
+        entity?.assignedRunwayId === undefined ||
+        !s.entities.some((c) => c.id === entity.assignedRunwayId && c.hp > 0);
+      return (
+        entity?.owner === owner &&
+        entity.class === "unit" &&
+        isAirUnit(entity.kind) &&
+        (entity.assignedRunwayId === target.id ||
+          (target.assignedPlaneId === undefined && runwayDeadOrMissing))
+      );
     });
     const others = ids.filter((id) => !aircraft.includes(id));
-    const commands: Command[] = aircraft.length ? [{ type: "land", unitIds: aircraft, runwayId: target.id }] : [];
+    const commands: Command[] = aircraft.length
+      ? [{ type: "land", unitIds: aircraft, runwayId: target.id }]
+      : [];
     if (others.length) commands.push(...groundOrders(s, others, x, y, attackMove));
     if (commands.length) return commands;
   }
-  if (target && target.owner !== owner && !target.neutral) return [{ type: "attack", unitIds: ids, targetId: target.id }];
+  if (target && target.owner !== owner && !target.neutral)
+    return [{ type: "attack", unitIds: ids, targetId: target.id }];
   return groundOrders(s, ids, x, y, attackMove);
 }
 
@@ -136,30 +188,46 @@ export function mobileCommandOrders(
   if (target?.owner === owner && target.class === "building" && target.kind === "runway") {
     const aircraft = ids.filter((id) => {
       const entity = s.entities.find((candidate) => candidate.id === id && candidate.hp > 0);
-      const runwayDeadOrMissing = entity?.assignedRunwayId === undefined || !s.entities.some((c) => c.id === entity.assignedRunwayId && c.hp > 0);
-      return entity?.owner === owner && entity.class === "unit" && isAirUnit(entity.kind) &&
-        (entity.assignedRunwayId === target.id || (target.assignedPlaneId === undefined && runwayDeadOrMissing));
+      const runwayDeadOrMissing =
+        entity?.assignedRunwayId === undefined ||
+        !s.entities.some((c) => c.id === entity.assignedRunwayId && c.hp > 0);
+      return (
+        entity?.owner === owner &&
+        entity.class === "unit" &&
+        isAirUnit(entity.kind) &&
+        (entity.assignedRunwayId === target.id ||
+          (target.assignedPlaneId === undefined && runwayDeadOrMissing))
+      );
     });
     if (aircraft.length) return [{ type: "land", unitIds: aircraft, runwayId: target.id }];
   }
   if (command === "move") return groundOrders(s, ids, x, y, false);
   if (command === "attackMove") return groundOrders(s, ids, x, y, true);
-  if (command === "attack" && target && target.owner !== owner && !target.neutral) return [{ type: "attack", unitIds: ids, targetId: target.id }];
-  if (command === "harvest" && s.tiles[y * s.width + x] === 2) return [{ type: "harvest", unitIds: ids, x, y }];
+  if (command === "attack" && target && target.owner !== owner && !target.neutral)
+    return [{ type: "attack", unitIds: ids, targetId: target.id }];
+  if (command === "harvest" && s.tiles[y * s.width + x] === 2)
+    return [{ type: "harvest", unitIds: ids, x, y }];
   return [];
 }
 
 function selectionClock(state: SimState, clockMs?: number): number {
-  return clockMs ?? (typeof performance !== "undefined" ? performance.now() : state.tick * (1000 / 12));
+  return (
+    clockMs ?? (typeof performance !== "undefined" ? performance.now() : state.tick * (1000 / 12))
+  );
 }
 
-function selectionRenderPosition(state: SimState, entity: Entity, clockMs: number): { x: number; y: number; elev: number } {
+function selectionRenderPosition(
+  state: SimState,
+  entity: Entity,
+  clockMs: number,
+): { x: number; y: number; elev: number } {
   if (entity.class === "unit" && isAirUnit(entity.kind)) {
     const visual = unitRenderPosition(entity, clockMs);
     return {
       x: visual.x,
       y: visual.y,
-      elev: groundHeight(state, visual.x, visual.y) + AIR_UNIT_RENDER_ELEVATION * visual.airborneMix,
+      elev:
+        groundHeight(state, visual.x, visual.y) + AIR_UNIT_RENDER_ELEVATION * visual.airborneMix,
     };
   }
   return { x: entity.x, y: entity.y, elev: entityElev(state, entity) };
@@ -208,7 +276,13 @@ export function selectVisibleUnitsOfKind(
   return ids;
 }
 
-export function selectionIdsInBox(s: SimState, cam: Camera, box: SelectionBox, finalize: boolean, clockMs = selectionClock(s)) {
+export function selectionIdsInBox(
+  s: SimState,
+  cam: Camera,
+  box: SelectionBox,
+  finalize: boolean,
+  clockMs = selectionClock(s),
+) {
   const owner = s.viewOwner ?? 0;
   updateUnitHistory(s, clockMs);
   const ids: number[] = [];
@@ -218,11 +292,23 @@ export function selectionIdsInBox(s: SimState, cam: Camera, box: SelectionBox, f
   const x1 = Math.max(projectedBox.x0, projectedBox.x1);
   const y1 = Math.max(projectedBox.y0, projectedBox.y1);
   for (const en of s.entities) {
-    if (en.hp <= 0 || en.owner !== owner || !isPlayerSelectableUnit(en) || (en.neutral && !isContactTarget(s, en))) continue;
+    if (
+      en.hp <= 0 ||
+      en.owner !== owner ||
+      !isPlayerSelectableUnit(en) ||
+      (en.neutral && !isContactTarget(s, en))
+    )
+      continue;
     const renderPosition = selectionRenderPosition(s, en, clockMs);
-    const sp = tileToScreen(renderPosition.x, renderPosition.y, { x: 0, y: 0, zoom: cam.zoom }, renderPosition.elev);
+    const sp = tileToScreen(
+      renderPosition.x,
+      renderPosition.y,
+      { x: 0, y: 0, zoom: cam.zoom },
+      renderPosition.elev,
+    );
     const projected = { x: sp.x / cam.zoom, y: sp.y / cam.zoom };
-    if (projected.x >= x0 && projected.x <= x1 && projected.y >= y0 && projected.y <= y1) ids.push(en.id);
+    if (projected.x >= x0 && projected.x <= x1 && projected.y >= y0 && projected.y <= y1)
+      ids.push(en.id);
   }
   return finalize ? finalizeMultiSelect(s.entities, ids) : ids;
 }

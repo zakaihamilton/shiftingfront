@@ -1,40 +1,39 @@
 import { mixHex } from "../tilePalette";
+import { detailSigned, detailUnit, liftGreen, pe, pl, pp, SNOW, shadow } from "./primitives";
 import type { BlockerTone, PropPrim } from "./types";
-import { detailSigned, detailUnit, pe, pl, pp, shadow, liftGreen, SNOW } from "./primitives";
 
-export function boulderPrims(v: number, t: BlockerTone, lush: boolean, snowCap: boolean): PropPrim[] {
+export function boulderPrims(
+  v: number,
+  t: BlockerTone,
+  lush: boolean,
+  snowCap: boolean,
+): PropPrim[] {
   const profile = (v >>> 4) % 3;
   const twist = ((v % 5) - 2) * 0.35;
   const body = lush ? liftGreen(t.blocked, 18) : t.blocked;
   const facet = mixHex(body, t.dark, 0.22);
   const cap = snowCap ? mixHex(t.light, SNOW, 0.42) : mixHex(t.light, t.high, 0.18);
-  const bodyPoints = profile === 0
-    ? [
-      -13 + twist, 2,
-      -6 + twist, -8,
-      -1, -13,
-      13 + twist * 0.4, -1.4,
-      9, 5.4,
-      -10, 5.6,
-    ]
-    : profile === 1
-      ? [
-        -14 + twist, 2.8,
-        -8 + twist, -6,
-        1, -15,
-        11 + twist * 0.4, -5.2,
-        13, 3.8,
-        4, 6.2,
-        -11, 5.8,
-      ]
-      : [
-        -12 + twist, 3.4,
-        -4 + twist, -10.5,
-        6, -8.4,
-        14 + twist * 0.4, 0.2,
-        8, 6.1,
-        -11, 5.5,
-      ];
+  const bodyPoints =
+    profile === 0
+      ? [-13 + twist, 2, -6 + twist, -8, -1, -13, 13 + twist * 0.4, -1.4, 9, 5.4, -10, 5.6]
+      : profile === 1
+        ? [
+            -14 + twist,
+            2.8,
+            -8 + twist,
+            -6,
+            1,
+            -15,
+            11 + twist * 0.4,
+            -5.2,
+            13,
+            3.8,
+            4,
+            6.2,
+            -11,
+            5.8,
+          ]
+        : [-12 + twist, 3.4, -4 + twist, -10.5, 6, -8.4, 14 + twist * 0.4, 0.2, 8, 6.1, -11, 5.5];
   const out: PropPrim[] = [
     shadow(16.5, 5.2),
     pp([-15, 2.2, 14, 3.1, 10, 9.2, -12, 8.4], t.dark),
@@ -89,20 +88,30 @@ export function sandstonePrims(v: number, t: BlockerTone): PropPrim[] {
   const mid = mixHex(t.high, t.light, 0.28);
   const hi = mixHex(t.light, t.high, 0.34);
   const bands = [
-    { y: 4 + (profile === 2 ? 0.8 : 0), h: profile === 1 ? 4.8 : 5.5, c: mixHex(base, t.dark, 0.2) },
+    {
+      y: 4 + (profile === 2 ? 0.8 : 0),
+      h: profile === 1 ? 4.8 : 5.5,
+      c: mixHex(base, t.dark, 0.2),
+    },
     { y: -2, h: profile === 0 ? 7.4 : 6.4, c: mixHex(base, mid, 0.35) },
   ];
-  const out: PropPrim[] = [
-    shadow(15.5, 5),
-    pp([-14, 3, 13, 3.4, 10, 8.6, -11, 8.2], t.dark),
-  ];
+  const out: PropPrim[] = [shadow(15.5, 5), pp([-14, 3, 13, 3.4, 10, 8.6, -11, 8.2], t.dark)];
   for (const band of bands) {
-    out.push(pp([
-      -12 + lean, band.y + 1.2,
-      11 + lean * 0.4, band.y + 0.6,
-      9, band.y - band.h + 1.4,
-      -10 + lean * 0.2, band.y - band.h + 1.8,
-    ], band.c));
+    out.push(
+      pp(
+        [
+          -12 + lean,
+          band.y + 1.2,
+          11 + lean * 0.4,
+          band.y + 0.6,
+          9,
+          band.y - band.h + 1.4,
+          -10 + lean * 0.2,
+          band.y - band.h + 1.8,
+        ],
+        band.c,
+      ),
+    );
   }
   out.push(
     pp(
@@ -124,10 +133,42 @@ export function sandstonePrims(v: number, t: BlockerTone): PropPrim[] {
   const strata = mixHex(t.dark, base, 0.32);
   const weather = mixHex(t.light, base, 0.34);
   out.push(
-    pl(-10.4 + lean, -5.2 + detailSigned(v, 83, 0.5), 2.4 + lean, -5.7 + detailSigned(v, 89, 0.45), strata, 0.68, { minWidth: 0.58, alpha: 0.7 }),
-    pl(-7.6 + lean, 0.2 + detailSigned(v, 97, 0.35), 8.1 + lean, -0.5 + detailSigned(v, 101, 0.4), strata, 0.62, { minWidth: 0.52, alpha: 0.62 }),
-    pl(-3.2 + detailSigned(v, 107, 1.1), -8.0, 3.0 + detailSigned(v, 109, 1.1), -10.4, weather, 0.58, { minWidth: 0.5, alpha: 0.42 }),
-    pe(-5.4 + detailSigned(v, 113, 2.2), -3.1 + detailSigned(v, 127, 0.55), 1.2, 0.42, 0.1, mixHex(weather, base, 0.38), 0.28),
+    pl(
+      -10.4 + lean,
+      -5.2 + detailSigned(v, 83, 0.5),
+      2.4 + lean,
+      -5.7 + detailSigned(v, 89, 0.45),
+      strata,
+      0.68,
+      { minWidth: 0.58, alpha: 0.7 },
+    ),
+    pl(
+      -7.6 + lean,
+      0.2 + detailSigned(v, 97, 0.35),
+      8.1 + lean,
+      -0.5 + detailSigned(v, 101, 0.4),
+      strata,
+      0.62,
+      { minWidth: 0.52, alpha: 0.62 },
+    ),
+    pl(
+      -3.2 + detailSigned(v, 107, 1.1),
+      -8.0,
+      3.0 + detailSigned(v, 109, 1.1),
+      -10.4,
+      weather,
+      0.58,
+      { minWidth: 0.5, alpha: 0.42 },
+    ),
+    pe(
+      -5.4 + detailSigned(v, 113, 2.2),
+      -3.1 + detailSigned(v, 127, 0.55),
+      1.2,
+      0.42,
+      0.1,
+      mixHex(weather, base, 0.38),
+      0.28,
+    ),
   );
   return out;
 }
@@ -151,23 +192,35 @@ export function crystalPrims(v: number, t: BlockerTone): PropPrim[] {
   for (let i = 0; i < shardCount; i++) {
     const shard = shards[i]!;
     const twist = detailSigned(v, 131 + i * 7, 0.9);
-    out.push(pp([
-      shard.lean - shard.half, 3.2,
-      shard.lean - shard.half * 0.25 + twist, -shard.rise * 0.42,
-      shard.lean + twist, -shard.rise,
-      shard.lean + shard.half * 0.28 + twist * 0.4, -shard.rise * 0.32,
-      shard.lean + shard.half, 2.6,
-    ], shard.gem ? gem : dark));
+    out.push(
+      pp(
+        [
+          shard.lean - shard.half,
+          3.2,
+          shard.lean - shard.half * 0.25 + twist,
+          -shard.rise * 0.42,
+          shard.lean + twist,
+          -shard.rise,
+          shard.lean + shard.half * 0.28 + twist * 0.4,
+          -shard.rise * 0.32,
+          shard.lean + shard.half,
+          2.6,
+        ],
+        shard.gem ? gem : dark,
+      ),
+    );
     if (i % 2 === 0) {
-      out.push(pl(
-        shard.lean - shard.half * 0.25,
-        1.8,
-        shard.lean + twist * 0.6,
-        -shard.rise + 1.8,
-        mixHex(t.light, gem, 0.28),
-        0.65,
-        { minWidth: 0.55, cap: "round", alpha: 0.46 },
-      ));
+      out.push(
+        pl(
+          shard.lean - shard.half * 0.25,
+          1.8,
+          shard.lean + twist * 0.6,
+          -shard.rise + 1.8,
+          mixHex(t.light, gem, 0.28),
+          0.65,
+          { minWidth: 0.55, cap: "round", alpha: 0.46 },
+        ),
+      );
     }
   }
   out.push(
@@ -208,10 +261,27 @@ export function wreckagePrims(v: number, t: BlockerTone): PropPrim[] {
     out.push(pe(-5 + i * 4.2, 1.4 + (i % 2) * 0.7, 0.5, 0.35, 0, rivet, 0.72));
   }
   if (profile === 1) out.push(pl(-10, -0.4, -2.2, -6.8, seam, 1.1, { minWidth: 0.8 }));
-  if (profile === 2) out.push(pp([1.8, -0.5, 8, -3.2, 10.4, 0.2, 4.2, 1.9], mixHex(rust, t.light, 0.2), 0.72));
+  if (profile === 2)
+    out.push(pp([1.8, -0.5, 8, -3.2, 10.4, 0.2, 4.2, 1.9], mixHex(rust, t.light, 0.2), 0.72));
   out.push(
-    pl(-5.8 + detailSigned(v, 167, 1.0), 2.2, 0.2 + detailSigned(v, 173, 1.1), -2.8, mixHex(seam, t.dark, 0.32), 0.7, { minWidth: 0.58, cap: "round", alpha: 0.5 }),
-    pl(2.8 + detailSigned(v, 179, 0.8), 1.8, 9.3 + detailSigned(v, 181, 0.7), 0.2, mixHex(iron, t.light, 0.3), 0.62, { minWidth: 0.52, cap: "round", alpha: 0.42 }),
+    pl(
+      -5.8 + detailSigned(v, 167, 1.0),
+      2.2,
+      0.2 + detailSigned(v, 173, 1.1),
+      -2.8,
+      mixHex(seam, t.dark, 0.32),
+      0.7,
+      { minWidth: 0.58, cap: "round", alpha: 0.5 },
+    ),
+    pl(
+      2.8 + detailSigned(v, 179, 0.8),
+      1.8,
+      9.3 + detailSigned(v, 181, 0.7),
+      0.2,
+      mixHex(iron, t.light, 0.3),
+      0.62,
+      { minWidth: 0.52, cap: "round", alpha: 0.42 },
+    ),
   );
   return out;
 }
@@ -236,14 +306,28 @@ export function spirePrims(v: number, t: BlockerTone): PropPrim[] {
       glow,
       0.42,
     ),
-    pl(-0.4, 3, profile === 1 ? 1.3 : -1.2, profile === 2 ? -12.5 : -14, mixHex(glow, t.light, 0.28), 0.7, { minWidth: 0.6 }),
+    pl(
+      -0.4,
+      3,
+      profile === 1 ? 1.3 : -1.2,
+      profile === 2 ? -12.5 : -14,
+      mixHex(glow, t.light, 0.28),
+      0.7,
+      { minWidth: 0.6 },
+    ),
   ];
   if (v % 2 === 0) {
     out.push(pp([-2.2, -10, -2.2, -17, 0.8, -11], t.light, 0.22));
   }
   out.push(
-    pl(-5.2, 2.2, -1.8 + detailSigned(v, 193, 0.8), -6.2, mixHex(rock, t.dark, 0.35), 0.62, { minWidth: 0.52, alpha: 0.56 }),
-    pl(2.8, 1.6, 6.4 + detailSigned(v, 197, 0.7), -2.8, mixHex(rock, glow, 0.36), 0.58, { minWidth: 0.5, alpha: 0.4 }),
+    pl(-5.2, 2.2, -1.8 + detailSigned(v, 193, 0.8), -6.2, mixHex(rock, t.dark, 0.35), 0.62, {
+      minWidth: 0.52,
+      alpha: 0.56,
+    }),
+    pl(2.8, 1.6, 6.4 + detailSigned(v, 197, 0.7), -2.8, mixHex(rock, glow, 0.36), 0.58, {
+      minWidth: 0.5,
+      alpha: 0.4,
+    }),
     pe(-4.8 + detailSigned(v, 199, 1.1), 4.2, 1.5, 0.65, 0, mixHex(t.dark, glow, 0.28), 0.3),
   );
   return out;

@@ -1,12 +1,12 @@
-import { useEffect, useState, type PointerEventHandler, type Ref } from "react";
+import { type PointerEventHandler, type Ref, useEffect, useState } from "react";
 import { minimapPicture } from "@/lib/sim/radar";
-import type { CommandBuildControls } from "./commandCatalogTypes";
 import { CommandBuildSection } from "./CommandBuildSection";
 import { CommandHeader } from "./CommandHeader";
+import styles from "./CommandSidebar.module.css";
+import type { CommandBuildControls } from "./commandCatalogTypes";
+import type { MinimapPing } from "./MinimapFrame";
 import { MinimapFrame } from "./MinimapFrame";
 import { ResourceDock } from "./ResourceDock";
-import type { MinimapPing } from "./MinimapFrame";
-import styles from "./CommandSidebar.module.css";
 
 export function CommandSidebar({
   factionName,
@@ -100,7 +100,12 @@ export function CommandSidebar({
       </div>
 
       <div className={styles.resourceSlot}>
-        <ResourceDock credits={state.credits[state.viewOwner ?? 0]} produced={produced} used={used} surplus={power} />
+        <ResourceDock
+          credits={state.credits[state.viewOwner ?? 0]}
+          produced={produced}
+          used={used}
+          surplus={power}
+        />
       </div>
 
       <CommandBuildSection

@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { generateCampaignVisualProfile } from "../../lib/gen/visualProfile";
 import {
   gradeTerrainColor,
-  terrainPropLightGain,
-  terrainPropLightFactor,
   restrainTerrainColor,
   terrainEdgeDarkening,
   terrainLightFactor,
   terrainLightRigFor,
+  terrainPropLightFactor,
+  terrainPropLightGain,
 } from "../../lib/render/terrainLighting";
-import { generateCampaignVisualProfile } from "../../lib/gen/visualProfile";
 
 describe("terrain lighting", () => {
   it("keeps a stable seeded light rig and bounds surface response", () => {
@@ -48,8 +48,9 @@ describe("terrain lighting", () => {
 
   it("brightens the lit corner and restrains excessive ground chroma", () => {
     const rig = terrainLightRigFor(421);
-    expect(terrainLightFactor(rig, 2, 1, 1, 0.05, 0.05))
-      .toBeGreaterThan(terrainLightFactor(rig, 2, 1, 1, 0.95, 0.95));
+    expect(terrainLightFactor(rig, 2, 1, 1, 0.05, 0.05)).toBeGreaterThan(
+      terrainLightFactor(rig, 2, 1, 1, 0.95, 0.95),
+    );
     const restrained = restrainTerrainColor({ r: 220, g: 80, b: 42 }, 0.1);
     expect(restrained.g).toBeGreaterThan(80);
     expect(restrained.r).toBeLessThan(220);
@@ -64,6 +65,8 @@ describe("terrain lighting", () => {
     const alternateRig = terrainLightRigFor(832, { ...profile, terrainAccent: alternateAccent });
     expect(alternateRig.keyColor).not.toEqual(defaultRig.keyColor);
     expect(terrainLightRigFor(832)).toBe(defaultRig);
-    expect(terrainLightRigFor(832, { ...profile, terrainAccent: alternateAccent })).toBe(alternateRig);
+    expect(terrainLightRigFor(832, { ...profile, terrainAccent: alternateAccent })).toBe(
+      alternateRig,
+    );
   });
 });

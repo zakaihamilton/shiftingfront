@@ -29,7 +29,9 @@ function sourceFiles(dir: string): string[] {
 }
 
 function isForbidden(specifier: string): boolean {
-  return FORBIDDEN_PREFIXES.some((prefix) => specifier === prefix || specifier.startsWith(`${prefix}/`));
+  return FORBIDDEN_PREFIXES.some(
+    (prefix) => specifier === prefix || specifier.startsWith(`${prefix}/`),
+  );
 }
 
 describe("headless layering", () => {

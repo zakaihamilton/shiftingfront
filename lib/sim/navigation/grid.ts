@@ -63,16 +63,29 @@ export function returnsToPreviousCell(
   if (previousCell === undefined) return false;
   const previousX = previousCell % width;
   const previousY = Math.floor(previousCell / width);
-  return Math.max(Math.abs(currentX - previousX), Math.abs(currentY - previousY)) === 1 &&
-    nextX === previousX && nextY === previousY;
+  return (
+    Math.max(Math.abs(currentX - previousX), Math.abs(currentY - previousY)) === 1 &&
+    nextX === previousX &&
+    nextY === previousY
+  );
 }
 
-export function inBoundsNavigation(navigation: ReturnType<typeof staticNavigationFor>, x: number, y: number): boolean {
+export function inBoundsNavigation(
+  navigation: ReturnType<typeof staticNavigationFor>,
+  x: number,
+  y: number,
+): boolean {
   return x >= 0 && y >= 0 && x < navigation.width && y < navigation.height;
 }
 
 /** Cost used by A* and reverse flow fields for one terrain step. */
-export function navigationStepCost(x0: number, y0: number, x1: number, y1: number, destinationCost = 1): number {
+export function navigationStepCost(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  destinationCost = 1,
+): number {
   return (x0 !== x1 && y0 !== y1 ? Math.SQRT2 : 1) * destinationCost;
 }
 
@@ -118,16 +131,35 @@ export function navigationStepAllowed(
   x1: number,
   y1: number,
 ): boolean {
-  if (!inBoundsNavigation(navigation, x0, y0) || !inBoundsNavigation(navigation, x1, y1)) return false;
+  if (!inBoundsNavigation(navigation, x0, y0) || !inBoundsNavigation(navigation, x1, y1))
+    return false;
   if (navigation.walkable[y0 * navigation.width + x0] !== 1) return false;
   if (navigation.walkable[y1 * navigation.width + x1] !== 1) return false;
   if (Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) !== 1) return false;
-  if (Math.abs(navigation.heights[y1 * navigation.width + x1]! - navigation.heights[y0 * navigation.width + x0]!) > 1) return false;
+  if (
+    Math.abs(
+      navigation.heights[y1 * navigation.width + x1]! -
+        navigation.heights[y0 * navigation.width + x0]!,
+    ) > 1
+  )
+    return false;
   if (x0 === x1 || y0 === y1) return true;
   if (navigation.walkable[y0 * navigation.width + x1] !== 1) return false;
-  if (Math.abs(navigation.heights[y0 * navigation.width + x1]! - navigation.heights[y0 * navigation.width + x0]!) > 1) return false;
+  if (
+    Math.abs(
+      navigation.heights[y0 * navigation.width + x1]! -
+        navigation.heights[y0 * navigation.width + x0]!,
+    ) > 1
+  )
+    return false;
   if (navigation.walkable[y1 * navigation.width + x0] !== 1) return false;
-  if (Math.abs(navigation.heights[y1 * navigation.width + x0]! - navigation.heights[y0 * navigation.width + x0]!) > 1) return false;
+  if (
+    Math.abs(
+      navigation.heights[y1 * navigation.width + x0]! -
+        navigation.heights[y0 * navigation.width + x0]!,
+    ) > 1
+  )
+    return false;
   return true;
 }
 
@@ -141,14 +173,40 @@ export function diagonalCornerBlockedLocal(
   const dx = x1 - x0;
   const dy = y1 - y0;
   if (dx === 0 || dy === 0) return false;
-  if (!inBoundsNavigation(navigation, x0 + dx, y0) || navigation.walkable[y0 * navigation.width + x0 + dx] !== 1) return true;
-  if (Math.abs(navigation.heights[y0 * navigation.width + x0 + dx]! - navigation.heights[y0 * navigation.width + x0]!) > 1) return true;
-  if (!inBoundsNavigation(navigation, x0, y0 + dy) || navigation.walkable[(y0 + dy) * navigation.width + x0] !== 1) return true;
-  if (Math.abs(navigation.heights[(y0 + dy) * navigation.width + x0]! - navigation.heights[y0 * navigation.width + x0]!) > 1) return true;
+  if (
+    !inBoundsNavigation(navigation, x0 + dx, y0) ||
+    navigation.walkable[y0 * navigation.width + x0 + dx] !== 1
+  )
+    return true;
+  if (
+    Math.abs(
+      navigation.heights[y0 * navigation.width + x0 + dx]! -
+        navigation.heights[y0 * navigation.width + x0]!,
+    ) > 1
+  )
+    return true;
+  if (
+    !inBoundsNavigation(navigation, x0, y0 + dy) ||
+    navigation.walkable[(y0 + dy) * navigation.width + x0] !== 1
+  )
+    return true;
+  if (
+    Math.abs(
+      navigation.heights[(y0 + dy) * navigation.width + x0]! -
+        navigation.heights[y0 * navigation.width + x0]!,
+    ) > 1
+  )
+    return true;
   return false;
 }
 
-export function diagonalCornerBlocked(state: SimState, x0: number, y0: number, x1: number, y1: number): boolean {
+export function diagonalCornerBlocked(
+  state: SimState,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): boolean {
   const navigation = staticNavigationFor(state);
   return diagonalCornerBlockedLocal(navigation, x0, y0, x1, y1);
 }

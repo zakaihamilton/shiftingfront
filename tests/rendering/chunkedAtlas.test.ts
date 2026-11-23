@@ -1,11 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { makeFixture, TILE_CLEAR, TILE_WATER } from "../../lib/sim/fixtures";
-import {
-  bakeTerrainAtlasData,
-  initAtlasBake,
-  bakeAtlasRowSlice,
-  finalizeAtlasBake,
-} from "../../lib/render/terrainAtlasBake";
 import {
   bakeTerrainAtlasDataAsync,
   getTerrainAtlas,
@@ -14,6 +7,13 @@ import {
   isTerrainAtlasBaked,
   preloadTerrainAtlas,
 } from "../../lib/render/terrainAtlas";
+import {
+  bakeAtlasRowSlice,
+  bakeTerrainAtlasData,
+  finalizeAtlasBake,
+  initAtlasBake,
+} from "../../lib/render/terrainAtlasBake";
+import { makeFixture, TILE_CLEAR, TILE_WATER } from "../../lib/sim/fixtures";
 
 describe("chunked terrain atlas baking", () => {
   afterEach(() => {
@@ -116,8 +116,12 @@ describe("chunked terrain atlas baking", () => {
       naturalWidth = 0;
       src = "";
       listeners = new Map<string, () => void>();
-      constructor() { images.push(this); }
-      addEventListener(type: string, callback: () => void) { this.listeners.set(type, callback); }
+      constructor() {
+        images.push(this);
+      }
+      addEventListener(type: string, callback: () => void) {
+        this.listeners.set(type, callback);
+      }
     }
     vi.stubGlobal("Image", FakeImage);
     vi.stubGlobal("document", { createElement: () => ({ getContext: () => null }) });

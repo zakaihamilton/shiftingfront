@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { createMission } from "../../lib/sim/api";
-import { tickAi } from "../../lib/sim/ai";
-import { tryBuildTurret } from "../../lib/sim/ai/building";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { missionDifficulty } from "../../lib/sim/difficulty";
 import { decodeSavedState, encodeSavedState } from "../../lib/persist/save/serialize";
 import { isStateShape } from "../../lib/persist/save/validation";
+import { tickAi } from "../../lib/sim/ai";
+import { tryBuildTurret } from "../../lib/sim/ai/building";
+import { createMission } from "../../lib/sim/api";
+import { missionDifficulty } from "../../lib/sim/difficulty";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { sharedProductionQueue } from "../../lib/sim/producerState";
 import {
   adaptiveCombatWant,
   adaptiveDifficultyShift,
   briefingProficiencyNote,
+  type CampaignProficiencyRecord,
   campaignProficiencyBand,
   livePressureFromForces,
   retreatEnterHealth,
-  type CampaignProficiencyRecord,
 } from "../../lib/sim/proficiency";
 import type { SimState } from "../../lib/types";
 
@@ -31,7 +31,9 @@ function cleanWin(overrides: Partial<CampaignProficiencyRecord> = {}): CampaignP
   };
 }
 
-function failedBattle(overrides: Partial<CampaignProficiencyRecord> = {}): CampaignProficiencyRecord {
+function failedBattle(
+  overrides: Partial<CampaignProficiencyRecord> = {},
+): CampaignProficiencyRecord {
   return {
     result: "lost",
     deadlineOutcome: "timedOut",
@@ -44,7 +46,11 @@ function failedBattle(overrides: Partial<CampaignProficiencyRecord> = {}): Campa
 }
 
 function economyFixture(missionIndex: number, band?: -1 | 1): SimState {
-  const state = makeFixture({ width: 40, height: 40, win: { kind: "destroyMarked", targetCount: 1 } });
+  const state = makeFixture({
+    width: 40,
+    height: 40,
+    win: { kind: "destroyMarked", targetCount: 1 },
+  });
   state.missionIndex = missionIndex;
   if (band) state.proficiencyBand = band;
   addBuilding(state, 1, "constructionYard", 4, 4);
@@ -69,8 +75,8 @@ function economyFixture(missionIndex: number, band?: -1 | 1): SimState {
 
 function isTraining(state: SimState): boolean {
   return Boolean(
-    sharedProductionQueue(state, 1, "barracks").producing
-    || sharedProductionQueue(state, 1, "factory").producing,
+    sharedProductionQueue(state, 1, "barracks").producing ||
+      sharedProductionQueue(state, 1, "factory").producing,
   );
 }
 
@@ -85,10 +91,9 @@ describe("campaign proficiency", () => {
     expect(campaignProficiencyBand([cleanWin(), cleanWin()])).toBe(1);
     expect(campaignProficiencyBand([failedBattle(), failedBattle()])).toBe(-1);
     expect(campaignProficiencyBand([cleanWin(), failedBattle()])).toBe(0);
-    expect(campaignProficiencyBand([
-      cleanWin({ hqHealthAtEnd: 0.2 }),
-      cleanWin({ hqHealthAtEnd: 0.1 }),
-    ])).toBe(-1);
+    expect(
+      campaignProficiencyBand([cleanWin({ hqHealthAtEnd: 0.2 }), cleanWin({ hqHealthAtEnd: 0.1 })]),
+    ).toBe(-1);
   });
 
   it("ignores command friction when the battles themselves were clean", () => {
@@ -111,49 +116,61 @@ describe("adaptive shift", () => {
     expect(adaptiveDifficultyShift({ missionIndex: 3, proficiencyBand: -1 }, -1)).toBe(-2);
     expect(adaptiveDifficultyShift({ missionIndex: 0, proficiencyBand: 1 }, 1)).toBe(0);
     expect(adaptiveDifficultyShift({ missionIndex: 0, proficiencyBand: -1 }, 0)).toBe(-1);
-    expect(adaptiveDifficultyShift({ missionIndex: 4, multiplayer: true, proficiencyBand: 1 }, 1)).toBe(0);
-    expect(adaptiveDifficultyShift({ missionIndex: 4, tutorialStage: "attack", proficiencyBand: 1 }, 1)).toBe(0);
+    expect(
+      adaptiveDifficultyShift({ missionIndex: 4, multiplayer: true, proficiencyBand: 1 }, 1),
+    ).toBe(0);
+    expect(
+      adaptiveDifficultyShift({ missionIndex: 4, tutorialStage: "attack", proficiencyBand: 1 }, 1),
+    ).toBe(0);
   });
 
   it("reads only visible force, bases, and the known command post", () => {
-    expect(livePressureFromForces({
-      phase: "pressure",
-      playerCombat: 6,
-      enemyCombat: 2,
-      playerBases: 1,
-      enemyBases: 1,
-      openingYardThreat: false,
-      playerHqHealthRatio: 1,
-      enemyUnitLosses: 0,
-    })).toBe(1);
-    expect(livePressureFromForces({
-      phase: "opening",
-      playerCombat: 1,
-      enemyCombat: 1,
-      playerBases: 0,
-      enemyBases: 1,
-      openingYardThreat: true,
-      enemyUnitLosses: 0,
-    })).toBe(1);
-    expect(livePressureFromForces({
-      phase: "pressure",
-      playerCombat: 1,
-      enemyCombat: 5,
-      playerBases: 1,
-      enemyBases: 1,
-      openingYardThreat: false,
-      playerHqHealthRatio: 0.4,
-      enemyUnitLosses: 0,
-    })).toBe(-1);
-    expect(livePressureFromForces({
-      phase: "pressure",
-      playerCombat: 0,
-      enemyCombat: 6,
-      playerBases: 0,
-      enemyBases: 1,
-      openingYardThreat: false,
-      enemyUnitLosses: 0,
-    })).toBe(0);
+    expect(
+      livePressureFromForces({
+        phase: "pressure",
+        playerCombat: 6,
+        enemyCombat: 2,
+        playerBases: 1,
+        enemyBases: 1,
+        openingYardThreat: false,
+        playerHqHealthRatio: 1,
+        enemyUnitLosses: 0,
+      }),
+    ).toBe(1);
+    expect(
+      livePressureFromForces({
+        phase: "opening",
+        playerCombat: 1,
+        enemyCombat: 1,
+        playerBases: 0,
+        enemyBases: 1,
+        openingYardThreat: true,
+        enemyUnitLosses: 0,
+      }),
+    ).toBe(1);
+    expect(
+      livePressureFromForces({
+        phase: "pressure",
+        playerCombat: 1,
+        enemyCombat: 5,
+        playerBases: 1,
+        enemyBases: 1,
+        openingYardThreat: false,
+        playerHqHealthRatio: 0.4,
+        enemyUnitLosses: 0,
+      }),
+    ).toBe(-1);
+    expect(
+      livePressureFromForces({
+        phase: "pressure",
+        playerCombat: 0,
+        enemyCombat: 6,
+        playerBases: 0,
+        enemyBases: 1,
+        openingYardThreat: false,
+        enemyUnitLosses: 0,
+      }),
+    ).toBe(0);
   });
 
   it("keeps the neutral counter mix and prefers a hard counter when the player is ahead", () => {
@@ -174,8 +191,10 @@ describe("adaptive shift", () => {
 describe("director proficiency", () => {
   it("trains sooner when the player is ahead and later when the player is behind", () => {
     const difficulty = missionDifficulty(2);
-    const aheadTick = difficulty.enemyProductionStart + Math.round(difficulty.enemyProductionEvery * 0.85);
-    const behindTick = difficulty.enemyProductionStart + Math.round(difficulty.enemyProductionEvery * 1.15);
+    const aheadTick =
+      difficulty.enemyProductionStart + Math.round(difficulty.enemyProductionEvery * 0.85);
+    const behindTick =
+      difficulty.enemyProductionStart + Math.round(difficulty.enemyProductionEvery * 1.15);
     const ahead = economyFixture(2, 1);
     ahead.tick = aheadTick;
     tickAi(ahead);
@@ -199,7 +218,8 @@ describe("director proficiency", () => {
 
   it("does not shorten the opening mission when the stored band is harder", () => {
     const difficulty = missionDifficulty(0);
-    const unclamped = difficulty.enemyProductionStart + Math.round(difficulty.enemyProductionEvery * 0.85);
+    const unclamped =
+      difficulty.enemyProductionStart + Math.round(difficulty.enemyProductionEvery * 0.85);
     const opening = economyFixture(0, 1);
     opening.tick = unclamped;
     tickAi(opening);
@@ -208,7 +228,11 @@ describe("director proficiency", () => {
 
   it("starts the assault earlier or later with the band", () => {
     const assault = (band: -1 | 1 | undefined, tick: number) => {
-      const state = makeFixture({ width: 40, height: 40, win: { kind: "destroyMarked", targetCount: 1 } });
+      const state = makeFixture({
+        width: 40,
+        height: 40,
+        win: { kind: "destroyMarked", targetCount: 1 },
+      });
       state.missionIndex = 2;
       if (band) state.proficiencyBand = band;
       addBuilding(state, 1, "constructionYard", 4, 4);
@@ -232,7 +256,11 @@ describe("director proficiency", () => {
     expect(retreatEnterHealth(-1)).toBeGreaterThan(0.35);
 
     const wounded = (band?: -1 | 1) => {
-      const state = makeFixture({ width: 40, height: 40, win: { kind: "destroyMarked", targetCount: 1 } });
+      const state = makeFixture({
+        width: 40,
+        height: 40,
+        win: { kind: "destroyMarked", targetCount: 1 },
+      });
       state.missionIndex = 2;
       if (band) state.proficiencyBand = band;
       addBuilding(state, 1, "constructionYard", 4, 4);
@@ -251,18 +279,28 @@ describe("director proficiency", () => {
 
   it("skips hold-the-line reinforcements when the player is behind and does not add a second bonus wave", () => {
     const reinforce = (band?: -1 | 1) => {
-      const state = makeFixture({ width: 30, height: 30, win: { kind: "holdTheLine", ticks: 20_000 } });
+      const state = makeFixture({
+        width: 30,
+        height: 30,
+        win: { kind: "holdTheLine", ticks: 20_000 },
+      });
       state.missionIndex = 4;
       if (band) state.proficiencyBand = band;
       addBuilding(state, 1, "constructionYard", 4, 4);
       addBuilding(state, 0, "constructionYard", 24, 24);
-      const before = state.entities.filter((entity) => entity.owner === 1 && entity.class === "unit").length;
-      const every = band === 1
-        ? Math.round(missionDifficulty(4).enemyAssaultEvery * 0.85)
-        : missionDifficulty(4).enemyAssaultEvery;
+      const before = state.entities.filter(
+        (entity) => entity.owner === 1 && entity.class === "unit",
+      ).length;
+      const every =
+        band === 1
+          ? Math.round(missionDifficulty(4).enemyAssaultEvery * 0.85)
+          : missionDifficulty(4).enemyAssaultEvery;
       state.tick = every;
       tickAi(state);
-      return state.entities.filter((entity) => entity.owner === 1 && entity.class === "unit").length - before;
+      return (
+        state.entities.filter((entity) => entity.owner === 1 && entity.class === "unit").length -
+        before
+      );
     };
     expect(reinforce()).toBe(2);
     expect(reinforce(-1)).toBe(0);

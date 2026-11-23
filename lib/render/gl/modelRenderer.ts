@@ -38,16 +38,19 @@ function blendHex(hexA: string, hexB: string, amount: number): string {
 }
 
 // Normalized isometric key light direction vector (from top-left)
-const SUN_DIR: [number, number, number] = [0.528, -0.624, 0.720];
+const SUN_DIR: [number, number, number] = [0.528, -0.624, 0.72];
 const SKY_DIR: [number, number, number] = [0, 0, 1];
 const BOUNCE_DIR: [number, number, number] = [-0.566, 0.728, -0.388];
 const VIEW_DIR: [number, number, number] = [0.485, 0.485, 0.686];
 
 // Half vector for Blinn-Phong specular highlight
 const HALF_DIR: [number, number, number] = [
-  (SUN_DIR[0] + VIEW_DIR[0]) / Math.hypot(SUN_DIR[0] + VIEW_DIR[0], SUN_DIR[1] + VIEW_DIR[1], SUN_DIR[2] + VIEW_DIR[2]),
-  (SUN_DIR[1] + VIEW_DIR[1]) / Math.hypot(SUN_DIR[0] + VIEW_DIR[0], SUN_DIR[1] + VIEW_DIR[1], SUN_DIR[2] + VIEW_DIR[2]),
-  (SUN_DIR[2] + VIEW_DIR[2]) / Math.hypot(SUN_DIR[0] + VIEW_DIR[0], SUN_DIR[1] + VIEW_DIR[1], SUN_DIR[2] + VIEW_DIR[2]),
+  (SUN_DIR[0] + VIEW_DIR[0]) /
+    Math.hypot(SUN_DIR[0] + VIEW_DIR[0], SUN_DIR[1] + VIEW_DIR[1], SUN_DIR[2] + VIEW_DIR[2]),
+  (SUN_DIR[1] + VIEW_DIR[1]) /
+    Math.hypot(SUN_DIR[0] + VIEW_DIR[0], SUN_DIR[1] + VIEW_DIR[1], SUN_DIR[2] + VIEW_DIR[2]),
+  (SUN_DIR[2] + VIEW_DIR[2]) /
+    Math.hypot(SUN_DIR[0] + VIEW_DIR[0], SUN_DIR[1] + VIEW_DIR[1], SUN_DIR[2] + VIEW_DIR[2]),
 ];
 
 export type DrawModelOptions = {
@@ -68,9 +71,8 @@ export function draw3dModel(
   palette?: Palette,
   recoilOrOptions?: number | DrawModelOptions,
 ): void {
-  const options: DrawModelOptions = typeof recoilOrOptions === "number"
-    ? { recoil: recoilOrOptions }
-    : recoilOrOptions ?? {};
+  const options: DrawModelOptions =
+    typeof recoilOrOptions === "number" ? { recoil: recoilOrOptions } : (recoilOrOptions ?? {});
   const recoil = options.recoil ?? 0;
   const legLAngle = options.legLAngle ?? 0;
   const legRAngle = options.legRAngle ?? 0;
@@ -109,9 +111,7 @@ export function draw3dModel(
     while (i < count) {
       // Check if consecutive triangles form a Quad: [v0, v1, v2] and [v0, v2, v3]
       const canBeQuad =
-        i + 5 < count &&
-        indices[i]! === indices[i + 3]! &&
-        indices[i + 2]! === indices[i + 4]!;
+        i + 5 < count && indices[i]! === indices[i + 3]! && indices[i + 2]! === indices[i + 4]!;
 
       let vertIndices: number[];
       if (canBeQuad) {
@@ -157,7 +157,7 @@ export function draw3dModel(
           z = pivot[2] - rx0 * sinA + rz0 * cosA;
         } else if (isBarrel) {
           if (recoil > 0) {
-            x -= recoil * 0.10;
+            x -= recoil * 0.1;
           }
           if (barrelPitch !== 0) {
             const rx0 = x - pivot[0];
@@ -178,7 +178,7 @@ export function draw3dModel(
         const sy = screenY + (rx + ry) * isoY - z * isoZ;
 
         pts.push([sx, sy]);
-        avgDepth += (rx + ry) - z * 0.15;
+        avgDepth += rx + ry - z * 0.15;
         avgZ += z;
       }
 
@@ -212,10 +212,16 @@ export function draw3dModel(
 
       // Multi-source lighting calculation
       const dotSun = Math.max(0, rnx * SUN_DIR[0] + rny * SUN_DIR[1] + rnz * SUN_DIR[2]);
-      const dotSky = Math.max(0, 0.5 + 0.5 * (rnx * SKY_DIR[0] + rny * SKY_DIR[1] + rnz * SKY_DIR[2]));
-      const dotBounce = Math.max(0, rnx * BOUNCE_DIR[0] + rny * BOUNCE_DIR[1] + rnz * BOUNCE_DIR[2]);
+      const dotSky = Math.max(
+        0,
+        0.5 + 0.5 * (rnx * SKY_DIR[0] + rny * SKY_DIR[1] + rnz * SKY_DIR[2]),
+      );
+      const dotBounce = Math.max(
+        0,
+        rnx * BOUNCE_DIR[0] + rny * BOUNCE_DIR[1] + rnz * BOUNCE_DIR[2],
+      );
 
-      const diffuse = 0.60 * dotSun + 0.28 * dotSky + 0.12 * dotBounce;
+      const diffuse = 0.6 * dotSun + 0.28 * dotSky + 0.12 * dotBounce;
 
       // Specular highlight
       const dotH = Math.max(0, rnx * HALF_DIR[0] + rny * HALF_DIR[1] + rnz * HALF_DIR[2]);
@@ -227,7 +233,7 @@ export function draw3dModel(
         specular = dotH ** 32 * 0.85;
       } else if (mask === 1 || mask === 2 || mask === 0 || mask === 5) {
         // Metallic armor and bronze vents
-        specular = dotH ** 16 * 0.40;
+        specular = dotH ** 16 * 0.4;
       }
 
       // Height / Crevice Ambient Occlusion
@@ -242,7 +248,7 @@ export function draw3dModel(
       if (mask === 1) {
         // Primary Faction Team Armor
         baseColor = palette?.primary ?? "#4a5d6e";
-        strokeColor = shadeColor(baseColor, 0.50);
+        strokeColor = shadeColor(baseColor, 0.5);
       } else if (mask === 2) {
         // Secondary Faction Armor Trim
         baseColor = palette?.secondary ?? "#6b7c8d";
@@ -276,7 +282,8 @@ export function draw3dModel(
         finalColor = rnz > 0.6 || dotSun > 0.4 ? "#b8f6ff" : "#46e2ff";
       } else {
         const shaded = shadeColor(baseColor, lightFactor);
-        finalColor = specular > 0.05 ? blendHex(shaded, "#ffffff", Math.min(0.75, specular)) : shaded;
+        finalColor =
+          specular > 0.05 ? blendHex(shaded, "#ffffff", Math.min(0.75, specular)) : shaded;
       }
 
       faces.push({
@@ -293,7 +300,7 @@ export function draw3dModel(
   faces.sort((a, b) => a.depth - b.depth);
 
   ctx.save();
-  ctx.lineWidth = Math.max(0.5, 0.70 * scale);
+  ctx.lineWidth = Math.max(0.5, 0.7 * scale);
   ctx.lineJoin = "round";
 
   for (const face of faces) {

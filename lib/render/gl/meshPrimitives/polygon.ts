@@ -1,7 +1,7 @@
-import type { MeshData } from "./types";
-import { computeNormal } from "./math";
-import { appendCap, appendQuad, type MeshPoint } from "./buffers";
 import { createBoxMesh } from "./box";
+import { appendCap, appendQuad, type MeshPoint } from "./buffers";
+import { computeNormal } from "./math";
+import type { MeshData } from "./types";
 
 export function createPolygonPrismMesh(
   pointsXY: [number, number][],
@@ -40,10 +40,22 @@ export function createPolygonPrismMesh(
   }
 
   // Top cap (+Z)
-  appendCap(buffers, [avgX, avgY, maxZ], [0, 0, 1], count, mask, (i) => [pointsXY[i]![0], pointsXY[i]![1], maxZ]);
+  appendCap(buffers, [avgX, avgY, maxZ], [0, 0, 1], count, mask, (i) => [
+    pointsXY[i]![0],
+    pointsXY[i]![1],
+    maxZ,
+  ]);
 
   // Bottom cap (-Z)
-  appendCap(buffers, [avgX, avgY, minZ], [0, 0, -1], count, mask, (i) => [pointsXY[i]![0], pointsXY[i]![1], minZ], true);
+  appendCap(
+    buffers,
+    [avgX, avgY, minZ],
+    [0, 0, -1],
+    count,
+    mask,
+    (i) => [pointsXY[i]![0], pointsXY[i]![1], minZ],
+    true,
+  );
 
   return {
     positions: new Float32Array(p),

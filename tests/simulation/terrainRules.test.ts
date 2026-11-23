@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { UNIT_STATS } from "../../lib/catalog";
 import { deserializeState, serializeState } from "../../lib/persist/save";
-import { flowFieldForGoals } from "../../lib/sim/flowField";
-import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { heightMultiplier } from "../../lib/sim/combat/targeting";
+import { addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { flowFieldForGoals } from "../../lib/sim/flowField";
 import {
   directFireRangeBonusAt,
   groundUnitSightAt,
@@ -14,7 +14,14 @@ import {
 import type { BiomeName, SimState } from "../../lib/types";
 
 const BIOMES: readonly BiomeName[] = [
-  "ash plains", "crystal flats", "rust canyons", "salt marshes", "glass desert", "tundra grid", "jungle wreckage", "volcanic shelf",
+  "ash plains",
+  "crystal flats",
+  "rust canyons",
+  "salt marshes",
+  "glass desert",
+  "tundra grid",
+  "jungle wreckage",
+  "volcanic shelf",
 ];
 const states = new Map<BiomeName, SimState>();
 
@@ -37,11 +44,19 @@ function activeTile(state: SimState): { x: number; y: number } {
   throw new Error(`No active feature region in ${state.biome}`);
 }
 
-function boundaryPair(state: SimState): { active: { x: number; y: number }; outside: { x: number; y: number } } {
+function boundaryPair(state: SimState): {
+  active: { x: number; y: number };
+  outside: { x: number; y: number };
+} {
   for (let y = 1; y < state.height - 1; y++) {
     for (let x = 1; x < state.width - 1; x++) {
       if (!terrainRuleAt(state, x, y)?.active) continue;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ] as const) {
         if (!terrainRuleAt(state, x + dx, y + dy)?.active) {
           return { active: { x, y }, outside: { x: x + dx, y: y + dy } };
         }
@@ -55,7 +70,12 @@ describe("seeded tactical terrain rules", () => {
   it("classifies every biome deterministically from the same seeded feature sample", () => {
     for (const biome of BIOMES) {
       const state = stateFor(biome);
-      const other = makeFixture({ width: state.width, height: state.height, seed: state.seed, win: { kind: "annihilate" } });
+      const other = makeFixture({
+        width: state.width,
+        height: state.height,
+        seed: state.seed,
+        win: { kind: "annihilate" },
+      });
       other.biome = state.biome;
       other.missionIndex = state.missionIndex;
       const { x, y } = activeTile(state);
@@ -65,7 +85,10 @@ describe("seeded tactical terrain rules", () => {
   });
 
   it("changes Ash and Crystal ground vision by one tile, symmetrically for both owners", () => {
-    for (const [biome, delta] of [["ash plains", -1], ["crystal flats", 1]] as const) {
+    for (const [biome, delta] of [
+      ["ash plains", -1],
+      ["crystal flats", 1],
+    ] as const) {
       const state = stateFor(biome);
       const tile = activeTile(state);
       const player = addUnit(state, 0, "infantry", tile.x, tile.y);
@@ -74,10 +97,16 @@ describe("seeded tactical terrain rules", () => {
       player.y = tile.y;
       enemy.x = tile.x;
       enemy.y = tile.y;
-      expect(groundUnitSightAt(state, player, UNIT_STATS.infantry.sight)).toBe(UNIT_STATS.infantry.sight + delta);
-      expect(groundUnitSightAt(state, enemy, UNIT_STATS.infantry.sight)).toBe(UNIT_STATS.infantry.sight + delta);
+      expect(groundUnitSightAt(state, player, UNIT_STATS.infantry.sight)).toBe(
+        UNIT_STATS.infantry.sight + delta,
+      );
+      expect(groundUnitSightAt(state, enemy, UNIT_STATS.infantry.sight)).toBe(
+        UNIT_STATS.infantry.sight + delta,
+      );
       const plane = addUnit(state, 0, "strikePlane", tile.x, tile.y);
-      expect(groundUnitSightAt(state, plane, UNIT_STATS.strikePlane.sight)).toBe(UNIT_STATS.strikePlane.sight);
+      expect(groundUnitSightAt(state, plane, UNIT_STATS.strikePlane.sight)).toBe(
+        UNIT_STATS.strikePlane.sight,
+      );
     }
   });
 
@@ -98,7 +127,10 @@ describe("seeded tactical terrain rules", () => {
   });
 
   it("applies Salt Marsh and Tundra vehicle movement cost in active regions", () => {
-    for (const [biome, expected] of [["salt marshes", 1.2], ["tundra grid", 0.85]] as const) {
+    for (const [biome, expected] of [
+      ["salt marshes", 1.2],
+      ["tundra grid", 0.85],
+    ] as const) {
       const state = stateFor(biome);
       const tile = activeTile(state);
       expect(terrainMovementCostAt(state, "vehicle", tile.x, tile.y)).toBeCloseTo(expected);

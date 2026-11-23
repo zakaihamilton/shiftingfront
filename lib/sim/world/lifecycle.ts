@@ -1,21 +1,27 @@
 import type { SimState } from "../../types";
+import { removeEntities } from "../entities";
 import { refundQueuedUnits } from "../productionRefund";
 import { ensureDeadBuildingInvalidation } from "./terrain";
-import { removeEntities } from "../entities";
 
 function cloneProductionQueues(state: SimState): SimState["productionQueues"] {
-  return Object.fromEntries(Object.entries(state.productionQueues ?? {}).map(([owner, byKind]) => [
-    owner,
-    Object.fromEntries(Object.entries(byKind ?? {}).map(([kind, queue]) => [
-      kind,
-      queue ? {
-        ...queue,
-        ...(queue.producing ? { producing: { ...queue.producing } } : {}),
-        ...(queue.resume ? { resume: queue.resume.map((job) => ({ ...job })) } : {}),
-        queue: [...queue.queue],
-      } : queue,
-    ])),
-  ])) as SimState["productionQueues"];
+  return Object.fromEntries(
+    Object.entries(state.productionQueues ?? {}).map(([owner, byKind]) => [
+      owner,
+      Object.fromEntries(
+        Object.entries(byKind ?? {}).map(([kind, queue]) => [
+          kind,
+          queue
+            ? {
+                ...queue,
+                ...(queue.producing ? { producing: { ...queue.producing } } : {}),
+                ...(queue.resume ? { resume: queue.resume.map((job) => ({ ...job })) } : {}),
+                queue: [...queue.queue],
+              }
+            : queue,
+        ]),
+      ),
+    ]),
+  ) as SimState["productionQueues"];
 }
 
 export function compactDestroyedEntities(state: SimState): number {
@@ -39,7 +45,8 @@ export function compactDestroyedEntities(state: SimState): number {
 }
 
 export function compactedState(state: SimState): SimState {
-  if (!Array.isArray(state.entities) || !state.entities.some((entity) => entity.hp <= 0)) return state;
+  if (!Array.isArray(state.entities) || !state.entities.some((entity) => entity.hp <= 0))
+    return state;
   const copy: SimState = {
     ...state,
     // Cleanup can credit refunds and clear shared queues, so clone each value

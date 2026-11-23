@@ -23,7 +23,12 @@ export function MenuMainPanel({
   onMultiplayer?: () => void;
 }) {
   return (
-    <MetalPanel as="nav" className={styles.panel} data-testid="menu-dashboard" aria-label="Main menu">
+    <MetalPanel
+      as="nav"
+      className={styles.panel}
+      data-testid="menu-dashboard"
+      aria-label="Main menu"
+    >
       <div className={styles.panelHeader}>
         <ConsoleLabel>Deploy</ConsoleLabel>
       </div>
@@ -38,7 +43,8 @@ export function MenuMainPanel({
           >
             <span>RESUME CAMPAIGN</span>
             <span className={styles.resumeMeta} aria-hidden="true">
-              {resumeSave.campaignName} · MISSION {String(resumeSave.missionIndex + 1).padStart(2, "0")}
+              {resumeSave.campaignName} · MISSION{" "}
+              {String(resumeSave.missionIndex + 1).padStart(2, "0")}
             </span>
           </ConsoleButton>
         ) : null}
@@ -51,16 +57,39 @@ export function MenuMainPanel({
         >
           NEW GAME
         </ConsoleButton>
-        <ConsoleButton muted className={`${styles.utilityAction} ${styles.loadAction}`} tooltip="Host or join an online skirmish" onClick={onMultiplayer}>
+        <ConsoleButton
+          muted
+          className={`${styles.utilityAction} ${styles.loadAction}`}
+          tooltip="Host or join an online skirmish"
+          onClick={onMultiplayer}
+        >
           MULTIPLAYER
         </ConsoleButton>
-        <ConsoleButton muted className={`${styles.utilityAction} ${styles.loadAction}`} tooltip="Open the training range" shortcut={SHORTCUT.tutorial} onClick={onTutorial}>
+        <ConsoleButton
+          muted
+          className={`${styles.utilityAction} ${styles.loadAction}`}
+          tooltip="Open the training range"
+          shortcut={SHORTCUT.tutorial}
+          onClick={onTutorial}
+        >
           TUTORIAL
         </ConsoleButton>
-        <ConsoleButton muted className={`${styles.utilityAction} ${styles.loadAction}`} tooltip="Open the campaign archive" shortcut={SHORTCUT.load} onClick={onLoadMission}>
+        <ConsoleButton
+          muted
+          className={`${styles.utilityAction} ${styles.loadAction}`}
+          tooltip="Open the campaign archive"
+          shortcut={SHORTCUT.load}
+          onClick={onLoadMission}
+        >
           LOAD MISSION
         </ConsoleButton>
-        <ConsoleButton muted className={styles.utilityAction} tooltip="Audio and game options" shortcut={SHORTCUT.options} onClick={onOptions}>
+        <ConsoleButton
+          muted
+          className={styles.utilityAction}
+          tooltip="Audio and game options"
+          shortcut={SHORTCUT.options}
+          onClick={onOptions}
+        >
           OPTIONS
         </ConsoleButton>
       </div>

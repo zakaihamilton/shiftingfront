@@ -1,11 +1,15 @@
-import { canvasViewport } from "./canvasViewport";
+import { sceneryAt } from "../gen/map";
+import { type Camera, expandIsoDiamond, TILE_H, TILE_W, tileToScreen } from "../iso";
 import { fogAt } from "../sim/fog";
 import type { SimState } from "../types";
-import { expandIsoDiamond, TILE_H, TILE_W, tileToScreen, type Camera } from "../iso";
-import { sceneryAt } from "../gen/map";
-import { fogTerrainGain } from "./terrainAtlas";
+import { canvasViewport } from "./canvasViewport";
 import { isoDiamondPath } from "./isoDiamond";
-import { terrainAtmosphereFrame, terrainLightRigForBiome, biomeAtmosphereColor } from "./terrainLighting";
+import { fogTerrainGain } from "./terrainAtlas";
+import {
+  biomeAtmosphereColor,
+  terrainAtmosphereFrame,
+  terrainLightRigForBiome,
+} from "./terrainLighting";
 import { visibleTileRange } from "./terrainPaint/world";
 
 const MASK_SCALE = 0.25;
@@ -38,7 +42,12 @@ function cacheKey(state: SimState, cam: Camera, width: number, height: number): 
   ].join(":");
 }
 
-function ensureMask(state: SimState, cam: Camera, width: number, height: number): HTMLCanvasElement | null {
+function ensureMask(
+  state: SimState,
+  cam: Camera,
+  width: number,
+  height: number,
+): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
   const key = cacheKey(state, cam, width, height);
   if (terrainMask?.key === key) return terrainMask.canvas;
@@ -57,7 +66,7 @@ function ensureMask(state: SimState, cam: Camera, width: number, height: number)
   const tw = TILE_W * cam.zoom;
   const th = TILE_H * cam.zoom;
   const depth0 = range.x0 + range.y0;
-  const depth1 = (range.x1 - 1) + (range.y1 - 1);
+  const depth1 = range.x1 - 1 + (range.y1 - 1);
   for (let depth = depth0; depth <= depth1; depth++) {
     const xs = Math.max(range.x0, depth - (range.y1 - 1));
     const xe = Math.min(range.x1 - 1, depth - range.y0);

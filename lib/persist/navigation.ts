@@ -125,7 +125,8 @@ export function clearBriefingSkippedIntent(seed: number, mission: number): void 
     const raw = storage.getItem(BRIEFING_SKIP_INTENT_KEY);
     if (!raw) return;
     const intent = JSON.parse(raw) as Partial<BriefingSkipIntent>;
-    if (intent.seed === seed && intent.mission === mission) storage.removeItem(BRIEFING_SKIP_INTENT_KEY);
+    if (intent.seed === seed && intent.mission === mission)
+      storage.removeItem(BRIEFING_SKIP_INTENT_KEY);
   } catch {
     // Ignore blocked, malformed, or unavailable session storage.
   }

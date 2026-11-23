@@ -1,5 +1,6 @@
 import type { BiomeName, TileContour } from "../../types";
 import { irregularIso as irregularIsoPrimitive } from "../shapePrimitives";
+
 export { ell, line, poly } from "../shapePrimitives";
 
 export const TW = 64;
@@ -21,11 +22,21 @@ export function tileCy(): number {
 }
 
 /** Preserve the tile-sprite API: the seed argument is accepted for compatibility and ignored. */
-export function irregularIso(cx: number, cy: number, w: number, h: number, _seed: number, out = 1): number[] {
+export function irregularIso(
+  cx: number,
+  cy: number,
+  w: number,
+  h: number,
+  _seed: number,
+  out = 1,
+): number[] {
   return irregularIsoPrimitive(cx, cy, w, h, out);
 }
 
-export function defaultContour(kind: "clear" | "water" | "resource" | "blocked", elev: number): TileContour {
+export function defaultContour(
+  kind: "clear" | "water" | "resource" | "blocked",
+  elev: number,
+): TileContour {
   if (kind === "water") return "bank";
   if (kind === "blocked" && elev >= 2) return "ridge";
   if (elev >= 3) return "ridge";

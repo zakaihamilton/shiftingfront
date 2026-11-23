@@ -1,18 +1,30 @@
 import { isAirUnit, isSupportEntity } from "../../catalog";
-import { TILE_RESOURCE, type Command, type Entity, type SimEvent, type SimState, type TutorialStage } from "../../types";
-import { enterTutorialStage, tutorialCommandCompletesStage, tutorialTargets, type TutorialWorldTarget } from "../tutorialStage";
-import { findPathDetailed, routePendingFor } from "../pathfinding";
-import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
-import { byId, inBounds, tileAt } from "../world";
-import { holdSupport } from "../support";
-import { bombardUnits, braceUnits, clearPlanted } from "../verbs";
+import {
+  type Command,
+  type Entity,
+  type SimEvent,
+  type SimState,
+  TILE_RESOURCE,
+  type TutorialStage,
+} from "../../types";
 import { landAircraft } from "../aircraft";
-import { moveUnits, attackMoveUnits } from "./movement";
-import { attackUnits, supportUnits, setStance, setFormation } from "./combat";
-import { startBuild, cancelBuild, sellBuilding, setRallyPoint, toggleRepair } from "./building";
-import { startProduce, cancelProduce, activateProductionBuilding } from "./production";
 import { entitiesFor } from "../entities";
+import { FOREGROUND_PATH_MAX_NODES, FOREGROUND_PATHS_PER_ORDER } from "../pathBudget";
+import { findPathDetailed, routePendingFor } from "../pathfinding";
+import { holdSupport } from "../support";
+import {
+  enterTutorialStage,
+  type TutorialWorldTarget,
+  tutorialCommandCompletesStage,
+  tutorialTargets,
+} from "../tutorialStage";
+import { bombardUnits, braceUnits, clearPlanted } from "../verbs";
+import { byId, inBounds, tileAt } from "../world";
+import { cancelBuild, sellBuilding, setRallyPoint, startBuild, toggleRepair } from "./building";
+import { attackUnits, setFormation, setStance, supportUnits } from "./combat";
 import { commandOwner } from "./commandOwner";
+import { attackMoveUnits, moveUnits } from "./movement";
+import { activateProductionBuilding, cancelProduce, startProduce } from "./production";
 
 export function issue(state: SimState, command: Command): SimEvent[] {
   if (state.result !== "playing") return [];
@@ -95,7 +107,11 @@ export function issue(state: SimState, command: Command): SimEvent[] {
   return events;
 }
 
-function advanceTutorialAfterCommand(state: SimState, command: Command, expectedTargets?: TutorialWorldTarget[]): void {
+function advanceTutorialAfterCommand(
+  state: SimState,
+  command: Command,
+  expectedTargets?: TutorialWorldTarget[],
+): void {
   if (!state.tutorialStage || state.tutorialStage === "complete") return;
   const next: Partial<Record<TutorialStage, TutorialStage>> = {
     move: "build",
@@ -111,21 +127,26 @@ function advanceTutorialAfterCommand(state: SimState, command: Command, expected
   // Construction is complete only after the production system finishes the
   // Power Plant. Keep the coach on this lesson while it is being built.
   if (stage === "build") {
-    if (tutorialCommandCompletesStage(state, command, expectedTargets) && command.type === "build") {
-      const building = entitiesFor(state).find((entity) =>
-        entity.owner === commandOwner(state) &&
-        entity.class === "building" &&
-        entity.kind === "power" &&
-        entity.constructing > 0 &&
-        Math.round(entity.x) === Math.round(command.x) &&
-        Math.round(entity.y) === Math.round(command.y),
+    if (
+      tutorialCommandCompletesStage(state, command, expectedTargets) &&
+      command.type === "build"
+    ) {
+      const building = entitiesFor(state).find(
+        (entity) =>
+          entity.owner === commandOwner(state) &&
+          entity.class === "building" &&
+          entity.kind === "power" &&
+          entity.constructing > 0 &&
+          Math.round(entity.x) === Math.round(command.x) &&
+          Math.round(entity.y) === Math.round(command.y),
       );
       if (building) state.tutorialBuildId = building.id;
     }
     return;
   }
   const nextStage = next[stage];
-  if (nextStage && tutorialCommandCompletesStage(state, command, expectedTargets)) enterTutorialStage(state, nextStage);
+  if (nextStage && tutorialCommandCompletesStage(state, command, expectedTargets))
+    enterTutorialStage(state, nextStage);
 }
 
 function stopUnits(state: SimState, ids: number[]): SimEvent[] {
@@ -156,8 +177,17 @@ function travelOrder(ids: number[], x: number, y: number, attackMove: boolean): 
     : { type: "move", unitIds: ids, x, y };
 }
 
-function findNearbyResourceTile(state: SimState, x: number, y: number, maxRadius = 2): { x: number; y: number } | undefined {
-  if (inBounds(state, x, y) && tileAt(state, x, y) === TILE_RESOURCE && (state.resourceAmount[y * state.width + x] ?? 0) > 0) {
+function findNearbyResourceTile(
+  state: SimState,
+  x: number,
+  y: number,
+  maxRadius = 2,
+): { x: number; y: number } | undefined {
+  if (
+    inBounds(state, x, y) &&
+    tileAt(state, x, y) === TILE_RESOURCE &&
+    (state.resourceAmount[y * state.width + x] ?? 0) > 0
+  ) {
     return { x, y };
   }
   let best: { x: number; y: number } | undefined;
@@ -181,7 +211,12 @@ function findNearbyResourceTile(state: SimState, x: number, y: number, maxRadius
   return best;
 }
 
-export function patchResourceTiles(state: SimState, cx: number, cy: number, radius = 4): { x: number; y: number }[] {
+export function patchResourceTiles(
+  state: SimState,
+  cx: number,
+  cy: number,
+  radius = 4,
+): { x: number; y: number }[] {
   const tiles: { x: number; y: number; d: number }[] = [];
   for (let dy = -radius; dy <= radius; dy++) {
     for (let dx = -radius; dx <= radius; dx++) {
@@ -199,7 +234,13 @@ export function patchResourceTiles(state: SimState, cx: number, cy: number, radi
 }
 
 /** Right-click / tap ground: harvest ore with harvesters, move everyone else onto the tile. */
-export function groundOrders(state: SimState, ids: number[], x: number, y: number, attackMove = false): Command[] {
+export function groundOrders(
+  state: SimState,
+  ids: number[],
+  x: number,
+  y: number,
+  attackMove = false,
+): Command[] {
   const owner = commandOwner(state);
   const tx = Math.round(x);
   const ty = Math.round(y);
@@ -214,7 +255,8 @@ export function groundOrders(state: SimState, ids: number[], x: number, y: numbe
     if (e.kind === "harvester") harvesters.push(id);
     else movers.push(id);
   }
-  const targetResource = harvesters.length > 0 ? findNearbyResourceTile(state, tx, ty, 2) : undefined;
+  const targetResource =
+    harvesters.length > 0 ? findNearbyResourceTile(state, tx, ty, 2) : undefined;
   if (!targetResource) {
     if (!attackMove || harvesters.length === 0) return [travelOrder(ids, tx, ty, attackMove)];
     const commands: Command[] = [];
@@ -223,7 +265,13 @@ export function groundOrders(state: SimState, ids: number[], x: number, y: numbe
     return commands;
   }
   const commands: Command[] = [];
-  if (harvesters.length) commands.push({ type: "harvest", unitIds: harvesters, x: targetResource.x, y: targetResource.y });
+  if (harvesters.length)
+    commands.push({
+      type: "harvest",
+      unitIds: harvesters,
+      x: targetResource.x,
+      y: targetResource.y,
+    });
   if (movers.length) commands.push(travelOrder(movers, tx, ty, attackMove));
   return commands;
 }
@@ -236,7 +284,9 @@ function harvestUnits(state: SimState, ids: number[], x: number, y: number): Sim
 
   const validUnits = ids
     .map((id) => byId(state, id))
-    .filter((e): e is Entity => Boolean(e && e.kind === "harvester" && e.owner === commandOwner(state) && !e.neutral));
+    .filter((e): e is Entity =>
+      Boolean(e && e.kind === "harvester" && e.owner === commandOwner(state) && !e.neutral),
+    );
 
   let searches = 0;
   validUnits.forEach((e, index) => {
@@ -250,7 +300,12 @@ function harvestUnits(state: SimState, ids: number[], x: number, y: number): Sim
     e.idle = false;
     e.moveToHarvest = undefined;
     if (searches < FOREGROUND_PATHS_PER_ORDER) {
-      const result = findPathDetailed(state, e, { x: e.gatherX, y: e.gatherY }, { maxNodes: FOREGROUND_PATH_MAX_NODES });
+      const result = findPathDetailed(
+        state,
+        e,
+        { x: e.gatherX, y: e.gatherY },
+        { maxNodes: FOREGROUND_PATH_MAX_NODES },
+      );
       e.path = result.path;
       e.routePending = routePendingFor(result.status);
       searches += 1;

@@ -32,9 +32,26 @@ describe("simulation pipeline", () => {
     const events = [] as ReturnType<typeof createSimulationTickContext>["events"];
     const order: string[] = [];
     const systems: SimulationSystem[] = [
-      { id: "production", run: ({ emit }) => { order.push("production"); emit([{ type: "alert", kind: "objective", text: "first" }]); } },
-      { id: "economy", run: ({ emit }) => { order.push("economy"); emit([{ type: "alert", kind: "objective", text: "second" }]); } },
-      { id: "cleanup", run: () => { order.push("cleanup"); } },
+      {
+        id: "production",
+        run: ({ emit }) => {
+          order.push("production");
+          emit([{ type: "alert", kind: "objective", text: "first" }]);
+        },
+      },
+      {
+        id: "economy",
+        run: ({ emit }) => {
+          order.push("economy");
+          emit([{ type: "alert", kind: "objective", text: "second" }]);
+        },
+      },
+      {
+        id: "cleanup",
+        run: () => {
+          order.push("cleanup");
+        },
+      },
     ];
 
     runSimulationSystems(createSimulationTickContext(state, events, {}), systems);
@@ -53,7 +70,11 @@ describe("simulation pipeline", () => {
     expect(result.events).toContainEqual({ type: "commandRejected", reason: "invalid building" });
 
     const headless = createMission({ seed: 421, missionIndex: 0 });
-    const headlessResult = tick(headless, undefined, { collectEvents: false, updateFog: false, evaluateObjectives: false });
+    const headlessResult = tick(headless, undefined, {
+      collectEvents: false,
+      updateFog: false,
+      evaluateObjectives: false,
+    });
     expect(headlessResult.events).toEqual([]);
     expect(headless.tick).toBe(1);
   });

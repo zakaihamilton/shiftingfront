@@ -1,22 +1,22 @@
 import { describe, expect, it } from "vitest";
+import { UNIT_STATS } from "../../lib/catalog";
+import { isoFacingAngle, toIsometricFacing } from "../../lib/iso";
 import {
   animClock,
   animFrame,
   buildingAnim,
   constructionProgress,
   damageFlicker,
+  facingVector,
   selectionPulse,
   toFacing,
-  facingVector,
+  unitAnim,
   unitMovementOffset,
+  unitPose,
   unitWalkCycle,
   unitWalkPeriod,
-  unitAnim,
-  unitPose,
   waterShimmer,
 } from "../../lib/render/anim";
-import { isoFacingAngle, toIsometricFacing } from "../../lib/iso";
-import { UNIT_STATS } from "../../lib/catalog";
 import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 describe("animation helpers", () => {
@@ -88,8 +88,10 @@ describe("animation helpers", () => {
       expect(transition.previousFrame).toBe(3);
       expect(transition.frameBlend).toBeGreaterThan(0);
       expect(transition.frameBlend).toBeLessThan(1);
-      expect(unitMovementOffset(kind, cycle.frame, cycle.phase).strideRatio)
-        .toBeCloseTo(Math.sin(cycle.phase), 8);
+      expect(unitMovementOffset(kind, cycle.frame, cycle.phase).strideRatio).toBeCloseTo(
+        Math.sin(cycle.phase),
+        8,
+      );
     }
   });
 
@@ -125,11 +127,15 @@ describe("animation helpers", () => {
     expect(unitAnim(idle, 12).bobY).toBe(0);
     idle.path = [{ x: 7, y: 6 }];
     infantry.path = [{ x: 3, y: 2 }];
-    const infantryMove = new Set([0, 90, 180, 270].map((clock) => unitAnim(infantry, 12, clock).bobY));
+    const infantryMove = new Set(
+      [0, 90, 180, 270].map((clock) => unitAnim(infantry, 12, clock).bobY),
+    );
     const tankMove = new Set([0, 90, 180, 270].map((clock) => unitAnim(idle, 12, clock).bobY));
     expect(infantryMove.size).toBe(1);
     expect(tankMove.size).toBe(1);
-    expect(new Set([0, 90, 180, 270].map((clock) => unitAnim(idle, 12, clock).frame)).size).toBeGreaterThan(1);
+    expect(
+      new Set([0, 90, 180, 270].map((clock) => unitAnim(idle, 12, clock).frame)).size,
+    ).toBeGreaterThan(1);
   });
 
   it("derives building activity from construction and production", () => {

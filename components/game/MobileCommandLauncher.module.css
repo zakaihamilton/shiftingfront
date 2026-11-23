@@ -43,9 +43,16 @@
     color: var(--chrome-cyan);
     border-color: color-mix(in srgb, var(--chrome-cyan) 44%, var(--chrome-bevel));
     background:
-      linear-gradient(105deg, rgba(255,255,255,0.1), transparent 34%),
-      linear-gradient(color-mix(in srgb, var(--chrome-steel-hi) 76%, transparent), color-mix(in srgb, var(--chrome-steel-lo) 96%, transparent));
-    box-shadow: inset 1px 1px var(--chrome-bevel), inset -2px -2px var(--chrome-inset), 0 8px 20px rgba(0,0,0,0.42), 2px 2px var(--chrome-void);
+      linear-gradient(105deg, rgba(255, 255, 255, 0.1), transparent 34%),
+      linear-gradient(
+        color-mix(in srgb, var(--chrome-steel-hi) 76%, transparent),
+        color-mix(in srgb, var(--chrome-steel-lo) 96%, transparent)
+      );
+    box-shadow:
+      inset 1px 1px var(--chrome-bevel),
+      inset -2px -2px var(--chrome-inset),
+      0 8px 20px rgba(0, 0, 0, 0.42),
+      2px 2px var(--chrome-void);
   }
 
   .launcher .button {
@@ -58,7 +65,11 @@
 
   .launcher[data-tutorial-focus] .button {
     border-color: var(--chrome-gold);
-    box-shadow: inset 1px 1px var(--chrome-bevel), inset -2px -2px var(--chrome-inset), 0 0 0 1px var(--chrome-gold), 0 0 18px color-mix(in srgb, var(--chrome-gold) 42%, transparent);
+    box-shadow:
+      inset 1px 1px var(--chrome-bevel),
+      inset -2px -2px var(--chrome-inset),
+      0 0 0 1px var(--chrome-gold),
+      0 0 18px color-mix(in srgb, var(--chrome-gold) 42%, transparent);
     animation: tutorialLauncherPulse 1.35s ease-in-out infinite;
   }
 
@@ -73,7 +84,12 @@
   }
 
   @keyframes tutorialLauncherPulse {
-    0%, 100% { filter: brightness(1); }
-    50% { filter: brightness(1.3); }
+    0%,
+    100% {
+      filter: brightness(1);
+    }
+    50% {
+      filter: brightness(1.3);
+    }
   }
 }

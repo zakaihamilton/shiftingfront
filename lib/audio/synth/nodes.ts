@@ -22,19 +22,28 @@ export function jitter(hz: number, amount = 0.06): number {
 
 export function getNoiseBuffer(audio: AudioContext): AudioBuffer {
   if (noiseBuf && noiseBuf.sampleRate === audio.sampleRate) return noiseBuf;
-  const buffer = audio.createBuffer(1, Math.max(1, Math.floor(audio.sampleRate * 0.4)), audio.sampleRate);
+  const buffer = audio.createBuffer(
+    1,
+    Math.max(1, Math.floor(audio.sampleRate * 0.4)),
+    audio.sampleRate,
+  );
   const data = buffer.getChannelData(0);
   let state = 0x1f123bb5;
   for (let i = 0; i < data.length; i++) {
     state = Math.imul(state ^ (state >>> 15), 1 | state);
     state ^= state + Math.imul(state ^ (state >>> 7), 61 | state);
-    data[i] = ((state ^ (state >>> 14)) >>> 0) / 4294967295 * 2 - 1;
+    data[i] = (((state ^ (state >>> 14)) >>> 0) / 4294967295) * 2 - 1;
   }
   noiseBuf = buffer;
   return buffer;
 }
 
-export function connect(audio: AudioContext, source: AudioNode, dest: AudioNode, pan: number): StereoPannerNode | null {
+export function connect(
+  audio: AudioContext,
+  source: AudioNode,
+  dest: AudioNode,
+  pan: number,
+): StereoPannerNode | null {
   if (Math.abs(pan) < 0.01) {
     source.connect(dest);
     return null;
@@ -100,7 +109,10 @@ export function tone(
   o.type = options.type;
   o.frequency.setValueAtTime(Math.max(20, options.frequency), start);
   if (options.endFrequency !== undefined) {
-    o.frequency.exponentialRampToValueAtTime(Math.max(20, options.endFrequency), start + options.duration);
+    o.frequency.exponentialRampToValueAtTime(
+      Math.max(20, options.endFrequency),
+      start + options.duration,
+    );
   }
   f.type = "lowpass";
   f.frequency.setValueAtTime(options.cutoff ?? 2600, start);
@@ -147,7 +159,10 @@ export function noise(
   f.type = options.type ?? "bandpass";
   f.frequency.setValueAtTime(options.frequency, start);
   if (options.endFrequency !== undefined) {
-    f.frequency.exponentialRampToValueAtTime(Math.max(40, options.endFrequency), start + options.duration);
+    f.frequency.exponentialRampToValueAtTime(
+      Math.max(40, options.endFrequency),
+      start + options.duration,
+    );
   }
   f.Q.setValueAtTime(options.q ?? 1.1, start);
   g.gain.setValueAtTime(0.001, start);

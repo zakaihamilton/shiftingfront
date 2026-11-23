@@ -23,7 +23,12 @@ function emptyMute(): AlertMute {
   };
 }
 
-export function notePlayerAlert(state: SimState, attacker: Entity, target: Entity, pending: PendingAlerts): void {
+export function notePlayerAlert(
+  state: SimState,
+  attacker: Entity,
+  target: Entity,
+  pending: PendingAlerts,
+): void {
   const player = state.viewOwner ?? 0;
   if (target.owner !== player || attacker.owner === player) return;
   if (target.kind === "constructionYard") pending.yard = true;
@@ -42,7 +47,11 @@ function selectedCategory(pending: PendingAlerts): AlertCategory | undefined {
   return undefined;
 }
 
-export function flushPlayerAlerts(state: SimState, pending: PendingAlerts, events?: SimEvent[]): void {
+export function flushPlayerAlerts(
+  state: SimState,
+  pending: PendingAlerts,
+  events?: SimEvent[],
+): void {
   const category = selectedCategory(pending);
   if (!category) return;
   const mute = alertMute.get(state) ?? emptyMute();
@@ -54,9 +63,11 @@ export function flushPlayerAlerts(state: SimState, pending: PendingAlerts, event
 }
 
 function alertEvent(category: AlertCategory): SimEvent {
-  if (category === "yard") return { type: "alert", kind: "warning", text: `${labelFor("constructionYard")} under attack` };
+  if (category === "yard")
+    return { type: "alert", kind: "warning", text: `${labelFor("constructionYard")} under attack` };
   if (category === "convoy") return { type: "alert", kind: "contact", text: "Convoy under attack" };
-  if (category === "harvester") return { type: "alert", kind: "contact", text: "Harvester under attack" };
+  if (category === "harvester")
+    return { type: "alert", kind: "contact", text: "Harvester under attack" };
   if (category === "building") return { type: "alert", kind: "contact", text: "Base under attack" };
   return { type: "alert", kind: "contact", text: "Unit under attack" };
 }

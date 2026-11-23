@@ -21,14 +21,22 @@
   color: var(--chrome-cyan);
   font-family: var(--font-mono);
   font-size: 1.875rem;
-  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-bevel);
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  box-shadow:
+    inset 1px 1px var(--chrome-void),
+    inset -1px -1px var(--chrome-bevel);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .wrap:focus-within .cell {
   border-color: var(--chrome-cyan);
   background: color-mix(in srgb, var(--chrome-cyan) 8%, var(--chrome-steel-lo));
-  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-bevel), 0 0 0 1px var(--chrome-cyan-dim);
+  box-shadow:
+    inset 1px 1px var(--chrome-void),
+    inset -1px -1px var(--chrome-bevel),
+    0 0 0 1px var(--chrome-cyan-dim);
 }
 
 .wrap .input {

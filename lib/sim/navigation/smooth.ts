@@ -48,7 +48,16 @@ export function smoothGridPath(
     for (let probe = path.length - 1; probe > index; probe -= 1) {
       const goal = path[probe]!;
       const budget = segmentCost(anchorX, anchorY, path, index, probe, options?.cellCost);
-      const line = chooseLine(navigation, anchorX, anchorY, goal.x, goal.y, budget, options, segmentApproach);
+      const line = chooseLine(
+        navigation,
+        anchorX,
+        anchorY,
+        goal.x,
+        goal.y,
+        budget,
+        options,
+        segmentApproach,
+      );
       if (!line) continue;
       chosen = probe;
       chosenLine = line;
@@ -146,7 +155,13 @@ function headingGroupedGridLine(x0: number, y0: number, x1: number, y1: number):
  * One turn that starts with the step the unit is already taking, when that
  * step is one of the two equal-cost legs. Otherwise there is no continuation.
  */
-function continuedGroupedGridLine(x0: number, y0: number, x1: number, y1: number, approach: Vec2): Vec2[] | undefined {
+function continuedGroupedGridLine(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  approach: Vec2,
+): Vec2[] | undefined {
   const dx = x1 - x0;
   const dy = y1 - y0;
   const sx = Math.sign(dx);
@@ -154,16 +169,23 @@ function continuedGroupedGridLine(x0: number, y0: number, x1: number, y1: number
   const diagonal = approach.x === sx && approach.y === sy && sx !== 0 && sy !== 0;
   const adx = Math.abs(dx);
   const ady = Math.abs(dy);
-  const cardinal = adx >= ady
-    ? approach.x === sx && approach.y === 0 && sx !== 0
-    : approach.x === 0 && approach.y === sy && sy !== 0;
+  const cardinal =
+    adx >= ady
+      ? approach.x === sx && approach.y === 0 && sx !== 0
+      : approach.x === 0 && approach.y === sy && sy !== 0;
   if (!diagonal && !cardinal) return undefined;
   if (adx === 0 || ady === 0) return groupedGridLine(x0, y0, x1, y1, false);
   return groupedGridLine(x0, y0, x1, y1, diagonal);
 }
 
 /** One turn: either the diagonal run or the straight cardinal run comes first. */
-export function groupedGridLine(x0: number, y0: number, x1: number, y1: number, diagonalFirst = false): Vec2[] {
+export function groupedGridLine(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  diagonalFirst = false,
+): Vec2[] {
   const sx = Math.sign(x1 - x0);
   const sy = Math.sign(y1 - y0);
   const dx = Math.abs(x1 - x0);

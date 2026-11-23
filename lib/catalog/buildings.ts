@@ -1,4 +1,11 @@
-import type { AmmoEffect, ArmorType, BuildingKind, CombatTargetDomain, Entity, WeaponType } from "../types";
+import type {
+  AmmoEffect,
+  ArmorType,
+  BuildingKind,
+  CombatTargetDomain,
+  Entity,
+  WeaponType,
+} from "../types";
 import { UNIT_DEFINITIONS } from "./units";
 
 export const BUILDING_KINDS: BuildingKind[] = [
@@ -37,7 +44,13 @@ export type BuildingStats = {
   };
 };
 
-export type BuildingAiRole = "base" | "economy" | "production" | "defense" | "support" | "objective";
+export type BuildingAiRole =
+  | "base"
+  | "economy"
+  | "production"
+  | "defense"
+  | "support"
+  | "objective";
 
 export type BuildingDefinition = BuildingStats & {
   label: string;
@@ -232,7 +245,13 @@ export function buildingLimitReached(
   kind: BuildingKind,
 ): boolean {
   if (!SINGLE_BUILDING_KINDS.includes(kind)) return false;
-  return entities.some((entity) => entity.hp > 0 && entity.owner === owner && entity.class === "building" && entity.kind === kind);
+  return entities.some(
+    (entity) =>
+      entity.hp > 0 &&
+      entity.owner === owner &&
+      entity.class === "building" &&
+      entity.kind === kind,
+  );
 }
 
 export const HARVEST_PER_TICK = 2;
@@ -268,8 +287,12 @@ export function powerOf(kind: BuildingKind): number {
   return BUILDING_STATS[kind].power;
 }
 
-export function isDefensiveTurret(kind: BuildingKind | import("../types").UnitKind | string): boolean {
-  return kind in BUILDING_DEFINITIONS && BUILDING_DEFINITIONS[kind as BuildingKind].aiRole === "defense";
+export function isDefensiveTurret(
+  kind: BuildingKind | import("../types").UnitKind | string,
+): boolean {
+  return (
+    kind in BUILDING_DEFINITIONS && BUILDING_DEFINITIONS[kind as BuildingKind].aiRole === "defense"
+  );
 }
 
 /** Defensive turret penalties applied when a faction has a power deficit (power < 0). */

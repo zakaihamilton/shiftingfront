@@ -1,16 +1,16 @@
 "use client";
 
+import { SaveSlotList } from "@/components/save/SaveSlotList";
+import { MenuBackdrop } from "@/components/shared/MenuBackdrop";
 import { ConsoleButton } from "@/components/ui/ConsoleButton";
 import { ConsoleLabel } from "@/components/ui/ConsoleLabel";
-import { MetalPanel } from "@/components/ui/MetalPanel";
 import { ActionRail } from "@/components/ui/Dossier";
+import { MetalPanel } from "@/components/ui/MetalPanel";
 import { RASTER_ART } from "@/lib/gen/visualAssets";
-import { MenuBackdrop } from "@/components/shared/MenuBackdrop";
-import { SaveSlotList } from "@/components/save/SaveSlotList";
 import { CampaignArchiveControls } from "./CampaignArchiveControls";
 import { CampaignArchiveRecovery } from "./CampaignArchiveRecovery";
-import { useCampaignArchive } from "./useCampaignArchive";
 import styles from "./CampaignArchiveScreen.module.css";
+import { useCampaignArchive } from "./useCampaignArchive";
 
 export function CampaignArchiveScreen() {
   const archive = useCampaignArchive();
@@ -40,12 +40,22 @@ export function CampaignArchiveScreen() {
         </section>
 
         <div className={styles.content}>
-          <MetalPanel as="section" className={styles.panel} data-testid="campaign-archive" aria-labelledby="load-mission-title">
+          <MetalPanel
+            as="section"
+            className={styles.panel}
+            data-testid="campaign-archive"
+            aria-labelledby="load-mission-title"
+          >
             <header className={styles.header}>
               <ConsoleLabel>Shifting Front {/* Save slots */}</ConsoleLabel>
-              <h1 id="load-mission-title" className={styles.title}>Load mission</h1>
+              <h1 id="load-mission-title" className={styles.title}>
+                Load mission
+              </h1>
               <p className={styles.subtitle}>SELECT A SAVE SLOT</p>
-              <p className={styles.copy}>Resume a named save or an autosave, inspect its operations map, or remove a slot you no longer need.</p>
+              <p className={styles.copy}>
+                Resume a named save or an autosave, inspect its operations map, or remove a slot you
+                no longer need.
+              </p>
             </header>
 
             <CampaignArchiveControls
@@ -54,7 +64,14 @@ export function CampaignArchiveScreen() {
               onImportFile={archive.importFile}
             />
             {archive.portabilityNotice ? (
-              <p className={archive.portabilityNotice.tone === "success" ? styles.importNotice : styles.importError} role="status">
+              <p
+                className={
+                  archive.portabilityNotice.tone === "success"
+                    ? styles.importNotice
+                    : styles.importError
+                }
+                role="status"
+              >
                 {archive.portabilityNotice.text}
               </p>
             ) : null}
@@ -77,7 +94,12 @@ export function CampaignArchiveScreen() {
             />
 
             <ActionRail className={styles.actions}>
-              <ConsoleButton muted onClick={archive.returnToMenu} tooltip="Return to the main menu" shortcut="Esc">
+              <ConsoleButton
+                muted
+                onClick={archive.returnToMenu}
+                tooltip="Return to the main menu"
+                shortcut="Esc"
+              >
                 Return to menu
               </ConsoleButton>
             </ActionRail>

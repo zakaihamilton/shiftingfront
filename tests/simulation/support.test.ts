@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { canSupportTarget, isSupportUnit, isUnitAvailable, UNIT_STATS } from "../../lib/catalog";
 import { tickAi } from "../../lib/sim/ai";
-import { issue } from "../../lib/sim/orders";
-import { TILE_BLOCKED, TILE_CLEAR, addBuilding, addUnit, makeFixture, setTile } from "../../lib/sim/fixtures";
-import { holdSupport, tickSupport } from "../../lib/sim/support";
 import { missionDifficulty } from "../../lib/sim/difficulty";
+import {
+  addBuilding,
+  addUnit,
+  makeFixture,
+  setTile,
+  TILE_BLOCKED,
+  TILE_CLEAR,
+} from "../../lib/sim/fixtures";
 import { tickMovement } from "../../lib/sim/movement";
+import { issue } from "../../lib/sim/orders";
 import { PATH_BUDGET_PER_TICK, resetPathBudget } from "../../lib/sim/pathBudget";
+import { holdSupport, tickSupport } from "../../lib/sim/support";
 
 describe("support units", () => {
   it("classifies support targets by reusable domain", () => {
@@ -36,7 +43,12 @@ describe("support units", () => {
     expect(infantry.hp).toBe(infantry.maxHp - 8);
     expect(tank.hp).toBe(tank.maxHp - 100);
     expect(events).toEqual([
-      expect.objectContaining({ type: "support", providerId: medic.id, targetId: infantry.id, amount: 12 }),
+      expect.objectContaining({
+        type: "support",
+        providerId: medic.id,
+        targetId: infantry.id,
+        amount: 12,
+      }),
     ]);
     expect(medic.supportMode).toBe("auto");
     expect(medic.supportTargetId).toBe(infantry.id);
@@ -127,7 +139,10 @@ describe("support units", () => {
     expect(isUnitAvailable("repairTruck", 0)).toBe(true);
     expect(isUnitAvailable("convoyTruck", 0)).toBe(false);
     expect(issue(state, { type: "produce", fromId: barracks.id, unit: "medic" })).toEqual([]);
-    expect(state.productionQueues?.[0]?.barracks?.producing).toEqual({ kind: "medic", remaining: UNIT_STATS.medic.buildTicks });
+    expect(state.productionQueues?.[0]?.barracks?.producing).toEqual({
+      kind: "medic",
+      remaining: UNIT_STATS.medic.buildTicks,
+    });
   });
 
   it("lets the AI produce a medic for a damaged human force", () => {
@@ -155,7 +170,9 @@ describe("support units", () => {
     infantry.hp = infantry.maxHp - 30;
     for (let y = 0; y < state.height; y++) setTile(state, 8, y, TILE_BLOCKED);
     state.navigationRevision += 1;
-    expect(issue(state, { type: "support", unitIds: [medic.id], targetId: infantry.id })).toEqual([]);
+    expect(issue(state, { type: "support", unitIds: [medic.id], targetId: infantry.id })).toEqual(
+      [],
+    );
 
     const advance = () => {
       resetPathBudget(state);
@@ -163,7 +180,8 @@ describe("support units", () => {
       tickSupport(state);
       state.tick += 1;
     };
-    for (let i = 0; i < 120 && (medic.path.length > 0 || medic.routePending !== false); i++) advance();
+    for (let i = 0; i < 120 && (medic.path.length > 0 || medic.routePending !== false); i++)
+      advance();
     expect(state.result).toBe("playing");
     expect(medic.routePending).toBe(false);
     expect(medic.path).toEqual([]);

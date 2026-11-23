@@ -1,13 +1,13 @@
-import { readCampaignRecord, replaceCampaignSave } from "./saveRepositoryHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { MIN_RENDER_HEIGHT, MIN_RENDER_WIDTH } from "../../components/game/renderDimensions";
 import { footprintOf, TICKS_PER_SECOND } from "../../lib/catalog";
 import { TILE_H, tileToScreen } from "../../lib/iso";
-import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { SAVE_CONTENT_VERSION, SAVE_VERSION, saveKey } from "../../lib/persist/save";
+import { cameraPanBounds, clampCamera } from "../../lib/render/camera";
 import { createMission } from "../../lib/sim/api";
 import { heightAt } from "../../lib/sim/world";
-import { isBuildingEntity, type Entity, type SimState } from "../../lib/types";
+import { type Entity, isBuildingEntity, type SimState } from "../../lib/types";
+import { readCampaignRecord, replaceCampaignSave } from "./saveRepositoryHelpers";
 
 const TEST_SEED = 421;
 const TEST_MISSION = 0;
@@ -40,26 +40,40 @@ function preparedMission(): { state: SimState; building: Entity } {
 
   // Keep the short browser fixture focused on the player actions. Enemy
   // buildings remain present so the loaded state still has a normal battlefield.
-  state.entities = state.entities.filter((entity) => entity.owner === 0 || entity.class === "building");
+  state.entities = state.entities.filter(
+    (entity) => entity.owner === 0 || entity.class === "building",
+  );
   return { state, building };
 }
 
 async function waitForBattlefield(page: Page) {
   const canvas = page.getByTestId("battlefield-canvas");
   await expect(canvas).toBeVisible();
-  await expect.poll(async () => canvas.evaluate((element, mins) => {
-    const canvasEl = element as HTMLCanvasElement;
-    const host = canvasEl.parentElement;
-    if (!host) return false;
-    const width = Math.max(mins.width, Math.floor(host.clientWidth));
-    const height = Math.max(mins.height, Math.floor(host.clientHeight));
-    const density = Math.min(
-      window.devicePixelRatio || 1,
-      navigator.maxTouchPoints > 0 ? 1.5 : 2,
-      Math.sqrt((navigator.maxTouchPoints > 0 ? 1_500_000 : 4_000_000) / (width * height)),
-    );
-    return canvasEl.width === Math.round(width * density) && canvasEl.height === Math.round(height * density);
-  }, { width: MIN_RENDER_WIDTH, height: MIN_RENDER_HEIGHT }), { timeout: 15_000 }).toBe(true);
+  await expect
+    .poll(
+      async () =>
+        canvas.evaluate(
+          (element, mins) => {
+            const canvasEl = element as HTMLCanvasElement;
+            const host = canvasEl.parentElement;
+            if (!host) return false;
+            const width = Math.max(mins.width, Math.floor(host.clientWidth));
+            const height = Math.max(mins.height, Math.floor(host.clientHeight));
+            const density = Math.min(
+              window.devicePixelRatio || 1,
+              navigator.maxTouchPoints > 0 ? 1.5 : 2,
+              Math.sqrt((navigator.maxTouchPoints > 0 ? 1_500_000 : 4_000_000) / (width * height)),
+            );
+            return (
+              canvasEl.width === Math.round(width * density) &&
+              canvasEl.height === Math.round(height * density)
+            );
+          },
+          { width: MIN_RENDER_WIDTH, height: MIN_RENDER_HEIGHT },
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
 }
 
 async function loadAutosaveFromPause(page: Page) {
@@ -69,7 +83,9 @@ async function loadAutosaveFromPause(page: Page) {
   const confirmation = page.getByRole("dialog", { name: "Load mission?" });
   await expect(confirmation).toBeVisible();
   await confirmation.getByRole("button", { name: "Load mission" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Loaded the autosave" })).toContainText("Loaded the autosave");
+  await expect(page.getByRole("status").filter({ hasText: "Loaded the autosave" })).toContainText(
+    "Loaded the autosave",
+  );
 }
 
 async function pageCamera(page: Page, state: SimState) {
@@ -80,7 +96,9 @@ async function pageCamera(page: Page, state: SimState) {
   }));
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Battlefield canvas has no layout bounds");
-  const constructionYard = state.entities.find((entity) => entity.owner === 0 && entity.kind === "constructionYard");
+  const constructionYard = state.entities.find(
+    (entity) => entity.owner === 0 && entity.kind === "constructionYard",
+  );
   if (!constructionYard) throw new Error("Playthrough fixture needs a construction yard");
 
   const origin = { x: 0, y: 0, zoom: 1 };
@@ -95,7 +113,10 @@ async function pageCamera(page: Page, state: SimState) {
     y: dimensions.height / 3 - anchor.y,
     zoom: 1,
   };
-  clampCamera(camera, cameraPanBounds(state.width, state.height, dimensions.width, dimensions.height));
+  clampCamera(
+    camera,
+    cameraPanBounds(state.width, state.height, dimensions.width, dimensions.height),
+  );
   return { dimensions, bounds, camera };
 }
 
@@ -121,25 +142,37 @@ async function pointForEntity(page: Page, state: SimState, entity: Entity) {
     camera,
     heightAt(state, Math.round(entity.x), Math.round(entity.y)),
   );
-  return canvasCssPoint({
-    x: point.x,
-    y: point.y + (TILE_H / 2) * camera.zoom - 12 * camera.zoom,
-  }, bounds, dimensions);
+  return canvasCssPoint(
+    {
+      x: point.x,
+      y: point.y + (TILE_H / 2) * camera.zoom - 12 * camera.zoom,
+    },
+    bounds,
+    dimensions,
+  );
 }
 
 async function pointForTile(page: Page, state: SimState, x: number, y: number) {
   const { dimensions, bounds, camera } = await pageCamera(page, state);
   const point = tileToScreen(x, y, camera, heightAt(state, x, y));
-  return canvasCssPoint({
-    x: point.x,
-    y: point.y + (TILE_H / 2) * camera.zoom - 1,
-  }, bounds, dimensions);
+  return canvasCssPoint(
+    {
+      x: point.x,
+      y: point.y + (TILE_H / 2) * camera.zoom - 1,
+    },
+    bounds,
+    dimensions,
+  );
 }
 
 async function savedState(page: Page, persist = false): Promise<SimState | null> {
-  if (persist) await page.evaluate(async () => { window.dispatchEvent(new Event("pagehide")); await new Promise((resolve) => setTimeout(resolve, 100)); });
+  if (persist)
+    await page.evaluate(async () => {
+      window.dispatchEvent(new Event("pagehide"));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
   const record = await readCampaignRecord(page, TEST_SEED);
-  return record?.autosave ? JSON.parse(record.autosave).state ?? null : null;
+  return record?.autosave ? (JSON.parse(record.autosave).state ?? null) : null;
 }
 
 async function savedEntity(page: Page, entityId: number, persist = false) {
@@ -156,14 +189,19 @@ test("completes a prepared mission through repair, production, and autosave", as
 
   const { state, building } = preparedMission();
   const initialHp = building.hp;
-  await page.addInitScript(({ key, raw }) => {
-    if (!window.localStorage.getItem(key)) window.localStorage.setItem(key, raw);
-  }, { key: saveKey(TEST_SEED), raw: saveEnvelope(state) });
+  await page.addInitScript(
+    ({ key, raw }) => {
+      if (!window.localStorage.getItem(key)) window.localStorage.setItem(key, raw);
+    },
+    { key: saveKey(TEST_SEED), raw: saveEnvelope(state) },
+  );
   await page.goto(`/play?seed=0421&mission=${TEST_MISSION}&resume=1`);
   await waitForBattlefield(page);
   await expect(page.getByTestId("command-sidebar")).toBeVisible();
 
-  await expect.poll(async () => (await savedState(page))?.tick ?? -1).toBeGreaterThanOrEqual(AUTOSAVE_INTERVAL_TICKS);
+  await expect
+    .poll(async () => (await savedState(page))?.tick ?? -1)
+    .toBeGreaterThanOrEqual(AUTOSAVE_INTERVAL_TICKS);
 
   const repair = page.getByTestId("repair-mode");
   await repair.click();
@@ -192,7 +230,9 @@ test("completes a prepared mission through repair, production, and autosave", as
   expect(terminal?.result).toBe("won");
   expect(terminal?.unitsProducedByRole.infantry).toBeGreaterThanOrEqual(1);
   expect(terminal?.unitsProduced[0]).toBeGreaterThanOrEqual(1);
-  expect(terminal?.entities.find((entity) => entity.id === building.id)?.hp).toBeGreaterThan(initialHp);
+  expect(terminal?.entities.find((entity) => entity.id === building.id)?.hp).toBeGreaterThan(
+    initialHp,
+  );
 
   await page.reload();
   await expect(page.getByTestId("mission-result")).toBeVisible();
@@ -203,8 +243,12 @@ test("completes a prepared mission through repair, production, and autosave", as
 
 test("persists production rally points and control groups through save/load", async ({ page }) => {
   const state = createMission({ seed: TEST_SEED, missionIndex: TEST_MISSION });
-  const barracks = state.entities.find((entity) => entity.owner === 0 && entity.kind === "barracks");
-  const infantry = state.entities.find((entity) => entity.owner === 0 && entity.class === "unit" && entity.kind === "infantry");
+  const barracks = state.entities.find(
+    (entity) => entity.owner === 0 && entity.kind === "barracks",
+  );
+  const infantry = state.entities.find(
+    (entity) => entity.owner === 0 && entity.class === "unit" && entity.kind === "infantry",
+  );
   expect(barracks).toBeDefined();
   expect(infantry).toBeDefined();
   state.credits[0] = 5_000;
@@ -248,7 +292,9 @@ test("persists production rally points and control groups through save/load", as
   await loadAutosaveFromPause(page);
   await page.getByRole("button", { name: "Resume Mission" }).click();
   const restored = await savedState(page);
-  expect(restored?.entities.find((entity) => entity.id === barracks?.id)?.rallyPoint).toEqual(rally);
+  expect(restored?.entities.find((entity) => entity.id === barracks?.id)?.rallyPoint).toEqual(
+    rally,
+  );
   expect(restored?.controlGroups).toEqual({ 1: [infantry?.id] });
 
   await page.getByRole("tab", { name: "Production" }).click();
@@ -256,7 +302,16 @@ test("persists production rally points and control groups through save/load", as
   await expect(infantryCameo).toBeEnabled();
   await page.keyboard.press("Alt+1");
   await expect(page.getByTestId("cameo-progress-infantry")).toBeVisible();
-  await expect(page.getByTestId("mission-result")).toHaveAttribute("data-result", "won", { timeout: 10_000 });
+  await expect(page.getByTestId("mission-result")).toHaveAttribute("data-result", "won", {
+    timeout: 10_000,
+  });
   const producedSave = await savedState(page);
-  expect(producedSave?.entities.some((entity) => entity.class === "unit" && entity.orderDestination?.x === rally.x && entity.orderDestination?.y === rally.y)).toBe(true);
+  expect(
+    producedSave?.entities.some(
+      (entity) =>
+        entity.class === "unit" &&
+        entity.orderDestination?.x === rally.x &&
+        entity.orderDestination?.y === rally.y,
+    ),
+  ).toBe(true);
 });

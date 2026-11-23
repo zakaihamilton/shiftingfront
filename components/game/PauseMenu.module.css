@@ -123,13 +123,18 @@
   font-family: var(--font-mono);
   font-size: 0.85rem;
   letter-spacing: 0.04em;
-  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-bevel);
+  box-shadow:
+    inset 1px 1px var(--chrome-void),
+    inset -1px -1px var(--chrome-bevel);
 }
 
 .slotName input:focus {
   outline: none;
   border-color: var(--chrome-cyan);
-  box-shadow: inset 1px 1px var(--chrome-void), inset -1px -1px var(--chrome-bevel), 0 0 0 1px var(--chrome-cyan-dim);
+  box-shadow:
+    inset 1px 1px var(--chrome-void),
+    inset -1px -1px var(--chrome-bevel),
+    0 0 0 1px var(--chrome-cyan-dim);
 }
 
 .confirmOverlay {
@@ -201,7 +206,8 @@
 @media (max-width: 600px) {
   .overlay {
     align-items: flex-start;
-    padding: max(0.65rem, env(safe-area-inset-top)) max(0.65rem, env(safe-area-inset-right)) max(0.65rem, env(safe-area-inset-bottom)) max(0.65rem, env(safe-area-inset-left));
+    padding: max(0.65rem, env(safe-area-inset-top)) max(0.65rem, env(safe-area-inset-right))
+      max(0.65rem, env(safe-area-inset-bottom)) max(0.65rem, env(safe-area-inset-left));
   }
 
   .dialog {

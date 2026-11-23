@@ -20,9 +20,21 @@ export function BriefingObjectives({
           <ConsoleLabel as="span">Mission objectives</ConsoleLabel>
         </summary>
         <div className={styles.content}>
-          {doctrineNote ? <p className={styles.note} data-testid="doctrine-note">{doctrineNote}</p> : null}
-          {groundNote ? <p className={styles.note} data-testid="ground-note">{groundNote}</p> : null}
-          {proficiencyNote ? <p className={styles.note} data-testid="proficiency-note">{proficiencyNote}</p> : null}
+          {doctrineNote ? (
+            <p className={styles.note} data-testid="doctrine-note">
+              {doctrineNote}
+            </p>
+          ) : null}
+          {groundNote ? (
+            <p className={styles.note} data-testid="ground-note">
+              {groundNote}
+            </p>
+          ) : null}
+          {proficiencyNote ? (
+            <p className={styles.note} data-testid="proficiency-note">
+              {proficiencyNote}
+            </p>
+          ) : null}
           <div className={styles.scrollArea}>
             <ol className={styles.list}>
               {objectives.map((obj, i) => (

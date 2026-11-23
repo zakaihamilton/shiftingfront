@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { issue } from "../../lib/sim/api";
 import { addBuilding, addUnit, makeFixture, setTile, TILE_RESOURCE } from "../../lib/sim/fixtures";
 import { inspect } from "../../lib/sim/objectives";
-import { canPlaceBuilding } from "../../lib/sim/world";
 import { createScenarioRunner } from "../../lib/sim/scenarioRunner";
+import { canPlaceBuilding } from "../../lib/sim/world";
 import type { SimState } from "../../lib/types";
 
 const TICK_CAP = 400;
@@ -64,7 +64,11 @@ describe("scripted mission loops", () => {
   });
 
   it("completes a marked-objective operation through build, production, and attack orders", () => {
-    const s = makeFixture({ width: 24, height: 16, win: { kind: "destroyMarked", targetCount: 1 } });
+    const s = makeFixture({
+      width: 24,
+      height: 16,
+      win: { kind: "destroyMarked", targetCount: 1 },
+    });
     addBuilding(s, 0, "constructionYard", 1, 1);
     addBuilding(s, 0, "power", 4, 1);
     addBuilding(s, 0, "barracks", 4, 4);
@@ -92,7 +96,9 @@ describe("scripted mission loops", () => {
     runner.run({ maxTicks: 180 });
 
     expect(turret?.constructing).toBe(0);
-    const tank = s.entities.find((entity) => entity.owner === 0 && entity.kind === "tank" && entity.hp > 0);
+    const tank = s.entities.find(
+      (entity) => entity.owner === 0 && entity.kind === "tank" && entity.hp > 0,
+    );
     expect(tank).toBeDefined();
     expect(s.unitsProduced[0]).toBeGreaterThan(0);
 

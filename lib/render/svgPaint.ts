@@ -20,7 +20,10 @@ function resolvePaint(
   return value;
 }
 
-function collectGradients(root: Element, ctx: CanvasRenderingContext2D): Map<string, CanvasGradient | string> {
+function collectGradients(
+  root: Element,
+  ctx: CanvasRenderingContext2D,
+): Map<string, CanvasGradient | string> {
   const grads = new Map<string, CanvasGradient | string>();
   for (const el of root.querySelectorAll("linearGradient, radialGradient")) {
     const id = el.getAttribute("id");
@@ -28,16 +31,15 @@ function collectGradients(root: Element, ctx: CanvasRenderingContext2D): Map<str
     const tag = el.tagName.toLowerCase();
     const cx = num(el, "cx", 0);
     const cy = num(el, "cy", 0);
-    const g = tag === "radialGradient"
-      ? ctx.createRadialGradient(
-          num(el, "fx", cx),
-          num(el, "fy", cy),
-          0,
-          cx,
-          cy,
-          num(el, "r", 0),
-        )
-      : ctx.createLinearGradient(num(el, "x1", 0), num(el, "y1", 0), num(el, "x2", 0), num(el, "y2", 0));
+    const g =
+      tag === "radialGradient"
+        ? ctx.createRadialGradient(num(el, "fx", cx), num(el, "fy", cy), 0, cx, cy, num(el, "r", 0))
+        : ctx.createLinearGradient(
+            num(el, "x1", 0),
+            num(el, "y1", 0),
+            num(el, "x2", 0),
+            num(el, "y2", 0),
+          );
     const stops = el.querySelectorAll("stop");
     if (!stops.length) {
       grads.set(id, "#888");
@@ -49,7 +51,10 @@ function collectGradients(root: Element, ctx: CanvasRenderingContext2D): Map<str
       if (raw.endsWith("%")) offset = Number.parseFloat(raw) / 100;
       const color = stop.getAttribute("stop-color") || "#000";
       const opacity = stop.getAttribute("stop-opacity");
-      g.addColorStop(Math.min(1, Math.max(0, offset)), opacity && opacity !== "1" ? colorToAlpha(color, Number(opacity)) : color);
+      g.addColorStop(
+        Math.min(1, Math.max(0, offset)),
+        opacity && opacity !== "1" ? colorToAlpha(color, Number(opacity)) : color,
+      );
     }
     grads.set(id, g);
   }
@@ -58,9 +63,10 @@ function collectGradients(root: Element, ctx: CanvasRenderingContext2D): Map<str
 
 function colorToAlpha(color: string, alpha: number): string {
   if (color.startsWith("#") && (color.length === 7 || color.length === 4)) {
-    const hex = color.length === 4
-      ? `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
-      : color;
+    const hex =
+      color.length === 4
+        ? `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+        : color;
     const r = Number.parseInt(hex.slice(1, 3), 16);
     const g = Number.parseInt(hex.slice(3, 5), 16);
     const b = Number.parseInt(hex.slice(5, 7), 16);
@@ -77,7 +83,12 @@ function applyStroke(ctx: CanvasRenderingContext2D, el: Element): void {
   ctx.lineJoin = join === "round" || join === "bevel" || join === "miter" ? join : "miter";
 }
 
-function paintShape(ctx: CanvasRenderingContext2D, el: Element, grads: Map<string, CanvasGradient | string>, opacity: number): void {
+function paintShape(
+  ctx: CanvasRenderingContext2D,
+  el: Element,
+  grads: Map<string, CanvasGradient | string>,
+  opacity: number,
+): void {
   const fill = resolvePaint(attr(el, "fill") ?? "#000", grads, "#000");
   const stroke = resolvePaint(attr(el, "stroke"), grads, "#000");
   const fillOp = num(el, "fill-opacity", 1) * opacity * num(el, "opacity", 1);
@@ -138,10 +149,19 @@ function paintShape(ctx: CanvasRenderingContext2D, el: Element, grads: Map<strin
 }
 
 function parsePoints(raw: string): number[] {
-  return raw.trim().split(/[\s,]+/).map(Number).filter((n) => Number.isFinite(n));
+  return raw
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number)
+    .filter((n) => Number.isFinite(n));
 }
 
-function paintNode(ctx: CanvasRenderingContext2D, el: Element, grads: Map<string, CanvasGradient | string>, opacity: number): void {
+function paintNode(
+  ctx: CanvasRenderingContext2D,
+  el: Element,
+  grads: Map<string, CanvasGradient | string>,
+  opacity: number,
+): void {
   const tag = el.tagName.toLowerCase();
   if (tag === "defs" || tag === "title" || tag === "desc") return;
   if (tag === "svg" || tag === "g") {

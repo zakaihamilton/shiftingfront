@@ -1,5 +1,5 @@
-import type { Owner } from "../types";
 import type { ColorblindMode } from "../persist/settings";
+import type { Owner } from "../types";
 
 /** Matches turret aim lasers and `--chrome-cyan`. */
 export const ALLY_IFF_HEX = "#46e2ff";
@@ -71,7 +71,12 @@ const TRITANOPIA_NEUTRAL: IffColors = {
   pip: "#e2e8f0",
 };
 
-export function iffColors(owner: Owner, neutral = false, mode: ColorblindMode = "none", viewOwner: Owner = 0): IffColors {
+export function iffColors(
+  owner: Owner,
+  neutral = false,
+  mode: ColorblindMode = "none",
+  viewOwner: Owner = 0,
+): IffColors {
   if (neutral) {
     return mode === "tritanopia" ? TRITANOPIA_NEUTRAL : NEUTRAL_IFF;
   }

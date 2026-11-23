@@ -29,10 +29,7 @@ describe("Resource Management UI components", () => {
       expect(digits).toHaveTextContent("+70");
 
       const meter = container.firstChild as HTMLElement;
-      expect(meter).toHaveAttribute(
-        "aria-label",
-        "Base power surplus: +70, using 80 of 150 power",
-      );
+      expect(meter).toHaveAttribute("aria-label", "Base power surplus: +70, using 80 of 150 power");
       expect(meter.className).not.toMatch(/low/);
       expect(meter.className).not.toMatch(/tight/);
     });
@@ -43,10 +40,7 @@ describe("Resource Management UI components", () => {
       expect(digits).toHaveTextContent("-40");
 
       const meter = container.firstChild as HTMLElement;
-      expect(meter).toHaveAttribute(
-        "aria-label",
-        "Power deficit: -40, using 120 of 80 power",
-      );
+      expect(meter).toHaveAttribute("aria-label", "Power deficit: -40, using 120 of 80 power");
       expect(meter.className).toMatch(/low/);
     });
 
@@ -67,24 +61,14 @@ describe("Resource Management UI components", () => {
     it("clamps ratio safely when power produced is 0", () => {
       const { container } = render(<PowerMeter produced={0} used={50} />);
       const meter = container.firstChild as HTMLElement;
-      expect(meter).toHaveAttribute(
-        "aria-label",
-        "Power deficit: -50, using 50 of 0 power",
-      );
+      expect(meter).toHaveAttribute("aria-label", "Power deficit: -50, using 50 of 0 power");
       expect(meter.className).toMatch(/low/);
     });
   });
 
   describe("ResourceDock", () => {
     it("combines credits and power meter with tooltips", () => {
-      render(
-        <ResourceDock
-          credits={3400}
-          produced={200}
-          used={120}
-          surplus={80}
-        />,
-      );
+      render(<ResourceDock credits={3400} produced={200} used={120} surplus={80} />);
 
       // Credits display
       expect(screen.getByText("3,400")).toBeInTheDocument();
@@ -95,20 +79,12 @@ describe("Resource Management UI components", () => {
 
     it("surfaces deficit tooltips when power is in deficit", () => {
       const { container } = render(
-        <ResourceDock
-          credits={450}
-          produced={100}
-          used={160}
-          surplus={-60}
-        />,
+        <ResourceDock credits={450} produced={100} used={160} surplus={-60} />,
       );
 
       const hosts = container.querySelectorAll("[data-tooltip]");
       expect(hosts[0]).toHaveAttribute("data-tooltip", "Available credits");
-      expect(hosts[1]).toHaveAttribute(
-        "data-tooltip",
-        "Power deficit · Using 160 of 100 power",
-      );
+      expect(hosts[1]).toHaveAttribute("data-tooltip", "Power deficit · Using 160 of 100 power");
     });
   });
 });

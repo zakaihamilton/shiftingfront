@@ -14,16 +14,22 @@ describe("campaign balance sweep", () => {
       expect(campaign.missions).toHaveLength(6);
       for (const mission of campaign.missions) {
         const map = generateMap(seed, mission);
-        const startTiles = [map.playerStart, map.enemyStart].map((point) => map.tiles[point.y * map.width + point.x]);
+        const startTiles = [map.playerStart, map.enemyStart].map(
+          (point) => map.tiles[point.y * map.width + point.x],
+        );
         expect(startTiles).not.toContain(TILE_BLOCKED);
         expect(startTiles).not.toContain(TILE_WATER);
-        expect(map.resourceAmount.reduce((sum, amount) => sum + amount, 0)).toBeGreaterThanOrEqual(4_000);
+        expect(map.resourceAmount.reduce((sum, amount) => sum + amount, 0)).toBeGreaterThanOrEqual(
+          4_000,
+        );
 
         const state = createMission({ seed, missionIndex: mission.index });
         createScenarioRunner(state).run({ maxTicks: 180 });
         expect(state.tick).toBeGreaterThan(0);
         expect(state.credits.every(Number.isFinite)).toBe(true);
-        expect(state.entities.every((entity) => Number.isFinite(entity.hp) && entity.maxHp > 0)).toBe(true);
+        expect(
+          state.entities.every((entity) => Number.isFinite(entity.hp) && entity.maxHp > 0),
+        ).toBe(true);
       }
     }
   });

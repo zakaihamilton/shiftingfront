@@ -6,15 +6,17 @@ import {
   MATERIAL_CORNER_BLEND_CAP,
   MATERIAL_CORNER_SPREAD_SCALE,
   ORE_CELL_CLASS,
-  ROAD_CELL_CLASS,
   type OrganicCornerBridges,
+  ROAD_CELL_CLASS,
 } from "./constants";
 
 export function isLandMaterialClass(cellClass: number | undefined): boolean {
-  return cellClass === ROAD_CELL_CLASS
-    || cellClass === CONCRETE_CELL_CLASS
-    || cellClass === ORE_CELL_CLASS
-    || cellClass === GROUND_CELL_CLASS;
+  return (
+    cellClass === ROAD_CELL_CLASS ||
+    cellClass === CONCRETE_CELL_CLASS ||
+    cellClass === ORE_CELL_CLASS ||
+    cellClass === GROUND_CELL_CLASS
+  );
 }
 
 export function bakeOrganicCornerBridges(
@@ -52,10 +54,7 @@ export function bakeOrganicCornerBridges(
       const allLand = cornerClasses.every(isLandMaterialClass);
       const allGround = cornerClasses.every((cellClass) => cellClass === GROUND_CELL_CLASS);
       const mixedLand = allLand && new Set(cornerClasses).size > 1;
-      if (
-        !allGround
-        && !mixedLand
-      ) continue;
+      if (!allGround && !mixedLand) continue;
 
       const corner = row * cornerCols + col;
       const topLeftColor = topLeft * 3;
@@ -77,12 +76,13 @@ export function bakeOrganicCornerBridges(
       r[corner] = (topLeftR + topRightR + bottomLeftR + bottomRightR) * 0.25;
       g[corner] = (topLeftG + topRightG + bottomLeftG + bottomRightG) * 0.25;
       b[corner] = (topLeftB + topRightB + bottomLeftB + bottomRightB) * 0.25;
-      const colorSpread = Math.max(topLeftR, topRightR, bottomLeftR, bottomRightR)
-        - Math.min(topLeftR, topRightR, bottomLeftR, bottomRightR)
-        + Math.max(topLeftG, topRightG, bottomLeftG, bottomRightG)
-        - Math.min(topLeftG, topRightG, bottomLeftG, bottomRightG)
-        + Math.max(topLeftB, topRightB, bottomLeftB, bottomRightB)
-        - Math.min(topLeftB, topRightB, bottomLeftB, bottomRightB);
+      const colorSpread =
+        Math.max(topLeftR, topRightR, bottomLeftR, bottomRightR) -
+        Math.min(topLeftR, topRightR, bottomLeftR, bottomRightR) +
+        Math.max(topLeftG, topRightG, bottomLeftG, bottomRightG) -
+        Math.min(topLeftG, topRightG, bottomLeftG, bottomRightG) +
+        Math.max(topLeftB, topRightB, bottomLeftB, bottomRightB) -
+        Math.min(topLeftB, topRightB, bottomLeftB, bottomRightB);
       const worldX = col - MAP_SKIRT;
       const worldY = row - MAP_SKIRT;
       valid[corner] = 1;
@@ -121,10 +121,11 @@ export function organicEdgeMask(
   warp: number,
   phase: number,
 ): number {
-  const boundary = radius
-    + 0.08
-    + Math.sin(along * 2.35 + phase) * warp
-    + Math.sin(along * 5.15 - phase * 0.7) * warp * 0.35;
+  const boundary =
+    radius +
+    0.08 +
+    Math.sin(along * 2.35 + phase) * warp +
+    Math.sin(along * 5.15 - phase * 0.7) * warp * 0.35;
   const edge = Math.max(0, Math.min(1, (boundary - distance) / 0.08));
   return edge * edge * (3 - edge * 2);
 }
@@ -139,8 +140,7 @@ export function organicEdgeBlendStrength(
   blendCap = 0.6,
   spreadScale = 40,
 ): number {
-  const difference = Math.abs(baseR - neighborR)
-    + Math.abs(baseG - neighborG)
-    + Math.abs(baseB - neighborB);
+  const difference =
+    Math.abs(baseR - neighborR) + Math.abs(baseG - neighborG) + Math.abs(baseB - neighborB);
   return blendCap * Math.min(1, difference / spreadScale);
 }

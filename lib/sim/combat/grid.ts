@@ -1,5 +1,21 @@
-import { BUILDING_STATS, isAirUnit, isDefensiveTurret, POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER, POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER, targetDomainsFor, UNIT_STATS } from "../../catalog";
-import { isBuildingEntity, isUnitEntity, type BuildingKind, type Entity, type SimState, type UnitKind, type WeaponType } from "../../types";
+import {
+  BUILDING_STATS,
+  isAirUnit,
+  isDefensiveTurret,
+  POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER,
+  POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER,
+  targetDomainsFor,
+  UNIT_STATS,
+} from "../../catalog";
+import {
+  type BuildingKind,
+  type Entity,
+  isBuildingEntity,
+  isUnitEntity,
+  type SimState,
+  type UnitKind,
+  type WeaponType,
+} from "../../types";
 import { entitiesFor } from "../entities";
 import { directFireRangeBonusAt, groundUnitSightAt } from "../terrainRules";
 import { braceRangeBonus } from "../verbs";
@@ -100,21 +116,29 @@ export function buildGrid(state: SimState): CombatGrid {
   const rows = Math.max(1, Math.ceil(state.height / CELL));
   const size = cols * rows;
   const cached = gridBuffers.get(state);
-  const cells = cached && cached.cols === cols && cached.rows === rows
-    ? cached.cells
-    : Array.from({ length: size }, () => [] as Entity[]);
-  const order = cached && cached.cols === cols && cached.rows === rows && cached.order.length >= state.nextId
-    ? cached.order
-    : new Int32Array(Math.max(state.nextId, 1));
-  const byId = cached && cached.cols === cols && cached.rows === rows && cached.byId.length >= state.nextId
-    ? cached.byId
-    : new Array<Entity | undefined>(Math.max(state.nextId, 1));
-  const targetable = cached && cached.cols === cols && cached.rows === rows && cached.targetable.length >= state.nextId
-    ? cached.targetable
-    : new Uint8Array(Math.max(state.nextId, 1));
-  const threat = cached && cached.cols === cols && cached.rows === rows && cached.threat.length >= state.nextId
-    ? cached.threat
-    : new Uint8Array(Math.max(state.nextId, 1));
+  const cells =
+    cached && cached.cols === cols && cached.rows === rows
+      ? cached.cells
+      : Array.from({ length: size }, () => [] as Entity[]);
+  const order =
+    cached && cached.cols === cols && cached.rows === rows && cached.order.length >= state.nextId
+      ? cached.order
+      : new Int32Array(Math.max(state.nextId, 1));
+  const byId =
+    cached && cached.cols === cols && cached.rows === rows && cached.byId.length >= state.nextId
+      ? cached.byId
+      : new Array<Entity | undefined>(Math.max(state.nextId, 1));
+  const targetable =
+    cached &&
+    cached.cols === cols &&
+    cached.rows === rows &&
+    cached.targetable.length >= state.nextId
+      ? cached.targetable
+      : new Uint8Array(Math.max(state.nextId, 1));
+  const threat =
+    cached && cached.cols === cols && cached.rows === rows && cached.threat.length >= state.nextId
+      ? cached.threat
+      : new Uint8Array(Math.max(state.nextId, 1));
   if (cached && cached.cols === cols && cached.rows === rows) {
     for (const cell of cells) cell.length = 0;
     byId.fill(undefined);
@@ -130,7 +154,12 @@ export function buildGrid(state: SimState): CombatGrid {
     order[e.id] = orderCount++;
     byId[e.id] = e;
     targetable[e.id] = isCombatTarget(state, e) ? 1 : 0;
-    threat[e.id] = targetable[e.id] === 1 && !(e.class === "building" && e.constructing > 0) && statsFor(e).damage > 0 ? 1 : 0;
+    threat[e.id] =
+      targetable[e.id] === 1 &&
+      !(e.class === "building" && e.constructing > 0) &&
+      statsFor(e).damage > 0
+        ? 1
+        : 0;
     const cx = Math.max(0, Math.min(cols - 1, Math.floor(e.x / CELL)));
     const cy = Math.max(0, Math.min(rows - 1, Math.floor(e.y / CELL)));
     cells[cy * cols + cx]!.push(e);
@@ -152,7 +181,8 @@ export function closestEnemy(
   const y0 = Math.max(0, Math.floor((e.y - reach) / CELL));
   const x1 = Math.min(grid.cols - 1, Math.floor((e.x + reach) / CELL));
   const y1 = Math.min(grid.rows - 1, Math.floor((e.y + reach) / CELL));
-  const sourceHeight = grid.state.heights[Math.round(e.y) * grid.state.width + Math.round(e.x)] ?? 1;
+  const sourceHeight =
+    grid.state.heights[Math.round(e.y) * grid.state.width + Math.round(e.x)] ?? 1;
   let best: Entity | undefined;
   let bestD2 = Infinity;
   let bestOrder = Infinity;
@@ -169,7 +199,8 @@ export function closestEnemy(
         const dx = e.x - o.x;
         const dy = e.y - o.y;
         const d2 = dx * dx + dy * dy;
-        const targetHeight = grid.state.heights[Math.round(o.y) * grid.state.width + Math.round(o.x)] ?? 1;
+        const targetHeight =
+          grid.state.heights[Math.round(o.y) * grid.state.width + Math.round(o.x)] ?? 1;
         const targetMaxDist = maxDist + (includeHeightRange && sourceHeight > targetHeight ? 1 : 0);
         if (d2 > targetMaxDist * targetMaxDist) continue;
         const rank = grid.order[o.id] ?? Infinity;
@@ -190,11 +221,16 @@ export function acquire(grid: CombatGrid, e: Entity, threatsOnly = false): Entit
   const lowPower = isTurret && powerFor(grid.state, e.owner) < 0;
   const rangeMult = lowPower ? POWER_SHORTAGE_TURRET_RANGE_MULTIPLIER : 1;
   const sightMult = lowPower ? POWER_SHORTAGE_TURRET_SIGHT_MULTIPLIER : 1;
-  const range = (stats.range * rangeMult) + (stats.weapon === "airStrike" ? 0 : directFireRangeBonusAt(grid.state, e)) + braceRangeBonus(e);
+  const range =
+    stats.range * rangeMult +
+    (stats.weapon === "airStrike" ? 0 : directFireRangeBonusAt(grid.state, e)) +
+    braceRangeBonus(e);
   const sight = isUnitEntity(e)
     ? groundUnitSightAt(grid.state, e, UNIT_STATS[e.kind].sight)
     : isBuildingEntity(e)
-      ? (lowPower ? Math.max(3, Math.round(BUILDING_STATS[e.kind].sight * sightMult)) : BUILDING_STATS[e.kind].sight)
+      ? lowPower
+        ? Math.max(3, Math.round(BUILDING_STATS[e.kind].sight * sightMult))
+        : BUILDING_STATS[e.kind].sight
       : 0;
   return closestEnemy(grid, e, Math.max(range + 4, sight), threatsOnly);
 }
@@ -203,7 +239,12 @@ export function acquirePreferred(grid: CombatGrid, e: Entity): Entity | undefine
   return acquire(grid, e, true) ?? acquire(grid, e, false);
 }
 
-export function candidatesInSplash(grid: CombatGrid, x: number, y: number, radius: number): Entity[] {
+export function candidatesInSplash(
+  grid: CombatGrid,
+  x: number,
+  y: number,
+  radius: number,
+): Entity[] {
   const reach = radius + 1;
   const x0 = Math.max(0, Math.floor((x - reach) / CELL));
   const y0 = Math.max(0, Math.floor((y - reach) / CELL));

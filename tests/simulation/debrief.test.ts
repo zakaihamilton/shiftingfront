@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { formatMissionDuration, missionDebrief, missionMedals, missionScore, shouldShowCommandSidebar } from "../../lib/sim/debrief";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { minutesToTicks } from "../../lib/gen/pacing";
 import { createSkirmish } from "../../lib/sim/api";
+import {
+  formatMissionDuration,
+  missionDebrief,
+  missionMedals,
+  missionScore,
+  shouldShowCommandSidebar,
+} from "../../lib/sim/debrief";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 describe("mission debrief", () => {
   it("summarizes a completed primary objective and the battle record", () => {
@@ -21,7 +27,10 @@ describe("mission debrief", () => {
     expect(missionDebrief(state)).toMatchObject({
       status: "won",
       outcome: "Primary objective achieved.",
-      objective: { headline: "Extract 900 credits from the field", progress: "Extracted 900 / 900" },
+      objective: {
+        headline: "Extract 900 credits from the field",
+        progress: "Extracted 900 / 900",
+      },
       tactical: { completed: true, label: expect.any(String) },
       battle: { duration: "1 min", creditsGathered: 900, unitsTrained: 5, structuresCompleted: 2 },
       forces: {
@@ -74,8 +83,19 @@ describe("mission debrief", () => {
       rescued: 0,
       required: 1,
       secondary: [
-        { id: "yard", kind: "preserveYard", label: "Keep the Command HQ standing", completed: false },
-        { id: "time", kind: "completeBefore", label: "Complete the operation within 12 min", target: 144, completed: true },
+        {
+          id: "yard",
+          kind: "preserveYard",
+          label: "Keep the Command HQ standing",
+          completed: false,
+        },
+        {
+          id: "time",
+          kind: "completeBefore",
+          label: "Complete the operation within 12 min",
+          target: 144,
+          completed: true,
+        },
       ],
     };
 
@@ -129,7 +149,13 @@ describe("mission debrief", () => {
       required: 1,
       secondary: [
         { id: "yard", kind: "preserveYard", label: "Keep the yard standing", completed: true },
-        { id: "time", kind: "completeBefore", priority: "optional", label: "Finish before the deadline", completed: true },
+        {
+          id: "time",
+          kind: "completeBefore",
+          priority: "optional",
+          label: "Finish before the deadline",
+          completed: true,
+        },
       ],
     };
 
@@ -156,7 +182,13 @@ describe("mission debrief", () => {
       status: "won",
       outcome: "All rival Command HQs destroyed.",
       objective: { headline: "Destroy all rival Command HQs" },
-      battle: { creditsGathered: 440, unitsTrained: 4, structuresCompleted: 8, score: 0, medals: 0 },
+      battle: {
+        creditsGathered: 440,
+        unitsTrained: 4,
+        structuresCompleted: 8,
+        score: 0,
+        medals: 0,
+      },
       forces: {
         friendly: { unitsLost: 4, buildingsLost: 8 },
         enemy: { unitsLost: 6, buildingsLost: 18 },
@@ -167,6 +199,9 @@ describe("mission debrief", () => {
 
     state.result = "lost";
     state.winner = null;
-    expect(missionDebrief(state)).toMatchObject({ status: "lost", outcome: "The skirmish ended in a draw." });
+    expect(missionDebrief(state)).toMatchObject({
+      status: "lost",
+      outcome: "The skirmish ended in a draw.",
+    });
   });
 });

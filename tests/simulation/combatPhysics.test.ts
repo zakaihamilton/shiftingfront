@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { makeFixture, addUnit } from "../../lib/sim/fixtures";
-import { heightMultiplier, heightRangeBonus } from "../../lib/sim/combat/targeting";
-import { buildGrid, candidatesInSplash, statsFor } from "../../lib/sim/combat/grid";
-import { strike } from "../../lib/sim/combat/damage";
 import { rngFromState } from "../../lib/seed/rng";
+import { strike } from "../../lib/sim/combat/damage";
+import { buildGrid, candidatesInSplash, statsFor } from "../../lib/sim/combat/grid";
+import { heightMultiplier, heightRangeBonus } from "../../lib/sim/combat/targeting";
+import { addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 describe("combat physics and elevation mechanics", () => {
   it("provides high ground elevation damage and range bonuses", () => {

@@ -25,7 +25,13 @@ export type BattlefieldHudProps = {
 
 export type BattlefieldOperationBarProps = Pick<
   BattlefieldHudProps,
-  "seed" | "levelNumber" | "levelCount" | "missionName" | "profileLabel" | "multiplayerPingMs" | "multiplayerHost"
+  | "seed"
+  | "levelNumber"
+  | "levelCount"
+  | "missionName"
+  | "profileLabel"
+  | "multiplayerPingMs"
+  | "multiplayerHost"
 >;
 
 export type MissionDirectiveProps = Pick<

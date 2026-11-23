@@ -1,8 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
-import { deserializeState, listSaves, listUnreadableSaves, memoryStorage, readSave, removeSave, saveKey, SAVE_CONTENT_VERSION, SAVE_VERSION, serializeState, writeSave } from "../../lib/persist/save";
+import {
+  deserializeState,
+  listSaves,
+  listUnreadableSaves,
+  memoryStorage,
+  readSave,
+  removeSave,
+  SAVE_CONTENT_VERSION,
+  SAVE_VERSION,
+  saveKey,
+  serializeState,
+  writeSave,
+} from "../../lib/persist/save";
 import { rngFromState } from "../../lib/seed/rng";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { createMission, tick } from "../../lib/sim/api";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 
 describe("persist", () => {
   it("round-trips a save through memory storage", () => {
@@ -34,7 +46,10 @@ describe("persist", () => {
     state.controlGroups = { 1: [infantry.id] };
 
     const loaded = deserializeState(serializeState(state));
-    expect(loaded.entities.find((entity) => entity.id === barracks.id)?.rallyPoint).toEqual({ x: 7, y: 8 });
+    expect(loaded.entities.find((entity) => entity.id === barracks.id)?.rallyPoint).toEqual({
+      x: 7,
+      y: 8,
+    });
     expect(loaded.controlGroups).toEqual({ 1: [infantry.id] });
 
     const legacy = JSON.parse(serializeState(state)) as { controlGroups?: unknown };
@@ -76,7 +91,15 @@ describe("persist", () => {
     storage.setItem(saveKey(421), JSON.stringify({ version: SAVE_VERSION + 1, savedAt: 1, state }));
     expect(readSave(storage, 421)).toBeNull();
 
-    storage.setItem(saveKey(421), JSON.stringify({ version: SAVE_VERSION, contentVersion: SAVE_CONTENT_VERSION + 1, savedAt: 1, state }));
+    storage.setItem(
+      saveKey(421),
+      JSON.stringify({
+        version: SAVE_VERSION,
+        contentVersion: SAVE_CONTENT_VERSION + 1,
+        savedAt: 1,
+        state,
+      }),
+    );
     expect(readSave(storage, 421)).toBeNull();
 
     storage.setItem(saveKey(421), JSON.stringify({ version: 1, savedAt: 1, state }));
@@ -85,7 +108,10 @@ describe("persist", () => {
     storage.setItem(saveKey(421), JSON.stringify({ ...state, savedAt: 1 }));
     expect(readSave(storage, 421)?.seed).toBe(421);
 
-    storage.setItem(saveKey(421), JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: { ...state, seed: 9 } }));
+    storage.setItem(
+      saveKey(421),
+      JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: { ...state, seed: 9 } }),
+    );
     expect(readSave(storage, 421)).toBeNull();
     expect(() => deserializeState(JSON.stringify({ nope: true }))).toThrow("Invalid save state");
   });
@@ -146,16 +172,24 @@ describe("persist", () => {
   it("reports unreadable saves so the menu can offer a safe reset", () => {
     const storage = memoryStorage();
     storage.setItem(saveKey(421), "not json");
-    storage.setItem(saveKey(9), JSON.stringify({ version: SAVE_VERSION + 1, savedAt: 1, state: {} }));
+    storage.setItem(
+      saveKey(9),
+      JSON.stringify({ version: SAVE_VERSION + 1, savedAt: 1, state: {} }),
+    );
     const mismatched = makeFixture({ seed: 10, win: { kind: "annihilate" } });
-    storage.setItem(saveKey(77), JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: mismatched }));
+    storage.setItem(
+      saveKey(77),
+      JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: mismatched }),
+    );
     writeSave(storage, makeFixture({ seed: 10, win: { kind: "annihilate" } }));
 
     expect(listUnreadableSaves(storage)).toEqual(["0009", "0077", "0421"]);
   });
 
   it("backfills biome and surface metadata in legacy saves", () => {
-    const legacy = makeFixture({ seed: 77, win: { kind: "annihilate" } }) as Partial<ReturnType<typeof makeFixture>>;
+    const legacy = makeFixture({ seed: 77, win: { kind: "annihilate" } }) as Partial<
+      ReturnType<typeof makeFixture>
+    >;
     delete legacy.biome;
     delete legacy.surfaces;
     const loaded = deserializeState(JSON.stringify(legacy));
@@ -165,13 +199,17 @@ describe("persist", () => {
   });
 
   it("normalizes navigation revisions for saves written before flow routing", () => {
-    const raw = JSON.parse(serializeState(makeFixture({ seed: 77, win: { kind: "annihilate" } }))) as { navigationRevision?: number };
+    const raw = JSON.parse(
+      serializeState(makeFixture({ seed: 77, win: { kind: "annihilate" } })),
+    ) as { navigationRevision?: number };
     delete raw.navigationRevision;
     expect(deserializeState(JSON.stringify(raw)).navigationRevision).toBe(0);
   });
 
   it("backfills zeroed loss counters in legacy saves", () => {
-    const legacy = JSON.parse(serializeState(makeFixture({ seed: 77, win: { kind: "annihilate" } }))) as { losses?: unknown };
+    const legacy = JSON.parse(
+      serializeState(makeFixture({ seed: 77, win: { kind: "annihilate" } })),
+    ) as { losses?: unknown };
     delete legacy.losses;
     const loaded = deserializeState(JSON.stringify(legacy));
     expect(loaded.losses).toEqual({ units: [0, 0], buildings: [0, 0] });
@@ -217,7 +255,10 @@ describe("persist", () => {
     const s = makeFixture({ seed: 421, win: { kind: "annihilate" } });
     addBuilding(s, 0, "barracks", 2, 2);
     s.productionQueues![0] = {
-      barracks: { producing: { kind: "infantry", remaining: 40 }, queue: ["infantry", "antiArmor"] },
+      barracks: {
+        producing: { kind: "infantry", remaining: 40 },
+        queue: ["infantry", "antiArmor"],
+      },
     };
     const storage = memoryStorage();
     writeSave(storage, s);

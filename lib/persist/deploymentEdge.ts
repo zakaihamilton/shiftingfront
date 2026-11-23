@@ -1,7 +1,7 @@
-import { campaignKey, readCampaignProgress, writeCampaignProgress } from "./campaign";
-import { cachedCampaignStorage, getSaveRepository } from "./save";
 import { deploymentEdgeForMission } from "../sim/fieldIdentity";
 import type { DeploymentEdge } from "../types";
+import { campaignKey, readCampaignProgress, writeCampaignProgress } from "./campaign";
+import { cachedCampaignStorage, getSaveRepository } from "./save";
 
 export function persistDeploymentEdge(seed: number, edge: DeploymentEdge | undefined): void {
   const repository = getSaveRepository();

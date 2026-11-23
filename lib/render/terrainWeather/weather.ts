@@ -1,6 +1,6 @@
-import { canvasViewport } from "../canvasViewport";
-import type { BiomeName, SimState } from "../../types";
 import type { Camera } from "../../iso";
+import type { BiomeName, SimState } from "../../types";
+import { canvasViewport } from "../canvasViewport";
 import { terrainVisualTuningFor } from "../terrainMaterials";
 import type { WeatherKind, WeatherParticle } from "./types";
 
@@ -48,23 +48,42 @@ export function weatherParticleAt(
   const lane = seed * 9973 + index * 7919;
   const originX = hash01(lane) * screenW;
   const originY = hash01(lane + 17) * screenH;
-  const speed = kind === "ember" ? 0.042 : kind === "snow" ? 0.028 : kind === "ash" ? 0.022 : kind === "dust" ? 0.021 : 0.018;
+  const speed =
+    kind === "ember"
+      ? 0.042
+      : kind === "snow"
+        ? 0.028
+        : kind === "ash"
+          ? 0.022
+          : kind === "dust"
+            ? 0.021
+            : 0.018;
   const jitter = (hash01(lane + 31) - 0.5) * speed * 0.5;
   const driftX = tuning.windX * speed + jitter;
   const driftY = tuning.windY * speed + (hash01(lane + 37) - 0.5) * speed * 0.34;
   const wrap = (value: number, span: number) => ((value % span) + span) % span;
-  const color = kind === "snow"
-    ? "#e8f4f6"
-    : kind === "ash"
-      ? "#9aa39c"
-      : kind === "dust"
-        ? "#c8b486"
+  const color =
+    kind === "snow"
+      ? "#e8f4f6"
+      : kind === "ash"
+        ? "#9aa39c"
+        : kind === "dust"
+          ? "#c8b486"
+          : kind === "ember"
+            ? "#d06a3c"
+            : kind === "pollen"
+              ? "#8ea878"
+              : "#b8d0cc";
+  const trail =
+    kind === "dust"
+      ? 3.8
+      : kind === "ash"
+        ? 2.4
         : kind === "ember"
-          ? "#d06a3c"
+          ? 1.7
           : kind === "pollen"
-            ? "#8ea878"
-            : "#b8d0cc";
-  const trail = kind === "dust" ? 3.8 : kind === "ash" ? 2.4 : kind === "ember" ? 1.7 : kind === "pollen" ? 1.25 : 1;
+            ? 1.25
+            : 1;
   const alphaBase = kind === "mist" ? 0.035 : kind === "dust" ? 0.055 : 0.07;
   return {
     x: wrap(originX + timeMs * driftX, screenW),

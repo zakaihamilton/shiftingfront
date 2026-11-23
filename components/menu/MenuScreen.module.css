@@ -236,7 +236,11 @@
   content: "";
   height: 1px;
   flex: 1;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--chrome-cyan) 58%, transparent), transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--chrome-cyan) 58%, transparent),
+    transparent
+  );
 }
 
 .heroRule span {
@@ -274,13 +278,21 @@
 }
 
 @keyframes ken-burns {
-  from { transform: scale(1) translate3d(0, 0, 0); }
-  to { transform: scale(1.08) translate3d(-2.4%, 1.2%, 0); }
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.08) translate3d(-2.4%, 1.2%, 0);
+  }
 }
 
 @keyframes ken-burns-mobile {
-  from { transform: scale(1) translate3d(0, 0, 0); }
-  to { transform: scale(1.06) translate3d(-1%, 0.6%, 0); }
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.06) translate3d(-1%, 0.6%, 0);
+  }
 }
 
 @keyframes stencil-wipe {
@@ -293,17 +305,28 @@
 }
 
 @keyframes caret-blink {
-  0%, 49% { border-right-color: var(--chrome-cyan); }
-  50%, 100% { border-right-color: transparent; }
+  0%,
+  49% {
+    border-right-color: var(--chrome-cyan);
+  }
+  50%,
+  100% {
+    border-right-color: transparent;
+  }
 }
 
 @keyframes type-tagline {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0); }
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
 }
 
 @keyframes status-acquire {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     box-shadow: 0 0 10px color-mix(in srgb, var(--chrome-success) 78%, transparent);
   }
@@ -400,7 +423,8 @@
     height: auto;
     min-height: 0;
     flex-direction: column;
-    padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.65rem, env(safe-area-inset-bottom));
+    padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem
+      max(0.65rem, env(safe-area-inset-bottom));
   }
 
   .content {

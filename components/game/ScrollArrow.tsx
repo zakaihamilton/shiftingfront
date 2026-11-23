@@ -1,6 +1,6 @@
 import type { CardinalPanDir } from "@/lib/render/camera";
-import { SHORTCUT } from "@/lib/ui/shortcuts";
 import { cx } from "@/lib/ui/cx";
+import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./ScrollArrow.module.css";
 
 const SCROLL_ROTATION: Record<CardinalPanDir, number> = { up: 0, right: 90, down: 180, left: 270 };
@@ -13,7 +13,14 @@ const DIR_CLASS: Record<CardinalPanDir, string> = {
 
 function ScrollArrowIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false" className={styles.icon}>
+    <svg
+      viewBox="0 0 24 24"
+      width="28"
+      height="28"
+      aria-hidden="true"
+      focusable="false"
+      className={styles.icon}
+    >
       <path
         d="M5 16 L12 7 L19 16"
         fill="none"
@@ -36,7 +43,8 @@ export function ScrollArrow({
   hot: boolean;
 }) {
   const label = dir;
-  const tooltipPos = dir === "up" ? "below" : dir === "left" ? "right" : dir === "right" ? "left" : "above";
+  const tooltipPos =
+    dir === "up" ? "below" : dir === "left" ? "right" : dir === "right" ? "left" : "above";
   const showTip = hot && available;
   return (
     <div

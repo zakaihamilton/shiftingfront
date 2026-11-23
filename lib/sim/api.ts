@@ -1,18 +1,30 @@
 import { STARTING_CREDITS } from "../catalog";
-import { assertValidSeed, createRng, mixSeed } from "../seed/rng";
-import { SURFACE_NONE, TILE_CLEAR, TILE_RESOURCE } from "../types";
-import type { Faction, Owner, Palette, ReadonlyCampaign, ReadonlyMissionDef, SimEvent, SimState, SurfaceKind, TutorialStage, UnitKind, Vec2 } from "../types";
 import { createCampaign } from "../gen/campaign";
-import { generateMap, type GeneratedMap } from "../gen/map";
-import { makeFog, tickFog } from "./fog";
-import { issue } from "./orders";
-import { inspect } from "./objectives";
-import { resetPathBudget } from "./pathBudget";
-import { configureMissionScenario } from "./scenarios";
-import { spawnBuilding, spawnUnit } from "./world";
-import { createBaseState } from "./state";
-import type { Command } from "../types";
+import { type GeneratedMap, generateMap } from "../gen/map";
+import { assertValidSeed, createRng, mixSeed } from "../seed/rng";
+import type {
+  Command,
+  Faction,
+  Owner,
+  Palette,
+  ReadonlyCampaign,
+  ReadonlyMissionDef,
+  SimEvent,
+  SimState,
+  SurfaceKind,
+  TutorialStage,
+  UnitKind,
+  Vec2,
+} from "../types";
+import { SURFACE_NONE, TILE_CLEAR, TILE_RESOURCE } from "../types";
+import { configureChallenge } from "./challenges";
+import { applyDeploymentEdge } from "./deployment";
 import { missionDifficulty } from "./difficulty";
+import { makeFog, tickFog } from "./fog";
+import { placeEnemyBase, placeHoldOutposts, placePlayerBase } from "./missionBase";
+import { inspect } from "./objectives";
+import { issue } from "./orders";
+import { resetPathBudget } from "./pathBudget";
 import {
   applyQueuedCommands,
   createSimulationTickContext,
@@ -20,12 +32,17 @@ import {
   runSimulationSystems,
   type SimulationTickOptions,
 } from "./pipeline";
-import { configureChallenge } from "./challenges";
-import { placeEnemyBase, placeHoldOutposts, placePlayerBase } from "./missionBase";
-import { applyDeploymentEdge } from "./deployment";
+import { configureMissionScenario } from "./scenarios";
+import { createBaseState } from "./state";
+import { spawnBuilding, spawnUnit } from "./world";
 
-export { issue, inspect };
-export { CONVOY_COMPLETION_BUFFER_TICKS, CONVOY_STAGING_TICKS, scenarioAffordances, type ScenarioAffordances } from "./scenarios";
+export {
+  CONVOY_COMPLETION_BUFFER_TICKS,
+  CONVOY_STAGING_TICKS,
+  type ScenarioAffordances,
+  scenarioAffordances,
+} from "./scenarios";
+export { inspect, issue };
 
 export type TickOptions = SimulationTickOptions;
 
@@ -99,9 +116,18 @@ export function createMissionFromData(opts: {
     missionName: mission.name,
   });
   state.gameplayRulesVersion = campaign.gameplayRulesVersion ?? 2;
-  if (opts.proficiencyBand === -1 || opts.proficiencyBand === 1) state.proficiencyBand = opts.proficiencyBand;
+  if (opts.proficiencyBand === -1 || opts.proficiencyBand === 1)
+    state.proficiencyBand = opts.proficiencyBand;
   if (opts.tutorialStage) state.tutorialStage = opts.tutorialStage;
-  return initializeMissionState(state, map, mission, rng, difficulty, opts.configureScenario !== false, opts.deploymentEdge);
+  return initializeMissionState(
+    state,
+    map,
+    mission,
+    rng,
+    difficulty,
+    opts.configureScenario !== false,
+    opts.deploymentEdge,
+  );
 }
 
 function initializeMissionState(
@@ -156,8 +182,14 @@ function rotateSkirmishPoint(x: number, y: number, owner: Owner): Vec2 {
 }
 
 function shiftPalette(palette: Palette, amount: number): Palette {
-  const shift = (color: string) => color.replace(/^hsl\(([-\d.]+)\s+/, (_match, hue: string) => `hsl(${(Number(hue) + amount) % 360} `);
-  return Object.fromEntries(Object.entries(palette).map(([key, color]) => [key, shift(color)])) as Palette;
+  const shift = (color: string) =>
+    color.replace(
+      /^hsl\(([-\d.]+)\s+/,
+      (_match, hue: string) => `hsl(${(Number(hue) + amount) % 360} `,
+    );
+  return Object.fromEntries(
+    Object.entries(palette).map(([key, color]) => [key, shift(color)]),
+  ) as Palette;
 }
 
 function skirmishFactions(campaign: ReadonlyCampaign): Faction[] {
@@ -165,12 +197,27 @@ function skirmishFactions(campaign: ReadonlyCampaign): Faction[] {
   return [
     { ...northwest, id: 0, name: "Northwest Command", palette: { ...northwest.palette } },
     { ...northeast, id: 1, name: "Northeast Command", palette: { ...northeast.palette } },
-    { ...northwest, id: 2, name: "Southeast Command", palette: shiftPalette(northwest.palette, 180) },
-    { ...northeast, id: 3, name: "Southwest Command", palette: shiftPalette(northeast.palette, 180) },
+    {
+      ...northwest,
+      id: 2,
+      name: "Southeast Command",
+      palette: shiftPalette(northwest.palette, 180),
+    },
+    {
+      ...northeast,
+      id: 3,
+      name: "Southwest Command",
+      palette: shiftPalette(northeast.palette, 180),
+    },
   ];
 }
 
-function createSkirmishArena(seed: number, campaign: ReadonlyCampaign, owners: Owner[], aiOwners: Owner[]): SimState {
+function createSkirmishArena(
+  seed: number,
+  campaign: ReadonlyCampaign,
+  owners: Owner[],
+  aiOwners: Owner[],
+): SimState {
   const size = SKIRMISH_MAP_SIZE;
   const tiles = new Array<number>(size * size).fill(TILE_CLEAR);
   const heights = new Array<number>(size * size).fill(1);
@@ -245,10 +292,18 @@ export function createSkirmish(
 ): { campaign: ReadonlyCampaign; state: SimState } {
   assertValidSeed(seed);
   const campaign = createCampaign(seed);
-  const owners = [...new Set(activeOwners)].filter((owner) => owner >= 0 && owner <= 3).sort((a, b) => a - b);
+  const owners = [...new Set(activeOwners)]
+    .filter((owner) => owner >= 0 && owner <= 3)
+    .sort((a, b) => a - b);
   const bots = [...new Set(aiOwners)].sort((a, b) => a - b);
-  if (owners.length < 2 || owners.length > 4 || !owners.includes(0) || !owners.includes(viewOwner) ||
-      bots.length !== aiOwners.length || bots.some((owner) => owner === 0 || !owners.includes(owner))) {
+  if (
+    owners.length < 2 ||
+    owners.length > 4 ||
+    !owners.includes(0) ||
+    !owners.includes(viewOwner) ||
+    bots.length !== aiOwners.length ||
+    bots.some((owner) => owner === 0 || !owners.includes(owner))
+  ) {
     throw new Error("A skirmish requires valid human and AI seats");
   }
   const state = createSkirmishArena(seed, campaign, owners, bots);
@@ -273,7 +328,9 @@ export function tick(
   );
   if (collectEvents) events.push(...commandEvents);
   if (state.result !== "playing") return { state, events, commandRejections };
-  runSimulationSystems(createSimulationTickContext(state, collectEvents ? events : undefined, options));
+  runSimulationSystems(
+    createSimulationTickContext(state, collectEvents ? events : undefined, options),
+  );
   return { state, events, commandRejections };
 }
 

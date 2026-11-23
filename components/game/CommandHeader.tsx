@@ -1,8 +1,14 @@
-import { SHORTCUT } from "@/lib/ui/shortcuts";
 import type { PauseView } from "@/lib/ui/shortcuts";
+import { SHORTCUT } from "@/lib/ui/shortcuts";
 import styles from "./CommandSidebar.module.css";
 
-export function CommandHeader({ factionName, onPause }: { factionName: string; onPause: (view?: PauseView) => void }) {
+export function CommandHeader({
+  factionName,
+  onPause,
+}: {
+  factionName: string;
+  onPause: (view?: PauseView) => void;
+}) {
   return (
     <button
       type="button"

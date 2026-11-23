@@ -1,11 +1,11 @@
 import type { CSSProperties } from "react";
-import { isUnitKind, labelFor, UNIT_STATS, type CameoStatus } from "@/lib/catalog";
-import { cx } from "@/lib/ui/cx";
-import type { BuildingKind, FactionVisualProfile, Palette, UnitKind } from "@/lib/types";
-import { SpritePreview } from "./SpritePreview";
-import styles from "./CommandCameo.module.css";
 import { useShortcutLabel } from "@/components/ui/useShortcutLabel";
+import { type CameoStatus, isUnitKind, labelFor, UNIT_STATS } from "@/lib/catalog";
+import type { BuildingKind, FactionVisualProfile, Palette, UnitKind } from "@/lib/types";
+import { cx } from "@/lib/ui/cx";
 import { triggerHaptic } from "@/lib/ui/haptics";
+import styles from "./CommandCameo.module.css";
+import { SpritePreview } from "./SpritePreview";
 
 export function CommandCameo({
   kind,
@@ -44,34 +44,53 @@ export function CommandCameo({
   const showCount = cameo.queued > 1 || cameo.phase === "waiting";
   const cancellable = busy || active;
   const visibleStatus = busy
-    ? cameo.phase === "waiting" ? `Queue ${cameo.queued}` : `${Math.round(cameo.ratio * 100)}% ready`
-    : disabledReason ? statusLabel ?? "Unavailable" : "Ready";
-  const role = isUnitKind(kind) ? `${UNIT_STATS[kind].armor} armor · ${UNIT_STATS[kind].weapon} weapon` : undefined;
+    ? cameo.phase === "waiting"
+      ? `Queue ${cameo.queued}`
+      : `${Math.round(cameo.ratio * 100)}% ready`
+    : disabledReason
+      ? (statusLabel ?? "Unavailable")
+      : "Ready";
+  const role = isUnitKind(kind)
+    ? `${UNIT_STATS[kind].armor} armor · ${UNIT_STATS[kind].weapon} weapon`
+    : undefined;
   const tooltip = [
     `${labelFor(kind)} · ${cost} credits`,
     role,
-    busy ? (cameo.phase === "waiting" ? `${cameo.queued} in queue` : `${Math.round(cameo.ratio * 100)}% complete`) : undefined,
+    busy
+      ? cameo.phase === "waiting"
+        ? `${cameo.queued} in queue`
+        : `${Math.round(cameo.ratio * 100)}% complete`
+      : undefined,
     detail?.trim() || undefined,
     cancellable ? "Right-click or use Cancel" : undefined,
     ...(disabledReason?.split(" · ") ?? []),
-  ].filter((part): part is string => Boolean(part)).join("\n");
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join("\n");
   const ariaLabel = [
     `${labelFor(kind)}, ${cost} credits`,
-    busy ? (cameo.phase === "waiting" ? `${cameo.queued} in queue` : `${Math.round(cameo.ratio * 100)} percent complete`) : undefined,
+    busy
+      ? cameo.phase === "waiting"
+        ? `${cameo.queued} in queue`
+        : `${Math.round(cameo.ratio * 100)} percent complete`
+      : undefined,
     detail?.trim() || undefined,
     cancellable ? "cancel available" : undefined,
     disabledReason,
-  ].filter((part): part is string => Boolean(part)).join(", ");
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(", ");
   return (
-    <span
-      className={styles.wrap}
-      data-tooltip={tooltip}
-      data-shortcut={displayShortcut}
-    >
+    <span className={styles.wrap} data-tooltip={tooltip} data-shortcut={displayShortcut}>
       <button
         type="button"
         disabled={disabled}
-        className={cx(styles.card, active && styles.active, busy && styles.busy, tutorialFocus && styles.tutorialFocus)}
+        className={cx(
+          styles.card,
+          active && styles.active,
+          busy && styles.busy,
+          tutorialFocus && styles.tutorialFocus,
+        )}
         data-tutorial-focus={tutorialFocus}
         onClick={() => {
           triggerHaptic("tap");
@@ -86,11 +105,18 @@ export function CommandCameo({
         }}
       >
         <span className={styles.art}>
-          <SpritePreview kind={kind} palette={palette} profile={profile} className={styles.sprite} />
+          <SpritePreview
+            kind={kind}
+            palette={palette}
+            profile={profile}
+            className={styles.sprite}
+          />
           {busy ? (
             <span
               className={cx(styles.progress, cameo.phase === "waiting" && styles.waiting)}
-              style={{ "--cameo-remain": `${Math.max(0, (1 - cameo.ratio) * 100)}%` } as CSSProperties}
+              style={
+                { "--cameo-remain": `${Math.max(0, (1 - cameo.ratio) * 100)}%` } as CSSProperties
+              }
               data-testid={`cameo-progress-${kind}`}
               data-phase={cameo.phase}
               data-queued={cameo.queued}
@@ -100,13 +126,20 @@ export function CommandCameo({
         </span>
         <span className={styles.caption}>
           <span className={styles.captionTop}>
-            <span className={styles.name} data-testid={`cameo-label-${kind}`}>{labelFor(kind)}</span>
+            <span className={styles.name} data-testid={`cameo-label-${kind}`}>
+              {labelFor(kind)}
+            </span>
             <b>{cost}</b>
           </span>
-          <span className={cx(styles.status, disabledReason && styles.blocked)} data-testid={`cameo-status-${kind}`}>
+          <span
+            className={cx(styles.status, disabledReason && styles.blocked)}
+            data-testid={`cameo-status-${kind}`}
+          >
             {visibleStatus}
           </span>
-          <span className={styles.detail} data-testid={`cameo-detail-${kind}`}>{detail ?? "\u00a0"}</span>
+          <span className={styles.detail} data-testid={`cameo-detail-${kind}`}>
+            {detail ?? "\u00a0"}
+          </span>
         </span>
       </button>
       {cancellable && onContextMenu ? (
@@ -121,7 +154,9 @@ export function CommandCameo({
             onContextMenu();
           }}
         >
-          <span className={styles.cancelIcon} aria-hidden="true">×</span>
+          <span className={styles.cancelIcon} aria-hidden="true">
+            ×
+          </span>
         </button>
       ) : null}
     </span>

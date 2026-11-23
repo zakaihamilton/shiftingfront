@@ -1,8 +1,12 @@
 import type { DataConnection, Peer } from "peerjs";
+import {
+  MultiplayerSession,
+  SKIRMISH_MATCH_SETTINGS,
+  validSkirmishMatchSettings,
+} from "@/lib/multiplayer/session";
 import type { Owner } from "@/lib/types";
-import { MultiplayerSession, SKIRMISH_MATCH_SETTINGS, validSkirmishMatchSettings } from "@/lib/multiplayer/session";
-import type { Credential, LobbyMode, LobbyPlayer } from "./types";
 import type { PeerLifecycle } from "./peerLifecycle";
+import type { Credential, LobbyMode, LobbyPlayer } from "./types";
 import { ownerLabel, publicError } from "./utils";
 
 type Ref<T> = { current: T };
@@ -30,22 +34,29 @@ export function createHostLobbyController(options: {
   setError: (error: string) => void;
   destroyPeer: () => void;
   showBattle: (session: MultiplayerSession, seed: number) => void;
-  startPeer: (credential: Credential, role: "host" | "guest", operation: number) => Promise<Peer | null>;
+  startPeer: (
+    credential: Credential,
+    role: "host" | "guest",
+    operation: number,
+  ) => Promise<Peer | null>;
 }) {
   const { lifecycle, refs } = options;
 
   const publishRoster = () => {
-    const peerByOwner = new Map([...refs.seats.current.entries()].map(([peerId, owner]) => [owner, peerId]));
+    const peerByOwner = new Map(
+      [...refs.seats.current.entries()].map(([peerId, owner]) => [owner, peerId]),
+    );
     const players: LobbyPlayer[] = [0, 1, 2, 3].map((value) => {
       const owner = value as Owner;
       if (owner === 0) return { owner, connected: true, host: true };
       const peerId = peerByOwner.get(owner);
-      if (peerId) return {
-        owner,
-        peerId,
-        connected: refs.connections.current.get(peerId)?.open === true,
-        forfeited: refs.forfeited.current.has(peerId),
-      };
+      if (peerId)
+        return {
+          owner,
+          peerId,
+          connected: refs.connections.current.get(peerId)?.open === true,
+          forfeited: refs.forfeited.current.has(peerId),
+        };
       return { owner, connected: false, ai: refs.aiOwners.current.has(owner) };
     });
     options.setRoster(players);
@@ -56,7 +67,13 @@ export function createHostLobbyController(options: {
     const announce = () => {
       if (!lifecycle.isCurrent(operation) || !connection.open) return;
       connection.send({ type: "room_full" });
-      lifecycle.schedule(`reject:${connection.connectionId}`, () => { if (connection.open) connection.close(); }, 150);
+      lifecycle.schedule(
+        `reject:${connection.connectionId}`,
+        () => {
+          if (connection.open) connection.close();
+        },
+        150,
+      );
     };
     if (connection.open) announce();
     else connection.once("open", announce);
@@ -81,20 +98,32 @@ export function createHostLobbyController(options: {
           }
           const peerId = connection.peer;
           const knownOwner = refs.seats.current.get(peerId);
-          const openUserSeat = ([1, 2, 3] as const).some((candidate) =>
-            !refs.aiOwners.current.has(candidate) && ![...refs.seats.current.values()].includes(candidate),
+          const openUserSeat = ([1, 2, 3] as const).some(
+            (candidate) =>
+              !refs.aiOwners.current.has(candidate) &&
+              ![...refs.seats.current.values()].includes(candidate),
           );
-          if (refs.forfeited.current.has(peerId) || (refs.started.current && knownOwner === undefined) || (!refs.started.current && knownOwner === undefined && !openUserSeat)) {
+          if (
+            refs.forfeited.current.has(peerId) ||
+            (refs.started.current && knownOwner === undefined) ||
+            (!refs.started.current && knownOwner === undefined && !openUserSeat)
+          ) {
             rejectRoomFull(connection);
             return;
           }
-          const handshake = await lifecycle.request<{ valid: boolean; seed: number }>("/api/multiplayer/handshake", { hostGrant: grant, guestGrant: message.grant, guestPeerId: peerId });
+          const handshake = await lifecycle.request<{ valid: boolean; seed: number }>(
+            "/api/multiplayer/handshake",
+            { hostGrant: grant, guestGrant: message.grant, guestPeerId: peerId },
+          );
           if (!isCurrentConnection()) return;
-          if (!connection.open || !handshake.valid || handshake.seed !== roomSeed) throw new Error("invalid_handshake");
+          if (!connection.open || !handshake.valid || handshake.seed !== roomSeed)
+            throw new Error("invalid_handshake");
           let owner = knownOwner;
           if (owner === undefined) {
             const used = new Set(refs.seats.current.values());
-            owner = ([1, 2, 3] as const).find((candidate) => !used.has(candidate) && !refs.aiOwners.current.has(candidate));
+            owner = ([1, 2, 3] as const).find(
+              (candidate) => !used.has(candidate) && !refs.aiOwners.current.has(candidate),
+            );
             if (owner === undefined || refs.started.current) {
               rejectRoomFull(connection);
               return;
@@ -104,26 +133,45 @@ export function createHostLobbyController(options: {
           refs.connections.current.set(peerId, connection);
           lifecycle.clearTimer(`seat:${peerId}`);
           publishRoster();
-          const sender = { send: (value: unknown) => { if (connection.open) connection.send(value); } };
+          const sender = {
+            send: (value: unknown) => {
+              if (connection.open) connection.send(value);
+            },
+          };
           const current = refs.session.current;
           if (refs.started.current && current) {
             if (!current.reconnectGuest(peerId, sender)) throw new Error("room_full");
             // Re-send the roster for a tab that was reloaded while the match
             // was running. Existing guests ignore this start frame; a fresh
             // tab uses it to recreate its session before requesting a snapshot.
-            connection.send({ type: "start", seed: roomSeed, settings: SKIRMISH_MATCH_SETTINGS,
-              owner, owners: current.owners, aiOwners: current.aiOwners, reconnect: true });
+            connection.send({
+              type: "start",
+              seed: roomSeed,
+              settings: SKIRMISH_MATCH_SETTINGS,
+              owner,
+              owners: current.owners,
+              aiOwners: current.aiOwners,
+              reconnect: true,
+            });
             connection.send({ type: "reconnected" });
             options.setStatus("Guest reconnected. Resynchronizing the match.");
           } else {
             connection.send({ type: "seat", owner });
-            options.setStatus(`${ownerLabel(owner)} joined. Start when at least two players are connected.`);
+            options.setStatus(
+              `${ownerLabel(owner)} joined. Start when at least two players are connected.`,
+            );
           }
         } catch (handshakeError) {
           if (!isCurrentConnection()) return;
           options.setError(publicError(handshakeError));
           if (handshakeError instanceof Error && handshakeError.message === "incompatible_build") {
-            lifecycle.schedule(`reject:${connection.connectionId}`, () => { if (connection.open) connection.close(); }, 150);
+            lifecycle.schedule(
+              `reject:${connection.connectionId}`,
+              () => {
+                if (connection.open) connection.close();
+              },
+              150,
+            );
           } else if (connection.open) connection.close();
         } finally {
           refs.handshakes.current.delete(connection);
@@ -140,7 +188,9 @@ export function createHostLobbyController(options: {
       const current = refs.session.current;
       if (refs.started.current && current && current.status !== "ended") {
         current.disconnectGuest(connection.peer);
-        options.setStatus("A player connection encountered a network error. The match is paused while they reconnect.");
+        options.setStatus(
+          "A player connection encountered a network error. The match is paused while they reconnect.",
+        );
         connection.close();
       } else {
         options.setError("A player connection encountered a network error.");
@@ -156,24 +206,32 @@ export function createHostLobbyController(options: {
       const current = refs.session.current;
       if (refs.started.current && current) {
         current.disconnectGuest(peerId);
-        options.setStatus("A player disconnected. The match is paused while they reconnect (60 seconds).");
+        options.setStatus(
+          "A player disconnected. The match is paused while they reconnect (60 seconds).",
+        );
       } else {
         options.setStatus("A player disconnected. Their seat is reserved for 60 seconds.");
       }
-      lifecycle.schedule(`seat:${peerId}`, () => {
-        if (refs.connections.current.has(peerId)) return;
-        if (refs.started.current && current) {
-          const owner = current.forfeitGuest(peerId);
-          if (owner !== null) {
-            refs.forfeited.current.add(peerId);
-            options.setStatus(`${ownerLabel(owner)} forfeited after disconnecting. The remaining match resumes.`);
+      lifecycle.schedule(
+        `seat:${peerId}`,
+        () => {
+          if (refs.connections.current.has(peerId)) return;
+          if (refs.started.current && current) {
+            const owner = current.forfeitGuest(peerId);
+            if (owner !== null) {
+              refs.forfeited.current.add(peerId);
+              options.setStatus(
+                `${ownerLabel(owner)} forfeited after disconnecting. The remaining match resumes.`,
+              );
+            }
+          } else {
+            refs.seats.current.delete(peerId);
+            options.setStatus("A disconnected lobby seat was released.");
           }
-        } else {
-          refs.seats.current.delete(peerId);
-          options.setStatus("A disconnected lobby seat was released.");
-        }
-        publishRoster();
-      }, 60_000);
+          publishRoster();
+        },
+        60_000,
+      );
     });
   };
 
@@ -192,12 +250,17 @@ export function createHostLobbyController(options: {
     options.setError("");
     options.setStatus("Creating room…");
     try {
-      const credential = await lifecycle.request<Credential>("/api/multiplayer/rooms", { seed: parsedSeed });
+      const credential = await lifecycle.request<Credential>("/api/multiplayer/rooms", {
+        seed: parsedSeed,
+      });
       if (!refs.mounted.current || !lifecycle.isCurrent(operation)) return;
       const peer = await options.startPeer(credential, "host", operation);
       if (!peer) return;
       peer.on("connection", (connection) => {
-        if (!lifecycle.isCurrent(operation)) { connection.close(); return; }
+        if (!lifecycle.isCurrent(operation)) {
+          connection.close();
+          return;
+        }
         bindHostConnection(connection, credential.grant, parsedSeed);
       });
       publishRoster();
@@ -215,7 +278,9 @@ export function createHostLobbyController(options: {
 
   const startMatch = () => {
     if (lifecycle.role !== "host" || refs.started.current) return;
-    const connected = [...refs.seats.current.entries()].filter(([peerId]) => refs.connections.current.get(peerId)?.open === true);
+    const connected = [...refs.seats.current.entries()].filter(
+      ([peerId]) => refs.connections.current.get(peerId)?.open === true,
+    );
     const aiOwners = [...refs.aiOwners.current].sort((a, b) => a - b);
     if (connected.length + aiOwners.length < 1 || connected.length + aiOwners.length > 3) return;
     for (const peerId of [...refs.seats.current.keys()]) {
@@ -223,19 +288,43 @@ export function createHostLobbyController(options: {
       lifecycle.clearTimer(`seat:${peerId}`);
       refs.seats.current.delete(peerId);
     }
-    const owners: Owner[] = [0 as Owner, ...connected.map(([, owner]) => owner), ...aiOwners].sort((a, b) => a - b);
+    const owners: Owner[] = [0 as Owner, ...connected.map(([, owner]) => owner), ...aiOwners].sort(
+      (a, b) => a - b,
+    );
     if (owners.length < 2 || aiOwners.some((owner) => !owners.includes(owner))) return;
     const roomSeed = Number(options.seed);
-    const hostSession = new MultiplayerSession("host", 0, roomSeed, { send() {} }, owners, aiOwners);
+    const hostSession = new MultiplayerSession(
+      "host",
+      0,
+      roomSeed,
+      { send() {} },
+      owners,
+      aiOwners,
+    );
     for (const [peerId, owner] of connected) {
       const connection = refs.connections.current.get(peerId);
-      if (!connection?.open || !hostSession.addGuest(peerId, owner, { send: (value) => { if (connection.open) connection.send(value); } })) return;
+      if (
+        !connection?.open ||
+        !hostSession.addGuest(peerId, owner, {
+          send: (value) => {
+            if (connection.open) connection.send(value);
+          },
+        })
+      )
+        return;
     }
     hostSession.armIntroBarrier();
     refs.started.current = true;
     refs.session.current = hostSession;
     for (const [peerId, owner] of connected) {
-      refs.connections.current.get(peerId)?.send({ type: "start", seed: roomSeed, settings: SKIRMISH_MATCH_SETTINGS, owner, owners, aiOwners });
+      refs.connections.current.get(peerId)?.send({
+        type: "start",
+        seed: roomSeed,
+        settings: SKIRMISH_MATCH_SETTINGS,
+        owner,
+        owners,
+        aiOwners,
+      });
     }
     options.showBattle(hostSession, roomSeed);
   };

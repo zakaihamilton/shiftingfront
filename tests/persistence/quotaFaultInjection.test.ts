@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { StorageAdapter } from "../../lib/persist/save/storage";
-import { writeSave, readSave } from "../../lib/persist/save/api";
-import { writeSlot, readSlot } from "../../lib/persist/save/slots";
-import { createMission } from "../../lib/sim/api";
 import { freshCampaignProgress } from "../../lib/persist/campaign";
+import { readSave, writeSave } from "../../lib/persist/save/api";
+import { readSlot, writeSlot } from "../../lib/persist/save/slots";
+import type { StorageAdapter } from "../../lib/persist/save/storage";
+import { createMission } from "../../lib/sim/api";
 
 function createQuotaStorage(maxBytes: number): StorageAdapter {
   const data = new Map<string, string>();

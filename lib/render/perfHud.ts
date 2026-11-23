@@ -1,5 +1,5 @@
-import { prepareRenderContext } from "./canvasViewport";
 import { chromeMonoFont } from "../ui/chromeFont";
+import { prepareRenderContext } from "./canvasViewport";
 
 export type WorldPhaseTimings = {
   terrain: number;

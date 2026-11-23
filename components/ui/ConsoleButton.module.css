@@ -5,9 +5,16 @@
   border-radius: var(--chrome-radius);
   border: 1px solid color-mix(in srgb, var(--chrome-bevel) 35%, var(--chrome-steel-lo));
   background:
-    linear-gradient(105deg, rgba(255,255,255,0.1), transparent 26%),
-    linear-gradient(color-mix(in srgb, var(--chrome-steel-hi) 58%, var(--chrome-bevel)), var(--chrome-steel));
-  box-shadow: inset 1px 1px var(--chrome-bevel), inset -2px -2px var(--chrome-steel-lo), 0 5px 16px rgba(0,0,0,0.3), 2px 2px var(--chrome-void);
+    linear-gradient(105deg, rgba(255, 255, 255, 0.1), transparent 26%),
+    linear-gradient(
+      color-mix(in srgb, var(--chrome-steel-hi) 58%, var(--chrome-bevel)),
+      var(--chrome-steel)
+    );
+  box-shadow:
+    inset 1px 1px var(--chrome-bevel),
+    inset -2px -2px var(--chrome-steel-lo),
+    0 5px 16px rgba(0, 0, 0, 0.3),
+    2px 2px var(--chrome-void);
   color: var(--chrome-text);
   padding: 0.7rem 1rem;
   font-family: var(--font-ui);
@@ -15,7 +22,12 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  transition: color 0.15s ease, filter 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    color 0.15s ease,
+    filter 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .button:hover:not(:disabled) {
@@ -27,7 +39,9 @@
 
 .button:active:not(:disabled) {
   transform: translateY(1px);
-  box-shadow: inset 2px 2px var(--chrome-inset), 1px 1px var(--chrome-void);
+  box-shadow:
+    inset 2px 2px var(--chrome-inset),
+    1px 1px var(--chrome-void);
 }
 
 .button:focus-visible {
@@ -53,9 +67,13 @@
 
 .muted {
   background:
-    linear-gradient(105deg, rgba(255,255,255,0.04), transparent 26%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.04), transparent 26%),
     linear-gradient(var(--chrome-steel), var(--chrome-steel-lo));
-  box-shadow: inset 1px 1px var(--chrome-steel-hi), inset -2px -2px var(--chrome-inset), 0 5px 16px rgba(0,0,0,0.3), 2px 2px var(--chrome-void);
+  box-shadow:
+    inset 1px 1px var(--chrome-steel-hi),
+    inset -2px -2px var(--chrome-inset),
+    0 5px 16px rgba(0, 0, 0, 0.3),
+    2px 2px var(--chrome-void);
 }
 
 @media (max-width: 799px) {

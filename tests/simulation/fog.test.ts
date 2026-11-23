@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { MAP_SKIRT } from "../../lib/gen/map";
-import { visibleBuildingAt } from "../../lib/render/renderer";
-import { expandFog, fogAt, fogGridHeight, fogGridWidth, fogIndex, makeFog, tickFog } from "../../lib/sim/fog";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
 import { deserializeState, serializeState } from "../../lib/persist/save";
+import { visibleBuildingAt } from "../../lib/render/renderer";
 import { entityVisible } from "../../lib/render/renderPicking";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import {
+  expandFog,
+  fogAt,
+  fogGridHeight,
+  fogGridWidth,
+  fogIndex,
+  makeFog,
+  tickFog,
+} from "../../lib/sim/fog";
 
 describe("out of bounds shroud", () => {
   it("stores fog across the map skirt", () => {
@@ -33,7 +41,11 @@ describe("out of bounds shroud", () => {
 
   it("expands legacy in-map fog onto the skirt", () => {
     const s = makeFixture({ width: 6, height: 6, win: { kind: "annihilate" } });
-    const legacy = JSON.parse(serializeState(s)) as { fog: number[]; width: number; height: number };
+    const legacy = JSON.parse(serializeState(s)) as {
+      fog: number[];
+      width: number;
+      height: number;
+    };
     legacy.fog = new Array(36).fill(1);
     legacy.fog[0] = 2;
     const loaded = deserializeState(JSON.stringify(legacy));
@@ -77,7 +89,11 @@ describe("hover under shroud", () => {
 
 describe("scenario shroud", () => {
   it("keeps a neutral stranded unit from revealing or rendering through unexplored fog", () => {
-    const state = makeFixture({ width: 24, height: 24, win: { kind: "rescue", targetCount: 1, ticks: 100 } });
+    const state = makeFixture({
+      width: 24,
+      height: 24,
+      win: { kind: "rescue", targetCount: 1, ticks: 100 },
+    });
     state.fog = makeFog(state.width, state.height, 0);
     const stranded = addUnit(state, 0, "infantry", 12, 12);
     stranded.neutral = true;

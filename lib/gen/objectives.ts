@@ -1,11 +1,19 @@
 import { labelFor } from "../catalog";
 import { createRng, type Rng } from "../seed/rng";
-import type { BuildingKind, MissionKind, ReadonlyMissionDef, ReadonlyWinCategory, SecondaryObjective, UnitKind, WinCategory } from "../types";
+import type {
+  BuildingKind,
+  MissionKind,
+  ReadonlyMissionDef,
+  ReadonlyWinCategory,
+  SecondaryObjective,
+  UnitKind,
+  WinCategory,
+} from "../types";
 import {
-  CONVOY_STAGING_MINUTES,
-  CONVOY_STAGING_TICKS,
   CONVOY_COMPLETION_BUFFER_MINUTES,
   CONVOY_COMPLETION_BUFFER_TICKS,
+  CONVOY_STAGING_MINUTES,
+  CONVOY_STAGING_TICKS,
   DEADLINE_BONUS_MINUTES,
   DEADLINE_DURATION_MULT,
   formatMissionClockFromTicks,
@@ -41,7 +49,8 @@ function clampDeadlineMinutes(minutes: number, minMinutes: number): number {
 
 function activeMissionDurationMinutes(kind: MissionKind, minutes: number): number {
   const scaled = Math.round(minutes * DEADLINE_DURATION_MULT) + DEADLINE_BONUS_MINUTES;
-  if (kind === "escort" || kind === "rescue") return clampDeadlineMinutes(scaled - 1, MIN_DEADLINE_MINUTES);
+  if (kind === "escort" || kind === "rescue")
+    return clampDeadlineMinutes(scaled - 1, MIN_DEADLINE_MINUTES);
   if (kind === "sabotage") return clampDeadlineMinutes(scaled + 3, MIN_SABOTAGE_MINUTES);
   if (kind === "extraction") return clampDeadlineMinutes(scaled, MIN_DEADLINE_MINUTES);
   return minutes;
@@ -55,26 +64,39 @@ export function missionDurationMinutesFor(
 ): number {
   const minutes = pacingBaseMinutes(seed, missionIndex, kind);
   const activeMinutes = activeMissionDurationMinutes(kind, minutes);
-  return kind === "escort" ? activeMinutes + CONVOY_STAGING_MINUTES + CONVOY_COMPLETION_BUFFER_MINUTES : activeMinutes;
+  return kind === "escort"
+    ? activeMinutes + CONVOY_STAGING_MINUTES + CONVOY_COMPLETION_BUFFER_MINUTES
+    : activeMinutes;
 }
 
 /** Returns the full player-facing time limit, including escort staging and its approach buffer. */
-export function missionTimeLimitTicks(win: Pick<ReadonlyWinCategory, "kind" | "ticks">): number | undefined {
+export function missionTimeLimitTicks(
+  win: Pick<ReadonlyWinCategory, "kind" | "ticks">,
+): number | undefined {
   if (win.ticks === undefined) return undefined;
-  return win.ticks + (win.kind === "escort" ? CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS : 0);
+  return (
+    win.ticks + (win.kind === "escort" ? CONVOY_STAGING_TICKS + CONVOY_COMPLETION_BUFFER_TICKS : 0)
+  );
 }
 
-export function missionTimeLimitClock(win: Pick<ReadonlyWinCategory, "kind" | "ticks">): string | undefined {
+export function missionTimeLimitClock(
+  win: Pick<ReadonlyWinCategory, "kind" | "ticks">,
+): string | undefined {
   const ticks = missionTimeLimitTicks(win);
   return ticks === undefined ? undefined : formatMissionClockFromTicks(ticks);
 }
 
-export function missionTimeLimitLabel(win: Pick<ReadonlyWinCategory, "kind" | "ticks">): string | undefined {
+export function missionTimeLimitLabel(
+  win: Pick<ReadonlyWinCategory, "kind" | "ticks">,
+): string | undefined {
   const ticks = missionTimeLimitTicks(win);
   return ticks === undefined ? undefined : formatMissionMinutesFromTicks(ticks);
 }
 
-export function secondaryObjectivesForMission(mission: Pick<ReadonlyMissionDef, "win" | "profile">, rng: Rng): SecondaryObjective[] {
+export function secondaryObjectivesForMission(
+  mission: Pick<ReadonlyMissionDef, "win" | "profile">,
+  rng: Rng,
+): SecondaryObjective[] {
   const yard: SecondaryObjective = {
     id: "yard",
     kind: "preserveYard",
@@ -84,11 +106,20 @@ export function secondaryObjectivesForMission(mission: Pick<ReadonlyMissionDef, 
     const timeLimitTicks = missionTimeLimitTicks(mission.win) ?? 3600;
     const timeLimit = formatMissionMinutesFromTicks(timeLimitTicks);
     if (mission.win.kind === "rescue" || mission.win.kind === "extraction") {
-      return [yard, { id: "survivors", kind: "keepUnits", label: "Keep at least one combat unit alive", target: 1 }];
+      return [
+        yard,
+        {
+          id: "survivors",
+          kind: "keepUnits",
+          label: "Keep at least one combat unit alive",
+          target: 1,
+        },
+      ];
     }
-    const label = mission.win.kind === "escort"
-      ? `Speed bonus: complete the operation within ${timeLimit} total`
-      : `Complete the operation within ${timeLimit}`;
+    const label =
+      mission.win.kind === "escort"
+        ? `Speed bonus: complete the operation within ${timeLimit} total`
+        : `Complete the operation within ${timeLimit}`;
     return [
       yard,
       {
@@ -101,17 +132,24 @@ export function secondaryObjectivesForMission(mission: Pick<ReadonlyMissionDef, 
   }
 
   const objective = objectiveContractFor(mission.win.kind);
-  const supportWeighted = mission.win.kind === "holdTheLine" || mission.profile?.variant === "siege";
-  const secondary: SecondaryObjective = supportWeighted || rng.chance(0.5)
-    ? { id: "survivors", kind: "keepUnits", label: "Keep at least one combat unit alive", target: 1 }
-    : {
-      id: "tempo",
-      kind: "completeBefore",
-      label: objective
-        ? `Secure ${objective.targetLabel} before the final push`
-        : "Complete the operation before the final push",
-      target: (mission.win.ticks ?? 3600) + 1,
-    };
+  const supportWeighted =
+    mission.win.kind === "holdTheLine" || mission.profile?.variant === "siege";
+  const secondary: SecondaryObjective =
+    supportWeighted || rng.chance(0.5)
+      ? {
+          id: "survivors",
+          kind: "keepUnits",
+          label: "Keep at least one combat unit alive",
+          target: 1,
+        }
+      : {
+          id: "tempo",
+          kind: "completeBefore",
+          label: objective
+            ? `Secure ${objective.targetLabel} before the final push`
+            : "Complete the operation before the final push",
+          target: (mission.win.ticks ?? 3600) + 1,
+        };
   return [yard, secondary];
 }
 
@@ -158,9 +196,10 @@ function generateWinCategoryBase(
     }
     case "structureQuota": {
       const building = rng.chance(0.4) ? rng.pick(BUILDABLE) : undefined;
-      const target = building === "turret" || building === "power"
-        ? 4 + Math.floor(missionIndex / 2) + rng.int(3)
-        : 7 + Math.floor(missionIndex / 2) + rng.int(3);
+      const target =
+        building === "turret" || building === "power"
+          ? 4 + Math.floor(missionIndex / 2) + rng.int(3)
+          : 7 + Math.floor(missionIndex / 2) + rng.int(3);
       return { kind, target, building };
     }
     case "destroyMarked":
@@ -176,7 +215,11 @@ function generateWinCategoryBase(
     case "escort":
       return { kind, targetCount: 2 + rng.int(2), ticks: minutesToTicks(activeMinutes) };
     case "sabotage":
-      return { kind, targetCount: 2 + (missionIndex >= 4 ? 1 : 0), ticks: minutesToTicks(activeMinutes) };
+      return {
+        kind,
+        targetCount: 2 + (missionIndex >= 4 ? 1 : 0),
+        ticks: minutesToTicks(activeMinutes),
+      };
     case "rescue":
       return { kind, targetCount: 2 + rng.int(2), ticks: minutesToTicks(activeMinutes) };
     case "extraction":
@@ -189,14 +232,21 @@ function generateWinCategoryBase(
 export { pickMissionKinds } from "./missionOrder";
 
 /** Measured quota pacing. Harvest, force, and structure targets include the rules 2 scale once. */
-export function generateWinCategory(seed: number, missionIndex: number, kind: MissionKind): WinCategory {
+export function generateWinCategory(
+  seed: number,
+  missionIndex: number,
+  kind: MissionKind,
+): WinCategory {
   const win = generateWinCategoryBase(seed, missionIndex, kind);
   if (win.target !== undefined && ["harvestQuota", "forceQuota", "structureQuota"].includes(kind)) {
-    const multiplier = kind === "harvestQuota"
-      ? 1.5
-      : kind === "forceQuota" && missionIndex === 0
-        ? 3.2
-        : missionIndex < 2 ? 2.1 : 1.65;
+    const multiplier =
+      kind === "harvestQuota"
+        ? 1.5
+        : kind === "forceQuota" && missionIndex === 0
+          ? 3.2
+          : missionIndex < 2
+            ? 2.1
+            : 1.65;
     return { ...win, target: Math.max(1, Math.round(win.target * multiplier)) };
   }
   return win;

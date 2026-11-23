@@ -13,7 +13,9 @@
   border-radius: var(--chrome-radius, 8px);
   border: 1px solid var(--chrome-gold-dim);
   background: color-mix(in srgb, var(--chrome-void) 92%, transparent);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55), inset 0 0 12px color-mix(in srgb, var(--chrome-gold) 10%, transparent);
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.55),
+    inset 0 0 12px color-mix(in srgb, var(--chrome-gold) 10%, transparent);
   color: var(--chrome-text);
   font-family: var(--font-ui);
   font-size: var(--text-xs);
@@ -86,7 +88,9 @@
   color: var(--chrome-muted);
   font-size: 0.85rem;
   cursor: pointer;
-  transition: color 0.14s ease, border-color 0.14s ease;
+  transition:
+    color 0.14s ease,
+    border-color 0.14s ease;
 }
 
 .dismiss:hover,

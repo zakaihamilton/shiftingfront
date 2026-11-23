@@ -18,7 +18,11 @@ const play = {
 describe("shortcuts uncovered branches", () => {
   it("uses alt for cameos and bare numbers for control-group recall", () => {
     expect(gameCommandFromKey({ key: "q", altKey: true }, play)).toBeNull();
-    expect(gameCommandFromKey({ key: "2", altKey: true }, play)).toEqual({ type: "cameo", index: 1, cancel: false });
+    expect(gameCommandFromKey({ key: "2", altKey: true }, play)).toEqual({
+      type: "cameo",
+      index: 1,
+      cancel: false,
+    });
     expect(gameCommandFromKey({ key: "2" }, play)).toEqual({ type: "recallGroup", slot: 2 });
   });
 
@@ -64,29 +68,45 @@ describe("shortcuts uncovered branches", () => {
   });
 
   it("result overlay ignores ctrl", () => {
-    expect(gameCommandFromKey({ key: "Enter", ctrlKey: true }, { ...play, result: "won" })).toBeNull();
+    expect(
+      gameCommandFromKey({ key: "Enter", ctrlKey: true }, { ...play, result: "won" }),
+    ).toBeNull();
   });
 
   it("briefing returnToGame space when revealed returns null", () => {
-    expect(briefingCommandFromKey({ key: " " }, { typing: false, revealed: true, returnToGame: true })).toBeNull();
+    expect(
+      briefingCommandFromKey({ key: " " }, { typing: false, revealed: true, returnToGame: true }),
+    ).toBeNull();
   });
 
   it("briefing returnToGame non-space non-escape returns null", () => {
-    expect(briefingCommandFromKey({ key: "q" }, { typing: false, revealed: false, returnToGame: true })).toBeNull();
+    expect(
+      briefingCommandFromKey({ key: "q" }, { typing: false, revealed: false, returnToGame: true }),
+    ).toBeNull();
   });
 
   it("briefing non-returnToGame with repeat or modified returns null", () => {
-    expect(briefingCommandFromKey({ key: "Enter", repeat: true }, { typing: false, revealed: false })).toBeNull();
-    expect(briefingCommandFromKey({ key: "Enter", ctrlKey: true }, { typing: false, revealed: false })).toBeNull();
+    expect(
+      briefingCommandFromKey({ key: "Enter", repeat: true }, { typing: false, revealed: false }),
+    ).toBeNull();
+    expect(
+      briefingCommandFromKey({ key: "Enter", ctrlKey: true }, { typing: false, revealed: false }),
+    ).toBeNull();
   });
 
   it("briefing Escape backs out when it was opened from a menu destination", () => {
-    expect(briefingCommandFromKey({ key: "Escape" }, { typing: false, revealed: true })).toEqual({ type: "back" });
+    expect(briefingCommandFromKey({ key: "Escape" }, { typing: false, revealed: true })).toEqual({
+      type: "back",
+    });
   });
 
   it("menuCommandFromKey ignores repeats and modified keys", () => {
-    expect(menuCommandFromKey({ key: "n", repeat: true }, { typing: false, setupOpen: false })).toBeNull();
-    expect(menuCommandFromKey({ key: "n", ctrlKey: true }, { typing: false, setupOpen: false })).toBeNull();
+    expect(
+      menuCommandFromKey({ key: "n", repeat: true }, { typing: false, setupOpen: false }),
+    ).toBeNull();
+    expect(
+      menuCommandFromKey({ key: "n", ctrlKey: true }, { typing: false, setupOpen: false }),
+    ).toBeNull();
   });
 
   it("menuCommandFromKey typing in setup view returns null except Escape", () => {
@@ -98,7 +118,9 @@ describe("shortcuts uncovered branches", () => {
   });
 
   it("menuCommandFromKey typing in options returns null", () => {
-    expect(menuCommandFromKey({ key: "m" }, { typing: true, setupOpen: false, optionsOpen: true })).toBeNull();
+    expect(
+      menuCommandFromKey({ key: "m" }, { typing: true, setupOpen: false, optionsOpen: true }),
+    ).toBeNull();
   });
 
   it("assetsCommandFromKey ignores repeats on non-arrow keys", () => {

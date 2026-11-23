@@ -2,16 +2,16 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { TILE_H } from "@/lib/iso";
+import type { GameSettings } from "@/lib/persist/settings";
 import { tutorialFocusPoint, tutorialTargets } from "@/lib/sim/tutorial";
 import type { SimState } from "@/lib/types";
-import type { GameSettings } from "@/lib/persist/settings";
 import type { RuntimeCommandPort } from "./runtime/facade";
 import { useGameActions } from "./useGameActions";
 import { useGameCamera } from "./useGameCamera";
 import { useGameInput } from "./useGameInput";
 import { useGameRenderer } from "./useGameRenderer";
-import { useGameSelection } from "./useGameSelection";
 import type { GameRuntimeFeedback } from "./useGameRuntimeFeedback";
+import { useGameSelection } from "./useGameSelection";
 
 const TUTORIAL_CAMERA_FOCUS_MS = 900;
 
@@ -50,22 +50,56 @@ export function useGameRuntimeInteraction({
   commandPort: RuntimeCommandPort;
   feedback: GameRuntimeFeedback;
 }) {
-  const { uxRef, announceCommandFeedback, recordCommandRejection, recordMobilePanelOpened } = feedback;
+  const { uxRef, announceCommandFeedback, recordCommandRejection, recordMobilePanelOpened } =
+    feedback;
   const onSelectionTab = useCallback(() => setActiveTab("selected"), [setActiveTab]);
   const selection = useGameSelection({ stateRef, setState, uxRef, onSelectionTab });
-  const { selected, selectedIds, selectionMode, selectionModeRef, commitSelection, assignControlGroup, recallControlGroup, setSelectionMode } = selection;
+  const {
+    selected,
+    selectedIds,
+    selectionMode,
+    selectionModeRef,
+    commitSelection,
+    assignControlGroup,
+    recallControlGroup,
+    setSelectionMode,
+  } = selection;
 
-  const assignGroup = useCallback((slot: Parameters<typeof assignControlGroup>[0]) => {
-    const count = assignControlGroup(slot);
-    announceCommandFeedback(count > 0 ? `Control group ${slot} assigned to ${count} unit${count === 1 ? "" : "s"}.` : `Control group ${slot} cleared.`, "success");
-  }, [announceCommandFeedback, assignControlGroup]);
-  const recallGroup = useCallback((slot: Parameters<typeof recallControlGroup>[0]) => {
-    const count = recallControlGroup(slot);
-    announceCommandFeedback(count > 0 ? `Control group ${slot} selected.` : `Control group ${slot} is empty.`, count > 0 ? "success" : "info");
-  }, [announceCommandFeedback, recallControlGroup]);
+  const assignGroup = useCallback(
+    (slot: Parameters<typeof assignControlGroup>[0]) => {
+      const count = assignControlGroup(slot);
+      announceCommandFeedback(
+        count > 0
+          ? `Control group ${slot} assigned to ${count} unit${count === 1 ? "" : "s"}.`
+          : `Control group ${slot} cleared.`,
+        "success",
+      );
+    },
+    [announceCommandFeedback, assignControlGroup],
+  );
+  const recallGroup = useCallback(
+    (slot: Parameters<typeof recallControlGroup>[0]) => {
+      const count = recallControlGroup(slot);
+      announceCommandFeedback(
+        count > 0 ? `Control group ${slot} selected.` : `Control group ${slot} is empty.`,
+        count > 0 ? "success" : "info",
+      );
+    },
+    [announceCommandFeedback, recallControlGroup],
+  );
 
   const camera = useGameCamera({ stateRef, canvasRef, hostRef });
-  const { camRef, panAvail, panAvailRef, hotPan, panHold, edgePanHover, applyEdgePan, focusTileAnimated, resetCamera } = camera;
+  const {
+    camRef,
+    panAvail,
+    panAvailRef,
+    hotPan,
+    panHold,
+    edgePanHover,
+    applyEdgePan,
+    focusTileAnimated,
+    resetCamera,
+  } = camera;
 
   const tutorialStage = state.tutorialStage;
   useEffect(() => {
@@ -75,32 +109,127 @@ export function useGameRuntimeInteraction({
     const target = targets[0];
     const point = tutorialFocusPoint(current);
     if (!point) return;
-    const preferredBias = tutorialStage === "attack" && targets.length > 1 ? 0.32 : target?.kind === "entity" ? 0.44 : 0.56;
+    const preferredBias =
+      tutorialStage === "attack" && targets.length > 1
+        ? 0.32
+        : target?.kind === "entity"
+          ? 0.44
+          : 0.56;
     const yBias = Math.min(0.7, Math.max(preferredBias, 120 / camera.viewportSize.height));
     // The tile-focus anchor is half a tile above the ground point used by camera clamping.
-    const targetBias = Math.min(0.7, yBias + (TILE_H * camRef.current.zoom) / (2 * camera.viewportSize.height));
-    const duration = audioSettings.reducedMotion || tutorialStage === "select" ? 0 : TUTORIAL_CAMERA_FOCUS_MS;
+    const targetBias = Math.min(
+      0.7,
+      yBias + (TILE_H * camRef.current.zoom) / (2 * camera.viewportSize.height),
+    );
+    const duration =
+      audioSettings.reducedMotion || tutorialStage === "select" ? 0 : TUTORIAL_CAMERA_FOCUS_MS;
     // Wait for the canvas size, and repeat after resizes or effect replay.
     // The first lesson target must be visible before the player learns to pan.
     focusTileAnimated(Math.round(point.x), Math.round(point.y), targetBias, duration);
-  }, [audioSettings.reducedMotion, camera.viewportSize, camRef, focusTileAnimated, stateRef, tutorial, tutorialStage]);
+  }, [
+    audioSettings.reducedMotion,
+    camera.viewportSize,
+    camRef,
+    focusTileAnimated,
+    stateRef,
+    tutorial,
+    tutorialStage,
+  ]);
 
-  const actions = useGameActions({ stateRef, commandPort, selected, selectedIds, onCommandNotice: announceCommandFeedback, onCommandRejection: recordCommandRejection, uxRef });
-  const { place, placeKind, setPlaceKind, repair, repairMode, setRepairMode, sell, sellMode, setSellMode, mobileCommand, setMobileCommandState, resetMobileCommand, cancelMobileCommand, clearTools, issueSelectedCommand, toggleRepair, toggleSell, activateCameo } = actions;
+  const actions = useGameActions({
+    stateRef,
+    commandPort,
+    selected,
+    selectedIds,
+    onCommandNotice: announceCommandFeedback,
+    onCommandRejection: recordCommandRejection,
+    uxRef,
+  });
+  const {
+    place,
+    placeKind,
+    setPlaceKind,
+    repair,
+    repairMode,
+    setRepairMode,
+    sell,
+    sellMode,
+    setSellMode,
+    mobileCommand,
+    setMobileCommandState,
+    resetMobileCommand,
+    cancelMobileCommand,
+    clearTools,
+    issueSelectedCommand,
+    toggleRepair,
+    toggleSell,
+    activateCameo,
+  } = actions;
   const mobileLauncherRef = useRef<HTMLButtonElement>(null);
 
   const input = useGameInput({
-    stateRef, camRef, canvasRef, cancelCameraFocus: camera.cancelFocusAnimation, selectedRef: selected, selectedIds, commitSelection, commandPort,
-    placeRef: place, placeKind, setPlaceKind, repairRef: repair, repairMode, setRepairMode,
-    sellRef: sell, sellMode, setSellMode, clearTools, mobileCommandRef: mobileCommand,
-    setMobileCommandState, pausedRef, panAvailRef, setPanAvailability: camera.setPanAvail, applyEdgePan, selectionModeRef, setSelectionMode,
-    onCommandNotice: announceCommandFeedback, onCommandRejection: recordCommandRejection, uxRef,
+    stateRef,
+    camRef,
+    canvasRef,
+    cancelCameraFocus: camera.cancelFocusAnimation,
+    selectedRef: selected,
+    selectedIds,
+    commitSelection,
+    commandPort,
+    placeRef: place,
+    placeKind,
+    setPlaceKind,
+    repairRef: repair,
+    repairMode,
+    setRepairMode,
+    sellRef: sell,
+    sellMode,
+    setSellMode,
+    clearTools,
+    mobileCommandRef: mobileCommand,
+    setMobileCommandState,
+    pausedRef,
+    panAvailRef,
+    setPanAvailability: camera.setPanAvail,
+    applyEdgePan,
+    selectionModeRef,
+    setSelectionMode,
+    onCommandNotice: announceCommandFeedback,
+    onCommandRejection: recordCommandRejection,
+    uxRef,
   });
-  const { hoverRef, cursorRef, boxRef, commandMarkerRef, resetInput, onDown, onEnter, onMove, onLeave, onUp, onCancel } = input;
+  const {
+    hoverRef,
+    cursorRef,
+    boxRef,
+    commandMarkerRef,
+    resetInput,
+    onDown,
+    onEnter,
+    onMove,
+    onLeave,
+    onUp,
+    onCancel,
+  } = input;
 
   const renderer = useGameRenderer({
-    stateRef, hostRef, canvasRef, tooltipCanvasRef, miniRef, mobileMiniRef, camRef, selected, hoverRef, cursorRef, boxRef, commandMarkerRef,
-    place, repair, sell, reducedMotionOverride: audioSettings.reducedMotion, colorblindMode: audioSettings.colorblindMode,
+    stateRef,
+    hostRef,
+    canvasRef,
+    tooltipCanvasRef,
+    miniRef,
+    mobileMiniRef,
+    camRef,
+    selected,
+    hoverRef,
+    cursorRef,
+    boxRef,
+    commandMarkerRef,
+    place,
+    repair,
+    sell,
+    reducedMotionOverride: audioSettings.reducedMotion,
+    colorblindMode: audioSettings.colorblindMode,
   });
 
   const resetTransientMobileUi = useCallback(() => {
@@ -111,11 +240,31 @@ export function useGameRuntimeInteraction({
     setMobilePanelOpen(false);
   }, [clearTools, resetInput, resetMobileCommand, setMobilePanelOpen, setSelectionMode]);
 
-  const closeMobilePanel = useCallback(() => { setMobilePanelOpen(false); mobileLauncherRef.current?.focus(); }, [setMobilePanelOpen]);
-  const openMobilePanel = useCallback(() => { setSelectionMode(false); setMobilePanelOpen(true); recordMobilePanelOpened(); }, [recordMobilePanelOpened, setMobilePanelOpen, setSelectionMode]);
-  const toggleMobilePanel = useCallback(() => { if (mobilePanelOpen) closeMobilePanel(); else openMobilePanel(); }, [closeMobilePanel, mobilePanelOpen, openMobilePanel]);
-  const onMobileSheetDrag = useCallback((direction: "open" | "close") => { if (direction === "open" && !mobilePanelOpen) openMobilePanel(); if (direction === "close" && mobilePanelOpen) closeMobilePanel(); }, [closeMobilePanel, mobilePanelOpen, openMobilePanel]);
-  const cancelKeyboardTool = useCallback(() => { cancelMobileCommand(); resetInput(); setSelectionMode(false); }, [cancelMobileCommand, resetInput, setSelectionMode]);
+  const closeMobilePanel = useCallback(() => {
+    setMobilePanelOpen(false);
+    mobileLauncherRef.current?.focus();
+  }, [setMobilePanelOpen]);
+  const openMobilePanel = useCallback(() => {
+    setSelectionMode(false);
+    setMobilePanelOpen(true);
+    recordMobilePanelOpened();
+  }, [recordMobilePanelOpened, setMobilePanelOpen, setSelectionMode]);
+  const toggleMobilePanel = useCallback(() => {
+    if (mobilePanelOpen) closeMobilePanel();
+    else openMobilePanel();
+  }, [closeMobilePanel, mobilePanelOpen, openMobilePanel]);
+  const onMobileSheetDrag = useCallback(
+    (direction: "open" | "close") => {
+      if (direction === "open" && !mobilePanelOpen) openMobilePanel();
+      if (direction === "close" && mobilePanelOpen) closeMobilePanel();
+    },
+    [closeMobilePanel, mobilePanelOpen, openMobilePanel],
+  );
+  const cancelKeyboardTool = useCallback(() => {
+    cancelMobileCommand();
+    resetInput();
+    setSelectionMode(false);
+  }, [cancelMobileCommand, resetInput, setSelectionMode]);
 
   return {
     selection,

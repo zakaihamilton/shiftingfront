@@ -1,20 +1,36 @@
 import { describe, expect, it, vi } from "vitest";
-import { canvasPointerPos } from "../../components/game/hooks/canvasPointer";
-import { applyGameCommand } from "../../components/game/hooks/gameKeyboard";
-import { leastLoadedProducer } from "../../components/game/hooks/gameActions";
-import { resolvePointerUp, DOUBLE_CLICK_MS, isSameKindDoubleClick } from "../../components/game/hooks/gamePointerUp";
-import { alertSfx, desiredMusicIntensity, rejectionSfx, warningAlert } from "../../components/game/hooks/gameLoopEffects";
-import { missionConfirmationFor } from "../../components/game/hooks/missionConfirmation";
-import { briefingBackPath, briefingPath, campaignCompletePath, menuPath, resultPrimaryPath, tutorialPath } from "../../lib/navigation/routes";
 import { gameOverlayModel } from "../../components/game/gameOverlayModel";
+import { canvasPointerPos } from "../../components/game/hooks/canvasPointer";
+import { leastLoadedProducer } from "../../components/game/hooks/gameActions";
+import type { GameCommandHandlers } from "../../components/game/hooks/gameKeyboard";
+import { applyGameCommand } from "../../components/game/hooks/gameKeyboard";
+import {
+  alertSfx,
+  desiredMusicIntensity,
+  rejectionSfx,
+  warningAlert,
+} from "../../components/game/hooks/gameLoopEffects";
+import {
+  DOUBLE_CLICK_MS,
+  isSameKindDoubleClick,
+  resolvePointerUp,
+} from "../../components/game/hooks/gamePointerUp";
+import { missionConfirmationFor } from "../../components/game/hooks/missionConfirmation";
 import { playFieldStatus } from "../../components/game/playFieldStatus";
-import { createCamera, tileToScreen } from "../../lib/iso";
-import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
-import { createMission } from "../../lib/sim/api";
-import { heightAt } from "../../lib/sim/world";
 import { createCampaign } from "../../lib/gen/campaign";
 import { missionObjectives } from "../../lib/gen/story";
-import type { GameCommandHandlers } from "../../components/game/hooks/gameKeyboard";
+import { createCamera, tileToScreen } from "../../lib/iso";
+import {
+  briefingBackPath,
+  briefingPath,
+  campaignCompletePath,
+  menuPath,
+  resultPrimaryPath,
+  tutorialPath,
+} from "../../lib/navigation/routes";
+import { createMission } from "../../lib/sim/api";
+import { addBuilding, addUnit, makeFixture } from "../../lib/sim/fixtures";
+import { heightAt } from "../../lib/sim/world";
 
 vi.mock("@/lib/audio/synth", () => ({ beep: vi.fn() }));
 
@@ -48,15 +64,17 @@ function handlers(): GameCommandHandlers {
 
 describe("pointer canvas math", () => {
   it("maps client coordinates through the canvas scale", () => {
-    expect(canvasPointerPos({
-      currentTarget: {
-        getBoundingClientRect: () => ({ left: 10, top: 20, width: 100, height: 50 }) as DOMRect,
-        width: 200,
-        height: 100,
-      },
-      clientX: 60,
-      clientY: 45,
-    })).toEqual({ x: 100, y: 50 });
+    expect(
+      canvasPointerPos({
+        currentTarget: {
+          getBoundingClientRect: () => ({ left: 10, top: 20, width: 100, height: 50 }) as DOMRect,
+          width: 200,
+          height: 100,
+        },
+        clientX: 60,
+        clientY: 45,
+      }),
+    ).toEqual({ x: 100, y: 50 });
   });
 });
 
@@ -67,22 +85,24 @@ describe("pointer-up policy", () => {
     const cam = createCamera();
     const p = tileToScreen(4, 5, cam, heightAt(state, 4, 5));
 
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: "power",
-      repairMode: false,
-      sellMode: false,
-    })).toMatchObject({
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: "power",
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toMatchObject({
       clearBox: true,
       clearPlace: true,
       beep: "build",
@@ -90,138 +110,152 @@ describe("pointer-up policy", () => {
     });
 
     const invalidPlacement = tileToScreen(0, 0, cam, heightAt(state, 0, 0));
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p: invalidPlacement,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: "power",
-      repairMode: false,
-      sellMode: false,
-    })).toMatchObject({
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p: invalidPlacement,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: "power",
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toMatchObject({
       clearBox: true,
       clearPlace: false,
       beep: "build",
       commands: [{ type: "build", building: "power", x: 0, y: 0 }],
     });
 
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 2,
-      ctrlKey: false,
-      metaKey: false,
-      p,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: "power",
-      repairMode: false,
-      sellMode: false,
-    })).toEqual({ preventDefault: true, clearPlace: true, beep: "cancel" });
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 2,
+        ctrlKey: false,
+        metaKey: false,
+        p,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: "power",
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toEqual({ preventDefault: true, clearPlace: true, beep: "cancel" });
 
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 2,
-      ctrlKey: false,
-      metaKey: false,
-      p,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: null,
-      repairMode: true,
-      sellMode: false,
-    })).toEqual({ preventDefault: true, clearRepairAndSell: true, beep: "cancel" });
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 2,
+        ctrlKey: false,
+        metaKey: false,
+        p,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: null,
+        repairMode: true,
+        sellMode: false,
+      }),
+    ).toEqual({ preventDefault: true, clearRepairAndSell: true, beep: "cancel" });
 
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 2,
-      ctrlKey: true,
-      metaKey: false,
-      p,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-    })).toEqual({ preventDefault: true, contextOrder: true, attackMove: true });
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 2,
+        ctrlKey: true,
+        metaKey: false,
+        p,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toEqual({ preventDefault: true, contextOrder: true, attackMove: true });
 
     const unit = addUnit(state, 0, "infantry", 2, 2);
-    expect(resolvePointerUp({
-      pointerType: "touch",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p,
-      state,
-      cam,
-      selectedIds: [unit.id],
-      box: null,
-      selectionMode: false,
-      mobileCommand: "move",
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-    })).toMatchObject({
+    expect(
+      resolvePointerUp({
+        pointerType: "touch",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p,
+        state,
+        cam,
+        selectedIds: [unit.id],
+        box: null,
+        selectionMode: false,
+        mobileCommand: "move",
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toMatchObject({
       clearMobileCommand: true,
       beep: "ack",
       commands: [{ type: "move", unitIds: [unit.id], x: 4, y: 5 }],
     });
 
-    expect(resolvePointerUp({
-      pointerType: "touch",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p,
-      state,
-      cam,
-      selectedIds: [unit.id],
-      box: null,
-      selectionMode: false,
-      mobileCommand: "attack",
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-    })).toMatchObject({
+    expect(
+      resolvePointerUp({
+        pointerType: "touch",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p,
+        state,
+        cam,
+        selectedIds: [unit.id],
+        box: null,
+        selectionMode: false,
+        mobileCommand: "attack",
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toMatchObject({
       commands: [],
       clearMobileCommand: false,
       commandNotice: { text: "Select an enemy target for attack.", kind: "error" },
     });
 
-    expect(resolvePointerUp({
-      pointerType: "touch",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: "move",
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-    })).toMatchObject({
+    expect(
+      resolvePointerUp({
+        pointerType: "touch",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: "move",
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toMatchObject({
       commands: [],
       clearMobileCommand: false,
       commandNotice: { text: "Select units before issuing an order.", kind: "error" },
@@ -256,22 +290,24 @@ describe("pointer-up policy", () => {
     });
     expect(repair.beep).toBeUndefined();
 
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p: { x: 0, y: 0 },
-      state,
-      cam,
-      selectedIds: [],
-      box: { x0: 0, y0: 0, x1: 20, y1: 20 },
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-    })).toEqual({ clearBox: true, select: [] });
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p: { x: 0, y: 0 },
+        state,
+        cam,
+        selectedIds: [],
+        box: { x0: 0, y0: 0, x1: 20, y1: 20 },
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toEqual({ clearBox: true, select: [] });
   });
 
   it("does not issue a sell order for a building that cannot be sold", () => {
@@ -280,22 +316,24 @@ describe("pointer-up policy", () => {
     const cam = createCamera();
     const p = tileToScreen(yard.x, yard.y, cam, heightAt(state, yard.x, yard.y));
 
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: null,
-      repairMode: false,
-      sellMode: true,
-    })).toEqual({
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: null,
+        repairMode: false,
+        sellMode: true,
+      }),
+    ).toEqual({
       clearBox: true,
       commandNotice: { text: "That building cannot be sold.", kind: "error" },
     });
@@ -307,74 +345,87 @@ describe("pointer-up policy", () => {
     const building = addBuilding(state, 0, "power", 4, 4);
     const cam = createCamera();
     const screen = tileToScreen(unit.x, unit.y, cam, heightAt(state, unit.x, unit.y));
-    const buildingScreen = tileToScreen(building.x, building.y, cam, heightAt(state, building.x, building.y));
+    const buildingScreen = tileToScreen(
+      building.x,
+      building.y,
+      cam,
+      heightAt(state, building.x, building.y),
+    );
 
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p: { x: 0, y: 0 },
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-    }).beep).toBeUndefined();
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p: { x: 0, y: 0 },
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+      }).beep,
+    ).toBeUndefined();
 
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p: screen,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-    })).toMatchObject({ select: [unit.id] });
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p: buildingScreen,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-    })).toMatchObject({ select: [building.id] });
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p: screen,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toMatchObject({ select: [unit.id] });
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p: buildingScreen,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toMatchObject({ select: [building.id] });
 
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p: { x: screen.x + 40, y: screen.y + 40 },
-      state,
-      cam,
-      selectedIds: [],
-      box: { x0: screen.x - 20, y0: screen.y - 20, x1: screen.x + 20, y1: screen.y + 20 },
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-    })).toMatchObject({ select: [unit.id] });
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p: { x: screen.x + 40, y: screen.y + 40 },
+        state,
+        cam,
+        selectedIds: [],
+        box: { x0: screen.x - 20, y0: screen.y - 20, x1: screen.x + 20, y1: screen.y + 20 },
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+      }),
+    ).toMatchObject({ select: [unit.id] });
   });
 });
 
@@ -383,8 +434,17 @@ describe("double-click selection policy", () => {
     const first = { atMs: 1000, kind: "tank", x: 40, y: 40 };
     expect(isSameKindDoubleClick(null, first)).toBe(false);
     expect(isSameKindDoubleClick(first, { atMs: 1300, kind: "tank", x: 48, y: 42 })).toBe(true);
-    expect(isSameKindDoubleClick(first, { atMs: 1000 + DOUBLE_CLICK_MS + 1, kind: "tank", x: 40, y: 40 })).toBe(false);
-    expect(isSameKindDoubleClick(first, { atMs: 1200, kind: "infantry", x: 40, y: 40 })).toBe(false);
+    expect(
+      isSameKindDoubleClick(first, {
+        atMs: 1000 + DOUBLE_CLICK_MS + 1,
+        kind: "tank",
+        x: 40,
+        y: 40,
+      }),
+    ).toBe(false);
+    expect(isSameKindDoubleClick(first, { atMs: 1200, kind: "infantry", x: 40, y: 40 })).toBe(
+      false,
+    );
     expect(isSameKindDoubleClick(first, { atMs: 1200, kind: "tank", x: 80, y: 40 })).toBe(false);
   });
 
@@ -426,24 +486,26 @@ describe("double-click selection policy", () => {
     const yard = addBuilding(state, 0, "constructionYard", 3, 3);
     addBuilding(state, 0, "power", 6, 3);
     const p = tileToScreen(yard.x, yard.y, cam, heightAt(state, yard.x, yard.y));
-    expect(resolvePointerUp({
-      pointerType: "mouse",
-      button: 0,
-      ctrlKey: false,
-      metaKey: false,
-      p,
-      state,
-      cam,
-      selectedIds: [],
-      box: null,
-      selectionMode: false,
-      mobileCommand: null,
-      placeKind: null,
-      repairMode: false,
-      sellMode: false,
-      doubleClick: true,
-      viewport: { width: 800, height: 600 },
-    })).toMatchObject({ select: [yard.id] });
+    expect(
+      resolvePointerUp({
+        pointerType: "mouse",
+        button: 0,
+        ctrlKey: false,
+        metaKey: false,
+        p,
+        state,
+        cam,
+        selectedIds: [],
+        box: null,
+        selectionMode: false,
+        mobileCommand: null,
+        placeKind: null,
+        repairMode: false,
+        sellMode: false,
+        doubleClick: true,
+        viewport: { width: 800, height: 600 },
+      }),
+    ).toMatchObject({ select: [yard.id] });
   });
 });
 
@@ -491,15 +553,31 @@ describe("mission confirmation and routes", () => {
     expect(briefingBackPath(421, 2, false, "result")).toBe("/play?seed=0421&mission=2&resume=1");
     expect(campaignCompletePath(7)).toBe("/campaign-complete?seed=0007");
     expect(menuPath()).toBe("/");
-    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 3 })).toBe("/briefing?seed=0421&mission=4&from=result");
-    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 5 })).toBe("/campaign-complete?seed=0421");
-    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 7 })).toBe("/campaign-complete?seed=0421");
-    expect(resultPrimaryPath({ result: "lost", seed: 421, missionIndex: 3 })).toBe("/briefing?seed=0421&mission=3&from=result");
-    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 3, multiplayer: true })).toBe(menuPath());
-    expect(resultPrimaryPath({ result: "lost", seed: 421, missionIndex: 3, multiplayer: true })).toBe(menuPath());
-    expect(missionConfirmationFor("menu").message).toBe("Return to the main menu? Your mission progress will be saved.");
+    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 3 })).toBe(
+      "/briefing?seed=0421&mission=4&from=result",
+    );
+    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 5 })).toBe(
+      "/campaign-complete?seed=0421",
+    );
+    expect(resultPrimaryPath({ result: "won", seed: 421, missionIndex: 7 })).toBe(
+      "/campaign-complete?seed=0421",
+    );
+    expect(resultPrimaryPath({ result: "lost", seed: 421, missionIndex: 3 })).toBe(
+      "/briefing?seed=0421&mission=3&from=result",
+    );
+    expect(
+      resultPrimaryPath({ result: "won", seed: 421, missionIndex: 3, multiplayer: true }),
+    ).toBe(menuPath());
+    expect(
+      resultPrimaryPath({ result: "lost", seed: 421, missionIndex: 3, multiplayer: true }),
+    ).toBe(menuPath());
+    expect(missionConfirmationFor("menu").message).toBe(
+      "Return to the main menu? Your mission progress will be saved.",
+    );
     expect(missionConfirmationFor("menu", "won").message).toBe("Return to the main menu?");
-    expect(missionConfirmationFor("restart", "lost").message).toBe("Restart this mission from the beginning?");
+    expect(missionConfirmationFor("restart", "lost").message).toBe(
+      "Restart this mission from the beginning?",
+    );
     expect(missionConfirmationFor("menu", "playing", true)).toMatchObject({
       action: "menu",
       title: "Leave skirmish?",
@@ -569,8 +647,12 @@ describe("production and overlay helpers", () => {
     const mission = campaign.missions[0]!;
     const state = createMission({ seed: 421, missionIndex: mission.index });
 
-    expect(playFieldStatus(state, campaign).briefingObjectives).toEqual(missionObjectives(mission, campaign));
-    expect(playFieldStatus(state, campaign).profileLabel).toMatch(/Resource Race|Forward Industry|Direct Route|Contested Route|Surgical Strike|Siege|Concentrated Waves|Crossfire/);
+    expect(playFieldStatus(state, campaign).briefingObjectives).toEqual(
+      missionObjectives(mission, campaign),
+    );
+    expect(playFieldStatus(state, campaign).profileLabel).toMatch(
+      /Resource Race|Forward Industry|Direct Route|Contested Route|Surgical Strike|Siege|Concentrated Waves|Crossfire/,
+    );
   });
 });
 
@@ -581,13 +663,17 @@ describe("loop audio intensity", () => {
     expect(desiredMusicIntensity("finale", 10, Number.NEGATIVE_INFINITY, false)).toBe("critical");
     expect(desiredMusicIntensity("opening", 50, 40, false)).toBe("engaged");
     expect(desiredMusicIntensity("finale", 50, 40, true)).toBe("critical");
-    expect(desiredMusicIntensity("opening", 20, Number.NEGATIVE_INFINITY, false, 24)).toBe("critical");
+    expect(desiredMusicIntensity("opening", 20, Number.NEGATIVE_INFINITY, false, 24)).toBe(
+      "critical",
+    );
     expect(desiredMusicIntensity("opening", 24, Number.NEGATIVE_INFINITY, false, 24)).toBe("calm");
     expect(warningAlert([{ type: "alert", kind: "warning", text: "Incoming" }])).toBe(true);
-    expect(warningAlert([
-      { type: "alert", kind: "contact", text: "Spotted" },
-      { type: "alert", kind: "warning", text: "Incoming" },
-    ])).toBe(false);
+    expect(
+      warningAlert([
+        { type: "alert", kind: "contact", text: "Spotted" },
+        { type: "alert", kind: "warning", text: "Incoming" },
+      ]),
+    ).toBe(false);
     expect(alertSfx("objective")).toBe("objective");
     expect(rejectionSfx("insufficient credits")).toBe("insufficientFunds");
     expect(rejectionSfx("power shortage")).toBe("powerShortage");

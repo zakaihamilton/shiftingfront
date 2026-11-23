@@ -1,9 +1,9 @@
 import { ammoEffectForWeapon } from "../../catalog";
 import { rubbleSprite, wreckSprite } from "../../gen/assets";
-import { FX_DURATION, fxProgress, isBuildingKind, isUnitKind, type FxBurst } from "../fx";
-import { TILE_H, type Camera } from "../../iso";
-import { drawSprite, rasterize } from "../sprites";
+import { type Camera, TILE_H } from "../../iso";
 import type { SimState } from "../../types";
+import { FX_DURATION, type FxBurst, fxProgress, isBuildingKind, isUnitKind } from "../fx";
+import { drawSprite, rasterize } from "../sprites";
 
 type FxPoint = { x: number; y: number };
 type FxPosition = (burst: FxBurst) => FxPoint;
@@ -62,16 +62,25 @@ export function drawGroundFx(
     const s = position(burst);
     if (!visible(s)) continue;
     const pal = state.factions[burst.owner]?.palette ?? state.factions[0]?.palette;
-    const spec = burst.kind === "wreck" && isUnitKind(burst.entityKind)
-      ? wreckSprite(burst.entityKind, pal)
-      : isBuildingKind(burst.entityKind)
-        ? rubbleSprite(burst.entityKind, pal)
-        : rubbleSprite("turret", pal);
+    const spec =
+      burst.kind === "wreck" && isUnitKind(burst.entityKind)
+        ? wreckSprite(burst.entityKind, pal)
+        : isBuildingKind(burst.entityKind)
+          ? rubbleSprite(burst.entityKind, pal)
+          : rubbleSprite("turret", pal);
     const img = rasterize(spec);
     const ax = (spec.anchorX ?? spec.w / 2) * z;
     const ay = (spec.anchorY ?? spec.h) * z;
     ctx.globalAlpha = p > 0.78 ? 1 - (p - 0.78) / 0.22 : 1;
-    drawSprite(ctx, spec, img, Math.round(s.x - ax), Math.round(s.y + (TILE_H / 2) * z - ay), spec.w * z, spec.h * z);
+    drawSprite(
+      ctx,
+      spec,
+      img,
+      Math.round(s.x - ax),
+      Math.round(s.y + (TILE_H / 2) * z - ay),
+      spec.w * z,
+      spec.h * z,
+    );
     ctx.globalAlpha = 1;
   }
 }
@@ -94,7 +103,8 @@ export function drawBurstFx(
       burst.kind === "rubble" ||
       burst.kind === "wreck" ||
       burst.kind === "scorch"
-    ) continue;
+    )
+      continue;
     const p = fxProgress(burst, nowMs);
     const s = position(burst);
     if (!visible(s)) continue;
@@ -121,16 +131,30 @@ export function drawBurstFx(
         ctx.globalAlpha = 0.32 * muzzleFade;
         ctx.fillStyle = ammoEffect === "missile" ? "#ff9b56" : "#fff2b2";
         const size = ammoEffect === "missile" ? 6 : 4;
-        ctx.fillRect(Math.round(s.x - size * z / 2), Math.round(s.y + 2 * z), Math.max(2, size * z), Math.max(2, 3 * z));
+        ctx.fillRect(
+          Math.round(s.x - (size * z) / 2),
+          Math.round(s.y + 2 * z),
+          Math.max(2, size * z),
+          Math.max(2, 3 * z),
+        );
         ctx.restore();
         continue;
       }
-      const radius = (ammoEffect === "bullet" ? 3 : 5 + magnitude * 7) * z * (0.8 + muzzleFade * 0.35);
+      const radius =
+        (ammoEffect === "bullet" ? 3 : 5 + magnitude * 7) * z * (0.8 + muzzleFade * 0.35);
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = 0.85 * muzzleFade;
       ctx.fillStyle = ammoEffect === "missile" ? "#ff9b56" : "#fff2b2";
       ctx.beginPath();
-      ctx.ellipse(s.x, s.y + 4 * z, radius * (ammoEffect === "bullet" ? 0.34 : 0.48), radius * 0.32, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        s.x,
+        s.y + 4 * z,
+        radius * (ammoEffect === "bullet" ? 0.34 : 0.48),
+        radius * 0.32,
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.fill();
       ctx.strokeStyle = "#fff7d6";
       ctx.lineWidth = Math.max(1, z);
@@ -139,7 +163,10 @@ export function drawBurstFx(
         const angle = phase + (i / rays) * Math.PI * 2;
         ctx.beginPath();
         ctx.moveTo(s.x, s.y + 4 * z);
-        ctx.lineTo(s.x + Math.cos(angle) * radius * (ammoEffect === "bullet" ? 0.72 : 1), s.y + 4 * z + Math.sin(angle) * radius * 0.58);
+        ctx.lineTo(
+          s.x + Math.cos(angle) * radius * (ammoEffect === "bullet" ? 0.72 : 1),
+          s.y + 4 * z + Math.sin(angle) * radius * 0.58,
+        );
         ctx.stroke();
       }
       if (ammoEffect === "missile") {
@@ -166,20 +193,37 @@ export function drawBurstFx(
         ctx.globalAlpha = (reducedMotion ? 0.24 : 0.62) * fade;
         ctx.fillStyle = p < 0.24 ? "#fff0a3" : "#e56b32";
         ctx.beginPath();
-        ctx.ellipse(s.x, s.y + 7 * z, blastRadius * (0.5 + p * 0.22), blastRadius * (0.28 + p * 0.12), 0, 0, Math.PI * 2);
+        ctx.ellipse(
+          s.x,
+          s.y + 7 * z,
+          blastRadius * (0.5 + p * 0.22),
+          blastRadius * (0.28 + p * 0.12),
+          0,
+          0,
+          Math.PI * 2,
+        );
         ctx.fill();
         ctx.globalCompositeOperation = "source-over";
         ctx.globalAlpha = (reducedMotion ? 0.24 : 0.72) * fade;
         ctx.strokeStyle = metal ? "#ffd18b" : structure ? "#e5a35d" : "#d09a68";
         ctx.lineWidth = Math.max(1, (1 + magnitude * 0.8) * z);
         ctx.beginPath();
-        ctx.ellipse(s.x, s.y + 8 * z, blastRadius * (0.54 + p * 0.42), blastRadius * (0.2 + p * 0.16), 0, 0, Math.PI * 2);
+        ctx.ellipse(
+          s.x,
+          s.y + 8 * z,
+          blastRadius * (0.54 + p * 0.42),
+          blastRadius * (0.2 + p * 0.16),
+          0,
+          0,
+          Math.PI * 2,
+        );
         ctx.stroke();
         if (!reducedMotion) {
           const count = ammoEffect === "bomb" ? 10 : ammoEffect === "shell" ? 6 : 8;
           for (let i = 0; i < count; i++) {
             const angle = phase + (i / count) * Math.PI * 2;
-            const travel = blastRadius * (0.35 + ((((burst.variant ?? burst.id) >>> (i % 16)) & 3) * 0.18));
+            const travel =
+              blastRadius * (0.35 + (((burst.variant ?? burst.id) >>> (i % 16)) & 3) * 0.18);
             ctx.globalAlpha = fade * (i % 2 ? 0.68 : 0.9);
             ctx.fillStyle = i % 2 ? "#ffbd68" : "#ffe7a1";
             ctx.fillRect(
@@ -195,7 +239,15 @@ export function drawBurstFx(
             for (let i = 0; i < 3; i++) {
               const drift = (i - 1) * blastRadius * 0.24;
               ctx.beginPath();
-              ctx.ellipse(s.x + drift, s.y - (5 + p * 15 + i * 2) * z, (3 + p * 4) * z, (2 + p * 2) * z, 0, 0, Math.PI * 2);
+              ctx.ellipse(
+                s.x + drift,
+                s.y - (5 + p * 15 + i * 2) * z,
+                (3 + p * 4) * z,
+                (2 + p * 2) * z,
+                0,
+                0,
+                Math.PI * 2,
+              );
               ctx.fill();
             }
           }
@@ -213,7 +265,7 @@ export function drawBurstFx(
         const count = burst.weapon === "smallArms" ? 4 : burst.weapon === "antiArmor" ? 7 : 10;
         for (let i = 0; i < count; i++) {
           const angle = phase + (i / count) * Math.PI * 2;
-          const travel = radius * (0.45 + ((((burst.variant ?? burst.id) >>> (i % 16)) & 3) * 0.2));
+          const travel = radius * (0.45 + (((burst.variant ?? burst.id) >>> (i % 16)) & 3) * 0.2);
           const rise = (5 + p * 18 * magnitude) * z;
           ctx.globalAlpha = fade * (metal ? 0.9 : 0.58);
           ctx.fillStyle = metal && i % 2 ? "#d8f2ff" : structure ? "#c98b50" : "#8d7663";
@@ -322,8 +374,18 @@ export function drawBurstFx(
           const x = s.x + Math.cos(angle) * (7 + i) * z;
           const y = s.y + 7 * z - (p * 18 + i * 2) * z;
           if (heal) {
-            ctx.fillRect(Math.round(x - z), Math.round(y - 3 * z), Math.max(2, 2 * z), Math.max(5, 6 * z));
-            ctx.fillRect(Math.round(x - 3 * z), Math.round(y - z), Math.max(5, 6 * z), Math.max(2, 2 * z));
+            ctx.fillRect(
+              Math.round(x - z),
+              Math.round(y - 3 * z),
+              Math.max(2, 2 * z),
+              Math.max(5, 6 * z),
+            );
+            ctx.fillRect(
+              Math.round(x - 3 * z),
+              Math.round(y - z),
+              Math.max(5, 6 * z),
+              Math.max(2, 2 * z),
+            );
           } else {
             ctx.fillRect(Math.round(x), Math.round(y), Math.max(2, 2 * z), Math.max(2, 2 * z));
           }

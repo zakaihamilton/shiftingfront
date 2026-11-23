@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import { createCampaign } from "../../../lib/gen/campaign";
 import { generateMap } from "../../../lib/gen/map";
 import { MAX_OPERATION_TICKS } from "../../../lib/gen/pacing";
-import { cloneMapForSimulation, runOne, stableBalanceRecords, validMap, type BalanceScenario, type SharedScenarioData } from "../../../lib/sim/balance";
+import {
+  type BalanceScenario,
+  cloneMapForSimulation,
+  runOne,
+  type SharedScenarioData,
+  stableBalanceRecords,
+  validMap,
+} from "../../../lib/sim/balance";
 
 const BALANCE_REPLAY_FIXTURES: BalanceScenario[] = [
   { seed: 2, mission: 4 },

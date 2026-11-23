@@ -2,12 +2,7 @@ import { describe, expect, it } from "vitest";
 import { unitSprite } from "../../lib/gen/assets";
 import { generateFactions } from "../../lib/gen/factions";
 import { generateVisualProfile } from "../../lib/gen/visualProfile";
-import {
-  ALLY_IFF_HEX,
-  ENEMY_IFF_HEX,
-  NEUTRAL_IFF_HEX,
-  iffColors,
-} from "../../lib/render/iff";
+import { ALLY_IFF_HEX, ENEMY_IFF_HEX, iffColors, NEUTRAL_IFF_HEX } from "../../lib/render/iff";
 
 describe("iffColors", () => {
   it("uses cyan for allies, red for enemies, and gold for neutrals", () => {

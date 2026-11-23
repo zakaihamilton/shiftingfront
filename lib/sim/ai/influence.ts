@@ -20,23 +20,28 @@ export type InfluenceMap = {
 
 const INFLUENCE_CELL_SIZE = 8;
 const INFLUENCE_CACHE_TICKS = 12;
-const influenceCache = new WeakMap<SimState, Map<Owner, { tick: number; knownPlayersKey?: string; map: InfluenceMap }>>();
+const influenceCache = new WeakMap<
+  SimState,
+  Map<Owner, { tick: number; knownPlayersKey?: string; map: InfluenceMap }>
+>();
 
 function knownPlayersKey(knownPlayers: Entity[] | undefined): string | undefined {
   if (knownPlayers === undefined) return undefined;
   return knownPlayers
-    .map((entity) => [
-      entity.id,
-      entity.owner,
-      entity.class,
-      entity.kind,
-      entity.x,
-      entity.y,
-      entity.hp,
-      entity.constructing,
-      entity.neutral ? 1 : 0,
-      entity.scenarioRole ?? "",
-    ].join(":"))
+    .map((entity) =>
+      [
+        entity.id,
+        entity.owner,
+        entity.class,
+        entity.kind,
+        entity.x,
+        entity.y,
+        entity.hp,
+        entity.constructing,
+        entity.neutral ? 1 : 0,
+        entity.scenarioRole ?? "",
+      ].join(":"),
+    )
     .sort()
     .join("|");
 }
@@ -69,7 +74,11 @@ export function buildInfluenceMap(
     influenceCache.set(state, ownerCache);
   }
   const cached = ownerCache.get(aiOwner);
-  if (cached && cached.knownPlayersKey === playersKey && state.tick - cached.tick < INFLUENCE_CACHE_TICKS) {
+  if (
+    cached &&
+    cached.knownPlayersKey === playersKey &&
+    state.tick - cached.tick < INFLUENCE_CACHE_TICKS
+  ) {
     return cached.map;
   }
 
@@ -103,7 +112,8 @@ export function buildInfluenceMap(
   }
 
   // Detected player (Threat) forces
-  const players = knownPlayers ?? enemyKnownPlayerEntities(state, livingView(state), aiOwner, opponents);
+  const players =
+    knownPlayers ?? enemyKnownPlayerEntities(state, livingView(state), aiOwner, opponents);
   for (const target of players) {
     if (target.hp <= 0 || !isCombatTarget(state, target)) continue;
     const stats = statsFor(target);
@@ -140,7 +150,16 @@ export function findWeakestFlank(
   targetYard: Entity,
   flankRadius = 12,
 ): Vec2 | undefined {
-  const angles = [0, Math.PI * 0.25, Math.PI * 0.5, Math.PI * 0.75, Math.PI, Math.PI * 1.25, Math.PI * 1.5, Math.PI * 1.75];
+  const angles = [
+    0,
+    Math.PI * 0.25,
+    Math.PI * 0.5,
+    Math.PI * 0.75,
+    Math.PI,
+    Math.PI * 1.25,
+    Math.PI * 1.5,
+    Math.PI * 1.75,
+  ];
   let bestPoint: Vec2 | undefined;
   let lowestThreat = Infinity;
 

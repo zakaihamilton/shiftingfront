@@ -1,8 +1,12 @@
-import { missionUsesObjectiveZone, OBJECTIVE_ZONE_RADIUS, RESCUE_CONTACT_RADIUS } from "../../types";
-import { selectionPulse } from "../anim";
-import { TILE_H, TILE_W, tileToScreen, type Camera } from "../../iso";
+import { type Camera, TILE_H, TILE_W, tileToScreen } from "../../iso";
 import { fogAt } from "../../sim/fog";
 import type { SimState } from "../../types";
+import {
+  missionUsesObjectiveZone,
+  OBJECTIVE_ZONE_RADIUS,
+  RESCUE_CONTACT_RADIUS,
+} from "../../types";
+import { selectionPulse } from "../anim";
 
 function drawZoneHalo(
   ctx: CanvasRenderingContext2D,
@@ -38,7 +42,13 @@ function drawZoneHalo(
   ctx.restore();
 }
 
-export function drawRescueHalo(ctx: CanvasRenderingContext2D, x: number, y: number, z: number, timeMs: number): void {
+export function drawRescueHalo(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  z: number,
+  timeMs: number,
+): void {
   drawZoneHalo(ctx, x, y, z, timeMs, RESCUE_CONTACT_RADIUS, "#67e0d0");
 }
 
@@ -51,13 +61,24 @@ export function drawObjectiveZone(
 ): void {
   for (const challenge of state.runtime?.secondary ?? []) {
     if (challenge.priority !== "optional" || !challenge.zone || challenge.completed) continue;
-    const point = tileToScreen(challenge.zone.x, challenge.zone.y, cam, heightAt(state, Math.round(challenge.zone.x), Math.round(challenge.zone.y)));
+    const point = tileToScreen(
+      challenge.zone.x,
+      challenge.zone.y,
+      cam,
+      heightAt(state, Math.round(challenge.zone.x), Math.round(challenge.zone.y)),
+    );
     drawZoneHalo(ctx, point.x, point.y, cam.zoom, timeMs, challenge.radius ?? 3, "#e8c86a");
   }
   const runtime = state.runtime;
   const zone = runtime?.zone;
   if (!zone || !missionUsesObjectiveZone(runtime?.kind)) return;
-  if (runtime.kind === "escort" && fogAt(state, Math.round(zone.x), Math.round(zone.y)) === 0) return;
-  const s = tileToScreen(zone.x, zone.y, cam, heightAt(state, Math.round(zone.x), Math.round(zone.y)));
+  if (runtime.kind === "escort" && fogAt(state, Math.round(zone.x), Math.round(zone.y)) === 0)
+    return;
+  const s = tileToScreen(
+    zone.x,
+    zone.y,
+    cam,
+    heightAt(state, Math.round(zone.x), Math.round(zone.y)),
+  );
   drawZoneHalo(ctx, s.x, s.y, cam.zoom, timeMs, OBJECTIVE_ZONE_RADIUS, "#e8c86a");
 }

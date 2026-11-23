@@ -6,5 +6,8 @@ export function isPlayerControlledOwner(
   owner: Owner,
 ): boolean {
   if (!state.multiplayer) return owner === 0;
-  return (state.multiplayerOwners ?? [0, 1]).includes(owner) && !(state.multiplayerAiOwners ?? []).includes(owner);
+  return (
+    (state.multiplayerOwners ?? [0, 1]).includes(owner) &&
+    !(state.multiplayerAiOwners ?? []).includes(owner)
+  );
 }

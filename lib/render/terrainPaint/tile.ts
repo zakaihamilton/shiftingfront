@@ -1,11 +1,17 @@
 import { tileCliffGeometry } from "../../gen/assets";
 import { expandIsoDiamond, isoAtlasTransform } from "../../iso";
-import { atlasRectForTile, fogTerrainGain, type TerrainAtlas } from "../terrainAtlas";
-import { SHROUD_FILL, SHROUD_RGB, SHROUD_COVER, SHROUD_CORNER_RADIUS_FRAC, SHROUD_CORE_COVER } from "./constants";
-import { roundedIsoDiamondPath, type IsoDiamondCornerRadii } from "../isoDiamond";
-import { fillElevationPoly } from "./cliffs";
 import { fogAt } from "../../sim/fog";
 import type { SimState } from "../../types";
+import { type IsoDiamondCornerRadii, roundedIsoDiamondPath } from "../isoDiamond";
+import { atlasRectForTile, fogTerrainGain, type TerrainAtlas } from "../terrainAtlas";
+import { fillElevationPoly } from "./cliffs";
+import {
+  SHROUD_CORE_COVER,
+  SHROUD_CORNER_RADIUS_FRAC,
+  SHROUD_COVER,
+  SHROUD_FILL,
+  SHROUD_RGB,
+} from "./constants";
 
 export function paintShroudCliffs(
   ctx: CanvasRenderingContext2D,
@@ -161,7 +167,17 @@ export function drawAtlasDiamond(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.transform(...isoAtlasTransform(sx, sy, tw, th, rect.sw, rect.sh));
-  ctx.drawImage(atlas.canvas, sx0, sy0, sx1 - sx0, sy1 - sy0, sx0 - rect.sx, sy0 - rect.sy, sx1 - sx0, sy1 - sy0);
+  ctx.drawImage(
+    atlas.canvas,
+    sx0,
+    sy0,
+    sx1 - sx0,
+    sy1 - sy0,
+    sx0 - rect.sx,
+    sy0 - rect.sy,
+    sx1 - sx0,
+    sy1 - sy0,
+  );
 }
 
 const ATLAS_SAMPLE_PAD = 1;

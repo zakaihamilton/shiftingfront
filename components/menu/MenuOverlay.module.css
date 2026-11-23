@@ -6,8 +6,12 @@
   display: flex;
   align-items: flex-start;
   justify-content: safe center;
-  background:
-    linear-gradient(90deg, rgba(3, 7, 12, 0.82) 0%, rgba(3, 7, 12, 0.56) 58%, rgba(3, 7, 12, 0.4) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(3, 7, 12, 0.82) 0%,
+    rgba(3, 7, 12, 0.56) 58%,
+    rgba(3, 7, 12, 0.4) 100%
+  );
   backdrop-filter: blur(6px) saturate(0.86);
   padding: clamp(0.75rem, 2.5vh, 2rem) clamp(0.75rem, 3vw, 3rem);
   overflow-y: auto;
@@ -15,8 +19,12 @@
 }
 
 .overlay[data-view="newGame"] {
-  background:
-    linear-gradient(90deg, rgba(3, 7, 12, 0.7) 0%, rgba(3, 7, 12, 0.38) 58%, rgba(3, 7, 12, 0.22) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(3, 7, 12, 0.7) 0%,
+    rgba(3, 7, 12, 0.38) 58%,
+    rgba(3, 7, 12, 0.22) 100%
+  );
   backdrop-filter: blur(3px) saturate(0.92);
 }
 
@@ -27,7 +35,8 @@
 
 @media (max-width: 639px) {
   .overlay {
-    padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+    padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem
+      max(0.75rem, env(safe-area-inset-bottom));
   }
 }
 

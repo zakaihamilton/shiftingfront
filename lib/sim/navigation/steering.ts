@@ -55,7 +55,8 @@ export function advanceAlongPath(
     if (
       (currentX !== targetX || currentY !== targetY) &&
       !navigationStepAllowed(navigation, currentX, currentY, targetX, targetY)
-    ) return;
+    )
+      return;
     if (!tileFree(state, occupancy, reserved, e, target.x, target.y)) return;
     e.x = target.x;
     e.y = target.y;
@@ -77,9 +78,7 @@ export function advanceAlongPath(
   e.y = nextY;
 }
 
-type DiagonalResolution =
-  | { kind: "direct" }
-  | { kind: "split"; target: { x: number; y: number } };
+type DiagonalResolution = { kind: "direct" } | { kind: "split"; target: { x: number; y: number } };
 
 function resolveDiagonalStep(
   state: SimState,
@@ -94,7 +93,8 @@ function resolveDiagonalStep(
   waypointX: number,
   waypointY: number,
 ): DiagonalResolution {
-  if (Math.abs(waypointX - currentX) !== 1 || Math.abs(waypointY - currentY) !== 1) return { kind: "direct" };
+  if (Math.abs(waypointX - currentX) !== 1 || Math.abs(waypointY - currentY) !== 1)
+    return { kind: "direct" };
   const laneClear = diagonalSegmentStaysInLane(
     e.x,
     e.y,
@@ -105,24 +105,30 @@ function resolveDiagonalStep(
     waypointX,
     waypointY,
   );
-  if (laneClear && directDiagonalOpen(
-    edgeReservations,
-    navigation,
-    e,
-    currentX,
-    currentY,
-    waypointX,
-    waypointY,
-  )) return { kind: "direct" };
+  if (
+    laneClear &&
+    directDiagonalOpen(edgeReservations, navigation, e, currentX, currentY, waypointX, waypointY)
+  )
+    return { kind: "direct" };
   const candidates = [
     { x: waypointX, y: currentY },
     { x: currentX, y: waypointY },
   ];
-  const intermediate = candidates.find((candidate) =>
-    navigationStepAllowed(navigation, currentX, currentY, candidate.x, candidate.y) &&
-    navigationStepAllowed(navigation, candidate.x, candidate.y, waypointX, waypointY) &&
-    !navigationEdgeReserved(edgeReservations, state.width, state.height, currentX, currentY, candidate.x, candidate.y, e.id) &&
-    tileFree(state, occupancy, reserved, e, candidate.x, candidate.y),
+  const intermediate = candidates.find(
+    (candidate) =>
+      navigationStepAllowed(navigation, currentX, currentY, candidate.x, candidate.y) &&
+      navigationStepAllowed(navigation, candidate.x, candidate.y, waypointX, waypointY) &&
+      !navigationEdgeReserved(
+        edgeReservations,
+        state.width,
+        state.height,
+        currentX,
+        currentY,
+        candidate.x,
+        candidate.y,
+        e.id,
+      ) &&
+      tileFree(state, occupancy, reserved, e, candidate.x, candidate.y),
   );
   if (intermediate) return { kind: "split", target: intermediate };
   // No cardinal is open. Keep the diagonal; a blocked corner still stops the
@@ -198,8 +204,9 @@ function directDiagonalOpen(
   waypointX: number,
   waypointY: number,
 ): boolean {
-  return navigationStepAllowed(navigation, currentX, currentY, waypointX, waypointY)
-    && !navigationEdgeReserved(
+  return (
+    navigationStepAllowed(navigation, currentX, currentY, waypointX, waypointY) &&
+    !navigationEdgeReserved(
       edgeReservations,
       navigation.width,
       navigation.height,
@@ -208,5 +215,6 @@ function directDiagonalOpen(
       waypointX,
       waypointY,
       e.id,
-    );
+    )
+  );
 }

@@ -1,8 +1,14 @@
-import type { AtlasWorld } from "./terrainMaterials";
 import type { TerrainAtlasData } from "./terrainAtlasBake";
 import { makeAtlasKey } from "./terrainAtlasBake";
+import type { AtlasWorld } from "./terrainMaterials";
 
-type Pending = { id: number; key: string; resolve: (atlas: TerrainAtlasData) => void; reject: (error: Error) => void; cleanup: () => void };
+type Pending = {
+  id: number;
+  key: string;
+  resolve: (atlas: TerrainAtlasData) => void;
+  reject: (error: Error) => void;
+  cleanup: () => void;
+};
 let worker: Worker | null = null;
 let disabled = false;
 let generation = 0;
@@ -34,7 +40,11 @@ export function disposeTerrainWorker(): void {
   disabled = false;
 }
 
-export function bakeTerrainInWorker(world: AtlasWorld, grainGeneration: number, signal: AbortSignal): Promise<TerrainAtlasData> | null {
+export function bakeTerrainInWorker(
+  world: AtlasWorld,
+  grainGeneration: number,
+  signal: AbortSignal,
+): Promise<TerrainAtlasData> | null {
   if (disabled) return null;
   if (typeof Worker === "undefined") {
     disabled = true;
@@ -44,12 +54,23 @@ export function bakeTerrainInWorker(world: AtlasWorld, grainGeneration: number, 
     if (!worker) {
       worker = new Worker(new URL("./terrainWorker.ts", import.meta.url), { type: "module" });
       const activeWorker = worker;
-      worker.onerror = () => { if (worker === activeWorker) fail(); };
-      worker.onmessageerror = () => { if (worker === activeWorker) fail(); };
+      worker.onerror = () => {
+        if (worker === activeWorker) fail();
+      };
+      worker.onmessageerror = () => {
+        if (worker === activeWorker) fail();
+      };
       worker.onmessage = ({ data }) => {
         if (!pending || data.id !== pending.id || data.generation !== generation) return;
-        if (data.error || data.atlas?.key !== pending.key || !(data.atlas?.data instanceof Uint8ClampedArray)
-          || !(data.atlas?.waterCells instanceof Uint8Array)) { fail(); return; }
+        if (
+          data.error ||
+          data.atlas?.key !== pending.key ||
+          !(data.atlas?.data instanceof Uint8ClampedArray) ||
+          !(data.atlas?.waterCells instanceof Uint8Array)
+        ) {
+          fail();
+          return;
+        }
         const completed = pending;
         pending = null;
         completed.cleanup();
@@ -69,14 +90,47 @@ export function bakeTerrainInWorker(world: AtlasWorld, grainGeneration: number, 
         reject(new DOMException("Terrain request cancelled", "AbortError"));
       };
       const timeout = setTimeout(() => fail(false), 15_000);
-      pending = { id, key, resolve, reject, cleanup: () => { clearTimeout(timeout); signal.removeEventListener("abort", abort); } };
+      pending = {
+        id,
+        key,
+        resolve,
+        reject,
+        cleanup: () => {
+          clearTimeout(timeout);
+          signal.removeEventListener("abort", abort);
+        },
+      };
       signal.addEventListener("abort", abort, { once: true });
-      if (signal.aborted) { abort(); return; }
-      const terrain: AtlasWorld = { seed: world.seed, missionIndex: world.missionIndex, biome: world.biome,
-        width: world.width, height: world.height, tiles: [...world.tiles], heights: [...world.heights],
-        surfaces: [...world.surfaces], resourceAmount: [...world.resourceAmount] };
-      try { worker!.postMessage({ type: "bake", id, atlasKey: key, generation, world: terrain, grainGeneration }); }
-      catch { fail(); }
+      if (signal.aborted) {
+        abort();
+        return;
+      }
+      const terrain: AtlasWorld = {
+        seed: world.seed,
+        missionIndex: world.missionIndex,
+        biome: world.biome,
+        width: world.width,
+        height: world.height,
+        tiles: [...world.tiles],
+        heights: [...world.heights],
+        surfaces: [...world.surfaces],
+        resourceAmount: [...world.resourceAmount],
+      };
+      try {
+        worker!.postMessage({
+          type: "bake",
+          id,
+          atlasKey: key,
+          generation,
+          world: terrain,
+          grainGeneration,
+        });
+      } catch {
+        fail();
+      }
     });
-  } catch { fail(); return null; }
+  } catch {
+    fail();
+    return null;
+  }
 }

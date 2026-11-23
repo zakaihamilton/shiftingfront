@@ -1,18 +1,18 @@
-import { canvasViewport } from "@/lib/render/canvasViewport";
+import type { Camera } from "@/lib/iso";
+import type { KeyBindings } from "@/lib/persist/settings";
 import {
   cameraPanBounds,
   canPan,
   capPanInput,
-  panAvailability,
-  panCameraPreservingDirection,
-  panInputForDirection,
   EDGE_PAN_DELAY_MS,
   type PanAvailability,
   type PanDir,
+  panAvailability,
+  panCameraPreservingDirection,
+  panInputForDirection,
 } from "@/lib/render/camera";
-import type { Camera } from "@/lib/iso";
+import { canvasViewport } from "@/lib/render/canvasViewport";
 import type { SimState } from "@/lib/types";
-import type { KeyBindings } from "@/lib/persist/settings";
 
 // Recover useful edge-pan distance when WebKit or a backgrounded tab delivers
 // animation frames sparsely, without allowing an arbitrarily long frame gap to
@@ -52,24 +52,31 @@ export function createFrameCoordinator({
 
   return {
     onFrame(state: SimState, now: number, paused: boolean, frameMs: number) {
-      const elapsedSinceFrame = previousFrameAt === null ? frameMs : Math.max(0, now - previousFrameAt);
+      const elapsedSinceFrame =
+        previousFrameAt === null ? frameMs : Math.max(0, now - previousFrameAt);
       previousFrameAt = now;
       const cameraFrameMs = Math.min(elapsedSinceFrame, MAX_CAMERA_ELAPSED_MS);
       if (!paused) {
         const camera = cameraRef.current;
         const canvas = canvasRef.current;
         const bounds = canvas
-          ? cameraPanBounds(state.width, state.height, canvasViewport(canvas).width, canvasViewport(canvas).height)
+          ? cameraPanBounds(
+              state.width,
+              state.height,
+              canvasViewport(canvas).width,
+              canvasViewport(canvas).height,
+            )
           : undefined;
         const panElapsedMs = cameraFrameMs;
-        const panStep = EDGE_PAN_SPEED * panElapsedMs / 1000;
+        const panStep = (EDGE_PAN_SPEED * panElapsedMs) / 1000;
         const panUpKey = keyBindingsRef?.current?.panUp || "w";
         const panDownKey = keyBindingsRef?.current?.panDown || "s";
         const panLeftKey = keyBindingsRef?.current?.panLeft || "a";
         const panRightKey = keyBindingsRef?.current?.panRight || "d";
-        const keyIsDown = (key: string) => Boolean(
-          keys.current[key] || keys.current[key.toLowerCase()] || keys.current[key.toUpperCase()],
-        );
+        const keyIsDown = (key: string) =>
+          Boolean(
+            keys.current[key] || keys.current[key.toLowerCase()] || keys.current[key.toUpperCase()],
+          );
         const canPanDirection = (dir: PanDir) => Boolean(bounds && canPan(camera, bounds, dir));
         const keyboardPan = { dx: 0, dy: 0 };
         const keyboardDirections: { dir: PanDir; pressed: boolean }[] = [
@@ -85,7 +92,8 @@ export function createFrameCoordinator({
           keyboardPan.dy += input.dy;
         }
         const hoveredEdge = edgePanHover.current;
-        const hold = hoveredEdge && now - hoveredEdge.startedAt >= EDGE_PAN_DELAY_MS ? hoveredEdge.dir : null;
+        const hold =
+          hoveredEdge && now - hoveredEdge.startedAt >= EDGE_PAN_DELAY_MS ? hoveredEdge.dir : null;
         const activeEdge = hold && canPanDirection(hold) ? hold : null;
         panHold.current = activeEdge;
         if (hold && !activeEdge) applyEdgePan(null);
@@ -100,23 +108,42 @@ export function createFrameCoordinator({
           };
         }
         const edgeStep = {
-          dx: edgePanVelocity.dx * panElapsedMs / 1000,
-          dy: edgePanVelocity.dy * panElapsedMs / 1000,
+          dx: (edgePanVelocity.dx * panElapsedMs) / 1000,
+          dy: (edgePanVelocity.dy * panElapsedMs) / 1000,
         };
         const combineAxis = (keyDelta: number, edgeDelta: number, edgeDirection: number) => {
-          if (keyDelta && edgeDirection && Math.sign(keyDelta) !== Math.sign(edgeDirection)) return 0;
+          if (keyDelta && edgeDirection && Math.sign(keyDelta) !== Math.sign(edgeDirection))
+            return 0;
           return keyDelta + edgeDelta;
         };
-        const combinedPan = capPanInput({
-          space: "map",
-          dx: combineAxis(keyboardPan.dx, edgeStep.dx, activeEdge ? panInputForDirection(activeEdge, 1, camera.zoom).dx : 0),
-          dy: combineAxis(keyboardPan.dy, edgeStep.dy, activeEdge ? panInputForDirection(activeEdge, 1, camera.zoom).dy : 0),
-        }, panStep, camera.zoom);
-        if (bounds && combinedPan.space === "map") panCameraPreservingDirection(camera, combinedPan, bounds);
+        const combinedPan = capPanInput(
+          {
+            space: "map",
+            dx: combineAxis(
+              keyboardPan.dx,
+              edgeStep.dx,
+              activeEdge ? panInputForDirection(activeEdge, 1, camera.zoom).dx : 0,
+            ),
+            dy: combineAxis(
+              keyboardPan.dy,
+              edgeStep.dy,
+              activeEdge ? panInputForDirection(activeEdge, 1, camera.zoom).dy : 0,
+            ),
+          },
+          panStep,
+          camera.zoom,
+        );
+        if (bounds && combinedPan.space === "map")
+          panCameraPreservingDirection(camera, combinedPan, bounds);
         if (bounds) {
           const next = panAvailability(camera, bounds);
           const previous = panAvailabilityRef.current;
-          if (previous.left !== next.left || previous.right !== next.right || previous.up !== next.up || previous.down !== next.down) {
+          if (
+            previous.left !== next.left ||
+            previous.right !== next.right ||
+            previous.up !== next.up ||
+            previous.down !== next.down
+          ) {
             panAvailabilityRef.current = next;
             setPanAvailability(next);
           }

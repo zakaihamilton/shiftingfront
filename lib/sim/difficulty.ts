@@ -109,6 +109,9 @@ export function missionDifficulty(missionIndex: number): MissionDifficulty {
 /** Skirmish armies start with a full roster, so bots use the last campaign curve instead of mission 0. */
 export const SKIRMISH_AI_MISSION_INDEX = 5;
 
-export function aiDifficultyMission(state: { missionIndex: number; multiplayer?: boolean }): number {
+export function aiDifficultyMission(state: {
+  missionIndex: number;
+  multiplayer?: boolean;
+}): number {
   return state.multiplayer ? SKIRMISH_AI_MISSION_INDEX : state.missionIndex;
 }

@@ -1,7 +1,17 @@
-import { PauseMenu } from "./PauseMenu";
 import type { PauseSurfaceModel } from "./hooks/runtime/types";
+import { PauseMenu } from "./PauseMenu";
 
-export function GamePauseSurface({ view, notice, settings, tutorial, multiplayer, setView, setNotice, onControlsOpened, session }: PauseSurfaceModel) {
+export function GamePauseSurface({
+  view,
+  notice,
+  settings,
+  tutorial,
+  multiplayer,
+  setView,
+  setNotice,
+  onControlsOpened,
+  session,
+}: PauseSurfaceModel) {
   return (
     <PauseMenu
       view={view}
@@ -25,9 +35,22 @@ export function GamePauseSurface({ view, notice, settings, tutorial, multiplayer
         setView("controls");
         setNotice("");
       }}
-      onDiagnostics={session.telemetryEnabled ? () => { setView("diagnostics"); setNotice(""); } : undefined}
-      onBackToOptions={() => { setView("options"); setNotice(""); }}
-      onOptions={() => { setView("options"); setNotice(""); }}
+      onDiagnostics={
+        session.telemetryEnabled
+          ? () => {
+              setView("diagnostics");
+              setNotice("");
+            }
+          : undefined
+      }
+      onBackToOptions={() => {
+        setView("options");
+        setNotice("");
+      }}
+      onOptions={() => {
+        setView("options");
+        setNotice("");
+      }}
       onMenu={session.onMenu}
       onLeaveWithoutSave={session.onLeaveWithoutSave}
       onToggleSound={session.onToggleSound}

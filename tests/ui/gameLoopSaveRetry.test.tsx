@@ -2,17 +2,32 @@
 
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { makeFixture } from "../../lib/sim/fixtures";
 import type { LoopOptions } from "../../lib/game/loop";
+import { makeFixture } from "../../lib/sim/fixtures";
 
 const startLoop = vi.hoisted(() => vi.fn(() => ({ stop: vi.fn() })));
 vi.mock("@/lib/game/loop", () => ({ startLoop }));
 vi.mock("@/lib/audio/battlefield", () => ({ dispatchBattlefieldAudio: vi.fn() }));
 vi.mock("@/lib/audio/music", () => ({ pauseMusic: vi.fn(), setMusicIntensity: vi.fn() }));
 vi.mock("@/lib/audio/synth", () => ({ playSfx: vi.fn() }));
-vi.mock("@/lib/persist/campaign", () => ({ completeMission: vi.fn(), readCampaignProgress: vi.fn(), writeCampaignProgress: vi.fn() }));
-vi.mock("@/lib/persist/telemetry", () => ({ recordTelemetry: vi.fn(), telemetryFromMission: vi.fn() }));
-vi.mock("@/lib/render/camera", () => ({ cameraPanBounds: vi.fn(), clampCamera: vi.fn(), panAvailability: vi.fn(), panCamera: vi.fn(), panInputForDirection: vi.fn(), capPanInput: vi.fn((input: unknown) => input), EDGE_PAN_DELAY_MS: 120 }));
+vi.mock("@/lib/persist/campaign", () => ({
+  completeMission: vi.fn(),
+  readCampaignProgress: vi.fn(),
+  writeCampaignProgress: vi.fn(),
+}));
+vi.mock("@/lib/persist/telemetry", () => ({
+  recordTelemetry: vi.fn(),
+  telemetryFromMission: vi.fn(),
+}));
+vi.mock("@/lib/render/camera", () => ({
+  cameraPanBounds: vi.fn(),
+  clampCamera: vi.fn(),
+  panAvailability: vi.fn(),
+  panCamera: vi.fn(),
+  panInputForDirection: vi.fn(),
+  capPanInput: vi.fn((input: unknown) => input),
+  EDGE_PAN_DELAY_MS: 120,
+}));
 vi.mock("@/lib/render/fx", () => ({ burstsFromEvents: vi.fn(() => ({ bursts: [], nextId: 1 })) }));
 vi.mock("@/lib/sim/debrief", () => ({ missionMedals: vi.fn(), missionScore: vi.fn() }));
 vi.mock("@/lib/ui/copy", () => ({ commandRejectionMessage: vi.fn() }));

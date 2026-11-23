@@ -1,30 +1,36 @@
-export type { FaceTone, PortraitFrameRect, PortraitClip, PortraitOffset, PortraitSearchWindow } from "./portraits/types";
 export {
-  PORTRAIT_OFFSET_NONE,
-  PORTRAIT_MEASURE_WIDTH,
-  PORTRAIT_MEASURE_HEIGHT,
-  PORTRAIT_MOUTH_CLIP,
-  PORTRAIT_EYE_CLIPS,
-  PORTRAIT_DRIFT_THRESHOLD,
-  portraitHash,
-  nextPortraitRandom,
-} from "./portraits/types";
-export {
-  portraitClipWindow,
-  portraitRegistrationWindow,
-  scalePortraitOffset,
-  portraitHasDrift,
   choosePortraitMouthClip,
+  measurePortraitOffset,
+  portraitClipWindow,
+  portraitHasDrift,
+  portraitRegistrationWindow,
+  refinePortraitOffset,
   resolvePortraitAnimation,
   resolvePortraitBlinkAlignment,
-  refinePortraitOffset,
-  measurePortraitOffset,
+  scalePortraitOffset,
 } from "./portraits/alignment";
-export { detectPortraitMouthClip } from "./portraits/mouthDetection";
-export { portraitBlinking, portraitSpeechFrame, portraitFrameIndex } from "./portraits/animation";
+export { portraitBlinking, portraitFrameIndex, portraitSpeechFrame } from "./portraits/animation";
 export {
   drawPortraitBackdrop,
-  portraitFrameRect,
-  drawPortraitFrame,
   drawPortraitClippedFrame,
+  drawPortraitFrame,
+  portraitFrameRect,
 } from "./portraits/drawing";
+export { detectPortraitMouthClip } from "./portraits/mouthDetection";
+export type {
+  FaceTone,
+  PortraitClip,
+  PortraitFrameRect,
+  PortraitOffset,
+  PortraitSearchWindow,
+} from "./portraits/types";
+export {
+  nextPortraitRandom,
+  PORTRAIT_DRIFT_THRESHOLD,
+  PORTRAIT_EYE_CLIPS,
+  PORTRAIT_MEASURE_HEIGHT,
+  PORTRAIT_MEASURE_WIDTH,
+  PORTRAIT_MOUTH_CLIP,
+  PORTRAIT_OFFSET_NONE,
+  portraitHash,
+} from "./portraits/types";

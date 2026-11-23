@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -10,7 +10,9 @@ describe("Font Asset Integrity and Layout Shift Prevention", () => {
   const layoutCss = readFileSync(resolve(process.cwd(), "app/layout.module.css"), "utf-8");
 
   it("ships all local font files referenced by app/layout.tsx", () => {
-    const fontMatches = Array.from(layoutSource.matchAll(/path:\s*"\.\/fonts\/([^"]+)"/g)).map((m) => m[1]);
+    const fontMatches = Array.from(layoutSource.matchAll(/path:\s*"\.\/fonts\/([^"]+)"/g)).map(
+      (m) => m[1],
+    );
     expect(fontMatches.length).toBeGreaterThanOrEqual(9);
 
     for (const fontFile of fontMatches) {
@@ -32,7 +34,9 @@ describe("Font Asset Integrity and Layout Shift Prevention", () => {
 
       // Magic bytes check
       const magic = buffer.subarray(0, 4);
-      expect(magic.equals(WOFF2_MAGIC), `Font file ${fontFile} must be a valid WOFF2 binary`).toBe(true);
+      expect(magic.equals(WOFF2_MAGIC), `Font file ${fontFile} must be a valid WOFF2 binary`).toBe(
+        true,
+      );
     }
   });
 
@@ -42,8 +46,13 @@ describe("Font Asset Integrity and Layout Shift Prevention", () => {
     for (const fontFile of fontFiles) {
       const stats = statSync(resolve(fontsDir, fontFile));
       // Subsetting should keep each woff2 font lean (< 25,000 bytes)
-      expect(stats.size, `Font file ${fontFile} is ${stats.size} bytes (budget: 25KB)`).toBeLessThan(25_000);
-      expect(stats.size, `Font file ${fontFile} is suspiciously small (< 5KB)`).toBeGreaterThan(5_000);
+      expect(
+        stats.size,
+        `Font file ${fontFile} is ${stats.size} bytes (budget: 25KB)`,
+      ).toBeLessThan(25_000);
+      expect(stats.size, `Font file ${fontFile} is suspiciously small (< 5KB)`).toBeGreaterThan(
+        5_000,
+      );
     }
   });
 

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { CodeInput } from "@/components/shared/CodeInput";
 

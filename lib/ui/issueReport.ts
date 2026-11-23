@@ -51,14 +51,18 @@ export function crashIssueBody(context: CrashIssueContext, stack = context.stack
     "## Diagnostics",
     "",
     "```json",
-    JSON.stringify({
-      error: context.message ?? "",
-      stack: stack.slice(0, MAX_STACK_CHARS),
-      url: context.href ?? "",
-      userAgent: context.userAgent ?? "",
-      version: APP_VERSION,
-      timestamp: context.timestamp ?? "",
-    }, null, 2),
+    JSON.stringify(
+      {
+        error: context.message ?? "",
+        stack: stack.slice(0, MAX_STACK_CHARS),
+        url: context.href ?? "",
+        userAgent: context.userAgent ?? "",
+        version: APP_VERSION,
+        timestamp: context.timestamp ?? "",
+      },
+      null,
+      2,
+    ),
     "```",
     "",
   ].join("\n");

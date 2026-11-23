@@ -1,5 +1,22 @@
-export { issue, groundOrders, applyCommands, setPathTo } from "./orders/core";
-export { moveUnits, attackMoveUnits, collectMovers, formationDestination, nearbyWalkableSlots, snapUnique, assignNearest, destinationsForGroup, assignMoveDestination } from "./orders/movement";
-export { attackUnits, supportUnits, setStance, setFormation } from "./orders/combat";
-export { startBuild, cancelBuild, sellBuilding, setRallyPoint, toggleRepair, refundQueuedUnits } from "./orders/building";
-export { startProduce, cancelProduce } from "./orders/production";
+export {
+  cancelBuild,
+  refundQueuedUnits,
+  sellBuilding,
+  setRallyPoint,
+  startBuild,
+  toggleRepair,
+} from "./orders/building";
+export { attackUnits, setFormation, setStance, supportUnits } from "./orders/combat";
+export { applyCommands, groundOrders, issue, setPathTo } from "./orders/core";
+export {
+  assignMoveDestination,
+  assignNearest,
+  attackMoveUnits,
+  collectMovers,
+  destinationsForGroup,
+  formationDestination,
+  moveUnits,
+  nearbyWalkableSlots,
+  snapUnique,
+} from "./orders/movement";
+export { cancelProduce, startProduce } from "./orders/production";

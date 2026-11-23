@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fogIndex } from "../../lib/sim/fog";
-import { makeFixture } from "../../lib/sim/fixtures";
-import { invalidateTerrainAtlas } from "../../lib/render/terrainAtlas";
 import { invalidateMinimap, renderMinimap } from "../../lib/render/minimap";
+import { invalidateTerrainAtlas } from "../../lib/render/terrainAtlas";
+import { makeFixture } from "../../lib/sim/fixtures";
+import { fogIndex } from "../../lib/sim/fog";
 
-function createContext(width: number, height: number, drawCalls: unknown[][]): CanvasRenderingContext2D {
+function createContext(
+  width: number,
+  height: number,
+  drawCalls: unknown[][],
+): CanvasRenderingContext2D {
   const context = {
     canvas: { width, height },
     createImageData: (imageWidth: number, imageHeight: number) => ({

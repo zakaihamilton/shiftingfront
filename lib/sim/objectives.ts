@@ -1,9 +1,9 @@
 import { isAirUnit, labelFor, TICKS_PER_SECOND } from "../catalog";
-import type { Entity, InspectReport, MissionRuntime, SimEvent, SimState } from "../types";
-import { formatSeed } from "../seed/rng";
 import { formatMissionClock, formatMissionClockFromTicks } from "../gen/pacing";
-import { invalidateEntityCaches, livingView } from "./world";
+import { formatSeed } from "../seed/rng";
+import type { Entity, InspectReport, MissionRuntime, SimEvent, SimState } from "../types";
 import { DEADLINE_SCENARIO_KINDS, scenarioDefinitionFor } from "./scenarios";
+import { invalidateEntityCaches, livingView } from "./world";
 
 export function formatHoldClock(seconds: number): string {
   return formatMissionClock(seconds);
@@ -30,31 +30,41 @@ export type ObjectivePriority = "primary" | "optional";
 /** Presentation classification for legacy secondary-objective records. */
 export function objectivePriorityFor(id: string, priority?: ObjectivePriority): ObjectivePriority {
   if (priority) return priority;
-  return id === "yard" || id === "time" || id === "target" || id === "scenario-target" ? "primary" : "optional";
+  return id === "yard" || id === "time" || id === "target" || id === "scenario-target"
+    ? "primary"
+    : "optional";
 }
 
 function timeRemainingTicks(state: SimState): number | undefined {
   if (state.runtime) {
-    if (state.runtime.deadline !== undefined) return Math.max(0, state.runtime.deadline - state.tick);
+    if (state.runtime.deadline !== undefined)
+      return Math.max(0, state.runtime.deadline - state.tick);
     const deadline = scenarioDefinitionFor(state.runtime.kind).deadline(state);
     if (deadline !== undefined) return Math.max(0, deadline - state.tick);
   }
-  if (["escort", "sabotage", "rescue", "extraction"].includes(state.win.kind) && state.win.ticks !== undefined) {
+  if (
+    ["escort", "sabotage", "rescue", "extraction"].includes(state.win.kind) &&
+    state.win.ticks !== undefined
+  ) {
     return Math.max(0, state.win.ticks - state.tick);
   }
-  if (state.win.kind === "holdTheLine" && state.win.ticks !== undefined) return Math.max(0, state.win.ticks - state.tick);
+  if (state.win.kind === "holdTheLine" && state.win.ticks !== undefined)
+    return Math.max(0, state.win.ticks - state.tick);
   return undefined;
 }
 
 const DEADLINE_WARNING_SECONDS = [60, 30, 10] as const;
 
 function isOperationalEnemy(entity: Entity): boolean {
-  return !entity.optionalChallenge && !(
-    entity.class === "unit"
-    && isAirUnit(entity.kind)
-    && entity.flightState === "airborne"
-    && (entity.ammo ?? 0) <= 0
-    && entity.assignedRunwayId === undefined
+  return (
+    !entity.optionalChallenge &&
+    !(
+      entity.class === "unit" &&
+      isAirUnit(entity.kind) &&
+      entity.flightState === "airborne" &&
+      (entity.ammo ?? 0) <= 0 &&
+      entity.assignedRunwayId === undefined
+    )
   );
 }
 
@@ -62,7 +72,8 @@ function deadlineWarningEvent(state: SimState): SimEvent | undefined {
   if (!state.runtime || !DEADLINE_SCENARIO_KINDS.includes(state.runtime.kind)) return undefined;
   const remaining = timeRemainingTicks(state);
   if (remaining === undefined) return undefined;
-  if (!DEADLINE_WARNING_SECONDS.some((seconds) => remaining === seconds * TICKS_PER_SECOND)) return undefined;
+  if (!DEADLINE_WARNING_SECONDS.some((seconds) => remaining === seconds * TICKS_PER_SECOND))
+    return undefined;
   return { type: "deadlineWarning", remainingTicks: remaining };
 }
 
@@ -72,19 +83,23 @@ export function secondaryProgress(state: SimState): SecondaryProgress[] {
     // is active, but it is only a completed result when the primary operation
     // also wins. Otherwise a failed mission could report that it completed its
     // operation within the limit simply because the player lost early.
-    const completed = objective.completed === true && (
-      objective.kind !== "completeBefore" || state.result === "won"
-    );
+    const completed =
+      objective.completed === true &&
+      (objective.kind !== "completeBefore" || state.result === "won");
     return {
       id: objective.id,
-      label: objective.kind === "secureZone" && !objective.completed
-        ? `${objective.label} · ${Math.floor((objective.progressTicks ?? 0) / TICKS_PER_SECOND)}/60s` : objective.label,
+      label:
+        objective.kind === "secureZone" && !objective.completed
+          ? `${objective.label} · ${Math.floor((objective.progressTicks ?? 0) / TICKS_PER_SECOND)}/60s`
+          : objective.label,
       priority: objective.priority,
       completed,
-      failed: !completed && (
-        state.result === "lost"
-        || (objective.kind === "completeBefore" && objective.target !== undefined && state.tick >= objective.target)
-      ),
+      failed:
+        !completed &&
+        (state.result === "lost" ||
+          (objective.kind === "completeBefore" &&
+            objective.target !== undefined &&
+            state.tick >= objective.target)),
     };
   });
 }
@@ -94,19 +109,26 @@ export function objectiveProgress(state: SimState): ObjectiveProgress {
   if (state.multiplayer) {
     const owners = state.multiplayerOwners ?? [0, 1];
     const rivals = owners.filter((owner) => owner !== (state.viewOwner ?? 0));
-    const remaining = livingView(state).filter((entity) =>
-      rivals.includes(entity.owner) && entity.kind === "constructionYard",
+    const remaining = livingView(state).filter(
+      (entity) => rivals.includes(entity.owner) && entity.kind === "constructionYard",
     ).length;
     const destroyed = rivals.length - remaining;
     return {
       current: destroyed,
       target: rivals.length,
-      label: remaining > 0 ? `Rival Command HQs remaining ${remaining}` : "All rival Command HQs destroyed",
+      label:
+        remaining > 0
+          ? `Rival Command HQs remaining ${remaining}`
+          : "All rival Command HQs destroyed",
     };
   }
   const scenarioProgress = scenarioDefinitionFor(w.kind).progress(state);
   if (scenarioProgress) {
-    return { ...scenarioProgress, timeRemainingTicks: timeRemainingTicks(state), phase: state.runtime?.phase };
+    return {
+      ...scenarioProgress,
+      timeRemainingTicks: timeRemainingTicks(state),
+      phase: state.runtime?.phase,
+    };
   }
   let progress: { current: number; target: number; label: string };
   switch (w.kind) {
@@ -142,18 +164,34 @@ export function objectiveProgress(state: SimState): ObjectiveProgress {
       break;
     }
     case "razeAll": {
-      const left = livingView(state).filter((e) => e.owner === 1 && !e.optionalChallenge && e.class === "building").length;
-      progress = { current: left === 0 ? 1 : 0, target: 1, label: left === 0 ? "All enemy buildings destroyed" : `Enemy buildings remaining: ${left}` };
+      const left = livingView(state).filter(
+        (e) => e.owner === 1 && !e.optionalChallenge && e.class === "building",
+      ).length;
+      progress = {
+        current: left === 0 ? 1 : 0,
+        target: 1,
+        label: left === 0 ? "All enemy buildings destroyed" : `Enemy buildings remaining: ${left}`,
+      };
       break;
     }
     case "decapitate": {
       const cy = livingView(state).some((e) => e.owner === 1 && e.kind === "constructionYard");
-      progress = { current: cy ? 0 : 1, target: 1, label: cy ? `Destroy the enemy ${labelFor("constructionYard")}` : `${labelFor("constructionYard")} destroyed` };
+      progress = {
+        current: cy ? 0 : 1,
+        target: 1,
+        label: cy
+          ? `Destroy the enemy ${labelFor("constructionYard")}`
+          : `${labelFor("constructionYard")} destroyed`,
+      };
       break;
     }
     case "annihilate": {
       const left = livingView(state).filter((e) => e.owner === 1 && isOperationalEnemy(e)).length;
-      progress = { current: left === 0 ? 1 : 0, target: 1, label: left === 0 ? "All enemy forces eliminated" : `Enemy forces remaining: ${left}` };
+      progress = {
+        current: left === 0 ? 1 : 0,
+        target: 1,
+        label: left === 0 ? "All enemy forces eliminated" : `Enemy forces remaining: ${left}`,
+      };
       break;
     }
     case "holdTheLine": {
@@ -173,12 +211,20 @@ export function objectiveProgress(state: SimState): ObjectiveProgress {
     default:
       progress = { current: 0, target: 1, label: "Unknown" };
   }
-  return { ...progress, timeRemainingTicks: timeRemainingTicks(state), phase: state.runtime?.phase };
+  return {
+    ...progress,
+    timeRemainingTicks: timeRemainingTicks(state),
+    phase: state.runtime?.phase,
+  };
 }
 
 const EMPTY_EVENTS: SimEvent[] = [];
 
-function objectiveEvents(eventSink: SimEvent[] | undefined, events: SimEvent[], collectEvents: boolean): SimEvent[] {
+function objectiveEvents(
+  eventSink: SimEvent[] | undefined,
+  events: SimEvent[],
+  collectEvents: boolean,
+): SimEvent[] {
   if (!collectEvents) return EMPTY_EVENTS;
   if (eventSink) {
     eventSink.push(...events);
@@ -187,14 +233,20 @@ function objectiveEvents(eventSink: SimEvent[] | undefined, events: SimEvent[], 
   return events;
 }
 
-export function evaluateObjectives(state: SimState, eventSink?: SimEvent[], collectEvents = true): SimEvent[] {
+export function evaluateObjectives(
+  state: SimState,
+  eventSink?: SimEvent[],
+  collectEvents = true,
+): SimEvent[] {
   if (state.result !== "playing") return EMPTY_EVENTS;
   if (state.multiplayer) {
     const owners = state.multiplayerOwners ?? [0, 1];
     state.multiplayerEliminated = state.multiplayerEliminated ?? [];
-    const yardOwners = new Set(livingView(state)
-      .filter((entity) => entity.kind === "constructionYard")
-      .map((entity) => entity.owner));
+    const yardOwners = new Set(
+      livingView(state)
+        .filter((entity) => entity.kind === "constructionYard")
+        .map((entity) => entity.owner),
+    );
     let eliminatedAny = false;
     const events: SimEvent[] = [];
     for (const owner of owners) {
@@ -207,9 +259,10 @@ export function evaluateObjectives(state: SimState, eventSink?: SimEvent[], coll
           eliminatedAny = true;
         }
       }
-      const text = owner === (state.viewOwner ?? 0)
-        ? "Command HQ destroyed — your forces have been eliminated."
-        : `Player ${owner + 1} eliminated.`;
+      const text =
+        owner === (state.viewOwner ?? 0)
+          ? "Command HQ destroyed — your forces have been eliminated."
+          : `Player ${owner + 1} eliminated.`;
       events.push({ type: "alert", kind: "warning", text });
     }
     if (eliminatedAny) invalidateEntityCaches(state);
@@ -242,37 +295,40 @@ export function evaluateObjectives(state: SimState, eventSink?: SimEvent[], coll
   const w = state.win;
   const scenarioComplete = scenarioDefinitionFor(w.kind).isComplete(state);
   let won = scenarioComplete ?? false;
-  if (scenarioComplete === undefined) switch (w.kind) {
-    case "harvestQuota":
-      won = state.creditsEarned[0] >= (w.target ?? Infinity);
-      break;
-    case "forceQuota": {
-      const current = w.role ? (state.unitsProducedByRole[w.role] ?? 0) : state.unitsProduced[0];
-      won = current >= (w.target ?? Infinity);
-      break;
+  if (scenarioComplete === undefined)
+    switch (w.kind) {
+      case "harvestQuota":
+        won = state.creditsEarned[0] >= (w.target ?? Infinity);
+        break;
+      case "forceQuota": {
+        const current = w.role ? (state.unitsProducedByRole[w.role] ?? 0) : state.unitsProduced[0];
+        won = current >= (w.target ?? Infinity);
+        break;
+      }
+      case "structureQuota": {
+        const current = w.building
+          ? (state.buildingsCompletedByKind[w.building] ?? 0)
+          : state.buildingsCompleted[0];
+        won = current >= (w.target ?? Infinity);
+        break;
+      }
+      case "razeAll":
+        won = !livingView(state).some(
+          (e) => e.owner === 1 && !e.optionalChallenge && e.class === "building",
+        );
+        break;
+      case "decapitate":
+        won = !livingView(state).some((e) => e.owner === 1 && e.kind === "constructionYard");
+        break;
+      case "annihilate":
+        won = !livingView(state).some((e) => e.owner === 1 && isOperationalEnemy(e));
+        break;
+      case "holdTheLine":
+        if (state.tick >= (w.ticks ?? Infinity) && playerCy) won = true;
+        break;
+      default:
+        break;
     }
-    case "structureQuota": {
-      const current = w.building
-        ? (state.buildingsCompletedByKind[w.building] ?? 0)
-        : state.buildingsCompleted[0];
-      won = current >= (w.target ?? Infinity);
-      break;
-    }
-    case "razeAll":
-      won = !livingView(state).some((e) => e.owner === 1 && !e.optionalChallenge && e.class === "building");
-      break;
-    case "decapitate":
-      won = !livingView(state).some((e) => e.owner === 1 && e.kind === "constructionYard");
-      break;
-    case "annihilate":
-      won = !livingView(state).some((e) => e.owner === 1 && isOperationalEnemy(e));
-      break;
-    case "holdTheLine":
-      if (state.tick >= (w.ticks ?? Infinity) && playerCy) won = true;
-      break;
-    default:
-      break;
-  }
 
   if (won) {
     state.result = "won";
@@ -292,7 +348,11 @@ export function evaluateObjectives(state: SimState, eventSink?: SimEvent[], coll
       state.result = "lost";
       state.lossReason = "deadline";
       state.runtime.phase = "complete";
-      return objectiveEvents(eventSink, [{ type: "objectiveExpired", kind: state.runtime.kind }, { type: "lost" }], collectEvents);
+      return objectiveEvents(
+        eventSink,
+        [{ type: "objectiveExpired", kind: state.runtime.kind }, { type: "lost" }],
+        collectEvents,
+      );
     }
   }
   const warning = deadlineWarningEvent(state);

@@ -1,4 +1,4 @@
-import { TILE_W, type Camera } from "../iso";
+import { type Camera, TILE_W } from "../iso";
 
 export type ScrollLayer = {
   key: string;
