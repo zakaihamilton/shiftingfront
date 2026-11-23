@@ -220,16 +220,21 @@ test("replays a completed mission when its autosave has changed elsewhere", asyn
     key: saveKey(421),
     raw: saveEnvelope(state),
   });
-  await page.goto("/play?seed=0421&resume=1");
-  await expect(page.getByRole("button", { name: "Replay mission" })).toBeVisible();
+  await page.goto("/play?seed=0421&mission=0&resume=1");
+  await expect(page.getByTestId("mission-result")).toBeVisible();
 
+  const newerSave = distinctiveSave();
+  newerSave.tick += 120;
+  await replaceCampaignSave(page, 421, saveEnvelope(newerSave));
   await page.getByRole("button", { name: "Replay mission" }).click();
+  await expect(page).toHaveURL(/\/briefing\?seed=0421&mission=0&from=result&replay=1/);
+
+  await page.getByRole("button", { name: "Launch" }).click();
   await expect(page).toHaveURL(/\/play\?seed=0421&mission=0&fresh=1/);
   await waitForBattlefieldReady(page);
   await expect(page.getByTestId("mission-result")).toHaveCount(0);
   await expect(page.getByTestId("credits")).toHaveText("2,000");
 });
-
 test("respects reduced motion on the mission result dialog", async ({ page }) => {
   const state = distinctiveSave("lost");
   await page.addInitScript(({ key, raw }) => localStorage.setItem(key, raw), {
